@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npx prisma generate:*)",
+      "Bash(npx prisma:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx tsx:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx next build:*)",
+      "Bash(dir:*)",
+      "Bash(ls -la \"c:\\Users\\Montech.DESKTOP-HFD37TP\\Desktop\\sprite-lab-main\\public*coreling* 2>/dev/null || dir c:UsersMontech.DESKTOP-HFD37TPDesktopsprite-lab-mainpublic\")",
+      "Bash(findstr:*)",
+      "Bash(node -e:*)",
+      "Bash(cat:*)",
+      "Bash(ls:*)",
+      "Bash(del \"c:\\Users\\Montech.DESKTOP-HFD37TP\\Desktop\\sprite-lab-main\\src\\app\\(dashboard)\\pricing\\metadata.ts\")",
+      "Bash(npm remove:*)",
+      "Bash(wc:*)",
+      "Bash(del \"c:\\Users\\Montech.DESKTOP-HFD37TP\\Desktop\\sprite-lab-main\\src\\components\\dashboard\\FeedbackButton.tsx\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

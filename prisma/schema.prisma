@@ -1,0 +1,260 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                    String        @id @default(uuid())
+  email                 String        @unique
+  name                  String?
+  avatarUrl             String?       @map("avatar_url")
+  credits               Int           @default(15)
+  plan                  String        @default("FREE") // FREE, STARTER, PRO, UNLIMITED
+  role                  String        @default("USER") // USER, SUPPORT, MODERATOR, ADMIN, OWNER (SEO)
+  isLifetime            Boolean       @default(false) @map("is_lifetime") // Lifetime deal (no subscription renewal)
+  stripeCustomerId      String?       @unique @map("stripe_customer_id")
+  stripeSubscriptionId  String?       @unique @map("stripe_subscription_id")
+  stripePriceId         String?       @map("stripe_price_id")
+  stripeCurrentPeriodEnd DateTime?    @map("stripe_current_period_end")
+  isActive              Boolean       @default(true) @map("is_active")
+  totalSpent            Float         @default(0) @map("total_spent") // Total money spent in GBP
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+
+  // Profile fields
+  username              String?       @unique
+  bio                   String?
+  website               String?
+  socialTwitter         String?       @map("social_twitter")
+  socialGithub          String?       @map("social_github")
+  isProfilePublic       Boolean       @default(true) @map("is_profile_public")
+
+  // Gamification
+  totalLikesReceived    Int           @default(0) @map("total_likes_received")
+  totalGenerationsPublic Int          @default(0) @map("total_generations_public")
+  badges                String?       // JSON array of badge IDs
+
+  generations           Generation[]
+  creditTransactions    CreditTransaction[]
+  notifications         Notification[]
+  communityPosts        CommunityPost[]
+  postComments          PostComment[]
+  postLikes             PostLike[]
+  reports               Report[]       @relation("ReportedByUser")
+  receivedReports       Report[]       @relation("ReportedUser")
+
+  @@index([role])
+  @@index([username])
+  @@index([stripeCustomerId])
+  @@index([stripeSubscriptionId])
+  @@map("users")
+}
+
+model Generation {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  prompt        String
+  fullPrompt    String?  @map("full_prompt")
+  categoryId    String   @map("category_id")
+  subcategoryId String   @map("subcategory_id")
+  styleId       String   @map("style_id")
+  imageUrl      String   @map("image_url")
+  seed          Int?
+  replicateCost Float?   @map("replicate_cost") // Cost in USD from Replicate
+  isPublic      Boolean  @default(false) @map("is_public") // Share to community gallery
+  likes         Int      @default(0) // Community likes count
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  user          User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([isPublic])
+  @@map("generations")
+}
+
+model CreditTransaction {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  amount      Int      // Positive for additions, negative for deductions
+  type        String   // PURCHASE, GENERATION, REFUND, BONUS, ADMIN_GRANT
+  description String?
+  moneyAmount Float?   @map("money_amount") // Amount in USD for purchases
+  adminId     String?  @map("admin_id") // ID of admin who granted credits
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([type])
+  @@map("credit_transactions")
+}
+
+model WaitlistEntry {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  source    String   @default("landing")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("waitlist_entries")
+}
+
+model Feedback {
+  id        String   @id @default(cuid())
+  userId    String?  @map("user_id")
+  type      String   @default("other") // bug, feature, other
+  message   String
+  email     String?
+  context   String?  // JSON string with extra context (current page, browser, etc.)
+  status    String   @default("new") // new, reviewed, resolved
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("feedback")
+}
+
+model Comment {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  generationId String   @map("generation_id")
+  message      String
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([generationId])
+  @@index([createdAt])
+  @@map("comments")
+}
+
+model Like {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  generationId String   @map("generation_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, generationId])
+  @@index([generationId])
+  @@map("likes")
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  message   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("chat_messages")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  type      String   // CREDIT_GRANT, SYSTEM, PROMO, etc.
+  title     String
+  message   String
+  data      String?  // JSON string for extra data (e.g., amount, adminId)
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// Community System
+model CommunityPost {
+  id           String        @id @default(cuid())
+  userId       String        @map("user_id")
+  generationId String?       @map("generation_id") // Optional link to generation
+  title        String
+  content      String?
+  imageUrl     String?       @map("image_url")
+  likesCount   Int           @default(0) @map("likes_count")
+  commentsCount Int          @default(0) @map("comments_count")
+  isHidden     Boolean       @default(false) @map("is_hidden") // Moderation
+  isPinned     Boolean       @default(false) @map("is_pinned")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comments     PostComment[]
+  likes        PostLike[]
+  reports      Report[]
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([isHidden])
+  @@index([isPinned])
+  @@map("community_posts")
+}
+
+model PostComment {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  postId    String   @map("post_id")
+  content   String
+  isHidden  Boolean  @default(false) @map("is_hidden")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([postId])
+  @@index([createdAt])
+  @@map("post_comments")
+}
+
+model PostLike {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  postId    String   @map("post_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@index([postId])
+  @@map("post_likes")
+}
+
+model Report {
+  id           String         @id @default(cuid())
+  reporterId   String         @map("reporter_id")
+  reportedUserId String?      @map("reported_user_id")
+  postId       String?        @map("post_id")
+  generationId String?        @map("generation_id")
+  reason       String         // SPAM, INAPPROPRIATE, HARASSMENT, COPYRIGHT, OTHER
+  description  String?
+  status       String         @default("PENDING") // PENDING, REVIEWED, RESOLVED, DISMISSED
+  moderatorId  String?        @map("moderator_id")
+  moderatorNote String?       @map("moderator_note")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  reporter     User           @relation("ReportedByUser", fields: [reporterId], references: [id], onDelete: Cascade)
+  reportedUser User?          @relation("ReportedUser", fields: [reportedUserId], references: [id], onDelete: SetNull)
+  post         CommunityPost? @relation(fields: [postId], references: [id], onDelete: SetNull)
+
+  @@index([reporterId])
+  @@index([reportedUserId])
+  @@index([postId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("reports")
+}
