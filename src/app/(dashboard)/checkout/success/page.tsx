@@ -8,6 +8,13 @@ import { CheckCircle, Sparkles, Rocket } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 
+// Declare gtag for TypeScript
+declare global {
+  interface Window {
+    gtag?: (...args: unknown[]) => void;
+  }
+}
+
 const planNames: Record<string, string> = {
   STARTER: "Forge",
   PRO: "Apex",
@@ -15,15 +22,64 @@ const planNames: Record<string, string> = {
 };
 
 const planCredits: Record<string, number> = {
-  STARTER: 75,
-  PRO: 250,
-  UNLIMITED: 750,
+  STARTER: 50,
+  PRO: 150,
+  UNLIMITED: 500,
+};
+
+// Plan prices in GBP for conversion tracking
+const planPrices: Record<string, number> = {
+  STARTER: 2.49,
+  PRO: 5.99,
+  UNLIMITED: 16.99,
 };
 
 function SuccessContent() {
   const searchParams = useSearchParams();
   const plan = searchParams.get("plan")?.toUpperCase() || "STARTER";
+  const sessionId = searchParams.get("session_id") || "";
   const [countdown, setCountdown] = useState(5);
+  const [conversionTracked, setConversionTracked] = useState(false);
+
+  // Google Ads Conversion Tracking with retry
+  useEffect(() => {
+    if (conversionTracked) return;
+
+    const value = planPrices[plan] || 2.49;
+
+    const trackConversion = () => {
+      if (typeof window !== "undefined" && window.gtag) {
+        window.gtag("event", "conversion", {
+          send_to: "AW-17802754923/dTASCOXAhtIbEOv2galC",
+          value: value,
+          currency: "GBP",
+          transaction_id: sessionId,
+        });
+        console.log("[SpriteLab] Google Ads conversion tracked:", { value, sessionId, plan });
+        setConversionTracked(true);
+        return true;
+      }
+      return false;
+    };
+
+    // Try immediately
+    if (trackConversion()) return;
+
+    // Retry every 500ms for up to 5 seconds (gtag may not be loaded yet)
+    let attempts = 0;
+    const maxAttempts = 10;
+    const interval = setInterval(() => {
+      attempts++;
+      if (trackConversion() || attempts >= maxAttempts) {
+        clearInterval(interval);
+        if (attempts >= maxAttempts) {
+          console.warn("[SpriteLab] Could not track conversion - gtag not available");
+        }
+      }
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, [plan, sessionId, conversionTracked]);
 
   useEffect(() => {
     const timer = setInterval(() => {

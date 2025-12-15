@@ -9,6 +9,8 @@ export {
   STYLES_2D_UI,
   STYLE_2D_IDS,
   DEFAULT_STYLE_2D,
+  PRO_QUALITY_BOOST,
+  getProQualityBoost,
 } from "./styles-2d";
 
 // 3D Styles
