@@ -18,7 +18,7 @@ const LAUNCH_PROMO = {
 
 // Plan names must match the keys in PLANS from stripe.ts
 // Features listed here are ONLY those that are actually implemented
-// Pricing in GBP (British Pounds)
+// Pricing in GBP (British Pounds) - ULTRA COMPETITIVE!
 const plans = [
   {
     name: "Spark",
@@ -26,19 +26,20 @@ const plans = [
     icon: Sparkles,
     price: "£0",
     period: "forever",
-    credits: "15 credits",
+    credits: "5 credits",
     description: "Test the magic",
     features: [
-      "15 generation credits",
+      "5 generation credits",
       "All asset categories",
       "All art styles",
+      "Premium AI models",
       "High quality (1024x1024)",
       "Download PNG format",
-      "7-day gallery storage",
+      "3-day gallery storage",
     ],
     limitations: [
       "No background removal",
-      "No image editing",
+      "No premium features",
     ],
     popular: false,
     cta: "Current Plan",
@@ -48,19 +49,19 @@ const plans = [
     name: "Forge",
     stripePlan: "STARTER",
     icon: Flame,
-    price: "£12",
+    price: "£2.49",
     period: "per month",
-    credits: "75 credits/mo",
+    credits: "50 credits/mo",
     description: "For indie developers",
     features: [
-      "75 credits per month",
+      "50 credits per month",
       "All asset categories",
       "All art styles",
+      "Premium AI models",
       "High quality (1024x1024)",
       "Download PNG format",
-      "Unlimited gallery storage",
+      "30-day gallery storage",
       "Background removal",
-      "Image editing tools",
     ],
     limitations: [],
     popular: true,
@@ -71,20 +72,22 @@ const plans = [
     name: "Apex",
     stripePlan: "PRO",
     icon: Crown,
-    price: "£39",
+    price: "£5.99",
     period: "per month",
-    credits: "250 credits/mo",
+    credits: "150 credits/mo",
     description: "For game studios",
     features: [
-      "250 credits per month",
+      "150 credits per month",
       "All asset categories",
       "All art styles",
+      "Premium AI models",
       "High quality (1024x1024)",
-      "Download PNG format",
       "Unlimited gallery storage",
       "Background removal",
       "Image editing tools",
-      "Priority support",
+      "Sprite Sheet Generator",
+      "Style Mixing",
+      "Color Palette Lock",
     ],
     limitations: [],
     popular: false,
@@ -95,19 +98,23 @@ const plans = [
     name: "Titan",
     stripePlan: "UNLIMITED",
     icon: Rocket,
-    price: "£99",
+    price: "£16.99",
     period: "per month",
-    credits: "750 credits/mo",
+    credits: "500 credits/mo",
     description: "For power users",
     features: [
-      "750 credits per month",
+      "500 credits per month",
       "All asset categories",
       "All art styles",
+      "Premium AI models",
       "High quality (1024x1024)",
-      "Download PNG format",
       "Unlimited gallery storage",
       "Background removal",
       "Image editing tools",
+      "Sprite Sheet Generator",
+      "Style Mixing",
+      "Color Palette Lock",
+      "Priority queue",
       "Priority support",
       "Early access to features",
     ],
@@ -119,69 +126,73 @@ const plans = [
 ];
 
 // Credit packs with volume discounts (GBP) + LAUNCH BONUSES
+// Min 25% margin at £0.024/gen flux-dev cost
 const creditPacks = [
   {
     name: "Ember",
     credits: 25,
-    bonus: 5, // Launch bonus
-    price: "£4.99",
-    perCredit: "£0.20",
+    bonus: 5, // Launch bonus - 30 total
+    price: "£1.19",
+    perCredit: "£0.040",
     popular: false,
   },
   {
     name: "Blaze",
-    credits: 60,
-    bonus: 15, // Launch bonus
-    price: "£9.99",
-    perCredit: "£0.17",
+    credits: 75,
+    bonus: 15, // Launch bonus - 90 total
+    price: "£2.99",
+    perCredit: "£0.033",
     popular: true,
-    savings: "15%",
+    savings: "17%",
   },
   {
     name: "Inferno",
-    credits: 150,
-    bonus: 50, // Launch bonus
-    price: "£19.99",
-    perCredit: "£0.13",
+    credits: 200,
+    bonus: 50, // Launch bonus - 250 total
+    price: "£7.99",
+    perCredit: "£0.032",
     popular: false,
-    savings: "35%",
+    savings: "20%",
   },
   {
     name: "Supernova",
-    credits: 400,
-    bonus: 150, // Launch bonus
-    price: "£44.99",
-    perCredit: "£0.11",
+    credits: 500,
+    bonus: 150, // Launch bonus - 650 total
+    price: "£19.99",
+    perCredit: "£0.031",
     popular: false,
-    savings: "45%",
+    savings: "23%",
   },
 ];
 
-// 💎 LIFETIME DEALS
+// 💎 LIFETIME DEALS - LIMITED SLOTS!
 const lifetimeDeals = [
   {
     name: "Forge Lifetime",
-    credits: "75 credits/month forever",
-    price: 149,
-    originalPrice: 288,
-    savings: "48%",
+    credits: "50 credits/month forever",
+    price: 49,
+    originalPrice: 60,
+    savings: "18%",
+    slots: 30,
     planId: "STARTER_LIFETIME",
   },
   {
     name: "Apex Lifetime",
-    credits: "250 credits/month forever",
-    price: 349,
-    originalPrice: 936,
-    savings: "63%",
+    credits: "150 credits/month forever",
+    price: 99,
+    originalPrice: 144,
+    savings: "31%",
+    slots: 15,
     popular: true,
     planId: "PRO_LIFETIME",
   },
   {
     name: "Titan Lifetime",
-    credits: "750 credits/month forever",
-    price: 599,
-    originalPrice: 2376,
-    savings: "75%",
+    credits: "500 credits/month forever",
+    price: 249,
+    originalPrice: 408,
+    savings: "39%",
+    slots: 5,
     planId: "UNLIMITED_LIFETIME",
   },
 ];
@@ -199,9 +210,9 @@ const PLAN_URL_MAP: Record<string, string> = {
 // Map credit pack to URL-friendly versions
 const CREDIT_URL_MAP: Record<number, string> = {
   25: "ember",
-  60: "blaze",
-  150: "inferno",
-  400: "supernova",
+  75: "blaze",
+  200: "inferno",
+  500: "supernova",
 };
 
 export default function PricingPage() {

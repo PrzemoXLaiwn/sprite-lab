@@ -16,6 +16,7 @@ export {
 // Prompt builder
 export {
   buildUltimatePrompt,
+  buildEnhancedPrompt,
   isIsometricMode,
   extractKeyDescriptors,
 } from "./prompt-builder";

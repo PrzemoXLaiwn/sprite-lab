@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, Swords, Shield, FlaskConical, Users, PawPrint, Cuboid, ImageIcon } from "lucide-react";
+import { Sparkles, Swords, Shield, FlaskConical, Users, PawPrint, Cuboid, ImageIcon, Key, Gem } from "lucide-react";
 
-// Example assets to showcase - These would be real generated images
+// Real generated example assets
 const EXAMPLE_ASSETS = [
   {
     id: 1,
@@ -25,6 +25,15 @@ const EXAMPLE_ASSETS = [
   },
   {
     id: 3,
+    prompt: "battle axe with engravings",
+    style: "Pixel Art",
+    category: "Weapons",
+    is3D: false,
+    image: "/examples/axe-pixel.png",
+    fallbackEmoji: "🪓",
+  },
+  {
+    id: 4,
     prompt: "health potion, red liquid",
     style: "Anime",
     category: "Consumables",
@@ -33,7 +42,7 @@ const EXAMPLE_ASSETS = [
     fallbackEmoji: "🧪",
   },
   {
-    id: 4,
+    id: 5,
     prompt: "knight helmet with visor",
     style: "Hand Painted",
     category: "Armor",
@@ -42,8 +51,17 @@ const EXAMPLE_ASSETS = [
     fallbackEmoji: "🪖",
   },
   {
-    id: 5,
-    prompt: "dragon boss, fire breathing",
+    id: 6,
+    prompt: "medieval shield with dragon",
+    style: "Realistic",
+    category: "Armor",
+    is3D: true,
+    image: "/examples/shield-realistic.png",
+    fallbackEmoji: "🛡️",
+  },
+  {
+    id: 7,
+    prompt: "cute baby dragon",
     style: "Chibi Cute",
     category: "Creatures",
     is3D: false,
@@ -51,43 +69,7 @@ const EXAMPLE_ASSETS = [
     fallbackEmoji: "🐉",
   },
   {
-    id: 6,
-    prompt: "treasure chest with gold",
-    style: "Isometric",
-    category: "Items",
-    is3D: false,
-    image: "/examples/chest-iso.png",
-    fallbackEmoji: "📦",
-  },
-  {
-    id: 7,
-    prompt: "mage character casting spell",
-    style: "Anime",
-    category: "Characters",
-    is3D: false,
-    image: "/examples/mage-anime.png",
-    fallbackEmoji: "🧙",
-  },
-  {
     id: 8,
-    prompt: "glowing sapphire gem",
-    style: "Vector",
-    category: "Resources",
-    is3D: false,
-    image: "/examples/gem-vector.png",
-    fallbackEmoji: "💎",
-  },
-  {
-    id: 9,
-    prompt: "battle axe warrior weapon",
-    style: "Pixel Art",
-    category: "Weapons",
-    is3D: true,
-    image: "/examples/axe-3d.png",
-    fallbackEmoji: "🪓",
-  },
-  {
-    id: 10,
     prompt: "cute slime monster",
     style: "Cartoon",
     category: "Creatures",
@@ -96,22 +78,58 @@ const EXAMPLE_ASSETS = [
     fallbackEmoji: "🫠",
   },
   {
-    id: 11,
-    prompt: "medieval shield with crest",
-    style: "Realistic",
-    category: "Armor",
-    is3D: true,
-    image: "/examples/shield-3d.png",
+    id: 9,
+    prompt: "mage casting spell",
+    style: "Anime",
+    category: "Characters",
+    is3D: false,
+    image: "/examples/mage-anime.png",
+    fallbackEmoji: "🧙",
+  },
+  {
+    id: 10,
+    prompt: "knight in shining armor",
+    style: "Pixel Art",
+    category: "Characters",
+    is3D: false,
+    image: "/examples/knight-pixel.png",
     fallbackEmoji: "🛡️",
   },
   {
+    id: 11,
+    prompt: "treasure chest with gold",
+    style: "Isometric",
+    category: "Items",
+    is3D: false,
+    image: "/examples/chest-iso.png",
+    fallbackEmoji: "📦",
+  },
+  {
     id: 12,
-    prompt: "magic scroll ancient runes",
+    prompt: "magic scroll with runes",
     style: "Hand Painted",
     category: "Items",
     is3D: false,
     image: "/examples/scroll-painted.png",
     fallbackEmoji: "📜",
+  },
+  {
+    id: 13,
+    prompt: "glowing sapphire gem",
+    style: "Vector",
+    category: "Resources",
+    is3D: false,
+    image: "/examples/gem-vector.png",
+    fallbackEmoji: "💎",
+  },
+  {
+    id: 14,
+    prompt: "golden key with skull",
+    style: "Pixel Art",
+    category: "Items",
+    is3D: false,
+    image: "/examples/key-pixel.png",
+    fallbackEmoji: "🔑",
   },
 ];
 
@@ -119,9 +137,11 @@ const FILTERS = [
   { id: "all", label: "All", icon: Sparkles },
   { id: "Weapons", label: "Weapons", icon: Swords },
   { id: "Armor", label: "Armor", icon: Shield },
-  { id: "Consumables", label: "Consumables", icon: FlaskConical },
   { id: "Characters", label: "Characters", icon: Users },
   { id: "Creatures", label: "Creatures", icon: PawPrint },
+  { id: "Items", label: "Items", icon: Key },
+  { id: "Consumables", label: "Consumables", icon: FlaskConical },
+  { id: "Resources", label: "Resources", icon: Gem },
 ];
 
 export function ExamplesSection() {

@@ -12,69 +12,83 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 // ===========================================
 // PLAN CONFIGURATION (GBP - British Pounds)
 // ===========================================
-// Pricing strategy: ~£0.02/generation cost, targeting 75-80% margin
+// COST BREAKDOWN (from Replicate dashboard):
+// - flux-dev: $0.03 = ~£0.024/generation (premium quality)
+// - sdxl: $0.01 = ~£0.008/generation
+// - Stripe fee: 2.9% + £0.20 per transaction
+//
+// TARGET: Minimum 25% margin at 100% flux-dev usage
 export const PLANS = {
   FREE: {
     name: "Spark",
-    credits: 15,
+    credits: 5,
     price: 0,
     priceId: null,
     features: [
-      "15 generation credits",
+      "5 generation credits",
       "All asset categories",
       "All art styles",
+      "Premium AI models",
       "High quality (1024x1024)",
       "PNG download",
-      "7-day gallery storage",
+      "3-day gallery storage",
     ],
   },
   STARTER: {
     name: "Forge",
-    credits: 75,
-    price: 12, // £12/month
+    credits: 50,
+    price: 2.49, // £2.49/month - cost £1.20+£0.27 = £1.47, profit £1.02, margin 41%
     priceId: process.env.STRIPE_STARTER_PRICE_ID,
     features: [
-      "75 credits per month",
+      "50 credits per month",
       "All asset categories",
       "All art styles",
+      "Premium AI models",
       "High quality (1024x1024)",
       "PNG download",
-      "Unlimited gallery storage",
+      "30-day gallery storage",
       "Background removal",
-      "Image editing tools",
     ],
   },
   PRO: {
     name: "Apex",
-    credits: 250,
-    price: 39, // £39/month
+    credits: 150,
+    price: 5.99, // £5.99/month - cost £3.60+£0.37 = £3.97, profit £2.02, margin 34%
     priceId: process.env.STRIPE_PRO_PRICE_ID,
     features: [
-      "250 credits per month",
+      "150 credits per month",
       "All asset categories",
       "All art styles",
+      "Premium AI models",
       "High quality (1024x1024)",
       "PNG download",
       "Unlimited gallery storage",
       "Background removal",
       "Image editing tools",
-      "Priority support",
+      "Sprite Sheet Generator",
+      "Style Mixing",
+      "Color Palette Lock",
     ],
   },
   UNLIMITED: {
     name: "Titan",
-    credits: 750,
-    price: 99, // £99/month
+    credits: 500,
+    price: 16.99, // £16.99/month - cost £12.00+£0.69 = £12.69, profit £4.30, margin 25%
     priceId: process.env.STRIPE_UNLIMITED_PRICE_ID,
     features: [
-      "750 credits per month",
+      "500 credits per month",
       "All asset categories",
       "All art styles",
+      "Premium AI models",
       "High quality (1024x1024)",
       "PNG download",
       "Unlimited gallery storage",
       "Background removal",
       "Image editing tools",
+      "Sprite Sheet Generator",
+      "Style Mixing",
+      "Color Palette Lock",
+      "Priority generation queue",
       "Priority support",
       "Early access to new features",
     ],
@@ -86,40 +100,41 @@ export type PlanName = keyof typeof PLANS;
 // ===========================================
 // CREDIT PACKS CONFIGURATION (GBP - British Pounds)
 // ===========================================
-// 🚀 LAUNCH PROMO: Bonus credits on all packs!
+// Pay-as-you-go option for casual users
+// PRICING: Must cover AI cost (~£0.024/gen flux-dev) + Stripe (~2.9%+£0.20) + margin (min 25%)
 export const LAUNCH_PROMO = {
   enabled: true,
-  endDate: "2025-01-31",
+  endDate: "2025-03-31",
 };
 
 export const CREDIT_PACKS = {
   PACK_25: {
     name: "Ember",
     credits: 25,
-    bonus: 5, // Launch bonus
-    price: 499, // £4.99
+    bonus: 5, // Launch bonus - 30 total! (£0.040/credit effective)
+    price: 119, // £1.19 - cost £0.60+£0.23 = £0.83, profit £0.36, margin 30%
     priceId: process.env.STRIPE_CREDITS_25_PRICE_ID,
   },
-  PACK_60: {
+  PACK_75: {
     name: "Blaze",
-    credits: 60,
-    bonus: 15, // Launch bonus
-    price: 999, // £9.99
-    priceId: process.env.STRIPE_CREDITS_60_PRICE_ID,
+    credits: 75,
+    bonus: 15, // Launch bonus - 90 total! (£0.033/credit effective)
+    price: 299, // £2.99 - cost £1.80+£0.29 = £2.09, profit £0.90, margin 30%
+    priceId: process.env.STRIPE_CREDITS_75_PRICE_ID,
   },
-  PACK_150: {
+  PACK_200: {
     name: "Inferno",
-    credits: 150,
-    bonus: 50, // Launch bonus
-    price: 1999, // £19.99
-    priceId: process.env.STRIPE_CREDITS_150_PRICE_ID,
+    credits: 200,
+    bonus: 50, // Launch bonus - 250 total! (£0.032/credit effective)
+    price: 799, // £7.99 - cost £4.80+£0.43 = £5.23, profit £2.76, margin 35%
+    priceId: process.env.STRIPE_CREDITS_200_PRICE_ID,
   },
-  PACK_400: {
+  PACK_500: {
     name: "Supernova",
-    credits: 400,
-    bonus: 150, // Launch bonus
-    price: 4499, // £44.99
-    priceId: process.env.STRIPE_CREDITS_400_PRICE_ID,
+    credits: 500,
+    bonus: 150, // Launch bonus - 650 total! (£0.031/credit effective) BEST VALUE
+    price: 1999, // £19.99 - cost £12.00+£0.78 = £12.78, profit £7.21, margin 36%
+    priceId: process.env.STRIPE_CREDITS_500_PRICE_ID,
   },
 } as const;
 
@@ -128,33 +143,43 @@ export const CREDIT_PACKS = {
 // ⚠️ LIMITED SLOTS - Creates urgency and limits risk!
 // ===========================================
 // ⚠️ TOTAL 50 LIFETIME SLOTS EVER - Creates massive urgency!
+//
+// RISK CALCULATION (assuming 5-year lifetime at £0.024/gen flux-dev):
+// - Forge: 50 credits/month * 60 months = 3000 credits * £0.024 = £72 cost
+//   Price £49 = LOSS but drives upgrades and word-of-mouth
+// - Apex: 150 credits/month * 60 months = 9000 credits * £0.024 = £216 cost
+//   Price £99 = LOSS but very limited slots
+// - Titan: 500 credits/month * 60 months = 30000 credits * £0.024 = £720 cost
+//   Price £249 = LOSS but only 5 slots, drives FOMO
+//
+// Strategy: Lifetime deals are LOSS LEADERS to build community and word-of-mouth
 export const LIFETIME_DEALS = {
   STARTER_LIFETIME: {
     name: "Forge Lifetime",
     basePlan: "STARTER",
-    credits: 75, // Monthly credits forever
-    price: 17900, // £179 (15% margin over 5y cost of £157)
-    originalPrice: 28800, // £288 (2 years of monthly)
+    credits: 50, // Monthly credits forever (matching new STARTER plan)
+    price: 4900, // £49 (~19.7 months of £2.49)
+    originalPrice: 5976, // £59.76 (2 years of monthly)
     priceId: process.env.STRIPE_FORGE_LIFETIME_PRICE_ID,
     maxSlots: 30, // 30 of 50 total slots
   },
   PRO_LIFETIME: {
     name: "Apex Lifetime",
     basePlan: "PRO",
-    credits: 250, // Monthly credits forever
-    price: 59900, // £599 (15% margin over 5y cost of £525)
-    originalPrice: 93600, // £936 (2 years of monthly)
+    credits: 150, // Monthly credits forever (matching new PRO plan)
+    price: 9900, // £99 (~16.5 months of £5.99)
+    originalPrice: 14376, // £143.76 (2 years of monthly)
     priceId: process.env.STRIPE_APEX_LIFETIME_PRICE_ID,
     maxSlots: 15, // 15 of 50 total slots
   },
   UNLIMITED_LIFETIME: {
     name: "Titan Lifetime",
     basePlan: "UNLIMITED",
-    credits: 750, // Monthly credits forever (matching UNLIMITED plan)
-    price: 119900, // £1,199 (15% margin over 5y cost of £1,050)
-    originalPrice: 237600, // £2,376 (2 years of monthly)
+    credits: 500, // Monthly credits forever (matching new UNLIMITED plan)
+    price: 24900, // £249 (~14.7 months of £16.99)
+    originalPrice: 40776, // £407.76 (2 years of monthly)
     priceId: process.env.STRIPE_TITAN_LIFETIME_PRICE_ID,
-    maxSlots: 5, // 5 of 50 total slots
+    maxSlots: 5, // 5 of 50 total slots - ULTRA RARE!
   },
 } as const;
 

@@ -7,6 +7,7 @@ import {
   STYLES_2D_FULL,
   CATEGORY_PROMPT_CONFIGS,
   buildUltimatePrompt,
+  buildEnhancedPrompt,
 } from "@/config";
 import { getOrCreateUser, checkAndDeductCredits, refundCredits, saveGeneration } from "@/lib/database";
 import { uploadImageToStorage } from "@/lib/storage";
@@ -263,6 +264,11 @@ export async function POST(request: Request) {
       subcategoryId,
       styleId = "PIXEL_ART_16",
       seed,
+      // Premium features
+      enableStyleMix = false,
+      style2Id,
+      style1Weight = 70,
+      colorPaletteId,
     } = body;
 
     // ✅ Validation
@@ -337,13 +343,28 @@ export async function POST(request: Request) {
       usedSeed = Math.floor(Math.random() * 2147483647);
     }
 
-    // 🏗️ Build Ultimate Prompt
-    const { prompt: finalPrompt, negativePrompt, model, guidance, steps } = buildUltimatePrompt(
-      prompt.trim(),
-      categoryId,
-      subcategoryId,
-      styleId
-    );
+    // 🏗️ Build Prompt (with Premium Features if enabled)
+    const hasPremiumFeatures = enableStyleMix || colorPaletteId;
+
+    const { prompt: finalPrompt, negativePrompt, model, guidance, steps } = hasPremiumFeatures
+      ? buildEnhancedPrompt(
+          prompt.trim(),
+          categoryId,
+          subcategoryId,
+          styleId,
+          {
+            enableStyleMix,
+            style2Id,
+            style1Weight,
+            colorPaletteId,
+          }
+        )
+      : buildUltimatePrompt(
+          prompt.trim(),
+          categoryId,
+          subcategoryId,
+          styleId
+        );
 
     // 🎨 Generate Sprite (with timeout)
     let result: { success: boolean; imageUrl?: string; seed: number; model?: string; cost?: number; error?: string };

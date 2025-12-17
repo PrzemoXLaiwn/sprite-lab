@@ -71,6 +71,7 @@ model Generation {
   createdAt     DateTime @default(now()) @map("created_at")
 
   user          User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  analysis      ImageAnalysis? // Auto-generated quality analysis
 
   @@index([userId])
   @@index([createdAt])
@@ -257,4 +258,242 @@ model Report {
   @@index([status])
   @@index([createdAt])
   @@map("reports")
+}
+
+// ===========================================
+// ANALYTICS & QUALITY TRACKING SYSTEM
+// ===========================================
+
+// Track user feedback on generations (thumbs up/down, ratings)
+model GenerationFeedback {
+  id            String   @id @default(cuid())
+  generationId  String   @map("generation_id")
+  userId        String   @map("user_id")
+  rating        Int      // 1-5 stars or -1 (bad) / 1 (good) for thumbs
+  feedbackType  String   @default("rating") @map("feedback_type") // rating, thumbs, report
+  comment       String?  // Optional user comment
+  issues        String?  // JSON array: ["wrong_style", "bad_quality", "not_matching_prompt"]
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@unique([generationId, userId])
+  @@index([generationId])
+  @@index([userId])
+  @@index([rating])
+  @@index([createdAt])
+  @@map("generation_feedback")
+}
+
+// Aggregate analytics per prompt pattern/category/style combination
+model PromptAnalytics {
+  id                String   @id @default(cuid())
+  categoryId        String   @map("category_id")
+  subcategoryId     String   @map("subcategory_id")
+  styleId           String   @map("style_id")
+  promptPattern     String   @map("prompt_pattern") // Normalized prompt keywords
+  totalGenerations  Int      @default(0) @map("total_generations")
+  avgRating         Float    @default(0) @map("avg_rating")
+  positiveCount     Int      @default(0) @map("positive_count") // Thumbs up / 4-5 stars
+  negativeCount     Int      @default(0) @map("negative_count") // Thumbs down / 1-2 stars
+  regenerateRate    Float    @default(0) @map("regenerate_rate") // % of users who regenerate
+  downloadRate      Float    @default(0) @map("download_rate") // % of users who download
+  shareRate         Float    @default(0) @map("share_rate") // % of users who share publicly
+  commonIssues      String?  @map("common_issues") // JSON: {"wrong_style": 5, "bad_quality": 3}
+  bestPromptVariant String?  @map("best_prompt_variant") // The most successful full prompt
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@unique([categoryId, subcategoryId, styleId, promptPattern])
+  @@index([categoryId])
+  @@index([styleId])
+  @@index([avgRating])
+  @@index([totalGenerations])
+  @@map("prompt_analytics")
+}
+
+// Track user actions on generations (for learning what works)
+model GenerationEvent {
+  id            String   @id @default(cuid())
+  generationId  String   @map("generation_id")
+  userId        String   @map("user_id")
+  eventType     String   @map("event_type") // view, download, share, regenerate, edit, delete, favorite
+  metadata      String?  // JSON with extra info (e.g., time_spent_viewing)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([generationId])
+  @@index([userId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("generation_events")
+}
+
+// Daily aggregated stats for admin dashboard
+model DailyStats {
+  id                 String   @id @default(cuid())
+  date               DateTime @unique @db.Date
+  totalGenerations   Int      @default(0) @map("total_generations")
+  uniqueUsers        Int      @default(0) @map("unique_users")
+  newUsers           Int      @default(0) @map("new_users")
+  totalCreditsUsed   Int      @default(0) @map("total_credits_used")
+  totalRevenue       Float    @default(0) @map("total_revenue") // In GBP
+  avgRating          Float?   @map("avg_rating")
+  topCategory        String?  @map("top_category")
+  topStyle           String?  @map("top_style")
+  topSubcategory     String?  @map("top_subcategory")
+  errorRate          Float    @default(0) @map("error_rate") // % of failed generations
+  avgGenerationTime  Float?   @map("avg_generation_time") // In seconds
+  categoryBreakdown  String?  @map("category_breakdown") // JSON: {"characters": 50, "items": 30}
+  styleBreakdown     String?  @map("style_breakdown") // JSON: {"pixel-art": 40, "anime": 20}
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  @@index([date])
+  @@map("daily_stats")
+}
+
+// Store learned prompt improvements
+model PromptImprovement {
+  id                String   @id @default(cuid())
+  categoryId        String   @map("category_id")
+  subcategoryId     String   @map("subcategory_id")
+  styleId           String   @map("style_id")
+  originalKeywords  String   @map("original_keywords") // User's input words
+  improvedPrompt    String   @map("improved_prompt") // AI-suggested improvement
+  successRate       Float    @default(0) @map("success_rate") // % positive feedback
+  usageCount        Int      @default(0) @map("usage_count")
+  isActive          Boolean  @default(true) @map("is_active")
+  source            String   @default("auto") // auto, manual, a/b_test
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@unique([categoryId, subcategoryId, styleId, originalKeywords])
+  @@index([categoryId])
+  @@index([styleId])
+  @@index([successRate])
+  @@index([isActive])
+  @@map("prompt_improvements")
+}
+
+// ===========================================
+// AUTOMATIC QUALITY ANALYSIS SYSTEM
+// ===========================================
+
+// Queue for background image analysis jobs
+model AnalysisJob {
+  id            String   @id @default(cuid())
+  generationId  String   @unique @map("generation_id")
+  status        String   @default("pending") // pending, processing, completed, failed
+  priority      Int      @default(0) // Higher = more urgent
+  retryCount    Int      @default(0) @map("retry_count")
+  errorMessage  String?  @map("error_message")
+  startedAt     DateTime? @map("started_at")
+  completedAt   DateTime? @map("completed_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([status])
+  @@index([priority])
+  @@index([createdAt])
+  @@map("analysis_jobs")
+}
+
+// Store AI vision analysis results for each generation
+model ImageAnalysis {
+  id                  String   @id @default(cuid())
+  generationId        String   @unique @map("generation_id")
+
+  // What the AI detected in the image
+  detectedObjects     String?  @map("detected_objects") // JSON: ["sword", "shield", "warrior"]
+  detectedStyle       String?  @map("detected_style") // pixel-art, anime, realistic, etc.
+  detectedColors      String?  @map("detected_colors") // JSON: ["#ff0000", "#00ff00"]
+  detectedMood        String?  @map("detected_mood") // dark, bright, colorful, etc.
+
+  // Quality metrics
+  qualityScore        Float    @default(0) @map("quality_score") // 0-100
+  styleAccuracy       Float    @default(0) @map("style_accuracy") // How well it matches requested style
+  promptAlignment     Float    @default(0) @map("prompt_alignment") // 0-100 how well image matches prompt
+
+  // Hallucination detection
+  hasHallucination    Boolean  @default(false) @map("has_hallucination")
+  hallucinationType   String?  @map("hallucination_type") // missing_element, wrong_element, style_mismatch
+  hallucinationDetails String? @map("hallucination_details") // JSON with specifics
+
+  // What was requested vs what was generated
+  requestedElements   String?  @map("requested_elements") // JSON: parsed from prompt
+  missingElements     String?  @map("missing_elements") // JSON: what's missing
+  extraElements       String?  @map("extra_elements") // JSON: unwanted additions
+
+  // AI's suggestions for improvement
+  suggestedFix        String?  @map("suggested_fix") // How to improve the prompt
+  confidenceScore     Float    @default(0) @map("confidence_score") // How sure AI is
+
+  rawAnalysis         String?  @map("raw_analysis") // Full AI response JSON
+  modelUsed           String?  @map("model_used") // gpt-4-vision, claude-3, etc.
+  analysisCost        Float    @default(0) @map("analysis_cost") // Cost in USD
+
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  // Relation to generation
+  generation          Generation @relation(fields: [generationId], references: [id], onDelete: Cascade)
+
+  @@index([generationId])
+  @@index([hasHallucination])
+  @@index([promptAlignment])
+  @@index([qualityScore])
+  @@map("image_analyses")
+}
+
+// Track patterns of hallucinations to prevent them
+model HallucinationPattern {
+  id                String   @id @default(cuid())
+  categoryId        String   @map("category_id")
+  subcategoryId     String   @map("subcategory_id")
+  styleId           String   @map("style_id")
+
+  // Pattern info
+  triggerKeywords   String   @map("trigger_keywords") // JSON: words that cause issues
+  hallucinationType String   @map("hallucination_type")
+  occurrenceCount   Int      @default(1) @map("occurrence_count")
+
+  // The fix
+  preventionPrompt  String?  @map("prevention_prompt") // Added to prompt to prevent
+  fixEffectiveness  Float    @default(0) @map("fix_effectiveness") // 0-100%
+
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@index([categoryId, subcategoryId, styleId])
+  @@index([hallucinationType])
+  @@index([occurrenceCount])
+  @@map("hallucination_patterns")
+}
+
+// Store prompt templates that work well (learned from data)
+model OptimizedPrompt {
+  id                String   @id @default(cuid())
+  categoryId        String   @map("category_id")
+  subcategoryId     String   @map("subcategory_id")
+  styleId           String   @map("style_id")
+
+  // The optimized template
+  promptTemplate    String   @map("prompt_template") // Template with {placeholders}
+  requiredKeywords  String?  @map("required_keywords") // JSON: must include these
+  avoidKeywords     String?  @map("avoid_keywords") // JSON: never use these
+
+  // Performance metrics
+  avgQualityScore   Float    @default(0) @map("avg_quality_score")
+  avgPromptAlignment Float   @default(0) @map("avg_prompt_alignment")
+  successCount      Int      @default(0) @map("success_count")
+  failureCount      Int      @default(0) @map("failure_count")
+
+  // Version control
+  version           Int      @default(1)
+  previousVersion   String?  @map("previous_version") // ID of previous template
+
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@unique([categoryId, subcategoryId, styleId, version])
+  @@index([categoryId])
+  @@index([avgQualityScore])
+  @@index([isActive])
+  @@map("optimized_prompts")
 }

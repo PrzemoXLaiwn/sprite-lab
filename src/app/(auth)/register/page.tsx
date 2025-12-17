@@ -9,6 +9,13 @@ import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
 import { Loader2, Mail, Lock, Eye, EyeOff, Check } from "lucide-react";
 
+// Declare gtag for TypeScript
+declare global {
+  interface Window {
+    gtag?: (...args: unknown[]) => void;
+  }
+}
+
 export default function RegisterPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -101,13 +108,30 @@ export default function RegisterPage() {
       return;
     }
 
+    // Track sign_up event for Google Ads remarketing
+    if (typeof window !== "undefined" && window.gtag) {
+      window.gtag("event", "sign_up", {
+        method: "email",
+        send_to: "AW-17802754923",
+      });
+      console.log("[SpriteLab] Sign up tracked for remarketing");
+    }
+
     setSuccess(true);
     setLoading(false);
   };
 
   const handleGoogleLogin = async () => {
+    // Track OAuth sign_up attempt for remarketing
+    if (typeof window !== "undefined" && window.gtag) {
+      window.gtag("event", "sign_up", {
+        method: "google",
+        send_to: "AW-17802754923",
+      });
+    }
+
     const supabase = createClient();
-    
+
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
@@ -117,8 +141,16 @@ export default function RegisterPage() {
   };
 
   const handleDiscordLogin = async () => {
+    // Track OAuth sign_up attempt for remarketing
+    if (typeof window !== "undefined" && window.gtag) {
+      window.gtag("event", "sign_up", {
+        method: "discord",
+        send_to: "AW-17802754923",
+      });
+    }
+
     const supabase = createClient();
-    
+
     await supabase.auth.signInWithOAuth({
       provider: "discord",
       options: {

@@ -291,7 +291,20 @@ export async function middleware(request: NextRequest) {
     response.headers.set("X-Frame-Options", "DENY");
     response.headers.set("X-XSS-Protection", "1; mode=block");
     response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-
+    
+    // HSTS - Force HTTPS for 2 years, include subdomains, allow preload
+    if (process.env.NODE_ENV === "production") {
+      response.headers.set(
+        "Strict-Transport-Security",
+        "max-age=63072000; includeSubDomains; preload"
+      );
+    }
+    
+    // Additional security headers
+    response.headers.set("X-DNS-Prefetch-Control", "on");
+    response.headers.set("X-Download-Options", "noopen");
+    response.headers.set("X-Permitted-Cross-Domain-Policies", "none");
+    
     // Log suspicious activity
     if (process.env.NODE_ENV === "production") {
       // You could send this to a logging service

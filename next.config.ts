@@ -74,13 +74,13 @@ const nextConfig: NextConfig = {
             value: [
               "default-src 'self'",
               // Removed 'unsafe-eval' for security - use 'unsafe-inline' only for Next.js hydration
-              // Added Google AdSense domains (including fundingchoicesmessages for consent)
-              "script-src 'self' 'unsafe-inline' https://js.stripe.com https://va.vercel-scripts.com https://vercel.live https://pagead2.googlesyndication.com https://www.googletagservices.com https://adservice.google.com https://www.google-analytics.com https://fundingchoicesmessages.google.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google",
+              // Added Google AdSense + Google Tag Manager domains for ads and conversion tracking
+              "script-src 'self' 'unsafe-inline' https://js.stripe.com https://va.vercel-scripts.com https://vercel.live https://pagead2.googlesyndication.com https://www.googletagservices.com https://adservice.google.com https://www.google-analytics.com https://fundingchoicesmessages.google.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google https://www.googletagmanager.com https://googletagmanager.com",
               "style-src 'self' 'unsafe-inline'",
               "font-src 'self' data:",
               "img-src 'self' data: blob: https: http:",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://replicate.delivery https://*.replicate.delivery https://va.vercel-scripts.com https://vitals.vercel-insights.com wss://ws-us3.pusher.com https://pagead2.googlesyndication.com https://www.google-analytics.com https://fundingchoicesmessages.google.com",
-              "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://vercel.live https://googleads.g.doubleclick.net https://www.google.com https://tpc.googlesyndication.com https://fundingchoicesmessages.google.com",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://replicate.delivery https://*.replicate.delivery https://va.vercel-scripts.com https://vitals.vercel-insights.com wss://ws-us3.pusher.com https://pagead2.googlesyndication.com https://www.google-analytics.com https://fundingchoicesmessages.google.com https://www.googletagmanager.com https://googletagmanager.com https://region1.google-analytics.com",
+              "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://vercel.live https://googleads.g.doubleclick.net https://www.google.com https://tpc.googlesyndication.com https://fundingchoicesmessages.google.com https://www.googletagmanager.com",
               "worker-src 'self' blob:",
               "media-src 'self' blob: https:",
               "object-src 'none'",

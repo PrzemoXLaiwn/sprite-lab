@@ -130,6 +130,7 @@ export {
 
   // Prompt builder
   buildUltimatePrompt,
+  buildEnhancedPrompt,
   isIsometricMode,
   extractKeyDescriptors,
 } from "./prompts";
@@ -138,3 +139,33 @@ export {
 // ICONS (Frontend only)
 // ===========================================
 export { ICON_MAP, getIconByName } from "./icons";
+
+// ===========================================
+// PREMIUM FEATURES
+// ===========================================
+export {
+  // Animation/Sprite Sheet
+  ANIMATION_TYPES,
+  SPRITE_SHEET_DEFAULTS,
+  FEATURE_COSTS,
+
+  // Style Mixing
+  STYLE_MIX_PRESETS,
+  STYLE_COMPATIBILITY,
+
+  // Color Palettes
+  COLOR_PALETTES,
+
+  // Asset Packs
+  ASSET_PACKS,
+} from "./features";
+
+export type {
+  AnimationType,
+  AnimationFrame,
+  StyleMixConfig,
+  ColorPalette,
+  SpriteSheetConfig,
+  AssetPack,
+  AssetPackItem,
+} from "./features";

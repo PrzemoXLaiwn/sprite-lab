@@ -33,7 +33,12 @@ import {
   CheckCircle2,
   XCircle,
   PartyPopper,
+  Paintbrush,
+  Gamepad2,
 } from "lucide-react";
+import { SpriteEditor } from "@/components/editor/SpriteEditor";
+import { SpritePlayground } from "@/components/playground/SpritePlayground";
+import { GenerationFeedback } from "@/components/analytics/GenerationFeedback";
 
 // ===========================================
 // SUCCESS TOAST COMPONENT
@@ -176,6 +181,12 @@ export default function GalleryPage() {
 
   // Toast state
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  // Inpaint editor state
+  const [inpaintGeneration, setInpaintGeneration] = useState<Generation | null>(null);
+
+  // Playground state
+  const [playgroundGeneration, setPlaygroundGeneration] = useState<Generation | null>(null);
 
   const showToast = (type: ToastMessage["type"], title: string, description?: string) => {
     const id = Math.random().toString(36).substr(2, 9);
@@ -652,6 +663,18 @@ export default function GalleryPage() {
                             <Button
                               size="sm"
                               variant="outline"
+                              onClick={() => setInpaintGeneration(gen)}
+                              className="border-[#ff6b6b] bg-[#ff6b6b]/10 hover:bg-[#ff6b6b]/20 text-[#ff6b6b]"
+                              title="Inpaint - Paint area to regenerate"
+                            >
+                              <Paintbrush className="w-4 h-4 mr-1" />
+                              Inpaint
+                            </Button>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
                               onClick={() => window.open(`/upscale?id=${gen.id}`, "_blank")}
                               className="border-[#ffd93d] bg-[#ffd93d]/10 hover:bg-[#ffd93d]/20 text-[#ffd93d]"
                               title="Upscale Image"
@@ -681,6 +704,20 @@ export default function GalleryPage() {
                             >
                               <Scissors className="w-4 h-4 mr-1" />
                               Remove BG
+                            </Button>
+                          </div>
+
+                          {/* Test in Playground */}
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setPlaygroundGeneration(gen)}
+                              className="border-[#ffd93d] bg-[#ffd93d]/10 hover:bg-[#ffd93d]/20 text-[#ffd93d]"
+                              title="Test sprite in interactive playground"
+                            >
+                              <Gamepad2 className="w-4 h-4 mr-1" />
+                              Test Sprite
                             </Button>
                           </div>
                         </>
@@ -787,9 +824,15 @@ export default function GalleryPage() {
                       </div>
                     )}
 
-                    <p className="text-xs text-muted-foreground mt-2">
-                      {new Date(gen.createdAt).toLocaleDateString()}
-                    </p>
+                    <div className="flex items-center justify-between mt-2">
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(gen.createdAt).toLocaleDateString()}
+                      </p>
+                      <GenerationFeedback
+                        generationId={gen.id}
+                        compact
+                      />
+                    </div>
                   </div>
                 </div>
               );
@@ -863,6 +906,34 @@ export default function GalleryPage() {
           </div>
         )}
       </div>
+
+      {/* Inpaint Editor Modal */}
+      {inpaintGeneration && (
+        <SpriteEditor
+          imageUrl={inpaintGeneration.imageUrl}
+          generationId={inpaintGeneration.id}
+          originalData={{
+            categoryId: inpaintGeneration.categoryId,
+            subcategoryId: inpaintGeneration.subcategoryId,
+            styleId: inpaintGeneration.styleId,
+          }}
+          onClose={() => setInpaintGeneration(null)}
+          onSave={(newUrl) => {
+            // Refresh gallery after saving
+            loadGenerations();
+            setInpaintGeneration(null);
+            showToast("success", "Inpainting complete!", "Your edited image has been saved to gallery.");
+          }}
+        />
+      )}
+
+      {/* Sprite Playground Modal */}
+      {playgroundGeneration && (
+        <SpritePlayground
+          spriteUrl={playgroundGeneration.imageUrl}
+          onClose={() => setPlaygroundGeneration(null)}
+        />
+      )}
     </div>
   );
 }

@@ -365,10 +365,41 @@ export async function saveGeneration(params: SaveGenerationParams) {
     });
 
     console.log("Saved generation to database:", generation.id, "Cost: $" + (params.replicateCost || 0).toFixed(4));
+
+    // 🔬 Queue for automatic quality analysis (background, non-blocking)
+    queueGenerationForAnalysis(generation.id).catch((err) => {
+      console.error("Failed to queue analysis job:", err);
+    });
+
     return { success: true, generation };
   } catch (error) {
     console.error("Failed to save generation:", error);
     return { success: false, error };
+  }
+}
+
+// Queue generation for automatic AI analysis
+async function queueGenerationForAnalysis(generationId: string): Promise<void> {
+  try {
+    // Only analyze if ANTHROPIC_API_KEY is configured
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return;
+    }
+
+    await prisma.analysisJob.create({
+      data: {
+        generationId,
+        status: "pending",
+        priority: 0,
+      },
+    });
+
+    console.log(`[Analytics] 📊 Queued generation ${generationId} for analysis`);
+  } catch (error) {
+    // Ignore duplicate key errors (generation already queued)
+    if ((error as { code?: string }).code !== "P2002") {
+      throw error;
+    }
   }
 }
 

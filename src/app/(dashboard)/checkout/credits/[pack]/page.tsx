@@ -20,12 +20,12 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
 const PACK_URL_MAP: Record<string, string> = {
   ember: "PACK_25",
   "25": "PACK_25",
-  blaze: "PACK_60",
-  "60": "PACK_60",
-  inferno: "PACK_150",
-  "150": "PACK_150",
-  supernova: "PACK_400",
-  "400": "PACK_400",
+  blaze: "PACK_75",
+  "75": "PACK_75",
+  inferno: "PACK_200",
+  "200": "PACK_200",
+  supernova: "PACK_500",
+  "500": "PACK_500",
 };
 
 interface PackDetails {

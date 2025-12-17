@@ -38,6 +38,7 @@ import {
 import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
 import { generateRandomPrompt, generatePromptSuggestions } from "@/lib/random-prompts";
 import { FeedbackPopup } from "@/components/dashboard/FeedbackPopup";
+import { PremiumFeatures } from "@/components/generate/PremiumFeatures";
 import {
   ALL_CATEGORIES,
   STYLES_2D_UI,
@@ -223,6 +224,14 @@ export default function GeneratePage() {
 
   // Prompt mismatch warning
   const [promptMismatchWarning, setPromptMismatchWarning] = useState<string | null>(null);
+
+  // Premium Features State
+  const [enableSpriteSheet, setEnableSpriteSheet] = useState(false);
+  const [animationTypeId, setAnimationTypeId] = useState("WALK");
+  const [enableStyleMix, setEnableStyleMix] = useState(false);
+  const [style2Id, setStyle2Id] = useState("");
+  const [style1Weight, setStyle1Weight] = useState(70);
+  const [colorPaletteId, setColorPaletteId] = useState("");
 
   const currentCategory = ALL_CATEGORIES.find(c => c.id === categoryId);
   const currentSubcategory = currentCategory?.subcategories.find(s => s.id === subcategoryId);
@@ -475,6 +484,11 @@ export default function GeneratePage() {
             subcategoryId,
             styleId,
             seed: seed ? Number(seed) : undefined,
+            // Premium features
+            enableStyleMix,
+            style2Id: enableStyleMix ? style2Id : undefined,
+            style1Weight: enableStyleMix ? style1Weight : undefined,
+            colorPaletteId: colorPaletteId || undefined,
           }),
         });
 
@@ -952,6 +966,25 @@ export default function GeneratePage() {
                   </div>
                 </div>
               </>
+            )}
+
+            {/* PREMIUM FEATURES - Only for 2D mode */}
+            {mode === "2d" && (
+              <PremiumFeatures
+                styleId={styleId}
+                enableSpriteSheet={enableSpriteSheet}
+                onSpriteSheetChange={setEnableSpriteSheet}
+                animationTypeId={animationTypeId}
+                onAnimationTypeChange={setAnimationTypeId}
+                enableStyleMix={enableStyleMix}
+                onStyleMixChange={setEnableStyleMix}
+                style2Id={style2Id}
+                onStyle2Change={setStyle2Id}
+                style1Weight={style1Weight}
+                onStyle1WeightChange={setStyle1Weight}
+                colorPaletteId={colorPaletteId}
+                onColorPaletteChange={setColorPaletteId}
+              />
             )}
 
             {/* STEP 4/5: Prompt or Image Upload */}

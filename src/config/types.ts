@@ -99,15 +99,25 @@ export interface StyleConfig {
   name: string;
   emoji: string;
   description: string;
+
   styleCore: string;
   rendering: string;
   colors: string;
   edges: string;
+
+  // negatives dla modelu
   negatives: string;
+
+  // ✅ NOWE: wzmocnienie stylu (opcjonalne, bo nie każdy styl musi mieć)
+  styleEnforcement?: string;
+  styleMandatory?: string;
+
   model: ModelType;
   guidance: number;
   steps: number;
 }
+
+
 
 /**
  * 3D style configuration
@@ -149,6 +159,7 @@ export interface UniversalNegatives {
   composition: string;
   technical: string;
   wrongContent: string;
+  bodyParts: string;
 }
 
 /**

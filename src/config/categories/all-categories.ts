@@ -1,10 +1,12 @@
 // ===========================================
-// SPRITELAB CONFIG - ALL CATEGORIES
+// SPRITELAB CONFIG - ALL CATEGORIES (FIXED v2.0)
 // ===========================================
-// Category definitions for UI display
-// These define WHAT categories exist and their subcategories
+// CHANGES:
+// - Added PANELS subcategory to UI_ELEMENTS
+// - Combined AXES & HAMMERS description
+// - Better examples throughout
 
-import type { CategoryUI, SubcategoryUI } from "../types";
+import type { CategoryUI } from "../types";
 
 // ===========================================
 // WEAPONS CATEGORY
@@ -16,13 +18,13 @@ export const WEAPONS: CategoryUI = {
   description: "All types of combat weapons",
   supports3D: true,
   subcategories: [
-    { id: "SWORDS", name: "Swords", examples: ["longsword", "katana", "dagger"] },
-    { id: "AXES", name: "Axes & Hammers", examples: ["battleaxe", "warhammer", "mace"] },
-    { id: "POLEARMS", name: "Polearms", examples: ["spear", "halberd", "trident"] },
-    { id: "BOWS", name: "Bows", examples: ["longbow", "crossbow", "shortbow"] },
-    { id: "STAFFS", name: "Staffs & Wands", examples: ["wizard staff", "magic wand", "scepter"] },
-    { id: "GUNS", name: "Firearms", examples: ["pistol", "rifle", "blaster"] },
-    { id: "THROWING", name: "Throwing", examples: ["shuriken", "throwing knife", "javelin"] },
+    { id: "SWORDS", name: "Swords", examples: ["longsword", "katana", "dagger", "rapier"] },
+    { id: "AXES", name: "Axes & Hammers", examples: ["battleaxe", "warhammer", "mace", "morningstar"] },
+    { id: "POLEARMS", name: "Polearms", examples: ["spear", "halberd", "trident", "lance"] },
+    { id: "BOWS", name: "Bows", examples: ["longbow", "crossbow", "shortbow", "compound bow"] },
+    { id: "STAFFS", name: "Staffs & Wands", examples: ["wizard staff", "magic wand", "scepter", "rod"] },
+    { id: "GUNS", name: "Firearms", examples: ["pistol", "rifle", "blaster", "musket"] },
+    { id: "THROWING", name: "Throwing", examples: ["shuriken", "throwing knife", "javelin", "kunai"] },
   ],
 };
 
@@ -36,12 +38,12 @@ export const ARMOR: CategoryUI = {
   description: "Protective equipment and accessories",
   supports3D: true,
   subcategories: [
-    { id: "HELMETS", name: "Helmets", examples: ["knight helmet", "crown", "wizard hat"] },
-    { id: "CHEST_ARMOR", name: "Chest Armor", examples: ["plate armor", "chainmail", "leather vest"] },
-    { id: "SHIELDS", name: "Shields", examples: ["tower shield", "round shield", "buckler"] },
-    { id: "GLOVES", name: "Gloves", examples: ["gauntlets", "leather gloves", "bracers"] },
-    { id: "BOOTS", name: "Boots", examples: ["plate boots", "leather boots", "sandals"] },
-    { id: "ACCESSORIES", name: "Accessories", examples: ["ring", "amulet", "cape", "belt"] },
+    { id: "HELMETS", name: "Helmets", examples: ["knight helmet", "crown", "wizard hat", "viking helm"] },
+    { id: "CHEST_ARMOR", name: "Chest Armor", examples: ["plate armor", "chainmail", "leather vest", "robe"] },
+    { id: "SHIELDS", name: "Shields", examples: ["tower shield", "round shield", "buckler", "kite shield"] },
+    { id: "GLOVES", name: "Gloves", examples: ["gauntlets", "leather gloves", "bracers", "hand wraps"] },
+    { id: "BOOTS", name: "Boots", examples: ["plate boots", "leather boots", "sandals", "greaves"] },
+    { id: "ACCESSORIES", name: "Accessories", examples: ["ring", "amulet", "cape", "belt", "necklace"] },
   ],
 };
 
@@ -55,9 +57,9 @@ export const CONSUMABLES: CategoryUI = {
   description: "Potions, food, and scrolls",
   supports3D: true,
   subcategories: [
-    { id: "POTIONS", name: "Potions", examples: ["health potion", "mana potion", "poison"] },
-    { id: "FOOD", name: "Food", examples: ["apple", "bread", "meat", "cheese"] },
-    { id: "SCROLLS", name: "Scrolls", examples: ["spell scroll", "treasure map", "ancient tome"] },
+    { id: "POTIONS", name: "Potions", examples: ["health potion", "mana potion", "poison", "elixir"] },
+    { id: "FOOD", name: "Food", examples: ["apple", "bread", "meat", "cheese", "pie"] },
+    { id: "SCROLLS", name: "Scrolls", examples: ["spell scroll", "treasure map", "ancient tome", "recipe"] },
   ],
 };
 
@@ -71,12 +73,12 @@ export const RESOURCES: CategoryUI = {
   description: "Crafting materials and resources",
   supports3D: true,
   subcategories: [
-    { id: "GEMS", name: "Gems", examples: ["diamond", "ruby", "emerald", "sapphire"] },
-    { id: "ORES", name: "Ores", examples: ["iron ore", "gold ore", "copper ore"] },
-    { id: "WOOD_STONE", name: "Wood & Stone", examples: ["wood log", "stone", "marble"] },
-    { id: "PLANTS", name: "Plants", examples: ["herb", "flower", "mushroom"] },
-    { id: "MONSTER_PARTS", name: "Monster Parts", examples: ["dragon scale", "fang", "feather"] },
-    { id: "MAGIC_MATERIALS", name: "Magic Materials", examples: ["soul gem", "magic dust", "essence"] },
+    { id: "GEMS", name: "Gems", examples: ["diamond", "ruby", "emerald", "sapphire", "amethyst"] },
+    { id: "ORES", name: "Ores", examples: ["iron ore", "gold ore", "copper ore", "mythril"] },
+    { id: "WOOD_STONE", name: "Wood & Stone", examples: ["wood log", "stone", "marble", "obsidian"] },
+    { id: "PLANTS", name: "Plants", examples: ["herb", "flower", "mushroom", "magical plant"] },
+    { id: "MONSTER_PARTS", name: "Monster Parts", examples: ["dragon scale", "fang", "feather", "claw"] },
+    { id: "MAGIC_MATERIALS", name: "Magic Materials", examples: ["soul gem", "magic dust", "essence", "crystal"] },
   ],
 };
 
@@ -90,10 +92,10 @@ export const QUEST_ITEMS: CategoryUI = {
   description: "Quest items and collectibles",
   supports3D: true,
   subcategories: [
-    { id: "KEYS", name: "Keys", examples: ["golden key", "skeleton key", "crystal key"] },
-    { id: "ARTIFACTS", name: "Artifacts", examples: ["ancient idol", "holy grail", "magic mirror"] },
-    { id: "CONTAINERS", name: "Containers", examples: ["treasure chest", "wooden crate", "backpack"] },
-    { id: "COLLECTIBLES", name: "Collectibles", examples: ["gold coin", "medal", "trophy"] },
+    { id: "KEYS", name: "Keys", examples: ["golden key", "skeleton key", "crystal key", "ancient key"] },
+    { id: "ARTIFACTS", name: "Artifacts", examples: ["ancient idol", "holy grail", "magic mirror", "orb"] },
+    { id: "CONTAINERS", name: "Containers", examples: ["treasure chest", "wooden crate", "backpack", "pouch"] },
+    { id: "COLLECTIBLES", name: "Collectibles", examples: ["gold coin", "medal", "trophy", "badge"] },
   ],
 };
 
@@ -107,10 +109,10 @@ export const CHARACTERS: CategoryUI = {
   description: "Heroes, enemies, and NPCs",
   supports3D: true,
   subcategories: [
-    { id: "HEROES", name: "Heroes", examples: ["knight", "mage", "rogue", "archer"] },
-    { id: "ENEMIES", name: "Enemies", examples: ["goblin", "skeleton", "zombie", "orc"] },
-    { id: "NPCS", name: "NPCs", examples: ["shopkeeper", "blacksmith", "guard", "villager"] },
-    { id: "BOSSES", name: "Bosses", examples: ["dragon boss", "demon lord", "lich king"] },
+    { id: "HEROES", name: "Heroes", examples: ["knight", "mage", "rogue", "archer", "paladin"] },
+    { id: "ENEMIES", name: "Enemies", examples: ["goblin", "skeleton", "zombie", "orc", "bandit"] },
+    { id: "NPCS", name: "NPCs", examples: ["shopkeeper", "blacksmith", "guard", "villager", "innkeeper"] },
+    { id: "BOSSES", name: "Bosses", examples: ["dragon boss", "demon lord", "lich king", "giant"] },
   ],
 };
 
@@ -124,10 +126,10 @@ export const CREATURES: CategoryUI = {
   description: "Animals and mythical beasts",
   supports3D: true,
   subcategories: [
-    { id: "ANIMALS", name: "Animals", examples: ["wolf", "bear", "horse", "eagle"] },
-    { id: "MYTHICAL", name: "Mythical", examples: ["dragon", "phoenix", "unicorn", "griffin"] },
+    { id: "ANIMALS", name: "Animals", examples: ["wolf", "bear", "horse", "eagle", "deer"] },
+    { id: "MYTHICAL", name: "Mythical", examples: ["dragon", "phoenix", "unicorn", "griffin", "hydra"] },
     { id: "PETS", name: "Companions", examples: ["cat", "dog", "fairy", "baby dragon", "slime"] },
-    { id: "ELEMENTALS", name: "Elementals", examples: ["fire elemental", "water elemental", "golem"] },
+    { id: "ELEMENTALS", name: "Elementals", examples: ["fire elemental", "water elemental", "golem", "wisp"] },
   ],
 };
 
@@ -142,9 +144,9 @@ export const ENVIRONMENT: CategoryUI = {
   supports3D: true,
   subcategories: [
     { id: "TREES_PLANTS", name: "Trees & Plants", examples: ["oak tree", "pine tree", "bush", "flowers"] },
-    { id: "ROCKS_TERRAIN", name: "Rocks", examples: ["boulder", "crystal formation", "cliff"] },
-    { id: "BUILDINGS", name: "Buildings", examples: ["house", "castle tower", "shop", "temple"] },
-    { id: "PROPS", name: "Props", examples: ["chair", "table", "barrel", "torch", "sign"] },
+    { id: "ROCKS_TERRAIN", name: "Rocks", examples: ["boulder", "crystal formation", "cliff", "stalagmite"] },
+    { id: "BUILDINGS", name: "Buildings", examples: ["house", "castle tower", "shop", "temple", "cabin"] },
+    { id: "PROPS", name: "Props", examples: ["chair", "table", "barrel", "torch", "sign", "lamp"] },
     { id: "DUNGEON", name: "Dungeon", examples: ["spike trap", "lever", "door", "altar", "cage"] },
     { id: "ISO_BUILDINGS", name: "Isometric Buildings", examples: ["iso house", "iso shop", "iso tower"] },
     { id: "ISO_TREES", name: "Isometric Trees", examples: ["iso oak", "iso pine", "iso palm"] },
@@ -186,14 +188,15 @@ export const TILESETS: CategoryUI = {
   supports3D: false,
   subcategories: [
     { id: "GROUND", name: "Ground", examples: ["grass tile", "dirt tile", "stone floor", "sand"] },
-    { id: "WALLS", name: "Walls", examples: ["stone wall", "brick wall", "wooden wall"] },
+    { id: "WALLS", name: "Walls", examples: ["stone wall", "brick wall", "wooden wall", "dungeon wall"] },
     { id: "PLATFORMS", name: "Platforms", examples: ["grass platform", "stone platform", "floating island"] },
-    { id: "DECORATIVE", name: "Decorative", examples: ["window tile", "door tile", "crack overlay"] },
+    { id: "DECORATIVE", name: "Decorative", examples: ["window tile", "door tile", "crack overlay", "moss"] },
   ],
 };
 
 // ===========================================
 // UI ELEMENTS CATEGORY
+// !!! FIXED: Added PANELS subcategory !!!
 // ===========================================
 export const UI_ELEMENTS: CategoryUI = {
   id: "UI_ELEMENTS",
@@ -202,12 +205,15 @@ export const UI_ELEMENTS: CategoryUI = {
   description: "Interface elements and icons",
   supports3D: false,
   subcategories: [
-    { id: "BUTTONS", name: "Buttons", examples: ["play button", "menu button", "close button"] },
-    { id: "BARS", name: "Bars", examples: ["health bar", "mana bar", "XP bar"] },
-    { id: "FRAMES", name: "Frames", examples: ["dialog frame", "inventory panel", "menu frame"] },
-    { id: "INVENTORY", name: "Inventory", examples: ["item slot", "equipment slot", "quick bar"] },
-    { id: "ICONS_UI", name: "UI Icons", examples: ["settings icon", "inventory icon", "map icon"] },
-    { id: "SKILL_ICONS", name: "Skills", examples: ["attack skill", "heal skill", "buff icon"] },
+    // ITEM ICONS - Most important! For generating inventory item icons
+    { id: "ITEM_ICONS", name: "Item Icons", examples: ["gold bars icon", "potion icon", "sword icon", "gem icon", "coin stack icon", "key icon"] },
+    { id: "SKILL_ICONS", name: "Skill Icons", examples: ["attack skill", "heal skill", "buff icon", "fireball skill", "shield ability"] },
+    { id: "ICONS_UI", name: "UI Icons", examples: ["settings icon", "inventory icon", "map icon", "quest icon", "menu icon"] },
+    { id: "BUTTONS", name: "Buttons", examples: ["play button", "menu button", "close button", "action button"] },
+    { id: "BARS", name: "Bars", examples: ["health bar", "mana bar", "XP bar", "stamina bar"] },
+    { id: "FRAMES", name: "Frames", examples: ["dialog frame", "menu frame", "tooltip frame", "window border"] },
+    { id: "PANELS", name: "Panels", examples: ["inventory panel with slots", "equipment panel", "storage panel", "container panel"] },
+    { id: "SLOTS_GRID", name: "Slot Grids", examples: ["empty item slot", "4 slot grid", "inventory grid", "equipment slot"] },
   ],
 };
 
@@ -221,10 +227,10 @@ export const EFFECTS: CategoryUI = {
   description: "Visual effects and particles",
   supports3D: false,
   subcategories: [
-    { id: "COMBAT_EFFECTS", name: "Combat", examples: ["slash effect", "hit impact", "explosion"] },
-    { id: "MAGIC_EFFECTS", name: "Magic", examples: ["fireball", "ice spike", "healing aura"] },
-    { id: "ELEMENTAL", name: "Elemental", examples: ["fire", "ice crystal", "lightning spark"] },
-    { id: "AMBIENT", name: "Ambient", examples: ["sparkle", "dust", "smoke", "rain drop"] },
+    { id: "COMBAT_EFFECTS", name: "Combat", examples: ["slash effect", "hit impact", "explosion", "blood splatter"] },
+    { id: "MAGIC_EFFECTS", name: "Magic", examples: ["fireball", "ice spike", "healing aura", "magic circle"] },
+    { id: "ELEMENTAL", name: "Elemental", examples: ["fire", "ice crystal", "lightning spark", "water splash"] },
+    { id: "AMBIENT", name: "Ambient", examples: ["sparkle", "dust", "smoke", "rain drop", "snow flake"] },
   ],
 };
 
@@ -238,10 +244,10 @@ export const PROJECTILES: CategoryUI = {
   description: "Arrows, bullets, and magic projectiles",
   supports3D: false,
   subcategories: [
-    { id: "ARROWS", name: "Arrows", examples: ["arrow", "fire arrow", "ice arrow"] },
-    { id: "BULLETS", name: "Bullets", examples: ["bullet", "cannonball", "rocket"] },
-    { id: "MAGIC_PROJECTILES", name: "Magic Projectiles", examples: ["fireball", "ice bolt", "shadow ball"] },
-    { id: "THROWN", name: "Thrown", examples: ["thrown knife", "shuriken", "bomb"] },
+    { id: "ARROWS", name: "Arrows", examples: ["arrow", "fire arrow", "ice arrow", "poison arrow"] },
+    { id: "BULLETS", name: "Bullets", examples: ["bullet", "cannonball", "rocket", "energy shot"] },
+    { id: "MAGIC_PROJECTILES", name: "Magic Projectiles", examples: ["fireball", "ice bolt", "shadow ball", "arcane missile"] },
+    { id: "THROWN", name: "Thrown", examples: ["thrown knife", "shuriken", "bomb", "grenade"] },
   ],
 };
 

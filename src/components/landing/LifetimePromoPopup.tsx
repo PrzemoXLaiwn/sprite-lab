@@ -127,7 +127,7 @@ export function LifetimePromoPopup() {
               </div>
               <div className="flex items-center gap-2 text-white/80">
                 <Sparkles className="w-4 h-4 text-yellow-500" />
-                Up to 50% savings
+                Up to 39% savings
               </div>
               <div className="flex items-center gap-2 text-white/80">
                 <Sparkles className="w-4 h-4 text-yellow-500" />
