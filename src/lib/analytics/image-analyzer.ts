@@ -130,8 +130,24 @@ Respond ONLY with valid JSON, no other text.`;
       throw new Error("No text response from Claude");
     }
 
-    // Parse JSON response
-    const analysis = JSON.parse(textContent.text);
+    // Parse JSON response - handle markdown code blocks
+    let jsonText = textContent.text.trim();
+
+    // Remove markdown code block if present (```json ... ``` or ``` ... ```)
+    if (jsonText.startsWith("```")) {
+      // Find the end of the first line (after ```json or ```)
+      const firstNewline = jsonText.indexOf("\n");
+      if (firstNewline !== -1) {
+        jsonText = jsonText.substring(firstNewline + 1);
+      }
+      // Remove trailing ```
+      if (jsonText.endsWith("```")) {
+        jsonText = jsonText.slice(0, -3);
+      }
+      jsonText = jsonText.trim();
+    }
+
+    const analysis = JSON.parse(jsonText);
 
     return {
       detectedObjects: analysis.detected?.objects || [],
@@ -159,6 +175,15 @@ Respond ONLY with valid JSON, no other text.`;
       rawAnalysis: analysis,
     };
   } catch (error) {
+    // Check for specific API errors
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // Credit balance error - don't retry
+    if (errorMessage.includes("credit balance") || errorMessage.includes("upgrade or purchase")) {
+      console.error("[Analyzer] ❌ Anthropic API credits exhausted");
+      throw new Error("CREDITS_EXHAUSTED: Anthropic API credits are empty. Please add credits at console.anthropic.com");
+    }
+
     console.error("Image analysis failed:", error);
     throw error;
   }

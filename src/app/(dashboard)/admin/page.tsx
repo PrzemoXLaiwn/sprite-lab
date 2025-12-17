@@ -36,8 +36,10 @@ import {
   Globe,
   Github,
   Twitter,
+  Target,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   checkAdminAccess,
   fetchAllUsers,
@@ -876,6 +878,12 @@ export default function AdminPage() {
             </Badge>
           )}
         </Button>
+        <Link href="/admin/quality">
+          <Button variant="outline" className="gap-2">
+            <Target className="w-4 h-4" />
+            Quality Dashboard
+          </Button>
+        </Link>
       </div>
 
       {/* Conditional Rendering Based on View */}
