@@ -8,9 +8,15 @@ export {
   UNIVERSAL_NEGATIVES,
   ISOMETRIC_BOOST,
   ISOMETRIC_NEGATIVES,
-  getUniversalNegativesString,
-  getIsometricNegativesString,
-  buildNegativePrompt,
+  PIXEL_ART_NEGATIVES,
+  GAME_ASSET_NEGATIVES,
+  ARMOR_NEGATIVES,
+  WEAPONS_NEGATIVES,
+  UI_NEGATIVES,
+  CHARACTER_NEGATIVES,
+  getCategoryNegatives,
+  getStyleNegatives,
+  buildCompleteNegativePrompt,
 } from "./negative-prompts";
 
 // Prompt builder

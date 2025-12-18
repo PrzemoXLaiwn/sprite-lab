@@ -25,6 +25,7 @@ import { ExamplesGallery } from "@/components/landing/ExamplesGallery";
 import { SocialProof } from "@/components/landing/SocialProof";
 import { ScrollAnimation } from "@/components/landing/ScrollAnimations";
 import { FloatingOrbs } from "@/components/landing/ParticleBackground";
+import { HeroGallery } from "@/components/landing/HeroGallery";
 
 export const metadata: Metadata = {
   title: "SpriteLab - AI Game Asset Generator | Create Sprites in Seconds",
@@ -133,38 +134,8 @@ export default async function Home() {
             <span className="block mt-1 text-white/40 text-sm sm:text-base">Perfect for indie developers and game studios.</span>
           </p>
 
-          {/* Hero Gallery - Real Generated Examples */}
-          <div className="mb-8 sm:mb-10 animate-slide-up" style={{ animationDelay: "250ms" }}>
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3 max-w-3xl mx-auto">
-              {[
-                { src: "/examples/sword-pixel.png", label: "Sword", style: "Pixel" },
-                { src: "/examples/mage-anime.png", label: "Mage", style: "Anime" },
-                { src: "/examples/dragon-chibi.png", label: "Dragon", style: "Chibi" },
-                { src: "/examples/gem-vector.png", label: "Gem", style: "Vector" },
-                { src: "/examples/shield-realistic.png", label: "Shield", style: "Realistic" },
-                { src: "/examples/potion-anime.png", label: "Potion", style: "Anime" },
-              ].map((item, i) => (
-                <div
-                  key={i}
-                  className="group relative aspect-square rounded-xl bg-[#0a0a0f]/80 border border-white/10 hover:border-[#00ff88]/50 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-[#00ff88]/20 overflow-hidden"
-                >
-                  <Image
-                    src={item.src}
-                    alt={item.label}
-                    fill
-                    className="object-contain p-2 sm:p-3"
-                    loading="eager"
-                  />
-                  {/* Hover label */}
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-2">
-                    <p className="text-[10px] sm:text-xs text-white font-medium">{item.label}</p>
-                    <p className="text-[8px] sm:text-[10px] text-[#00ff88]">{item.style}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <p className="text-white/30 text-[10px] sm:text-xs mt-3">Real AI-generated sprites • Multiple styles available</p>
-          </div>
+          {/* Hero Gallery - Dynamic from Database */}
+          <HeroGallery />
 
           {/* CTA */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-8 sm:mb-12 animate-slide-up" style={{ animationDelay: "350ms" }}>

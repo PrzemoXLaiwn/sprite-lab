@@ -1,88 +1,131 @@
 // ===========================================
-// SPRITELAB CONFIG - NEGATIVE PROMPTS (PRO v3.0)
+// SPRITELAB CONFIG - NEGATIVE PROMPTS (v2.0)
 // ===========================================
-// Professional game-dev quality negative prompts
-// Optimized for clean, game-ready asset output
-
-import type { UniversalNegatives, IsometricBoost, IsometricNegatives } from "../types";
+// Enhanced negative prompts for game asset generation
+// Prevents common issues: backgrounds, multiple objects, body parts, etc.
 
 // ===========================================
-// UNIVERSAL NEGATIVE PROMPTS (PRO v3.0)
+// ISOMETRIC BOOST (positive prompts for isometric)
 // ===========================================
-// Used for ALL generations to ensure clean game assets
-
-export const UNIVERSAL_NEGATIVES: UniversalNegatives = {
-  // Critical: Force single object - game engines need isolated assets
-  multiObject:
-    "multiple objects, many items, collection, set of items, group of objects, pile, stack, grid layout, sprite sheet, pattern of objects, 2 items, 3 items, several, many, repeated objects, duplicates, rows, arrays, tiled, mosaic",
-
-  // No backgrounds - CRITICAL for game sprites with alpha transparency
-  background:
-    "any background, detailed background, scene, landscape, environment, room interior, outdoor scene, indoor scene, gradient background, textured background, ground shadow, floor visible, surface plane, colored background, white background, grey background, black background, decorative frame, ornate border, circular frame, square frame, artistic frame, platform, ground, grass, terrain, sky, clouds, horizon, floor tiles, checkered floor, studio backdrop, photography backdrop",
-
-  // Quality issues - ensure production quality
-  quality:
-    "blurry, out of focus, low resolution, jpeg artifacts, compression artifacts, noisy, grainy, poorly drawn, bad anatomy, deformed, disfigured, mutation, extra limbs, amateur, ugly, distorted, stretched, squished, low quality, worst quality, normal quality, low effort, rushed, sloppy, messy, smudged, smeared",
-
-  // Composition issues - game assets need perfect framing
-  composition:
-    "cropped, cut off, partial object, incomplete, half visible, edge cropping, bad framing, tilted, rotated wrong, upside down, off-center, asymmetrical when should be symmetrical, unbalanced, awkward positioning, touching edges, bleeding off edge, clipped",
-
-  // Technical issues - clean professional output
-  technical:
-    "text, watermark, signature, logo, username, copyright, border, frame, vignette, color banding, posterization, moire pattern, aliasing artifacts, render errors, glitches, noise grain, film grain, chromatic aberration, lens flare",
-
-  // Wrong content - game art not photos
-  wrongContent:
-    "photograph, real photo, stock image, photorealistic 3D render, CGI movie quality, real life, photograph of screen, screenshot, webcam, phone photo, DSLR photo, camera image",
-
-  // Body parts - CRITICAL for equipment/armor items (isolated equipment only)
-  bodyParts:
-    "human hands, human arms, human legs, human feet, human body, mannequin, body parts inside equipment, hands inside gloves, feet inside boots, head inside helmet, torso inside armor, person wearing equipment, worn on body, attached to body, limbs, fingers, toes, wrists, ankles, neck, shoulders with arms, deformed hands, deformed fingers, bodysuit, wearing, dressed, model, posed",
+export const ISOMETRIC_BOOST = {
+  core: "strict 26.57-degree isometric projection, 2:1 pixel ratio dimetric view, mathematically correct isometric angle",
+  composition: "single isolated isometric object, centered on transparent background, proper isometric grid alignment, consistent angle throughout",
+  lighting: "consistent top-left lighting at 45 degrees, soft ambient light, clear material definition, subtle shadows underneath",
+  quality: "clean professional isometric render, mobile game quality, strategy game asset standard",
+  references: "like Clash of Clans, Age of Empires, Stardew Valley, Hay Day isometric style",
 };
 
 // ===========================================
-// ISOMETRIC BOOST PROMPTS (PRO v3.0)
+// UNIVERSAL NEGATIVES (for all game assets)
 // ===========================================
-// Professional isometric game asset enhancement
+export const UNIVERSAL_NEGATIVES = {
+  // Background and context issues
+  background: "complex background, detailed background, scenery, landscape, environment scene, room interior, outdoor setting, contextual background, sky, ground, floor, walls, furniture in background, decorative background elements",
 
-export const ISOMETRIC_BOOST: IsometricBoost = {
-  core: "isometric 2.5D view, perfect dimetric projection at 26.57 degrees (2:1 pixel ratio), viewed from above and slightly to the side, professional strategy game art style, game-ready isometric asset",
-  composition:
-    "single isolated isometric object, diamond-shaped footprint implied, two visible walls and roof top clearly visible, properly grounded base, clean precise edges, perfect isometric angle maintained throughout",
-  lighting:
-    "consistent top-left light source at 45 degrees, soft drop shadow underneath, warm ambient fill lighting, professional game lighting",
-  quality:
-    "masterpiece quality, high detail, professional game art, production-ready asset, AAA mobile game quality, polished finish, crisp clean render",
-  references:
-    "professional quality like Clash of Clans, Age of Empires IV, Civilization VI, Stardew Valley, Hay Day, Township, premium strategy game asset",
+  // Multiple objects issues - CRITICAL for preventing sprite sheets
+  multiObject: "multiple objects, many items, collection set, group of items, pile of items, stack of objects, scattered objects, several pieces, duplicate items, repeated objects, array of items, sprite sheet, spritesheet, sprite grid, animation frames, animation sheet, frame sequence, multiple frames, item collection, weapon collection, weapon set, armor set, item set, grid of items, items grid, multiple weapons, multiple swords, multiple axes, many swords, sword collection, variety of weapons, assortment, asset pack, icon pack, icon set, tileset of items",
+  
+  // Context of use issues
+  context: "character holding, hand holding, person using, worn by character, equipped on body, in use, action scene, combat scene, character interaction, being wielded, mounted on character",
+  
+  // UI and frame issues
+  ui: "UI frame, interface border, game HUD overlay, health bar, menu overlay, button element, text overlay, watermark, logo, copyright mark, game interface elements",
+  
+  // Quality issues
+  quality: "low resolution, blurry, noisy, jpeg artifacts, compression artifacts, grainy, poor quality, low detail, pixelated (for non-pixel styles), fuzzy, out of focus",
+  
+  // Composition issues
+  composition: "cropped, cut off, partial view, incomplete object, edge of frame, zoomed too close, zoomed too far, off-center badly, awkward framing, poor composition",
+  
+  // Technical issues
+  technical: "wrong aspect ratio, distorted proportions, stretched, squashed, warped, deformed, malformed, broken geometry, glitched",
+  
+  // Unwanted content
+  wrongContent: "text, letters, numbers, words, labels, signs, writing, typography, captions, subtitles, watermark text",
+  
+  // Body parts (critical for equipment/armor)
+  bodyParts: "human body, person, face, head, hands, arms, legs, torso, skin, body parts visible, mannequin, human figure, character body, neck, shoulders with body, fingers, eyes, mouth, nose",
 };
 
 // ===========================================
-// ISOMETRIC NEGATIVE PROMPTS (PRO v3.0)
+// PIXEL ART SPECIFIC NEGATIVES
 // ===========================================
-// Enhanced negatives for isometric generation
+export const PIXEL_ART_NEGATIVES = {
+  // Anti-smooth enforcement
+  antiSmooth: "smooth rendering, soft edges, gradient shading, anti-aliased, anti-aliasing, blurred edges, soft focus, smooth gradients, airbrush effect, soft brush strokes, feathered edges, smooth transitions",
+  
+  // Wrong style prevention
+  wrongStyle: "photorealistic, realistic rendering, oil painting, watercolor, digital painting, 3D render, high detail photo, modern digital art, vector art, illustration, concept art, hand-painted",
+  
+  // Wrong technique prevention
+  wrongTechnique: "smooth shading, realistic lighting, complex shadows, soft lighting, ambient occlusion, ray tracing, subsurface scattering, global illumination, realistic materials",
+};
 
-export const ISOMETRIC_NEGATIVES: IsometricNegatives = {
-  // Angle/perspective problems - isometric MUST be correct angle
-  wrongAngle:
-    "perspective view, one-point perspective, two-point perspective, three-point perspective, vanishing point visible, flat top-down view, orthographic side view, front view, profile view, tilted angle, dutch angle, fisheye lens, wide angle distortion, bird's eye view, worm's eye view, wrong camera angle",
-
-  // Wrong 3D style - game art not CGI
-  wrong3D:
-    "photorealistic 3D render, realistic CGI, Blender render, Cinema 4D render, Maya render, realistic lighting, ray tracing, subsurface scattering, ambient occlusion heavy, PBR materials, realistic reflections, caustics",
-
-  // Common isometric mistakes - precision is key
-  mistakes:
-    "inconsistent isometric angle, mixed projection, wrong shadow direction, shadow going wrong way, multiple light sources, floating object, not grounded, tilted base, rotated wrong, perspective distortion, skewed proportions, warped geometry",
-
+// ===========================================
+// ISOMETRIC SPECIFIC NEGATIVES
+// ===========================================
+export const ISOMETRIC_NEGATIVES = {
+  // Wrong angle prevention
+  wrongAngle: "perspective view, vanishing point, one point perspective, two point perspective, three point perspective, front view, side view, top-down flat, bird's eye view, tilted angle, dutch angle, fisheye lens, wide angle lens",
+  
+  // Wrong 3D style prevention
+  wrong3D: "full 3D render, realistic 3D, photorealistic 3D, ray traced 3D, physically based rendering, unreal engine render, unity render, cinema 4d style",
+  
+  // Geometric mistakes
+  mistakes: "inconsistent angles, mixed perspectives, wrong projection, distorted geometry, warped shapes, incorrect isometric angle, perspective distortion, converging lines",
+  
   // Style issues
-  styleIssues:
-    "realistic proportions, human scale reference, photo reference, stock photo, photograph, real world photo, photorealistic textures, real materials",
+  styleIssues: "realistic textures, photorealistic materials, complex lighting, ambient occlusion, subsurface scattering, realistic shadows, film grain, depth of field",
+  
+  // Composition issues
+  composition: "multiple buildings forming complex, city scene, landscape view, aerial photograph, ground level view, street view, panorama, wide scene",
+};
 
-  // Composition issues for isometric - single clean asset
-  composition:
-    "multiple buildings, city scene, landscape view, panorama, environment scene, background scenery, horizon line visible, multiple objects, scene composition, world map, level layout",
+// ===========================================
+// GAME ASSET SPECIFIC NEGATIVES
+// ===========================================
+export const GAME_ASSET_NEGATIVES = {
+  // Not game-ready
+  notGameReady: "concept art sketch, rough draft, unfinished, work in progress, study piece, practice drawing, thumbnail sketch, loose sketch, incomplete render",
+  
+  // Wrong format
+  wrongFormat: "portrait orientation for items, landscape for characters, wrong framing, poor composition, bad crop, awkward angle, unusual perspective",
+  
+  // Not isolated
+  notIsolated: "connected to other objects, part of larger scene, integrated into environment, attached to surface, mounted on wall, placed on table, in container",
+  
+  // Scene context
+  sceneContext: "room scene, outdoor scene, interior view, exterior view, environmental context, location setting, place context, situational context",
+};
+
+// ===========================================
+// CATEGORY SPECIFIC NEGATIVES
+// ===========================================
+
+// For ARMOR category - prevent body parts
+export const ARMOR_NEGATIVES = {
+  bodyInside: "body inside armor, person wearing, human wearing, character wearing, torso visible, arms visible, legs visible, head inside helmet, face visible inside, skin showing, body parts, human form, mannequin body",
+  wornContext: "being worn, equipped on character, character model, full body character, warrior wearing, knight in armor, soldier equipped",
+};
+
+// For WEAPONS category - prevent hands/wielding AND sprite sheets
+export const WEAPONS_NEGATIVES = {
+  handsHolding: "hand holding, hands gripping, character wielding, person holding, warrior with weapon, fighter equipped, being held, in hand, gripped",
+  combatContext: "combat scene, battle, fighting, attacking, striking, swinging, action pose, mid-attack, weapon in use",
+  // CRITICAL: Prevent weapon sprite sheets
+  spriteSheet: "weapon sprite sheet, weapon collection, weapon set, multiple weapons, many weapons, weapon grid, weapon array, weapon assortment, sword collection, many swords, multiple swords, different swords, sword variety, blade collection, arsenal display, weapon showcase, weapon pack, icon pack, sprite pack",
+};
+
+// For UI_ELEMENTS category - prevent filled content
+export const UI_NEGATIVES = {
+  filledContent: "items inside slots, filled inventory, equipped items, content in frame, populated UI, items in grid, full inventory, equipped gear",
+  characterUI: "character portrait, character stats, character equipment screen, character model, player character, avatar",
+};
+
+// For CHARACTERS/CREATURES - prevent scenes
+export const CHARACTER_NEGATIVES = {
+  sceneContext: "background scene, environment, location, setting, landscape behind, room interior, outdoor area, dungeon scene, forest scene",
+  multipleCharacters: "multiple characters, group, party, team, crowd, several people, many creatures, horde, swarm",
 };
 
 // ===========================================
@@ -90,54 +133,122 @@ export const ISOMETRIC_NEGATIVES: IsometricNegatives = {
 // ===========================================
 
 /**
- * Get all universal negatives as a single string
+ * Get combined negative prompts for a specific category
  */
-export function getUniversalNegativesString(): string {
-  return Object.values(UNIVERSAL_NEGATIVES).join(", ");
-}
-
-/**
- * Get all isometric negatives as a single string
- */
-export function getIsometricNegativesString(): string {
-  return Object.values(ISOMETRIC_NEGATIVES).join(", ");
-}
-
-/**
- * Build negative prompt with appropriate negatives
- */
-export function buildNegativePrompt(
-  styleNegatives: string,
-  subcategoryAvoid: string | undefined,
-  isIsometric: boolean
-): string {
+export function getCategoryNegatives(categoryId: string): string {
   const parts: string[] = [];
-
-  // Style-specific negatives FIRST
-  parts.push(styleNegatives);
-
-  // Subcategory-specific avoid list
-  if (subcategoryAvoid) {
-    parts.push(subcategoryAvoid);
+  
+  // Always add universal negatives
+  parts.push(UNIVERSAL_NEGATIVES.background);
+  parts.push(UNIVERSAL_NEGATIVES.multiObject);
+  parts.push(UNIVERSAL_NEGATIVES.context);
+  parts.push(UNIVERSAL_NEGATIVES.ui);
+  parts.push(UNIVERSAL_NEGATIVES.quality);
+  parts.push(UNIVERSAL_NEGATIVES.composition);
+  parts.push(UNIVERSAL_NEGATIVES.technical);
+  parts.push(UNIVERSAL_NEGATIVES.wrongContent);
+  
+  // Add category-specific negatives
+  switch (categoryId) {
+    case "ARMOR":
+      parts.push(UNIVERSAL_NEGATIVES.bodyParts);
+      parts.push(ARMOR_NEGATIVES.bodyInside);
+      parts.push(ARMOR_NEGATIVES.wornContext);
+      break;
+      
+    case "WEAPONS":
+      parts.push(WEAPONS_NEGATIVES.handsHolding);
+      parts.push(WEAPONS_NEGATIVES.combatContext);
+      parts.push(WEAPONS_NEGATIVES.spriteSheet);
+      break;
+      
+    case "UI_ELEMENTS":
+      parts.push(UI_NEGATIVES.filledContent);
+      parts.push(UI_NEGATIVES.characterUI);
+      break;
+      
+    case "CHARACTERS":
+    case "CREATURES":
+      parts.push(CHARACTER_NEGATIVES.sceneContext);
+      parts.push(CHARACTER_NEGATIVES.multipleCharacters);
+      break;
+      
+    case "ENVIRONMENT":
+    case "ISOMETRIC":
+      // Less strict on background for environment
+      break;
+      
+    default:
+      // Default: add body parts negative for most categories
+      if (!["CHARACTERS", "CREATURES", "ENVIRONMENT"].includes(categoryId)) {
+        parts.push(UNIVERSAL_NEGATIVES.bodyParts);
+      }
   }
+  
+  // Add game asset negatives
+  parts.push(GAME_ASSET_NEGATIVES.notGameReady);
+  parts.push(GAME_ASSET_NEGATIVES.notIsolated);
+  
+  return parts.join(", ");
+}
 
-  // Isometric-specific negatives
-  if (isIsometric) {
+/**
+ * Get style-specific negative prompts
+ */
+export function getStyleNegatives(styleId: string): string {
+  const parts: string[] = [];
+  
+  // Pixel art styles
+  if (styleId.includes("PIXEL")) {
+    parts.push(PIXEL_ART_NEGATIVES.antiSmooth);
+    parts.push(PIXEL_ART_NEGATIVES.wrongStyle);
+    parts.push(PIXEL_ART_NEGATIVES.wrongTechnique);
+  }
+  
+  // Isometric styles
+  if (styleId.includes("ISOMETRIC") || styleId === "ISOMETRIC") {
     parts.push(ISOMETRIC_NEGATIVES.wrongAngle);
     parts.push(ISOMETRIC_NEGATIVES.wrong3D);
     parts.push(ISOMETRIC_NEGATIVES.mistakes);
     parts.push(ISOMETRIC_NEGATIVES.styleIssues);
     parts.push(ISOMETRIC_NEGATIVES.composition);
   }
+  
+  return parts.join(", ");
+}
 
-  // Universal negatives
-  parts.push(UNIVERSAL_NEGATIVES.multiObject);
-  parts.push(UNIVERSAL_NEGATIVES.background);
-  parts.push(UNIVERSAL_NEGATIVES.quality);
-  parts.push(UNIVERSAL_NEGATIVES.composition);
-  parts.push(UNIVERSAL_NEGATIVES.technical);
-  parts.push(UNIVERSAL_NEGATIVES.wrongContent);
-
+/**
+ * Build complete negative prompt
+ */
+export function buildCompleteNegativePrompt(
+  styleNegatives: string,
+  categoryId: string,
+  styleId: string,
+  subcategoryAvoid?: string
+): string {
+  const parts: string[] = [];
+  
+  // 1. Style-specific negatives (from style config)
+  if (styleNegatives) {
+    parts.push(styleNegatives);
+  }
+  
+  // 2. Enhanced style negatives (pixel art, isometric)
+  const enhancedStyleNegatives = getStyleNegatives(styleId);
+  if (enhancedStyleNegatives) {
+    parts.push(enhancedStyleNegatives);
+  }
+  
+  // 3. Subcategory avoid list
+  if (subcategoryAvoid) {
+    parts.push(subcategoryAvoid);
+  }
+  
+  // 4. Category-specific negatives
+  const categoryNegatives = getCategoryNegatives(categoryId);
+  parts.push(categoryNegatives);
+  
+  // Clean and return
   return parts
     .filter((p) => p && p.trim().length > 0)
     .join(", ")

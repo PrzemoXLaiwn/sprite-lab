@@ -13,11 +13,7 @@
 import type { BuildPromptResult, StyleConfig, SubcategoryPromptConfig } from "../types";
 import { STYLES_2D_FULL, PRO_QUALITY_BOOST } from "../styles";
 import { CATEGORY_PROMPT_CONFIGS, CATEGORY_BASE_DESCRIPTIONS } from "../categories";
-import {
-  UNIVERSAL_NEGATIVES,
-  ISOMETRIC_BOOST,
-  ISOMETRIC_NEGATIVES,
-} from "./negative-prompts";
+import { buildCompleteNegativePrompt, ISOMETRIC_BOOST } from "./negative-prompts";
 
 // ===========================================
 // KEYWORD EXTRACTOR
@@ -83,6 +79,27 @@ export function isIsometricMode(
 function isPixelArtStyle(styleId: string): boolean {
   return styleId.startsWith("PIXEL_ART") || styleId.includes("ISOMETRIC_PIXEL");
 }
+
+// ===========================================
+// GAME ASSET PREFIXES (v3.0) - SINGLE OBJECT EMPHASIS
+// ===========================================
+// Adds game-specific context to prompts for better AI understanding
+// CRITICAL: Emphasize SINGLE ISOLATED object to prevent sprite sheets
+const GAME_ASSET_PREFIXES: Record<string, string> = {
+  WEAPONS: "((SINGLE weapon icon)), ONE isolated weapon, single RPG equipment sprite, single loot drop weapon, one inventory item, NOT a sprite sheet, NOT multiple weapons",
+  ARMOR: "((SINGLE armor icon)), ONE isolated armor piece, single RPG equipment sprite, single loot drop armor, one inventory item, NOT a sprite sheet",
+  CONSUMABLES: "((SINGLE consumable icon)), ONE isolated item, single usable item sprite, one inventory pickup, NOT multiple items",
+  RESOURCES: "((SINGLE resource icon)), ONE isolated material, single crafting material sprite, one gatherable item, NOT multiple resources",
+  QUEST_ITEMS: "((SINGLE quest item icon)), ONE isolated artifact, single special item sprite, one unique collectible, NOT multiple items",
+  CHARACTERS: "((SINGLE character sprite)), ONE isolated character, single playable character asset, one RPG character, NOT multiple characters",
+  CREATURES: "((SINGLE creature sprite)), ONE isolated creature, single enemy asset, one monster sprite, NOT multiple creatures",
+  ENVIRONMENT: "((SINGLE environment prop)), ONE isolated prop, single world decoration asset, one placeable object, NOT multiple props",
+  ISOMETRIC: "((SINGLE isometric asset)), ONE isolated isometric object, single strategy game sprite, one 2.5D game object, NOT multiple objects",
+  TILESETS: "game tileset texture, seamless tile asset, level design tile, tileable texture",
+  UI_ELEMENTS: "((SINGLE UI element)), ONE isolated UI component, single interface graphic sprite, one HUD element, NOT multiple icons",
+  EFFECTS: "((SINGLE VFX sprite)), ONE isolated visual effect, single particle effect, one effect frame, NOT animation sheet",
+  PROJECTILES: "((SINGLE projectile sprite)), ONE isolated projectile, single ammunition asset, one flying object, NOT multiple projectiles",
+};
 
 
 // ===========================================
@@ -250,6 +267,13 @@ export function buildUltimatePrompt(
   const promptParts: string[] = [];
 
   // ===========================================
+  // PART 0: GAME ASSET PREFIX (NEW!)
+  // ===========================================
+  // Add game-specific context FIRST so AI understands this is a game asset
+  const gamePrefix = GAME_ASSET_PREFIXES[categoryId] || "game asset sprite, game item";
+  promptParts.push(`((${gamePrefix}))`);
+
+  // ===========================================
   // PART 1: STRONG STYLE OPENER (CRITICAL!)
   // ===========================================
   // Put style FIRST so AI knows the rendering style from the start
@@ -355,52 +379,20 @@ export function buildUltimatePrompt(
   }
 
   // ===========================================
-  // BUILD NEGATIVE PROMPT
+  // BUILD NEGATIVE PROMPT (ENHANCED v2.0)
   // ===========================================
-  const negativeParts: string[] = [];
-
-  // Style-specific negatives FIRST (most important)
-  negativeParts.push(style.negatives);
-
-  // For pixel art, add EXTRA negative enforcement
-  if (isPixelArt) {
-    negativeParts.push("smooth, blurry, soft, gradient, anti-aliased, photorealistic, oil painting, watercolor, digital painting, soft brush, airbrush, smooth shading, realistic rendering, high detail realistic, soft edges, modern digital art");
-  }
-
-  // Subcategory avoid list
-  if (subcategoryConfig?.avoid) {
-    negativeParts.push(subcategoryConfig.avoid);
-  }
-
-  // Isometric negatives
-  if (isIsometric) {
-    negativeParts.push(ISOMETRIC_NEGATIVES.wrongAngle);
-    negativeParts.push(ISOMETRIC_NEGATIVES.wrong3D);
-    negativeParts.push(ISOMETRIC_NEGATIVES.mistakes);
-    negativeParts.push(ISOMETRIC_NEGATIVES.styleIssues);
-    negativeParts.push(ISOMETRIC_NEGATIVES.composition);
-  }
-
-  // Universal negatives
-  negativeParts.push(UNIVERSAL_NEGATIVES.multiObject);
-  negativeParts.push(UNIVERSAL_NEGATIVES.background);
-  negativeParts.push(UNIVERSAL_NEGATIVES.quality);
-  negativeParts.push(UNIVERSAL_NEGATIVES.composition);
-  negativeParts.push(UNIVERSAL_NEGATIVES.technical);
-  negativeParts.push(UNIVERSAL_NEGATIVES.wrongContent);
-  negativeParts.push(UNIVERSAL_NEGATIVES.bodyParts);
+  // Use new comprehensive negative prompt system
+  const finalNegative = buildCompleteNegativePrompt(
+    style.negatives,
+    categoryId,
+    styleId,
+    subcategoryConfig?.avoid
+  );
 
   // ===========================================
   // CLEAN & FORMAT
   // ===========================================
   const finalPrompt = promptParts
-    .filter((p) => p && p.trim().length > 0)
-    .join(", ")
-    .replace(/,\s*,/g, ",")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  const finalNegative = negativeParts
     .filter((p) => p && p.trim().length > 0)
     .join(", ")
     .replace(/,\s*,/g, ",")
@@ -507,6 +499,13 @@ export function buildEnhancedPrompt(
 
   // Build prompt parts
   const promptParts: string[] = [];
+
+  // ===========================================
+  // PART 0: GAME ASSET PREFIX (NEW!)
+  // ===========================================
+  // Add game-specific context for enhanced prompts too
+  const gamePrefix = GAME_ASSET_PREFIXES[categoryId] || "game asset sprite, game item";
+  promptParts.push(`((${gamePrefix}))`);
 
   // ===========================================
   // STYLE MIXING: Weighted style cores
@@ -630,50 +629,26 @@ export function buildEnhancedPrompt(
   }
 
   // ===========================================
-  // BUILD NEGATIVE PROMPT (combined for mixed styles)
+  // BUILD NEGATIVE PROMPT (ENHANCED v2.0 - for mixed styles)
   // ===========================================
-  const negativeParts: string[] = [];
-
-  negativeParts.push(style1.negatives);
+  // Combine style negatives for mixed styles
+  let combinedStyleNegatives = style1.negatives;
   if (enableStyleMix && style2) {
-    negativeParts.push(style2.negatives);
+    combinedStyleNegatives = `${style1.negatives}, ${style2.negatives}`;
   }
-
-  if (isPixelArt) {
-    negativeParts.push("smooth, blurry, soft, gradient, anti-aliased, photorealistic, oil painting, watercolor, digital painting, soft brush, airbrush, smooth shading, realistic rendering, high detail realistic, soft edges, modern digital art");
-  }
-
-  if (subcategoryConfig?.avoid) {
-    negativeParts.push(subcategoryConfig.avoid);
-  }
-
-  if (isIsometric) {
-    negativeParts.push(ISOMETRIC_NEGATIVES.wrongAngle);
-    negativeParts.push(ISOMETRIC_NEGATIVES.wrong3D);
-    negativeParts.push(ISOMETRIC_NEGATIVES.mistakes);
-    negativeParts.push(ISOMETRIC_NEGATIVES.styleIssues);
-    negativeParts.push(ISOMETRIC_NEGATIVES.composition);
-  }
-
-  negativeParts.push(UNIVERSAL_NEGATIVES.multiObject);
-  negativeParts.push(UNIVERSAL_NEGATIVES.background);
-  negativeParts.push(UNIVERSAL_NEGATIVES.quality);
-  negativeParts.push(UNIVERSAL_NEGATIVES.composition);
-  negativeParts.push(UNIVERSAL_NEGATIVES.technical);
-  negativeParts.push(UNIVERSAL_NEGATIVES.wrongContent);
-  negativeParts.push(UNIVERSAL_NEGATIVES.bodyParts);
+  
+  // Use new comprehensive negative prompt system
+  const finalNegative = buildCompleteNegativePrompt(
+    combinedStyleNegatives,
+    categoryId,
+    styleId,
+    subcategoryConfig?.avoid
+  );
 
   // ===========================================
   // CLEAN & FORMAT
   // ===========================================
   const finalPrompt = promptParts
-    .filter((p) => p && p.trim().length > 0)
-    .join(", ")
-    .replace(/,\s*,/g, ",")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  const finalNegative = negativeParts
     .filter((p) => p && p.trim().length > 0)
     .join(", ")
     .replace(/,\s*,/g, ",")

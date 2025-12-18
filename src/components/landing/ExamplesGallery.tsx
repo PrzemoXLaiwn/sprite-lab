@@ -1,98 +1,56 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
-import { Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
+import { Sparkles, Heart } from "lucide-react";
 
-// Real generated example sprites
-const EXAMPLE_SPRITES = [
-  {
-    id: 1,
-    src: "/examples/knight-pixel.png",
-    alt: "Pixel art knight",
-    prompt: "brave knight in shining armor",
-    style: "Pixel Art",
-    category: "Characters",
-  },
-  {
-    id: 2,
-    src: "/examples/sword-pixel.png",
-    alt: "Golden sword",
-    prompt: "golden sword with ruby gems",
-    style: "Pixel Art",
-    category: "Weapons",
-  },
-  {
-    id: 3,
-    src: "/examples/slime-cartoon.png",
-    alt: "Cute slime monster",
-    prompt: "cute slime monster with big eyes",
-    style: "Cartoon",
-    category: "Creatures",
-  },
-  {
-    id: 4,
-    src: "/examples/chest-iso.png",
-    alt: "Treasure chest",
-    prompt: "treasure chest with gold coins",
-    style: "Isometric",
-    category: "Items",
-  },
-  {
-    id: 5,
-    src: "/examples/dragon-chibi.png",
-    alt: "Cute baby dragon",
-    prompt: "cute baby dragon breathing flame",
-    style: "Chibi Cute",
-    category: "Creatures",
-  },
-  {
-    id: 6,
-    src: "/examples/mage-anime.png",
-    alt: "Mage character",
-    prompt: "wizard mage casting spell",
-    style: "Anime",
-    category: "Characters",
-  },
-  {
-    id: 7,
-    src: "/examples/potion-anime.png",
-    alt: "Health potion",
-    prompt: "health potion with red liquid",
-    style: "Anime",
-    category: "Items",
-  },
-  {
-    id: 8,
-    src: "/examples/shield-realistic.png",
-    alt: "Medieval shield",
-    prompt: "medieval shield with dragon crest",
-    style: "Realistic",
-    category: "Equipment",
-  },
-];
-
-// Placeholder images using a simple colored div
-const PlaceholderSprite = ({ color, label }: { color: string; label: string }) => (
-  <div
-    className={`w-full h-full ${color} flex items-center justify-center`}
-    style={{ aspectRatio: "1/1" }}
-  >
-    <span className="text-white/40 text-xs text-center px-2">{label}</span>
-  </div>
-);
+interface FeaturedSprite {
+  id: string;
+  imageUrl: string;
+  prompt: string;
+  style: string;
+  category: string;
+  likes: number;
+}
 
 export function ExamplesGallery() {
   const [activeCategory, setActiveCategory] = useState<string>("All");
+  const [sprites, setSprites] = useState<FeaturedSprite[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
   const categories = ["All", "Characters", "Creatures", "Weapons", "Items", "Equipment"];
 
-  const filteredSprites =
-    activeCategory === "All"
-      ? EXAMPLE_SPRITES
-      : EXAMPLE_SPRITES.filter((s) => s.category === activeCategory);
+  useEffect(() => {
+    async function fetchSprites() {
+      setLoading(true);
+      try {
+        const categoryParam = activeCategory !== "All" ? `&category=${activeCategory}` : "";
+        const res = await fetch(`/api/featured-generations?limit=12${categoryParam}`);
+        const data = await res.json();
 
-  // Real images are now available in public/examples/
-  const hasRealImages = true;
+        if (data.success && data.generations.length > 0) {
+          setSprites(data.generations);
+          setError(false);
+        } else {
+          setSprites([]);
+          setError(data.generations?.length === 0);
+        }
+      } catch {
+        setError(true);
+        setSprites([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchSprites();
+  }, [activeCategory]);
+
+  // If no public generations yet, don't show the section
+  if (error && sprites.length === 0 && !loading) {
+    return null;
+  }
 
   return (
     <section id="gallery" className="py-16 sm:py-24 relative overflow-hidden">
@@ -133,58 +91,66 @@ export function ExamplesGallery() {
 
         {/* Gallery Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-          {filteredSprites.map((sprite, index) => (
-            <div
-              key={sprite.id}
-              className="group relative bg-[#0a0a0f]/80 border border-white/10 rounded-xl overflow-hidden hover:border-[#00d4ff]/50 transition-all duration-300 hover:scale-[1.02]"
-            >
-              {/* Image */}
-              <div className="aspect-square relative bg-gradient-to-br from-white/5 to-white/0">
-                {hasRealImages ? (
-                  <Image
-                    src={sprite.src}
-                    alt={sprite.alt}
-                    fill
-                    className="object-contain p-4"
-                  />
-                ) : (
+          {loading ? (
+            // Loading skeletons
+            [...Array(8)].map((_, i) => (
+              <div
+                key={i}
+                className="relative bg-[#0a0a0f]/80 border border-white/10 rounded-xl overflow-hidden"
+              >
+                <div className="aspect-square relative bg-gradient-to-br from-white/5 to-white/0 animate-pulse">
                   <div className="w-full h-full flex items-center justify-center">
-                    <div
-                      className="w-3/4 h-3/4 rounded-lg"
-                      style={{
-                        background: `linear-gradient(135deg, ${
-                          ["#00ff88", "#00d4ff", "#ff6b6b", "#ffd93d", "#c084fc", "#ff88cc", "#88ffcc", "#ffaa00"][
-                            index % 8
-                          ]
-                        }20, transparent)`,
-                        border: `2px dashed ${
-                          ["#00ff88", "#00d4ff", "#ff6b6b", "#ffd93d", "#c084fc", "#ff88cc", "#88ffcc", "#ffaa00"][
-                            index % 8
-                          ]
-                        }40`,
-                      }}
-                    >
-                      <div className="w-full h-full flex flex-col items-center justify-center text-white/30 text-xs text-center p-2">
-                        <Sparkles className="w-6 h-6 mb-2 opacity-50" />
-                        <span>{sprite.category}</span>
-                      </div>
-                    </div>
+                    <div className="w-12 h-12 rounded-full border-2 border-white/10 border-t-[#00d4ff] animate-spin" />
                   </div>
-                )}
-              </div>
-
-              {/* Hover Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
-                <p className="text-white text-sm font-medium mb-1 line-clamp-2">
-                  &quot;{sprite.prompt}&quot;
-                </p>
-                <div className="flex items-center gap-2 text-xs text-white/60">
-                  <span className="px-2 py-0.5 rounded bg-white/10">{sprite.style}</span>
-                  <span>{sprite.category}</span>
                 </div>
               </div>
+            ))
+          ) : sprites.length > 0 ? (
+            // Real sprites from database
+            sprites.map((sprite) => (
+              <div
+                key={sprite.id}
+                className="group relative bg-[#0a0a0f]/80 border border-white/10 rounded-xl overflow-hidden hover:border-[#00d4ff]/50 transition-all duration-300 hover:scale-[1.02]"
+              >
+                {/* Image */}
+                <div className="aspect-square relative bg-gradient-to-br from-white/5 to-white/0">
+                  <Image
+                    src={sprite.imageUrl}
+                    alt={sprite.prompt.slice(0, 50)}
+                    fill
+                    className="object-contain p-4"
+                    unoptimized // Supabase Storage images
+                  />
+                </div>
+
+                {/* Hover Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
+                  <p className="text-white text-sm font-medium mb-1 line-clamp-2">
+                    &quot;{sprite.prompt}&quot;
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs text-white/60">
+                      <span className="px-2 py-0.5 rounded bg-white/10">{sprite.style}</span>
+                      <span>{sprite.category}</span>
+                    </div>
+                    {sprite.likes > 0 && (
+                      <div className="flex items-center gap-1 text-xs text-pink-400">
+                        <Heart className="w-3 h-3" fill="currentColor" />
+                        {sprite.likes}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            // Empty state
+            <div className="col-span-full text-center py-12">
+              <Sparkles className="w-12 h-12 text-white/20 mx-auto mb-4" />
+              <p className="text-white/40">No public sprites in this category yet.</p>
+              <p className="text-white/30 text-sm mt-1">Be the first to share your creations!</p>
             </div>
-          ))}
+          )}
         </div>
 
         {/* CTA */}

@@ -29,9 +29,11 @@ export async function enhancePromptWithLearnedFixes(
   let enhancedPrompt = userPrompt;
   let enhancedNegative = negativePrompt;
 
+  console.log(`[PromptEnhancer] Looking for fixes: ${categoryId}/${subcategoryId}/${styleId}`);
+
   try {
-    // 1. Get optimized prompt template with required/avoid keywords
-    const optimizedPrompt = await prisma.optimizedPrompt.findFirst({
+    // 1. Get optimized prompt - try exact match first, then fallback to category+subcategory
+    let optimizedPrompt = await prisma.optimizedPrompt.findFirst({
       where: {
         categoryId,
         subcategoryId,
@@ -41,40 +43,70 @@ export async function enhancePromptWithLearnedFixes(
       orderBy: { version: "desc" },
     });
 
+    // Fallback: try without specific style
+    if (!optimizedPrompt) {
+      optimizedPrompt = await prisma.optimizedPrompt.findFirst({
+        where: {
+          categoryId,
+          subcategoryId,
+          isActive: true,
+        },
+        orderBy: [{ version: "desc" }, { updatedAt: "desc" }],
+      });
+      if (optimizedPrompt) {
+        console.log(`[PromptEnhancer] Using category fallback (no style-specific match)`);
+      }
+    }
+
     if (optimizedPrompt) {
+      console.log(`[PromptEnhancer] Found OptimizedPrompt v${optimizedPrompt.version}:`, {
+        required: optimizedPrompt.requiredKeywords,
+        avoid: optimizedPrompt.avoidKeywords,
+      });
+
       // Apply required keywords
       if (optimizedPrompt.requiredKeywords) {
         try {
           const required = JSON.parse(optimizedPrompt.requiredKeywords) as string[];
-          const promptLower = enhancedPrompt.toLowerCase();
-          const missingRequired = required.filter(
-            (kw) => kw && !promptLower.includes(kw.toLowerCase())
-          );
-          if (missingRequired.length > 0) {
-            enhancedPrompt = `${enhancedPrompt}, ${missingRequired.join(", ")}`;
-            appliedFixes.push(`Added required: ${missingRequired.join(", ")}`);
+          if (required.length > 0) {
+            const promptLower = enhancedPrompt.toLowerCase();
+            const missingRequired = required.filter(
+              (kw) => kw && !promptLower.includes(kw.toLowerCase())
+            );
+            if (missingRequired.length > 0) {
+              enhancedPrompt = `${enhancedPrompt}, ${missingRequired.join(", ")}`;
+              appliedFixes.push(`Added required: ${missingRequired.join(", ")}`);
+            }
           }
-        } catch { /* ignore parse errors */ }
+        } catch (e) {
+          console.log(`[PromptEnhancer] Parse error for requiredKeywords:`, e);
+        }
       }
 
       // Apply avoid keywords to negative prompt
       if (optimizedPrompt.avoidKeywords) {
         try {
           const avoid = JSON.parse(optimizedPrompt.avoidKeywords) as string[];
-          const negativeLower = enhancedNegative.toLowerCase();
-          const missingAvoid = avoid.filter(
-            (kw) => kw && !negativeLower.includes(kw.toLowerCase())
-          );
-          if (missingAvoid.length > 0) {
-            enhancedNegative = `${enhancedNegative}, ${missingAvoid.join(", ")}`;
-            appliedFixes.push(`Added to negative: ${missingAvoid.join(", ")}`);
+          if (avoid.length > 0) {
+            const negativeLower = enhancedNegative.toLowerCase();
+            const missingAvoid = avoid.filter(
+              (kw) => kw && !negativeLower.includes(kw.toLowerCase())
+            );
+            if (missingAvoid.length > 0) {
+              enhancedNegative = `${enhancedNegative}, ${missingAvoid.join(", ")}`;
+              appliedFixes.push(`Added to negative: ${missingAvoid.join(", ")}`);
+            }
           }
-        } catch { /* ignore parse errors */ }
+        } catch (e) {
+          console.log(`[PromptEnhancer] Parse error for avoidKeywords:`, e);
+        }
       }
+    } else {
+      console.log(`[PromptEnhancer] No OptimizedPrompt found for ${categoryId}/${subcategoryId}`);
     }
 
-    // 2. Get hallucination patterns and apply prevention prompts
-    const hallucinationPatterns = await prisma.hallucinationPattern.findMany({
+    // 2. Get hallucination patterns - try exact match first, then broader
+    let hallucinationPatterns = await prisma.hallucinationPattern.findMany({
       where: {
         categoryId,
         subcategoryId,
@@ -83,8 +115,27 @@ export async function enhancePromptWithLearnedFixes(
         preventionPrompt: { not: null },
       },
       orderBy: { occurrenceCount: "desc" },
-      take: 5, // Top 5 most common issues
+      take: 5,
     });
+
+    // Fallback: get patterns for ANY style in this category/subcategory
+    if (hallucinationPatterns.length === 0) {
+      hallucinationPatterns = await prisma.hallucinationPattern.findMany({
+        where: {
+          categoryId,
+          subcategoryId,
+          isActive: true,
+          preventionPrompt: { not: null },
+        },
+        orderBy: { occurrenceCount: "desc" },
+        take: 5,
+      });
+      if (hallucinationPatterns.length > 0) {
+        console.log(`[PromptEnhancer] Using ${hallucinationPatterns.length} category-level hallucination patterns`);
+      }
+    }
+
+    console.log(`[PromptEnhancer] Found ${hallucinationPatterns.length} hallucination patterns`);
 
     for (const pattern of hallucinationPatterns) {
       if (pattern.preventionPrompt) {
@@ -110,24 +161,23 @@ export async function enhancePromptWithLearnedFixes(
       }
     }
 
-    // 3. Also check category-level patterns (without specific style)
-    const categoryPatterns = await prisma.hallucinationPattern.findMany({
+    // 3. Also check broader category patterns (any subcategory) for common issues
+    const broadPatterns = await prisma.hallucinationPattern.findMany({
       where: {
         categoryId,
-        subcategoryId,
         isActive: true,
         preventionPrompt: { not: null },
-        occurrenceCount: { gte: 3 }, // Only well-established patterns
+        occurrenceCount: { gte: 2 }, // Patterns that occurred at least twice
       },
       orderBy: { occurrenceCount: "desc" },
       take: 3,
     });
 
-    for (const pattern of categoryPatterns) {
+    for (const pattern of broadPatterns) {
       if (pattern.preventionPrompt) {
         if (!enhancedPrompt.toLowerCase().includes(pattern.preventionPrompt.toLowerCase())) {
           enhancedPrompt = `${enhancedPrompt}, ${pattern.preventionPrompt}`;
-          appliedFixes.push(`Category fix: ${pattern.preventionPrompt}`);
+          appliedFixes.push(`Broad category fix: ${pattern.preventionPrompt}`);
         }
       }
     }
