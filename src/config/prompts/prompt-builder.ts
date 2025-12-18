@@ -1,104 +1,174 @@
 // ===========================================
-// SPRITELAB - SIMPLIFIED PROMPT BUILDER v4.0
+// SPRITELAB - PROMPT BUILDER v5.0
 // ===========================================
-// PHILOSOPHY: User prompt is KING. System only adds:
-// 1. Style rendering (pixel art, anime, etc.)
-// 2. "single isolated object" enforcement
-// 3. "transparent background" for game assets
-//
-// NO MORE: Long prompts, category overrides, complex prefixes
+// USER PROMPT IS KING - system adds style and weapon context
+// Category adds WHAT the weapon looks like (sword = blade + hilt)
+// Style adds HOW it's rendered (pixel art, anime, etc.)
 
 import type { BuildPromptResult, StyleConfig } from "../types";
 import { STYLES_2D_FULL } from "../styles";
 
 // ===========================================
-// SIMPLE STYLE CORES - Just the visual style
+// WEAPON DESCRIPTIONS - What each weapon IS
+// ===========================================
+const WEAPON_CONTEXT: Record<string, string> = {
+  // SWORDS - klasyczny miecz fantasy
+  SWORDS: "medieval fantasy sword with metal blade, crossguard, wrapped handle, pommel",
+
+  // AXES - klasyczny topór bojowy
+  AXES: "battle axe with metal axe head, sharp blade edge, wooden handle shaft",
+
+  // POLEARMS - włócznia z grotem
+  POLEARMS: "spear with long wooden shaft, metal spearhead point at the end",
+
+  // BOWS - łuk bez strzały
+  BOWS: "wooden bow with curved limbs, taut bowstring, no arrow",
+
+  // STAFFS - magiczna laska z kryształem
+  STAFFS: "wizard staff with wooden shaft, magical crystal orb on top, mystical glow",
+
+  // GUNS - realistyczna broń palna
+  GUNS: "firearm gun with barrel, trigger, grip handle, realistic military style",
+
+  // THROWING - shuriken/kunai ninja
+  THROWING: "ninja throwing weapon, shuriken star or kunai knife, sharp metal",
+};
+
+// ===========================================
+// OTHER CATEGORY CONTEXT
+// ===========================================
+const CATEGORY_CONTEXT: Record<string, Record<string, string>> = {
+  ARMOR: {
+    HELMETS: "helmet armor piece, protective headgear, empty inside (no head)",
+    CHEST_ARMOR: "chest armor breastplate, torso protection, empty (no body inside)",
+    SHIELDS: "shield, defensive equipment, front view",
+    GLOVES: "gauntlet gloves, hand armor, empty (no hands inside)",
+    BOOTS: "armored boots, foot protection, empty (no feet inside)",
+    ACCESSORIES: "armor accessory, belt cape ring amulet",
+  },
+  CONSUMABLES: {
+    POTIONS: "potion bottle, glass flask with colored liquid, cork stopper",
+    FOOD: "food item, edible, appetizing",
+    SCROLLS: "magic scroll, rolled parchment, wax seal",
+  },
+  RESOURCES: {
+    GEMS: "gemstone, cut precious gem, faceted crystal",
+    ORES: "ore chunk, raw mineral, metallic veins in rock",
+    WOOD_STONE: "raw material, wood log or stone chunk",
+    PLANTS: "magical herb plant, glowing leaves",
+    MONSTER_PARTS: "monster drop, creature part like scale fang claw",
+    MAGIC_MATERIALS: "magical essence, glowing orb or crystal",
+  },
+  CHARACTERS: {
+    HEROES: "hero character, full body, adventurer",
+    ENEMIES: "enemy character, full body, hostile",
+    NPCS: "NPC character, full body, friendly",
+    BOSSES: "boss enemy, large imposing, powerful",
+  },
+  CREATURES: {
+    ANIMALS: "animal creature, full body",
+    MYTHICAL: "mythical beast, dragon phoenix unicorn",
+    PETS: "cute pet companion, small friendly",
+    ELEMENTALS: "elemental being, made of fire water earth air",
+  },
+};
+
+// ===========================================
+// STYLE RENDERING - How it LOOKS
 // ===========================================
 const STYLE_PROMPTS: Record<string, string> = {
-  PIXEL_ART_16: "16-bit pixel art style, visible pixels, retro game sprite",
-  PIXEL_ART_32: "32-bit HD pixel art style, detailed pixels, modern indie game sprite",
-  HAND_PAINTED: "hand painted digital art style, painterly brush strokes",
-  VECTOR_CLEAN: "clean vector art style, flat colors, smooth edges",
-  ANIME_GAME: "anime game art style, cel shading, JRPG aesthetic",
-  CHIBI_CUTE: "chibi kawaii style, cute big head small body",
+  PIXEL_ART_16: "16-bit pixel art, visible square pixels, retro SNES style, limited color palette",
+  PIXEL_ART_32: "32-bit HD pixel art, detailed pixels, modern indie game style",
+  HAND_PAINTED: "hand painted digital art, visible brush strokes, painterly style",
+  VECTOR_CLEAN: "clean vector art, flat colors, smooth edges, mobile game style",
+  ANIME_GAME: "anime game art, cel shading, JRPG style, clean lines",
+  CHIBI_CUTE: "chibi kawaii style, cute big head small body, adorable",
   CARTOON_WESTERN: "western cartoon style, bold outlines, Cuphead aesthetic",
-  DARK_SOULS: "dark fantasy style, gritty, souls-like aesthetic",
-  ISOMETRIC: "isometric 2.5D view, 26.57 degree angle",
-  ISOMETRIC_PIXEL: "isometric pixel art, retro RTS style",
+  DARK_SOULS: "dark fantasy style, gritty weathered, souls-like aesthetic, muted colors",
+  ISOMETRIC: "isometric 2.5D view, 26.57 degree angle, strategy game style",
+  ISOMETRIC_PIXEL: "isometric pixel art, retro RTS style, visible pixels",
   ISOMETRIC_CARTOON: "isometric cartoon style, colorful casual game",
   REALISTIC_PAINTED: "realistic digital painting, AAA game concept art quality",
 };
 
 // ===========================================
-// SIMPLE NEGATIVE PROMPTS - Just the essentials
+// NEGATIVE PROMPTS
 // ===========================================
-const CORE_NEGATIVES = "multiple objects, many items, sprite sheet, grid, collection, blurry, low quality, watermark, text, signature";
+const CORE_NEGATIVES = "multiple objects, many items, sprite sheet, grid, collection, blurry, low quality, watermark, text, signature, background, scenery";
 
 const STYLE_NEGATIVES: Record<string, string> = {
-  PIXEL_ART_16: "smooth gradients, anti-aliasing, realistic, 3D render, photograph",
-  PIXEL_ART_32: "smooth gradients, anti-aliasing, realistic, 3D render",
-  HAND_PAINTED: "pixel art, vector art, flat colors, 3D render",
-  VECTOR_CLEAN: "textured, painterly, pixel art, realistic",
+  PIXEL_ART_16: "smooth gradients, anti-aliasing, realistic, 3D render, photograph, soft edges",
+  PIXEL_ART_32: "smooth gradients, anti-aliasing, realistic, 3D render, soft edges",
+  HAND_PAINTED: "pixel art, vector art, flat colors, 3D render, sharp edges",
+  VECTOR_CLEAN: "textured, painterly, pixel art, realistic, rough edges",
   ANIME_GAME: "western cartoon, realistic, pixel art, 3D render",
-  CHIBI_CUTE: "realistic proportions, dark, scary, mature",
-  CARTOON_WESTERN: "anime, realistic, pixel art, subtle",
-  DARK_SOULS: "bright colors, cartoon, cute, chibi, clean",
+  CHIBI_CUTE: "realistic proportions, dark, scary, mature, detailed",
+  CARTOON_WESTERN: "anime, realistic, pixel art, subtle, thin lines",
+  DARK_SOULS: "bright colors, cartoon, cute, chibi, clean, colorful",
   ISOMETRIC: "perspective view, top-down flat, side view, realistic 3D",
-  ISOMETRIC_PIXEL: "smooth gradients, perspective view, realistic",
-  ISOMETRIC_CARTOON: "realistic, dark, pixel art, perspective",
-  REALISTIC_PAINTED: "cartoon, pixel art, flat colors, anime",
+  ISOMETRIC_PIXEL: "smooth gradients, perspective view, realistic, soft",
+  ISOMETRIC_CARTOON: "realistic, dark, pixel art, perspective view",
+  REALISTIC_PAINTED: "cartoon, pixel art, flat colors, anime, simple",
 };
 
+const WEAPON_NEGATIVES = "multiple weapons, weapon collection, sprite sheet, hand holding, person wielding, combat scene, broken";
+const ARMOR_NEGATIVES = "body inside, person wearing, human form, mannequin, skin visible";
+
 // ===========================================
-// MAIN FUNCTION - SIMPLIFIED
+// MAIN FUNCTION
 // ===========================================
 export function buildUltimatePrompt(
   userPrompt: string,
-  _categoryId: string,
-  _subcategoryId: string,
+  categoryId: string,
+  subcategoryId: string,
   styleId: string
 ): BuildPromptResult {
   const style: StyleConfig = STYLES_2D_FULL[styleId] || STYLES_2D_FULL.PIXEL_ART_16;
   const stylePrompt = STYLE_PROMPTS[styleId] || STYLE_PROMPTS.PIXEL_ART_16;
   const styleNegative = STYLE_NEGATIVES[styleId] || "";
 
-  // Clean user input
   const cleanPrompt = userPrompt.trim();
-
-  // ===========================================
-  // BUILD FINAL PROMPT - USER FIRST!
-  // ===========================================
-  // Structure: [USER PROMPT], [STYLE], [ISOLATION]
   const promptParts: string[] = [];
+  const negativeParts: string[] = [CORE_NEGATIVES];
 
-  // 1. USER PROMPT IS KING - exactly what they asked for
+  // 1. USER PROMPT FIRST - what they asked for
   promptParts.push(cleanPrompt);
 
-  // 2. Add style
+  // 2. Add WEAPON context if it's a weapon
+  if (categoryId === "WEAPONS" && WEAPON_CONTEXT[subcategoryId]) {
+    promptParts.push(WEAPON_CONTEXT[subcategoryId]);
+    negativeParts.push(WEAPON_NEGATIVES);
+  }
+  // 3. Add other category context
+  else if (CATEGORY_CONTEXT[categoryId]?.[subcategoryId]) {
+    promptParts.push(CATEGORY_CONTEXT[categoryId][subcategoryId]);
+    if (categoryId === "ARMOR") {
+      negativeParts.push(ARMOR_NEGATIVES);
+    }
+  }
+
+  // 4. Add STYLE - how it's rendered
   promptParts.push(stylePrompt);
 
-  // 3. Add isolation (CRITICAL - prevents sprite sheets)
+  // 5. Add isolation keywords
   promptParts.push("single isolated object");
   promptParts.push("centered on transparent background");
   promptParts.push("game asset icon");
 
-  // ===========================================
-  // BUILD NEGATIVE PROMPT - SIMPLE
-  // ===========================================
-  const negativeParts: string[] = [CORE_NEGATIVES];
+  // 6. Style-specific negatives
   if (styleNegative) {
     negativeParts.push(styleNegative);
   }
 
-  // Final assembly
   const finalPrompt = promptParts.join(", ");
   const finalNegative = negativeParts.join(", ");
 
   // Logging
   console.log("\n" + "═".repeat(60));
-  console.log("🎮 SIMPLE PROMPT BUILDER v4.0");
+  console.log("🎮 PROMPT BUILDER v5.0");
   console.log("═".repeat(60));
   console.log("📝 User wants:", cleanPrompt);
+  console.log("📦 Category:", categoryId, "/", subcategoryId);
   console.log("🎨 Style:", style.name);
   console.log("─".repeat(60));
   console.log("✅ FINAL:", finalPrompt);
@@ -117,14 +187,11 @@ export function buildUltimatePrompt(
 // ===========================================
 // ENHANCED PROMPT - DISABLED FOR NOW
 // ===========================================
-// Premium features temporarily disabled to fix core functionality
-
 export function buildEnhancedPrompt(
   userPrompt: string,
   categoryId: string,
   subcategoryId: string,
   styleId: string,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _options: {
     enableStyleMix?: boolean;
     style2Id?: string;
@@ -132,14 +199,13 @@ export function buildEnhancedPrompt(
     colorPaletteId?: string;
   } = {}
 ): BuildPromptResult {
-  // For now, just use the simple builder
-  // Premium features will be re-enabled after core is fixed
-  console.log("[EnhancedPrompt] Premium features temporarily disabled, using simple builder");
+  // Premium features disabled - use simple builder
+  console.log("[EnhancedPrompt] Premium features temporarily disabled");
   return buildUltimatePrompt(userPrompt, categoryId, subcategoryId, styleId);
 }
 
 // ===========================================
-// HELPER EXPORTS (for compatibility)
+// HELPER EXPORTS
 // ===========================================
 export function isIsometricMode(
   categoryId: string,
@@ -157,6 +223,5 @@ export function extractKeyDescriptors(userPrompt: string): string[] {
 }
 
 export function detectSlotGrid(_userPrompt: string, _subcategoryId: string): { hasSlots: boolean; slotCount: number; cols: number; rows: number; gridDescription: string } {
-  // Disabled for now - was causing issues
   return { hasSlots: false, slotCount: 0, cols: 0, rows: 0, gridDescription: "" };
 }
