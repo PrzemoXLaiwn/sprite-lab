@@ -11,6 +11,7 @@ import {
 } from "@/config";
 import { getOrCreateUser, checkAndDeductCredits, refundCredits, saveGeneration } from "@/lib/database";
 import { uploadImageToStorage } from "@/lib/storage";
+import { enhancePromptWithLearnedFixes } from "@/lib/analytics/prompt-enhancer";
 
 // Timeout for API calls (2 minutes)
 const API_TIMEOUT = 120000;
@@ -346,7 +347,7 @@ export async function POST(request: Request) {
     // 🏗️ Build Prompt (with Premium Features if enabled)
     const hasPremiumFeatures = enableStyleMix || colorPaletteId;
 
-    const { prompt: finalPrompt, negativePrompt, model, guidance, steps } = hasPremiumFeatures
+    const { prompt: builtPrompt, negativePrompt: builtNegative, model, guidance, steps } = hasPremiumFeatures
       ? buildEnhancedPrompt(
           prompt.trim(),
           categoryId,
@@ -365,6 +366,22 @@ export async function POST(request: Request) {
           subcategoryId,
           styleId
         );
+
+    // 🧠 AUTO-FIX: Apply learned fixes from AI quality system
+    const { enhancedPrompt, enhancedNegative, appliedFixes } = await enhancePromptWithLearnedFixes(
+      builtPrompt,
+      builtNegative,
+      categoryId,
+      subcategoryId,
+      styleId
+    );
+
+    const finalPrompt = enhancedPrompt;
+    const negativePrompt = enhancedNegative;
+
+    if (appliedFixes.length > 0) {
+      console.log(`[AutoFix] 🧠 Applied ${appliedFixes.length} learned fixes to prompt`);
+    }
 
     // 🎨 Generate Sprite (with timeout)
     let result: { success: boolean; imageUrl?: string; seed: number; model?: string; cost?: number; error?: string };

@@ -274,15 +274,17 @@ export async function processAnalysisJob(jobId: string): Promise<void> {
       },
     });
 
-    // If hallucination detected, track the pattern
+    // If hallucination detected, track the pattern AND AUTO-FIX
     if (result.hasHallucination && result.hallucinationType) {
       await trackHallucinationPattern(
         generation.categoryId,
         generation.subcategoryId,
-        generation.styleId,
+        generation.styleId || "PIXEL_ART_16",
         generation.prompt,
         result.hallucinationType,
-        result.suggestedFix
+        result.suggestedFix,
+        result.missingElements,
+        result.extraElements
       );
     }
 
@@ -322,14 +324,16 @@ export async function processAnalysisJob(jobId: string): Promise<void> {
   }
 }
 
-// Track hallucination patterns for prevention
+// Track hallucination patterns for prevention AND AUTO-FIX IMMEDIATELY
 async function trackHallucinationPattern(
   categoryId: string,
   subcategoryId: string,
   styleId: string,
   prompt: string,
   hallucinationType: string,
-  suggestedFix?: string
+  suggestedFix?: string,
+  missingElements?: string[],
+  extraElements?: string[]
 ): Promise<void> {
   // Extract keywords from prompt
   const keywords = prompt
@@ -340,6 +344,20 @@ async function trackHallucinationPattern(
     .slice(0, 10);
 
   const triggerKeywords = JSON.stringify(keywords);
+
+  // Auto-generate prevention prompt based on hallucination type
+  let autoFix = suggestedFix;
+  if (!autoFix) {
+    if (hallucinationType === "missing_element" && missingElements && missingElements.length > 0) {
+      autoFix = `MUST include ${missingElements.join(", ")}`;
+    } else if (hallucinationType === "wrong_element" && extraElements && extraElements.length > 0) {
+      autoFix = `DO NOT add ${extraElements.join(", ")}, only requested elements`;
+    } else if (hallucinationType === "style_mismatch") {
+      autoFix = "strictly follow the exact requested art style";
+    } else if (hallucinationType === "extra_element") {
+      autoFix = "single object only, no extra elements";
+    }
+  }
 
   // Try to find existing pattern
   const existing = await prisma.hallucinationPattern.findFirst({
@@ -358,9 +376,10 @@ async function trackHallucinationPattern(
       where: { id: existing.id },
       data: {
         occurrenceCount: { increment: 1 },
-        preventionPrompt: suggestedFix || existing.preventionPrompt,
+        preventionPrompt: autoFix || existing.preventionPrompt,
       },
     });
+    console.log(`[AutoFix] Updated pattern ${hallucinationType} (count: ${existing.occurrenceCount + 1})`);
   } else {
     // Create new pattern
     await prisma.hallucinationPattern.create({
@@ -370,9 +389,116 @@ async function trackHallucinationPattern(
         styleId,
         triggerKeywords,
         hallucinationType,
-        preventionPrompt: suggestedFix,
+        preventionPrompt: autoFix,
       },
     });
+    console.log(`[AutoFix] Created new pattern ${hallucinationType} for ${categoryId}/${subcategoryId}`);
+  }
+
+  // IMMEDIATE AUTO-FIX: Apply fix to optimized prompts
+  await applyImmediateAutoFix(categoryId, subcategoryId, styleId, hallucinationType, autoFix, missingElements, extraElements);
+}
+
+// Apply immediate auto-fix to the prompt system
+async function applyImmediateAutoFix(
+  categoryId: string,
+  subcategoryId: string,
+  styleId: string,
+  hallucinationType: string,
+  preventionPrompt?: string,
+  missingElements?: string[],
+  extraElements?: string[]
+): Promise<void> {
+  try {
+    // Get current optimized prompt if exists
+    const currentPrompt = await prisma.optimizedPrompt.findFirst({
+      where: { categoryId, subcategoryId, styleId, isActive: true },
+      orderBy: { version: "desc" },
+    });
+
+    // Build enhanced requirements based on the issue
+    const newRequirements: string[] = [];
+    const newAvoidKeywords: string[] = [];
+
+    if (hallucinationType === "missing_element" && missingElements) {
+      newRequirements.push(...missingElements);
+    }
+    if ((hallucinationType === "wrong_element" || hallucinationType === "extra_element") && extraElements) {
+      newAvoidKeywords.push(...extraElements);
+    }
+    if (hallucinationType === "style_mismatch") {
+      newRequirements.push("strict style adherence");
+    }
+    if (preventionPrompt) {
+      newRequirements.push(preventionPrompt);
+    }
+
+    // Merge with existing or create new
+    let requiredKeywords: string[] = [];
+    let avoidKeywords: string[] = [];
+
+    if (currentPrompt) {
+      try {
+        requiredKeywords = JSON.parse(currentPrompt.requiredKeywords || "[]");
+        avoidKeywords = JSON.parse(currentPrompt.avoidKeywords || "[]");
+      } catch { /* ignore parse errors */ }
+    }
+
+    // Add new requirements (avoid duplicates)
+    for (const req of newRequirements) {
+      if (req && !requiredKeywords.includes(req)) {
+        requiredKeywords.push(req);
+      }
+    }
+    for (const avoid of newAvoidKeywords) {
+      if (avoid && !avoidKeywords.includes(avoid)) {
+        avoidKeywords.push(avoid);
+      }
+    }
+
+    // Only update if we have something new to add
+    if (newRequirements.length === 0 && newAvoidKeywords.length === 0) {
+      return;
+    }
+
+    // Build template with fix
+    const template = currentPrompt?.promptTemplate ||
+      `{subject}, single game asset, centered composition, transparent background`;
+
+    const enhancedTemplate = preventionPrompt
+      ? `${template}, ${preventionPrompt}`
+      : template;
+
+    const newVersion = (currentPrompt?.version || 0) + 1;
+
+    // Deactivate old version
+    if (currentPrompt) {
+      await prisma.optimizedPrompt.update({
+        where: { id: currentPrompt.id },
+        data: { isActive: false },
+      });
+    }
+
+    // Create new optimized prompt with fix
+    await prisma.optimizedPrompt.create({
+      data: {
+        categoryId,
+        subcategoryId,
+        styleId,
+        promptTemplate: enhancedTemplate,
+        requiredKeywords: JSON.stringify(requiredKeywords),
+        avoidKeywords: JSON.stringify(avoidKeywords),
+        version: newVersion,
+        previousVersion: currentPrompt?.id,
+        isActive: true,
+      },
+    });
+
+    console.log(`[AutoFix] ✅ APPLIED IMMEDIATE FIX for ${categoryId}/${subcategoryId}/${styleId} v${newVersion}`);
+    console.log(`[AutoFix] Required keywords: ${requiredKeywords.slice(0, 5).join(", ")}`);
+    console.log(`[AutoFix] Avoid keywords: ${avoidKeywords.slice(0, 5).join(", ")}`);
+  } catch (error) {
+    console.error("[AutoFix] Failed to apply immediate fix:", error);
   }
 }
 
