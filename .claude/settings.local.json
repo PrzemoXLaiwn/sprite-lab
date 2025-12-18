@@ -22,7 +22,8 @@
       "Bash(git commit -m \"$(cat <<''EOF''\nFix Google Ads conversion tracking + PRO quality system\n\n- Add retry logic for gtag (waits up to 5s for script to load)\n- Track conversions on all success pages\n- Upgrade prompt builder to PRO v3.0\n- Lower FLUX-dev guidance for better quality\n- Add PRO_QUALITY_BOOST keywords\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git push:*)",
       "Bash(git commit:*)",
-      "Bash(del \"c:\\Users\\Montech.DESKTOP-HFD37TP\\Desktop\\sprite-lab-main\\scripts\\restore-generations.ts\")"
+      "Bash(del \"c:\\Users\\Montech.DESKTOP-HFD37TP\\Desktop\\sprite-lab-main\\scripts\\restore-generations.ts\")",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

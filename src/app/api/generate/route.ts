@@ -11,7 +11,7 @@ import {
 } from "@/config";
 import { getOrCreateUser, checkAndDeductCredits, refundCredits, saveGeneration } from "@/lib/database";
 import { uploadImageToStorage } from "@/lib/storage";
-import { enhancePromptWithLearnedFixes } from "@/lib/analytics/prompt-enhancer";
+// import { enhancePromptWithLearnedFixes } from "@/lib/analytics/prompt-enhancer"; // DISABLED
 
 // Timeout for API calls (2 minutes)
 const API_TIMEOUT = 120000;
@@ -367,21 +367,21 @@ export async function POST(request: Request) {
           styleId
         );
 
-    // 🧠 AUTO-FIX: Apply learned fixes from AI quality system
-    const { enhancedPrompt, enhancedNegative, appliedFixes } = await enhancePromptWithLearnedFixes(
-      builtPrompt,
-      builtNegative,
-      categoryId,
-      subcategoryId,
-      styleId
-    );
+    // 🧠 AUTO-FIX: DISABLED - was adding garbage to prompts
+    // TODO: Re-enable after fixing the learning system
+    // const { enhancedPrompt, enhancedNegative, appliedFixes } = await enhancePromptWithLearnedFixes(
+    //   builtPrompt,
+    //   builtNegative,
+    //   categoryId,
+    //   subcategoryId,
+    //   styleId
+    // );
 
-    const finalPrompt = enhancedPrompt;
-    const negativePrompt = enhancedNegative;
+    // Use prompts directly from builder - no modifications
+    const finalPrompt = builtPrompt;
+    const negativePrompt = builtNegative;
 
-    if (appliedFixes.length > 0) {
-      console.log(`[AutoFix] 🧠 Applied ${appliedFixes.length} learned fixes to prompt`);
-    }
+    console.log(`[API] 📝 Using clean prompt (no auto-fix)`);
 
     // 🎨 Generate Sprite (with timeout)
     let result: { success: boolean; imageUrl?: string; seed: number; model?: string; cost?: number; error?: string };

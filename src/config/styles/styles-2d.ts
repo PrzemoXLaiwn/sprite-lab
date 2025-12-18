@@ -38,10 +38,10 @@ export const STYLES_2D_FULL: Record<string, StyleConfig> = {
     name: "Pixel Art 16-bit",
     emoji: "🎮",
     description: "Classic retro style",
-    // Core style - weighted for FLUX
-    styleCore: "16-bit pixel art game sprite, retro SNES Genesis era, classic video game pixel graphics, pixel perfect rendering",
+    // Core style - optimized for SDXL pixel art
+    styleCore: "16-bit pixel art game sprite, retro SNES Genesis era, classic video game pixel graphics, pixel perfect rendering, visible square pixels",
     // Rendering specifics
-    rendering: "clearly visible individual square pixels, sharp pixel grid, dithering patterns for shading, NO anti-aliasing, NO smoothing whatsoever",
+    rendering: "clearly visible individual square pixels, sharp pixel grid, dithering patterns for shading, NO anti-aliasing, NO smoothing whatsoever, each pixel must be distinct",
     // Color palette
     colors: "strictly limited 16-24 color indexed palette, saturated retro game colors, flat color fills, no color gradients at all",
     // Edge handling
@@ -50,12 +50,12 @@ export const STYLES_2D_FULL: Record<string, StyleConfig> = {
     styleEnforcement: "THIS MUST BE PIXEL ART with clearly visible square pixels throughout. Every edge shows individual pixels. Classic 16-bit era game aesthetic like Final Fantasy VI or Chrono Trigger sprites.",
     // Mandatory requirements
     styleMandatory: "MANDATORY: visible pixel grid, pixelated edges, dithering shading, retro aesthetic. FORBIDDEN: smooth gradients, anti-aliasing, soft edges, painterly strokes, HD rendering",
-    // Negative prompt
-    negatives: "smooth, gradient, realistic, photorealistic, blurry, soft edges, anti-aliased, high resolution smooth details, 3D render, photograph, painting, watercolor, oil paint, sketch, pencil, smooth shading, soft lighting, realistic textures, film grain, noise, hand-painted, vector art, clean smooth lines, modern digital art, soft brush, airbrush, HD quality, 4K, smooth curves, soft focus",
-    // Model settings - FLUX-dev optimized
-    model: "flux-dev",
-    guidance: 3.5,  // FLUX works better with lower guidance (3-4)
-    steps: 35,      // Higher steps for pixel precision
+    // Negative prompt - stronger anti-smooth
+    negatives: "smooth, gradient, realistic, photorealistic, blurry, soft edges, anti-aliased, anti-aliasing, high resolution smooth details, 3D render, photograph, painting, watercolor, oil paint, sketch, pencil, smooth shading, soft lighting, realistic textures, film grain, noise, hand-painted, vector art, clean smooth lines, modern digital art, soft brush, airbrush, HD quality, 4K, smooth curves, soft focus, soft gradients, smooth rendering",
+    // Model settings - OPTIMIZED: Lower guidance, more steps
+    model: "sdxl",
+    guidance: 8.0,   // ✅ OPTIMIZED: Prevents over-saturation and artifacts
+    steps: 50,       // ✅ OPTIMIZED: More steps for sharper pixels
   },
 
   PIXEL_ART_32: {
@@ -70,9 +70,9 @@ export const STYLES_2D_FULL: Record<string, StyleConfig> = {
     styleEnforcement: "Modern HD PIXEL ART with visible pixels throughout - higher detail than 16-bit but still clearly pixelated, NOT smooth digital art. Like Hyper Light Drifter or Octopath Traveler sprites.",
     styleMandatory: "MANDATORY: visible pixels, pixel-based shading, crisp edges. FORBIDDEN: smooth gradients, anti-aliasing, photorealistic rendering, painterly strokes",
     negatives: "smooth gradients, blurry, soft, painterly, 3D render, photorealistic, vector art, anti-aliased edges, soft brush strokes, realistic textures, photograph, smooth digital art, airbrushed",
-    model: "flux-dev",
-    guidance: 3.5,
-    steps: 35,
+    model: "sdxl",
+    guidance: 8.0,      // ✅ OPTIMIZED: Consistent with PIXEL_ART_16
+    steps: 45,          // ✅ OPTIMIZED: More steps for quality
   },
 
   // ===========================================
@@ -200,16 +200,16 @@ export const STYLES_2D_FULL: Record<string, StyleConfig> = {
     name: "Isometric",
     emoji: "🏰",
     description: "Clash of Clans style",
-    styleCore: "isometric 2.5D game art, dimetric projection strategy game style like Clash of Clans Age of Empires Stardew Valley, mobile strategy aesthetic",
-    rendering: "consistent 26.57-degree isometric angle 2:1 ratio, clean cel-shaded surfaces, soft drop shadow underneath, clear form definition",
+    styleCore: "isometric 2.5D game art, strict 26.57-degree dimetric projection (2:1 ratio), strategy game style like Clash of Clans Age of Empires Stardew Valley, mobile strategy aesthetic",
+    rendering: "STRICT 26.57-degree isometric angle with 2:1 pixel ratio, clean cel-shaded surfaces, soft drop shadow underneath, clear form definition, mathematically correct iso projection",
     colors: "vibrant saturated colors, clear material differentiation, warm top-left lighting, distinct surface colors per plane",
     edges: "clean geometric edges at proper iso angles, precise isometric construction, subtle outlines, smooth edges for clarity",
-    styleEnforcement: "Proper isometric projection as seen in mobile strategy games. Consistent angle maintained throughout entire object. Game-ready asset.",
-    styleMandatory: "MUST be true isometric angle not perspective, consistent top-left lighting, single isolated object - NOT perspective 3D, NOT top-down flat",
-    negatives: "perspective view with vanishing point, flat top-down orthographic, side view profile, inconsistent angles, photorealistic 3D render, tilted wrong, fisheye lens, dutch angle, blurry, realistic textures",
-    model: "flux-dev",
-    guidance: 3.5,
-    steps: 35,
+    styleEnforcement: "Proper 26.57-degree isometric projection as seen in mobile strategy games. STRICT angle maintained throughout entire object. Game-ready asset. NO perspective distortion.",
+    styleMandatory: "MUST be true 26.57-degree isometric angle not perspective, consistent top-left lighting, single isolated object - NOT perspective 3D, NOT top-down flat, NOT 30-45 degree angles",
+    negatives: "perspective view with vanishing point, flat top-down orthographic, side view profile, inconsistent angles, photorealistic 3D render, tilted wrong, fisheye lens, dutch angle, blurry, realistic textures, wrong isometric angle, 30 degree angle, 45 degree angle",
+    model: "sdxl",
+    guidance: 8.5,      // ✅ OPTIMIZED: Higher guidance for strict angle control
+    steps: 45,          // ✅ OPTIMIZED: More steps for geometric precision
   },
 
   ISOMETRIC_PIXEL: {
@@ -217,16 +217,16 @@ export const STYLES_2D_FULL: Record<string, StyleConfig> = {
     name: "Isometric Pixel",
     emoji: "🎮",
     description: "Pixel art isometric",
-    styleCore: "isometric pixel art sprite, retro strategy RTS style like classic StarCraft Command and Conquer Age of Empires II, pixel perfect iso projection",
+    styleCore: "isometric pixel art sprite, retro strategy RTS style like classic StarCraft Command and Conquer Age of Empires II, pixel perfect iso projection, strict 26.57 degree isometric angle",
     rendering: "pixel perfect isometric angles, dithering for shading, clearly visible pixels, clean pixel clusters, precise pixel placement",
     colors: "limited 16-32 indexed color palette, color ramps for pixel shading, retro game colors",
     edges: "hard pixel edges with no anti-aliasing, clean pixel boundaries, proper stair-step isometric lines",
-    styleEnforcement: "Pixel art in isometric view. Must show visible pixels while maintaining proper isometric angle. Like classic RTS games.",
+    styleEnforcement: "Pixel art in isometric view. Must show visible pixels while maintaining proper 26.57 degree isometric angle (2:1 ratio). Like classic RTS games.",
     styleMandatory: "MUST be pixel art with visible pixels AND proper isometric angle - both requirements critical, no smooth gradients",
     negatives: "smooth gradients, anti-aliased edges, 3D render, perspective view, realistic, painterly, soft edges, blurry, smooth curves, modern HD",
-    model: "flux-dev",
-    guidance: 4.0,
-    steps: 35,
+    model: "sdxl",
+    guidance: 9.0,      // ✅ Already optimal for dual requirements
+    steps: 50,          // ✅ OPTIMIZED: Maximum steps for pixel+iso precision
   },
 
   ISOMETRIC_CARTOON: {
