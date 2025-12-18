@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { deleteImageFromStorage } from "@/lib/storage";
+import { getOrCreateUser } from "@/lib/database";
 
 // ===========================================
 // GET - Fetch user's generations
@@ -18,6 +19,9 @@ export async function GET(request: Request) {
         { status: 401 }
       );
     }
+
+    // Ensure user exists in database
+    await getOrCreateUser(user.id, user.email!);
 
     // Get query parameters
     const { searchParams } = new URL(request.url);
