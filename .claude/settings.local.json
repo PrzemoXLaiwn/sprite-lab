@@ -23,7 +23,8 @@
       "Bash(git push:*)",
       "Bash(git commit:*)",
       "Bash(del \"c:\\Users\\Montech.DESKTOP-HFD37TP\\Desktop\\sprite-lab-main\\scripts\\restore-generations.ts\")",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(npx next:*)"
     ],
     "deny": [],
     "ask": []

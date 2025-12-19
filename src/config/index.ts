@@ -175,3 +175,20 @@ export type {
   AssetPack,
   AssetPackItem,
 } from "./features";
+
+// ===========================================
+// BUILDER (Advanced Mode)
+// ===========================================
+export {
+  WEAPONS_BUILDER,
+  ARMOR_BUILDER,
+  buildPromptFromSelections,
+  getBuilder,
+  hasBuilder,
+} from "./builder";
+
+export type {
+  BuilderOption,
+  BuilderCategory,
+  SubcategoryBuilder,
+} from "./builder";

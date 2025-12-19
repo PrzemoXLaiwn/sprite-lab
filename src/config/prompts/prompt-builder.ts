@@ -1,121 +1,169 @@
 // ===========================================
-// SPRITELAB - PROMPT BUILDER v5.0
+// SPRITELAB - PROMPT BUILDER v10.0
 // ===========================================
-// USER PROMPT IS KING - system adds style and weapon context
-// Category adds WHAT the weapon looks like (sword = blade + hilt)
-// Style adds HOW it's rendered (pixel art, anime, etc.)
+// SIMPLE & EFFECTIVE - like meshy.ai
+//
+// RULES:
+// 1. User prompt FIRST (what they want)
+// 2. Category context (what type of object)
+// 3. Perspective (how to show it)
+// 4. Style (pixel art, hand-painted, etc.)
+// 5. Isolation (game asset, centered, clean)
+//
+// NEGATIVE PROMPT blocks unwanted stuff
 
 import type { BuildPromptResult, StyleConfig } from "../types";
 import { STYLES_2D_FULL } from "../styles";
 
 // ===========================================
-// WEAPON DESCRIPTIONS - What each weapon IS
+// PERSPECTIVES - How to show each item type
 // ===========================================
-const WEAPON_CONTEXT: Record<string, string> = {
-  // SWORDS - klasyczny miecz fantasy
-  SWORDS: "medieval fantasy sword with metal blade, crossguard, wrapped handle, pommel",
-
-  // AXES - klasyczny topór bojowy
-  AXES: "battle axe with metal axe head, sharp blade edge, wooden handle shaft",
-
-  // POLEARMS - włócznia z grotem
-  POLEARMS: "spear with long wooden shaft, metal spearhead point at the end",
-
-  // BOWS - łuk bez strzały
-  BOWS: "wooden bow with curved limbs, taut bowstring, no arrow",
-
-  // STAFFS - magiczna laska z kryształem
-  STAFFS: "wizard staff with wooden shaft, magical crystal orb on top, mystical glow",
-
-  // GUNS - realistyczna broń palna
-  GUNS: "firearm gun with barrel, trigger, grip handle, realistic military style",
-
-  // THROWING - shuriken/kunai ninja
-  THROWING: "ninja throwing weapon, shuriken star or kunai knife, sharp metal",
-};
-
-// ===========================================
-// OTHER CATEGORY CONTEXT
-// ===========================================
-const CATEGORY_CONTEXT: Record<string, Record<string, string>> = {
+const PERSPECTIVES: Record<string, Record<string, string>> = {
+  WEAPONS: {
+    SWORDS: "side view, horizontal, full blade visible from tip to handle",
+    AXES: "side view, diagonal angle, full head and handle visible",
+    POLEARMS: "vertical, full length from tip to bottom",
+    BOWS: "front view, slight angle, full curve and string visible",
+    STAFFS: "vertical, full length, top ornament visible",
+    GUNS: "side profile, horizontal, full weapon visible",
+    THROWING: "top-down flat view, full shape visible",
+  },
   ARMOR: {
-    HELMETS: "helmet armor piece, protective headgear, empty inside (no head)",
-    CHEST_ARMOR: "chest armor breastplate, torso protection, empty (no body inside)",
-    SHIELDS: "shield, defensive equipment, front view",
-    GLOVES: "gauntlet gloves, hand armor, empty (no hands inside)",
-    BOOTS: "armored boots, foot protection, empty (no feet inside)",
-    ACCESSORIES: "armor accessory, belt cape ring amulet",
+    HELMETS: "front 3/4 view, face opening visible, no head inside",
+    CHEST_ARMOR: "front view, torso piece only, no body inside",
+    SHIELDS: "front view, flat, emblem/design visible",
+    GLOVES: "3/4 view, pair of gloves, no hands inside",
+    BOOTS: "side view, pair of boots, no feet inside",
+    ACCESSORIES: "front view, centered",
   },
   CONSUMABLES: {
-    POTIONS: "potion bottle, glass flask with colored liquid, cork stopper",
-    FOOD: "food item, edible, appetizing",
-    SCROLLS: "magic scroll, rolled parchment, wax seal",
+    POTIONS: "front view, slight angle, full bottle visible",
+    FOOD: "3/4 view, appetizing presentation",
+    SCROLLS: "slight angle, rolled parchment visible",
   },
   RESOURCES: {
-    GEMS: "gemstone, cut precious gem, faceted crystal",
-    ORES: "ore chunk, raw mineral, metallic veins in rock",
-    WOOD_STONE: "raw material, wood log or stone chunk",
-    PLANTS: "magical herb plant, glowing leaves",
-    MONSTER_PARTS: "monster drop, creature part like scale fang claw",
-    MAGIC_MATERIALS: "magical essence, glowing orb or crystal",
+    GEMS: "front view, facets visible, sparkling",
+    ORES: "3/4 view, raw chunk",
+    WOOD_STONE: "3/4 view, raw material",
+    PLANTS: "front view, full plant visible",
+    MONSTER_PARTS: "3/4 view, detailed",
+    MAGIC_MATERIALS: "front view, glowing",
   },
   CHARACTERS: {
-    HEROES: "hero character, full body, adventurer",
-    ENEMIES: "enemy character, full body, hostile",
-    NPCS: "NPC character, full body, friendly",
-    BOSSES: "boss enemy, large imposing, powerful",
+    HEROES: "front 3/4 view, full body, heroic pose",
+    ENEMIES: "front 3/4 view, full body, menacing pose",
+    NPCS: "front 3/4 view, full body, neutral pose",
+    BOSSES: "front view, full body, imposing stance",
   },
   CREATURES: {
-    ANIMALS: "animal creature, full body",
-    MYTHICAL: "mythical beast, dragon phoenix unicorn",
-    PETS: "cute pet companion, small friendly",
-    ELEMENTALS: "elemental being, made of fire water earth air",
+    ANIMALS: "side 3/4 view, full body",
+    MYTHICAL: "front 3/4 view, full body, majestic",
+    PETS: "front view, full body, cute pose",
+    ELEMENTALS: "front view, full form, energy visible",
   },
 };
 
 // ===========================================
-// STYLE RENDERING - How it LOOKS
+// OBJECT DESCRIPTIONS - What the object IS
+// ===========================================
+const OBJECT_TYPES: Record<string, Record<string, string>> = {
+  WEAPONS: {
+    SWORDS: "sword, bladed weapon",
+    AXES: "axe, chopping weapon",
+    POLEARMS: "polearm, long-shafted weapon",
+    BOWS: "bow, ranged weapon with string",
+    STAFFS: "magical staff",
+    GUNS: "firearm, gun",
+    THROWING: "throwing weapon",
+  },
+  ARMOR: {
+    HELMETS: "helmet, head protection, empty inside",
+    CHEST_ARMOR: "chest armor, torso protection, empty inside",
+    SHIELDS: "shield, defensive equipment",
+    GLOVES: "gauntlets, hand armor, empty inside",
+    BOOTS: "boots, foot armor, empty inside",
+    ACCESSORIES: "armor accessory",
+  },
+  CONSUMABLES: {
+    POTIONS: "potion bottle, glass container with liquid",
+    FOOD: "food item, edible",
+    SCROLLS: "scroll, rolled parchment",
+  },
+  RESOURCES: {
+    GEMS: "gemstone, precious crystal",
+    ORES: "ore, raw mineral",
+    WOOD_STONE: "raw material",
+    PLANTS: "herb, magical plant",
+    MONSTER_PARTS: "monster drop, creature part",
+    MAGIC_MATERIALS: "magical material, enchanted essence",
+  },
+  CHARACTERS: {
+    HEROES: "hero character, adventurer",
+    ENEMIES: "enemy character, hostile",
+    NPCS: "NPC, friendly character",
+    BOSSES: "boss enemy, powerful foe",
+  },
+  CREATURES: {
+    ANIMALS: "animal, creature",
+    MYTHICAL: "mythical beast, legendary creature",
+    PETS: "pet companion, cute creature",
+    ELEMENTALS: "elemental being, magical entity",
+  },
+};
+
+// ===========================================
+// STYLE PROMPTS - Visual rendering style
 // ===========================================
 const STYLE_PROMPTS: Record<string, string> = {
-  PIXEL_ART_16: "16-bit pixel art, visible square pixels, retro SNES style, limited color palette",
-  PIXEL_ART_32: "32-bit HD pixel art, detailed pixels, modern indie game style",
-  HAND_PAINTED: "hand painted digital art, visible brush strokes, painterly style",
+  PIXEL_ART_16: "16-bit pixel art, retro SNES style, visible pixels, limited palette",
+  PIXEL_ART_32: "32-bit HD pixel art, detailed pixels, indie game style",
+  HAND_PAINTED: "hand-painted digital art, painterly brushstrokes",
   VECTOR_CLEAN: "clean vector art, flat colors, smooth edges, mobile game style",
-  ANIME_GAME: "anime game art, cel shading, JRPG style, clean lines",
-  CHIBI_CUTE: "chibi kawaii style, cute big head small body, adorable",
-  CARTOON_WESTERN: "western cartoon style, bold outlines, Cuphead aesthetic",
-  DARK_SOULS: "dark fantasy style, gritty weathered, souls-like aesthetic, muted colors",
-  ISOMETRIC: "isometric 2.5D view, 26.57 degree angle, strategy game style",
-  ISOMETRIC_PIXEL: "isometric pixel art, retro RTS style, visible pixels",
-  ISOMETRIC_CARTOON: "isometric cartoon style, colorful casual game",
-  REALISTIC_PAINTED: "realistic digital painting, AAA game concept art quality",
+  ANIME_GAME: "anime game art, cel shading, JRPG style",
+  CHIBI_CUTE: "chibi kawaii style, cute big head, adorable",
+  CARTOON_WESTERN: "western cartoon, bold outlines, Cuphead style",
+  DARK_SOULS: "dark fantasy, gritty, weathered, souls-like",
+  ISOMETRIC: "isometric 2.5D, 30 degree angle, strategy game style",
+  ISOMETRIC_PIXEL: "isometric pixel art, retro RTS style",
+  ISOMETRIC_CARTOON: "isometric cartoon, colorful casual game",
+  REALISTIC_PAINTED: "realistic digital painting, detailed, concept art quality",
 };
+
+// ===========================================
+// ISOLATION - Clean game asset presentation
+// ===========================================
+const ISOLATION_PROMPT = "single isolated game asset icon, centered, clean background, professional game art, high quality render";
 
 // ===========================================
 // NEGATIVE PROMPTS
 // ===========================================
-const CORE_NEGATIVES = "multiple objects, many items, sprite sheet, grid, collection, blurry, low quality, watermark, text, signature, background, scenery";
+const NEGATIVE_CORE = [
+  "multiple items, collection, many objects, sprite sheet, grid, duplicates",
+  "background, scenery, environment, landscape, room",
+  "blurry, low quality, watermark, text, signature",
+  "cropped, cut off, partial, incomplete",
+].join(", ");
+
+const NEGATIVE_WEAPONS = "scabbard, sheath, holder, stand, hand holding, person wielding, combat scene";
+const NEGATIVE_ARMOR = "body inside, person wearing, mannequin, human form, skin visible, face inside";
 
 const STYLE_NEGATIVES: Record<string, string> = {
-  PIXEL_ART_16: "smooth gradients, anti-aliasing, realistic, 3D render, photograph, soft edges",
-  PIXEL_ART_32: "smooth gradients, anti-aliasing, realistic, 3D render, soft edges",
-  HAND_PAINTED: "pixel art, vector art, flat colors, 3D render, sharp edges",
-  VECTOR_CLEAN: "textured, painterly, pixel art, realistic, rough edges",
-  ANIME_GAME: "western cartoon, realistic, pixel art, 3D render",
-  CHIBI_CUTE: "realistic proportions, dark, scary, mature, detailed",
-  CARTOON_WESTERN: "anime, realistic, pixel art, subtle, thin lines",
-  DARK_SOULS: "bright colors, cartoon, cute, chibi, clean, colorful",
-  ISOMETRIC: "perspective view, top-down flat, side view, realistic 3D",
-  ISOMETRIC_PIXEL: "smooth gradients, perspective view, realistic, soft",
-  ISOMETRIC_CARTOON: "realistic, dark, pixel art, perspective view",
-  REALISTIC_PAINTED: "cartoon, pixel art, flat colors, anime, simple",
+  PIXEL_ART_16: "smooth gradients, anti-aliasing, realistic, 3D render, photograph",
+  PIXEL_ART_32: "smooth gradients, anti-aliasing, realistic, soft edges",
+  HAND_PAINTED: "pixel art, vector, flat colors, 3D render",
+  VECTOR_CLEAN: "textured, painterly, pixel art, realistic",
+  ANIME_GAME: "western cartoon, realistic, pixel art",
+  CHIBI_CUTE: "realistic proportions, dark, scary, detailed",
+  CARTOON_WESTERN: "anime, realistic, pixel art, thin lines",
+  DARK_SOULS: "bright colors, cartoon, cute, chibi, colorful",
+  ISOMETRIC: "perspective view, top-down, side view, realistic 3D",
+  ISOMETRIC_PIXEL: "smooth gradients, perspective, realistic",
+  ISOMETRIC_CARTOON: "realistic, dark, pixel art, perspective",
+  REALISTIC_PAINTED: "cartoon, pixel art, flat colors, anime",
 };
 
-const WEAPON_NEGATIVES = "multiple weapons, weapon collection, sprite sheet, hand holding, person wielding, combat scene, broken";
-const ARMOR_NEGATIVES = "body inside, person wearing, human form, mannequin, skin visible";
-
 // ===========================================
-// MAIN FUNCTION
+// MAIN FUNCTION - buildUltimatePrompt
 // ===========================================
 export function buildUltimatePrompt(
   userPrompt: string,
@@ -124,54 +172,75 @@ export function buildUltimatePrompt(
   styleId: string
 ): BuildPromptResult {
   const style: StyleConfig = STYLES_2D_FULL[styleId] || STYLES_2D_FULL.PIXEL_ART_16;
+
+  // Get components
   const stylePrompt = STYLE_PROMPTS[styleId] || STYLE_PROMPTS.PIXEL_ART_16;
   const styleNegative = STYLE_NEGATIVES[styleId] || "";
+  const perspective = PERSPECTIVES[categoryId]?.[subcategoryId] || "";
+  const objectType = OBJECT_TYPES[categoryId]?.[subcategoryId] || "";
 
+  // Clean user input
   const cleanPrompt = userPrompt.trim();
+
+  // ===========================================
+  // BUILD POSITIVE PROMPT
+  // ===========================================
+  // Order: User description → Object type → Perspective → Style → Isolation
   const promptParts: string[] = [];
-  const negativeParts: string[] = [CORE_NEGATIVES];
 
-  // 1. USER PROMPT FIRST - what they asked for
-  promptParts.push(cleanPrompt);
-
-  // 2. Add WEAPON context if it's a weapon
-  if (categoryId === "WEAPONS" && WEAPON_CONTEXT[subcategoryId]) {
-    promptParts.push(WEAPON_CONTEXT[subcategoryId]);
-    negativeParts.push(WEAPON_NEGATIVES);
-  }
-  // 3. Add other category context
-  else if (CATEGORY_CONTEXT[categoryId]?.[subcategoryId]) {
-    promptParts.push(CATEGORY_CONTEXT[categoryId][subcategoryId]);
-    if (categoryId === "ARMOR") {
-      negativeParts.push(ARMOR_NEGATIVES);
-    }
+  // 1. User's description (MOST IMPORTANT)
+  if (cleanPrompt) {
+    promptParts.push(cleanPrompt);
   }
 
-  // 4. Add STYLE - how it's rendered
+  // 2. Object type context
+  if (objectType) {
+    promptParts.push(objectType);
+  }
+
+  // 3. Perspective/view
+  if (perspective) {
+    promptParts.push(perspective);
+  }
+
+  // 4. Art style
   promptParts.push(stylePrompt);
 
-  // 5. Add isolation keywords
-  promptParts.push("single isolated object");
-  promptParts.push("centered on transparent background");
-  promptParts.push("game asset icon");
+  // 5. Isolation/presentation
+  promptParts.push(ISOLATION_PROMPT);
 
-  // 6. Style-specific negatives
+  // ===========================================
+  // BUILD NEGATIVE PROMPT
+  // ===========================================
+  const negativeParts: string[] = [NEGATIVE_CORE];
+
+  // Category-specific negatives
+  if (categoryId === "WEAPONS") {
+    negativeParts.push(NEGATIVE_WEAPONS);
+  } else if (categoryId === "ARMOR") {
+    negativeParts.push(NEGATIVE_ARMOR);
+  }
+
+  // Style-specific negatives
   if (styleNegative) {
     negativeParts.push(styleNegative);
   }
 
+  // ===========================================
+  // FINAL OUTPUT
+  // ===========================================
   const finalPrompt = promptParts.join(", ");
   const finalNegative = negativeParts.join(", ");
 
-  // Logging
+  // Log for debugging
   console.log("\n" + "═".repeat(60));
-  console.log("🎮 PROMPT BUILDER v5.0");
+  console.log("🎮 PROMPT BUILDER v10.0");
   console.log("═".repeat(60));
-  console.log("📝 User wants:", cleanPrompt);
+  console.log("📝 Input:", cleanPrompt);
   console.log("📦 Category:", categoryId, "/", subcategoryId);
-  console.log("🎨 Style:", style.name);
+  console.log("🎨 Style:", styleId);
   console.log("─".repeat(60));
-  console.log("✅ FINAL:", finalPrompt);
+  console.log("✅ PROMPT:", finalPrompt);
   console.log("❌ NEGATIVE:", finalNegative);
   console.log("═".repeat(60) + "\n");
 
@@ -185,7 +254,7 @@ export function buildUltimatePrompt(
 }
 
 // ===========================================
-// ENHANCED PROMPT - DISABLED FOR NOW
+// ENHANCED PROMPT (Premium - currently same as basic)
 // ===========================================
 export function buildEnhancedPrompt(
   userPrompt: string,
@@ -199,8 +268,7 @@ export function buildEnhancedPrompt(
     colorPaletteId?: string;
   } = {}
 ): BuildPromptResult {
-  // Premium features disabled - use simple builder
-  console.log("[EnhancedPrompt] Premium features temporarily disabled");
+  // Premium features disabled - use standard builder
   return buildUltimatePrompt(userPrompt, categoryId, subcategoryId, styleId);
 }
 
@@ -209,19 +277,16 @@ export function buildEnhancedPrompt(
 // ===========================================
 export function isIsometricMode(
   categoryId: string,
-  subcategoryId: string,
+  _subcategoryId: string,
   styleId: string
 ): boolean {
-  if (categoryId === "ISOMETRIC") return true;
-  if (styleId.startsWith("ISOMETRIC")) return true;
-  if (subcategoryId.startsWith("ISO_")) return true;
-  return false;
+  return categoryId === "ISOMETRIC" || styleId.startsWith("ISOMETRIC");
 }
 
 export function extractKeyDescriptors(userPrompt: string): string[] {
   return userPrompt.split(/\s+/).filter(w => w.length > 3).slice(0, 5);
 }
 
-export function detectSlotGrid(_userPrompt: string, _subcategoryId: string): { hasSlots: boolean; slotCount: number; cols: number; rows: number; gridDescription: string } {
+export function detectSlotGrid(): { hasSlots: boolean; slotCount: number; cols: number; rows: number; gridDescription: string } {
   return { hasSlots: false, slotCount: 0, cols: 0, rows: 0, gridDescription: "" };
 }

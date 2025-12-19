@@ -39,12 +39,14 @@ import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
 import { generateRandomPrompt, generatePromptSuggestions } from "@/lib/random-prompts";
 import { FeedbackPopup } from "@/components/dashboard/FeedbackPopup";
 import { PremiumFeatures } from "@/components/generate/PremiumFeatures";
+import { ItemBuilder } from "@/components/generate/ItemBuilder";
 import {
   ALL_CATEGORIES,
   STYLES_2D_UI,
   STYLES_3D,
   MODELS_3D,
   ICON_MAP,
+  hasBuilder,
 } from "@/config";
 
 // ===========================================
@@ -233,6 +235,10 @@ export default function GeneratePage() {
   const [style1Weight, setStyle1Weight] = useState(70);
   const [colorPaletteId, setColorPaletteId] = useState("");
 
+  // Item Builder State (Advanced Mode for Weapons/Armor)
+  const [builderEnabled, setBuilderEnabled] = useState(false);
+  const [builderPrompt, setBuilderPrompt] = useState("");
+
   const currentCategory = ALL_CATEGORIES.find(c => c.id === categoryId);
   const currentSubcategory = currentCategory?.subcategories.find(s => s.id === subcategoryId);
   const categorySupports3D = currentCategory?.supports3D ?? true;
@@ -342,6 +348,9 @@ export default function GeneratePage() {
   const handleCategoryChange = (newCategoryId: string) => {
     setCategoryId(newCategoryId);
     setSubcategoryId("");
+    // Reset builder when category changes
+    setBuilderEnabled(false);
+    setBuilderPrompt("");
     const newCategory = ALL_CATEGORIES.find(c => c.id === newCategoryId);
     if (mode === "3d" && !newCategory?.supports3D) {
       setMode("2d");
@@ -452,9 +461,13 @@ export default function GeneratePage() {
   const handleGenerate = async () => {
     if (!categoryId) { setError("Select a category!"); return; }
     if (!subcategoryId) { setError("Select a subcategory!"); return; }
+
+    // Determine which prompt to use: builder prompt (if enabled and has content) or manual prompt
+    const effectivePrompt = (builderEnabled && builderPrompt.trim()) ? builderPrompt.trim() : prompt.trim();
+
     // For 3D mode with image upload, prompt is optional
-    if (mode === "2d" && !prompt.trim()) { setError("Enter a description!"); return; }
-    if (mode === "3d" && !prompt.trim() && !uploadedImageUrl) { setError("Enter a description or upload an image!"); return; }
+    if (mode === "2d" && !effectivePrompt) { setError("Enter a description or use the Advanced Builder!"); return; }
+    if (mode === "3d" && !effectivePrompt && !uploadedImageUrl) { setError("Enter a description or upload an image!"); return; }
 
     setLoading(true);
     setProgress(0);
@@ -479,7 +492,7 @@ export default function GeneratePage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            prompt: prompt.trim(),
+            prompt: effectivePrompt,
             categoryId,
             subcategoryId,
             styleId,
@@ -515,7 +528,7 @@ export default function GeneratePage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            prompt: prompt.trim() || undefined,
+            prompt: effectivePrompt || undefined,
             categoryId,
             subcategoryId,
             modelId: model3D,
@@ -1045,6 +1058,22 @@ export default function GeneratePage() {
                     <div className="mt-2 p-3 rounded-lg bg-[#ff9500]/10 border border-[#ff9500]/30 flex items-start gap-2">
                       <AlertCircle className="w-4 h-4 text-[#ff9500] flex-shrink-0 mt-0.5" />
                       <p className="text-sm text-[#ff9500]">{promptMismatchWarning}</p>
+                    </div>
+                  )}
+
+                  {/* Advanced Item Builder (Weapons/Armor only) */}
+                  {mode === "2d" && hasBuilder(categoryId, subcategoryId) && (
+                    <div className="mt-3">
+                      <ItemBuilder
+                        categoryId={categoryId}
+                        subcategoryId={subcategoryId}
+                        enabled={builderEnabled}
+                        onEnabledChange={(enabled) => {
+                          setBuilderEnabled(enabled);
+                          if (!enabled) setBuilderPrompt("");
+                        }}
+                        onPromptGenerated={setBuilderPrompt}
+                      />
                     </div>
                   )}
 
