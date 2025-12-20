@@ -20,6 +20,7 @@ import { PresenceTracker } from "@/components/PresenceTracker";
 import { MobileMenu } from "@/components/dashboard/MobileMenu";
 import { NotificationPopup } from "@/components/dashboard/NotificationPopup";
 import { FeedbackPopup } from "@/components/dashboard/FeedbackPopup";
+import { OnboardingOverlay, TutorialOverlay } from "@/components/onboarding/OnboardingProvider";
 import { prisma } from "@/lib/prisma";
 
 const navItems = [
@@ -202,6 +203,12 @@ export default async function DashboardLayout({
 
       {/* Periodic Feedback Popup */}
       <FeedbackPopup />
+
+      {/* Onboarding Wizard for new users */}
+      <OnboardingOverlay />
+
+      {/* Tutorial for generator (shows after first generation) */}
+      <TutorialOverlay />
       </div>
     </div>
   );

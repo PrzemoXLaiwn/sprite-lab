@@ -27,8 +27,9 @@ import {
   AlertCircle,
   CheckCircle2,
 } from "lucide-react";
-import { fetchUserProfile, updateProfile, fetchCreditHistory, checkUsername, uploadAvatar } from "./page.actions";
+import { fetchUserProfile, updateProfile, fetchCreditHistory, checkUsername, uploadAvatar, fetchEmailPreferences, updateEmailPreferences, EmailPreferences } from "./page.actions";
 import Link from "next/link";
+import { Mail, Megaphone, Package, Coins } from "lucide-react";
 
 interface UserData {
   id: string;
@@ -82,15 +83,24 @@ export default function SettingsPage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Email preferences
+  const [emailPrefs, setEmailPrefs] = useState<EmailPreferences>({
+    marketing: true,
+    productUpdates: true,
+    creditAlerts: true,
+  });
+  const [savingEmailPrefs, setSavingEmailPrefs] = useState(false);
+
   useEffect(() => {
     loadData();
   }, []);
 
   const loadData = async () => {
     setLoading(true);
-    const [profileResult, transactionsResult] = await Promise.all([
+    const [profileResult, transactionsResult, emailPrefsResult] = await Promise.all([
       fetchUserProfile(),
       fetchCreditHistory(),
+      fetchEmailPreferences(),
     ]);
 
     if (profileResult.success && profileResult.user) {
@@ -107,6 +117,10 @@ export default function SettingsPage() {
 
     if (transactionsResult.success) {
       setTransactions(transactionsResult.transactions);
+    }
+
+    if (emailPrefsResult.success && emailPrefsResult.preferences) {
+      setEmailPrefs(emailPrefsResult.preferences);
     }
 
     setLoading(false);
@@ -194,6 +208,20 @@ export default function SettingsPage() {
     }
 
     setUploadingAvatar(false);
+  };
+
+  const handleEmailPrefChange = async (key: keyof EmailPreferences, value: boolean) => {
+    setSavingEmailPrefs(true);
+    const newPrefs = { ...emailPrefs, [key]: value };
+    setEmailPrefs(newPrefs);
+
+    const result = await updateEmailPreferences({ [key]: value });
+    if (!result.success) {
+      // Revert on failure
+      setEmailPrefs(emailPrefs);
+      setError(result.error || "Failed to update email preferences");
+    }
+    setSavingEmailPrefs(false);
   };
 
   const formatDate = (date: Date | string) => {
@@ -513,39 +541,80 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          {/* Notifications */}
-          <Card>
+          {/* Email Preferences */}
+          <Card id="email">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Bell className="w-5 h-5" />
-                Notifications
+                <Mail className="w-5 h-5" />
+                Email Preferences
               </CardTitle>
-              <CardDescription>Manage your notification preferences</CardDescription>
+              <CardDescription>Control what emails you receive from us</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Email Notifications</p>
-                    <p className="text-sm text-muted-foreground">
-                      Receive updates about your generations
-                    </p>
+              <div className="space-y-4">
+                {/* Marketing Emails */}
+                <div className="flex items-center justify-between p-4 rounded-lg border border-border">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[#c084fc]/10 flex items-center justify-center">
+                      <Megaphone className="w-5 h-5 text-[#c084fc]" />
+                    </div>
+                    <div>
+                      <p className="font-medium">Promotions & Offers</p>
+                      <p className="text-sm text-muted-foreground">
+                        Special deals, discounts, and credit offers
+                      </p>
+                    </div>
                   </div>
-                  <Button variant="outline" size="sm">
-                    Enable
-                  </Button>
+                  <Switch
+                    checked={emailPrefs.marketing}
+                    onCheckedChange={(checked) => handleEmailPrefChange("marketing", checked)}
+                    disabled={savingEmailPrefs}
+                  />
                 </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Credit Alerts</p>
-                    <p className="text-sm text-muted-foreground">
-                      Get notified when credits are low
-                    </p>
+
+                {/* Product Updates */}
+                <div className="flex items-center justify-between p-4 rounded-lg border border-border">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[#00d4ff]/10 flex items-center justify-center">
+                      <Package className="w-5 h-5 text-[#00d4ff]" />
+                    </div>
+                    <div>
+                      <p className="font-medium">Product Updates</p>
+                      <p className="text-sm text-muted-foreground">
+                        New features, improvements, and tips
+                      </p>
+                    </div>
                   </div>
-                  <Button variant="outline" size="sm">
-                    Enable
-                  </Button>
+                  <Switch
+                    checked={emailPrefs.productUpdates}
+                    onCheckedChange={(checked) => handleEmailPrefChange("productUpdates", checked)}
+                    disabled={savingEmailPrefs}
+                  />
                 </div>
+
+                {/* Credit Alerts */}
+                <div className="flex items-center justify-between p-4 rounded-lg border border-border">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[#00ff88]/10 flex items-center justify-center">
+                      <Coins className="w-5 h-5 text-[#00ff88]" />
+                    </div>
+                    <div>
+                      <p className="font-medium">Credit Alerts</p>
+                      <p className="text-sm text-muted-foreground">
+                        Reminders when your credits are running low
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={emailPrefs.creditAlerts}
+                    onCheckedChange={(checked) => handleEmailPrefChange("creditAlerts", checked)}
+                    disabled={savingEmailPrefs}
+                  />
+                </div>
+
+                <p className="text-xs text-muted-foreground pt-2">
+                  We'll always send you important account notifications like receipts and security alerts.
+                </p>
               </div>
             </CardContent>
           </Card>

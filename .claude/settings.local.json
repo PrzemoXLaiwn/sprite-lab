@@ -24,7 +24,10 @@
       "Bash(git commit:*)",
       "Bash(del \"c:\\Users\\Montech.DESKTOP-HFD37TP\\Desktop\\sprite-lab-main\\scripts\\restore-generations.ts\")",
       "Bash(find:*)",
-      "Bash(npx next:*)"
+      "Bash(npx next:*)",
+      "Bash(npx prisma db push:*)",
+      "Bash(npx dotenv-cli:*)",
+      "Bash(npm ls:*)"
     ],
     "deny": [],
     "ask": []

@@ -350,19 +350,27 @@ export interface SaveGenerationParams {
 
 export async function saveGeneration(params: SaveGenerationParams) {
   try {
-    const generation = await prisma.generation.create({
-      data: {
-        userId: params.userId,
-        prompt: params.prompt,
-        fullPrompt: params.fullPrompt,
-        categoryId: params.categoryId,
-        subcategoryId: params.subcategoryId,
-        styleId: params.styleId,
-        imageUrl: params.imageUrl,
-        seed: params.seed,
-        replicateCost: params.replicateCost,
-      },
-    });
+    // Create generation and update lastActiveAt in parallel
+    const [generation] = await Promise.all([
+      prisma.generation.create({
+        data: {
+          userId: params.userId,
+          prompt: params.prompt,
+          fullPrompt: params.fullPrompt,
+          categoryId: params.categoryId,
+          subcategoryId: params.subcategoryId,
+          styleId: params.styleId,
+          imageUrl: params.imageUrl,
+          seed: params.seed,
+          replicateCost: params.replicateCost,
+        },
+      }),
+      // Update user's last active timestamp
+      prisma.user.update({
+        where: { id: params.userId },
+        data: { lastActiveAt: new Date() },
+      }),
+    ]);
 
     console.log("Saved generation to database:", generation.id, "Cost: $" + (params.replicateCost || 0).toFixed(4));
 

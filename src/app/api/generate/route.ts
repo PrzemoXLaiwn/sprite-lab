@@ -25,6 +25,45 @@ const replicate = new Replicate({
 // ===========================================
 type ModelIdentifier = `${string}/${string}` | `${string}/${string}:${string}`;
 
+// ===========================================
+// 🎮 FLUX-SPRITES - Specialized for game sprites!
+// Model: miike-ai/flux-sprites
+// Cost: ~$0.0066/image (151 runs per $1)
+// ===========================================
+async function runFluxSprites(
+  prompt: string,
+  seed: number
+): Promise<{ imageUrl: string | null; error?: string }> {
+  try {
+    console.log("[FLUX-Sprites] 🎮 Starting sprite generation...");
+    const output = await replicate.run(
+      "miike-ai/flux-sprites:ef9ae4919a3e2b1c589c235a8fe1b9f8bd5b379a7dd585b5916e9c4c83807e9b" as ModelIdentifier,
+      {
+        input: {
+          prompt: `SPRITESHEET, ${prompt}`,
+          seed,
+          steps: 25,
+          guidance: 3.5,
+          interval: 2,
+          aspect_ratio: "1:1",
+          output_format: "png",
+          output_quality: 100,
+          safety_tolerance: 5,
+        },
+      }
+    );
+    const imageUrl = extractUrl(output);
+    if (imageUrl) {
+      console.log("[FLUX-Sprites] ✅ Success!");
+      return { imageUrl };
+    }
+    return { imageUrl: null, error: "No output URL" };
+  } catch (error) {
+    console.error("[FLUX-Sprites] ❌ Error:", error);
+    return { imageUrl: null, error: String(error) };
+  }
+}
+
 async function runFluxDev(
   prompt: string,
   seed: number,
@@ -158,32 +197,35 @@ function extractUrl(output: unknown): string | null {
 // ===========================================
 // Replicate cost per model (USD) - based on their pricing
 const MODEL_COSTS: Record<string, number> = {
+  "flux-sprites": 0.0066, // ~$0.0066 per image (151 runs per $1) - BEST FOR SPRITES!
   "flux-dev": 0.025,      // ~$0.025 per image (25 steps)
   "flux-schnell": 0.003,  // ~$0.003 per image (4 steps)
   "sdxl": 0.0023,         // ~$0.0023 per image
 };
 
+type ModelId = "flux-sprites" | "flux-dev" | "sdxl" | "flux-schnell";
+
 async function generateSprite(
   prompt: string,
   negative: string,
-  preferredModel: "flux-dev" | "sdxl" | "flux-schnell",
+  _preferredModel: "flux-dev" | "sdxl" | "flux-schnell", // kept for API compatibility
   guidance: number,
   steps: number,
   seed: number
 ): Promise<{ success: boolean; imageUrl?: string; seed: number; model?: string; cost?: number; error?: string }> {
 
-  // Try preferred model first, then fallbacks
-  const modelOrder: Array<"flux-dev" | "sdxl" | "flux-schnell"> =
-    preferredModel === "sdxl"
-      ? ["sdxl", "flux-dev", "flux-schnell"]
-      : preferredModel === "flux-schnell"
-        ? ["flux-schnell", "flux-dev", "sdxl"]
-        : ["flux-dev", "sdxl", "flux-schnell"];
+  // FLUX-SPRITES is now the PRIMARY model for all sprite generation!
+  // It's trained specifically for game sprites and costs 4x less than flux-dev
+  // Fallback order: flux-sprites → flux-dev → sdxl → flux-schnell
+  const modelOrder: ModelId[] = ["flux-sprites", "flux-dev", "sdxl", "flux-schnell"];
 
   for (const modelId of modelOrder) {
     let result: { imageUrl: string | null; error?: string };
 
     switch (modelId) {
+      case "flux-sprites":
+        result = await runFluxSprites(prompt, seed);
+        break;
       case "flux-dev":
         result = await runFluxDev(prompt, seed, steps);
         break;

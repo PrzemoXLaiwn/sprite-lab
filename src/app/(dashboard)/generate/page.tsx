@@ -40,6 +40,8 @@ import { generateRandomPrompt, generatePromptSuggestions } from "@/lib/random-pr
 import { FeedbackPopup } from "@/components/dashboard/FeedbackPopup";
 import { PremiumFeatures } from "@/components/generate/PremiumFeatures";
 import { ItemBuilder } from "@/components/generate/ItemBuilder";
+import { CategoryExamples } from "@/components/generate/CategoryExamples";
+import { InfoTooltip, GENERATOR_INFO } from "@/components/ui/InfoTooltip";
 import {
   ALL_CATEGORIES,
   STYLES_2D_UI,
@@ -703,6 +705,7 @@ export default function GeneratePage() {
                   <Zap className="w-4 h-4 text-white" />
                 </div>
                 <h3 className="font-semibold text-white">Output Type</h3>
+                <InfoTooltip {...GENERATOR_INFO.outputType} />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -779,6 +782,7 @@ export default function GeneratePage() {
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center text-[#030305] font-bold text-sm">1</div>
                 <h3 className="font-semibold text-white">Select Category</h3>
+                <InfoTooltip {...GENERATOR_INFO.category} />
               </div>
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                 {ALL_CATEGORIES.map((cat) => {
@@ -825,6 +829,7 @@ export default function GeneratePage() {
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-8 h-8 rounded-lg bg-[#00d4ff] flex items-center justify-center text-[#030305] font-bold text-sm">2</div>
                   <h3 className="font-semibold text-white">Select Type</h3>
+                  <InfoTooltip {...GENERATOR_INFO.subcategory} />
                   <ChevronRight className="w-4 h-4 text-[#a0a0b0]" />
                   <span className="text-sm text-[#00ff88]">{currentCategory.name}</span>
                 </div>
@@ -849,6 +854,13 @@ export default function GeneratePage() {
                     );
                   })}
                 </div>
+
+                {/* Example gallery for selected category/subcategory */}
+                <CategoryExamples
+                  categoryId={categoryId}
+                  subcategoryId={subcategoryId}
+                  onPromptClick={(p) => setPrompt(p)}
+                />
               </div>
             )}
 
@@ -858,6 +870,7 @@ export default function GeneratePage() {
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-[#00ff88] to-[#00d4ff] flex items-center justify-center text-[#030305] font-bold text-sm">3</div>
                   <h3 className="font-semibold text-white">Art Style</h3>
+                  <InfoTooltip {...GENERATOR_INFO.artStyle} />
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                   {STYLES_2D_UI.map((style) => {
@@ -889,6 +902,7 @@ export default function GeneratePage() {
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-[#c084fc] to-[#00d4ff] flex items-center justify-center text-white font-bold text-sm">3</div>
                     <h3 className="font-semibold text-white">Visual Style</h3>
+                    <InfoTooltip {...GENERATOR_INFO.artStyle} />
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {STYLES_3D.map((style) => {
@@ -1008,6 +1022,7 @@ export default function GeneratePage() {
                   <h3 className="font-semibold text-white">
                     {mode === "3d" ? "Describe or Upload Image" : "Describe Your Asset"}
                   </h3>
+                  <InfoTooltip {...GENERATOR_INFO.prompt} />
                 </div>
 
                 {/* Input mode toggle for 3D */}
@@ -1044,14 +1059,26 @@ export default function GeneratePage() {
                 <>
                   <div className="relative">
                     <Input
-                      placeholder={currentSubcategory ? `e.g. ${currentSubcategory.examples[0]}` : "Select category first..."}
+                      placeholder={currentSubcategory
+                        ? `e.g. ${currentSubcategory.examples[0]}`
+                        : "Describe your asset... (e.g. golden sword, red potion, cute slime)"
+                      }
                       value={prompt}
                       onChange={(e) => setPrompt(e.target.value)}
                       className="h-14 text-base input-gaming pr-12"
-                      disabled={!subcategoryId}
                     />
                     <Wand2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#00ff88]" />
                   </div>
+
+                  {/* Helper hint when no category selected */}
+                  {!categoryId && prompt.trim() && (
+                    <div className="mt-2 p-3 rounded-lg bg-[#00d4ff]/10 border border-[#00d4ff]/30 flex items-start gap-2">
+                      <Lightbulb className="w-4 h-4 text-[#00d4ff] flex-shrink-0 mt-0.5" />
+                      <p className="text-sm text-[#00d4ff]">
+                        Select a category and type above to generate your asset!
+                      </p>
+                    </div>
+                  )}
 
                   {/* Prompt Category Mismatch Warning */}
                   {promptMismatchWarning && (
@@ -1282,11 +1309,14 @@ export default function GeneratePage() {
             {/* Seed & Generate */}
             <div className="flex gap-3">
               <div className="flex-1 relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10">
+                  <InfoTooltip {...GENERATOR_INFO.seed} />
+                </div>
                 <Input
                   placeholder="Seed (optional)"
                   value={seed}
                   onChange={(e) => setSeed(e.target.value.replace(/\D/g, ""))}
-                  className="h-12 font-mono input-gaming"
+                  className="h-12 font-mono input-gaming pl-10"
                 />
                 <button
                   onClick={generateRandomSeed}

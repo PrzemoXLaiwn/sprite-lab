@@ -143,3 +143,87 @@ export async function uploadAvatar(formData: FormData) {
 
   return { success: true, url: publicUrl };
 }
+
+// Email preferences
+export interface EmailPreferences {
+  marketing: boolean;
+  productUpdates: boolean;
+  creditAlerts: boolean;
+}
+
+export async function fetchEmailPreferences(): Promise<{
+  success: boolean;
+  preferences?: EmailPreferences;
+  error?: string;
+}> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  try {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { emailPreferences: true },
+    });
+
+    // Default preferences
+    const defaults: EmailPreferences = {
+      marketing: true,
+      productUpdates: true,
+      creditAlerts: true,
+    };
+
+    const prefs = dbUser?.emailPreferences as Partial<EmailPreferences> | null;
+
+    return {
+      success: true,
+      preferences: {
+        ...defaults,
+        ...(prefs || {}),
+      },
+    };
+  } catch (error) {
+    console.error("Failed to fetch email preferences:", error);
+    return { success: false, error: "Failed to fetch preferences" };
+  }
+}
+
+export async function updateEmailPreferences(
+  preferences: Partial<EmailPreferences>
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  try {
+    // Get current preferences
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { emailPreferences: true },
+    });
+
+    const currentPrefs = (dbUser?.emailPreferences as Record<string, unknown>) || {};
+
+    // Merge with new preferences
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailPreferences: {
+          ...currentPrefs,
+          ...preferences,
+        },
+      },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to update email preferences:", error);
+    return { success: false, error: "Failed to update preferences" };
+  }
+}

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { fetchDashboardData } from "./page.actions";
+import { CommunityShowcase } from "@/components/dashboard/CommunityShowcase";
 
 interface DashboardData {
   stats: {
@@ -280,6 +281,9 @@ export default function DashboardPage() {
               </p>
             </CardContent>
           </Card>
+
+          {/* Community Showcase */}
+          <CommunityShowcase />
 
           {/* Upgrade Prompt */}
           {stats?.plan === "FREE" && (

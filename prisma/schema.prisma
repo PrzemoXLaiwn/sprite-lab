@@ -25,6 +25,8 @@ model User {
   totalSpent            Float         @default(0) @map("total_spent") // Total money spent in GBP
   createdAt             DateTime      @default(now()) @map("created_at")
   updatedAt             DateTime      @updatedAt @map("updated_at")
+  lastActiveAt          DateTime?     @map("last_active_at") // For re-engagement emails
+  emailPreferences      Json?         @map("email_preferences") // { marketing: true, welcomeEmailSent: true, etc. }
 
   // Profile fields
   username              String?       @unique
@@ -463,6 +465,33 @@ model HallucinationPattern {
   @@index([hallucinationType])
   @@index([occurrenceCount])
   @@map("hallucination_patterns")
+}
+
+// ===========================================
+// EMAIL MARKETING SYSTEM
+// ===========================================
+
+// Log all sent emails for tracking and analytics
+model EmailLog {
+  id            String   @id @default(cuid())
+  userId        String?  @map("user_id") // Nullable for non-user emails
+  email         String   // Recipient email
+  type          String   // WELCOME, RE_ENGAGEMENT, PROMO, SYSTEM
+  subject       String
+  status        String   @default("sent") // sent, failed, bounced, opened, clicked
+  messageId     String?  @map("message_id") // Resend message ID
+  errorMessage  String?  @map("error_message")
+  metadata      Json?    // Extra data (promo code, campaign name, etc.)
+  openedAt      DateTime? @map("opened_at")
+  clickedAt     DateTime? @map("clicked_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([email])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+  @@map("email_logs")
 }
 
 // Store prompt templates that work well (learned from data)

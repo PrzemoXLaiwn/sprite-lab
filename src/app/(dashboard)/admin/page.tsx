@@ -884,6 +884,12 @@ export default function AdminPage() {
             Quality Dashboard
           </Button>
         </Link>
+        <Link href="/admin/email">
+          <Button variant="outline" className="gap-2">
+            <Mail className="w-4 h-4" />
+            Email Marketing
+          </Button>
+        </Link>
       </div>
 
       {/* Conditional Rendering Based on View */}
@@ -971,7 +977,7 @@ export default function AdminPage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>All Users ({filteredUsers.length})</CardTitle>
+                  <CardTitle>All Users ({stats?.totalUsers || filteredUsers.length})</CardTitle>
                   <CardDescription>Manage user accounts and credits</CardDescription>
                 </div>
               </div>

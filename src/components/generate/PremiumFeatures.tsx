@@ -12,6 +12,7 @@ import {
   Check,
   Zap,
 } from "lucide-react";
+import { InfoTooltip, GENERATOR_INFO } from "@/components/ui/InfoTooltip";
 import {
   ANIMATION_TYPES,
   COLOR_PALETTES,
@@ -90,6 +91,9 @@ export function PremiumFeatures({
         <div>
           <h3 className="font-semibold text-white">Premium Features</h3>
           <p className="text-xs text-[#a0a0b0]">Unique tools for pro game devs</p>
+        </div>
+        <div className="ml-auto">
+          <InfoTooltip {...GENERATOR_INFO.premiumFeatures} />
         </div>
       </div>
 

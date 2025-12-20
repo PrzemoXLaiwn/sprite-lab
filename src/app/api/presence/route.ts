@@ -8,6 +8,10 @@ const ONLINE_THRESHOLD_MS = 2 * 60 * 1000;
 // Store last seen in memory (for simplicity, could use Redis for scale)
 const lastSeenMap = new Map<string, number>();
 
+// Track when we last updated the database for each user (to avoid too many writes)
+const lastDbUpdateMap = new Map<string, number>();
+const DB_UPDATE_INTERVAL_MS = 5 * 60 * 1000; // Update DB every 5 minutes
+
 // POST - Update user's presence (heartbeat)
 export async function POST() {
   try {
@@ -18,8 +22,21 @@ export async function POST() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Update last seen timestamp
-    lastSeenMap.set(user.id, Date.now());
+    const now = Date.now();
+
+    // Update in-memory last seen timestamp
+    lastSeenMap.set(user.id, now);
+
+    // Update lastActiveAt in database periodically (every 5 minutes)
+    const lastDbUpdate = lastDbUpdateMap.get(user.id) || 0;
+    if (now - lastDbUpdate > DB_UPDATE_INTERVAL_MS) {
+      lastDbUpdateMap.set(user.id, now);
+      // Fire and forget - don't wait for this
+      prisma.user.update({
+        where: { id: user.id },
+        data: { lastActiveAt: new Date() },
+      }).catch((err) => console.error("[Presence] DB update failed:", err));
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { sendWelcomeEmail } from "@/lib/email/send";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -42,8 +43,17 @@ export async function GET(request: Request) {
         }
       }
 
-      // If this is email confirmation (signup), redirect to success page
+      // If this is email confirmation (signup), send welcome email and redirect
       if (type === "signup") {
+        // Send welcome email in background (don't block redirect)
+        if (user) {
+          sendWelcomeEmail(
+            user.email!,
+            user.user_metadata?.full_name || user.user_metadata?.name,
+            15,
+            user.id
+          ).catch((err) => console.error("[Auth Callback] Welcome email failed:", err));
+        }
         return NextResponse.redirect(`${origin}/auth/confirm`);
       }
       // Password reset - redirect to update-password page
