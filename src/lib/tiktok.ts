@@ -119,9 +119,12 @@ export function trackRegistration(): void {
  */
 export function trackCheckoutStart(plan: string, value: number): void {
   trackTikTokEvent("InitiateCheckout", {
+    content_id: plan.toLowerCase().replace(/\s+/g, "-"),
+    content_type: "product",
     content_name: plan,
     value,
     currency: "GBP",
+    quantity: 1,
   });
 }
 
@@ -130,9 +133,12 @@ export function trackCheckoutStart(plan: string, value: number): void {
  */
 export function trackPurchase(plan: string, value: number): void {
   trackTikTokEvent("CompletePayment", {
+    content_id: plan.toLowerCase().replace(/\s+/g, "-"),
+    content_type: "product",
     content_name: plan,
     value,
     currency: "GBP",
+    quantity: 1,
   });
 }
 
