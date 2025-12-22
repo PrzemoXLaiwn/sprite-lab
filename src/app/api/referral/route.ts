@@ -82,10 +82,8 @@ export async function GET() {
       take: 50,
     });
 
-    // Use NEXT_PUBLIC_APP_URL, VERCEL_URL, or fallback
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL
-      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
-      || "https://sprite-lab.vercel.app";
+    // Use NEXT_PUBLIC_APP_URL or fallback to production domain
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.sprite-lab.com";
     const referralLink = `${baseUrl}/register?ref=${dbUser.referralCode}`;
 
     return NextResponse.json({
