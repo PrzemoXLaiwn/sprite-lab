@@ -18,7 +18,7 @@ export async function GET() {
 
     if (!result.success || !result.stats) {
       return NextResponse.json(
-        { totalGenerations: 0, credits: 0 },
+        { totalGenerations: 0, credits: 0, plan: "FREE" },
         { status: 200 }
       );
     }

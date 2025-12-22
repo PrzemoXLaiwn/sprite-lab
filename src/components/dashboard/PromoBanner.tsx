@@ -1,19 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Sparkles, Clock, Zap, Gift } from "lucide-react";
+import { X, Zap, Gift, TrendingUp, Users } from "lucide-react";
 import Link from "next/link";
 
-interface SlotInfo {
-  sold: number;
-  max: number;
-  available: number;
-}
+// FOMO Config - First 100 users
+const PROMO_CONFIG = {
+  totalSlots: 100,
+  claimedSlots: 23, // TODO: Fetch from database
+};
 
 export function PromoBanner() {
-  const [isVisible, setIsVisible] = useState(true);
-  const [totalSlotsLeft, setTotalSlotsLeft] = useState(50);
   const [isDismissed, setIsDismissed] = useState(false);
+  const [totalAssets, setTotalAssets] = useState(1247);
 
   useEffect(() => {
     // Check if dismissed in this session
@@ -23,22 +22,17 @@ export function PromoBanner() {
       return;
     }
 
-    // Fetch lifetime slots
-    fetch("/api/lifetime-slots")
+    // Fetch real total assets count
+    fetch("/api/stats/total-generations")
       .then((res) => res.json())
       .then((data) => {
-        if (data.slots) {
-          const total = Object.values(data.slots as Record<string, SlotInfo>).reduce(
-            (sum, slot) => sum + slot.available,
-            0
-          );
-          setTotalSlotsLeft(total);
-          if (total <= 0) {
-            setIsVisible(false);
-          }
+        if (data.total) {
+          setTotalAssets(data.total);
         }
       })
-      .catch(console.error);
+      .catch(() => {
+        // Keep default value on error
+      });
   }, []);
 
   const handleDismiss = () => {
@@ -46,39 +40,38 @@ export function PromoBanner() {
     sessionStorage.setItem("promoBannerDismissed", "true");
   };
 
-  if (!isVisible || isDismissed) return null;
+  const slotsRemaining = PROMO_CONFIG.totalSlots - PROMO_CONFIG.claimedSlots;
+
+  if (isDismissed) return null;
 
   return (
-    <div className="sticky top-0 left-0 right-0 z-50 bg-gradient-to-r from-yellow-600 via-orange-500 to-red-500 text-black">
+    <div className="sticky top-0 left-0 right-0 z-50 bg-gradient-to-r from-red-600 via-orange-500 to-yellow-500 text-black">
       <div className="max-w-7xl mx-auto px-4 py-2">
         <div className="flex items-center justify-between gap-4">
           {/* Main content */}
           <div className="flex items-center gap-6 flex-1 overflow-x-auto">
-            {/* Lifetime Deal */}
+            {/* FOMO - First 100 Users */}
             <Link
-              href="/pricing#lifetime"
+              href="/pricing"
               className="flex items-center gap-2 whitespace-nowrap hover:opacity-80 transition-opacity"
             >
-              <Sparkles className="w-4 h-4 animate-pulse" />
-              <span className="font-bold">LIFETIME DEAL:</span>
-              <span>Only {totalSlotsLeft}/50 spots left!</span>
+              <Zap className="w-4 h-4 animate-pulse" />
+              <span className="font-bold">FIRST 100 USERS:</span>
+              <span>Only {slotsRemaining} spots left!</span>
               <span className="bg-black/20 px-2 py-0.5 rounded text-xs font-bold">
-                Pay once, use FOREVER
+                50% OFF forever
               </span>
             </Link>
 
             {/* Separator */}
             <span className="hidden md:inline text-black/30">|</span>
 
-            {/* Launch Promo */}
-            <Link
-              href="/pricing"
-              className="hidden md:flex items-center gap-2 whitespace-nowrap hover:opacity-80 transition-opacity"
-            >
-              <Zap className="w-4 h-4" />
-              <span className="font-semibold">50% OFF</span>
-              <span className="text-black/80">first month on all plans</span>
-            </Link>
+            {/* Social Proof - Total Assets */}
+            <div className="hidden md:flex items-center gap-2 whitespace-nowrap">
+              <TrendingUp className="w-4 h-4" />
+              <span className="font-semibold">{totalAssets.toLocaleString()}</span>
+              <span className="text-black/80">assets created</span>
+            </div>
 
             {/* Separator */}
             <span className="hidden lg:inline text-black/30">|</span>
@@ -99,7 +92,7 @@ export function PromoBanner() {
             href="/pricing"
             className="hidden sm:flex items-center gap-1 bg-black text-white px-3 py-1.5 rounded-full text-sm font-bold hover:bg-black/80 transition-colors whitespace-nowrap"
           >
-            View Deals
+            Claim 50% OFF
           </Link>
 
           {/* Close button */}

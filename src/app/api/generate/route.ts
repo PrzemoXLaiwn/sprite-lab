@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import Replicate from "replicate";
 import {
   getCategoryById,
   getSubcategoryById,
@@ -9,247 +8,12 @@ import {
   buildUltimatePrompt,
   buildEnhancedPrompt,
 } from "@/config";
-import { getOrCreateUser, checkAndDeductCredits, refundCredits, saveGeneration } from "@/lib/database";
+import { getOrCreateUser, checkAndDeductCredits, refundCredits, saveGeneration, getUserTier } from "@/lib/database";
 import { uploadImageToStorage } from "@/lib/storage";
-// import { enhancePromptWithLearnedFixes } from "@/lib/analytics/prompt-enhancer"; // DISABLED
+import { generateImage, RUNWARE_MODELS, MODEL_COSTS, type RunwareModelId } from "@/lib/runware";
 
 // Timeout for API calls (2 minutes)
 const API_TIMEOUT = 120000;
-
-const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_TOKEN,
-});
-
-// ===========================================
-// 🖼️ IMAGE GENERATION FUNCTIONS
-// ===========================================
-type ModelIdentifier = `${string}/${string}` | `${string}/${string}:${string}`;
-
-// ===========================================
-// 🎮 FLUX-SPRITES - Specialized for game sprites!
-// Model: miike-ai/flux-sprites
-// Cost: ~$0.0066/image (151 runs per $1)
-// ===========================================
-async function runFluxSprites(
-  prompt: string,
-  seed: number
-): Promise<{ imageUrl: string | null; error?: string }> {
-  try {
-    console.log("[FLUX-Sprites] 🎮 Starting sprite generation...");
-    const output = await replicate.run(
-      "miike-ai/flux-sprites:ef9ae4919a3e2b1c589c235a8fe1b9f8bd5b379a7dd585b5916e9c4c83807e9b" as ModelIdentifier,
-      {
-        input: {
-          prompt: `SPRITESHEET, ${prompt}`,
-          seed,
-          steps: 25,
-          guidance: 3.5,
-          interval: 2,
-          aspect_ratio: "1:1",
-          output_format: "png",
-          output_quality: 100,
-          safety_tolerance: 5,
-        },
-      }
-    );
-    const imageUrl = extractUrl(output);
-    if (imageUrl) {
-      console.log("[FLUX-Sprites] ✅ Success!");
-      return { imageUrl };
-    }
-    return { imageUrl: null, error: "No output URL" };
-  } catch (error) {
-    console.error("[FLUX-Sprites] ❌ Error:", error);
-    return { imageUrl: null, error: String(error) };
-  }
-}
-
-async function runFluxDev(
-  prompt: string,
-  seed: number,
-  steps: number
-): Promise<{ imageUrl: string | null; error?: string }> {
-  try {
-    console.log("[FLUX-Dev] 🚀 Starting generation...");
-    const output = await replicate.run(
-      "black-forest-labs/flux-dev" as ModelIdentifier,
-      {
-        input: {
-          prompt,
-          seed,
-          go_fast: false,
-          guidance: 3.5,
-          num_outputs: 1,
-          aspect_ratio: "1:1",
-          output_format: "png",
-          output_quality: 100,
-          num_inference_steps: steps,
-        },
-      }
-    );
-    const imageUrl = extractUrl(output);
-    if (imageUrl) {
-      console.log("[FLUX-Dev] ✅ Success!");
-      return { imageUrl };
-    }
-    return { imageUrl: null, error: "No output URL" };
-  } catch (error) {
-    console.error("[FLUX-Dev] ❌ Error:", error);
-    return { imageUrl: null, error: String(error) };
-  }
-}
-
-async function runFluxSchnell(
-  prompt: string,
-  seed: number
-): Promise<{ imageUrl: string | null; error?: string }> {
-  try {
-    console.log("[FLUX-Schnell] 🚀 Starting generation...");
-    const output = await replicate.run(
-      "black-forest-labs/flux-schnell" as ModelIdentifier,
-      {
-        input: {
-          prompt,
-          seed,
-          num_outputs: 1,
-          aspect_ratio: "1:1",
-          output_format: "png",
-          output_quality: 100,
-        },
-      }
-    );
-    const imageUrl = extractUrl(output);
-    if (imageUrl) {
-      console.log("[FLUX-Schnell] ✅ Success!");
-      return { imageUrl };
-    }
-    return { imageUrl: null, error: "No output URL" };
-  } catch (error) {
-    console.error("[FLUX-Schnell] ❌ Error:", error);
-    return { imageUrl: null, error: String(error) };
-  }
-}
-
-async function runSDXL(
-  prompt: string,
-  negative: string,
-  seed: number,
-  guidance: number,
-  steps: number
-): Promise<{ imageUrl: string | null; error?: string }> {
-  try {
-    console.log("[SDXL] 🚀 Starting generation... (guidance:", guidance, ", steps:", steps, ")");
-    const output = await replicate.run(
-      "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b" as ModelIdentifier,
-      {
-        input: {
-          prompt,
-          negative_prompt: negative,
-          seed,
-          width: 1024,
-          height: 1024,
-          num_outputs: 1,
-          guidance_scale: guidance,
-          num_inference_steps: steps,
-          scheduler: "K_EULER",
-          refine: "expert_ensemble_refiner",
-          high_noise_frac: 0.8,
-          apply_watermark: false,
-        },
-      }
-    );
-    const imageUrl = extractUrl(output);
-    if (imageUrl) {
-      console.log("[SDXL] ✅ Success!");
-      return { imageUrl };
-    }
-    return { imageUrl: null, error: "No output URL" };
-  } catch (error) {
-    console.error("[SDXL] ❌ Error:", error);
-    return { imageUrl: null, error: String(error) };
-  }
-}
-
-function extractUrl(output: unknown): string | null {
-  if (Array.isArray(output) && output.length > 0) {
-    const first = output[0];
-    if (typeof first === "string") return first;
-    if (first && typeof first === "object") {
-      const obj = first as Record<string, unknown>;
-      if (typeof obj.url === "function") {
-        try { return (obj.url as () => URL)().toString(); } catch { /* ignore */ }
-      }
-      if (typeof obj.url === "string") return obj.url;
-      if (typeof obj.uri === "string") return obj.uri;
-      if (typeof obj.href === "string") return obj.href;
-    }
-  }
-  if (typeof output === "string") return output;
-  if (output && typeof output === "object") {
-    const obj = output as Record<string, unknown>;
-    if (typeof obj.url === "string") return obj.url;
-  }
-  return null;
-}
-
-// ===========================================
-// 🔄 GENERATION WITH SMART FALLBACK
-// ===========================================
-// Replicate cost per model (USD) - based on their pricing
-const MODEL_COSTS: Record<string, number> = {
-  "flux-sprites": 0.0066, // ~$0.0066 per image (151 runs per $1) - BEST FOR SPRITES!
-  "flux-dev": 0.025,      // ~$0.025 per image (25 steps)
-  "flux-schnell": 0.003,  // ~$0.003 per image (4 steps)
-  "sdxl": 0.0023,         // ~$0.0023 per image
-};
-
-type ModelId = "flux-sprites" | "flux-dev" | "sdxl" | "flux-schnell";
-
-async function generateSprite(
-  prompt: string,
-  negative: string,
-  _preferredModel: "flux-dev" | "sdxl" | "flux-schnell", // kept for API compatibility
-  guidance: number,
-  steps: number,
-  seed: number
-): Promise<{ success: boolean; imageUrl?: string; seed: number; model?: string; cost?: number; error?: string }> {
-
-  // FLUX-SPRITES is now the PRIMARY model for all sprite generation!
-  // It's trained specifically for game sprites and costs 4x less than flux-dev
-  // Fallback order: flux-sprites → flux-dev → sdxl → flux-schnell
-  const modelOrder: ModelId[] = ["flux-sprites", "flux-dev", "sdxl", "flux-schnell"];
-
-  for (const modelId of modelOrder) {
-    let result: { imageUrl: string | null; error?: string };
-
-    switch (modelId) {
-      case "flux-sprites":
-        result = await runFluxSprites(prompt, seed);
-        break;
-      case "flux-dev":
-        result = await runFluxDev(prompt, seed, steps);
-        break;
-      case "sdxl":
-        result = await runSDXL(prompt, negative, seed, guidance, steps);
-        break;
-      case "flux-schnell":
-        result = await runFluxSchnell(prompt, seed);
-        break;
-    }
-
-    if (result.imageUrl) {
-      const cost = MODEL_COSTS[modelId] || 0.01;
-      return { success: true, imageUrl: result.imageUrl, seed, model: modelId, cost };
-    }
-
-    console.log(`[Generate] ⚠️ ${modelId} failed, trying next model...`);
-
-    // Small delay before trying next model
-    await new Promise(r => setTimeout(r, 1000));
-  }
-
-  return { success: false, seed, error: "All models failed" };
-}
 
 // ===========================================
 // 🔁 RETRY WRAPPER
@@ -312,6 +76,8 @@ export async function POST(request: Request) {
       style2Id,
       style1Weight = 70,
       colorPaletteId,
+      // Model selection (optional - tier-based by default)
+      modelId,
     } = body;
 
     // ✅ Validation
@@ -365,6 +131,10 @@ export async function POST(request: Request) {
     const CREDITS_REQUIRED = 1;
     await getOrCreateUser(user.id, user.email!);
 
+    // Get user tier for model selection
+    const userTier = await getUserTier(user.id);
+    console.log(`[API] 👤 User tier: ${userTier}`);
+
     // Atomically check and deduct credits BEFORE generation
     const creditResult = await checkAndDeductCredits(user.id, CREDITS_REQUIRED);
 
@@ -389,7 +159,7 @@ export async function POST(request: Request) {
     // 🏗️ Build Prompt (with Premium Features if enabled)
     const hasPremiumFeatures = enableStyleMix || colorPaletteId;
 
-    const { prompt: builtPrompt, negativePrompt: builtNegative, model, guidance, steps } = hasPremiumFeatures
+    const { prompt: builtPrompt, negativePrompt: builtNegative, guidance, steps } = hasPremiumFeatures
       ? buildEnhancedPrompt(
           prompt.trim(),
           categoryId,
@@ -409,24 +179,14 @@ export async function POST(request: Request) {
           styleId
         );
 
-    // 🧠 AUTO-FIX: DISABLED - was adding garbage to prompts
-    // TODO: Re-enable after fixing the learning system
-    // const { enhancedPrompt, enhancedNegative, appliedFixes } = await enhancePromptWithLearnedFixes(
-    //   builtPrompt,
-    //   builtNegative,
-    //   categoryId,
-    //   subcategoryId,
-    //   styleId
-    // );
-
-    // Use prompts directly from builder - no modifications
+    // Use prompts directly from builder
     const finalPrompt = builtPrompt;
     const negativePrompt = builtNegative;
 
-    console.log(`[API] 📝 Using clean prompt (no auto-fix)`);
+    console.log(`[API] 📝 Prompt: ${finalPrompt.substring(0, 100)}...`);
 
-    // 🎨 Generate Sprite (with timeout)
-    let result: { success: boolean; imageUrl?: string; seed: number; model?: string; cost?: number; error?: string };
+    // 🎨 Generate Sprite with Runware (with timeout)
+    let result: { success: boolean; images?: Array<{ imageURL: string; seed: number; model: string; cost: number }>; error?: string };
 
     try {
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -435,7 +195,19 @@ export async function POST(request: Request) {
 
       result = await Promise.race([
         withRetry(async () => {
-          return await generateSprite(finalPrompt, negativePrompt, model, guidance, steps, usedSeed);
+          return await generateImage(
+            {
+              prompt: finalPrompt,
+              negativePrompt,
+              model: modelId as RunwareModelId | undefined,
+              seed: usedSeed,
+              steps,
+              guidance,
+              width: 1024,
+              height: 1024,
+            },
+            userTier
+          );
         }),
         timeoutPromise
       ]);
@@ -451,7 +223,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!result.success || !result.imageUrl) {
+    if (!result.success || !result.images || result.images.length === 0) {
       // Refund credits if generation failed
       console.log("[API] ⚠️ Generation returned no image, refunding credits...");
       await refundCredits(user.id, CREDITS_REQUIRED);
@@ -462,13 +234,15 @@ export async function POST(request: Request) {
       );
     }
 
+    const generatedImage = result.images[0];
+
     // 📤 Upload to Storage
     console.log("[API] 📤 Uploading to storage...");
-    const fileName = `sprite-${categoryId}-${subcategoryId}-${styleId}-${result.seed}`;
-    const uploadResult = await uploadImageToStorage(result.imageUrl, user.id, fileName);
-    const finalUrl = uploadResult.success && uploadResult.url ? uploadResult.url : result.imageUrl;
+    const fileName = `sprite-${categoryId}-${subcategoryId}-${styleId}-${generatedImage.seed}`;
+    const uploadResult = await uploadImageToStorage(generatedImage.imageURL, user.id, fileName);
+    const finalUrl = uploadResult.success && uploadResult.url ? uploadResult.url : generatedImage.imageURL;
 
-    // 💾 Save to Database (including Replicate cost)
+    // 💾 Save to Database
     await saveGeneration({
       userId: user.id,
       prompt: prompt.trim(),
@@ -477,8 +251,8 @@ export async function POST(request: Request) {
       subcategoryId,
       styleId,
       imageUrl: finalUrl,
-      seed: result.seed,
-      replicateCost: result.cost,
+      seed: generatedImage.seed,
+      replicateCost: generatedImage.cost, // Still called replicateCost for backwards compat
     });
 
     // 📊 Final Stats
@@ -486,13 +260,13 @@ export async function POST(request: Request) {
     const styleConfig = STYLES_2D_FULL[styleId];
 
     console.log("\n" + "═".repeat(70));
-    console.log("🎉 GENERATION COMPLETE!");
+    console.log("🎉 GENERATION COMPLETE! (Runware)");
     console.log("═".repeat(70));
     console.log("⏱️  Duration:", duration + "s");
     console.log("🎨 Style:", styleConfig.name);
-    console.log("🤖 Model:", result.model);
-    console.log("💰 Cost: $" + (result.cost || 0).toFixed(4));
-    console.log("🌱 Seed:", result.seed);
+    console.log("🤖 Model:", generatedImage.model);
+    console.log("💰 Cost: $" + (generatedImage.cost || 0).toFixed(4));
+    console.log("🌱 Seed:", generatedImage.seed);
     console.log("🖼️  URL:", finalUrl.substring(0, 80) + "...");
     console.log("═".repeat(70) + "\n");
 
@@ -504,8 +278,8 @@ export async function POST(request: Request) {
       is2DSprite: true,
       prompt: prompt.trim(),
       fullPrompt: finalPrompt,
-      seed: result.seed,
-      modelUsed: result.model,
+      seed: generatedImage.seed,
+      modelUsed: generatedImage.model,
       style: {
         id: styleId,
         name: styleConfig.name,
@@ -546,21 +320,30 @@ export async function GET() {
     subcategories: Object.keys(CATEGORY_PROMPT_CONFIGS[catId]),
   }));
 
+  const models = Object.entries(RUNWARE_MODELS).map(([id, air]) => ({
+    id,
+    air,
+    cost: MODEL_COSTS[id as RunwareModelId],
+  }));
+
   return NextResponse.json({
-    version: "3.0.0",
-    name: "Ultimate 2D Sprite Generator",
+    version: "4.0.0",
+    name: "Ultimate 2D Sprite Generator (Runware)",
+    provider: "Runware",
     styles,
     categories,
+    models,
     defaultStyle: "PIXEL_ART_16",
     outputFormat: "png",
     resolution: "1024x1024",
     creditsPerGeneration: 1,
     features: [
+      "Tier-based model selection",
+      "FLUX.2 Pro for premium users",
+      "Midjourney V7 support",
       "Hand-crafted prompts for every category",
-      "Style-optimized model selection",
+      "Sub-second inference times",
       "Smart fallback system",
-      "Category-aware negative prompts",
-      "Subcategory-specific object anchors",
     ],
   });
 }

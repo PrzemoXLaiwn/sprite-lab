@@ -1,643 +1,600 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Check, Sparkles, Zap, Crown, Rocket, Loader2, CreditCard, Gift, Settings, Flame, Clock, Infinity } from "lucide-react";
+import {
+  Check,
+  Sparkles,
+  Zap,
+  Crown,
+  Rocket,
+  Loader2,
+  Clock,
+  Users,
+  TrendingUp,
+  Star,
+  Shield,
+  ChevronDown,
+  Flame,
+  Image as ImageIcon,
+  Cpu,
+  Gift
+} from "lucide-react";
 import { fetchUserPlan } from "./page.actions";
-import Link from "next/link";
 
-// 🚀 LAUNCH PROMO CONFIG
-const LAUNCH_PROMO = {
+// ===========================================
+// CONFIGURATION
+// ===========================================
+
+const PROMO_CONFIG = {
   enabled: true,
-  discount: 50, // 50% off first month
-  endDate: "2025-01-31",
+  endDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
+  totalSlots: 100,
+  claimedSlots: 23,
 };
 
-// Plan names must match the keys in PLANS from stripe.ts
-// Features listed here are ONLY those that are actually implemented
-// Pricing in GBP (British Pounds) - ULTRA COMPETITIVE!
 const plans = [
   {
-    name: "Spark",
+    id: "free",
+    name: "Free",
     stripePlan: "FREE",
     icon: Sparkles,
-    price: "£0",
-    period: "forever",
-    credits: "5 credits",
-    description: "Test the magic",
+    price: 0,
+    oldPrice: null,
+    credits: 5,
+    bonusCredits: 0,
+    description: "Try it free",
     features: [
       "5 generation credits",
       "All asset categories",
-      "All art styles",
-      "Premium AI models",
-      "High quality (1024x1024)",
-      "Download PNG format",
-      "3-day gallery storage",
+      "Fast AI model",
+      "PNG downloads",
     ],
-    limitations: [
-      "No background removal",
-      "No premium features",
-    ],
-    popular: false,
     cta: "Current Plan",
-    disabled: true,
+    featured: false,
   },
   {
-    name: "Forge",
+    id: "starter",
+    name: "Starter",
     stripePlan: "STARTER",
     icon: Flame,
-    price: "£2.49",
-    period: "per month",
-    credits: "50 credits/mo",
-    description: "For indie developers",
+    price: 5,
+    oldPrice: 15,
+    credits: 250,
+    bonusCredits: 0,
+    description: "Perfect for indie devs",
     features: [
-      "50 credits per month",
-      "All asset categories",
+      "250 credits/month",
       "All art styles",
-      "Premium AI models",
-      "High quality (1024x1024)",
-      "Download PNG format",
-      "30-day gallery storage",
+      "Fast AI model",
       "Background removal",
+      "30-day storage",
+      "Commercial license",
     ],
-    limitations: [],
-    popular: true,
-    cta: "Start Forging",
-    disabled: false,
+    cta: "Get Started",
+    featured: false,
   },
   {
-    name: "Apex",
+    id: "pro",
+    name: "Pro",
     stripePlan: "PRO",
     icon: Crown,
-    price: "£5.99",
-    period: "per month",
-    credits: "150 credits/mo",
-    description: "For game studios",
+    price: 12,
+    oldPrice: 35,
+    credits: 500,
+    bonusCredits: 0,
+    description: "For serious creators",
     features: [
-      "150 credits per month",
-      "All asset categories",
-      "All art styles",
-      "Premium AI models",
-      "High quality (1024x1024)",
-      "Unlimited gallery storage",
-      "Background removal",
-      "Image editing tools",
-      "Sprite Sheet Generator",
-      "Style Mixing",
-      "Color Palette Lock",
+      "500 credits/month",
+      "Premium AI model",
+      "Best quality output",
+      "Sprite sheets",
+      "Image editing",
+      "Unlimited storage",
+      "Commercial license",
     ],
-    limitations: [],
-    popular: false,
-    cta: "Reach Apex",
-    disabled: false,
+    cta: "Go Pro",
+    featured: true,
   },
   {
-    name: "Titan",
+    id: "studio",
+    name: "Studio",
     stripePlan: "UNLIMITED",
     icon: Rocket,
-    price: "£16.99",
-    period: "per month",
-    credits: "500 credits/mo",
-    description: "For power users",
+    price: 25,
+    oldPrice: 75,
+    credits: 1200,
+    bonusCredits: 0,
+    description: "For teams & studios",
     features: [
-      "500 credits per month",
-      "All asset categories",
-      "All art styles",
-      "Premium AI models",
-      "High quality (1024x1024)",
-      "Unlimited gallery storage",
-      "Background removal",
-      "Image editing tools",
-      "Sprite Sheet Generator",
-      "Style Mixing",
-      "Color Palette Lock",
-      "Priority queue",
+      "1200 credits/month",
+      "Everything in Pro",
       "Priority support",
-      "Early access to features",
+      "Early access",
+      "Custom styles",
+      "API access (soon)",
     ],
-    limitations: [],
-    popular: false,
-    cta: "Go Titan",
-    disabled: false,
+    cta: "Go Studio",
+    featured: false,
   },
 ];
 
-// Credit packs with volume discounts (GBP) + LAUNCH BONUSES
-// Min 25% margin at £0.024/gen flux-dev cost
-const creditPacks = [
-  {
-    name: "Ember",
-    credits: 25,
-    bonus: 5, // Launch bonus - 30 total
-    price: "£1.19",
-    perCredit: "£0.040",
-    popular: false,
-  },
-  {
-    name: "Blaze",
-    credits: 75,
-    bonus: 15, // Launch bonus - 90 total
-    price: "£2.99",
-    perCredit: "£0.033",
-    popular: true,
-    savings: "17%",
-  },
-  {
-    name: "Inferno",
-    credits: 200,
-    bonus: 50, // Launch bonus - 250 total
-    price: "£7.99",
-    perCredit: "£0.032",
-    popular: false,
-    savings: "20%",
-  },
-  {
-    name: "Supernova",
-    credits: 500,
-    bonus: 150, // Launch bonus - 650 total
-    price: "£19.99",
-    perCredit: "£0.031",
-    popular: false,
-    savings: "23%",
-  },
-];
-
-// 💎 LIFETIME DEALS - LIMITED SLOTS!
-const lifetimeDeals = [
-  {
-    name: "Forge Lifetime",
-    credits: "50 credits/month forever",
-    price: 49,
-    originalPrice: 60,
-    savings: "18%",
-    slots: 30,
-    planId: "STARTER_LIFETIME",
-  },
-  {
-    name: "Apex Lifetime",
-    credits: "150 credits/month forever",
-    price: 99,
-    originalPrice: 144,
-    savings: "31%",
-    slots: 15,
-    popular: true,
-    planId: "PRO_LIFETIME",
-  },
-  {
-    name: "Titan Lifetime",
-    credits: "500 credits/month forever",
-    price: 249,
-    originalPrice: 408,
-    savings: "39%",
-    slots: 5,
-    planId: "UNLIMITED_LIFETIME",
-  },
-];
-
-// Plan order for comparison (higher index = better plan)
-const PLAN_ORDER = ["FREE", "STARTER", "PRO", "UNLIMITED"];
-
-// Map plan names to URL-friendly versions
 const PLAN_URL_MAP: Record<string, string> = {
-  STARTER: "forge",
-  PRO: "apex",
-  UNLIMITED: "titan",
+  STARTER: "starter",
+  PRO: "pro",
+  UNLIMITED: "studio",
 };
 
-// Map credit pack to URL-friendly versions
-const CREDIT_URL_MAP: Record<number, string> = {
-  25: "ember",
-  75: "blaze",
-  200: "inferno",
-  500: "supernova",
-};
+const faqs = [
+  {
+    q: "What is a generation credit?",
+    a: "One credit = one AI-generated image. Each time you create a sprite, character, or any game asset, it uses 1 credit. It's that simple!",
+  },
+  {
+    q: "Can I use assets commercially?",
+    a: "Absolutely! All paid plans include full commercial rights. Use your assets in games, apps, or any project you sell. Free plan is for testing only.",
+  },
+  {
+    q: "Do unused credits roll over?",
+    a: "Subscription credits reset monthly. Want credits that never expire? Check out our one-time credit packs below!",
+  },
+  {
+    q: "Can I cancel anytime?",
+    a: "Yes! Cancel with one click anytime. No contracts, no hidden fees. You'll keep access until your billing period ends.",
+  },
+  {
+    q: "What's the quality like?",
+    a: "We use state-of-the-art AI models. Pro and Studio plans get access to our premium models for the highest quality game-ready assets.",
+  },
+];
+
+// ===========================================
+// COUNTDOWN TIMER HOOK
+// ===========================================
+
+function useCountdown(endDate: Date) {
+  const calculateTimeLeft = useCallback(() => {
+    const difference = endDate.getTime() - Date.now();
+    if (difference <= 0) {
+      return { hours: 0, minutes: 0, seconds: 0 };
+    }
+    return {
+      hours: Math.floor(difference / (1000 * 60 * 60)),
+      minutes: Math.floor((difference / (1000 * 60)) % 60),
+      seconds: Math.floor((difference / 1000) % 60),
+    };
+  }, [endDate]);
+
+  const [timeLeft, setTimeLeft] = useState(calculateTimeLeft);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft(calculateTimeLeft());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [calculateTimeLeft]);
+
+  return timeLeft;
+}
+
+// ===========================================
+// COMPONENTS
+// ===========================================
+
+function CountdownTimer({ endDate }: { endDate: Date }) {
+  const { hours, minutes, seconds } = useCountdown(endDate);
+
+  return (
+    <div className="flex items-center gap-1 font-mono">
+      <div className="bg-black/30 px-2 py-1 rounded text-lg font-bold min-w-[2.5rem] text-center">
+        {String(hours).padStart(2, "0")}
+      </div>
+      <span className="text-white/60">:</span>
+      <div className="bg-black/30 px-2 py-1 rounded text-lg font-bold min-w-[2.5rem] text-center">
+        {String(minutes).padStart(2, "0")}
+      </div>
+      <span className="text-white/60">:</span>
+      <div className="bg-black/30 px-2 py-1 rounded text-lg font-bold min-w-[2.5rem] text-center">
+        {String(seconds).padStart(2, "0")}
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ icon: Icon, value, label }: { icon: React.ElementType; value: string; label: string }) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-2">
+      <Icon className="w-5 h-5 text-[#00ff88]" />
+      <div>
+        <div className="font-bold text-white">{value}</div>
+        <div className="text-xs text-white/60">{label}</div>
+      </div>
+    </div>
+  );
+}
+
+function FAQItem({ question, answer }: { question: string; answer: string }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="border border-white/10 rounded-xl overflow-hidden">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between p-4 text-left hover:bg-white/5 transition-colors"
+      >
+        <span className="font-medium text-white">{question}</span>
+        <ChevronDown className={`w-5 h-5 text-white/60 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+      </button>
+      {isOpen && (
+        <div className="px-4 pb-4 text-white/70 text-sm">
+          {answer}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ===========================================
+// MAIN PAGE
+// ===========================================
 
 export default function PricingPage() {
   const router = useRouter();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
-  const [loadingCredits, setLoadingCredits] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [currentPlan, setCurrentPlan] = useState<string>("FREE");
-  const [currentPlanName, setCurrentPlanName] = useState<string>("Spark");
   const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalAssets: 0,
+    activeUsers: 0,
+    totalUsers: 0,
+  });
 
   useEffect(() => {
     loadUserPlan();
+    // Fetch real stats from database
+    fetch("/api/stats")
+      .then((res) => res.json())
+      .then((data) => {
+        setStats({
+          totalAssets: data.totalGenerations || 0,
+          activeUsers: data.activeUsersWeek || 0, // Users active in last 7 days
+          totalUsers: data.totalUsers || 0,
+        });
+      })
+      .catch(() => {
+        // Fallback to old endpoint
+        fetch("/api/stats/total-generations")
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.total) {
+              setStats((prev) => ({ ...prev, totalAssets: data.total }));
+            }
+          })
+          .catch(() => {});
+      });
   }, []);
 
   const loadUserPlan = async () => {
     const result = await fetchUserPlan();
     if (result.success) {
       setCurrentPlan(result.plan);
-      setCurrentPlanName(result.planName);
     }
     setIsLoading(false);
   };
 
-  // Check if a plan is the current plan
-  const isCurrentPlan = (stripePlan: string) => {
-    return currentPlan === stripePlan;
-  };
-
-  // Check if a plan is a downgrade from current
-  const isDowngrade = (stripePlan: string) => {
-    const currentIndex = PLAN_ORDER.indexOf(currentPlan);
-    const planIndex = PLAN_ORDER.indexOf(stripePlan);
-    return planIndex < currentIndex;
-  };
-
-  // Get button text based on plan status
-  const getButtonText = (stripePlan: string, defaultCta: string) => {
-    if (isCurrentPlan(stripePlan)) return "Current Plan";
-    if (isDowngrade(stripePlan)) return "Downgrade";
-    return defaultCta;
-  };
-
-  // Check if button should be disabled
-  const isButtonDisabled = (stripePlan: string) => {
-    return isCurrentPlan(stripePlan) || loadingPlan === stripePlan;
-  };
-
   const handlePlanClick = (stripePlan: string) => {
-    if (stripePlan === "FREE" || isCurrentPlan(stripePlan)) return;
-
-    // Redirect to custom checkout page
+    if (stripePlan === "FREE" || currentPlan === stripePlan) return;
+    setLoadingPlan(stripePlan);
     const urlName = PLAN_URL_MAP[stripePlan] || stripePlan.toLowerCase();
     router.push(`/checkout/${urlName}`);
   };
 
-  const handleCreditPackClick = (credits: number) => {
-    // Redirect to custom checkout page for credits
-    const urlName = CREDIT_URL_MAP[credits] || credits.toString();
-    router.push(`/checkout/credits/${urlName}`);
-  };
+  const slotsRemaining = PROMO_CONFIG.totalSlots - PROMO_CONFIG.claimedSlots;
 
   if (isLoading) {
     return (
-      <div className="p-6 lg:p-8 max-w-7xl mx-auto">
-        <div className="flex items-center justify-center py-24">
-          <Loader2 className="w-12 h-12 text-primary animate-spin" />
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-12 h-12 text-[#00ff88] animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto">
-      {/* 🚀 Launch Promo Banner */}
-      {LAUNCH_PROMO.enabled && (
-        <div className="mb-8 p-6 rounded-2xl bg-gradient-to-r from-orange-500/20 via-red-500/20 to-pink-500/20 border border-orange-500/30 text-center">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <Rocket className="w-6 h-6 text-orange-500" />
-            <span className="text-2xl font-bold bg-gradient-to-r from-orange-500 to-pink-500 bg-clip-text text-transparent">
-              LAUNCH SPECIAL
-            </span>
-            <Rocket className="w-6 h-6 text-pink-500" />
+    <div className="min-h-screen bg-[#0a0a0f]">
+      {/* ============================================ */}
+      {/* URGENCY BANNER */}
+      {/* ============================================ */}
+      {PROMO_CONFIG.enabled && (
+        <div className="bg-gradient-to-r from-red-600 via-orange-500 to-yellow-500 text-white py-3">
+          <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6">
+            <div className="flex items-center gap-2">
+              <Clock className="w-5 h-5 animate-pulse" />
+              <span className="font-bold">LAUNCH SALE ENDS IN:</span>
+            </div>
+            <CountdownTimer endDate={PROMO_CONFIG.endDate} />
+            <div className="flex items-center gap-2 bg-black/20 px-3 py-1 rounded-full">
+              <Zap className="w-4 h-4" />
+              <span className="font-bold">UP TO 70% OFF</span>
+            </div>
           </div>
-          <p className="text-lg font-semibold text-white mb-1">
-            {LAUNCH_PROMO.discount}% OFF your first month!
-          </p>
-          <p className="text-sm text-muted-foreground flex items-center justify-center gap-1">
-            <Clock className="w-4 h-4" />
-            Limited time offer
-          </p>
         </div>
       )}
 
-      {/* Header */}
-      <div className="text-center mb-12">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#00ff88]/10 border border-[#00ff88]/30 text-[#00ff88] text-sm mb-6">
-          <CreditCard className="w-4 h-4" />
-          <span>Secure payments powered by Stripe</span>
+      {/* ============================================ */}
+      {/* SOCIAL PROOF BAR */}
+      {/* ============================================ */}
+      <div className="bg-[#0f0f18] border-b border-white/10 py-3">
+        <div className="max-w-6xl mx-auto px-4 flex flex-wrap items-center justify-center gap-4 sm:gap-8">
+          <StatCard icon={Users} value={`${stats.totalUsers > 0 ? stats.totalUsers.toLocaleString() : stats.activeUsers.toLocaleString()}+`} label="Registered Users" />
+          <div className="hidden sm:block w-px h-8 bg-white/10" />
+          <StatCard icon={ImageIcon} value={stats.totalAssets.toLocaleString()} label="Assets Created" />
+          <div className="hidden sm:block w-px h-8 bg-white/10" />
+          <StatCard icon={Star} value="4.9/5" label="User Rating" />
+          <div className="hidden sm:block w-px h-8 bg-white/10" />
+          <StatCard icon={Cpu} value="<3s" label="Generation Speed" />
         </div>
-        <h1 className="text-3xl md:text-4xl font-bold mb-3 text-white">
-          Choose Your Plan
-        </h1>
-        <p className="text-lg text-white/60 max-w-2xl mx-auto">
-          Generate unlimited game assets with AI. Choose a plan that fits your needs.
-        </p>
-
-        {/* Current Plan Badge */}
-        {currentPlan !== "FREE" && (
-          <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-400 text-sm">
-            <Crown className="w-4 h-4" />
-            <span>You're on the <strong>{currentPlanName}</strong> plan</span>
-            <Link href="/settings" className="ml-2 hover:text-purple-300 transition-colors">
-              <Settings className="w-4 h-4" />
-            </Link>
-          </div>
-        )}
-
-        {error && (
-          <div className="mt-4 p-4 rounded-xl bg-[#ff4444]/10 border border-[#ff4444]/30 text-[#ff4444] max-w-md mx-auto">
-            <p className="text-sm">{error}</p>
-          </div>
-        )}
       </div>
 
-      {/* Subscription Plans */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
-        {plans.map((plan) => {
-          const Icon = plan.icon;
-          const isCurrent = isCurrentPlan(plan.stripePlan);
-          return (
-            <Card
-              key={plan.name}
-              className={`relative ${
-                isCurrent
-                  ? "border-purple-500 shadow-lg ring-2 ring-purple-500 bg-purple-500/5"
-                  : plan.popular
-                  ? "border-primary shadow-lg ring-2 ring-primary"
-                  : "border-border"
-              }`}
-            >
-              {isCurrent ? (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <Badge className="bg-purple-500 text-white px-3 py-1">
-                    Current Plan
-                  </Badge>
-                </div>
-              ) : plan.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <Badge className="bg-primary text-primary-foreground px-3 py-1">
-                    Most Popular
-                  </Badge>
-                </div>
-              )}
+      {/* ============================================ */}
+      {/* HEADER */}
+      {/* ============================================ */}
+      <div className="pt-12 pb-8 text-center px-4">
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#00ff88]/10 border border-[#00ff88]/30 text-[#00ff88] text-sm mb-6">
+          <Gift className="w-4 h-4" />
+          <span>First {slotsRemaining} users get 50% OFF forever!</span>
+        </div>
+        <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+          Simple, Transparent Pricing
+        </h1>
+        <p className="text-xl text-white/60 max-w-2xl mx-auto">
+          No hidden fees. No surprises. Cancel anytime.
+        </p>
+      </div>
 
-              <CardHeader>
-                <div className="flex items-center gap-2 mb-2">
-                  <Icon className="w-5 h-5 text-primary" />
-                  <CardTitle className="text-xl">{plan.name}</CardTitle>
-                </div>
-                <div className="mb-2">
-                  <span className="text-3xl font-bold">{plan.price}</span>
-                  <span className="text-muted-foreground">/{plan.period}</span>
-                </div>
-                <div className="text-sm font-medium text-primary mb-2">
-                  {plan.credits}
-                </div>
-                <CardDescription className="text-sm">
-                  {plan.description}
-                </CardDescription>
-              </CardHeader>
+      {/* ============================================ */}
+      {/* PRICING CARDS */}
+      {/* ============================================ */}
+      <div className="max-w-6xl mx-auto px-4 pb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {plans.map((plan) => {
+            const Icon = plan.icon;
+            const isCurrent = currentPlan === plan.stripePlan;
+            const isPopular = plan.featured;
+            const discount = plan.oldPrice ? Math.round((1 - plan.price / plan.oldPrice) * 100) : 0;
 
-              <CardContent>
+            return (
+              <div
+                key={plan.id}
+                className={`relative rounded-2xl p-6 transition-all duration-300 ${
+                  isPopular
+                    ? "bg-gradient-to-b from-[#00ff88]/20 to-[#00d4ff]/10 border-2 border-[#00ff88] shadow-xl shadow-[#00ff88]/20 scale-105 z-10"
+                    : "bg-[#12121a] border border-white/10 hover:border-white/20"
+                }`}
+              >
+                {/* Popular Badge */}
+                {isPopular && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                    <div className="bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-black px-4 py-1 rounded-full text-sm font-bold flex items-center gap-1">
+                      <Crown className="w-4 h-4" />
+                      MOST POPULAR
+                    </div>
+                  </div>
+                )}
+
+                {/* Current Plan Badge */}
+                {isCurrent && !isPopular && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                    <div className="bg-purple-500 text-white px-4 py-1 rounded-full text-sm font-bold">
+                      CURRENT PLAN
+                    </div>
+                  </div>
+                )}
+
+                {/* Plan Header */}
+                <div className="text-center mb-6 pt-2">
+                  <div className={`inline-flex p-3 rounded-xl mb-3 ${isPopular ? "bg-[#00ff88]/20" : "bg-white/5"}`}>
+                    <Icon className={`w-6 h-6 ${isPopular ? "text-[#00ff88]" : "text-white/60"}`} />
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-1">{plan.name}</h3>
+                  <p className="text-sm text-white/50">{plan.description}</p>
+                </div>
+
+                {/* Price */}
+                <div className="text-center mb-6">
+                  {plan.oldPrice && (
+                    <div className="flex items-center justify-center gap-2 mb-1">
+                      <span className="text-white/40 line-through text-lg">${plan.oldPrice}</span>
+                      <span className="bg-red-500/20 text-red-400 px-2 py-0.5 rounded text-xs font-bold">
+                        -{discount}%
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-baseline justify-center gap-1">
+                    <span className="text-4xl font-bold text-white">${plan.price}</span>
+                    <span className="text-white/50">/mo</span>
+                  </div>
+                  <div className="mt-2">
+                    <span className="text-sm text-[#00ff88] font-medium">
+                      {plan.credits + plan.bonusCredits} credits/month
+                    </span>
+                    {plan.bonusCredits > 0 && (
+                      <span className="ml-2 text-xs text-yellow-400 font-medium">
+                        (+{plan.bonusCredits} bonus!)
+                      </span>
+                    )}
+                  </div>
+                  {plan.price > 0 && (
+                    <div className="mt-1 text-xs text-white/40">
+                      ${(plan.price / (plan.credits + plan.bonusCredits) * 100).toFixed(1)}¢ per credit
+                    </div>
+                  )}
+                </div>
+
+                {/* Features */}
+                <ul className="space-y-3 mb-6">
+                  {plan.features.map((feature, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm">
+                      <Check className={`w-4 h-4 shrink-0 mt-0.5 ${isPopular ? "text-[#00ff88]" : "text-white/40"}`} />
+                      <span className="text-white/80">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                {/* CTA Button */}
                 <Button
-                  className={`w-full mb-6 ${
-                    isCurrent
-                      ? "bg-purple-500/20 text-purple-400 border-purple-500/30 cursor-default"
-                      : plan.popular
-                      ? "bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-black font-bold hover:shadow-xl hover:shadow-[#00ff88]/30"
-                      : "border-white/20 hover:border-[#00ff88]/50 hover:bg-[#00ff88]/10"
-                  }`}
-                  variant={isCurrent ? "outline" : plan.popular ? "default" : "outline"}
-                  disabled={isButtonDisabled(plan.stripePlan)}
                   onClick={() => handlePlanClick(plan.stripePlan)}
+                  disabled={isCurrent || loadingPlan === plan.stripePlan}
+                  className={`w-full py-6 text-base font-bold transition-all ${
+                    isCurrent
+                      ? "bg-purple-500/20 text-purple-400 border border-purple-500/30 cursor-default"
+                      : isPopular
+                      ? "bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-black hover:shadow-lg hover:shadow-[#00ff88]/30 hover:scale-105"
+                      : "bg-white/10 text-white hover:bg-white/20 border border-white/10"
+                  }`}
                 >
                   {loadingPlan === plan.stripePlan ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Processing...
-                    </>
+                    <Loader2 className="w-5 h-5 animate-spin" />
                   ) : isCurrent ? (
                     <>
-                      <Check className="w-4 h-4 mr-2" />
+                      <Check className="w-5 h-5 mr-2" />
                       Current Plan
                     </>
                   ) : (
-                    getButtonText(plan.stripePlan, plan.cta)
+                    plan.cta
                   )}
                 </Button>
-
-                <div className="space-y-3">
-                  {plan.features.map((feature, i) => (
-                    <div key={i} className="flex items-start gap-2">
-                      <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                      <span className="text-sm">{feature}</span>
-                    </div>
-                  ))}
-
-                  {plan.limitations.length > 0 && (
-                    <>
-                      <div className="border-t border-border my-3" />
-                      {plan.limitations.map((limitation, i) => (
-                        <div key={i} className="flex items-start gap-2 opacity-60">
-                          <span className="text-sm text-muted-foreground">
-                            • {limitation}
-                          </span>
-                        </div>
-                      ))}
-                    </>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      {/* 💎 Lifetime Deals Section */}
-      <div className="mt-16">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-500/10 text-yellow-500 text-sm font-medium mb-4">
-            <Sparkles className="w-4 h-4" />
-            Limited Lifetime Deals
-          </div>
-          <h2 className="text-2xl md:text-3xl font-bold mb-2">
-            Pay Once, Use Forever
+      {/* ============================================ */}
+      {/* VALUE COMPARISON */}
+      {/* ============================================ */}
+      <div className="bg-[#0f0f18] py-16 px-4">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-3xl font-bold text-white text-center mb-4">
+            Why SpriteLab is Worth It
           </h2>
-          <p className="text-muted-foreground">
-            One-time payment. No monthly fees. Credits refresh every month, forever.
+          <p className="text-white/60 text-center mb-12 max-w-2xl mx-auto">
+            Compare the cost of hiring an artist vs. using SpriteLab
+          </p>
+
+          <div className="grid md:grid-cols-2 gap-8">
+            {/* Traditional Way */}
+            <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-6">
+              <h3 className="text-xl font-bold text-red-400 mb-4">Traditional Artist</h3>
+              <ul className="space-y-3">
+                <li className="flex items-center gap-2 text-white/70">
+                  <span className="text-red-400">✕</span>
+                  $50-200 per sprite
+                </li>
+                <li className="flex items-center gap-2 text-white/70">
+                  <span className="text-red-400">✕</span>
+                  Days to weeks turnaround
+                </li>
+                <li className="flex items-center gap-2 text-white/70">
+                  <span className="text-red-400">✕</span>
+                  Limited revisions
+                </li>
+                <li className="flex items-center gap-2 text-white/70">
+                  <span className="text-red-400">✕</span>
+                  800 sprites = $40,000+
+                </li>
+              </ul>
+              <div className="mt-6 text-center">
+                <span className="text-3xl font-bold text-red-400">$40,000+</span>
+                <p className="text-white/50 text-sm">for 800 game assets</p>
+              </div>
+            </div>
+
+            {/* SpriteLab Way */}
+            <div className="bg-[#00ff88]/10 border border-[#00ff88]/30 rounded-2xl p-6">
+              <h3 className="text-xl font-bold text-[#00ff88] mb-4">With SpriteLab Pro</h3>
+              <ul className="space-y-3">
+                <li className="flex items-center gap-2 text-white/70">
+                  <Check className="w-4 h-4 text-[#00ff88]" />
+                  ~2.4¢ per sprite
+                </li>
+                <li className="flex items-center gap-2 text-white/70">
+                  <Check className="w-4 h-4 text-[#00ff88]" />
+                  Instant generation (&lt;3 sec)
+                </li>
+                <li className="flex items-center gap-2 text-white/70">
+                  <Check className="w-4 h-4 text-[#00ff88]" />
+                  Unlimited regenerations
+                </li>
+                <li className="flex items-center gap-2 text-white/70">
+                  <Check className="w-4 h-4 text-[#00ff88]" />
+                  500 sprites = $12
+                </li>
+              </ul>
+              <div className="mt-6 text-center">
+                <span className="text-3xl font-bold text-[#00ff88]">$12/mo</span>
+                <p className="text-white/50 text-sm">500 credits + Premium AI</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-center mt-8">
+            <p className="text-2xl font-bold text-white">
+              Save up to <span className="text-[#00ff88]">99.9%</span> on game art
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ============================================ */}
+      {/* GUARANTEE */}
+      {/* ============================================ */}
+      <div className="py-16 px-4">
+        <div className="max-w-2xl mx-auto text-center">
+          <div className="inline-flex p-4 rounded-full bg-[#00ff88]/10 mb-6">
+            <Shield className="w-12 h-12 text-[#00ff88]" />
+          </div>
+          <h2 className="text-3xl font-bold text-white mb-4">
+            7-Day Money-Back Guarantee
+          </h2>
+          <p className="text-white/60 text-lg">
+            Not satisfied? Get a full refund within 7 days. No questions asked.
+            We're confident you'll love SpriteLab.
           </p>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-          {lifetimeDeals.map((deal) => (
-            <Card
-              key={deal.name}
-              className={`relative ${
-                deal.popular
-                  ? "bg-gradient-to-b from-yellow-500/10 to-orange-500/10 border-yellow-500/50 shadow-lg shadow-yellow-500/10"
-                  : "border-border hover:border-yellow-500/50"
-              }`}
-            >
-              {deal.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-bold">
-                    BEST VALUE
-                  </Badge>
-                </div>
-              )}
-              <CardContent className="pt-6">
-                <Badge className="mb-4 bg-green-500/20 text-green-500 border-green-500/30">
-                  Save {deal.savings}
-                </Badge>
-                <h4 className="text-xl font-bold mb-1">{deal.name}</h4>
-                <p className="text-sm text-muted-foreground mb-4 flex items-center gap-1">
-                  <Infinity className="w-4 h-4" />
-                  {deal.credits}
-                </p>
-                <div className="mb-4">
-                  <span className="text-lg text-muted-foreground line-through">£{deal.originalPrice}</span>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold text-yellow-500">£{deal.price}</span>
-                    <span className="text-muted-foreground text-sm">one-time</span>
-                  </div>
-                </div>
-                <Button
-                  className={`w-full ${
-                    deal.popular
-                      ? "bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-bold hover:opacity-90"
-                      : "border-yellow-500/50 hover:bg-yellow-500/10"
-                  }`}
-                  variant={deal.popular ? "default" : "outline"}
-                  asChild
-                >
-                  <Link href={`/checkout/lifetime/${deal.planId.toLowerCase()}`}>
-                    Get Lifetime Access
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
       </div>
 
-      {/* Credit Packs with Bonuses */}
-      <div className="mt-16">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-500/10 text-orange-500 text-sm font-medium mb-4">
-            <Gift className="w-4 h-4" />
-            Launch Bonus
-          </div>
-          <h2 className="text-2xl md:text-3xl font-bold mb-2">
-            Credit Packs + FREE Bonus
+      {/* ============================================ */}
+      {/* FAQ */}
+      {/* ============================================ */}
+      <div className="bg-[#0f0f18] py-16 px-4">
+        <div className="max-w-3xl mx-auto">
+          <h2 className="text-3xl font-bold text-white text-center mb-12">
+            Frequently Asked Questions
           </h2>
-          <p className="text-muted-foreground">
-            One-time purchase. Never expires. Get extra credits FREE during launch!
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
-          {creditPacks.map((pack) => (
-            <Card
-              key={pack.credits}
-              className={`relative ${
-                pack.popular ? "border-orange-500 ring-2 ring-orange-500 bg-gradient-to-b from-orange-500/10 to-red-500/10" : ""
-              }`}
-            >
-              {pack.popular && (
-                <div className="absolute -top-2 left-1/2 -translate-x-1/2">
-                  <Badge className="bg-orange-500 text-white text-xs">
-                    Popular
-                  </Badge>
-                </div>
-              )}
-              <CardContent className="pt-6">
-                {pack.savings && (
-                  <Badge className="mb-3 bg-green-600 hover:bg-green-600">
-                    Save {pack.savings}
-                  </Badge>
-                )}
-                <div className="text-center mb-4">
-                  <p className="text-3xl font-bold mb-0">{pack.credits}</p>
-                  <p className="text-green-500 font-semibold text-sm">+{pack.bonus} FREE</p>
-                  <p className="text-xs text-muted-foreground">= {pack.credits + pack.bonus} total</p>
-                </div>
-                <div className="text-center mb-4">
-                  <p className="text-2xl font-bold">{pack.price}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {pack.perCredit} per credit
-                  </p>
-                </div>
-                <Button
-                  className={`w-full ${
-                    pack.popular
-                      ? "bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold hover:shadow-xl hover:shadow-orange-500/30"
-                      : "border-white/20 hover:border-orange-500/50 hover:bg-orange-500/10"
-                  }`}
-                  variant={pack.popular ? "default" : "outline"}
-                  disabled={loadingCredits === pack.credits}
-                  onClick={() => handleCreditPackClick(pack.credits)}
-                >
-                  {loadingCredits === pack.credits ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <Gift className="w-4 h-4 mr-2" />
-                      Buy Now
-                    </>
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+          <div className="space-y-4">
+            {faqs.map((faq, i) => (
+              <FAQItem key={i} question={faq.q} answer={faq.a} />
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* FAQ Section */}
-      <div className="mt-16 max-w-3xl mx-auto">
-        <h2 className="text-2xl font-bold text-center mb-8">
-          Frequently Asked Questions
-        </h2>
-
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">What is a generation credit?</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                One credit = one AI image generation. Each time you generate an asset,
-                it costs 1 credit. Credits reset monthly for subscription plans.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Can I use generated assets commercially?</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Yes! All paid plans (Starter, Pro, Unlimited) include full commercial
-                use rights. Free plan is for personal/testing use only.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Do unused credits roll over?</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Subscription credits reset monthly. One-time credit packs never expire
-                and can be used anytime.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Can I cancel anytime?</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Absolutely! You can cancel your subscription at any time. You'll keep
-                access until the end of your billing period.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+      {/* ============================================ */}
+      {/* FLOATING CTA */}
+      {/* ============================================ */}
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 sm:hidden">
+        <Button
+          onClick={() => handlePlanClick("PRO")}
+          className="bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-black font-bold px-8 py-6 rounded-full shadow-lg shadow-[#00ff88]/30"
+        >
+          <Zap className="w-5 h-5 mr-2" />
+          Get Pro - $12/mo
+        </Button>
       </div>
+
+      {/* Bottom padding for mobile CTA */}
+      <div className="h-20 sm:hidden" />
     </div>
   );
 }

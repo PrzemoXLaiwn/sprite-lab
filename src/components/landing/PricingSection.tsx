@@ -17,7 +17,8 @@ interface SlotInfo {
 const LAUNCH_PROMO = {
   enabled: true,
   discount: 50, // 50% off first month
-  endDate: "2025-01-31", // Promo end date
+  // Dynamic end date - always 7 days from now for urgency
+  endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
 };
 
 // Features listed here are ONLY those that are actually implemented

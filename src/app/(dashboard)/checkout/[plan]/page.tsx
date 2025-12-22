@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, Shield, CheckCircle, ArrowLeft, CreditCard } from "lucide-react";
 import Link from "next/link";
+import { trackCheckoutStart, trackPurchase } from "@/lib/tiktok";
 
 // Load Stripe outside of component to avoid recreating on every render
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
@@ -74,6 +75,9 @@ function CheckoutForm({ plan, planDetails }: { plan: string; planDetails: PlanDe
         if (!response.ok) {
           throw new Error(data.error || "Failed to create subscription");
         }
+
+        // Track successful purchase for TikTok
+        trackPurchase(planDetails.name, planDetails.price);
 
         setSuccess(true);
         setTimeout(() => {
@@ -147,6 +151,7 @@ const PLAN_URL_MAP: Record<string, string> = {
   apex: "PRO",
   pro: "PRO",
   titan: "UNLIMITED",
+  studio: "UNLIMITED",
   unlimited: "UNLIMITED",
 };
 
@@ -180,6 +185,8 @@ export default function CheckoutPage() {
         } else {
           setClientSecret(data.clientSecret);
           setPlanDetails(data.plan);
+          // Track checkout initiation for TikTok
+          trackCheckoutStart(data.plan.name, data.plan.price);
         }
       })
       .catch((err) => {

@@ -12,85 +12,70 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 // ===========================================
 // PLAN CONFIGURATION (GBP - British Pounds)
 // ===========================================
-// COST BREAKDOWN (from Replicate dashboard):
-// - flux-dev: $0.03 = ~£0.024/generation (premium quality)
-// - sdxl: $0.01 = ~£0.008/generation
+// COST BREAKDOWN (Runware API):
+// - flux-schnell: ~$0.003/image (fast, good quality)
+// - flux-dev: ~$0.01/image (premium quality)
 // - Stripe fee: 2.9% + £0.20 per transaction
 //
-// TARGET: Minimum 25% margin at 100% flux-dev usage
+// PRICING STRATEGY:
+// - Free: 5 credits (schnell) - marketing cost ~$0.015
+// - Starter: 250 credits (schnell) @ £5 - cost ~$0.75, margin 85%
+// - Pro: 500 credits (dev) @ £12 - cost ~$5, margin 58%
+// - Studio: 1200 credits (dev) @ £25 - cost ~$12, margin 52%
 export const PLANS = {
   FREE: {
-    name: "Spark",
+    name: "Free",
     credits: 5,
     price: 0,
     priceId: null,
     features: [
       "5 generation credits",
       "All asset categories",
-      "All art styles",
-      "Premium AI models",
-      "High quality (1024x1024)",
-      "PNG download",
-      "3-day gallery storage",
+      "Fast AI model",
+      "PNG downloads",
     ],
   },
   STARTER: {
-    name: "Forge",
-    credits: 50,
-    price: 2.49, // £2.49/month - cost £1.20+£0.27 = £1.47, profit £1.02, margin 41%
+    name: "Starter",
+    credits: 250,
+    price: 5.00,
     priceId: process.env.STRIPE_STARTER_PRICE_ID,
     features: [
-      "50 credits per month",
-      "All asset categories",
+      "250 credits/month",
       "All art styles",
-      "Premium AI models",
-      "High quality (1024x1024)",
-      "PNG download",
-      "30-day gallery storage",
+      "Fast AI model",
       "Background removal",
+      "30-day storage",
+      "Commercial license",
     ],
   },
   PRO: {
-    name: "Apex",
-    credits: 150,
-    price: 5.99, // £5.99/month - cost £3.60+£0.37 = £3.97, profit £2.02, margin 34%
+    name: "Pro",
+    credits: 500,
+    price: 12.00,
     priceId: process.env.STRIPE_PRO_PRICE_ID,
     features: [
-      "150 credits per month",
-      "All asset categories",
-      "All art styles",
-      "Premium AI models",
-      "High quality (1024x1024)",
-      "PNG download",
-      "Unlimited gallery storage",
-      "Background removal",
-      "Image editing tools",
-      "Sprite Sheet Generator",
-      "Style Mixing",
-      "Color Palette Lock",
+      "500 credits/month",
+      "Premium AI model",
+      "Best quality output",
+      "Sprite sheets",
+      "Image editing",
+      "Unlimited storage",
+      "Commercial license",
     ],
   },
   UNLIMITED: {
-    name: "Titan",
-    credits: 500,
-    price: 16.99, // £16.99/month - cost £12.00+£0.69 = £12.69, profit £4.30, margin 25%
+    name: "Studio",
+    credits: 1200,
+    price: 25.00,
     priceId: process.env.STRIPE_UNLIMITED_PRICE_ID,
     features: [
-      "500 credits per month",
-      "All asset categories",
-      "All art styles",
-      "Premium AI models",
-      "High quality (1024x1024)",
-      "PNG download",
-      "Unlimited gallery storage",
-      "Background removal",
-      "Image editing tools",
-      "Sprite Sheet Generator",
-      "Style Mixing",
-      "Color Palette Lock",
-      "Priority generation queue",
+      "1200 credits/month",
+      "Everything in Pro",
       "Priority support",
-      "Early access to new features",
+      "Early access",
+      "Custom styles",
+      "API access (soon)",
     ],
   },
 } as const;
@@ -104,7 +89,10 @@ export type PlanName = keyof typeof PLANS;
 // PRICING: Must cover AI cost (~£0.024/gen flux-dev) + Stripe (~2.9%+£0.20) + margin (min 25%)
 export const LAUNCH_PROMO = {
   enabled: true,
-  endDate: "2025-03-31",
+  // Dynamic - always 7 days from now for urgency
+  get endDate() {
+    return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+  },
 };
 
 export const CREDIT_PACKS = {

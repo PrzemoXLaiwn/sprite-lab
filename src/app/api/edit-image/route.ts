@@ -1,64 +1,14 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import Replicate from "replicate";
 import { getUserCredits, deductCredit, saveGeneration } from "@/lib/database";
 import { uploadImageToStorage } from "@/lib/storage";
-
-const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_TOKEN,
-});
+import { getRunwareClient, type UserTier, RUNWARE_MODELS, DEFAULT_MODEL, MODEL_COSTS } from "@/lib/runware";
 
 // ===========================================
-// MODEL CONFIGURATIONS
+// RUNWARE-BASED IMAGE EDITING
 // ===========================================
-
-const EDIT_MODELS = {
-  // InstructPix2Pix - BEST for instruction-based edits (preserves original)
-  instructPix2Pix: {
-    version: "30c1d0b916a6f8efce20493f5d61ee27491ab2a60437c13c588468b9810ec23f",
-    name: "InstructPix2Pix",
-    description: "Best for adding effects, changing colors while keeping shape",
-    getInput: (imageUrl: string, prompt: string, options: EditOptions) => ({
-      image: imageUrl,
-      prompt: prompt,
-      num_inference_steps: options.quality === "high" ? 75 : options.quality === "medium" ? 50 : 30,
-      guidance_scale: options.guidanceScale || 7.5,
-      image_guidance_scale: options.imageGuidance || 1.5,
-      scheduler: "K_EULER_ANCESTRAL",
-    }),
-  },
-
-  // SDXL img2img - for style transfers and bigger changes
-  sdxlImg2Img: {
-    version: "7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c929f9bdc",
-    name: "SDXL img2img",
-    description: "Better for style changes and more dramatic edits",
-    getInput: (imageUrl: string, prompt: string, options: EditOptions) => ({
-      image: imageUrl,
-      prompt: prompt,
-      negative_prompt: options.negativePrompt || "blurry, low quality, distorted, deformed, different weapon, different object, wrong shape, bad anatomy, watermark, signature",
-      num_inference_steps: options.quality === "high" ? 50 : options.quality === "medium" ? 35 : 25,
-      guidance_scale: options.guidanceScale || 7.5,
-      strength: options.strength || 0.4,
-      scheduler: "K_EULER",
-    }),
-  },
-
-  // Kandinsky - good for artistic styles
-  kandinsky: {
-    version: "65a15f6e3c538ee4adf5142571f42c88e3ade5d94ded1c50eb7e8d44a76df0c9",
-    name: "Kandinsky 2.2",
-    description: "Great for artistic and painterly effects",
-    getInput: (imageUrl: string, prompt: string, options: EditOptions) => ({
-      image: imageUrl,
-      prompt: prompt,
-      negative_prompt: options.negativePrompt || "blurry, low quality",
-      num_inference_steps: options.quality === "high" ? 75 : 50,
-      guidance_scale: options.guidanceScale || 4,
-      strength: options.strength || 0.4,
-    }),
-  },
-};
+// Using Runware's img2img capabilities for editing
+// Cost: ~$0.003-0.01 per edit depending on tier
 
 // ===========================================
 // EDIT TYPE DETECTION - CORE LOGIC
@@ -68,13 +18,12 @@ type EditType = "add_effect" | "modify_appearance" | "change_style" | "color_cha
 
 interface EditAnalysis {
   type: EditType;
-  preserveOriginal: boolean; // TRUE = zachowaj oryginalny kształt/obiekt
+  preserveOriginal: boolean;
   strength: number;
-  imageGuidance: number;
   description: string;
 }
 
-// Słowa kluczowe wskazujące na DODAWANIE czegoś (zachowaj oryginał)
+// Keywords for detecting ADDITION (preserve original)
 const ADD_KEYWORDS = [
   "add", "dodaj", "put", "give", "apply", "attach", "include",
   "with", "z", "ze", "wraz z",
@@ -90,7 +39,7 @@ const ADD_KEYWORDS = [
   "shadow", "cień",
 ];
 
-// Słowa kluczowe wskazujące na ZMIANĘ (może zmienić oryginał bardziej)
+// Keywords for CHANGE (may alter original more)
 const CHANGE_KEYWORDS = [
   "change", "zmień", "make", "zrób", "turn into", "zamień na",
   "transform", "przekształć", "convert", "konwertuj",
@@ -100,7 +49,7 @@ const CHANGE_KEYWORDS = [
   "pixel art", "anime", "realistic", "cartoon",
 ];
 
-// Słowa kluczowe wskazujące na ZACHOWANIE oryginału
+// Keywords for PRESERVING original
 const PRESERVE_KEYWORDS = [
   "keep", "zachowaj", "preserve", "maintain", "same shape", "ten sam kształt",
   "only add", "tylko dodaj", "just add",
@@ -109,601 +58,389 @@ const PRESERVE_KEYWORDS = [
 ];
 
 /**
- * Analizuje prompt użytkownika i określa typ edycji
+ * Analyze user prompt to determine edit type
  */
 function analyzeEditIntent(userPrompt: string): EditAnalysis {
   const lowerPrompt = userPrompt.toLowerCase();
-  
-  // Sprawdź czy użytkownik chce ZACHOWAĆ oryginał
+
   const wantsPreserve = PRESERVE_KEYWORDS.some(kw => lowerPrompt.includes(kw));
-  
-  // Sprawdź czy to DODAWANIE efektu
   const isAddition = ADD_KEYWORDS.some(kw => lowerPrompt.includes(kw));
-  
-  // Sprawdź czy to ZMIANA/TRANSFORMACJA
   const isChange = CHANGE_KEYWORDS.some(kw => lowerPrompt.includes(kw));
-  
-  // Określ typ edycji i parametry
-  
-  // 1. Dodawanie efektów (ogień, lód, magia itp.)
+
+  // 1. Adding effects (fire, ice, magic)
   if (isAddition && !isChange) {
     return {
       type: "add_effect",
       preserveOriginal: true,
-      strength: 0.45, // Higher strength for VISIBLE effects
-      imageGuidance: 1.8, // Lower to allow effect to show
+      strength: 0.45,
       description: "Adding effect while preserving original"
     };
   }
-  
-  // 2. Zmiana koloru
+
+  // 2. Color change
   if (lowerPrompt.match(/\b(gold|silver|blue|red|green|purple|black|white|color|kolor)\b/i)) {
     return {
       type: "color_change",
       preserveOriginal: true,
       strength: 0.35,
-      imageGuidance: 1.5,
       description: "Changing color while preserving shape"
     };
   }
-  
-  // 3. Zmiana materiału
+
+  // 3. Material change
   if (lowerPrompt.match(/\b(crystal|wood|bone|stone|metal|glass|kryształ|drewno|kość|kamień)\b/i)) {
     return {
       type: "material_change",
       preserveOriginal: true,
       strength: 0.4,
-      imageGuidance: 1.4,
       description: "Changing material while preserving shape"
     };
   }
-  
-  // 4. Zmiana stylu (pixel art, anime itp.) - może bardziej zmienić
+
+  // 4. Style change (pixel art, anime)
   if (lowerPrompt.match(/\b(pixel|anime|cartoon|realistic|painted|sketch|chibi)\b/i)) {
     return {
       type: "change_style",
-      preserveOriginal: !isChange, // Jeśli wprost mówi "change" to może zmienić więcej
+      preserveOriginal: !isChange,
       strength: 0.55,
-      imageGuidance: 1.2,
       description: "Converting art style"
     };
   }
-  
-  // 5. Transformacja (zamień w coś innego) - największa zmiana
+
+  // 5. Transformation
   if (lowerPrompt.match(/\b(turn into|transform|convert|zamień|przekształć)\b/i)) {
     return {
       type: "transform",
       preserveOriginal: false,
       strength: 0.6,
-      imageGuidance: 1.0,
       description: "Transforming object"
     };
   }
-  
-  // 6. Domyślnie - zachowaj oryginał z umiarkowaną zmianą
+
+  // 6. Default - preserve original with moderate change
   return {
     type: "modify_appearance",
     preserveOriginal: wantsPreserve || !isChange,
     strength: 0.35,
-    imageGuidance: 1.5,
     description: "General modification preserving original"
   };
 }
 
 // ===========================================
-// EDIT TYPES & PRESETS
+// EDIT PRESETS
 // ===========================================
-
-interface EditOptions {
-  strength: number;
-  guidanceScale: number;
-  imageGuidance: number;
-  quality: "fast" | "medium" | "high";
-  negativePrompt: string;
-  preserveShape: boolean;
-  preserveColors: boolean;
-  preserveStyle: boolean;
-}
 
 interface EditPreset {
   keywords: string[];
-  model: keyof typeof EDIT_MODELS;
-  options: Partial<EditOptions>;
+  strength: number;
   promptTemplate: string;
   description: string;
   category: "effects" | "colors" | "materials" | "decorations" | "styles";
+  preserveShape: boolean;
 }
 
 const EDIT_PRESETS: Record<string, EditPreset> = {
-  // === EFFECTS (fire, ice, lightning, etc.) - ALWAYS PRESERVE ORIGINAL ===
-  // Note: InstructPix2Pix needs higher strength to produce VISIBLE effects
-  // image_guidance_scale controls how much to preserve original (higher = more preservation)
+  // === EFFECTS ===
   fire: {
     keywords: ["fire", "flame", "flames", "burning", "blaze", "inferno", "ember", "ogień", "płomienie"],
-    model: "instructPix2Pix",
-    options: {
-      strength: 0.45, // Higher strength for visible flames
-      imageGuidance: 1.8, // Lower to allow more visible effect
-      guidanceScale: 9.0, // Higher text guidance for better instruction following
-      preserveShape: true,
-    },
-    promptTemplate: "add dramatic fire and flames to this {itemType}, blazing fire effect, orange and red flames emanating from the {itemType}, fire burning on the edges, fiery glow, hot embers, keep the exact same {itemType} visible underneath the flames",
+    strength: 0.45,
+    promptTemplate: "add dramatic fire and flames to this {itemType}, blazing fire effect, orange and red flames emanating, fiery glow, hot embers, keep the exact same {itemType} visible underneath the flames",
     description: "Adds fire/flame effects",
     category: "effects",
+    preserveShape: true,
   },
-
   ice: {
-    keywords: ["ice", "frost", "frozen", "freezing", "cold", "icy", "glacier", "snow", "crystalline", "lód", "mróz", "zamrożony"],
-    model: "instructPix2Pix",
-    options: {
-      strength: 0.45,
-      imageGuidance: 1.8,
-      guidanceScale: 9.0,
-      preserveShape: true,
-    },
-    promptTemplate: "add ice and frost effects to this {itemType}, frozen with ice crystals, blue frost coating, icicles forming on edges, cold mist, crystalline ice texture overlay, keep the same {itemType} shape visible",
+    keywords: ["ice", "frost", "frozen", "freezing", "cold", "icy", "glacier", "snow", "crystalline", "lód", "mróz"],
+    strength: 0.45,
+    promptTemplate: "add ice and frost effects to this {itemType}, frozen with ice crystals, blue frost coating, icicles forming on edges, cold mist, crystalline ice texture overlay",
     description: "Adds ice/frost effects",
     category: "effects",
+    preserveShape: true,
   },
-
   lightning: {
-    keywords: ["lightning", "electric", "electricity", "thunder", "spark", "sparks", "voltage", "shock", "błyskawica", "elektryczność"],
-    model: "instructPix2Pix",
-    options: {
-      strength: 0.45,
-      imageGuidance: 1.8,
-      guidanceScale: 9.0,
-      preserveShape: true,
-    },
-    promptTemplate: "add electric lightning effects to this {itemType}, blue-white electricity arcing around it, electrical sparks, voltage crackling, glowing electric aura, lightning bolts emanating, keep the original {itemType} shape",
+    keywords: ["lightning", "electric", "electricity", "thunder", "spark", "sparks", "voltage", "shock", "błyskawica"],
+    strength: 0.45,
+    promptTemplate: "add electric lightning effects to this {itemType}, blue-white electricity arcing around it, electrical sparks, voltage crackling, glowing electric aura",
     description: "Adds lightning/electric effects",
     category: "effects",
+    preserveShape: true,
   },
-
   magic: {
-    keywords: ["magic", "magical", "enchanted", "mystical", "arcane", "spell", "sorcery", "mana", "magia", "magiczny", "zaklęcie"],
-    model: "instructPix2Pix",
-    options: {
-      strength: 0.45,
-      imageGuidance: 1.8,
-      guidanceScale: 9.0,
-      preserveShape: true,
-    },
-    promptTemplate: "add magical enchantment effects to this {itemType}, glowing magical runes, mystical purple and blue aura, sparkles and magical particles floating around it, enchanted glow, arcane energy, keep the original {itemType} shape",
+    keywords: ["magic", "magical", "enchanted", "mystical", "arcane", "spell", "sorcery", "mana", "magia", "magiczny"],
+    strength: 0.45,
+    promptTemplate: "add magical enchantment effects to this {itemType}, glowing magical runes, mystical purple and blue aura, sparkles and magical particles floating around it",
     description: "Adds magical/enchanted effects",
     category: "effects",
+    preserveShape: true,
   },
-
   glow: {
-    keywords: ["glow", "glowing", "luminous", "radiant", "shining", "bright", "light", "neon", "świecenie", "świecący"],
-    model: "instructPix2Pix",
-    options: {
-      strength: 0.40,
-      imageGuidance: 1.8,
-      guidanceScale: 9.0,
-      preserveShape: true,
-    },
-    promptTemplate: "make this {itemType} glow with bright inner light, luminous radiant effect, soft light rays emanating, neon glow, bright shining aura, keep the original shape",
+    keywords: ["glow", "glowing", "luminous", "radiant", "shining", "bright", "light", "neon", "świecenie"],
+    strength: 0.40,
+    promptTemplate: "make this {itemType} glow with bright inner light, luminous radiant effect, soft light rays emanating, neon glow",
     description: "Adds glowing/luminous effect",
     category: "effects",
+    preserveShape: true,
   },
-
   poison: {
-    keywords: ["poison", "toxic", "venom", "acid", "corrosive", "dripping", "ooze", "trucizna", "toksyczny", "jad"],
-    model: "instructPix2Pix",
-    options: {
-      strength: 0.45,
-      imageGuidance: 1.8,
-      guidanceScale: 9.0,
-      preserveShape: true,
-    },
-    promptTemplate: "add poison and toxic effects to this {itemType}, dripping green venom, toxic fumes rising, acid drops, sickly green glow, poisonous ooze, venomous appearance, keep the original shape",
+    keywords: ["poison", "toxic", "venom", "acid", "corrosive", "dripping", "ooze", "trucizna", "toksyczny"],
+    strength: 0.45,
+    promptTemplate: "add poison and toxic effects to this {itemType}, dripping green venom, toxic fumes rising, acid drops, sickly green glow",
     description: "Adds poison/toxic effects",
     category: "effects",
+    preserveShape: true,
   },
-
   holy: {
-    keywords: ["holy", "divine", "sacred", "blessed", "angelic", "celestial", "light", "pure", "święty", "boski", "błogosławiony"],
-    model: "instructPix2Pix",
-    options: {
-      strength: 0.45,
-      imageGuidance: 1.8,
-      guidanceScale: 9.0,
-      preserveShape: true,
-    },
-    promptTemplate: "add holy divine light effects to this {itemType}, golden celestial glow, rays of sacred light, angelic aura emanating, blessed radiance, heavenly shine, keep the original shape",
+    keywords: ["holy", "divine", "sacred", "blessed", "angelic", "celestial", "light", "pure", "święty", "boski"],
+    strength: 0.45,
+    promptTemplate: "add holy divine light effects to this {itemType}, golden celestial glow, rays of sacred light, angelic aura emanating",
     description: "Adds holy/divine effects",
     category: "effects",
+    preserveShape: true,
   },
-
   dark: {
-    keywords: ["dark", "shadow", "darkness", "evil", "cursed", "demonic", "void", "corrupt", "ciemny", "mroczny", "przeklęty"],
-    model: "instructPix2Pix",
-    options: {
-      strength: 0.45,
-      imageGuidance: 1.8,
-      guidanceScale: 9.0,
-      preserveShape: true,
-    },
-    promptTemplate: "add dark shadow effects to this {itemType}, dark energy wisps, shadowy aura, void particles swirling, purple-black darkness, evil corrupt glow, demonic energy, keep the original shape",
+    keywords: ["dark", "shadow", "darkness", "evil", "cursed", "demonic", "void", "corrupt", "ciemny", "mroczny"],
+    strength: 0.45,
+    promptTemplate: "add dark shadow effects to this {itemType}, dark energy wisps, shadowy aura, void particles swirling, purple-black darkness",
     description: "Adds dark/shadow effects",
     category: "effects",
+    preserveShape: true,
   },
 
-  // === COLORS - PRESERVE SHAPE, CHANGE COLOR ===
+  // === COLORS ===
   gold: {
     keywords: ["gold", "golden", "gilded", "aureate", "złoty", "złoto"],
-    model: "instructPix2Pix",
-    options: {
-      strength: 0.35,
-      imageGuidance: 1.5,
-      preserveShape: true,
-      preserveStyle: true,
-    },
-    promptTemplate: "Change this {itemType} to be made of pure gold. Golden metallic color, shiny gold material. Keep the EXACT SAME shape and design, only change to gold color.",
+    strength: 0.35,
+    promptTemplate: "Change this {itemType} to be made of pure gold. Golden metallic color, shiny gold material. Keep the EXACT SAME shape and design.",
     description: "Changes to gold color",
     category: "colors",
+    preserveShape: true,
   },
-
   silver: {
-    keywords: ["silver", "chrome", "metallic", "steel", "platinum", "srebrny", "chromowany"],
-    model: "instructPix2Pix",
-    options: {
-      strength: 0.35,
-      imageGuidance: 1.5,
-      preserveShape: true,
-    },
-    promptTemplate: "Change this {itemType} to polished silver. Shiny chrome metallic surface. Keep the EXACT same shape, only change to silver color.",
+    keywords: ["silver", "chrome", "metallic", "steel", "platinum", "srebrny"],
+    strength: 0.35,
+    promptTemplate: "Change this {itemType} to polished silver. Shiny chrome metallic surface. Keep the EXACT same shape.",
     description: "Changes to silver color",
     category: "colors",
+    preserveShape: true,
   },
-
   ruby: {
-    keywords: ["ruby", "red", "crimson", "scarlet", "blood", "rubin", "czerwony", "szkarłatny"],
-    model: "instructPix2Pix",
-    options: {
-      strength: 0.35,
-      imageGuidance: 1.5,
-      preserveShape: true,
-    },
+    keywords: ["ruby", "red", "crimson", "scarlet", "blood", "rubin", "czerwony"],
+    strength: 0.35,
     promptTemplate: "Change this {itemType} color to deep ruby red. Crimson colored, red gemstone material. Keep the EXACT same shape.",
     description: "Changes to red/ruby color",
     category: "colors",
+    preserveShape: true,
   },
-
   sapphire: {
-    keywords: ["sapphire", "blue", "azure", "cobalt", "navy", "szafir", "niebieski", "lazurowy"],
-    model: "instructPix2Pix",
-    options: {
-      strength: 0.35,
-      imageGuidance: 1.5,
-      preserveShape: true,
-    },
+    keywords: ["sapphire", "blue", "azure", "cobalt", "navy", "szafir", "niebieski"],
+    strength: 0.35,
     promptTemplate: "Change this {itemType} to sapphire blue color. Deep azure blue, blue gemstone material. Keep the EXACT same shape.",
     description: "Changes to blue/sapphire color",
     category: "colors",
+    preserveShape: true,
   },
-
   emerald: {
-    keywords: ["emerald", "green", "jade", "verdant", "forest", "szmaragd", "zielony", "jadeit"],
-    model: "instructPix2Pix",
-    options: {
-      strength: 0.35,
-      imageGuidance: 1.5,
-      preserveShape: true,
-    },
+    keywords: ["emerald", "green", "jade", "verdant", "forest", "szmaragd", "zielony"],
+    strength: 0.35,
     promptTemplate: "Change this {itemType} to emerald green. Rich jade green color, green gemstone material. Keep the EXACT same shape.",
     description: "Changes to green/emerald color",
     category: "colors",
+    preserveShape: true,
   },
-
   amethyst: {
-    keywords: ["amethyst", "purple", "violet", "lavender", "magenta", "ametyst", "fioletowy", "purpurowy"],
-    model: "instructPix2Pix",
-    options: {
-      strength: 0.35,
-      imageGuidance: 1.5,
-      preserveShape: true,
-    },
+    keywords: ["amethyst", "purple", "violet", "lavender", "magenta", "ametyst", "fioletowy"],
+    strength: 0.35,
     promptTemplate: "Change this {itemType} to amethyst purple. Deep violet color, purple gemstone material. Keep the EXACT same shape.",
     description: "Changes to purple/amethyst color",
     category: "colors",
+    preserveShape: true,
   },
-
   obsidian: {
-    keywords: ["obsidian", "black", "onyx", "ebony", "jet", "obsydian", "czarny", "onyks"],
-    model: "instructPix2Pix",
-    options: {
-      strength: 0.35,
-      imageGuidance: 1.5,
-      preserveShape: true,
-    },
+    keywords: ["obsidian", "black", "onyx", "ebony", "jet", "obsydian", "czarny"],
+    strength: 0.35,
     promptTemplate: "Change this {itemType} to black obsidian. Deep black volcanic glass material, dark and sleek. Keep the EXACT same shape.",
     description: "Changes to black/obsidian color",
     category: "colors",
+    preserveShape: true,
   },
-
   rainbow: {
-    keywords: ["rainbow", "iridescent", "prismatic", "colorful", "multicolor", "chromatic", "tęczowy", "opalizujący"],
-    model: "instructPix2Pix",
-    options: {
-      strength: 0.38,
-      imageGuidance: 1.4,
-      preserveShape: true,
-    },
+    keywords: ["rainbow", "iridescent", "prismatic", "colorful", "multicolor", "chromatic", "tęczowy"],
+    strength: 0.38,
     promptTemplate: "Make this {itemType} iridescent rainbow colored. Prismatic shifting colors, rainbow reflections. Keep the original shape.",
     description: "Adds rainbow/iridescent effect",
     category: "colors",
+    preserveShape: true,
   },
 
-  // === MATERIALS - PRESERVE SHAPE ===
+  // === MATERIALS ===
   crystal: {
-    keywords: ["crystal", "crystalline", "gem", "gemstone", "jewel", "transparent", "glass", "kryształ", "kryształowy", "przezroczysty"],
-    model: "instructPix2Pix",
-    options: {
-      strength: 0.4,
-      imageGuidance: 1.4,
-      preserveShape: true,
-    },
+    keywords: ["crystal", "crystalline", "gem", "gemstone", "jewel", "transparent", "glass", "kryształ"],
+    strength: 0.4,
     promptTemplate: "Transform this {itemType} to be made of crystal. Transparent crystalline material, faceted gem surfaces, light refraction. Keep the EXACT same shape.",
     description: "Changes to crystal material",
     category: "materials",
+    preserveShape: true,
   },
-
   wood: {
-    keywords: ["wood", "wooden", "timber", "oak", "mahogany", "birch", "drewno", "drewniany", "dębowy"],
-    model: "instructPix2Pix",
-    options: {
-      strength: 0.4,
-      imageGuidance: 1.4,
-      preserveShape: true,
-    },
+    keywords: ["wood", "wooden", "timber", "oak", "mahogany", "birch", "drewno", "drewniany"],
+    strength: 0.4,
     promptTemplate: "Transform this {itemType} to be made of polished wood. Wood grain texture, carved wooden material. Keep the EXACT same shape.",
     description: "Changes to wooden material",
     category: "materials",
+    preserveShape: true,
   },
-
   bone: {
-    keywords: ["bone", "skeletal", "ivory", "skull", "osseous", "kość", "kościany", "szkieletowy"],
-    model: "instructPix2Pix",
-    options: {
-      strength: 0.4,
-      imageGuidance: 1.4,
-      preserveShape: true,
-    },
+    keywords: ["bone", "skeletal", "ivory", "skull", "osseous", "kość", "kościany"],
+    strength: 0.4,
     promptTemplate: "Transform this {itemType} to be made of bone. Ivory white bone material, skeletal texture. Keep the EXACT same shape.",
     description: "Changes to bone material",
     category: "materials",
+    preserveShape: true,
   },
-
   stone: {
-    keywords: ["stone", "rock", "granite", "marble", "rocky", "kamień", "kamienny", "granitowy", "marmurowy"],
-    model: "instructPix2Pix",
-    options: {
-      strength: 0.4,
-      imageGuidance: 1.4,
-      preserveShape: true,
-    },
+    keywords: ["stone", "rock", "granite", "marble", "rocky", "kamień", "kamienny"],
+    strength: 0.4,
     promptTemplate: "Transform this {itemType} to be carved from stone. Rocky granite texture, carved stone material. Keep the EXACT same shape.",
     description: "Changes to stone material",
     category: "materials",
+    preserveShape: true,
   },
 
-  // === DECORATIONS - ADD TO ORIGINAL ===
+  // === DECORATIONS ===
   gems: {
-    keywords: ["gems", "jewels", "jeweled", "studded", "bejeweled", "encrusted", "klejnoty", "wysadzany"],
-    model: "instructPix2Pix",
-    options: {
-      strength: 0.32,
-      imageGuidance: 1.6,
-      preserveShape: true,
-    },
-    promptTemplate: "Add precious gems and jewels to this {itemType}. Embed rubies, sapphires, emeralds, diamonds into the {itemType}. Jewel encrusted decoration. Keep the original shape intact.",
+    keywords: ["gems", "jewels", "jeweled", "studded", "bejeweled", "encrusted", "klejnoty"],
+    strength: 0.32,
+    promptTemplate: "Add precious gems and jewels to this {itemType}. Embed rubies, sapphires, emeralds, diamonds. Jewel encrusted decoration.",
     description: "Adds gems and jewels",
     category: "decorations",
+    preserveShape: true,
   },
-
   runes: {
-    keywords: ["runes", "runic", "inscribed", "carved", "etched", "symbols", "glyphs", "runy", "runiczny", "wyryty"],
-    model: "instructPix2Pix",
-    options: {
-      strength: 0.3,
-      imageGuidance: 1.6,
-      preserveShape: true,
-    },
-    promptTemplate: "Add glowing magical runes to this {itemType}. Ancient runic symbols etched and glowing on the surface, mystical inscriptions. Keep the original shape.",
+    keywords: ["runes", "runic", "inscribed", "carved", "etched", "symbols", "glyphs", "runy"],
+    strength: 0.3,
+    promptTemplate: "Add glowing magical runes to this {itemType}. Ancient runic symbols etched and glowing on the surface, mystical inscriptions.",
     description: "Adds glowing runes",
     category: "decorations",
+    preserveShape: true,
   },
-
   ornate: {
-    keywords: ["ornate", "decorated", "fancy", "elaborate", "detailed", "intricate", "baroque", "ozdobny", "bogato zdobiony"],
-    model: "instructPix2Pix",
-    options: {
-      strength: 0.35,
-      imageGuidance: 1.5,
-      preserveShape: true,
-    },
-    promptTemplate: "Make this {itemType} more ornate and decorated. Add intricate filigree, elaborate engravings, fancy decorative details. Keep the overall shape.",
+    keywords: ["ornate", "decorated", "fancy", "elaborate", "detailed", "intricate", "baroque", "ozdobny"],
+    strength: 0.35,
+    promptTemplate: "Make this {itemType} more ornate and decorated. Add intricate filigree, elaborate engravings, fancy decorative details.",
     description: "Makes more ornate/decorated",
     category: "decorations",
+    preserveShape: true,
   },
-
   ancient: {
-    keywords: ["ancient", "old", "aged", "antique", "weathered", "worn", "rustic", "vintage", "starożytny", "zniszczony", "postarzały"],
-    model: "instructPix2Pix",
-    options: {
-      strength: 0.35,
-      imageGuidance: 1.5,
-      preserveShape: true,
-    },
-    promptTemplate: "Make this {itemType} look ancient and weathered. Add rust, wear marks, aged patina, antique appearance. Keep the original shape.",
+    keywords: ["ancient", "old", "aged", "antique", "weathered", "worn", "rustic", "vintage", "starożytny"],
+    strength: 0.35,
+    promptTemplate: "Make this {itemType} look ancient and weathered. Add rust, wear marks, aged patina, antique appearance.",
     description: "Ages/weathers the item",
     category: "decorations",
+    preserveShape: true,
   },
-
   pristine: {
-    keywords: ["pristine", "new", "clean", "polished", "shiny", "mint", "perfect", "restore", "nowy", "czysty", "wypolerowany"],
-    model: "instructPix2Pix",
-    options: {
-      strength: 0.3,
-      imageGuidance: 1.6,
-      preserveShape: true,
-    },
-    promptTemplate: "Make this {itemType} look pristine and brand new. Clean polished surface, shiny and perfect condition. Keep the original shape.",
+    keywords: ["pristine", "new", "clean", "polished", "shiny", "mint", "perfect", "restore", "nowy"],
+    strength: 0.3,
+    promptTemplate: "Make this {itemType} look pristine and brand new. Clean polished surface, shiny and perfect condition.",
     description: "Makes pristine/new looking",
     category: "decorations",
+    preserveShape: true,
   },
 
-  // === STYLE CHANGES - MAY CHANGE MORE ===
+  // === STYLE CHANGES ===
   pixelArt: {
     keywords: ["pixel", "pixelart", "pixel art", "8bit", "8-bit", "16bit", "16-bit", "retro"],
-    model: "sdxlImg2Img",
-    options: {
-      strength: 0.55,
-      guidanceScale: 8,
-      preserveShape: true,
-    },
-    promptTemplate: "Convert to pixel art style. {itemType}, retro 16-bit pixel art, clean pixels, game sprite style. Maintain the same pose and shape as the original.",
+    strength: 0.55,
+    promptTemplate: "Convert to pixel art style. {itemType}, retro 16-bit pixel art, clean pixels, game sprite style. Maintain the same pose and shape.",
     description: "Converts to pixel art",
     category: "styles",
+    preserveShape: true,
   },
-
   realistic: {
-    keywords: ["realistic", "photorealistic", "real", "lifelike", "3d render", "rendered", "realistyczny", "fotorealistyczny"],
-    model: "sdxlImg2Img",
-    options: {
-      strength: 0.6,
-      guidanceScale: 8,
-    },
-    promptTemplate: "Convert to photorealistic style. Realistic {itemType}, 3D rendered, physically accurate materials and lighting. Maintain the same pose and shape.",
+    keywords: ["realistic", "photorealistic", "real", "lifelike", "3d render", "rendered", "realistyczny"],
+    strength: 0.6,
+    promptTemplate: "Convert to photorealistic style. Realistic {itemType}, 3D rendered, physically accurate materials and lighting.",
     description: "Converts to realistic style",
     category: "styles",
+    preserveShape: false,
   },
-
   anime: {
     keywords: ["anime", "manga", "japanese", "cel shaded", "cel-shaded"],
-    model: "sdxlImg2Img",
-    options: {
-      strength: 0.55,
-      guidanceScale: 8,
-    },
-    promptTemplate: "Convert to anime style. {itemType} in anime manga art style, cel shaded, clean lines, vibrant colors. Maintain the same pose.",
+    strength: 0.55,
+    promptTemplate: "Convert to anime style. {itemType} in anime manga art style, cel shaded, clean lines, vibrant colors.",
     description: "Converts to anime style",
     category: "styles",
+    preserveShape: true,
   },
-
   cartoon: {
-    keywords: ["cartoon", "cartoonish", "toon", "comic", "animated", "kreskówka", "komiksowy"],
-    model: "sdxlImg2Img",
-    options: {
-      strength: 0.55,
-      guidanceScale: 8,
-    },
-    promptTemplate: "Convert to cartoon style. {itemType} as cartoon, bold outlines, bright colors, playful style. Maintain the same shape.",
+    keywords: ["cartoon", "cartoonish", "toon", "comic", "animated", "kreskówka"],
+    strength: 0.55,
+    promptTemplate: "Convert to cartoon style. {itemType} as cartoon, bold outlines, bright colors, playful style.",
     description: "Converts to cartoon style",
     category: "styles",
+    preserveShape: true,
   },
-
-  handDrawn: {
-    keywords: ["hand drawn", "handdrawn", "sketch", "sketched", "pencil", "drawn", "illustrated", "szkic", "rysowany"],
-    model: "sdxlImg2Img",
-    options: {
-      strength: 0.55,
-      guidanceScale: 7,
-    },
-    promptTemplate: "Convert to hand drawn sketch style. {itemType} as pencil sketch, hand illustrated, artistic drawing. Maintain the same pose.",
-    description: "Converts to hand-drawn style",
-    category: "styles",
-  },
-
-  painterly: {
-    keywords: ["painted", "painterly", "oil painting", "watercolor", "artistic", "brushstrokes", "malowany", "olejny"],
-    model: "kandinsky",
-    options: {
-      strength: 0.5,
-      guidanceScale: 5,
-    },
-    promptTemplate: "Convert to painterly art style. {itemType} as oil painting, visible brushstrokes, artistic painted look. Maintain the same composition.",
-    description: "Converts to painterly style",
-    category: "styles",
-  },
-
   chibi: {
-    keywords: ["chibi", "cute", "kawaii", "adorable", "tiny", "mini", "słodki", "uroczy"],
-    model: "sdxlImg2Img",
-    options: {
-      strength: 0.6,
-      guidanceScale: 8,
-    },
+    keywords: ["chibi", "cute", "kawaii", "adorable", "tiny", "mini", "słodki"],
+    strength: 0.6,
     promptTemplate: "Convert to cute chibi style. Adorable kawaii {itemType}, big head small body proportions if character, cute anime style.",
     description: "Converts to chibi style",
     category: "styles",
+    preserveShape: false,
   },
-
   darkFantasy: {
-    keywords: ["dark fantasy", "gothic", "grim", "grimdark", "souls", "soulslike", "eldritch", "mroczne fantasy", "gotycki"],
-    model: "sdxlImg2Img",
-    options: {
-      strength: 0.5,
-      guidanceScale: 8,
-    },
-    promptTemplate: "Convert to dark fantasy style. {itemType} in grimdark gothic style, ominous atmosphere, dark souls aesthetic. Maintain the same shape.",
+    keywords: ["dark fantasy", "gothic", "grim", "grimdark", "souls", "soulslike", "eldritch", "mroczne fantasy"],
+    strength: 0.5,
+    promptTemplate: "Convert to dark fantasy style. {itemType} in grimdark gothic style, ominous atmosphere, dark souls aesthetic.",
     description: "Converts to dark fantasy style",
     category: "styles",
+    preserveShape: true,
   },
-
   scifi: {
-    keywords: ["sci-fi", "scifi", "futuristic", "cyber", "tech", "technological", "neon", "cyberpunk", "futurystyczny"],
-    model: "instructPix2Pix",
-    options: {
-      strength: 0.45,
-      imageGuidance: 1.3,
-    },
-    promptTemplate: "Transform into sci-fi futuristic version. {itemType} with technological elements, neon lights, cyberpunk aesthetic, high-tech materials. Keep the general shape.",
+    keywords: ["sci-fi", "scifi", "futuristic", "cyber", "tech", "technological", "neon", "cyberpunk"],
+    strength: 0.45,
+    promptTemplate: "Transform into sci-fi futuristic version. {itemType} with technological elements, neon lights, cyberpunk aesthetic, high-tech materials.",
     description: "Makes sci-fi/futuristic",
     category: "styles",
+    preserveShape: true,
   },
-
   steampunk: {
-    keywords: ["steampunk", "clockwork", "brass", "gears", "victorian", "industrial", "zegarkowy", "wiktoriański"],
-    model: "instructPix2Pix",
-    options: {
-      strength: 0.45,
-      imageGuidance: 1.3,
-    },
-    promptTemplate: "Transform into steampunk version. {itemType} with brass gears, clockwork mechanisms, Victorian industrial aesthetic. Keep the general shape.",
+    keywords: ["steampunk", "clockwork", "brass", "gears", "victorian", "industrial", "zegarkowy"],
+    strength: 0.45,
+    promptTemplate: "Transform into steampunk version. {itemType} with brass gears, clockwork mechanisms, Victorian industrial aesthetic.",
     description: "Makes steampunk style",
     category: "styles",
+    preserveShape: true,
   },
 };
 
-// Default preset for unknown edits - PRESERVES ORIGINAL
+// Default preset for unknown edits
 const DEFAULT_PRESET: EditPreset = {
   keywords: [],
-  model: "instructPix2Pix",
-  options: {
-    strength: 0.3,
-    imageGuidance: 1.8,
-    preserveShape: true,
-  },
+  strength: 0.3,
   promptTemplate: "Edit this {itemType}: {userPrompt}. Keep the overall shape, style and details intact. Only apply the requested change.",
   description: "General edit (preserves original)",
   category: "effects",
+  preserveShape: true,
 };
 
 // ===========================================
 // HELPER FUNCTIONS
 // ===========================================
 
-// Detect what type of item is being edited based on original generation
+interface GenerationData {
+  categoryId?: string;
+  subcategoryId?: string;
+  styleId?: string;
+}
+
 function detectItemType(originalGeneration?: GenerationData): string {
   if (!originalGeneration) return "item";
 
   const category = originalGeneration.categoryId?.toLowerCase() || "";
   const subcategory = originalGeneration.subcategoryId?.toLowerCase() || "";
 
-  // Map categories to item types
   const categoryMap: Record<string, string> = {
     weapons: "weapon",
     armor: "armor piece",
@@ -719,7 +456,6 @@ function detectItemType(originalGeneration?: GenerationData): string {
     projectiles: "projectile",
   };
 
-  // More specific subcategory mappings
   const subcategoryMap: Record<string, string> = {
     swords: "sword",
     axes: "axe",
@@ -736,81 +472,59 @@ function detectItemType(originalGeneration?: GenerationData): string {
     maces: "mace",
   };
 
-  if (subcategoryMap[subcategory]) {
-    return subcategoryMap[subcategory];
-  }
-
-  if (categoryMap[category]) {
-    return categoryMap[category];
-  }
-
+  if (subcategoryMap[subcategory]) return subcategoryMap[subcategory];
+  if (categoryMap[category]) return categoryMap[category];
   return "item";
 }
 
-// Find best matching preset for the user's prompt
-function findBestPreset(userPrompt: string): { preset: EditPreset; matchedKeyword: string | null; presetName: string | null } {
+function findBestPreset(userPrompt: string): { preset: EditPreset; presetName: string | null } {
   const lowerPrompt = userPrompt.toLowerCase();
 
-  // Score each preset based on keyword matches
   let bestPreset = DEFAULT_PRESET;
   let bestScore = 0;
-  let matchedKeyword: string | null = null;
   let presetName: string | null = null;
 
   for (const [name, preset] of Object.entries(EDIT_PRESETS)) {
     for (const keyword of preset.keywords) {
       if (lowerPrompt.includes(keyword)) {
-        // Longer keyword matches are more specific
         const score = keyword.length;
         if (score > bestScore) {
           bestScore = score;
           bestPreset = preset;
-          matchedKeyword = keyword;
           presetName = name;
         }
       }
     }
   }
 
-  return { preset: bestPreset, matchedKeyword, presetName };
+  return { preset: bestPreset, presetName };
 }
 
-// Build the final prompt with template
 function buildPrompt(
   userPrompt: string,
   preset: EditPreset,
   itemType: string,
-  originalStyle?: string,
-  editAnalysis?: EditAnalysis
+  editAnalysis: EditAnalysis
 ): string {
   let prompt = preset.promptTemplate
     .replace(/{itemType}/g, itemType)
     .replace(/{userPrompt}/g, userPrompt);
 
-  // Add style preservation if needed
-  if (preset.options.preserveStyle && originalStyle) {
-    prompt += ` Maintain the ${originalStyle} art style.`;
-  }
-
-  // Wzmocnienie zachowania oryginału jeśli wykryto
-  if (editAnalysis?.preserveOriginal) {
+  if (editAnalysis.preserveOriginal) {
     prompt += " IMPORTANT: Keep the original object completely intact, only add the requested effect/change.";
   }
 
-  // Add general quality terms
   prompt += " High quality, detailed, professional game asset.";
 
   return prompt;
 }
 
-// Build negative prompt based on preset and analysis
-function buildNegativePrompt(preset: EditPreset, editAnalysis?: EditAnalysis): string {
+function buildNegativePrompt(preset: EditPreset, editAnalysis: EditAnalysis): string {
   const base = "blurry, low quality, distorted, deformed, bad anatomy, watermark, signature, text";
 
   const additions: string[] = [];
 
-  // Jeśli ma zachować oryginał - dodaj więcej ograniczeń
-  if (preset.options.preserveShape || editAnalysis?.preserveOriginal) {
+  if (preset.preserveShape || editAnalysis.preserveOriginal) {
     additions.push(
       "different shape",
       "wrong proportions",
@@ -823,130 +537,90 @@ function buildNegativePrompt(preset: EditPreset, editAnalysis?: EditAnalysis): s
     );
   }
 
-  if (preset.options.preserveColors) {
-    additions.push("wrong colors", "different colors");
-  }
-
   return [base, ...additions].join(", ");
 }
 
-// Get default options merged with preset options and analysis
-function getEditOptions(
-  preset: EditPreset,
-  editAnalysis: EditAnalysis,
-  userOptions?: Partial<EditOptions>
-): EditOptions {
-  const defaults: EditOptions = {
-    strength: editAnalysis.strength,
-    guidanceScale: 7.5,
-    imageGuidance: editAnalysis.imageGuidance,
-    quality: "medium",
-    negativePrompt: "",
-    preserveShape: editAnalysis.preserveOriginal,
-    preserveColors: false,
-    preserveStyle: false,
-  };
+function getUserTier(plan: string, role: string): UserTier {
+  if (role === "OWNER" || role === "ADMIN") return "pro";
 
-  const merged = {
-    ...defaults,
-    ...preset.options,
-    ...userOptions,
-  };
-
-  // Zawsze nadpisz negative prompt na podstawie finalnych opcji
-  merged.negativePrompt = buildNegativePrompt(preset, editAnalysis);
-
-  return merged;
+  switch (plan) {
+    case "UNLIMITED":
+    case "PRO":
+      return "pro";
+    case "STARTER":
+      return "starter";
+    default:
+      return "free";
+  }
 }
 
-// Run prediction with retry logic
-async function runPrediction(
-  model: keyof typeof EDIT_MODELS,
+// ===========================================
+// RUNWARE IMAGE EDITING FUNCTION
+// ===========================================
+
+async function editImageWithRunware(
   imageUrl: string,
   prompt: string,
-  options: EditOptions,
-  maxRetries: number = 2
-): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
-  const modelConfig = EDIT_MODELS[model];
+  negativePrompt: string,
+  strength: number,
+  userTier: UserTier
+): Promise<{ success: boolean; imageUrl?: string; error?: string; cost?: number }> {
+  try {
+    const runware = await getRunwareClient();
 
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      console.log(`[Attempt ${attempt}/${maxRetries}] Using model: ${modelConfig.name}`);
+    // Select model based on tier
+    const modelId = DEFAULT_MODEL[userTier];
+    const modelAIR = RUNWARE_MODELS[modelId];
+    const cost = MODEL_COSTS[modelId];
 
-      const modelInput = modelConfig.getInput(imageUrl, prompt, options);
+    console.log(`[Runware Edit] Using model: ${modelId} (AIR: ${modelAIR})`);
+    console.log(`[Runware Edit] Strength: ${strength}`);
+    console.log(`[Runware Edit] Prompt: ${prompt.substring(0, 100)}...`);
 
-      const prediction = await replicate.predictions.create({
-        version: modelConfig.version,
-        input: modelInput,
-      });
+    // Use imageInference with inputImage for img2img editing
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await (runware as any).imageInference({
+      positivePrompt: prompt,
+      negativePrompt: negativePrompt,
+      model: modelAIR,
+      inputImage: imageUrl,
+      strength: strength, // 0.0 = original, 1.0 = completely new
+      width: 1024,
+      height: 1024,
+      steps: userTier === "pro" ? 30 : 25,
+      CFGScale: 7,
+      numberResults: 1,
+      outputType: "URL",
+      outputFormat: "PNG",
+    });
 
-      // Wait for completion
-      let result = await replicate.predictions.get(prediction.id);
-      let waitTime = 0;
-      const maxWait = 120;
-
-      while (
-        (result.status === "starting" || result.status === "processing") &&
-        waitTime < maxWait
-      ) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        result = await replicate.predictions.get(prediction.id);
-        waitTime++;
-
-        if (waitTime % 15 === 0) {
-          console.log(`Editing... ${waitTime}s (Status: ${result.status})`);
-        }
-      }
-
-      if (result.status === "succeeded" && result.output) {
-        let editedImageUrl: string | null = null;
-
-        if (Array.isArray(result.output) && result.output.length > 0) {
-          editedImageUrl = result.output[0];
-        } else if (typeof result.output === "string") {
-          editedImageUrl = result.output;
-        }
-
-        if (editedImageUrl) {
-          return { success: true, imageUrl: editedImageUrl };
-        }
-      }
-
-      if (result.status === "failed") {
-        console.error(`Attempt ${attempt} failed:`, result.error);
-
-        // Last attempt, return error
-        if (attempt === maxRetries) {
-          return { success: false, error: String(result.error || "Model failed") };
-        }
-
-        // Adjust options for retry
-        options.strength = Math.min(options.strength + 0.1, 0.6);
-        options.imageGuidance = Math.max((options.imageGuidance || 1.5) - 0.2, 1.0);
-      }
-
-      if (waitTime >= maxWait) {
-        return { success: false, error: "Timeout - please try again" };
-      }
-    } catch (error) {
-      console.error(`Attempt ${attempt} error:`, error);
-      if (attempt === maxRetries) {
-        return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
-      }
+    if (!result || result.length === 0) {
+      return { success: false, error: "No result from Runware" };
     }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const resultAny = result as any;
+    let editedUrl: string | null = null;
+
+    if (Array.isArray(resultAny) && resultAny.length > 0) {
+      editedUrl = resultAny[0].imageURL || resultAny[0].imageUrl || String(resultAny[0]);
+    } else if (resultAny && typeof resultAny === "object") {
+      editedUrl = resultAny.imageURL || resultAny.imageUrl || String(resultAny);
+    }
+
+    if (!editedUrl || !editedUrl.startsWith("http")) {
+      return { success: false, error: "Invalid result URL from Runware" };
+    }
+
+    console.log(`[Runware Edit] ✅ Edit successful`);
+    return { success: true, imageUrl: editedUrl, cost };
+  } catch (error) {
+    console.error("[Runware Edit] ❌ Error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Edit failed",
+    };
   }
-
-  return { success: false, error: "All attempts failed" };
-}
-
-// ===========================================
-// TYPE DEFINITIONS
-// ===========================================
-
-interface GenerationData {
-  categoryId?: string;
-  subcategoryId?: string;
-  styleId?: string;
 }
 
 // ===========================================
@@ -997,10 +671,7 @@ export async function POST(request: Request) {
       imageUrl,
       editPrompt,
       originalGeneration,
-      // Optional user overrides
       strength: userStrength,
-      quality: userQuality,
-      preserveShape: userPreserveShape,
     } = body;
 
     // Validation
@@ -1015,71 +686,58 @@ export async function POST(request: Request) {
       );
     }
 
+    // Image size validation
+    try {
+      const imageResponse = await fetch(imageUrl);
+      const imageBuffer = await imageResponse.arrayBuffer();
+      const imageSizeMB = imageBuffer.byteLength / (1024 * 1024);
+
+      if (imageSizeMB > 10) {
+        return NextResponse.json(
+          { error: "Image too large (max 10MB). Please use a smaller image." },
+          { status: 400 }
+        );
+      }
+    } catch (sizeError) {
+      console.warn("Could not validate image size:", sizeError);
+    }
+
     const trimmedPrompt = editPrompt.trim();
 
-    // ===========================================
-    // CORE LOGIC: Analyze user intent
-    // ===========================================
+    // Analyze user intent
     const editAnalysis = analyzeEditIntent(trimmedPrompt);
-    
+
     // Detect item type and find best preset
     const itemType = detectItemType(originalGeneration);
-    const { preset, matchedKeyword, presetName } = findBestPreset(trimmedPrompt);
+    const { preset, presetName } = findBestPreset(trimmedPrompt);
 
-    // Build options with user overrides (user can override our analysis)
-    const userOverrides: Partial<EditOptions> = {};
-    if (userStrength !== undefined) userOverrides.strength = userStrength;
-    if (userQuality !== undefined) userOverrides.quality = userQuality;
-    if (userPreserveShape !== undefined) userOverrides.preserveShape = userPreserveShape;
+    // Build prompts
+    const strength = userStrength !== undefined ? userStrength : preset.strength;
+    const finalPrompt = buildPrompt(trimmedPrompt, preset, itemType, editAnalysis);
+    const negativePrompt = buildNegativePrompt(preset, editAnalysis);
 
-    const options = getEditOptions(preset, editAnalysis, userOverrides);
-
-    // Build final prompt
-    const originalStyle = originalGeneration?.styleId?.replace(/_/g, " ").toLowerCase();
-    const finalPrompt = buildPrompt(trimmedPrompt, preset, itemType, originalStyle, editAnalysis);
+    // Get user tier for model selection
+    const userTier = getUserTier(plan, role);
 
     // Logging
     console.log("===========================================");
-    console.log("SMART IMAGE EDIT");
+    console.log("RUNWARE IMAGE EDIT");
     console.log("===========================================");
     console.log("User prompt:", trimmedPrompt);
-    console.log("Edit Analysis:", JSON.stringify(editAnalysis, null, 2));
-    console.log("Detected item type:", itemType);
-    console.log("Matched preset:", presetName || "default");
-    console.log("Matched keyword:", matchedKeyword || "none");
-    console.log("Preset description:", preset.description);
-    console.log("Model:", EDIT_MODELS[preset.model].name);
-    console.log("Preserve original:", editAnalysis.preserveOriginal);
-    console.log("Strength:", options.strength);
-    console.log("Image Guidance:", options.imageGuidance);
-    console.log("Final prompt:", finalPrompt);
-    console.log("Negative prompt:", options.negativePrompt);
-    console.log("Image URL:", imageUrl);
+    console.log("Edit type:", editAnalysis.type);
+    console.log("Preset:", presetName || "default");
+    console.log("User tier:", userTier);
+    console.log("Strength:", strength);
+    console.log("Final prompt:", finalPrompt.substring(0, 200) + "...");
 
-    // Run the edit
-    const result = await runPrediction(preset.model, imageUrl, finalPrompt, options);
-
-    // If primary model failed, try fallback
-    if (!result.success && preset.model !== "sdxlImg2Img") {
-      console.log("Primary model failed, trying SDXL fallback...");
-
-      const fallbackOptions = {
-        ...options,
-        strength: Math.min(options.strength + 0.1, 0.5),
-      };
-
-      const fallbackResult = await runPrediction(
-        "sdxlImg2Img",
-        imageUrl,
-        finalPrompt,
-        fallbackOptions
-      );
-
-      if (fallbackResult.success) {
-        result.success = true;
-        result.imageUrl = fallbackResult.imageUrl;
-      }
-    }
+    // Run the edit with Runware
+    const result = await editImageWithRunware(
+      imageUrl,
+      finalPrompt,
+      negativePrompt,
+      strength,
+      userTier
+    );
 
     if (!result.success || !result.imageUrl) {
       console.error("Edit failed:", result.error);
@@ -1121,9 +779,8 @@ export async function POST(request: Request) {
     console.log("===========================================");
     console.log("EDIT COMPLETE!");
     console.log(`Duration: ${duration}s`);
-    console.log(`Model used: ${EDIT_MODELS[preset.model].name}`);
     console.log(`Effect: ${preset.description}`);
-    console.log(`Preserved original: ${editAnalysis.preserveOriginal}`);
+    console.log(`Cost: ~$${result.cost?.toFixed(4) || "0.01"}`);
     console.log("===========================================");
 
     return NextResponse.json({
@@ -1133,10 +790,11 @@ export async function POST(request: Request) {
       editInfo: {
         preset: presetName || "custom",
         description: preset.description,
-        model: EDIT_MODELS[preset.model].name,
+        model: `Runware ${userTier}`,
         duration: `${duration}s`,
         preservedOriginal: editAnalysis.preserveOriginal,
         editType: editAnalysis.type,
+        cost: result.cost,
       },
       message: "Image edited and saved to gallery!",
     });
@@ -1159,7 +817,7 @@ export async function GET() {
     keywords: preset.keywords,
     description: preset.description,
     category: preset.category,
-    preservesOriginal: preset.options.preserveShape ?? true,
+    preservesOriginal: preset.preserveShape,
   }));
 
   const categories = [
@@ -1174,12 +832,12 @@ export async function GET() {
     presets,
     categories,
     tips: [
-      "💡 Adding effects: 'add fire', 'with ice effect', 'give it lightning' - keeps original intact",
-      "🎨 Changing colors: 'make it gold', 'change to blue' - keeps shape, changes color",
-      "💎 Changing materials: 'made of crystal', 'wooden version' - changes texture, keeps shape",
-      "✨ Adding decorations: 'add gems', 'with glowing runes' - decorates the original",
-      "🖼️ Style changes: 'pixel art style', 'make it anime' - may change more significantly",
-      "🔒 To ensure preservation: add 'keep the same shape' or 'don't change the original'",
+      "Adding effects: 'add fire', 'with ice effect', 'give it lightning' - keeps original intact",
+      "Changing colors: 'make it gold', 'change to blue' - keeps shape, changes color",
+      "Changing materials: 'made of crystal', 'wooden version' - changes texture, keeps shape",
+      "Adding decorations: 'add gems', 'with glowing runes' - decorates the original",
+      "Style changes: 'pixel art style', 'make it anime' - may change more significantly",
+      "To ensure preservation: add 'keep the same shape' or 'don't change the original'",
     ],
     editTypes: [
       { type: "add_effect", description: "Adding effects - preserves original completely" },
@@ -1189,5 +847,7 @@ export async function GET() {
       { type: "change_style", description: "Art style change - may change more" },
       { type: "transform", description: "Transformation - may significantly alter original" },
     ],
+    provider: "Runware",
+    costPerEdit: "~$0.003-0.01 depending on plan",
   });
 }

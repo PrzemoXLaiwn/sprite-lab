@@ -13,7 +13,7 @@ model User {
   email                 String        @unique
   name                  String?
   avatarUrl             String?       @map("avatar_url")
-  credits               Int           @default(15)
+  credits               Int           @default(5)
   plan                  String        @default("FREE") // FREE, STARTER, PRO, UNLIMITED
   role                  String        @default("USER") // USER, SUPPORT, MODERATOR, ADMIN, OWNER (SEO)
   isLifetime            Boolean       @default(false) @map("is_lifetime") // Lifetime deal (no subscription renewal)
@@ -40,6 +40,18 @@ model User {
   totalLikesReceived    Int           @default(0) @map("total_likes_received")
   totalGenerationsPublic Int          @default(0) @map("total_generations_public")
   badges                String?       // JSON array of badge IDs
+
+  // Daily Login Bonus
+  loginStreak           Int           @default(0) @map("login_streak")
+  lastLoginBonusAt      DateTime?     @map("last_login_bonus_at")
+  totalBonusCredits     Int           @default(0) @map("total_bonus_credits")
+
+  // Referral System
+  referralCode          String?       @unique @map("referral_code") // User's unique referral code
+  referredBy            String?       @map("referred_by") // ID of user who referred this user
+  referralRewardClaimed Boolean       @default(false) @map("referral_reward_claimed") // Did referrer get reward?
+  referralCount         Int           @default(0) @map("referral_count") // How many people they referred
+  referralEarnings      Int           @default(0) @map("referral_earnings") // Total credits earned from referrals
 
   generations           Generation[]
   creditTransactions    CreditTransaction[]

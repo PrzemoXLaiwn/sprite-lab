@@ -11,7 +11,10 @@ import {
   Info,
   Check,
   Zap,
+  Lock,
+  Crown,
 } from "lucide-react";
+import Link from "next/link";
 import { InfoTooltip, GENERATOR_INFO } from "@/components/ui/InfoTooltip";
 import {
   ANIMATION_TYPES,
@@ -25,7 +28,13 @@ import {
 // TYPES
 // ===========================================
 
+// Plans that have premium features unlocked
+const PREMIUM_PLANS = ["PRO", "UNLIMITED"];
+
 interface PremiumFeaturesProps {
+  // User's plan (to check if features are unlocked)
+  userPlan?: string;
+
   // Current selections
   styleId: string;
 
@@ -53,6 +62,7 @@ interface PremiumFeaturesProps {
 // ===========================================
 
 export function PremiumFeatures({
+  userPlan = "FREE",
   styleId,
   enableSpriteSheet,
   onSpriteSheetChange,
@@ -68,6 +78,9 @@ export function PremiumFeatures({
   onColorPaletteChange,
 }: PremiumFeaturesProps) {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
+
+  // Check if user has premium plan
+  const hasPremium = PREMIUM_PLANS.includes(userPlan);
 
   const toggleSection = (section: string) => {
     setExpandedSection(expandedSection === section ? null : section);
@@ -85,19 +98,61 @@ export function PremiumFeatures({
     <div className="glass-card rounded-2xl p-5 space-y-4">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-[#c084fc] to-[#00d4ff] flex items-center justify-center">
-          <Sparkles className="w-4 h-4 text-white" />
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+          hasPremium
+            ? "bg-gradient-to-r from-[#c084fc] to-[#00d4ff]"
+            : "bg-[#2a2a3d]"
+        }`}>
+          {hasPremium ? (
+            <Sparkles className="w-4 h-4 text-white" />
+          ) : (
+            <Lock className="w-4 h-4 text-[#a0a0b0]" />
+          )}
         </div>
         <div>
-          <h3 className="font-semibold text-white">Premium Features</h3>
-          <p className="text-xs text-[#a0a0b0]">Unique tools for pro game devs</p>
+          <h3 className="font-semibold text-white flex items-center gap-2">
+            Premium Features
+            {!hasPremium && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-[#ffd93d]/20 text-[#ffd93d] font-normal">
+                PRO+
+              </span>
+            )}
+          </h3>
+          <p className="text-xs text-[#a0a0b0]">
+            {hasPremium ? "Unique tools for pro game devs" : "Upgrade to Apex or Titan to unlock"}
+          </p>
         </div>
         <div className="ml-auto">
           <InfoTooltip {...GENERATOR_INFO.premiumFeatures} />
         </div>
       </div>
 
-      {/* Feature Cards */}
+      {/* Locked Overlay for non-premium users */}
+      {!hasPremium && (
+        <div className="p-4 rounded-xl bg-gradient-to-r from-[#ffd93d]/10 to-[#c084fc]/10 border border-[#ffd93d]/30">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-lg bg-[#ffd93d]/20 flex items-center justify-center shrink-0">
+              <Crown className="w-5 h-5 text-[#ffd93d]" />
+            </div>
+            <div className="flex-1">
+              <h4 className="font-medium text-white mb-1">Unlock Premium Features</h4>
+              <p className="text-xs text-[#a0a0b0] mb-3">
+                Get Sprite Sheet Generator, Style Mixing, and Color Palette Lock with Apex or Titan plan.
+              </p>
+              <Link
+                href="/pricing"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-[#ffd93d] to-[#c084fc] text-[#030305] text-sm font-semibold hover:opacity-90 transition-opacity"
+              >
+                <Crown className="w-4 h-4" />
+                Upgrade Now
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Feature Cards - Only show if user has premium */}
+      {hasPremium && (
       <div className="space-y-3">
 
         {/* 1. SPRITE SHEET / ANIMATION */}
@@ -480,9 +535,10 @@ export function PremiumFeatures({
           )}
         </div>
       </div>
+      )}
 
-      {/* Summary */}
-      {(enableSpriteSheet || enableStyleMix || colorPaletteId) && (
+      {/* Summary - only show if premium and has active features */}
+      {hasPremium && (enableSpriteSheet || enableStyleMix || colorPaletteId) && (
         <div className="p-3 rounded-lg bg-gradient-to-r from-[#c084fc]/10 to-[#00ff88]/10 border border-[#c084fc]/30">
           <div className="flex items-center gap-2 mb-2">
             <Zap className="w-4 h-4 text-[#c084fc]" />

@@ -102,7 +102,7 @@ export async function POST(request: Request) {
     if (!allowed) {
       return NextResponse.json(
         {
-          error: "You've used your 2 free generations. Sign up for 15 free credits!",
+          error: "You've used your 2 free generations. Sign up for 5 free credits!",
           limitReached: true,
           signupUrl: "/register",
         },
@@ -193,7 +193,7 @@ export async function POST(request: Request) {
       remaining: remaining - 1,
       duration: `${duration}s`,
       message: remaining - 1 === 0
-        ? "This was your last free generation! Sign up for 15 more credits."
+        ? "This was your last free generation! Sign up for 8 more credits."
         : `You have ${remaining - 1} free generation${remaining - 1 === 1 ? "" : "s"} left.`,
     });
   } catch (error) {

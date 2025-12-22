@@ -11,6 +11,8 @@ import {
   Copy,
   Check,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Wand2,
   Rocket,
   Flame,
@@ -34,6 +36,7 @@ import {
   Star,
   Send,
   AlertCircle,
+  Settings2,
 } from "lucide-react";
 import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
 import { generateRandomPrompt, generatePromptSuggestions } from "@/lib/random-prompts";
@@ -229,6 +232,15 @@ export default function GeneratePage() {
   // Prompt mismatch warning
   const [promptMismatchWarning, setPromptMismatchWarning] = useState<string | null>(null);
 
+  // Quick Generate mode (simplified UI)
+  const [quickMode, setQuickMode] = useState(true);
+
+  // Show advanced options toggle
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+
+  // Auto-suggested category from prompt
+  const [suggestedCategory, setSuggestedCategory] = useState<string | null>(null);
+
   // Premium Features State
   const [enableSpriteSheet, setEnableSpriteSheet] = useState(false);
   const [animationTypeId, setAnimationTypeId] = useState("WALK");
@@ -240,6 +252,9 @@ export default function GeneratePage() {
   // Item Builder State (Advanced Mode for Weapons/Armor)
   const [builderEnabled, setBuilderEnabled] = useState(false);
   const [builderPrompt, setBuilderPrompt] = useState("");
+
+  // User plan for premium features
+  const [userPlan, setUserPlan] = useState<string>("FREE");
 
   const currentCategory = ALL_CATEGORIES.find(c => c.id === categoryId);
   const currentSubcategory = currentCategory?.subcategories.find(s => s.id === subcategoryId);
@@ -254,6 +269,22 @@ export default function GeneratePage() {
     }
   }, []);
 
+  // Fetch user plan for premium features
+  useEffect(() => {
+    const fetchUserPlan = async () => {
+      try {
+        const res = await fetch("/api/user/stats");
+        if (res.ok) {
+          const data = await res.json();
+          setUserPlan(data.plan || "FREE");
+        }
+      } catch (err) {
+        console.error("Failed to fetch user plan:", err);
+      }
+    };
+    fetchUserPlan();
+  }, []);
+
   // Generate prompt suggestions when subcategory changes
   useEffect(() => {
     if (categoryId && subcategoryId) {
@@ -264,56 +295,281 @@ export default function GeneratePage() {
     }
   }, [categoryId, subcategoryId]);
 
-  // Check prompt vs category mismatch
+  // Keywords that suggest different categories - COMPREHENSIVE LIST
+  const categoryKeywords: Record<string, string[]> = {
+    // WEAPONS - swords, axes, bows, guns, etc.
+    WEAPONS: [
+      "sword", "axe", "bow", "staff", "wand", "gun", "pistol", "rifle", "dagger", "spear", "hammer", "mace", "blade", "knife", "scythe", "crossbow",
+      "katana", "rapier", "saber", "claymore", "longsword", "shortsword", "greatsword", "broadsword", "cutlass", "machete", "falchion",
+      "battleaxe", "hatchet", "tomahawk", "pickaxe", "warhammer", "maul", "flail", "morningstar", "club", "baton",
+      "halberd", "glaive", "pike", "trident", "lance", "javelin", "polearm", "naginata",
+      "longbow", "shortbow", "compound bow", "recurve bow", "arbalest",
+      "wizard staff", "magic staff", "scepter", "rod", "cane", "orb staff",
+      "shotgun", "sniper", "blaster", "musket", "revolver", "smg", "assault rifle", "cannon", "bazooka",
+      "shuriken", "kunai", "throwing knife", "boomerang", "chakram",
+      "weapon", "armament", "firearm", "melee"
+    ],
+    // ARMOR - helmets, chest armor, shields, accessories
+    ARMOR: [
+      "helmet", "armor", "shield", "gauntlet", "boots", "gloves", "ring", "amulet", "cape", "crown", "chestplate", "leggings",
+      "plate armor", "chainmail", "leather armor", "scale armor", "brigandine", "cuirass", "breastplate", "hauberk",
+      "tower shield", "round shield", "buckler", "kite shield", "heater shield", "pavise",
+      "knight helmet", "viking helm", "samurai helmet", "barbute", "sallet", "great helm", "wizard hat", "hood", "tiara", "circlet",
+      "pauldrons", "vambraces", "greaves", "sabatons", "cuisses", "gorget", "coif",
+      "bracers", "hand wraps", "armguard", "wristband",
+      "necklace", "pendant", "brooch", "earring", "belt", "sash", "cloak", "mantle", "robe", "tunic", "vest",
+      "equipment", "gear", "protective"
+    ],
+    // CONSUMABLES - potions, food, scrolls
+    CONSUMABLES: [
+      "potion", "food", "scroll", "bread", "apple", "drink", "elixir", "flask", "vial", "meat", "cheese",
+      "health potion", "mana potion", "stamina potion", "poison", "antidote", "buff potion", "speed potion",
+      "pie", "cake", "soup", "stew", "fish", "chicken", "turkey", "ham", "steak", "sausage", "egg", "milk", "wine", "beer", "ale", "mead", "juice", "water bottle",
+      "fruit", "vegetable", "carrot", "tomato", "potato", "corn", "grapes", "orange", "banana", "berry", "strawberry", "cherry",
+      "spell scroll", "treasure map", "ancient tome", "recipe", "blueprint", "letter", "document", "parchment",
+      "consumable", "edible", "drinkable", "usable item"
+    ],
+    // RESOURCES - gems, ores, crafting materials
+    RESOURCES: [
+      "gem", "ore", "wood", "stone", "crystal", "herb", "flower", "mushroom", "diamond", "ruby", "gold bar", "ingot", "coal",
+      "emerald", "sapphire", "amethyst", "topaz", "opal", "pearl", "onyx", "jade", "garnet", "turquoise", "quartz",
+      "iron ore", "copper ore", "silver ore", "gold ore", "mithril", "adamantite", "titanium", "platinum", "bronze",
+      "wood log", "plank", "lumber", "timber", "oak", "pine", "birch", "mahogany", "ebony",
+      "marble", "granite", "obsidian", "sandstone", "limestone", "slate", "brick", "cobblestone",
+      "magical herb", "rare flower", "healing herb", "poison herb", "lotus", "rose", "lily", "daisy", "sunflower",
+      "magic mushroom", "truffle", "moss", "vine", "root", "seed", "leaf", "bark", "sap", "resin",
+      "dragon scale", "fang", "feather", "claw", "horn", "bone", "hide", "leather", "fur", "wool", "silk", "thread", "cloth", "fabric",
+      "soul gem", "magic dust", "essence", "mana crystal", "arcane shard", "elemental core", "enchanting material",
+      "material", "resource", "crafting", "ingredient", "component"
+    ],
+    // QUEST_ITEMS - keys, artifacts, containers, collectibles
+    QUEST_ITEMS: [
+      "key", "chest", "artifact", "coin", "trophy", "crate", "backpack", "map", "compass", "letter", "book",
+      "golden key", "skeleton key", "crystal key", "ancient key", "rusty key", "master key", "dungeon key",
+      "treasure chest", "wooden crate", "barrel", "pouch", "satchel", "bag", "sack", "box", "case", "container",
+      "ancient idol", "holy grail", "magic mirror", "orb", "relic", "sacred item", "legendary item", "cursed item",
+      "gold coin", "silver coin", "medal", "badge", "token", "stamp", "seal", "emblem", "insignia", "crest",
+      "quest item", "collectible", "loot", "treasure", "reward", "bounty"
+    ],
+    // CHARACTERS - heroes, enemies, NPCs, bosses
+    CHARACTERS: [
+      "knight", "mage", "wizard", "warrior", "rogue", "archer", "hero", "villager", "guard", "merchant", "npc", "person", "man", "woman", "boy", "girl", "king", "queen", "princess",
+      "paladin", "barbarian", "berserker", "monk", "cleric", "priest", "priestess", "druid", "shaman", "necromancer", "warlock", "sorcerer", "sorceress",
+      "thief", "assassin", "ranger", "hunter", "scout", "ninja", "samurai", "pirate", "viking", "gladiator", "soldier", "general", "captain",
+      "prince", "nobleman", "peasant", "farmer", "blacksmith", "shopkeeper", "innkeeper", "bartender", "baker", "tailor", "alchemist", "herbalist",
+      "elder", "sage", "oracle", "prophet", "bard", "minstrel", "jester", "fool", "beggar", "thug", "bandit", "raider",
+      "child", "baby", "teenager", "adult", "old man", "old woman", "grandmother", "grandfather",
+      "human", "humanoid", "adventurer", "traveler", "explorer", "wanderer", "pilgrim",
+      "character", "sprite", "avatar", "player", "enemy", "boss", "minion", "henchman"
+    ],
+    // CREATURES - animals, mythical beasts, pets, elementals
+    CREATURES: [
+      "dragon", "wolf", "bear", "cat", "dog", "phoenix", "griffin", "slime", "elemental", "golem", "animal", "beast", "monster",
+      "horse", "deer", "rabbit", "bunny", "fox", "lion", "tiger", "elephant", "bird", "eagle", "owl", "snake", "spider", "bat",
+      "rat", "mouse", "frog", "fish", "shark", "whale", "dolphin", "turtle", "crab", "octopus", "squid", "jellyfish",
+      "bee", "butterfly", "ant", "beetle", "dragonfly", "moth", "wasp", "scorpion", "centipede",
+      "cow", "pig", "sheep", "chicken", "duck", "goose", "turkey", "rooster", "donkey", "mule", "ox", "bull",
+      "gorilla", "monkey", "ape", "chimpanzee", "orangutan", "panda", "koala", "kangaroo", "platypus",
+      "crocodile", "alligator", "lizard", "chameleon", "gecko", "iguana", "komodo",
+      "unicorn", "pegasus", "centaur", "minotaur", "satyr", "harpy", "siren", "sphinx", "manticore",
+      "werewolf", "vampire", "demon", "devil", "angel", "fairy", "pixie", "sprite", "nymph", "dryad",
+      "elf", "dwarf", "gnome", "halfling", "hobbit", "orc", "troll", "giant", "ogre", "cyclops", "titan",
+      "goblin", "kobold", "gremlin", "imp", "ghoul", "wraith", "specter", "ghost", "spirit", "phantom", "poltergeist",
+      "skeleton", "zombie", "mummy", "lich", "death knight", "undead", "revenant", "wight",
+      "merfolk", "mermaid", "merman", "triton", "sea serpent", "leviathan", "kraken",
+      "hydra", "chimera", "basilisk", "cockatrice", "wyvern", "drake", "wyrm", "serpent",
+      "cerberus", "hellhound", "fenrir", "dire wolf",
+      "pet", "companion", "familiar", "mount", "steed", "creature", "critter", "wildlife"
+    ],
+    // ENVIRONMENT - trees, rocks, buildings, props, dungeon
+    ENVIRONMENT: [
+      "tree", "rock", "house", "building", "bridge", "tower", "dungeon", "grass", "bush", "fence", "castle", "cabin", "cave",
+      "oak tree", "pine tree", "palm tree", "willow", "birch tree", "cherry tree", "apple tree", "dead tree", "stump",
+      "boulder", "cliff", "mountain", "hill", "crystal formation", "stalagmite", "stalactite",
+      "cottage", "villa", "mansion", "palace", "fortress", "keep", "citadel", "temple", "church", "chapel", "shrine", "monastery",
+      "shop", "store", "tavern", "inn", "pub", "bakery", "blacksmith shop", "apothecary", "library", "bank", "guild hall",
+      "barn", "stable", "farm", "windmill", "watermill", "sawmill", "mine entrance", "warehouse", "factory",
+      "wall", "gate", "door", "window", "roof", "chimney", "balcony", "porch", "stairs", "ladder",
+      "chair", "table", "bed", "desk", "shelf", "bookshelf", "cabinet", "wardrobe", "dresser", "mirror", "painting",
+      "barrel", "crate", "box", "sack", "basket", "pot", "vase", "urn", "jar", "bottle", "cup", "plate", "bowl",
+      "torch", "lantern", "candle", "chandelier", "lamp", "brazier", "campfire", "fireplace", "firepit",
+      "sign", "signpost", "banner", "flag", "statue", "fountain", "well", "bench", "gravestone", "tombstone",
+      "spike trap", "lever", "switch", "pressure plate", "altar", "pedestal", "cage", "chain", "rope",
+      "environment", "scenery", "background", "prop", "furniture", "decoration", "structure"
+    ],
+    // ISOMETRIC - dedicated 2.5D isometric assets
+    ISOMETRIC: [
+      "isometric", "iso building", "iso house", "iso tree", "iso prop", "iso tile",
+      "strategy game", "city builder", "clash of clans", "age of empires", "sim city", "civilization",
+      "iso cottage", "iso villa", "iso castle", "iso tower", "iso wall", "iso gate",
+      "iso shop", "iso tavern", "iso blacksmith", "iso farm", "iso windmill", "iso mine",
+      "iso barracks", "iso fortress", "iso monument", "iso temple", "iso wonder",
+      "iso oak", "iso pine", "iso palm", "iso bush", "iso flowers", "iso crops",
+      "iso lamp post", "iso fountain", "iso bench", "iso statue", "iso well",
+      "iso cliff", "iso water", "iso path", "iso road", "iso bridge",
+      "iso grass", "iso sand", "iso snow", "iso dirt",
+      "2.5d", "top down", "bird's eye", "aerial view", "diorama"
+    ],
+    // TILESETS - tileable textures and platforms
+    TILESETS: [
+      "tile", "tileset", "tilemap", "tileable", "seamless", "repeating", "pattern",
+      "grass tile", "dirt tile", "stone tile", "sand tile", "snow tile", "water tile", "lava tile",
+      "floor tile", "ground tile", "terrain tile", "path tile", "road tile", "cobblestone tile",
+      "stone wall", "brick wall", "wooden wall", "dungeon wall", "castle wall", "cave wall",
+      "grass platform", "stone platform", "wooden platform", "floating island", "cloud platform",
+      "window tile", "door tile", "crack overlay", "moss overlay", "decoration tile",
+      "autotile", "terrain", "ground", "floor", "platform", "platformer"
+    ],
+    // UI_ELEMENTS - buttons, icons, frames, bars, panels
+    UI_ELEMENTS: [
+      "button", "icon", "frame", "bar", "cursor", "interface", "menu", "hud", "health bar", "mana bar",
+      "play button", "start button", "menu button", "settings button", "close button", "back button", "next button",
+      "sword icon", "potion icon", "gold icon", "gem icon", "coin icon", "key icon", "heart icon", "star icon",
+      "skill icon", "ability icon", "spell icon", "buff icon", "debuff icon", "status icon",
+      "inventory icon", "map icon", "quest icon", "achievement icon", "notification icon",
+      "hp bar", "mp bar", "xp bar", "stamina bar", "energy bar", "progress bar", "loading bar",
+      "dialog frame", "menu frame", "tooltip frame", "window frame", "border", "panel",
+      "inventory panel", "equipment panel", "storage panel", "shop panel", "crafting panel",
+      "slot", "item slot", "equipment slot", "inventory grid", "slot grid", "hotbar",
+      "ui", "gui", "user interface", "game ui", "mobile ui"
+    ],
+    // EFFECTS - visual effects, particles, magic
+    EFFECTS: [
+      "fire", "explosion", "lightning", "magic effect", "spark", "smoke", "particle", "spell", "aura",
+      "fireball", "flame", "blaze", "inferno", "ember", "fire burst", "fire trail",
+      "ice", "frost", "freeze", "ice spike", "snowflake", "blizzard", "ice shard",
+      "lightning bolt", "thunder", "electric", "shock", "spark", "static", "chain lightning",
+      "water", "splash", "wave", "bubble", "rain", "drop", "puddle", "waterfall",
+      "wind", "tornado", "cyclone", "gust", "breeze", "air slash",
+      "earth", "rock throw", "earthquake", "mud", "sand storm", "dust cloud",
+      "light", "holy", "divine", "radiant", "beam", "ray", "shine", "glow", "flash", "flare",
+      "dark", "shadow", "void", "corruption", "curse", "hex", "doom",
+      "heal", "healing", "restore", "regenerate", "cure", "purify", "cleanse",
+      "buff", "shield", "barrier", "protection", "ward", "enchant", "empower",
+      "debuff", "poison", "bleed", "burn", "slow", "stun", "freeze effect", "petrify",
+      "slash", "cut", "hit", "impact", "strike", "combo", "critical hit",
+      "blood", "gore", "splatter",
+      "teleport", "portal", "warp", "blink", "phase",
+      "summon", "conjure", "spawn", "appear", "vanish", "disappear",
+      "dust", "sparkle", "glitter", "shimmer", "twinkle", "floating", "hover",
+      "effect", "vfx", "fx", "visual effect", "magic", "magical"
+    ],
+    // PROJECTILES - arrows, bullets, magic projectiles
+    PROJECTILES: [
+      "arrow", "bullet", "projectile", "missile", "shot", "bolt",
+      "fire arrow", "ice arrow", "poison arrow", "explosive arrow", "magic arrow",
+      "cannonball", "rocket", "grenade", "bomb", "mortar", "shell",
+      "energy shot", "laser", "plasma", "beam projectile",
+      "fireball projectile", "ice bolt", "shadow ball", "arcane missile", "magic orb",
+      "thrown knife", "shuriken projectile", "boomerang projectile", "chakram projectile",
+      "stone", "rock throw", "pebble",
+      "spear throw", "javelin throw", "dart",
+      "bullet trail", "tracer", "projectile trail"
+    ],
+  };
+
+  // Auto-suggest category from prompt keywords
   useEffect(() => {
-    if (!prompt.trim() || !categoryId) {
+    if (!prompt.trim()) {
+      setSuggestedCategory(null);
+      return;
+    }
+
+    const lowerPrompt = prompt.toLowerCase();
+
+    // Find which category the prompt likely belongs to
+    // Priority order: more specific categories first (WEAPONS, ARMOR before RESOURCES)
+    const categoryPriority = [
+      "WEAPONS", "ARMOR", "CHARACTERS", "CREATURES", "CONSUMABLES",
+      "ENVIRONMENT", "PROJECTILES", "EFFECTS", "UI_ELEMENTS",
+      "ISOMETRIC", "TILESETS", "QUEST_ITEMS", "RESOURCES"
+    ];
+
+    let detectedCategory: string | null = null;
+    let highestScore = 0;
+
+    for (const category of categoryPriority) {
+      const keywords = categoryKeywords[category];
+      if (!keywords) continue;
+
+      let score = 0;
+      for (const keyword of keywords) {
+        if (lowerPrompt.includes(keyword)) {
+          // Longer keywords = higher score (more specific match)
+          score += keyword.length;
+        }
+      }
+
+      // Give priority bonus to categories earlier in the list
+      const priorityBonus = (categoryPriority.length - categoryPriority.indexOf(category)) * 0.5;
+      const finalScore = score + (score > 0 ? priorityBonus : 0);
+
+      if (finalScore > highestScore) {
+        highestScore = finalScore;
+        detectedCategory = category;
+      }
+    }
+
+    if (detectedCategory && highestScore > 0) {
+      setSuggestedCategory(detectedCategory);
+      // In Quick Mode: Always auto-select the detected category
+      if (quickMode) {
+        setCategoryId(detectedCategory);
+        // Auto-select first subcategory
+        const cat = ALL_CATEGORIES.find(c => c.id === detectedCategory);
+        if (cat && cat.subcategories.length > 0) {
+          setSubcategoryId(cat.subcategories[0].id);
+        }
+      }
+    } else {
+      setSuggestedCategory(null);
+      // In Quick Mode with no detected category - default to CHARACTERS (most generic)
+      // This ensures the user can always generate something
+      if (quickMode && prompt.trim()) {
+        setCategoryId("CHARACTERS");
+        const cat = ALL_CATEGORIES.find(c => c.id === "CHARACTERS");
+        if (cat && cat.subcategories.length > 0) {
+          setSubcategoryId(cat.subcategories[0].id);
+        }
+      }
+    }
+  }, [prompt, quickMode]);
+
+  // Check prompt vs category mismatch (only in Advanced Mode)
+  useEffect(() => {
+    // In Quick Mode, we auto-adjust category, so no warnings needed
+    if (quickMode || !prompt.trim() || !categoryId) {
       setPromptMismatchWarning(null);
       return;
     }
 
     const lowerPrompt = prompt.toLowerCase();
 
-    // Keywords that suggest different categories
-    const categoryKeywords: Record<string, string[]> = {
-      WEAPONS: ["sword", "axe", "bow", "staff", "wand", "gun", "pistol", "rifle", "dagger", "spear", "hammer", "mace", "blade"],
-      ARMOR: ["helmet", "armor", "shield", "gauntlet", "boots", "gloves", "ring", "amulet", "cape", "crown"],
-      CONSUMABLES: ["potion", "food", "scroll", "bread", "apple", "drink", "elixir"],
-      RESOURCES: ["gem", "ore", "wood", "stone", "crystal", "herb", "flower", "mushroom", "diamond", "ruby"],
-      QUEST_ITEMS: ["key", "chest", "artifact", "coin", "trophy", "crate", "backpack"],
-      CHARACTERS: ["knight", "mage", "wizard", "warrior", "rogue", "archer", "hero", "villager", "guard", "merchant", "npc", "person", "man", "woman", "boy", "girl"],
-      CREATURES: ["dragon", "wolf", "bear", "cat", "dog", "phoenix", "griffin", "slime", "elemental", "golem", "animal", "beast", "monster"],
-      ENVIRONMENT: ["tree", "rock", "house", "building", "bridge", "tower", "dungeon", "grass", "bush", "fence"],
-      VEHICLES: ["ship", "spaceship", "car", "boat", "plane", "rocket", "wagon", "cart", "vehicle", "flying"],
-      UI_ELEMENTS: ["button", "icon", "frame", "bar", "cursor", "interface", "menu", "hud"],
-      EFFECTS: ["fire", "explosion", "lightning", "magic effect", "spark", "smoke", "particle"],
-      ISOMETRIC: ["isometric", "iso building", "iso house", "strategy game", "city builder", "clash of clans", "age of empires", "iso tree", "iso prop"],
-    };
-
     // Find which category the prompt likely belongs to
-    let suggestedCategory: string | null = null;
+    let detectedCategory: string | null = null;
     let matchedKeyword: string | null = null;
 
     for (const [category, keywords] of Object.entries(categoryKeywords)) {
       for (const keyword of keywords) {
         if (lowerPrompt.includes(keyword)) {
           if (category !== categoryId) {
-            suggestedCategory = category;
+            detectedCategory = category;
             matchedKeyword = keyword;
             break;
           }
         }
       }
-      if (suggestedCategory) break;
+      if (detectedCategory) break;
     }
 
-    if (suggestedCategory && matchedKeyword) {
-      const suggestedCatName = ALL_CATEGORIES.find(c => c.id === suggestedCategory)?.name || suggestedCategory;
+    if (detectedCategory && matchedKeyword) {
+      const suggestedCatName = ALL_CATEGORIES.find(c => c.id === detectedCategory)?.name || detectedCategory;
       const currentCatName = ALL_CATEGORIES.find(c => c.id === categoryId)?.name || categoryId;
       setPromptMismatchWarning(`Your prompt mentions "${matchedKeyword}" which sounds like ${suggestedCatName}, but you selected ${currentCatName}. The result may not match your expectation.`);
     } else {
       setPromptMismatchWarning(null);
     }
-  }, [prompt, categoryId]);
+  }, [prompt, categoryId, quickMode]);
 
   // Progress simulation for 2D only (3D uses real streaming)
   useEffect(() => {
@@ -461,8 +717,8 @@ export default function GeneratePage() {
   };
 
   const handleGenerate = async () => {
-    if (!categoryId) { setError("Select a category!"); return; }
-    if (!subcategoryId) { setError("Select a subcategory!"); return; }
+    if (!categoryId) { setError("Please select a category first! Your prompt doesn't match any known category - scroll down to pick one."); return; }
+    if (!subcategoryId) { setError("Please select a type/subcategory!"); return; }
 
     // Determine which prompt to use: builder prompt (if enabled and has content) or manual prompt
     const effectivePrompt = (builderEnabled && builderPrompt.trim()) ? builderPrompt.trim() : prompt.trim();
@@ -698,137 +954,187 @@ export default function GeneratePage() {
           {/* LEFT COLUMN */}
           <div className="lg:col-span-3 space-y-5">
 
-            {/* MODE SELECTOR */}
-            <div className="glass-card rounded-2xl p-5">
-              <div className="flex items-center gap-3 mb-4">
+            {/* QUICK MODE TOGGLE */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-[#00ff88] to-[#c084fc] flex items-center justify-center">
                   <Zap className="w-4 h-4 text-white" />
                 </div>
-                <h3 className="font-semibold text-white">Output Type</h3>
-                <InfoTooltip {...GENERATOR_INFO.outputType} />
+                <span className="font-semibold text-white">Quick Generate</span>
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                {/* 2D Button */}
-                <button
-                  onClick={() => handleModeChange("2d")}
-                  className={`relative p-4 rounded-xl border-2 transition-all ${
-                    mode === "2d"
-                      ? "border-[#00ff88] bg-[#00ff88]/10"
-                      : "border-[#2a2a3d] hover:border-[#00ff88]/50"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                      mode === "2d" ? "bg-[#00ff88] text-[#030305]" : "bg-[#1a1a28] text-[#00ff88]"
-                    }`}>
-                      <ImageIcon className="w-6 h-6" />
-                    </div>
-                    <div className="text-left">
-                      <span className={`font-bold block ${mode === "2d" ? "text-[#00ff88]" : "text-white"}`}>2D Sprite</span>
-                      <span className="text-xs text-[#a0a0b0]">PNG image • 1 credit</span>
-                    </div>
-                  </div>
-                  {mode === "2d" && (
-                    <div className="absolute top-2 right-2">
-                      <Check className="w-5 h-5 text-[#00ff88]" />
-                    </div>
-                  )}
-                </button>
-
-                {/* 3D Button */}
-                <button
-                  onClick={() => handleModeChange("3d")}
-                  disabled={!categorySupports3D && categoryId !== ""}
-                  className={`relative p-4 rounded-xl border-2 transition-all ${
-                    mode === "3d"
-                      ? "border-[#c084fc] bg-[#c084fc]/10"
-                      : !categorySupports3D && categoryId !== ""
-                        ? "border-[#2a2a3d] opacity-50 cursor-not-allowed"
-                        : "border-[#2a2a3d] hover:border-[#c084fc]/50"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                      mode === "3d" ? "bg-[#c084fc] text-[#030305]" : "bg-[#1a1a28] text-[#c084fc]"
-                    }`}>
-                      <Cuboid className="w-6 h-6" />
-                    </div>
-                    <div className="text-left">
-                      <span className={`font-bold block ${mode === "3d" ? "text-[#c084fc]" : "text-white"}`}>3D Model</span>
-                      <span className="text-xs text-[#a0a0b0]">GLB file • {selected3DModel.credits} credits</span>
-                    </div>
-                  </div>
-                  {mode === "3d" && (
-                    <div className="absolute top-2 right-2">
-                      <Check className="w-5 h-5 text-[#c084fc]" />
-                    </div>
-                  )}
-                </button>
-              </div>
-
-              {!categorySupports3D && categoryId !== "" && (
-                <div className="mt-3 p-3 rounded-lg bg-[#ffd93d]/10 border border-[#ffd93d]/30 flex items-start gap-2">
-                  <Flame className="w-4 h-4 text-[#ffd93d] mt-0.5 shrink-0" />
-                  <span className="text-xs text-[#ffd93d]">
-                    {currentCategory?.name} doesn't support 3D. Choose Weapons, Armor, Characters, etc.
-                  </span>
-                </div>
-              )}
+              <button
+                onClick={() => setQuickMode(!quickMode)}
+                className={`relative w-14 h-7 rounded-full transition-all ${
+                  quickMode ? "bg-[#00ff88]" : "bg-[#2a2a3d]"
+                }`}
+              >
+                <div className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-all ${
+                  quickMode ? "left-8" : "left-1"
+                }`} />
+              </button>
             </div>
 
-            {/* STEP 1: Category */}
+            {/* STEP 1: PROMPT (ALWAYS FIRST) */}
             <div className="glass-card rounded-2xl p-5">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center text-[#030305] font-bold text-sm">1</div>
-                <h3 className="font-semibold text-white">Select Category</h3>
-                <InfoTooltip {...GENERATOR_INFO.category} />
+                <h3 className="font-semibold text-white">Describe Your Asset</h3>
+                <InfoTooltip {...GENERATOR_INFO.prompt} />
               </div>
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-                {ALL_CATEGORIES.map((cat) => {
-                  const Icon = ICON_MAP[cat.icon] || Box;
-                  const isSelected = categoryId === cat.id;
-                  return (
-                    <button
-                      key={cat.id}
-                      onClick={() => handleCategoryChange(cat.id)}
-                      className={`group relative p-3 rounded-xl text-center transition-all duration-300 ${
-                        isSelected
-                          ? "neon-border bg-[#00ff88]/10"
-                          : "border border-transparent hover:border-[#00ff88]/30 hover:bg-white/5"
-                      }`}
-                    >
-                      {cat.supports3D && (
-                        <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#c084fc] flex items-center justify-center" title="Supports 3D">
-                          <Box className="w-2.5 h-2.5 text-white" />
-                        </div>
-                      )}
-                      <div className={`w-10 h-10 mx-auto rounded-xl flex items-center justify-center mb-2 transition-all ${
-                        isSelected
-                          ? "gradient-primary shadow-lg neon-glow"
-                          : "bg-[#1a1a28] group-hover:bg-[#2a2a3d]"
-                      }`}>
-                        <Icon className={`w-5 h-5 ${isSelected ? "text-[#030305]" : "text-[#00ff88]"}`} />
-                      </div>
-                      <span className={`text-xs font-medium ${isSelected ? "text-[#00ff88]" : "text-[#a0a0b0] group-hover:text-white"}`}>
-                        {cat.name}
-                      </span>
-                    </button>
-                  );
-                })}
+
+              <div className="relative">
+                <Input
+                  placeholder="e.g. golden sword with glowing runes, magical healing potion, fire dragon..."
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  className="h-14 text-base input-gaming pr-12"
+                  autoFocus
+                />
+                <Wand2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#00ff88]" />
               </div>
-              <div className="text-xs text-[#a0a0b0] mt-3 flex items-center gap-1">
-                <Box className="w-3 h-3 text-[#c084fc]" />
-                Purple badge = supports 3D generation
+
+              {/* Auto-detected category suggestion - Only show in Advanced Mode when category not yet selected */}
+              {!quickMode && suggestedCategory && !categoryId && (
+                <div className="mt-3 p-3 rounded-lg bg-[#00ff88]/10 border border-[#00ff88]/30 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-[#00ff88]" />
+                    <span className="text-sm text-[#00ff88]">
+                      Detected: <strong>{ALL_CATEGORIES.find(c => c.id === suggestedCategory)?.name}</strong>
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setCategoryId(suggestedCategory);
+                      const cat = ALL_CATEGORIES.find(c => c.id === suggestedCategory);
+                      if (cat && cat.subcategories.length > 0) {
+                        setSubcategoryId(cat.subcategories[0].id);
+                      }
+                    }}
+                    className="text-xs px-3 py-1 rounded-full bg-[#00ff88] text-[#030305] font-semibold hover:opacity-90"
+                  >
+                    Use This
+                  </button>
+                </div>
+              )}
+
+              {/* Quick Mode: Show detected category as info (not warning) */}
+              {quickMode && suggestedCategory && categoryId && (
+                <div className="mt-3 p-2 rounded-lg bg-[#00ff88]/5 border border-[#00ff88]/20 flex items-center gap-2">
+                  <Sparkles className="w-3 h-3 text-[#00ff88]" />
+                  <span className="text-xs text-[#00ff88]">
+                    Auto-detected: <strong>{ALL_CATEGORIES.find(c => c.id === categoryId)?.name}</strong>
+                  </span>
+                </div>
+              )}
+
+              {/* Prompt Category Mismatch Warning - Only in Advanced Mode */}
+              {!quickMode && promptMismatchWarning && (
+                <div className="mt-3 p-3 rounded-lg bg-[#ff9500]/10 border border-[#ff9500]/30 flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-[#ff9500] flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-[#ff9500]">{promptMismatchWarning}</p>
+                </div>
+              )}
+
+              {/* Pro tip */}
+              <div className="mt-3 p-3 rounded-lg bg-[#00d4ff]/10 border border-[#00d4ff]/20 flex items-start gap-2">
+                <Lightbulb className="w-4 h-4 text-[#00d4ff] mt-0.5 shrink-0" />
+                <span className="text-xs text-[#00d4ff]">
+                  Be specific! "golden sword with ruby gems, glowing blade" works better than "sword"
+                </span>
               </div>
             </div>
 
-            {/* STEP 2: Subcategory */}
-            {currentCategory && (
+            {/* STEP 2: Art Style (2D) - Moved up */}
+            {mode === "2d" && (
+              <div className="glass-card rounded-2xl p-5">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-[#00ff88] to-[#00d4ff] flex items-center justify-center text-[#030305] font-bold text-sm">2</div>
+                  <h3 className="font-semibold text-white">Art Style</h3>
+                  <InfoTooltip {...GENERATOR_INFO.artStyle} />
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {STYLES_2D_UI.map((style) => {
+                    const isSelected = styleId === style.id;
+                    return (
+                      <button
+                        key={style.id}
+                        onClick={() => setStyleId(style.id)}
+                        className={`p-3 rounded-xl text-center transition-all duration-200 border ${
+                          isSelected
+                            ? "border-[#00ff88] bg-[#00ff88]/10 neon-glow"
+                            : "border-[#2a2a3d] hover:border-[#00ff88]/50 hover:bg-white/5"
+                        }`}
+                      >
+                        <div className="text-2xl mb-1">{style.emoji}</div>
+                        <span className={`text-xs font-medium block ${isSelected ? "text-[#00ff88]" : "text-white"}`}>
+                          {style.name}
+                        </span>
+                        <span className="text-[10px] text-[#a0a0b0] block mt-0.5">{style.description}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* STEP 3: Category (Optional - can be auto-detected) */}
+            {!quickMode && (
+              <div className="glass-card rounded-2xl p-5">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-lg bg-[#00d4ff] flex items-center justify-center text-[#030305] font-bold text-sm">{mode === "2d" ? "3" : "2"}</div>
+                  <h3 className="font-semibold text-white">Category</h3>
+                  <InfoTooltip {...GENERATOR_INFO.category} />
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-[#00ff88]/20 text-[#00ff88]">Optional</span>
+                </div>
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                  {ALL_CATEGORIES.map((cat) => {
+                    const Icon = ICON_MAP[cat.icon] || Box;
+                    const isSelected = categoryId === cat.id;
+                    const isSuggested = suggestedCategory === cat.id && !categoryId;
+                    return (
+                      <button
+                        key={cat.id}
+                        onClick={() => handleCategoryChange(cat.id)}
+                        className={`group relative p-3 rounded-xl text-center transition-all duration-300 ${
+                          isSelected
+                            ? "neon-border bg-[#00ff88]/10"
+                            : isSuggested
+                              ? "border-2 border-dashed border-[#00ff88]/50 bg-[#00ff88]/5"
+                              : "border border-transparent hover:border-[#00ff88]/30 hover:bg-white/5"
+                        }`}
+                      >
+                        {cat.supports3D && (
+                          <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#c084fc] flex items-center justify-center" title="Supports 3D">
+                            <Box className="w-2.5 h-2.5 text-white" />
+                          </div>
+                        )}
+                        <div className={`w-10 h-10 mx-auto rounded-xl flex items-center justify-center mb-2 transition-all ${
+                          isSelected
+                            ? "gradient-primary shadow-lg neon-glow"
+                            : "bg-[#1a1a28] group-hover:bg-[#2a2a3d]"
+                        }`}>
+                          <Icon className={`w-5 h-5 ${isSelected ? "text-[#030305]" : "text-[#00ff88]"}`} />
+                        </div>
+                        <span className={`text-xs font-medium ${isSelected ? "text-[#00ff88]" : "text-[#a0a0b0] group-hover:text-white"}`}>
+                          {cat.name}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="text-xs text-[#a0a0b0] mt-3 flex items-center gap-1">
+                  <Box className="w-3 h-3 text-[#c084fc]" />
+                  Purple badge = supports 3D generation
+                </div>
+              </div>
+            )}
+
+            {/* Subcategory - only when not in quick mode and category selected */}
+            {!quickMode && currentCategory && (
               <div className="glass-card rounded-2xl p-5 animate-in slide-in-from-top-2 duration-300">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-8 h-8 rounded-lg bg-[#00d4ff] flex items-center justify-center text-[#030305] font-bold text-sm">2</div>
-                  <h3 className="font-semibold text-white">Select Type</h3>
+                  <div className="w-8 h-8 rounded-lg bg-[#c084fc] flex items-center justify-center text-white font-bold text-sm">{mode === "2d" ? "4" : "3"}</div>
+                  <h3 className="font-semibold text-white">Type</h3>
                   <InfoTooltip {...GENERATOR_INFO.subcategory} />
                   <ChevronRight className="w-4 h-4 text-[#a0a0b0]" />
                   <span className="text-sm text-[#00ff88]">{currentCategory.name}</span>
@@ -864,43 +1170,13 @@ export default function GeneratePage() {
               </div>
             )}
 
-            {/* STEP 3: Style (2D) or Model (3D) */}
-            {mode === "2d" ? (
-              <div className="glass-card rounded-2xl p-5">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-[#00ff88] to-[#00d4ff] flex items-center justify-center text-[#030305] font-bold text-sm">3</div>
-                  <h3 className="font-semibold text-white">Art Style</h3>
-                  <InfoTooltip {...GENERATOR_INFO.artStyle} />
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                  {STYLES_2D_UI.map((style) => {
-                    const isSelected = styleId === style.id;
-                    return (
-                      <button
-                        key={style.id}
-                        onClick={() => setStyleId(style.id)}
-                        className={`p-3 rounded-xl text-center transition-all duration-200 border ${
-                          isSelected
-                            ? "border-[#00ff88] bg-[#00ff88]/10 neon-glow"
-                            : "border-[#2a2a3d] hover:border-[#00ff88]/50 hover:bg-white/5"
-                        }`}
-                      >
-                        <div className="text-2xl mb-1">{style.emoji}</div>
-                        <span className={`text-xs font-medium block ${isSelected ? "text-[#00ff88]" : "text-white"}`}>
-                          {style.name}
-                        </span>
-                        <span className="text-[10px] text-[#a0a0b0] block mt-0.5">{style.description}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : (
+            {/* 3D MODE SECTIONS */}
+            {mode === "3d" && (
               <>
                 {/* 3D Style Selection */}
                 <div className="glass-card rounded-2xl p-5">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-[#c084fc] to-[#00d4ff] flex items-center justify-center text-white font-bold text-sm">3</div>
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-[#c084fc] to-[#00d4ff] flex items-center justify-center text-white font-bold text-sm">2</div>
                     <h3 className="font-semibold text-white">Visual Style</h3>
                     <InfoTooltip {...GENERATOR_INFO.artStyle} />
                   </div>
@@ -931,7 +1207,7 @@ export default function GeneratePage() {
                 {/* 3D Engine Selection */}
                 <div className="glass-card rounded-2xl p-5">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="w-8 h-8 rounded-lg bg-[#c084fc] flex items-center justify-center text-white font-bold text-sm">4</div>
+                    <div className="w-8 h-8 rounded-lg bg-[#c084fc] flex items-center justify-center text-white font-bold text-sm">3</div>
                     <h3 className="font-semibold text-white">3D Engine</h3>
                   </div>
                   <div className="space-y-3">
@@ -992,319 +1268,138 @@ export default function GeneratePage() {
                     </p>
                   </div>
                 </div>
+
+                {/* 3D Image Upload Option */}
+                <div className="glass-card rounded-2xl p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-[#00d4ff] to-[#c084fc] flex items-center justify-center text-white font-bold text-sm">4</div>
+                      <h3 className="font-semibold text-white">Input Mode</h3>
+                    </div>
+                    <div className="flex rounded-lg bg-[#1a1a28] p-1">
+                      <button
+                        onClick={() => setInputMode("text")}
+                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                          inputMode === "text"
+                            ? "bg-[#c084fc] text-white"
+                            : "text-[#a0a0b0] hover:text-white"
+                        }`}
+                      >
+                        <Wand2 className="w-3 h-3 inline mr-1" />
+                        Text
+                      </button>
+                      <button
+                        onClick={() => setInputMode("image")}
+                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                          inputMode === "image"
+                            ? "bg-[#c084fc] text-white"
+                            : "text-[#a0a0b0] hover:text-white"
+                        }`}
+                      >
+                        <Camera className="w-3 h-3 inline mr-1" />
+                        Image
+                      </button>
+                    </div>
+                  </div>
+
+                  {inputMode === "image" && (
+                    <div className="space-y-3">
+                      {uploadedImagePreview ? (
+                        // Show uploaded image preview
+                        <div className="relative rounded-xl overflow-hidden border-2 border-[#c084fc]/50 bg-[#0a0a0f]">
+                          <img
+                            src={uploadedImagePreview}
+                            alt="Uploaded"
+                            className="w-full h-48 object-contain"
+                          />
+                          <button
+                            onClick={clearUploadedImage}
+                            className="absolute top-2 right-2 p-2 rounded-full bg-[#ff4444] text-white hover:bg-[#ff4444]/80 transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                          {uploading && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-[#0a0a0f]/80">
+                              <Loader2 className="w-8 h-8 text-[#c084fc] animate-spin" />
+                            </div>
+                          )}
+                          {uploadedImageUrl && !uploading && (
+                            <div className="absolute bottom-2 left-2 px-2 py-1 rounded bg-[#00ff88]/90 text-[#030305] text-xs font-bold flex items-center gap-1">
+                              <Check className="w-3 h-3" />
+                              Ready
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        // Upload dropzone with drag & drop
+                        <div
+                          className="border-2 border-dashed border-[#c084fc]/30 rounded-xl p-8 text-center hover:border-[#c084fc]/60 hover:bg-[#c084fc]/5 transition-all cursor-pointer"
+                          onClick={() => document.getElementById("image-upload-input")?.click()}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            e.currentTarget.classList.add("border-[#c084fc]", "bg-[#c084fc]/10");
+                          }}
+                          onDragLeave={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            e.currentTarget.classList.remove("border-[#c084fc]", "bg-[#c084fc]/10");
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            e.currentTarget.classList.remove("border-[#c084fc]", "bg-[#c084fc]/10");
+                            const files = e.dataTransfer.files;
+                            if (files && files.length > 0) {
+                              const input = document.getElementById("image-upload-input") as HTMLInputElement;
+                              if (input) {
+                                const dataTransfer = new DataTransfer();
+                                dataTransfer.items.add(files[0]);
+                                input.files = dataTransfer.files;
+                                input.dispatchEvent(new Event("change", { bubbles: true }));
+                              }
+                            }
+                          }}
+                        >
+                          <Upload className="w-12 h-12 mx-auto text-[#c084fc]/50 mb-3" />
+                          <p className="text-white font-medium mb-1">Drop your image here</p>
+                          <p className="text-sm text-[#a0a0b0]">or click to browse</p>
+                          <p className="text-xs text-[#a0a0b0] mt-2">JPG, PNG, WebP • Max 10MB</p>
+                        </div>
+                      )}
+                      <input
+                        id="image-upload-input"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                      />
+
+                      {/* Optional prompt for image mode */}
+                      <div className="relative">
+                        <Input
+                          placeholder="Optional: add description to guide 3D generation..."
+                          value={prompt}
+                          onChange={(e) => setPrompt(e.target.value)}
+                          className="h-12 text-sm input-gaming"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 3D Pro tip */}
+                  <div className="mt-4 p-3 rounded-lg bg-[#c084fc]/10 border border-[#c084fc]/20 flex items-start gap-2">
+                    <Lightbulb className="w-4 h-4 text-[#c084fc] mt-0.5 shrink-0" />
+                    <span className="text-xs text-[#c084fc]">
+                      {inputMode === "image"
+                        ? "Upload a clear image of a single object with good lighting. White or simple backgrounds work best!"
+                        : 'Simple single objects work best. "medieval iron sword" > "battle scene"'
+                      }
+                    </span>
+                  </div>
+                </div>
               </>
             )}
-
-            {/* PREMIUM FEATURES - Only for 2D mode */}
-            {mode === "2d" && (
-              <PremiumFeatures
-                styleId={styleId}
-                enableSpriteSheet={enableSpriteSheet}
-                onSpriteSheetChange={setEnableSpriteSheet}
-                animationTypeId={animationTypeId}
-                onAnimationTypeChange={setAnimationTypeId}
-                enableStyleMix={enableStyleMix}
-                onStyleMixChange={setEnableStyleMix}
-                style2Id={style2Id}
-                onStyle2Change={setStyle2Id}
-                style1Weight={style1Weight}
-                onStyle1WeightChange={setStyle1Weight}
-                colorPaletteId={colorPaletteId}
-                onColorPaletteChange={setColorPaletteId}
-              />
-            )}
-
-            {/* STEP 4/5: Prompt or Image Upload */}
-            <div className="glass-card rounded-2xl p-5">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-[#00d4ff] to-[#00ff88] flex items-center justify-center text-[#030305] font-bold text-sm">{mode === "3d" ? "5" : "4"}</div>
-                  <h3 className="font-semibold text-white">
-                    {mode === "3d" ? "Describe or Upload Image" : "Describe Your Asset"}
-                  </h3>
-                  <InfoTooltip {...GENERATOR_INFO.prompt} />
-                </div>
-
-                {/* Input mode toggle for 3D */}
-                {mode === "3d" && (
-                  <div className="flex rounded-lg bg-[#1a1a28] p-1">
-                    <button
-                      onClick={() => setInputMode("text")}
-                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                        inputMode === "text"
-                          ? "bg-[#c084fc] text-white"
-                          : "text-[#a0a0b0] hover:text-white"
-                      }`}
-                    >
-                      <Wand2 className="w-3 h-3 inline mr-1" />
-                      Text
-                    </button>
-                    <button
-                      onClick={() => setInputMode("image")}
-                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                        inputMode === "image"
-                          ? "bg-[#c084fc] text-white"
-                          : "text-[#a0a0b0] hover:text-white"
-                      }`}
-                    >
-                      <Camera className="w-3 h-3 inline mr-1" />
-                      Image
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Text input mode */}
-              {(mode === "2d" || inputMode === "text") && (
-                <>
-                  <div className="relative">
-                    <Input
-                      placeholder={currentSubcategory
-                        ? `e.g. ${currentSubcategory.examples[0]}`
-                        : "Describe your asset... (e.g. golden sword, red potion, cute slime)"
-                      }
-                      value={prompt}
-                      onChange={(e) => setPrompt(e.target.value)}
-                      className="h-14 text-base input-gaming pr-12"
-                    />
-                    <Wand2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#00ff88]" />
-                  </div>
-
-                  {/* Helper hint when no category selected */}
-                  {!categoryId && prompt.trim() && (
-                    <div className="mt-2 p-3 rounded-lg bg-[#00d4ff]/10 border border-[#00d4ff]/30 flex items-start gap-2">
-                      <Lightbulb className="w-4 h-4 text-[#00d4ff] flex-shrink-0 mt-0.5" />
-                      <p className="text-sm text-[#00d4ff]">
-                        Select a category and type above to generate your asset!
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Prompt Category Mismatch Warning */}
-                  {promptMismatchWarning && (
-                    <div className="mt-2 p-3 rounded-lg bg-[#ff9500]/10 border border-[#ff9500]/30 flex items-start gap-2">
-                      <AlertCircle className="w-4 h-4 text-[#ff9500] flex-shrink-0 mt-0.5" />
-                      <p className="text-sm text-[#ff9500]">{promptMismatchWarning}</p>
-                    </div>
-                  )}
-
-                  {/* Advanced Item Builder (Weapons/Armor only) */}
-                  {mode === "2d" && hasBuilder(categoryId, subcategoryId) && (
-                    <div className="mt-3">
-                      <ItemBuilder
-                        categoryId={categoryId}
-                        subcategoryId={subcategoryId}
-                        enabled={builderEnabled}
-                        onEnabledChange={(enabled) => {
-                          setBuilderEnabled(enabled);
-                          if (!enabled) setBuilderPrompt("");
-                        }}
-                        onPromptGenerated={setBuilderPrompt}
-                      />
-                    </div>
-                  )}
-
-                  {currentSubcategory && (
-                    <div className="mt-4 space-y-3">
-                      {/* Random Prompt Generator Header */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Dices className="w-4 h-4 text-[#c084fc]" />
-                          <span className="text-sm font-medium text-white">Prompt Ideas</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => setShowSuggestions(!showSuggestions)}
-                            className="text-xs px-2 py-1 rounded-lg bg-[#1a1a28] text-[#a0a0b0] hover:text-white hover:bg-[#2a2a3d] transition-colors"
-                          >
-                            {showSuggestions ? "Hide" : "Show"} Ideas
-                          </button>
-                          <button
-                            onClick={() => {
-                              const suggestions = generatePromptSuggestions(categoryId, subcategoryId, 6);
-                              setPromptSuggestions(suggestions);
-                            }}
-                            className="text-xs px-2 py-1 rounded-lg bg-[#c084fc]/20 text-[#c084fc] hover:bg-[#c084fc]/30 transition-colors flex items-center gap-1"
-                          >
-                            <RefreshCw className="w-3 h-3" />
-                            New Ideas
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Quick Examples - Always Visible */}
-                      <div className="flex flex-wrap gap-2">
-                        {currentSubcategory.examples.slice(0, 3).map((ex) => (
-                          <button
-                            key={ex}
-                            onClick={() => setPrompt(ex)}
-                            className="text-xs px-3 py-1.5 rounded-full bg-[#00ff88]/10 text-[#00ff88] hover:bg-[#00ff88]/20 transition-colors border border-[#00ff88]/20"
-                          >
-                            {ex}
-                          </button>
-                        ))}
-                        <button
-                          onClick={() => {
-                            const randomPrompt = generateRandomPrompt(categoryId, subcategoryId, "complex");
-                            setPrompt(randomPrompt);
-                          }}
-                          className="text-xs px-3 py-1.5 rounded-full bg-gradient-to-r from-[#c084fc]/20 to-[#00d4ff]/20 text-[#c084fc] hover:from-[#c084fc]/30 hover:to-[#00d4ff]/30 transition-colors border border-[#c084fc]/30 flex items-center gap-1"
-                        >
-                          <Sparkles className="w-3 h-3" />
-                          Random Epic
-                        </button>
-                      </div>
-
-                      {/* Expanded Suggestions Panel */}
-                      {showSuggestions && promptSuggestions.length > 0 && (
-                        <div className="p-3 rounded-xl bg-[#0a0a0f] border border-[#2a2a3d] space-y-2 animate-in slide-in-from-top-2 duration-200">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Lightbulb className="w-3 h-3 text-[#ffd93d]" />
-                            <span className="text-xs text-[#a0a0b0]">Click to use, or refresh for more</span>
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {promptSuggestions.map((suggestion, index) => (
-                              <button
-                                key={index}
-                                onClick={() => {
-                                  setPrompt(suggestion);
-                                  setShowSuggestions(false);
-                                }}
-                                className="group text-left p-2 rounded-lg bg-[#1a1a28] hover:bg-[#2a2a3d] border border-[#2a2a3d] hover:border-[#00ff88]/50 transition-all"
-                              >
-                                <span className="text-xs text-[#a0a0b0] group-hover:text-white transition-colors line-clamp-2">
-                                  {suggestion}
-                                </span>
-                              </button>
-                            ))}
-                          </div>
-                          {/* Complexity Buttons */}
-                          <div className="flex items-center gap-2 pt-2 border-t border-[#2a2a3d]">
-                            <span className="text-xs text-[#606070]">Generate:</span>
-                            <button
-                              onClick={() => setPrompt(generateRandomPrompt(categoryId, subcategoryId, "simple"))}
-                              className="text-xs px-2 py-1 rounded bg-[#00ff88]/10 text-[#00ff88] hover:bg-[#00ff88]/20 transition-colors"
-                            >
-                              Simple
-                            </button>
-                            <button
-                              onClick={() => setPrompt(generateRandomPrompt(categoryId, subcategoryId, "medium"))}
-                              className="text-xs px-2 py-1 rounded bg-[#00d4ff]/10 text-[#00d4ff] hover:bg-[#00d4ff]/20 transition-colors"
-                            >
-                              Medium
-                            </button>
-                            <button
-                              onClick={() => setPrompt(generateRandomPrompt(categoryId, subcategoryId, "complex"))}
-                              className="text-xs px-2 py-1 rounded bg-[#c084fc]/10 text-[#c084fc] hover:bg-[#c084fc]/20 transition-colors"
-                            >
-                              Epic
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* Image upload mode (3D only) */}
-              {mode === "3d" && inputMode === "image" && (
-                <div className="space-y-3">
-                  {uploadedImagePreview ? (
-                    // Show uploaded image preview
-                    <div className="relative rounded-xl overflow-hidden border-2 border-[#c084fc]/50 bg-[#0a0a0f]">
-                      <img
-                        src={uploadedImagePreview}
-                        alt="Uploaded"
-                        className="w-full h-48 object-contain"
-                      />
-                      <button
-                        onClick={clearUploadedImage}
-                        className="absolute top-2 right-2 p-2 rounded-full bg-[#ff4444] text-white hover:bg-[#ff4444]/80 transition-colors"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                      {uploading && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-[#0a0a0f]/80">
-                          <Loader2 className="w-8 h-8 text-[#c084fc] animate-spin" />
-                        </div>
-                      )}
-                      {uploadedImageUrl && !uploading && (
-                        <div className="absolute bottom-2 left-2 px-2 py-1 rounded bg-[#00ff88]/90 text-[#030305] text-xs font-bold flex items-center gap-1">
-                          <Check className="w-3 h-3" />
-                          Ready
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    // Upload dropzone with drag & drop
-                    <div
-                      className="border-2 border-dashed border-[#c084fc]/30 rounded-xl p-8 text-center hover:border-[#c084fc]/60 hover:bg-[#c084fc]/5 transition-all cursor-pointer"
-                      onClick={() => document.getElementById("image-upload-input")?.click()}
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        e.currentTarget.classList.add("border-[#c084fc]", "bg-[#c084fc]/10");
-                      }}
-                      onDragLeave={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        e.currentTarget.classList.remove("border-[#c084fc]", "bg-[#c084fc]/10");
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        e.currentTarget.classList.remove("border-[#c084fc]", "bg-[#c084fc]/10");
-                        const files = e.dataTransfer.files;
-                        if (files && files.length > 0) {
-                          const input = document.getElementById("image-upload-input") as HTMLInputElement;
-                          if (input) {
-                            const dataTransfer = new DataTransfer();
-                            dataTransfer.items.add(files[0]);
-                            input.files = dataTransfer.files;
-                            input.dispatchEvent(new Event("change", { bubbles: true }));
-                          }
-                        }
-                      }}
-                    >
-                      <Upload className="w-12 h-12 mx-auto text-[#c084fc]/50 mb-3" />
-                      <p className="text-white font-medium mb-1">Drop your image here</p>
-                      <p className="text-sm text-[#a0a0b0]">or click to browse</p>
-                      <p className="text-xs text-[#a0a0b0] mt-2">JPG, PNG, WebP • Max 10MB</p>
-                    </div>
-                  )}
-                  <input
-                    id="image-upload-input"
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                  />
-
-                  {/* Optional prompt for image mode */}
-                  <div className="relative">
-                    <Input
-                      placeholder="Optional: add description to guide 3D generation..."
-                      value={prompt}
-                      onChange={(e) => setPrompt(e.target.value)}
-                      className="h-12 text-sm input-gaming"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="mt-4 p-3 rounded-lg bg-[#00d4ff]/10 border border-[#00d4ff]/20 flex items-start gap-2">
-                <Lightbulb className="w-4 h-4 text-[#00d4ff] mt-0.5 shrink-0" />
-                <span className="text-xs text-[#00d4ff]">
-                  {mode === "2d"
-                    ? 'Be specific! "golden sword with ruby gems, glowing blade" works better than "sword"'
-                    : inputMode === "image"
-                      ? "Upload a clear image of a single object with good lighting. White or simple backgrounds work best!"
-                      : 'Simple single objects work best. "medieval iron sword" > "battle scene"'
-                  }
-                </span>
-              </div>
-            </div>
 
             {/* Seed & Generate */}
             <div className="flex gap-3">
@@ -1330,8 +1425,7 @@ export default function GeneratePage() {
                 onClick={handleGenerate}
                 disabled={
                   loading ||
-                  !categoryId ||
-                  !subcategoryId ||
+                  (!quickMode && (!categoryId || !subcategoryId)) ||
                   (mode === "2d" && !prompt.trim()) ||
                   (mode === "3d" && inputMode === "text" && !prompt.trim()) ||
                   (mode === "3d" && inputMode === "image" && !uploadedImageUrl)
@@ -1355,6 +1449,126 @@ export default function GeneratePage() {
                 )}
               </Button>
             </div>
+
+            {/* PREMIUM FEATURES - Now below generate button */}
+            {mode === "2d" && !quickMode && (
+              <PremiumFeatures
+                userPlan={userPlan}
+                styleId={styleId}
+                enableSpriteSheet={enableSpriteSheet}
+                onSpriteSheetChange={setEnableSpriteSheet}
+                animationTypeId={animationTypeId}
+                onAnimationTypeChange={setAnimationTypeId}
+                enableStyleMix={enableStyleMix}
+                onStyleMixChange={setEnableStyleMix}
+                style2Id={style2Id}
+                onStyle2Change={setStyle2Id}
+                style1Weight={style1Weight}
+                onStyle1WeightChange={setStyle1Weight}
+                colorPaletteId={colorPaletteId}
+                onColorPaletteChange={setColorPaletteId}
+              />
+            )}
+
+            {/* ADVANCED OPTIONS - Output Type Toggle (Hidden by default) */}
+            {!quickMode && (
+              <div className="glass-card rounded-2xl p-4">
+                <button
+                  onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+                  className="w-full flex items-center justify-between text-white"
+                >
+                  <div className="flex items-center gap-2">
+                    <Settings2 className="w-4 h-4 text-[#a0a0b0]" />
+                    <span className="text-sm font-medium">Advanced Options</span>
+                    {mode === "3d" && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-[#c084fc]/20 text-[#c084fc]">3D Mode</span>
+                    )}
+                  </div>
+                  {showAdvancedOptions ? (
+                    <ChevronUp className="w-4 h-4 text-[#a0a0b0]" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-[#a0a0b0]" />
+                  )}
+                </button>
+
+                {showAdvancedOptions && (
+                  <div className="mt-4 pt-4 border-t border-[#2a2a3d]">
+                    {/* Output Type Selector */}
+                    <div className="mb-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Zap className="w-4 h-4 text-[#00ff88]" />
+                        <span className="text-sm font-medium text-white">Output Type</span>
+                        <InfoTooltip {...GENERATOR_INFO.outputType} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {/* 2D Button */}
+                        <button
+                          onClick={() => handleModeChange("2d")}
+                          className={`relative p-3 rounded-xl border-2 transition-all ${
+                            mode === "2d"
+                              ? "border-[#00ff88] bg-[#00ff88]/10"
+                              : "border-[#2a2a3d] hover:border-[#00ff88]/50"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                              mode === "2d" ? "bg-[#00ff88] text-[#030305]" : "bg-[#1a1a28] text-[#00ff88]"
+                            }`}>
+                              <ImageIcon className="w-4 h-4" />
+                            </div>
+                            <div className="text-left">
+                              <span className={`font-medium text-sm block ${mode === "2d" ? "text-[#00ff88]" : "text-white"}`}>2D Sprite</span>
+                              <span className="text-xs text-[#a0a0b0]">1 credit</span>
+                            </div>
+                          </div>
+                        </button>
+
+                        {/* 3D Button */}
+                        <button
+                          onClick={() => handleModeChange("3d")}
+                          disabled={!categorySupports3D && categoryId !== ""}
+                          className={`relative p-3 rounded-xl border-2 transition-all ${
+                            mode === "3d"
+                              ? "border-[#c084fc] bg-[#c084fc]/10"
+                              : !categorySupports3D && categoryId !== ""
+                                ? "border-[#2a2a3d] opacity-50 cursor-not-allowed"
+                                : "border-[#2a2a3d] hover:border-[#c084fc]/50"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                              mode === "3d" ? "bg-[#c084fc] text-[#030305]" : "bg-[#1a1a28] text-[#c084fc]"
+                            }`}>
+                              <Cuboid className="w-4 h-4" />
+                            </div>
+                            <div className="text-left">
+                              <span className={`font-medium text-sm block ${mode === "3d" ? "text-[#c084fc]" : "text-white"}`}>3D Model</span>
+                              <span className="text-xs text-[#a0a0b0]">{selected3DModel.credits} credits</span>
+                            </div>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Item Builder (only for specific categories) */}
+                    {mode === "2d" && hasBuilder(categoryId, subcategoryId) && (
+                      <div className="mt-4 pt-4 border-t border-[#2a2a3d]">
+                        <ItemBuilder
+                          categoryId={categoryId}
+                          subcategoryId={subcategoryId}
+                          enabled={builderEnabled}
+                          onEnabledChange={(enabled) => {
+                            setBuilderEnabled(enabled);
+                            if (!enabled) setBuilderPrompt("");
+                          }}
+                          onPromptGenerated={setBuilderPrompt}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {error && (
               <div className="p-4 rounded-xl bg-[#ff4444]/10 border border-[#ff4444]/30 text-[#ff4444] text-sm flex items-center gap-3">

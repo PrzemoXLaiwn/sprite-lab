@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
-import { Loader2, Mail, Lock, Eye, EyeOff, Check } from "lucide-react";
+import { Loader2, Mail, Lock, Eye, EyeOff, Check, Gift } from "lucide-react";
 
 // Declare gtag for TypeScript
 declare global {
@@ -18,6 +18,7 @@ declare global {
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -25,6 +26,24 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
+  const [referralApplied, setReferralApplied] = useState(false);
+
+  // Check for referral code in URL
+  useEffect(() => {
+    const ref = searchParams.get("ref");
+    if (ref) {
+      setReferralCode(ref.toUpperCase());
+      // Store in sessionStorage for OAuth flows
+      sessionStorage.setItem("referralCode", ref.toUpperCase());
+    } else {
+      // Check sessionStorage (in case of OAuth redirect)
+      const storedRef = sessionStorage.getItem("referralCode");
+      if (storedRef) {
+        setReferralCode(storedRef);
+      }
+    }
+  }, [searchParams]);
 
   // Enhanced password validation
   const passwordChecks = {
@@ -98,7 +117,7 @@ export default function RegisterPage() {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=/generate`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=/generate${referralCode ? `&ref=${referralCode}` : ""}`,
       },
     });
 
@@ -135,7 +154,7 @@ export default function RegisterPage() {
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/generate`,
+        redirectTo: `${window.location.origin}/auth/callback?next=/generate${referralCode ? `&ref=${referralCode}` : ""}`,
       },
     });
   };
@@ -154,7 +173,7 @@ export default function RegisterPage() {
     await supabase.auth.signInWithOAuth({
       provider: "discord",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/generate`,
+        redirectTo: `${window.location.origin}/auth/callback?next=/generate${referralCode ? `&ref=${referralCode}` : ""}`,
       },
     });
   };
@@ -196,6 +215,23 @@ export default function RegisterPage() {
           Start creating game assets in seconds
         </p>
       </div>
+
+      {/* Referral Code Banner */}
+      {referralCode && (
+        <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-[#c084fc]/20 to-[#00d4ff]/20 border border-[#c084fc]/40">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#c084fc] to-[#00d4ff] flex items-center justify-center flex-shrink-0">
+              <Gift className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-white">You&apos;ve been invited!</p>
+              <p className="text-xs text-white/60">
+                Referral code <span className="font-mono text-[#00ff88]">{referralCode}</span> will be applied after signup
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* OAuth Buttons */}
       <div className="space-y-3 mb-6">

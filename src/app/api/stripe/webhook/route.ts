@@ -160,6 +160,76 @@ async function handleCreditPackPurchase(session: Stripe.Checkout.Session, userId
   });
 
   console.log(`Added ${credits} credits to user ${userId} (Credit Pack purchase)`);
+
+  // Check and process referral reward
+  await processReferralReward(userId, amountPaid);
+}
+
+// ===========================================
+// REFERRAL REWARD SYSTEM
+// ===========================================
+const REFERRAL_REWARD_CREDITS = 10;
+
+async function processReferralReward(userId: string, _amountPaid: number) {
+  try {
+    // Get user and check if they were referred
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        referredBy: true,
+        referralRewardClaimed: true,
+        totalSpent: true,
+      },
+    });
+
+    // Skip if no referrer or reward already claimed
+    if (!user?.referredBy || user.referralRewardClaimed) {
+      return;
+    }
+
+    // This is user's first purchase - reward the referrer!
+    console.log(`Processing referral reward for referrer ${user.referredBy}`);
+
+    await prisma.$transaction([
+      // Mark reward as claimed for the referred user
+      prisma.user.update({
+        where: { id: userId },
+        data: { referralRewardClaimed: true },
+      }),
+      // Add credits to referrer
+      prisma.user.update({
+        where: { id: user.referredBy },
+        data: {
+          credits: { increment: REFERRAL_REWARD_CREDITS },
+          referralEarnings: { increment: REFERRAL_REWARD_CREDITS },
+        },
+      }),
+      // Log credit transaction for referrer
+      prisma.creditTransaction.create({
+        data: {
+          userId: user.referredBy,
+          amount: REFERRAL_REWARD_CREDITS,
+          type: "BONUS",
+          description: `Referral reward - your friend made their first purchase!`,
+        },
+      }),
+      // Create notification for referrer
+      prisma.notification.create({
+        data: {
+          userId: user.referredBy,
+          type: "REFERRAL_REWARD",
+          title: "Referral Reward! +10 Credits",
+          message: `Your friend just made their first purchase! You earned ${REFERRAL_REWARD_CREDITS} bonus credits. Keep sharing your referral link!`,
+          data: JSON.stringify({ credits: REFERRAL_REWARD_CREDITS, referredUserId: userId }),
+        },
+      }),
+    ]);
+
+    console.log(`Referral reward: ${REFERRAL_REWARD_CREDITS} credits added to referrer ${user.referredBy}`);
+  } catch (error) {
+    console.error("Error processing referral reward:", error);
+    // Don't throw - we don't want to fail the main purchase
+  }
 }
 
 async function handleSubscriptionPurchase(session: Stripe.Checkout.Session, userId: string) {
@@ -297,7 +367,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
       stripeSubscriptionId: null,
       stripePriceId: null,
       stripeCurrentPeriodEnd: null,
-      credits: 15, // Reset to free tier credits
+      credits: 8, // Reset to free tier credits
     },
   });
 

@@ -190,7 +190,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
             {/* Credits indicator */}
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#00ff88]/10 border border-[#00ff88]/30 text-[#00ff88] mb-8">
               <Sparkles className="w-4 h-4" />
-              <span className="font-medium">You have 15 free credits to start</span>
+              <span className="font-medium">You have 5 free credits to start</span>
             </div>
 
             <Button

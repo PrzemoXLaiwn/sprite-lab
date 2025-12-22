@@ -15,7 +15,7 @@ export async function getOrCreateUser(supabaseUserId: string, email: string) {
         data: {
           id: supabaseUserId,
           email,
-          credits: 15, // Free tier: 15 credits to start
+          credits: 5, // Free tier: 5 credits to start
           plan: "FREE",
         },
       });
@@ -443,6 +443,43 @@ export async function deleteGeneration(id: string, userId: string) {
   } catch (error) {
     console.error("Failed to delete generation:", error);
     return { success: false, error };
+  }
+}
+
+// ===================================
+// STATS FUNCTIONS
+// ===================================
+
+// ===================================
+// USER TIER HELPERS
+// ===================================
+
+export type UserTier = "free" | "starter" | "pro" | "lifetime";
+
+/**
+ * Map database plan to user tier for model access
+ */
+export function planToTier(plan: string): UserTier {
+  const planUpper = plan.toUpperCase();
+  if (planUpper === "LIFETIME") return "lifetime";
+  if (planUpper === "PRO") return "pro";
+  if (planUpper === "STARTER") return "starter";
+  return "free";
+}
+
+/**
+ * Get user tier for model selection
+ */
+export async function getUserTier(userId: string): Promise<UserTier> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { plan: true },
+    });
+    return planToTier(user?.plan || "FREE");
+  } catch (error) {
+    console.error("Failed to get user tier:", error);
+    return "free";
   }
 }
 

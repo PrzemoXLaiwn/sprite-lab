@@ -4,9 +4,15 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle, Sparkles, Rocket } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { trackRegistration } from "@/lib/tiktok";
 
 export default function EmailConfirmedPage() {
   const [countdown, setCountdown] = useState(5);
+
+  // Track registration conversion for TikTok
+  useEffect(() => {
+    trackRegistration();
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -55,7 +61,7 @@ export default function EmailConfirmedPage() {
           {/* Credits badge */}
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#00ff88]/10 border border-[#00ff88]/30 text-[#00ff88] mb-6">
             <Sparkles className="w-4 h-4" />
-            <span className="font-semibold">15 free credits ready to use!</span>
+            <span className="font-semibold">5 free credits ready to use!</span>
           </div>
 
           {/* What's next */}

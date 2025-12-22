@@ -65,7 +65,7 @@ async function syncUsers() {
           email: authUser.email!,
           name: metadata.full_name || metadata.name || null,
           avatarUrl: metadata.avatar_url || null,
-          credits: 15, // Default free credits
+          credits: 5, // Default free credits
           plan: "FREE",
           role: "USER",
           isActive: true,

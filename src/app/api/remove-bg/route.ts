@@ -1,12 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import Replicate from "replicate";
 import { getUserCredits, checkAndDeductCredits, refundCredits } from "@/lib/database";
 import { prisma } from "@/lib/prisma";
-
-const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_TOKEN,
-});
+import { removeBackground } from "@/lib/runware";
 
 // Cost: 1 credit for background removal
 const REMOVE_BG_COST = 1;
@@ -41,7 +37,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { imageUrl, originalPrompt, categoryId, subcategoryId, styleId, generationId } = body;
+    const { imageUrl, originalPrompt, categoryId, subcategoryId, styleId } = body;
 
     if (!imageUrl) {
       return NextResponse.json(
@@ -51,7 +47,7 @@ export async function POST(request: Request) {
     }
 
     console.log("===========================================");
-    console.log("REMOVING BACKGROUND (BRIA RMBG 2.0)");
+    console.log("REMOVING BACKGROUND (Runware)");
     console.log("===========================================");
     console.log("Input image URL:", imageUrl);
 
@@ -69,92 +65,20 @@ export async function POST(request: Request) {
 
     console.log(`Atomically deducted ${REMOVE_BG_COST} credit for background removal`);
 
-    // Use BRIA RMBG 2.0 - State-of-the-art background removal model
-    // Much better quality than rembg, especially for complex edges and fine details
-    const prediction = await replicate.predictions.create({
-      version: "d75a83de0c4beaf30f1dd0f3dfb27541406e304b5b4bfc52e6848f4f6dc9a5ad",
-      input: {
-        image: imageUrl,
-      }
-    });
+    // Use Runware for background removal
+    const result = await removeBackground(imageUrl);
 
-    console.log("Prediction created:", prediction.id);
-
-    // Wait for completion
-    let result = await replicate.predictions.get(prediction.id);
-    let waitTime = 0;
-    const maxWait = 60;
-
-    while (
-      (result.status === "starting" || result.status === "processing") &&
-      waitTime < maxWait
-    ) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      result = await replicate.predictions.get(prediction.id);
-      waitTime++;
-
-      if (waitTime % 5 === 0) {
-        console.log(`Processing... ${waitTime}s (Status: ${result.status})`);
-      }
-    }
-
-    if (result.status === "failed") {
+    if (!result.success || !result.imageUrl) {
       console.error("Background removal failed:", result.error);
       // Refund credit on failure
       await refundCredits(user.id, REMOVE_BG_COST);
-      throw new Error("Background removal failed. Please try again. Credit refunded.");
+      return NextResponse.json(
+        { error: result.error || "Background removal failed. Credit refunded." },
+        { status: 500 }
+      );
     }
 
-    if (waitTime >= maxWait) {
-      // Refund credit on timeout
-      await refundCredits(user.id, REMOVE_BG_COST);
-      throw new Error("Background removal timed out. Please try again. Credit refunded.");
-    }
-
-    console.log("Result status:", result.status);
-    console.log("Result output type:", typeof result.output);
-
-    let outputUrl: string | null = null;
-
-    // Handle different output types from Replicate
-    if (result.output) {
-      if (typeof result.output === "string") {
-        outputUrl = result.output;
-      } else if (Array.isArray(result.output) && result.output.length > 0) {
-        outputUrl = String(result.output[0]);
-      } else if (result.output instanceof ReadableStream) {
-        // Convert ReadableStream to base64 data URL
-        const reader = result.output.getReader();
-        const chunks: Uint8Array[] = [];
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          chunks.push(value);
-        }
-
-        const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
-        const combined = new Uint8Array(totalLength);
-        let offset = 0;
-        for (const chunk of chunks) {
-          combined.set(chunk, offset);
-          offset += chunk.length;
-        }
-
-        const base64 = Buffer.from(combined).toString("base64");
-        outputUrl = `data:image/png;base64,${base64}`;
-      } else if (typeof result.output === "object" && "url" in result.output) {
-        outputUrl = String((result.output as { url: string }).url);
-      }
-    }
-
-    if (!outputUrl) {
-      console.error("No output URL from model:", result);
-      // Refund on no output
-      await refundCredits(user.id, REMOVE_BG_COST);
-      throw new Error("Model did not return an image. Credit refunded.");
-    }
-
+    const outputUrl = result.imageUrl;
     console.log("Output URL (first 100 chars):", outputUrl.substring(0, 100));
 
     // Auto-save to user's gallery as a new generation
@@ -179,7 +103,7 @@ export async function POST(request: Request) {
     }
 
     console.log("===========================================");
-    console.log("BACKGROUND REMOVAL SUCCESS!");
+    console.log("BACKGROUND REMOVAL SUCCESS! (Runware)");
     console.log("===========================================");
 
     return NextResponse.json({

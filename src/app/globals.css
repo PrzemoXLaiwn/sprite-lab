@@ -1311,3 +1311,21 @@
   writing-mode: vertical-rl;
   text-orientation: mixed;
 }
+
+/* ============================================
+   🚧 WORK IN PROGRESS BANNER
+   ============================================ */
+
+/* Animated industrial stripes */
+@keyframes wip-stripes {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 56.57px 0;
+  }
+}
+
+.animate-wip-stripes {
+  animation: wip-stripes 1s linear infinite;
+}

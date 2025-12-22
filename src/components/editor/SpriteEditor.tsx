@@ -107,17 +107,34 @@ export function SpriteEditor({
     const loadImage = async () => {
       const imageCanvas = imageCanvasRef.current;
       const maskCanvas = maskCanvasRef.current;
-      if (!imageCanvas || !maskCanvas) return;
+      if (!imageCanvas || !maskCanvas) {
+        console.log("[SpriteEditor] Canvas refs not ready, waiting...");
+        return;
+      }
 
       const imageCtx = imageCanvas.getContext("2d");
       const maskCtx = maskCanvas.getContext("2d");
-      if (!imageCtx || !maskCtx) return;
+      if (!imageCtx || !maskCtx) {
+        console.log("[SpriteEditor] Canvas contexts not available");
+        return;
+      }
+
+      console.log("[SpriteEditor] Loading image from:", imageUrl?.substring(0, 100));
 
       try {
         const img = new Image();
         img.crossOrigin = "anonymous";
 
+        // Add timeout for loading
+        const timeoutId = setTimeout(() => {
+          console.log("[SpriteEditor] Image load timeout");
+          setError("Image load timeout - try again");
+          setLoadingImage(false);
+        }, 15000);
+
         img.onload = () => {
+          clearTimeout(timeoutId);
+          console.log("[SpriteEditor] Image loaded successfully:", img.width, "x", img.height);
           // Set canvas size to image size (max 1024)
           const maxSize = 1024;
           let width = img.width;
@@ -151,10 +168,17 @@ export function SpriteEditor({
           setHistoryIndex(0);
         };
 
-        img.onerror = () => {
-          setError("Failed to load image");
+        img.onerror = (e) => {
+          clearTimeout(timeoutId);
+          console.error("[SpriteEditor] Image load error:", e);
+          setError("Failed to load image - CORS issue or invalid URL");
           setLoadingImage(false);
         };
+
+        // Handle potential CORS issues by trying without crossOrigin first for data URLs
+        if (imageUrl.startsWith("data:")) {
+          img.crossOrigin = "";
+        }
 
         img.src = imageUrl;
       } catch (err) {

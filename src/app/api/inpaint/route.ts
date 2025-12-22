@@ -63,24 +63,54 @@ async function runFluxInpaint(
   try {
     console.log("[FLUX Fill] Starting...");
 
-    const output = await replicate.run(
-      "black-forest-labs/flux-fill-pro" as ModelIdentifier,
-      {
-        input: {
-          image: `data:image/png;base64,${imageBase64}`,
-          mask: `data:image/png;base64,${maskBase64}`,
-          prompt: prompt,
-          steps: 25,
-          guidance: 30,
-          output_format: "png",
-        },
-      }
-    );
+    // Create prediction with timeout handling - use black-forest-labs/flux-fill-pro
+    // For official models, we use the model parameter (not version)
+    const prediction = await replicate.predictions.create({
+      model: "black-forest-labs/flux-fill-pro",
+      input: {
+        image: `data:image/png;base64,${imageBase64}`,
+        mask: `data:image/png;base64,${maskBase64}`,
+        prompt: prompt,
+        steps: 25,
+        guidance: 30,
+        output_format: "png",
+      },
+    });
 
-    const imageUrl = extractUrl(output);
-    if (imageUrl) {
-      console.log("[FLUX Fill] Success!");
-      return { success: true, imageUrl };
+    // Wait for completion with timeout
+    let result = await replicate.predictions.get(prediction.id);
+    let waitTime = 0;
+    const maxWait = 90; // 90 seconds max
+
+    while (
+      (result.status === "starting" || result.status === "processing") &&
+      waitTime < maxWait
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      result = await replicate.predictions.get(prediction.id);
+      waitTime += 2;
+
+      if (waitTime % 10 === 0) {
+        console.log(`[FLUX Fill] Processing... ${waitTime}s`);
+      }
+    }
+
+    if (waitTime >= maxWait) {
+      console.log("[FLUX Fill] Timeout");
+      return { success: false, error: "Timeout - taking too long" };
+    }
+
+    if (result.status === "failed") {
+      console.error("[FLUX Fill] Failed:", result.error);
+      return { success: false, error: String(result.error || "FLUX Fill failed") };
+    }
+
+    if (result.status === "succeeded" && result.output) {
+      const imageUrl = extractUrl(result.output);
+      if (imageUrl) {
+        console.log("[FLUX Fill] Success!");
+        return { success: true, imageUrl };
+      }
     }
 
     return { success: false, error: "No output URL" };
@@ -91,29 +121,50 @@ async function runFluxInpaint(
 }
 
 function extractUrl(output: unknown): string | null {
+  // Helper to extract URL from a FileOutput-like object
+  const extractFromFileOutput = (obj: unknown): string | null => {
+    if (!obj || typeof obj !== "object") return null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const fileOutput = obj as any;
+
+    // Method 1: FileOutput.url() method (Replicate SDK 1.0+)
+    if (typeof fileOutput.url === "function") {
+      try {
+        const urlResult = fileOutput.url();
+        if (urlResult) {
+          const urlStr = typeof urlResult === "string" ? urlResult : urlResult.toString();
+          if (urlStr.startsWith("http")) return urlStr;
+        }
+      } catch { /* ignore */ }
+    }
+
+    // Method 2: String() for FileOutput (it stringifies to the URL)
+    try {
+      const str = String(fileOutput);
+      if (str.startsWith("http")) return str;
+    } catch { /* ignore */ }
+
+    // Method 3: Direct string properties
+    if (typeof fileOutput.url === "string" && fileOutput.url.startsWith("http")) return fileOutput.url;
+    if (typeof fileOutput.uri === "string" && fileOutput.uri.startsWith("http")) return fileOutput.uri;
+    if (typeof fileOutput.href === "string" && fileOutput.href.startsWith("http")) return fileOutput.href;
+
+    return null;
+  };
+
+  // Handle array output (most common case)
   if (Array.isArray(output) && output.length > 0) {
     const first = output[0];
-    if (typeof first === "string") return first;
-    if (first && typeof first === "object") {
-      const obj = first as Record<string, unknown>;
-      if (typeof obj.url === "function") {
-        try {
-          return (obj.url as () => URL)().toString();
-        } catch {
-          /* ignore */
-        }
-      }
-      if (typeof obj.url === "string") return obj.url;
-      if (typeof obj.uri === "string") return obj.uri;
-      if (typeof obj.href === "string") return obj.href;
-    }
+    if (typeof first === "string" && first.startsWith("http")) return first;
+    const url = extractFromFileOutput(first);
+    if (url) return url;
   }
-  if (typeof output === "string") return output;
-  if (output && typeof output === "object") {
-    const obj = output as Record<string, unknown>;
-    if (typeof obj.url === "string") return obj.url;
-  }
-  return null;
+
+  // Handle direct string output
+  if (typeof output === "string" && output.startsWith("http")) return output;
+
+  // Handle single FileOutput object
+  return extractFromFileOutput(output);
 }
 
 // ===========================================

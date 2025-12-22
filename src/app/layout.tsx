@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Orbitron } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import Script from "next/script";
+import { WipBanner } from "@/components/WipBanner";
 import "./globals.css";
 
 // Optimized font loading with next/font (no render-blocking!)
@@ -158,11 +160,11 @@ const jsonLd = {
         },
         {
           "@type": "Offer",
-          price: "9",
-          priceCurrency: "USD",
+          price: "5",
+          priceCurrency: "GBP",
           name: "Starter Plan",
-          description: "100 credits per month for indie developers",
-          priceValidUntil: "2025-12-31",
+          description: "250 credits per month for indie developers",
+          priceValidUntil: "2026-12-31",
         },
       ],
       description:
@@ -276,18 +278,37 @@ export default function RootLayout({
         <meta name="theme-color" content="#030305" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        {/* Google AdSense */}
+        {/* Structured Data - static, no hydration issues */}
         <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
+      <body
+        className="font-sans antialiased min-h-screen bg-background text-foreground pb-10"
+        suppressHydrationWarning
+      >
+        {children}
+        <WipBanner />
+        <Analytics />
+        <SpeedInsights />
+
+        {/* Google AdSense - loaded after hydration */}
+        <Script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3053243391231414"
           crossOrigin="anonymous"
+          strategy="afterInteractive"
         />
         {/* Google Tag (gtag.js) - Conversion Tracking + Remarketing */}
-        <script
+        <Script
           async
           src="https://www.googletagmanager.com/gtag/js?id=AW-17802754923"
+          strategy="afterInteractive"
         />
-        <script
+        <Script
+          id="gtag-init"
+          strategy="afterInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               window.dataLayer = window.dataLayer || [];
@@ -296,8 +317,6 @@ export default function RootLayout({
               gtag('config', 'AW-17802754923', {
                 'allow_enhanced_conversions': true
               });
-
-              // Enable remarketing and dynamic remarketing
               gtag('config', 'AW-17802754923', {
                 'send_page_view': true,
                 'remarketing': true
@@ -305,18 +324,24 @@ export default function RootLayout({
             `,
           }}
         />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+
+        {/* TikTok Pixel + Events API */}
+        <Script
+          id="tiktok-pixel"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              !function (w, d, t) {
+                w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];ttq.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie","holdConsent","revokeConsent","grantConsent"],ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);ttq.instance=function(t){for(
+                var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e},ttq.load=function(e,n){var r="https://analytics.tiktok.com/i18n/pixel/events.js",o=n&&n.partner;ttq._i=ttq._i||{},ttq._i[e]=[],ttq._i[e]._u=r,ttq._t=ttq._t||{},ttq._t[e]=+new Date,ttq._o=ttq._o||{},ttq._o[e]=n||{};n=document.createElement("script")
+                ;n.type="text/javascript",n.async=!0,n.src=r+"?sdkid="+e+"&lib="+t;e=document.getElementsByTagName("script")[0];e.parentNode.insertBefore(n,e)};
+
+                ttq.load('D54A1JBC77U0DP19C6K0');
+                ttq.page();
+              }(window, document, 'ttq');
+            `,
+          }}
         />
-      </head>
-      <body
-        className="font-sans antialiased min-h-screen bg-background text-foreground"
-        suppressHydrationWarning
-      >
-        {children}
-        <Analytics />
-        <SpeedInsights />
       </body>
     </html>
   );

@@ -27,7 +27,17 @@
       "Bash(npx next:*)",
       "Bash(npx prisma db push:*)",
       "Bash(npx dotenv-cli:*)",
-      "Bash(npm ls:*)"
+      "Bash(npm ls:*)",
+      "Bash(git push)",
+      "Bash(npx next lint)",
+      "Bash(npx next lint .)",
+      "Bash(curl:*)",
+      "Bash(npx next build)",
+      "Bash(powershell -Command \"\\(Get-Content ''c:\\\\Users\\\\Montech.DESKTOP-HFD37TP\\\\Desktop\\\\sprite-lab-main\\\\src\\\\app\\\\api\\\\edit-image\\\\route.ts'' | Measure-Object -Line\\).Lines\")",
+      "Bash(powershell -Command \"Select-String -Path ''c:\\\\Users\\\\Montech.DESKTOP-HFD37TP\\\\Desktop\\\\sprite-lab-main\\\\src\\\\app\\\\api\\\\edit-image\\\\route.ts'' -Pattern ''<<<<|====|>>>>'' | Select-Object -First 10\")",
+      "Bash(powershell -Command \"\\(Get-Content ''c:\\\\Users\\\\Montech.DESKTOP-HFD37TP\\\\Desktop\\\\sprite-lab-main\\\\src\\\\app\\\\api\\\\edit-image\\\\route.ts''\\).Count\")",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npx dotenv:*)"
     ],
     "deny": [],
     "ask": []

@@ -8,10 +8,8 @@ const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
 });
 
-// ===========================================
-// VARIATION GENERATION
-// ===========================================
-
+// ====================================// VARIATION GENERATION
+// ====================================
 interface VariationOptions {
   imageUrl: string;
   prompt?: string;
@@ -41,9 +39,9 @@ async function generateVariations(
 
     const strength = strengthMap[options.similarity];
 
-    // Use SDXL img2img for variations
+    // Use SDXL img2img for variations (version hash required for predictions.create)
     const prediction = await replicate.predictions.create({
-      version: "7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c929f9bdc",
+      version: "39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
       input: {
         image: options.imageUrl,
         prompt: options.prompt || "game asset, high quality, detailed",
@@ -51,7 +49,7 @@ async function generateVariations(
         num_outputs: options.numVariations,
         num_inference_steps: 30,
         guidance_scale: 7.5,
-        strength: strength,
+        prompt_strength: strength,
         seed: options.seed,
       },
     });
@@ -78,9 +76,44 @@ async function generateVariations(
       let imageUrls: string[] = [];
 
       if (Array.isArray(result.output)) {
-        imageUrls = result.output.filter((url): url is string => typeof url === "string");
+        // Handle both string URLs and FileOutput objects from Replicate SDK 1.0+
+        imageUrls = result.output.map((item): string | null => {
+          if (typeof item === "string") return item;
+          if (item && typeof item === "object") {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const obj = item as any;
+            // Try .url() method first (FileOutput)
+            if (typeof obj.url === "function") {
+              try {
+                const urlResult = obj.url();
+                return typeof urlResult === "string" ? urlResult : urlResult.toString();
+              } catch { /* ignore */ }
+            }
+            // Try String() conversion
+            try {
+              const str = String(obj);
+              if (str.startsWith("http")) return str;
+            } catch { /* ignore */ }
+            // Try .url property
+            if (typeof obj.url === "string") return obj.url;
+          }
+          return null;
+        }).filter((url): url is string => url !== null && url.startsWith("http"));
       } else if (typeof result.output === "string") {
         imageUrls = [result.output];
+      } else if (result.output && typeof result.output === "object") {
+        // Single FileOutput object
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const obj = result.output as any;
+        if (typeof obj.url === "function") {
+          try {
+            const url = obj.url();
+            imageUrls = [typeof url === "string" ? url : url.toString()];
+          } catch { /* ignore */ }
+        } else {
+          const str = String(obj);
+          if (str.startsWith("http")) imageUrls = [str];
+        }
       }
 
       if (imageUrls.length > 0) {
@@ -108,10 +141,8 @@ async function generateVariations(
   }
 }
 
-// ===========================================
-// MAIN API HANDLER
-// ===========================================
-
+// ====================================// MAIN API HANDLER
+// ====================================
 export async function POST(request: Request) {
   const startTime = Date.now();
 
@@ -129,7 +160,7 @@ export async function POST(request: Request) {
 
     // Parse request
     const body = await request.json();
-    const {
+    let {
       imageUrl,
       prompt,
       numVariations = 2,
@@ -144,6 +175,30 @@ export async function POST(request: Request) {
         { error: "Image URL is required." },
         { status: 400 }
       );
+    }
+
+    // Image size validation to prevent CUDA memory errors
+    // SDXL img2img can handle max ~1024x1024 safely
+    try {
+      const imageResponse = await fetch(imageUrl);
+      const imageBuffer = await imageResponse.arrayBuffer();
+      const imageSizeMB = imageBuffer.byteLength / (1024 * 1024);
+
+      console.log(`[Variations] Image size: ${imageSizeMB.toFixed(2)}MB`);
+
+      // If image is too large (>5MB or likely >1024x1024), warn user
+      if (imageSizeMB > 5) {
+        return NextResponse.json(
+          {
+            error: "Image too large for variations (max 5MB or 1024x1024 pixels). Please use a smaller image or upscale feature first.",
+            imageTooLarge: true
+          },
+          { status: 400 }
+        );
+      }
+    } catch (sizeError) {
+      console.warn("[Variations] Could not validate image size:", sizeError);
+      // Continue anyway - size check is not critical
     }
 
     if (numVariations < 1 || numVariations > 4) {
@@ -184,10 +239,53 @@ export async function POST(request: Request) {
     console.log("Prompt:", prompt || "default");
     console.log("Input URL:", imageUrl);
 
+    // Build enhanced prompt for variations
+    let enhancedPrompt = prompt || originalGeneration?.prompt || "game asset, high quality, detailed";
+    
+    // Detect specific part changes (roof, walls, etc.)
+    const partKeywords = {
+      roof: ['roof', 'dach', 'top'],
+      walls: ['walls', 'wall', 'ściany', 'ściana'],
+      door: ['door', 'drzwi'],
+      window: ['window', 'okno'],
+    };
+    
+    let specificPart = null;
+    for (const [part, keywords] of Object.entries(partKeywords)) {
+      if (keywords.some(kw => enhancedPrompt.toLowerCase().includes(kw))) {
+        specificPart = part;
+        break;
+      }
+    }
+    
+    // Detect color change requests
+    const colorKeywords = ['yellow', 'gold', 'golden', 'blue', 'red', 'green', 'purple', 'pink', 'orange', 'white', 'black', 'silver', 'bronze', 'cyan', 'magenta', 'stone', 'wooden', 'wood', 'żółty', 'złoty', 'niebieski', 'czerwony', 'zielony', 'fioletowy', 'różowy', 'pomarańczowy', 'biały', 'czarny', 'srebrny', 'kamienny', 'drewniany'];
+    const hasColorRequest = colorKeywords.some(color => enhancedPrompt.toLowerCase().includes(color));
+    
+    if (hasColorRequest || specificPart) {
+      // For specific changes, use lower similarity to allow more variation
+      if (similarity === "high") {
+        similarity = "medium";
+        console.log("Specific change detected - adjusting similarity from high to medium");
+      }
+      
+      // Build more specific prompt
+      if (specificPart && hasColorRequest) {
+        // Extract the color/material from prompt
+        const colorMatch = colorKeywords.find(color => enhancedPrompt.toLowerCase().includes(color));
+        enhancedPrompt = `${enhancedPrompt}, ONLY change the ${specificPart} to ${colorMatch}, keep everything else exactly the same, focus on ${specificPart} modification`;
+      } else if (hasColorRequest) {
+        enhancedPrompt = `${enhancedPrompt}, emphasize the color change, vibrant colors, accurate color representation`;
+      }
+    }
+    
+    console.log("Enhanced prompt:", enhancedPrompt);
+    console.log("Adjusted similarity:", similarity);
+
     // Generate variations
     const result = await generateVariations({
       imageUrl,
-      prompt: prompt || originalGeneration?.prompt,
+      prompt: enhancedPrompt,
       numVariations,
       similarity,
       seed,
@@ -262,10 +360,8 @@ export async function POST(request: Request) {
   }
 }
 
-// ===========================================
-// GET - Variation info
-// ===========================================
-
+// ====================================// GET - Variation info
+// ====================================
 export async function GET() {
   return NextResponse.json({
     maxVariations: 4,

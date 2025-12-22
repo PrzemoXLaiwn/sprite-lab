@@ -19,7 +19,7 @@ interface WelcomeEmailProps {
   credits: number;
 }
 
-export function WelcomeEmail({ userName, credits = 15 }: WelcomeEmailProps) {
+export function WelcomeEmail({ userName, credits = 8 }: WelcomeEmailProps) {
   const previewText = `Welcome to SpriteLab! Your ${credits} free credits are ready`;
 
   return (

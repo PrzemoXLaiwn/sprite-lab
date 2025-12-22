@@ -2,6 +2,8 @@ import { resend, EMAIL_FROM, EMAIL_REPLY_TO } from "./resend";
 import { WelcomeEmail } from "./templates/WelcomeEmail";
 import { ReEngagementEmail } from "./templates/ReEngagementEmail";
 import { PromoEmail } from "./templates/PromoEmail";
+import { AbandonedCartEmail } from "./templates/AbandonedCartEmail";
+import { SpecialOfferEmail } from "./templates/SpecialOfferEmail";
 import { prisma } from "@/lib/prisma";
 import { render } from "@react-email/render";
 
@@ -11,7 +13,7 @@ export type EmailResult = {
   error?: string;
 };
 
-export type EmailType = "WELCOME" | "RE_ENGAGEMENT" | "PROMO" | "SYSTEM";
+export type EmailType = "WELCOME" | "RE_ENGAGEMENT" | "PROMO" | "SYSTEM" | "ABANDONED_CART" | "SPECIAL_OFFER";
 
 /**
  * Log email to database for tracking
@@ -50,7 +52,7 @@ async function logEmail(params: {
 export async function sendWelcomeEmail(
   email: string,
   userName?: string,
-  credits: number = 15,
+  credits: number = 8,
   userId?: string
 ): Promise<EmailResult> {
   const subject = `Welcome to SpriteLab! 🎮 Your ${credits} free credits are ready`;
@@ -248,6 +250,162 @@ export async function sendPromoEmail(
       status: "failed",
       errorMessage: errorMsg,
       metadata: { promoCode: options.promoCode, campaignId: options.campaignId },
+    });
+    return { success: false, error: errorMsg };
+  }
+}
+
+/**
+ * Send abandoned cart email to users who didn't complete checkout
+ */
+export async function sendAbandonedCartEmail(
+  email: string,
+  userName: string | undefined,
+  options: {
+    planName: string;
+    planPrice: string;
+    planCredits: string;
+    checkoutUrl?: string;
+  },
+  userId?: string
+): Promise<EmailResult> {
+  const subject = `Complete your ${options.planName} purchase - your credits are waiting! 🛒`;
+
+  try {
+    const html = await render(
+      <AbandonedCartEmail
+        userName={userName}
+        planName={options.planName}
+        planPrice={options.planPrice}
+        planCredits={options.planCredits}
+        checkoutUrl={options.checkoutUrl}
+      />
+    );
+
+    const { data, error } = await resend.emails.send({
+      from: EMAIL_FROM,
+      to: email,
+      replyTo: EMAIL_REPLY_TO,
+      subject,
+      html,
+    });
+
+    if (error) {
+      console.error("[Email] Abandoned cart email error:", error);
+      await logEmail({
+        email,
+        userId,
+        type: "ABANDONED_CART",
+        subject,
+        status: "failed",
+        errorMessage: error.message,
+        metadata: { planName: options.planName },
+      });
+      return { success: false, error: error.message };
+    }
+
+    console.log("[Email] Abandoned cart email sent to:", email, "ID:", data?.id);
+    await logEmail({
+      email,
+      userId,
+      type: "ABANDONED_CART",
+      subject,
+      status: "sent",
+      messageId: data?.id,
+      metadata: { planName: options.planName },
+    });
+    return { success: true, messageId: data?.id };
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : "Unknown error";
+    console.error("[Email] Abandoned cart email exception:", error);
+    await logEmail({
+      email,
+      userId,
+      type: "ABANDONED_CART",
+      subject,
+      status: "failed",
+      errorMessage: errorMsg,
+      metadata: { planName: options.planName },
+    });
+    return { success: false, error: errorMsg };
+  }
+}
+
+/**
+ * Send special offer email to users with 0 credits
+ */
+export async function sendSpecialOfferEmail(
+  email: string,
+  userName?: string,
+  options: {
+    offerTitle?: string;
+    offerDescription?: string;
+    discountPercent?: number;
+    expiresIn?: string;
+    promoCode?: string;
+  } = {},
+  userId?: string
+): Promise<EmailResult> {
+  const subject = options.discountPercent
+    ? `Special ${options.discountPercent}% off just for you! 🎁`
+    : "We miss you! Special offer inside 🎁";
+
+  try {
+    const html = await render(
+      <SpecialOfferEmail
+        userName={userName}
+        offerTitle={options.offerTitle}
+        offerDescription={options.offerDescription}
+        discountPercent={options.discountPercent}
+        expiresIn={options.expiresIn}
+        promoCode={options.promoCode}
+      />
+    );
+
+    const { data, error } = await resend.emails.send({
+      from: EMAIL_FROM,
+      to: email,
+      replyTo: EMAIL_REPLY_TO,
+      subject,
+      html,
+    });
+
+    if (error) {
+      console.error("[Email] Special offer email error:", error);
+      await logEmail({
+        email,
+        userId,
+        type: "SPECIAL_OFFER",
+        subject,
+        status: "failed",
+        errorMessage: error.message,
+        metadata: { promoCode: options.promoCode, discountPercent: options.discountPercent },
+      });
+      return { success: false, error: error.message };
+    }
+
+    console.log("[Email] Special offer email sent to:", email, "ID:", data?.id);
+    await logEmail({
+      email,
+      userId,
+      type: "SPECIAL_OFFER",
+      subject,
+      status: "sent",
+      messageId: data?.id,
+      metadata: { promoCode: options.promoCode, discountPercent: options.discountPercent },
+    });
+    return { success: true, messageId: data?.id };
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : "Unknown error";
+    console.error("[Email] Special offer email exception:", error);
+    await logEmail({
+      email,
+      userId,
+      type: "SPECIAL_OFFER",
+      subject,
+      status: "failed",
+      errorMessage: errorMsg,
+      metadata: { promoCode: options.promoCode, discountPercent: options.discountPercent },
     });
     return { success: false, error: errorMsg };
   }

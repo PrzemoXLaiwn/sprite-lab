@@ -8,6 +8,7 @@ export async function GET(request: Request) {
   const code = searchParams.get("code");
   const type = searchParams.get("type");
   const next = searchParams.get("next") ?? "/generate";
+  const referralCode = searchParams.get("ref");
 
   if (code) {
     const supabase = await createClient();
@@ -18,6 +19,13 @@ export async function GET(request: Request) {
       const { data: { user } } = await supabase.auth.getUser();
 
       if (user) {
+        // Check if this is a new user (for referral tracking)
+        const existingUser = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { id: true, referredBy: true },
+        });
+        const isNewUser = !existingUser;
+
         // Ensure user exists in database (auto-sync from Supabase Auth)
         try {
           await prisma.user.upsert({
@@ -32,12 +40,40 @@ export async function GET(request: Request) {
               email: user.email!,
               name: user.user_metadata?.full_name || user.user_metadata?.name || null,
               avatarUrl: user.user_metadata?.avatar_url || null,
-              credits: 15,
+              credits: 5,
               plan: "FREE",
               role: "USER",
               isActive: true,
             },
           });
+
+          // Apply referral code for new users
+          if (isNewUser && referralCode) {
+            try {
+              // Find referrer by code
+              const referrer = await prisma.user.findUnique({
+                where: { referralCode: referralCode.toUpperCase() },
+                select: { id: true },
+              });
+
+              if (referrer && referrer.id !== user.id) {
+                // Apply referral
+                await prisma.$transaction([
+                  prisma.user.update({
+                    where: { id: user.id },
+                    data: { referredBy: referrer.id },
+                  }),
+                  prisma.user.update({
+                    where: { id: referrer.id },
+                    data: { referralCount: { increment: 1 } },
+                  }),
+                ]);
+                console.log(`[Auth Callback] Referral applied: ${user.id} referred by ${referrer.id}`);
+              }
+            } catch (refErr) {
+              console.error("[Auth Callback] Failed to apply referral:", refErr);
+            }
+          }
         } catch (err) {
           console.error("[Auth Callback] Failed to sync user to DB:", err);
         }
@@ -50,7 +86,7 @@ export async function GET(request: Request) {
           sendWelcomeEmail(
             user.email!,
             user.user_metadata?.full_name || user.user_metadata?.name,
-            15,
+            5,
             user.id
           ).catch((err) => console.error("[Auth Callback] Welcome email failed:", err));
         }
