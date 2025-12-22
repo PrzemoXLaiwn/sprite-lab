@@ -954,6 +954,61 @@ export default function GeneratePage() {
           {/* LEFT COLUMN */}
           <div className="lg:col-span-3 space-y-5">
 
+            {/* STEP 0: OUTPUT TYPE - 2D vs 3D (ALWAYS FIRST) */}
+            <div className="glass-card rounded-2xl p-5">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-[#00ff88] to-[#c084fc] flex items-center justify-center text-white font-bold text-sm">
+                  <Zap className="w-4 h-4" />
+                </div>
+                <h3 className="font-semibold text-white">Output Type</h3>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {/* 2D Button */}
+                <button
+                  onClick={() => handleModeChange("2d")}
+                  className={`relative p-4 rounded-xl border-2 transition-all ${
+                    mode === "2d"
+                      ? "border-[#00ff88] bg-[#00ff88]/10 neon-glow"
+                      : "border-[#2a2a3d] hover:border-[#00ff88]/50"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                      mode === "2d" ? "bg-[#00ff88] text-[#030305]" : "bg-[#1a1a28] text-[#00ff88]"
+                    }`}>
+                      <ImageIcon className="w-6 h-6" />
+                    </div>
+                    <div className="text-left">
+                      <span className={`font-bold text-lg block ${mode === "2d" ? "text-[#00ff88]" : "text-white"}`}>2D Sprite</span>
+                      <span className="text-sm text-[#a0a0b0]">PNG • 1 credit</span>
+                    </div>
+                  </div>
+                </button>
+
+                {/* 3D Button */}
+                <button
+                  onClick={() => handleModeChange("3d")}
+                  className={`relative p-4 rounded-xl border-2 transition-all ${
+                    mode === "3d"
+                      ? "border-[#c084fc] bg-[#c084fc]/10"
+                      : "border-[#2a2a3d] hover:border-[#c084fc]/50"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                      mode === "3d" ? "bg-[#c084fc] text-[#030305]" : "bg-[#1a1a28] text-[#c084fc]"
+                    }`}>
+                      <Cuboid className="w-6 h-6" />
+                    </div>
+                    <div className="text-left">
+                      <span className={`font-bold text-lg block ${mode === "3d" ? "text-[#c084fc]" : "text-white"}`}>3D Model</span>
+                      <span className="text-sm text-[#a0a0b0]">GLB • {selected3DModel.credits} credits</span>
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </div>
+
             {/* QUICK MODE TOGGLE */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -1493,77 +1548,22 @@ export default function GeneratePage() {
 
                 {showAdvancedOptions && (
                   <div className="mt-4 pt-4 border-t border-[#2a2a3d]">
-                    {/* Output Type Selector */}
-                    <div className="mb-4">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Zap className="w-4 h-4 text-[#00ff88]" />
-                        <span className="text-sm font-medium text-white">Output Type</span>
-                        <InfoTooltip {...GENERATOR_INFO.outputType} />
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        {/* 2D Button */}
-                        <button
-                          onClick={() => handleModeChange("2d")}
-                          className={`relative p-3 rounded-xl border-2 transition-all ${
-                            mode === "2d"
-                              ? "border-[#00ff88] bg-[#00ff88]/10"
-                              : "border-[#2a2a3d] hover:border-[#00ff88]/50"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                              mode === "2d" ? "bg-[#00ff88] text-[#030305]" : "bg-[#1a1a28] text-[#00ff88]"
-                            }`}>
-                              <ImageIcon className="w-4 h-4" />
-                            </div>
-                            <div className="text-left">
-                              <span className={`font-medium text-sm block ${mode === "2d" ? "text-[#00ff88]" : "text-white"}`}>2D Sprite</span>
-                              <span className="text-xs text-[#a0a0b0]">1 credit</span>
-                            </div>
-                          </div>
-                        </button>
-
-                        {/* 3D Button */}
-                        <button
-                          onClick={() => handleModeChange("3d")}
-                          disabled={!categorySupports3D && categoryId !== ""}
-                          className={`relative p-3 rounded-xl border-2 transition-all ${
-                            mode === "3d"
-                              ? "border-[#c084fc] bg-[#c084fc]/10"
-                              : !categorySupports3D && categoryId !== ""
-                                ? "border-[#2a2a3d] opacity-50 cursor-not-allowed"
-                                : "border-[#2a2a3d] hover:border-[#c084fc]/50"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                              mode === "3d" ? "bg-[#c084fc] text-[#030305]" : "bg-[#1a1a28] text-[#c084fc]"
-                            }`}>
-                              <Cuboid className="w-4 h-4" />
-                            </div>
-                            <div className="text-left">
-                              <span className={`font-medium text-sm block ${mode === "3d" ? "text-[#c084fc]" : "text-white"}`}>3D Model</span>
-                              <span className="text-xs text-[#a0a0b0]">{selected3DModel.credits} credits</span>
-                            </div>
-                          </div>
-                        </button>
-                      </div>
-                    </div>
-
                     {/* Item Builder (only for specific categories) */}
                     {mode === "2d" && hasBuilder(categoryId, subcategoryId) && (
-                      <div className="mt-4 pt-4 border-t border-[#2a2a3d]">
-                        <ItemBuilder
-                          categoryId={categoryId}
-                          subcategoryId={subcategoryId}
-                          enabled={builderEnabled}
-                          onEnabledChange={(enabled) => {
-                            setBuilderEnabled(enabled);
-                            if (!enabled) setBuilderPrompt("");
-                          }}
-                          onPromptGenerated={setBuilderPrompt}
-                        />
-                      </div>
+                      <ItemBuilder
+                        categoryId={categoryId}
+                        subcategoryId={subcategoryId}
+                        enabled={builderEnabled}
+                        onEnabledChange={(enabled) => {
+                          setBuilderEnabled(enabled);
+                          if (!enabled) setBuilderPrompt("");
+                        }}
+                        onPromptGenerated={setBuilderPrompt}
+                      />
+                    )}
+                    {/* Placeholder if no builder available */}
+                    {!(mode === "2d" && hasBuilder(categoryId, subcategoryId)) && (
+                      <p className="text-sm text-[#a0a0b0]">No additional options available for current selection.</p>
                     )}
                   </div>
                 )}
