@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -50,6 +51,7 @@ import {
   STYLES_2D_UI,
   STYLES_3D,
   MODELS_3D,
+  QUALITY_3D_PRESETS,
   ICON_MAP,
   hasBuilder,
 } from "@/config";
@@ -181,8 +183,15 @@ export default function GeneratePage() {
   const [styleId, setStyleId] = useState<string>("PIXEL_ART_16");
   const [style3DId, setStyle3DId] = useState<string>("STYLIZED");
   const [model3D, setModel3D] = useState<string>("rodin");
+  const [quality3D, setQuality3D] = useState<string>("medium"); // low, medium, high
   const [prompt, setPrompt] = useState<string>("");
   const [seed, setSeed] = useState<string>("");
+
+  // Output Controls State (2D)
+  const [outputSize, setOutputSize] = useState<string>("512");
+  const [bgOption, setBgOption] = useState<string>("transparent");
+  const [outlineOption, setOutlineOption] = useState<string>("none");
+  const [paletteOption, setPaletteOption] = useState<string>("original");
   
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -717,11 +726,28 @@ export default function GeneratePage() {
   };
 
   const handleGenerate = async () => {
-    if (!categoryId) { setError("Please select a category first! Your prompt doesn't match any known category - scroll down to pick one."); return; }
-    if (!subcategoryId) { setError("Please select a type/subcategory!"); return; }
-
     // Determine which prompt to use: builder prompt (if enabled and has content) or manual prompt
     const effectivePrompt = (builderEnabled && builderPrompt.trim()) ? builderPrompt.trim() : prompt.trim();
+
+    // In Quick Mode, auto-assign default category if not detected
+    let finalCategoryId = categoryId;
+    let finalSubcategoryId = subcategoryId;
+
+    if (quickMode && !finalCategoryId && effectivePrompt) {
+      // Default to CHARACTERS if no category detected
+      finalCategoryId = "CHARACTERS";
+      const cat = ALL_CATEGORIES.find(c => c.id === "CHARACTERS");
+      finalSubcategoryId = cat?.subcategories[0]?.id || "HERO";
+    }
+
+    if (!finalCategoryId) {
+      setError("Please select a category first! Your prompt doesn't match any known category - scroll down to pick one.");
+      return;
+    }
+    if (!finalSubcategoryId) {
+      setError("Please select a type/subcategory!");
+      return;
+    }
 
     // For 3D mode with image upload, prompt is optional
     if (mode === "2d" && !effectivePrompt) { setError("Enter a description or use the Advanced Builder!"); return; }
@@ -751,8 +777,8 @@ export default function GeneratePage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             prompt: effectivePrompt,
-            categoryId,
-            subcategoryId,
+            categoryId: finalCategoryId,
+            subcategoryId: finalSubcategoryId,
             styleId,
             seed: seed ? Number(seed) : undefined,
             // Premium features
@@ -787,10 +813,11 @@ export default function GeneratePage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             prompt: effectivePrompt || undefined,
-            categoryId,
-            subcategoryId,
+            categoryId: finalCategoryId,
+            subcategoryId: finalSubcategoryId,
             modelId: model3D,
             styleId: style3DId,
+            qualityPreset: quality3D, // low, medium, high
             seed: seed ? Number(seed) : undefined,
             customImageUrl: uploadedImageUrl || undefined,
           }),
@@ -1090,6 +1117,32 @@ export default function GeneratePage() {
                 </div>
               )}
 
+              {/* Quick Prompt Presets */}
+              <div className="mt-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="w-3 h-3 text-[#a0a0b0]" />
+                  <span className="text-xs text-[#a0a0b0]">Quick start:</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { label: "⚔️ Weapon", prompt: "legendary golden sword with glowing blue runes, crystal handle" },
+                    { label: "🏠 Building", prompt: "medieval stone cottage with thatched roof, chimney smoke, flower garden" },
+                    { label: "🧙 Character", prompt: "wizard with purple robes, long white beard, holding magical staff" },
+                    { label: "💎 Icon", prompt: "shiny red health potion bottle, glowing liquid, cork stopper" },
+                    { label: "🌲 Environment", prompt: "mystical forest clearing with ancient oak tree, glowing mushrooms" },
+                    { label: "👾 Monster", prompt: "cute slime creature, green translucent body, friendly expression" },
+                  ].map((preset) => (
+                    <button
+                      key={preset.label}
+                      onClick={() => setPrompt(preset.prompt)}
+                      className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white/70 hover:bg-white/10 hover:border-[#00ff88]/30 hover:text-[#00ff88] transition-all"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Pro tip */}
               <div className="mt-3 p-3 rounded-lg bg-[#00d4ff]/10 border border-[#00d4ff]/20 flex items-start gap-2">
                 <Lightbulb className="w-4 h-4 text-[#00d4ff] mt-0.5 shrink-0" />
@@ -1128,6 +1181,135 @@ export default function GeneratePage() {
                       </button>
                     );
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* OUTPUT CONTROLS (2D only) */}
+            {mode === "2d" && (
+              <div className="glass-card rounded-2xl p-5">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-[#c084fc] to-[#00d4ff] flex items-center justify-center">
+                    <Settings2 className="w-4 h-4 text-white" />
+                  </div>
+                  <h3 className="font-semibold text-white">Output Settings</h3>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-[#c084fc]/20 text-[#c084fc]">New</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Output Size */}
+                  <div>
+                    <label className="text-xs text-[#a0a0b0] mb-2 block">Size</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { id: "64", label: "64px" },
+                        { id: "128", label: "128px" },
+                        { id: "256", label: "256px" },
+                        { id: "512", label: "512px" },
+                      ].map((size) => (
+                        <button
+                          key={size.id}
+                          onClick={() => setOutputSize(size.id)}
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                            outputSize === size.id
+                              ? "bg-[#00ff88] text-[#030305]"
+                              : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
+                          }`}
+                        >
+                          {size.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Background */}
+                  <div>
+                    <label className="text-xs text-[#a0a0b0] mb-2 block">Background</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { id: "transparent", label: "None", emoji: "🔲" },
+                        { id: "white", label: "White", emoji: "⬜" },
+                        { id: "black", label: "Black", emoji: "⬛" },
+                      ].map((bg) => (
+                        <button
+                          key={bg.id}
+                          onClick={() => setBgOption(bg.id)}
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1 ${
+                            bgOption === bg.id
+                              ? "bg-[#00d4ff] text-[#030305]"
+                              : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
+                          }`}
+                        >
+                          <span>{bg.emoji}</span>
+                          {bg.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Outline */}
+                  <div>
+                    <label className="text-xs text-[#a0a0b0] mb-2 block">Outline</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { id: "none", label: "None" },
+                        { id: "thin", label: "Thin" },
+                        { id: "medium", label: "Medium" },
+                        { id: "thick", label: "Thick" },
+                      ].map((outline) => (
+                        <button
+                          key={outline.id}
+                          onClick={() => setOutlineOption(outline.id)}
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                            outlineOption === outline.id
+                              ? "bg-[#c084fc] text-[#030305]"
+                              : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
+                          }`}
+                        >
+                          {outline.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Color Palette */}
+                  <div>
+                    <label className="text-xs text-[#a0a0b0] mb-2 block">Color Palette</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { id: "original", label: "Full" },
+                        { id: "limited16", label: "16 colors" },
+                        { id: "limited8", label: "8 colors" },
+                        { id: "gameboy", label: "Gameboy" },
+                      ].map((palette) => (
+                        <button
+                          key={palette.id}
+                          onClick={() => setPaletteOption(palette.id)}
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                            paletteOption === palette.id
+                              ? "bg-[#ffd93d] text-[#030305]"
+                              : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
+                          }`}
+                        >
+                          {palette.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Active settings summary */}
+                <div className="mt-4 pt-3 border-t border-[#2a2a3d] flex flex-wrap gap-2 text-xs">
+                  <span className="px-2 py-1 rounded bg-[#00ff88]/10 text-[#00ff88]">{outputSize}x{outputSize}</span>
+                  <span className="px-2 py-1 rounded bg-[#00d4ff]/10 text-[#00d4ff]">
+                    {bgOption === "transparent" ? "Transparent BG" : bgOption === "white" ? "White BG" : "Black BG"}
+                  </span>
+                  {outlineOption !== "none" && (
+                    <span className="px-2 py-1 rounded bg-[#c084fc]/10 text-[#c084fc]">{outlineOption} outline</span>
+                  )}
+                  {paletteOption !== "original" && (
+                    <span className="px-2 py-1 rounded bg-[#ffd93d]/10 text-[#ffd93d]">{paletteOption}</span>
+                  )}
                 </div>
               </div>
             )}
@@ -1324,11 +1506,46 @@ export default function GeneratePage() {
                   </div>
                 </div>
 
+                {/* 3D Quality Selection */}
+                <div className="glass-card rounded-2xl p-5">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-[#00d4ff] to-[#c084fc] flex items-center justify-center text-white font-bold text-sm">4</div>
+                    <h3 className="font-semibold text-white">Mesh Quality</h3>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-[#00ff88]/20 text-[#00ff88]">Polygon Count</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    {QUALITY_3D_PRESETS.map((preset) => {
+                      const isSelected = quality3D === preset.id;
+                      return (
+                        <button
+                          key={preset.id}
+                          onClick={() => setQuality3D(preset.id)}
+                          className={`p-3 rounded-xl text-center transition-all duration-200 border-2 ${
+                            isSelected
+                              ? "border-[#c084fc] bg-[#c084fc]/10"
+                              : "border-[#2a2a3d] hover:border-[#c084fc]/50"
+                          }`}
+                        >
+                          <div className={`text-lg font-bold mb-1 ${isSelected ? "text-[#c084fc]" : "text-white"}`}>
+                            {preset.polyCount}
+                          </div>
+                          <div className={`text-xs font-medium ${isSelected ? "text-[#c084fc]" : "text-[#a0a0b0]"}`}>
+                            {preset.name}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-[#a0a0b0] mt-3 text-center">
+                    Lower = faster & better for mobile/web | Higher = more detail for AAA games
+                  </p>
+                </div>
+
                 {/* 3D Image Upload Option */}
                 <div className="glass-card rounded-2xl p-5">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-[#00d4ff] to-[#c084fc] flex items-center justify-center text-white font-bold text-sm">4</div>
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-[#00d4ff] to-[#c084fc] flex items-center justify-center text-white font-bold text-sm">5</div>
                       <h3 className="font-semibold text-white">Input Mode</h3>
                     </div>
                     <div className="flex rounded-lg bg-[#1a1a28] p-1">
@@ -1760,11 +1977,11 @@ export default function GeneratePage() {
                     </div>
                   ) : generatedUrl ? (
                     is3DModel ? (
-                      <Model3DViewer 
-                        modelUrl={generatedUrl} 
+                      <Model3DViewer
+                        modelUrl={generatedUrl}
                         thumbnailUrl={thumbnailUrl || undefined}
                         videoUrl={videoUrl || undefined}
-                        format={get3DFormat(generatedUrl)} 
+                        format={get3DFormat(generatedUrl)}
                       />
                     ) : (
                       <img
@@ -1814,6 +2031,7 @@ export default function GeneratePage() {
                         onClick={handleGenerate} 
                         disabled={loading}
                         className="border-[#00ff88]/30 hover:bg-[#00ff88]/10"
+                        title="Generate again"
                       >
                         <RefreshCw className={`w-4 h-4 text-[#00ff88] ${loading ? "animate-spin" : ""}`} />
                       </Button>
@@ -1829,6 +2047,16 @@ export default function GeneratePage() {
                         </Button>
                       )}
                     </div>
+
+                    {/* View in Gallery button */}
+                    <Button 
+                      variant="outline" 
+                      onClick={() => window.location.href = '/gallery'}
+                      className="w-full border-[#c084fc]/30 hover:bg-[#c084fc]/10 text-[#c084fc]"
+                    >
+                      <ImageIcon className="w-4 h-4 mr-2" />
+                      View in Gallery
+                    </Button>
 
                     {lastSeed && (
                       <div className="flex items-center gap-2 p-2 rounded-lg bg-[#0a0a0f] border border-[#2a2a3d] text-sm">

@@ -22,8 +22,6 @@ import {
   Edit,
   Maximize2,
   Shuffle,
-  Scissors,
-  FileBox,
   CheckSquare,
   Square,
   X,
@@ -39,6 +37,7 @@ import {
 import { SpriteEditor } from "@/components/editor/SpriteEditor";
 import { SpritePlayground } from "@/components/playground/SpritePlayground";
 import { GenerationFeedback } from "@/components/analytics/GenerationFeedback";
+import { Model3DViewer } from "@/components/Model3DViewer";
 
 // ===========================================
 // SUCCESS TOAST COMPONENT
@@ -130,6 +129,28 @@ interface Generation {
   createdAt: string;
 }
 
+interface PendingJob {
+  id: string;
+  prompt: string;
+  categoryId: string;
+  subcategoryId: string;
+  styleId: string;
+  mode: string;
+  status: "pending" | "processing" | "completed" | "failed";
+  progress: number;
+  progressMessage: string | null;
+  errorMessage: string | null;
+  creditsUsed: number;
+  resultUrl: string | null;
+  resultSeed: number | null;
+  generationId: string | null;
+  model3DId: string | null;
+  quality3D: string | null;
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+}
+
 // ===========================================
 // HELPERS
 // ===========================================
@@ -167,6 +188,7 @@ const getModelName = (styleId: string): string => {
 // ===========================================
 export default function GalleryPage() {
   const [generations, setGenerations] = useState<Generation[]>([]);
+  const [pendingJobs, setPendingJobs] = useState<PendingJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
@@ -199,6 +221,10 @@ export default function GalleryPage() {
 
   useEffect(() => {
     loadGenerations();
+    loadPendingJobs();
+    // Poll for pending jobs every 3 seconds
+    const interval = setInterval(loadPendingJobs, 3000);
+    return () => clearInterval(interval);
   }, []);
 
   const loadGenerations = async () => {
@@ -215,6 +241,70 @@ export default function GalleryPage() {
       setLoading(false);
     }
   };
+
+  const loadPendingJobs = async () => {
+    try {
+      const response = await fetch("/api/queue/status");
+      if (response.ok) {
+        const data = await response.json();
+        const jobs = data.jobs || [];
+        
+        // Check if any jobs just completed (compare with previous state)
+        const previousCompletedIds = new Set(
+          pendingJobs
+            .filter(job => job.status === "completed")
+            .map(job => job.id)
+        );
+        
+        const newlyCompleted = jobs.filter(
+          (job: PendingJob) => 
+            job.status === "completed" && 
+            !previousCompletedIds.has(job.id)
+        );
+        
+        setPendingJobs(jobs);
+
+        // Show toast notification for newly completed jobs (don't auto-refresh!)
+        if (newlyCompleted.length > 0) {
+          showToast(
+            "success",
+            `${newlyCompleted.length} generation${newlyCompleted.length > 1 ? 's' : ''} completed!`,
+            "Click the refresh button to see your new assets."
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load pending jobs:", error);
+    }
+  };
+=======
+
+  const cancelPendingJob = async (jobId: string) => {
+    try {
+      const response = await fetch("/api/queue/status", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        showToast("success", "Job Cancelled", `${data.creditsRefunded} credits refunded`);
+        loadPendingJobs();
+      } else {
+        const error = await response.json();
+        showToast("error", "Failed to cancel", error.error);
+      }
+    } catch (error) {
+      console.error("Failed to cancel job:", error);
+      showToast("error", "Failed to cancel", "Please try again");
+    }
+  };
+
+  // Filter active pending jobs (not completed/failed recently)
+  const activePendingJobs = pendingJobs.filter(
+    job => job.status === "pending" || job.status === "processing"
+  );
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this generation?")) return;
@@ -560,13 +650,110 @@ export default function GalleryPage() {
             </Link>
           </div>
         ) : (
-          <div
-            className={
-              viewMode === "grid"
-                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-                : "space-y-4"
-            }
-          >
+          <div className="space-y-6">
+            {/* Pending Jobs Section */}
+            {activePendingJobs.length > 0 && (
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse" />
+                  <h2 className="text-lg font-display font-bold text-white">
+                    Generating ({activePendingJobs.length})
+                  </h2>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {activePendingJobs.map((job) => (
+                    <div
+                      key={job.id}
+                      className={`glass-card rounded-xl overflow-hidden border-2 ${
+                        job.mode === "3d" ? "border-[#c084fc]/50" : "border-[#00ff88]/50"
+                      } animate-pulse-slow`}
+                    >
+                      <div className="aspect-square bg-[#0a0a0f] relative overflow-hidden flex items-center justify-center">
+                        <div className="absolute inset-0 grid-pattern-dense opacity-30" />
+
+                        {/* Status badge */}
+                        <div className="absolute top-2 left-2 z-20 flex gap-1">
+                          <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-white text-xs font-bold ${
+                            job.status === "processing" ? "bg-[#00ff88]/90" : "bg-[#606080]/90"
+                          }`}>
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            {job.status === "processing" ? "Processing" : "Queued"}
+                          </div>
+                          {job.mode === "3d" && (
+                            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[#c084fc]/90 text-white text-xs font-bold">
+                              <Cuboid className="w-3 h-3" />
+                              3D
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Cancel button */}
+                        {job.status === "pending" && (
+                          <button
+                            onClick={() => cancelPendingJob(job.id)}
+                            className="absolute top-2 right-2 z-20 p-1.5 rounded-full bg-red-500/20 hover:bg-red-500/40 text-red-400 hover:text-red-300 transition-colors"
+                            title="Cancel and refund credits"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+
+                        {/* Loading animation */}
+                        <div className="relative z-10 text-center p-4">
+                          <div className="w-20 h-20 mx-auto mb-3 relative">
+                            <div className={`absolute inset-0 rounded-full blur-xl opacity-40 animate-pulse ${
+                              job.mode === "3d" ? "bg-[#c084fc]" : "bg-[#00ff88]"
+                            }`} />
+                            <img
+                              src="/coreling-working.png"
+                              alt="Generating"
+                              className="relative w-full h-full object-contain animate-bounce"
+                              style={{ animationDuration: "1.5s" }}
+                            />
+                          </div>
+
+                          {/* Progress bar */}
+                          <div className="w-full h-1.5 bg-[#1a1a2e] rounded-full overflow-hidden mb-2">
+                            <div
+                              className={`h-full transition-all duration-500 ${
+                                job.mode === "3d"
+                                  ? "bg-gradient-to-r from-[#c084fc] to-[#00d4ff]"
+                                  : "bg-gradient-to-r from-[#00ff88] to-[#00d4ff]"
+                              }`}
+                              style={{ width: `${job.progress}%` }}
+                            />
+                          </div>
+
+                          <p className="text-xs text-[#a0a0b0]">
+                            {job.progressMessage || "Waiting..."}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Info */}
+                      <div className="p-3 border-t border-[#2a2a3d]">
+                        <p className="text-sm text-white truncate mb-1">
+                          {job.prompt}
+                        </p>
+                        <div className="flex items-center justify-between text-xs text-[#606080]">
+                          <span>{job.mode === "3d" ? "3D Model" : "2D Sprite"}</span>
+                          <span>{job.creditsUsed} credits</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Completed Generations */}
+            <div
+              className={
+                viewMode === "grid"
+                  ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+                  : "space-y-4"
+              }
+            >
             {filteredGenerations.map((gen) => {
               const is3D = is3DFormat(gen.imageUrl) || is3DStyle(gen.styleId);
               const format3D = is3D ? get3DFormat(gen.imageUrl) : null;
@@ -625,16 +812,12 @@ export default function GalleryPage() {
                     </div>
                     
                     {is3D ? (
-                      // 3D Model placeholder
-                      <div className="w-full h-full flex flex-col items-center justify-center p-4 relative z-10">
-                        <div className="relative mb-3">
-                          <div className="absolute inset-0 bg-[#c084fc]/30 rounded-full blur-xl animate-pulse" />
-                          <FileBox className="relative w-16 h-16 text-[#c084fc]" />
-                        </div>
-                        <span className="text-sm font-medium text-white">3D Model</span>
-                        <span className="text-xs text-[#c084fc] font-mono">{format3D}</span>
-                        <span className="text-xs text-muted-foreground mt-1">{getModelName(gen.styleId)}</span>
-                      </div>
+                      // 3D Model viewer with interactive preview
+                      <Model3DViewer
+                        modelUrl={gen.imageUrl}
+                        format={format3D || "GLB"}
+                        compact={true}
+                      />
                     ) : (
                       // 2D Image
                       <img
@@ -694,16 +877,6 @@ export default function GalleryPage() {
                             >
                               <Shuffle className="w-4 h-4 mr-1" />
                               Variations
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => window.open(`/remove-bg?id=${gen.id}`, "_blank")}
-                              className="border-[#00ff88] bg-[#00ff88]/10 hover:bg-[#00ff88]/20 text-[#00ff88]"
-                              title="Remove Background"
-                            >
-                              <Scissors className="w-4 h-4 mr-1" />
-                              Remove BG
                             </Button>
                           </div>
 
@@ -837,6 +1010,7 @@ export default function GalleryPage() {
                 </div>
               );
             })}
+            </div>
           </div>
         )}
 
