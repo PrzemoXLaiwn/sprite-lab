@@ -196,6 +196,8 @@ export function VerificationPanel() {
       case "DIFFERENT_ISSUE":
       case "IMPROVED":
         return <AlertTriangle className="w-5 h-5 text-yellow-500" />;
+      case "SKIPPED":
+        return <AlertTriangle className="w-5 h-5 text-gray-400" />;
       default:
         return <AlertTriangle className="w-5 h-5 text-gray-500" />;
     }
@@ -210,6 +212,8 @@ export function VerificationPanel() {
       case "DIFFERENT_ISSUE":
       case "IMPROVED":
         return "bg-yellow-500/10 text-yellow-500 border-yellow-500/30";
+      case "SKIPPED":
+        return "bg-gray-500/10 text-gray-400 border-gray-500/30";
       default:
         return "bg-gray-500/10 text-gray-500 border-gray-500/30";
     }
@@ -319,6 +323,23 @@ export function VerificationPanel() {
       {verificationResults && verificationResults.length > 0 && (
         <div className="p-4 rounded-xl bg-[#0a0a0f] border border-[#2a2a3d]">
           <h3 className="font-bold text-white mb-4">Verification Results</h3>
+
+          {/* Summary */}
+          <div className="flex gap-4 mb-4 text-sm">
+            <span className="text-green-500">
+              {verificationResults.filter(r => r.status === "VERIFIED_FIXED").length} fixed
+            </span>
+            <span className="text-red-500">
+              {verificationResults.filter(r => r.status === "STILL_BROKEN").length} broken
+            </span>
+            <span className="text-yellow-500">
+              {verificationResults.filter(r => r.status === "DIFFERENT_ISSUE").length} different
+            </span>
+            <span className="text-gray-400">
+              {verificationResults.filter(r => r.status === "SKIPPED").length} skipped
+            </span>
+          </div>
+
           <div className="space-y-2">
             {verificationResults.map((result, index) => (
               <div

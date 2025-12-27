@@ -8,7 +8,7 @@ import { buildUltimatePrompt } from "@/config";
 
 /**
  * Verification System for Hallucination Fixes
- * 
+ *
  * Flow:
  * 1. Take original generation that had hallucination
  * 2. Re-generate with same prompt + applied learned fixes
@@ -16,6 +16,104 @@ import { buildUltimatePrompt } from "@/config";
  * 4. Compare: if hallucination gone → mark as VERIFIED_FIXED
  * 5. If still there → mark as STILL_BROKEN, increase priority
  */
+
+/**
+ * Flexible generation finder - tries multiple matching strategies
+ * 1. Exact match (category + subcategory + style + hallucinationType)
+ * 2. Category + subcategory + hallucinationType
+ * 3. Category + hallucinationType
+ * 4. Any generation from that category
+ */
+async function findGenerationForPattern(pattern: {
+  hallucinationType: string;
+  categoryId: string;
+  subcategoryId: string;
+  styleId: string;
+}) {
+  // Strategy 1: Exact match
+  let analysis = await prisma.imageAnalysis.findFirst({
+    where: {
+      hallucinationType: pattern.hallucinationType,
+      generation: {
+        categoryId: pattern.categoryId,
+        subcategoryId: pattern.subcategoryId,
+        styleId: pattern.styleId,
+      },
+    },
+    include: { generation: true },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (analysis?.generation) {
+    console.log(`[Verify] Found exact match for ${pattern.hallucinationType}`);
+    return { analysis, generation: analysis.generation, matchType: "exact" };
+  }
+
+  // Strategy 2: Category + subcategory + hallucinationType (any style)
+  analysis = await prisma.imageAnalysis.findFirst({
+    where: {
+      hallucinationType: pattern.hallucinationType,
+      generation: {
+        categoryId: pattern.categoryId,
+        subcategoryId: pattern.subcategoryId,
+      },
+    },
+    include: { generation: true },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (analysis?.generation) {
+    console.log(`[Verify] Found category+subcategory match for ${pattern.hallucinationType}`);
+    return { analysis, generation: analysis.generation, matchType: "category_subcategory" };
+  }
+
+  // Strategy 3: Category + hallucinationType (any subcategory)
+  analysis = await prisma.imageAnalysis.findFirst({
+    where: {
+      hallucinationType: pattern.hallucinationType,
+      generation: {
+        categoryId: pattern.categoryId,
+      },
+    },
+    include: { generation: true },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (analysis?.generation) {
+    console.log(`[Verify] Found category match for ${pattern.hallucinationType}`);
+    return { analysis, generation: analysis.generation, matchType: "category_only" };
+  }
+
+  // Strategy 4: Any generation from that category (without hallucination match)
+  // This allows testing the fix even without original hallucination data
+  const anyGeneration = await prisma.generation.findFirst({
+    where: {
+      categoryId: pattern.categoryId,
+      subcategoryId: pattern.subcategoryId,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (anyGeneration) {
+    // Create a mock analysis for consistency
+    const mockAnalysis = await prisma.imageAnalysis.findFirst({
+      where: { generationId: anyGeneration.id },
+    });
+
+    console.log(`[Verify] Using any generation from category for ${pattern.hallucinationType}`);
+    return {
+      analysis: mockAnalysis || {
+        hallucinationType: pattern.hallucinationType,
+        promptAlignment: 50,
+        hasHallucination: true,
+      },
+      generation: anyGeneration,
+      matchType: "fallback_any"
+    };
+  }
+
+  return null;
+}
 
 // POST /api/admin/verify-fix
 // Verify a single hallucination fix
@@ -80,25 +178,25 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Pattern not found" }, { status: 404 });
       }
 
-      // Find a generation that had this hallucination type
-      originalAnalysis = await prisma.imageAnalysis.findFirst({
-        where: {
-          hallucinationType: patternToVerify.hallucinationType,
-          generation: {
-            categoryId: patternToVerify.categoryId,
-            subcategoryId: patternToVerify.subcategoryId,
-            styleId: patternToVerify.styleId,
-          },
-        },
-        include: { generation: true },
-        orderBy: { createdAt: "desc" },
+      // Find a generation using flexible matching strategy
+      const matchResult = await findGenerationForPattern({
+        hallucinationType: patternToVerify.hallucinationType,
+        categoryId: patternToVerify.categoryId,
+        subcategoryId: patternToVerify.subcategoryId,
+        styleId: patternToVerify.styleId,
       });
 
-      if (!originalAnalysis) {
-        return NextResponse.json({ error: "No generation found for this pattern" }, { status: 404 });
+      if (!matchResult) {
+        return NextResponse.json({
+          error: "No generation found for this pattern",
+          suggestion: "Try generating some images in this category first"
+        }, { status: 404 });
       }
 
-      originalGeneration = originalAnalysis.generation;
+      originalAnalysis = matchResult.analysis;
+      originalGeneration = matchResult.generation;
+
+      console.log(`[Verify] Match type: ${matchResult.matchType} for pattern ${patternToVerify.hallucinationType}`);
     }
 
     console.log(`[Verify] 🔍 Testing fix for generation ${originalGeneration.id}`);
