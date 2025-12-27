@@ -9,7 +9,9 @@ import {
   LayoutDashboard,
   Zap,
   Users,
-  ChevronRight
+  ChevronRight,
+  Rocket,
+  Gift
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreditsDisplay } from "@/components/dashboard/CreditsDisplay";
@@ -30,6 +32,7 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, color: "group-hover:text-[#00ff88]" },
   { href: "/generate", label: "Generate", icon: Zap, color: "group-hover:text-[#00d4ff]", badge: "AI" },
   { href: "/gallery", label: "My Gallery", icon: Images, color: "group-hover:text-[#c084fc]" },
+  { href: "/referrals", label: "Referrals", icon: Gift, color: "group-hover:text-[#ff9500]" },
   { href: "/community", label: "Community", icon: Users, color: "group-hover:text-[#ffd93d]" },
   { href: "/settings", label: "Settings", icon: Settings, color: "group-hover:text-white/70" },
 ];
@@ -65,7 +68,7 @@ export default async function DashboardLayout({
 
         <div className="relative flex flex-col flex-1 min-h-0">
           {/* Logo */}
-          <div className="flex items-center h-16 px-6 border-b border-white/5">
+          <div className="flex items-center justify-between h-16 px-6 border-b border-white/5">
             <Link href="/" className="flex items-center gap-2.5 group">
               <div className="relative">
                 <div className="absolute inset-0 bg-[#00ff88]/30 rounded-lg blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -81,6 +84,11 @@ export default async function DashboardLayout({
                 Sprite<span className="text-[#00ff88] text-glow">Lab</span>
               </span>
             </Link>
+            {/* Early Access Badge */}
+            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30">
+              <Rocket className="w-3 h-3 text-emerald-400" />
+              <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">Early Access</span>
+            </div>
           </div>
 
           {/* Navigation */}
@@ -123,8 +131,8 @@ export default async function DashboardLayout({
             <UserPlanBadge email={user.email!} />
           </div>
 
-          {/* Logout - Fixed at bottom with padding for WipBanner */}
-          <div className="p-4 pb-16 border-t border-white/5">
+          {/* Logout - Fixed at bottom */}
+          <div className="p-4 border-t border-white/5">
             <form action="/auth/signout" method="post">
               <Button
                 variant="ghost"
@@ -166,8 +174,8 @@ export default async function DashboardLayout({
         </div>
       </div>
 
-      {/* Mobile Bottom Nav - above WipBanner (h-11 = 44px) */}
-      <div className="md:hidden fixed bottom-11 left-0 right-0 border-t border-white/5 bg-[#0a0a0f]/95 backdrop-blur-xl z-40">
+      {/* Mobile Bottom Nav */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 border-t border-white/5 bg-[#0a0a0f]/95 backdrop-blur-xl z-40">
         <nav className="flex items-center justify-around h-16">
           {navItems.slice(0, 4).map((item) => (
             <Link

@@ -48,9 +48,9 @@ export function DailyBonusPopup() {
       if (response.ok) {
         const data = await response.json();
         setBonusData(data);
-        // Show popup if user can claim
+        // 🔥 FIX: Show immediately if user can claim (removed 500ms delay)
         if (data.canClaim) {
-          setTimeout(() => setIsVisible(true), 500);
+          setIsVisible(true);
         }
       }
     } catch (error) {
@@ -59,7 +59,20 @@ export function DailyBonusPopup() {
   }, []);
 
   useEffect(() => {
-    fetchBonusStatus();
+    // 🔥 FIX: Check immediately, no artificial delay
+    // Just wait for DOM to be ready (next tick)
+    const checkBonus = () => {
+      const onboardingComplete = localStorage.getItem("spritelab_onboarding_complete");
+      if (onboardingComplete === "true") {
+        fetchBonusStatus();
+      }
+    };
+
+    // Use requestAnimationFrame for smoother initialization
+    // This ensures DOM is ready but doesn't add artificial delays
+    requestAnimationFrame(() => {
+      requestAnimationFrame(checkBonus);
+    });
   }, [fetchBonusStatus]);
 
   const handleClaim = async () => {

@@ -283,6 +283,10 @@ async function handleSubscriptionPurchase(session: Stripe.Checkout.Session, user
   });
 
   console.log(`User ${userId} upgraded to ${planName} with ${credits} credits`);
+
+  // Check and process referral reward
+  const amountPaid = (subscription.items.data[0].price.unit_amount || 0) / 100;
+  await processReferralReward(userId, amountPaid);
 }
 
 async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {

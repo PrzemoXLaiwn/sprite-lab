@@ -54,6 +54,7 @@ model User {
   referralEarnings      Int           @default(0) @map("referral_earnings") // Total credits earned from referrals
 
   generations           Generation[]
+  // pendingGenerations removed - no FK constraint to avoid Supabase timeout
   creditTransactions    CreditTransaction[]
   notifications         Notification[]
   communityPosts        CommunityPost[]
@@ -79,18 +80,66 @@ model Generation {
   styleId       String   @map("style_id")
   imageUrl      String   @map("image_url")
   seed          Int?
-  replicateCost Float?   @map("replicate_cost") // Cost in USD from Replicate
+  replicateCost Float?   @map("replicate_cost") // Cost in USD from Runware API (legacy field name)
   isPublic      Boolean  @default(false) @map("is_public") // Share to community gallery
   likes         Int      @default(0) // Community likes count
   createdAt     DateTime @default(now()) @map("created_at")
 
-  user          User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  analysis      ImageAnalysis? // Auto-generated quality analysis
+  user                User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  analysis            ImageAnalysis?       // Auto-generated quality analysis
+  verificationRecords VerificationRecord[] // Verification tests for hallucination fixes
 
   @@index([userId])
   @@index([createdAt])
   @@index([isPublic])
   @@map("generations")
+}
+
+// ===========================================
+// BACKGROUND GENERATION QUEUE (Like Sora)
+// ===========================================
+model PendingGeneration {
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")
+
+  // Generation params
+  prompt          String
+  categoryId      String   @map("category_id")
+  subcategoryId   String   @map("subcategory_id")
+  styleId         String   @map("style_id")
+  mode            String   @default("2d") // "2d" or "3d"
+  seed            Int?
+
+  // 3D specific
+  model3DId       String?  @map("model_3d_id") // rodin, trellis, etc.
+  quality3D       String?  @map("quality_3d") // low, medium, high
+
+  // Status tracking
+  status          String   @default("pending") // pending, processing, completed, failed
+  progress        Int      @default(0) // 0-100
+  progressMessage String?  @map("progress_message")
+  errorMessage    String?  @map("error_message")
+
+  // Credits (pre-deducted)
+  creditsUsed     Int      @map("credits_used")
+
+  // Result (when completed)
+  resultUrl       String?  @map("result_url")
+  resultSeed      Int?     @map("result_seed")
+  generationId    String?  @map("generation_id") // ID of created Generation record
+
+  // Timestamps
+  createdAt       DateTime @default(now()) @map("created_at")
+  startedAt       DateTime? @map("started_at")
+  completedAt     DateTime? @map("completed_at")
+
+  // Note: No foreign key to User to avoid Supabase timeout on constraint creation
+  // userId is still used as a reference but without DB-level constraint
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("pending_generations")
 }
 
 model CreditTransaction {
@@ -477,6 +526,41 @@ model HallucinationPattern {
   @@index([hallucinationType])
   @@index([occurrenceCount])
   @@map("hallucination_patterns")
+}
+
+// ===========================================
+// VERIFICATION SYSTEM - Fix verification records
+// ===========================================
+model VerificationRecord {
+  id                        String   @id @default(cuid())
+
+  // Original generation that had the issue
+  originalGenerationId      String   @map("original_generation_id")
+  originalGeneration        Generation @relation(fields: [originalGenerationId], references: [id], onDelete: Cascade)
+
+  // Verification image (new generation with fixes)
+  verificationImageUrl      String   @map("verification_image_url")
+
+  // What we're testing
+  originalHallucinationType String   @map("original_hallucination_type")
+  appliedFixes              String   @map("applied_fixes") // JSON array of fixes that were applied
+
+  // Results
+  newHasHallucination       Boolean  @map("new_has_hallucination")
+  newHallucinationType      String?  @map("new_hallucination_type")
+  originalAlignment         Float    @map("original_alignment")
+  newAlignment              Float    @map("new_alignment")
+
+  // Status: VERIFIED_FIXED, STILL_BROKEN, DIFFERENT_ISSUE, IMPROVED
+  status                    String
+  message                   String
+
+  createdAt                 DateTime @default(now()) @map("created_at")
+
+  @@index([status])
+  @@index([originalHallucinationType])
+  @@index([createdAt])
+  @@map("verification_records")
 }
 
 // ===========================================

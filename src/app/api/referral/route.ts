@@ -83,8 +83,9 @@ export async function GET() {
     });
 
     // Use NEXT_PUBLIC_APP_URL or fallback to production domain
+    // Link goes to landing page - user will see the app first, then register
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.sprite-lab.com";
-    const referralLink = `${baseUrl}/register?ref=${dbUser.referralCode}`;
+    const referralLink = `${baseUrl}?ref=${dbUser.referralCode}`;
 
     return NextResponse.json({
       referralCode: dbUser.referralCode,

@@ -21,6 +21,7 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
 import { STYLES_2D_UI } from "@/config";
+import type { StyleUI } from "@/config/types";
 
 // ===========================================
 // TYPES
@@ -332,7 +333,7 @@ export default function StyleTransferPage() {
 
                 {showStyles && (
                   <div className="absolute top-full left-0 right-0 mt-2 glass-card rounded-xl p-2 z-40 max-h-[300px] overflow-y-auto">
-                    {STYLES_2D_UI.map((style) => (
+                    {STYLES_2D_UI.map((style: StyleUI) => (
                       <button
                         key={style.id}
                         onClick={() => {
@@ -345,7 +346,21 @@ export default function StyleTransferPage() {
                             : "hover:bg-white/5"
                         }`}
                       >
-                        <span className="text-2xl">{style.emoji}</span>
+                        {/* Color preview bar */}
+                        {style.preview?.colors && (
+                          <div className="flex gap-0.5 h-8 w-8 rounded-lg overflow-hidden flex-shrink-0">
+                            {style.preview.colors.map((color, i) => (
+                              <div
+                                key={i}
+                                className="flex-1 h-full"
+                                style={{ backgroundColor: color }}
+                              />
+                            ))}
+                          </div>
+                        )}
+                        {!style.preview?.colors && (
+                          <span className="text-2xl w-8 text-center">{style.emoji}</span>
+                        )}
                         <div className="flex-1 text-left">
                           <p
                             className={
@@ -357,7 +372,7 @@ export default function StyleTransferPage() {
                             {style.name}
                           </p>
                           <p className="text-xs text-[#a0a0b0]">
-                            {style.description}
+                            {style.preview?.example || style.description}
                           </p>
                         </div>
                         {targetStyleId === style.id && (

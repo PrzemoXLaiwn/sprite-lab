@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// Cache for 5 minutes
-export const revalidate = 300;
+// Mark this route as dynamic to prevent static rendering issues
+export const dynamic = 'force-dynamic';
+export const revalidate = 300; // Cache for 5 minutes
 
 interface FeaturedGeneration {
   id: string;
@@ -13,7 +14,7 @@ interface FeaturedGeneration {
   likes: number;
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const limit = Math.min(parseInt(searchParams.get("limit") || "12"), 24);

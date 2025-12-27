@@ -10,7 +10,10 @@ import {
 } from "@/config";
 import { getOrCreateUser, checkAndDeductCredits, refundCredits, saveGeneration, getUserTier } from "@/lib/database";
 import { uploadImageToStorage } from "@/lib/storage";
-import { generateImage, RUNWARE_MODELS, MODEL_COSTS, type RunwareModelId } from "@/lib/runware";
+import { uploadToR2, isR2Configured } from "@/lib/r2";
+import { generateImage, removeBackground, RUNWARE_MODELS, MODEL_COSTS, type RunwareModelId } from "@/lib/runware";
+// 🔥 NEW: Import the prompt enhancer!
+import { enhancePromptWithLearnedFixes } from "@/lib/analytics/prompt-enhancer";
 
 // Timeout for API calls (2 minutes)
 const API_TIMEOUT = 120000;
@@ -71,14 +74,21 @@ export async function POST(request: Request) {
       subcategoryId,
       styleId = "PIXEL_ART_16",
       seed,
-      // Premium features
+      qualityPreset = "normal",
       enableStyleMix = false,
       style2Id,
       style1Weight = 70,
       colorPaletteId,
-      // Model selection (optional - tier-based by default)
       modelId,
     } = body;
+
+    // Quality preset settings
+    const QUALITY_SETTINGS: Record<string, { steps: number; guidance: number }> = {
+      draft: { steps: 15, guidance: 2.5 },
+      normal: { steps: 25, guidance: 3.0 },
+      hd: { steps: 35, guidance: 3.5 },
+    };
+    const qualityConfig = QUALITY_SETTINGS[qualityPreset] || QUALITY_SETTINGS.normal;
 
     // ✅ Validation
     if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
@@ -102,7 +112,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate category exists
     const category = getCategoryById(categoryId);
     if (!category) {
       return NextResponse.json(
@@ -119,7 +128,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate style exists
     if (!STYLES_2D_FULL[styleId]) {
       return NextResponse.json(
         { error: `Invalid style: ${styleId}` },
@@ -127,15 +135,13 @@ export async function POST(request: Request) {
       );
     }
 
-    // 💳 Credits Check & Deduct ATOMICALLY (prevents race condition)
+    // 💳 Credits Check
     const CREDITS_REQUIRED = 1;
     await getOrCreateUser(user.id, user.email!);
 
-    // Get user tier for model selection
     const userTier = await getUserTier(user.id);
     console.log(`[API] 👤 User tier: ${userTier}`);
 
-    // Atomically check and deduct credits BEFORE generation
     const creditResult = await checkAndDeductCredits(user.id, CREDITS_REQUIRED);
 
     if (!creditResult.success) {
@@ -156,10 +162,10 @@ export async function POST(request: Request) {
       usedSeed = Math.floor(Math.random() * 2147483647);
     }
 
-    // 🏗️ Build Prompt (with Premium Features if enabled)
+    // 🏗️ Build Base Prompt
     const hasPremiumFeatures = enableStyleMix || colorPaletteId;
 
-    const { prompt: builtPrompt, negativePrompt: builtNegative, guidance, steps } = hasPremiumFeatures
+    const { prompt: builtPrompt, negativePrompt: builtNegative, guidance: styleGuidance, steps: styleSteps } = hasPremiumFeatures
       ? buildEnhancedPrompt(
           prompt.trim(),
           categoryId,
@@ -179,13 +185,41 @@ export async function POST(request: Request) {
           styleId
         );
 
-    // Use prompts directly from builder
-    const finalPrompt = builtPrompt;
-    const negativePrompt = builtNegative;
+    // ✨🔥 NEW: APPLY LEARNED OPTIMIZATIONS! 🔥✨
+    console.log(`[API] 🧠 Applying learned optimizations...`);
+    const {
+      enhancedPrompt,
+      enhancedNegative,
+      appliedFixes,
+      warnings,
+    } = await enhancePromptWithLearnedFixes(
+      builtPrompt,
+      builtNegative,
+      categoryId,
+      subcategoryId,
+      styleId
+    );
 
-    console.log(`[API] 📝 Prompt: ${finalPrompt.substring(0, 100)}...`);
+    // Log what was applied
+    if (appliedFixes.length > 0) {
+      console.log(`[API] ✅ Applied ${appliedFixes.length} learned fixes:`);
+      appliedFixes.forEach((fix) => console.log(`  - ${fix}`));
+    }
+    if (warnings.length > 0) {
+      console.log(`[API] ⚠️ Warnings:`, warnings);
+    }
 
-    // 🎨 Generate Sprite with Runware (with timeout)
+    // Use enhanced prompts
+    const finalPrompt = enhancedPrompt;
+    const negativePrompt = enhancedNegative;
+
+    const steps = qualityConfig.steps || styleSteps;
+    const guidance = qualityConfig.guidance || styleGuidance;
+
+    console.log(`[API] 🎚️ Quality: ${qualityPreset} (steps: ${steps}, guidance: ${guidance})`);
+    console.log(`[API] 📝 Final Prompt: ${finalPrompt.substring(0, 150)}...`);
+
+    // 🎨 Generate Sprite
     let result: { success: boolean; images?: Array<{ imageURL: string; seed: number; model: string; cost: number }>; error?: string };
 
     try {
@@ -212,7 +246,6 @@ export async function POST(request: Request) {
         timeoutPromise
       ]);
     } catch (error) {
-      // Refund credits on timeout or error
       console.log("[API] ⚠️ Generation failed, refunding credits...");
       await refundCredits(user.id, CREDITS_REQUIRED);
 
@@ -224,7 +257,6 @@ export async function POST(request: Request) {
     }
 
     if (!result.success || !result.images || result.images.length === 0) {
-      // Refund credits if generation failed
       console.log("[API] ⚠️ Generation returned no image, refunding credits...");
       await refundCredits(user.id, CREDITS_REQUIRED);
 
@@ -236,11 +268,55 @@ export async function POST(request: Request) {
 
     const generatedImage = result.images[0];
 
-    // 📤 Upload to Storage
+    // 🔪 Auto Remove Background
+    console.log("[API] 🔪 Auto-removing background for game-ready asset...");
+    let imageUrlForUpload = generatedImage.imageURL;
+
+    try {
+      const bgRemovalResult = await removeBackground(generatedImage.imageURL);
+      if (bgRemovalResult.success && bgRemovalResult.imageUrl) {
+        imageUrlForUpload = bgRemovalResult.imageUrl;
+        console.log("[API] ✅ Background removed successfully!");
+      } else {
+        console.log("[API] ⚠️ Background removal failed, using original image:", bgRemovalResult.error);
+      }
+    } catch (bgError) {
+      console.log("[API] ⚠️ Background removal error, using original image:", bgError);
+    }
+
+    // 📤 Upload to Storage (R2 primary, Supabase fallback)
     console.log("[API] 📤 Uploading to storage...");
-    const fileName = `sprite-${categoryId}-${subcategoryId}-${styleId}-${generatedImage.seed}`;
-    const uploadResult = await uploadImageToStorage(generatedImage.imageURL, user.id, fileName);
-    const finalUrl = uploadResult.success && uploadResult.url ? uploadResult.url : generatedImage.imageURL;
+    let finalUrl = imageUrlForUpload;
+    let storageUsed = "temporary";
+
+    if (isR2Configured()) {
+      // 🚀 R2 is primary storage (zero egress costs!)
+      const r2Result = await uploadToR2(imageUrlForUpload, user.id);
+      if (r2Result.success && r2Result.url) {
+        finalUrl = r2Result.url;
+        storageUsed = "R2";
+        console.log(`[Generate] ✅ Image saved to R2: ${finalUrl}`);
+      } else {
+        // R2 failed, try Supabase as fallback
+        console.log(`[Generate] ⚠️ R2 upload failed: ${r2Result.error}, trying Supabase...`);
+        const fileName = `sprite-${categoryId}-${subcategoryId}-${styleId}-${generatedImage.seed}`;
+        const supabaseResult = await uploadImageToStorage(imageUrlForUpload, user.id, fileName);
+        if (supabaseResult.success && supabaseResult.url) {
+          finalUrl = supabaseResult.url;
+          storageUsed = "Supabase";
+          console.log(`[Generate] ✅ Image saved to Supabase: ${finalUrl}`);
+        }
+      }
+    } else {
+      // R2 not configured, use Supabase
+      const fileName = `sprite-${categoryId}-${subcategoryId}-${styleId}-${generatedImage.seed}`;
+      const supabaseResult = await uploadImageToStorage(imageUrlForUpload, user.id, fileName);
+      if (supabaseResult.success && supabaseResult.url) {
+        finalUrl = supabaseResult.url;
+        storageUsed = "Supabase";
+        console.log(`[Generate] ✅ Image saved to Supabase: ${finalUrl}`);
+      }
+    }
 
     // 💾 Save to Database
     await saveGeneration({
@@ -252,7 +328,7 @@ export async function POST(request: Request) {
       styleId,
       imageUrl: finalUrl,
       seed: generatedImage.seed,
-      replicateCost: generatedImage.cost, // Still called replicateCost for backwards compat
+      replicateCost: generatedImage.cost,
     });
 
     // 📊 Final Stats
@@ -260,13 +336,15 @@ export async function POST(request: Request) {
     const styleConfig = STYLES_2D_FULL[styleId];
 
     console.log("\n" + "═".repeat(70));
-    console.log("🎉 GENERATION COMPLETE! (Runware)");
+    console.log("🎉 GENERATION COMPLETE! (Runware + Learned Optimizations)");
     console.log("═".repeat(70));
     console.log("⏱️  Duration:", duration + "s");
     console.log("🎨 Style:", styleConfig.name);
     console.log("🤖 Model:", generatedImage.model);
     console.log("💰 Cost: $" + (generatedImage.cost || 0).toFixed(4));
     console.log("🌱 Seed:", generatedImage.seed);
+    console.log("🧠 Fixes Applied:", appliedFixes.length);
+    console.log("💾 Storage:", storageUsed);
     console.log("🖼️  URL:", finalUrl.substring(0, 80) + "...");
     console.log("═".repeat(70) + "\n");
 
@@ -276,10 +354,14 @@ export async function POST(request: Request) {
       imageUrl: finalUrl,
       format: "png",
       is2DSprite: true,
+      transparentBackground: true,
       prompt: prompt.trim(),
       fullPrompt: finalPrompt,
       seed: generatedImage.seed,
       modelUsed: generatedImage.model,
+      // 🆕 Include applied fixes in response for debugging
+      appliedOptimizations: appliedFixes,
+      warnings: warnings,
       style: {
         id: styleId,
         name: styleConfig.name,
@@ -327,8 +409,8 @@ export async function GET() {
   }));
 
   return NextResponse.json({
-    version: "4.0.0",
-    name: "Ultimate 2D Sprite Generator (Runware)",
+    version: "4.1.0", // Bumped version!
+    name: "Ultimate 2D Sprite Generator (Runware + Auto-Learning)",
     provider: "Runware",
     styles,
     categories,
@@ -344,6 +426,8 @@ export async function GET() {
       "Hand-crafted prompts for every category",
       "Sub-second inference times",
       "Smart fallback system",
+      "🆕 Auto-learning from quality analysis",
+      "🆕 Automatic hallucination prevention",
     ],
   });
 }

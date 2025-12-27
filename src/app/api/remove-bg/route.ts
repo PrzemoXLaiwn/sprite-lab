@@ -7,8 +7,9 @@ import { removeBackground } from "@/lib/runware";
 // Cost: 1 credit for background removal
 const REMOVE_BG_COST = 1;
 
-// Plans that have access to Remove BG (SPARK is excluded!)
-const ALLOWED_PLANS = ["FORGE", "INFINITE", "LIFETIME"];
+// Plans that have access to Remove BG (Free is excluded, but now it's auto for all generations)
+// PRO = Pro plan, UNLIMITED = Studio plan, STARTER = Starter plan, LIFETIME = any lifetime deal
+const ALLOWED_PLANS = ["STARTER", "PRO", "UNLIMITED", "LIFETIME"];
 
 export async function POST(request: Request) {
   try {
@@ -26,12 +27,12 @@ export async function POST(request: Request) {
     // Check user credits and plan
     const { credits, plan, role } = await getUserCredits(user.id);
 
-    // Only FORGE, INFINITE, LIFETIME plans can use Remove BG (admins/owners always have access)
+    // Starter, Pro, Studio, and Lifetime plans can use Remove BG (admins/owners always have access)
     const hasPremiumAccess = ALLOWED_PLANS.includes(plan) || role === "OWNER" || role === "ADMIN";
 
     if (!hasPremiumAccess) {
       return NextResponse.json(
-        { error: "Background removal is available for Forge, Infinite, and Lifetime plans. Upgrade to unlock this feature!" },
+        { error: "Background removal is available for Starter, Pro, Studio, and Lifetime plans. Upgrade to unlock this feature!" },
         { status: 403 }
       );
     }

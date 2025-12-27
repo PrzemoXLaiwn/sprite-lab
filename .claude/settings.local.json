@@ -37,7 +37,21 @@
       "Bash(powershell -Command \"Select-String -Path ''c:\\\\Users\\\\Montech.DESKTOP-HFD37TP\\\\Desktop\\\\sprite-lab-main\\\\src\\\\app\\\\api\\\\edit-image\\\\route.ts'' -Pattern ''<<<<|====|>>>>'' | Select-Object -First 10\")",
       "Bash(powershell -Command \"\\(Get-Content ''c:\\\\Users\\\\Montech.DESKTOP-HFD37TP\\\\Desktop\\\\sprite-lab-main\\\\src\\\\app\\\\api\\\\edit-image\\\\route.ts''\\).Count\")",
       "Bash(npx tsc --noEmit)",
-      "Bash(npx dotenv:*)"
+      "Bash(npx dotenv:*)",
+      "Bash(powershell -Command \"Invoke-WebRequest -Uri ''http://localhost:3000/api/generate'' -Method POST -Headers @{''Content-Type''=''application/json''} -Body ''{\"\"prompt\"\":\"\"test\"\"}'' | Select-Object -ExpandProperty Content\")",
+      "Bash(netstat:*)",
+      "Bash(npm run dev:*)",
+      "Bash(timeout:*)",
+      "Bash(ping:*)",
+      "Bash(npx vercel logs:*)",
+      "Bash(npx vercel inspect:*)",
+      "Bash(powershell -Command \"[System.Text.Encoding]::UTF8.GetBytes\\(\\(Get-Content ''src/app/globals.css'' -Raw\\)[0..100]\\) | ForEach-Object { ''{0:X2}'' -f $_}\")",
+      "Bash(powershell -Command \"Format-Hex -Path ''src/app/globals.css'' -Count 50\")",
+      "Bash(powershell -Command \"Get-Content ''src/app/globals.css'' -Encoding Byte -TotalCount 100 | ForEach-Object { $_ToString\\(''X2''\\) }\")",
+      "Bash(git status:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: Replace Replicate with Runware costs and fix CSS emoji issue\n\n- Update admin panel to show \"Runware Cost\" instead of \"Replicate Cost\"\n- Update fix-costs API to use Runware pricing \\($0.003-$0.03\\)\n- Remove emojis from globals.css comments \\(fixes Tailwind CSS 4 build error\\)\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(powershell -Command:*)",
+      "Bash(xxd:*)"
     ],
     "deny": [],
     "ask": []

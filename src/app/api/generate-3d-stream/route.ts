@@ -184,7 +184,7 @@ export async function POST(request: Request) {
 
       // Parse request
       const body = await request.json();
-      const { prompt, categoryId, subcategoryId, modelId = "rodin", styleId = "STYLIZED", seed, customImageUrl } = body;
+      const { prompt, categoryId, subcategoryId, modelId = "rodin", styleId = "STYLIZED", qualityPreset = "medium", seed, customImageUrl } = body;
 
       // Validation - prompt is optional if customImageUrl is provided
       if (!customImageUrl && !prompt) {
@@ -327,7 +327,8 @@ export async function POST(request: Request) {
             input: {
               prompt: "3D model of the object in the image, game-ready asset",
               images: [referenceImageUrl],
-              quality: "medium",
+              // Map quality preset: low = faster, medium = balanced, high = more detail
+              quality: qualityPreset === "high" ? "high" : qualityPreset === "low" ? "low" : "medium",
               material: "PBR",
               geometry_file_format: "glb",
               mesh_mode: "Quad",

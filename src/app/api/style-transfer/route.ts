@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { checkAndDeductCredits, refundCredits } from "@/lib/database";
 import Replicate from "replicate";
 import { STYLES_2D_FULL } from "@/config";
 
@@ -92,30 +93,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check credits (2 credits for style transfer)
+    // Check and deduct credits atomically (2 credits for style transfer)
     const creditCost = 2;
 
-    const dbUser = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: { credits: true },
-    });
-
-    if (!dbUser || dbUser.credits < creditCost) {
+    const creditResult = await checkAndDeductCredits(user.id, creditCost);
+    if (!creditResult.success) {
       return NextResponse.json(
         {
-          error: "Insufficient credits",
-          required: creditCost,
-          available: dbUser?.credits || 0,
+          error: "Insufficient credits. You need 2 credits for style transfer.",
+          noCredits: true,
         },
         { status: 402 }
       );
     }
-
-    // Deduct credits atomically
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { credits: { decrement: creditCost } },
-    });
 
     const seed = Math.floor(Math.random() * 2147483647);
     const prompt = buildStyleTransferPrompt(description, targetStyleId);
@@ -142,12 +132,9 @@ export async function POST(request: NextRequest) {
 
       if (!resultUrl) {
         // Refund on failure
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { credits: { increment: creditCost } },
-        });
+        await refundCredits(user.id, creditCost);
         return NextResponse.json(
-          { error: "Style transfer failed - no image returned" },
+          { error: "Style transfer failed - no image returned. Credits refunded." },
           { status: 500 }
         );
       }
@@ -186,15 +173,12 @@ export async function POST(request: NextRequest) {
       });
     } catch (genError) {
       // Refund on generation error
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { credits: { increment: creditCost } },
-      });
+      await refundCredits(user.id, creditCost);
 
       console.error("Style transfer error:", genError);
       return NextResponse.json(
         {
-          error: "Style transfer failed",
+          error: "Style transfer failed. Credits refunded.",
           message:
             genError instanceof Error ? genError.message : "Unknown error",
         },

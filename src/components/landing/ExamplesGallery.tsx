@@ -123,19 +123,19 @@ export function ExamplesGallery() {
                   />
                 </div>
 
-                {/* Hover Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
-                  <p className="text-white text-sm font-medium mb-1 line-clamp-2">
+                {/* Prompt & Meta - Always visible */}
+                <div className="p-3 border-t border-white/5 bg-black/40">
+                  <p className="text-white/70 text-xs line-clamp-2 mb-2 leading-relaxed">
                     &quot;{sprite.prompt}&quot;
                   </p>
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-xs text-white/60">
-                      <span className="px-2 py-0.5 rounded bg-white/10">{sprite.style}</span>
+                    <div className="flex items-center gap-1.5 text-[10px] text-white/40">
+                      <span className="px-1.5 py-0.5 rounded bg-white/10">{sprite.style}</span>
                       <span>{sprite.category}</span>
                     </div>
                     {sprite.likes > 0 && (
-                      <div className="flex items-center gap-1 text-xs text-pink-400">
-                        <Heart className="w-3 h-3" fill="currentColor" />
+                      <div className="flex items-center gap-1 text-[10px] text-pink-400">
+                        <Heart className="w-2.5 h-2.5" fill="currentColor" />
                         {sprite.likes}
                       </div>
                     )}

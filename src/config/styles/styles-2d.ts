@@ -1,11 +1,11 @@
 // ===========================================
-// SPRITELAB CONFIG - 2D STYLES (PRO v3.0)
+// SPRITELAB CONFIG - 2D STYLES (PRO v4.0)
 // ===========================================
-// PROFESSIONAL GAME-DEV QUALITY UPDATE:
-// - Optimized for game-ready asset output
-// - Better model parameters (FLUX-dev works best with lower guidance)
-// - Stronger style enforcement with weighted prompts
-// - Higher steps for better quality
+// FLUX-OPTIMIZED UPDATE:
+// - ALL models now use FLUX (Runware backend)
+// - FLUX optimal guidance: 2.0-4.0 (NOT 7-9 like SDXL!)
+// - FLUX optimal steps: 20-28 for flux-dev, 4-8 for flux-schnell
+// - Prompts optimized for FLUX's natural language understanding
 // - Game industry standard quality keywords
 
 import type { StyleConfig, StyleUI } from "../types";
@@ -31,31 +31,28 @@ export const PRO_QUALITY_BOOST = {
 
 export const STYLES_2D_FULL: Record<string, StyleConfig> = {
   // ===========================================
-  // PIXEL ART STYLES - STRONGEST ENFORCEMENT
+  // PIXEL ART STYLES - SIMPLE PROMPTS WORK BEST!
+  // Based on research: https://civitai.com/models/277680
+  // Key: SHORT prompts, "pixel art" FIRST, NO "detailed/4K/HD"
   // ===========================================
   PIXEL_ART_16: {
     id: "PIXEL_ART_16",
     name: "Pixel Art 16-bit",
     emoji: "🎮",
     description: "Classic retro style",
-    // Core style - optimized for SDXL pixel art
-    styleCore: "16-bit pixel art game sprite, retro SNES Genesis era, classic video game pixel graphics, pixel perfect rendering, visible square pixels",
-    // Rendering specifics
-    rendering: "clearly visible individual square pixels, sharp pixel grid, dithering patterns for shading, NO anti-aliasing, NO smoothing whatsoever, each pixel must be distinct",
-    // Color palette
-    colors: "strictly limited 16-24 color indexed palette, saturated retro game colors, flat color fills, no color gradients at all",
-    // Edge handling
-    edges: "hard aliased pixel edges, blocky pixelated shapes, jagged stair-step edges on all diagonals, crisp pixel boundaries",
-    // Style enforcement
-    styleEnforcement: "THIS MUST BE PIXEL ART with clearly visible square pixels throughout. Every edge shows individual pixels. Classic 16-bit era game aesthetic like Final Fantasy VI or Chrono Trigger sprites.",
-    // Mandatory requirements
-    styleMandatory: "MANDATORY: visible pixel grid, pixelated edges, dithering shading, retro aesthetic. FORBIDDEN: smooth gradients, anti-aliasing, soft edges, painterly strokes, HD rendering",
-    // Negative prompt - stronger anti-smooth
-    negatives: "smooth, gradient, realistic, photorealistic, blurry, soft edges, anti-aliased, anti-aliasing, high resolution smooth details, 3D render, photograph, painting, watercolor, oil paint, sketch, pencil, smooth shading, soft lighting, realistic textures, film grain, noise, hand-painted, vector art, clean smooth lines, modern digital art, soft brush, airbrush, HD quality, 4K, smooth curves, soft focus, soft gradients, smooth rendering",
-    // Model settings - OPTIMIZED: Lower guidance, more steps
-    model: "sdxl",
-    guidance: 8.0,   // ✅ OPTIMIZED: Prevents over-saturation and artifacts
-    steps: 50,       // ✅ OPTIMIZED: More steps for sharper pixels
+    // 🔥 STRONG pixel art enforcement - must show visible pixels!
+    styleCore: "pixel art sprite, 16x16 pixel grid, visible square pixels, pixelated retro game sprite, 16-bit SNES style",
+    rendering: "visible blocky square pixels, pixel grid pattern, no anti-aliasing, hard pixel edges, dithering shading",
+    colors: "limited 16 color palette, retro game colors, indexed colors",
+    edges: "hard aliased pixel edges, blocky jagged edges, stair-step diagonals, no smoothing",
+    styleEnforcement: "MUST look like actual pixel art with visible individual pixels, like SNES or GBA games, NOT smooth digital art",
+    styleMandatory: "pixel art sprite with visible pixels, pixelated, 16 bit, no anti-aliasing, blocky",
+    // 🔥 AGGRESSIVE negatives - block ALL smooth/realistic rendering!
+    negatives: "smooth, anti-aliasing, realistic, 3D render, photograph, photorealistic, soft edges, blended colors, smooth shading, airbrushed, painted, high resolution, 4K, 8K, HD, hyperrealistic, smooth textures, soft gradients, detailed, ultra detailed, fine details, smooth lines, vector art, clean edges, polished, soft, gradient",
+    // Model settings - optimized for pixel art
+    model: "flux-dev",
+    guidance: 3.0,   // Slightly higher for style enforcement
+    steps: 25,       // More steps for cleaner pixels
   },
 
   PIXEL_ART_32: {
@@ -63,16 +60,17 @@ export const STYLES_2D_FULL: Record<string, StyleConfig> = {
     name: "Pixel Art HD",
     emoji: "👾",
     description: "Modern pixel art",
-    styleCore: "32-bit HD pixel art sprite, modern indie pixel game style, detailed retro aesthetic like Celeste or Dead Cells",
-    rendering: "visible pixels with fine detail, pixel clusters for smooth shading, selective dithering, crisp pixel work, readable silhouette",
-    colors: "rich 32-64 color palette, smooth color ramps within pixel constraints, vibrant cohesive palette, subtle pixel-based gradients allowed",
-    edges: "clean pixel edges, smoother curves through careful sub-pixel technique, but still visibly pixelated overall",
-    styleEnforcement: "Modern HD PIXEL ART with visible pixels throughout - higher detail than 16-bit but still clearly pixelated, NOT smooth digital art. Like Hyper Light Drifter or Octopath Traveler sprites.",
-    styleMandatory: "MANDATORY: visible pixels, pixel-based shading, crisp edges. FORBIDDEN: smooth gradients, anti-aliasing, photorealistic rendering, painterly strokes",
-    negatives: "smooth gradients, blurry, soft, painterly, 3D render, photorealistic, vector art, anti-aliased edges, soft brush strokes, realistic textures, photograph, smooth digital art, airbrushed",
-    model: "sdxl",
-    guidance: 8.0,      // ✅ OPTIMIZED: Consistent with PIXEL_ART_16
-    steps: 45,          // ✅ OPTIMIZED: More steps for quality
+    // 🔥 STRONG pixel art enforcement
+    styleCore: "pixel art sprite, 32x32 pixel grid, visible pixels, pixelated indie game sprite, Celeste Dead Cells style",
+    rendering: "visible pixels, pixel clusters, crisp pixel edges, no anti-aliasing, clean pixel boundaries",
+    colors: "limited 32 color palette, vibrant pixel art colors, indexed palette",
+    edges: "clean hard pixel edges, pixelated curves with visible steps, no smoothing",
+    styleEnforcement: "MUST look like modern indie pixel art with visible pixels, like Celeste or Shovel Knight",
+    styleMandatory: "pixel art sprite with visible pixels, pixelated, 32 bit, no anti-aliasing",
+    negatives: "smooth, anti-aliasing, realistic, 3D render, photorealistic, soft edges, blended colors, smooth shading, airbrushed, painted, high resolution, 4K, HD, soft gradients, vector art, clean smooth edges, polished, gradient",
+    model: "flux-dev",
+    guidance: 3.0,
+    steps: 25,
   },
 
   // ===========================================
@@ -90,9 +88,10 @@ export const STYLES_2D_FULL: Record<string, StyleConfig> = {
     styleEnforcement: "Hand-painted illustration quality with visible artistic brushwork throughout. Like concept art or illustrated game backgrounds. Painterly and atmospheric.",
     styleMandatory: "MUST have painterly texture, visible brush strokes, artistic rendering - NOT flat digital, NOT pixel art, NOT 3D render, NOT vector",
     negatives: "pixel art, pixelated, vector art, flat design, sharp digital edges, 3D render, cel shaded, anime style, clean lines, smooth digital, photorealistic, crisp edges, flat colors",
-    model: "sdxl",
-    guidance: 7.5,
-    steps: 40,
+    // Model settings - FLUX OPTIMIZED
+    model: "flux-dev",
+    guidance: 3.5,      // ✅ FLUX optimal: 2-4 range
+    steps: 28,          // ✅ FLUX optimal: 20-28 range
   },
 
   // ===========================================
@@ -130,9 +129,10 @@ export const STYLES_2D_FULL: Record<string, StyleConfig> = {
     styleEnforcement: "Japanese anime/manga style art as seen in JRPGs, gacha games, or visual novels. Clean, polished, colorful with expressive design.",
     styleMandatory: "MUST have anime aesthetic with clean lines, cel shading, vibrant colors - NOT western cartoon, NOT realistic, NOT pixel art, NOT painterly",
     negatives: "western cartoon, realistic, pixel art, rough sketch, 3D render, chibi, painterly, oil painting, watercolor, thick outlines, american animation style",
-    model: "sdxl",
-    guidance: 7.0,
-    steps: 40,
+    // Model settings - FLUX OPTIMIZED
+    model: "flux-dev",
+    guidance: 3.0,      // ✅ FLUX optimal: 2-4 range
+    steps: 25,          // ✅ FLUX optimal: 20-28 range
   },
 
   CHIBI_CUTE: {
@@ -167,9 +167,10 @@ export const STYLES_2D_FULL: Record<string, StyleConfig> = {
     styleEnforcement: "Western cartoon/animation style like Cuphead, classic Fleischer/Disney, or modern Cartoon Network. Bold, expressive, animated energy.",
     styleMandatory: "MUST have thick outlines, bold colors, exaggerated cartoon proportions - NOT anime, NOT realistic, NOT pixel art, NOT subtle",
     negatives: "anime, realistic, pixel art, thin lines, muted colors, subtle shading, 3D render, photorealistic, painterly, detailed textures, soft edges",
-    model: "sdxl",
-    guidance: 7.5,
-    steps: 40,
+    // Model settings - FLUX OPTIMIZED
+    model: "flux-dev",
+    guidance: 3.0,      // ✅ FLUX optimal: 2-4 range
+    steps: 25,          // ✅ FLUX optimal: 20-28 range
   },
 
   // ===========================================
@@ -187,9 +188,10 @@ export const STYLES_2D_FULL: Record<string, StyleConfig> = {
     styleEnforcement: "Dark gritty atmospheric fantasy art. Weathered dangerous beautiful in darkness. Professional AAA dark fantasy game quality.",
     styleMandatory: "MUST be dark and gritty with muted desaturated colors, weathered worn details - NOT bright, NOT cute, NOT clean pristine, NOT cheerful",
     negatives: "bright colors, cartoon, cute, chibi, clean pristine, pixel art, anime, cheerful, colorful, happy, vibrant, saturated, pastel, new and shiny, smooth surfaces",
-    model: "sdxl",
-    guidance: 8.0,
-    steps: 45,
+    // Model settings - FLUX OPTIMIZED
+    model: "flux-dev",
+    guidance: 3.5,      // ✅ FLUX optimal: 2-4 range (slightly higher for detail)
+    steps: 28,          // ✅ FLUX optimal: 20-28 range (max for quality)
   },
 
   // ===========================================
@@ -207,9 +209,10 @@ export const STYLES_2D_FULL: Record<string, StyleConfig> = {
     styleEnforcement: "Proper 26.57-degree isometric projection as seen in mobile strategy games. STRICT angle maintained throughout entire object. Game-ready asset. NO perspective distortion.",
     styleMandatory: "MUST be true 26.57-degree isometric angle not perspective, consistent top-left lighting, single isolated object - NOT perspective 3D, NOT top-down flat, NOT 30-45 degree angles",
     negatives: "perspective view with vanishing point, flat top-down orthographic, side view profile, inconsistent angles, photorealistic 3D render, tilted wrong, fisheye lens, dutch angle, blurry, realistic textures, wrong isometric angle, 30 degree angle, 45 degree angle",
-    model: "sdxl",
-    guidance: 8.5,      // ✅ OPTIMIZED: Higher guidance for strict angle control
-    steps: 45,          // ✅ OPTIMIZED: More steps for geometric precision
+    // Model settings - FLUX OPTIMIZED (higher guidance for strict angle)
+    model: "flux-dev",
+    guidance: 4.0,      // ✅ FLUX optimal: top of 2-4 range for strict control
+    steps: 28,          // ✅ FLUX optimal: max steps for geometric precision
   },
 
   ISOMETRIC_PIXEL: {
@@ -217,16 +220,17 @@ export const STYLES_2D_FULL: Record<string, StyleConfig> = {
     name: "Isometric Pixel",
     emoji: "🎮",
     description: "Pixel art isometric",
-    styleCore: "isometric pixel art sprite, retro strategy RTS style like classic StarCraft Command and Conquer Age of Empires II, pixel perfect iso projection, strict 26.57 degree isometric angle",
-    rendering: "pixel perfect isometric angles, dithering for shading, clearly visible pixels, clean pixel clusters, precise pixel placement",
-    colors: "limited 16-32 indexed color palette, color ramps for pixel shading, retro game colors",
-    edges: "hard pixel edges with no anti-aliasing, clean pixel boundaries, proper stair-step isometric lines",
-    styleEnforcement: "Pixel art in isometric view. Must show visible pixels while maintaining proper 26.57 degree isometric angle (2:1 ratio). Like classic RTS games.",
-    styleMandatory: "MUST be pixel art with visible pixels AND proper isometric angle - both requirements critical, no smooth gradients",
-    negatives: "smooth gradients, anti-aliased edges, 3D render, perspective view, realistic, painterly, soft edges, blurry, smooth curves, modern HD",
-    model: "sdxl",
-    guidance: 9.0,      // ✅ Already optimal for dual requirements
-    steps: 50,          // ✅ OPTIMIZED: Maximum steps for pixel+iso precision
+    // 🔥 STRONG pixel art + isometric enforcement
+    styleCore: "isometric pixel art sprite, visible pixels, 16-bit RTS style like StarCraft Age of Empires, pixel grid isometric view, 26.57 degree angle",
+    rendering: "visible blocky pixels, pixel perfect isometric angles, dithering shading, no anti-aliasing, hard pixel edges",
+    colors: "limited 16-32 indexed color palette, retro game colors, pixel color ramps",
+    edges: "hard pixel edges, no anti-aliasing, stair-step isometric lines, blocky pixel boundaries",
+    styleEnforcement: "MUST be pixel art with VISIBLE PIXELS in isometric view, like classic RTS games, NOT smooth 3D",
+    styleMandatory: "pixel art sprite with visible pixels, isometric angle, no anti-aliasing, blocky pixels",
+    negatives: "smooth, anti-aliasing, 3D render, perspective view, realistic, painterly, soft edges, blurry, smooth curves, modern HD, gradient, polished, clean edges",
+    model: "flux-dev",
+    guidance: 3.5,
+    steps: 28,
   },
 
   ISOMETRIC_CARTOON: {
@@ -241,9 +245,10 @@ export const STYLES_2D_FULL: Record<string, StyleConfig> = {
     styleEnforcement: "Cute cartoon style in proper isometric view. Friendly inviting casual mobile game quality. Fun and approachable.",
     styleMandatory: "MUST be cartoon style AND proper isometric angle - cheerful colors, rounded shapes, game-ready asset",
     negatives: "realistic, dark, gritty, pixel art, complex details, scary, horror, muted colors, serious, perspective view, flat top-down",
+    // Model settings - FLUX OPTIMIZED
     model: "flux-dev",
-    guidance: 3.5,
-    steps: 35,
+    guidance: 3.5,      // ✅ FLUX optimal: 2-4 range
+    steps: 28,          // ✅ FLUX optimal: 20-28 range
   },
 
   // ===========================================
@@ -261,14 +266,82 @@ export const STYLES_2D_FULL: Record<string, StyleConfig> = {
     styleEnforcement: "High quality realistic digital art at AAA game concept art level. Professional polished industry standard. Impressive and marketable.",
     styleMandatory: "MUST be realistic and high quality professional standard - NOT cartoon, NOT pixel art, NOT flat design, NOT amateur",
     negatives: "cartoon, pixel art, flat design, anime, chibi, overly stylized, low detail, rough, sketchy, amateur, simple shapes, flat colors, cel shaded",
-    model: "sdxl",
-    guidance: 8.0,
-    steps: 50,
+    // Model settings - FLUX OPTIMIZED (higher for realistic detail)
+    model: "flux-dev",
+    guidance: 3.5,      // ✅ FLUX optimal: 2-4 range
+    steps: 28,          // ✅ FLUX optimal: max for quality
   },
 };
 
 // ===========================================
-// UI STYLES (Frontend - lightweight)
+// STYLE PREVIEWS (for UI hover tooltips)
+// ===========================================
+
+const STYLE_PREVIEWS: Record<string, { colors: string[]; bestFor: string[]; example: string }> = {
+  PIXEL_ART_16: {
+    colors: ["#4a90a4", "#8b4789", "#d4a574", "#5c8a4e"],
+    bestFor: ["Retro games", "Platformers", "RPGs"],
+    example: "16-bit SNES/Genesis era sprites with visible pixels",
+  },
+  PIXEL_ART_32: {
+    colors: ["#6366f1", "#ec4899", "#14b8a6", "#f59e0b"],
+    bestFor: ["Indie games", "Action games", "Roguelikes"],
+    example: "HD pixel art like Celeste or Dead Cells",
+  },
+  HAND_PAINTED: {
+    colors: ["#1e3a5f", "#4a7c59", "#d4a574", "#8b6914"],
+    bestFor: ["Metroidvanias", "Adventure", "Fantasy"],
+    example: "Painterly style like Hollow Knight or Ori",
+  },
+  VECTOR_CLEAN: {
+    colors: ["#00d4ff", "#00ff88", "#ff6b6b", "#feca57"],
+    bestFor: ["Mobile games", "Casual", "Puzzle"],
+    example: "Clean flat design like Angry Birds",
+  },
+  ANIME_GAME: {
+    colors: ["#ff6b9d", "#c084fc", "#67e8f9", "#fbbf24"],
+    bestFor: ["JRPGs", "Gacha", "Visual novels"],
+    example: "Anime style like Genshin Impact",
+  },
+  CHIBI_CUTE: {
+    colors: ["#fda4af", "#c4b5fd", "#99f6e4", "#fde68a"],
+    bestFor: ["Pet games", "Kids games", "Idle games"],
+    example: "Super cute kawaii mascots",
+  },
+  CARTOON_WESTERN: {
+    colors: ["#f97316", "#facc15", "#84cc16", "#06b6d4"],
+    bestFor: ["Platformers", "Run & gun", "Beat 'em up"],
+    example: "Bold cartoon style like Cuphead",
+  },
+  DARK_SOULS: {
+    colors: ["#1f1f1f", "#4a4a4a", "#8b4513", "#2d3436"],
+    bestFor: ["Souls-like", "Horror", "Dark fantasy"],
+    example: "Gritty style like Dark Souls/Elden Ring",
+  },
+  ISOMETRIC: {
+    colors: ["#00bcd4", "#4caf50", "#ff9800", "#9c27b0"],
+    bestFor: ["City builders", "Strategy", "Simulation"],
+    example: "2.5D isometric like Clash of Clans",
+  },
+  ISOMETRIC_PIXEL: {
+    colors: ["#607d8b", "#795548", "#9e9e9e", "#3f51b5"],
+    bestFor: ["RTS games", "Classic strategy", "Tycoons"],
+    example: "Pixel iso like StarCraft or Age of Empires",
+  },
+  ISOMETRIC_CARTOON: {
+    colors: ["#e91e63", "#8bc34a", "#03a9f4", "#ffeb3b"],
+    bestFor: ["Farm games", "Casual", "City builders"],
+    example: "Cute iso like Hay Day or SimCity BuildIt",
+  },
+  REALISTIC_PAINTED: {
+    colors: ["#2c3e50", "#c0392b", "#16a085", "#8e44ad"],
+    bestFor: ["AAA games", "Concept art", "Card games"],
+    example: "Pro quality like LoL or WoW splash art",
+  },
+};
+
+// ===========================================
+// UI STYLES (Frontend - with preview data)
 // ===========================================
 
 export const STYLES_2D_UI: StyleUI[] = Object.values(STYLES_2D_FULL).map((style) => ({
@@ -276,6 +349,7 @@ export const STYLES_2D_UI: StyleUI[] = Object.values(STYLES_2D_FULL).map((style)
   name: style.name,
   emoji: style.emoji,
   description: style.description,
+  preview: STYLE_PREVIEWS[style.id],
 }));
 
 // ===========================================

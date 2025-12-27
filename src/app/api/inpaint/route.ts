@@ -173,6 +173,8 @@ function extractUrl(output: unknown): string | null {
 
 export async function POST(request: Request) {
   const startTime = Date.now();
+  let creditsDeducted = false;
+  let userId: string | null = null;
 
   try {
     // Auth
@@ -184,6 +186,7 @@ export async function POST(request: Request) {
     if (!user) {
       return NextResponse.json({ error: "Please log in" }, { status: 401 });
     }
+    userId = user.id;
 
     // Parse request
     const body = await request.json();
@@ -213,6 +216,7 @@ export async function POST(request: Request) {
         { status: 402 }
       );
     }
+    creditsDeducted = true;
 
     // Build prompt
     const trimmedPrompt = prompt.trim();
@@ -302,8 +306,12 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("Inpaint error:", error);
+    // Refund credits on unexpected error
+    if (creditsDeducted && userId) {
+      await refundCredits(userId, CREDITS_REQUIRED);
+    }
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Inpainting failed" },
+      { error: error instanceof Error ? error.message : "Inpainting failed. Credits refunded." },
       { status: 500 }
     );
   }

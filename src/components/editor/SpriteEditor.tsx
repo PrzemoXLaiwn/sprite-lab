@@ -100,7 +100,7 @@ export function SpriteEditor({
   ];
 
   // ===========================================
-  // LOAD IMAGE
+  // LOAD IMAGE (via proxy to avoid CORS issues)
   // ===========================================
 
   useEffect(() => {
@@ -122,15 +122,39 @@ export function SpriteEditor({
       console.log("[SpriteEditor] Loading image from:", imageUrl?.substring(0, 100));
 
       try {
+        // For external URLs, use our proxy API to avoid CORS issues
+        let imageSrc = imageUrl;
+
+        if (!imageUrl.startsWith("data:") && !imageUrl.startsWith("blob:")) {
+          console.log("[SpriteEditor] Using image proxy for external URL...");
+          try {
+            const proxyResponse = await fetch(`/api/image-proxy?url=${encodeURIComponent(imageUrl)}`);
+            if (proxyResponse.ok) {
+              const proxyData = await proxyResponse.json();
+              if (proxyData.success && proxyData.dataUrl) {
+                imageSrc = proxyData.dataUrl;
+                console.log("[SpriteEditor] Proxy loaded image successfully");
+              }
+            } else {
+              console.warn("[SpriteEditor] Proxy failed, trying direct load...");
+            }
+          } catch (proxyErr) {
+            console.warn("[SpriteEditor] Proxy error, trying direct load:", proxyErr);
+          }
+        }
+
         const img = new Image();
-        img.crossOrigin = "anonymous";
+        // Only set crossOrigin for non-data URLs
+        if (!imageSrc.startsWith("data:")) {
+          img.crossOrigin = "anonymous";
+        }
 
         // Add timeout for loading
         const timeoutId = setTimeout(() => {
           console.log("[SpriteEditor] Image load timeout");
           setError("Image load timeout - try again");
           setLoadingImage(false);
-        }, 15000);
+        }, 30000); // Increased timeout
 
         img.onload = () => {
           clearTimeout(timeoutId);
@@ -171,17 +195,13 @@ export function SpriteEditor({
         img.onerror = (e) => {
           clearTimeout(timeoutId);
           console.error("[SpriteEditor] Image load error:", e);
-          setError("Failed to load image - CORS issue or invalid URL");
+          setError("Failed to load image. Please try again.");
           setLoadingImage(false);
         };
 
-        // Handle potential CORS issues by trying without crossOrigin first for data URLs
-        if (imageUrl.startsWith("data:")) {
-          img.crossOrigin = "";
-        }
-
-        img.src = imageUrl;
+        img.src = imageSrc;
       } catch (err) {
+        console.error("[SpriteEditor] Load error:", err);
         setError("Failed to load image");
         setLoadingImage(false);
       }

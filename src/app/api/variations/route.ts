@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import Replicate from "replicate";
-import { getUserCredits, deductCredit, saveGeneration } from "@/lib/database";
+import { checkAndDeductCredits, refundCredits, saveGeneration } from "@/lib/database";
 import { uploadImageToStorage } from "@/lib/storage";
 
 const replicate = new Replicate({
@@ -20,7 +20,7 @@ interface VariationOptions {
 
 /**
  * Generate variations of an existing image
- * Uses img2img with varying strength based on similarity
+ * Uses FLUX 1.1 Pro for better prompt adherence and quality variations
  */
 async function generateVariations(
   options: VariationOptions
@@ -29,109 +29,73 @@ async function generateVariations(
     console.log("[Variations] Starting generation...");
     console.log("[Variations] Num variations:", options.numVariations);
     console.log("[Variations] Similarity:", options.similarity);
+    console.log("[Variations] User prompt:", options.prompt);
 
-    // Map similarity to strength (lower strength = more similar to original)
+    // Map similarity to strength (higher = more change from original)
     const strengthMap = {
-      high: 0.3, // Very similar
-      medium: 0.5, // Balanced
-      low: 0.7, // More different
+      high: 0.35, // Very similar to original
+      medium: 0.55, // Balanced
+      low: 0.75, // More different/creative
     };
 
     const strength = strengthMap[options.similarity];
+    const collectedUrls: string[] = [];
 
-    // Use SDXL img2img for variations (version hash required for predictions.create)
-    const prediction = await replicate.predictions.create({
-      version: "39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
-      input: {
-        image: options.imageUrl,
-        prompt: options.prompt || "game asset, high quality, detailed",
-        negative_prompt: "blurry, low quality, distorted, watermark, text",
-        num_outputs: options.numVariations,
-        num_inference_steps: 30,
-        guidance_scale: 7.5,
-        prompt_strength: strength,
-        seed: options.seed,
-      },
-    });
+    // Generate variations one at a time for better quality
+    for (let i = 0; i < options.numVariations; i++) {
+      console.log(`[Variations] Generating variation ${i + 1}/${options.numVariations}...`);
 
-    // Wait for completion
-    let result = await replicate.predictions.get(prediction.id);
-    let waitTime = 0;
-    const maxWait = 180; // 3 minutes for multiple images
+      // Use FLUX 1.1 Pro with image input for img2img style variations
+      // This model respects prompts much better than SDXL
+      const prediction = await replicate.predictions.create({
+        model: "black-forest-labs/flux-1.1-pro",
+        input: {
+          image: options.imageUrl,
+          prompt: options.prompt || "game asset, high quality, detailed",
+          prompt_strength: strength,
+          num_outputs: 1,
+          aspect_ratio: "1:1",
+          output_format: "png",
+          output_quality: 95,
+          seed: options.seed ? options.seed + i : undefined,
+        },
+      });
 
-    while (
-      (result.status === "starting" || result.status === "processing") &&
-      waitTime < maxWait
-    ) {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      result = await replicate.predictions.get(prediction.id);
-      waitTime += 2;
+      // Wait for completion
+      let result = await replicate.predictions.get(prediction.id);
+      let waitTime = 0;
+      const maxWait = 120; // 2 minutes per variation
 
-      if (waitTime % 15 === 0) {
-        console.log(`[Variations] Processing... ${waitTime}s`);
-      }
-    }
+      while (
+        (result.status === "starting" || result.status === "processing") &&
+        waitTime < maxWait
+      ) {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        result = await replicate.predictions.get(prediction.id);
+        waitTime += 2;
 
-    if (result.status === "succeeded" && result.output) {
-      let imageUrls: string[] = [];
-
-      if (Array.isArray(result.output)) {
-        // Handle both string URLs and FileOutput objects from Replicate SDK 1.0+
-        imageUrls = result.output.map((item): string | null => {
-          if (typeof item === "string") return item;
-          if (item && typeof item === "object") {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const obj = item as any;
-            // Try .url() method first (FileOutput)
-            if (typeof obj.url === "function") {
-              try {
-                const urlResult = obj.url();
-                return typeof urlResult === "string" ? urlResult : urlResult.toString();
-              } catch { /* ignore */ }
-            }
-            // Try String() conversion
-            try {
-              const str = String(obj);
-              if (str.startsWith("http")) return str;
-            } catch { /* ignore */ }
-            // Try .url property
-            if (typeof obj.url === "string") return obj.url;
-          }
-          return null;
-        }).filter((url): url is string => url !== null && url.startsWith("http"));
-      } else if (typeof result.output === "string") {
-        imageUrls = [result.output];
-      } else if (result.output && typeof result.output === "object") {
-        // Single FileOutput object
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const obj = result.output as any;
-        if (typeof obj.url === "function") {
-          try {
-            const url = obj.url();
-            imageUrls = [typeof url === "string" ? url : url.toString()];
-          } catch { /* ignore */ }
-        } else {
-          const str = String(obj);
-          if (str.startsWith("http")) imageUrls = [str];
+        if (waitTime % 15 === 0) {
+          console.log(`[Variations] Variation ${i + 1} processing... ${waitTime}s`);
         }
       }
 
-      if (imageUrls.length > 0) {
-        console.log(`[Variations] Success! Generated ${imageUrls.length} variations`);
-        return { success: true, imageUrls };
+      if (result.status === "succeeded" && result.output) {
+        const url = extractImageUrl(result.output);
+        if (url) {
+          collectedUrls.push(url);
+          console.log(`[Variations] Variation ${i + 1} complete!`);
+        }
+      } else if (result.status === "failed") {
+        console.error(`[Variations] Variation ${i + 1} failed:`, result.error);
       }
     }
 
-    if (result.status === "failed") {
-      console.error(`[Variations] Failed:`, result.error);
-      return { success: false, error: String(result.error || "Variation generation failed") };
+    if (collectedUrls.length > 0) {
+      console.log(`[Variations] Success! Generated ${collectedUrls.length} variations`);
+      return { success: true, imageUrls: collectedUrls };
     }
 
-    if (waitTime >= maxWait) {
-      return { success: false, error: "Timeout - generation took too long" };
-    }
-
-    return { success: false, error: "No output received" };
+    return { success: false, error: "No variations were generated" };
   } catch (error) {
     console.error(`[Variations] Error:`, error);
     return {
@@ -141,10 +105,51 @@ async function generateVariations(
   }
 }
 
+// Helper to extract URL from Replicate output
+function extractImageUrl(output: unknown): string | null {
+  // Handle array output
+  if (Array.isArray(output) && output.length > 0) {
+    const first = output[0];
+    if (typeof first === "string" && first.startsWith("http")) return first;
+    if (first && typeof first === "object") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const obj = first as any;
+      if (typeof obj.url === "function") {
+        try {
+          const url = obj.url();
+          if (typeof url === "string" && url.startsWith("http")) return url;
+        } catch { /* ignore */ }
+      }
+      const str = String(obj);
+      if (str.startsWith("http")) return str;
+      if (typeof obj.url === "string") return obj.url;
+    }
+  }
+  // Handle direct string
+  if (typeof output === "string" && output.startsWith("http")) return output;
+  // Handle single object
+  if (output && typeof output === "object") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const obj = output as any;
+    if (typeof obj.url === "function") {
+      try {
+        const url = obj.url();
+        if (typeof url === "string" && url.startsWith("http")) return url;
+      } catch { /* ignore */ }
+    }
+    const str = String(obj);
+    if (str.startsWith("http")) return str;
+  }
+  return null;
+}
+
 // ====================================// MAIN API HANDLER
 // ====================================
 export async function POST(request: Request) {
   const startTime = Date.now();
+  let creditsDeducted = false;
+  let userId: string | null = null;
+  let creditsNeeded = 0;
 
   try {
     // Authentication
@@ -157,6 +162,8 @@ export async function POST(request: Request) {
         { status: 401 }
       );
     }
+
+    userId = user.id;
 
     // Parse request
     const body = await request.json();
@@ -216,19 +223,20 @@ export async function POST(request: Request) {
     }
 
     // Calculate credits needed (1 credit per variation)
-    const creditsNeeded = numVariations;
+    creditsNeeded = numVariations;
 
-    // Check credits
-    const { credits } = await getUserCredits(user.id);
-    if (credits < creditsNeeded) {
+    // Atomically check and deduct credits BEFORE processing
+    const creditResult = await checkAndDeductCredits(user.id, creditsNeeded);
+    if (!creditResult.success) {
       return NextResponse.json(
         {
-          error: `Not enough credits. Need ${creditsNeeded}, you have ${credits}.`,
+          error: `Not enough credits. You need ${creditsNeeded} credits for ${numVariations} variations.`,
           noCredits: true,
         },
         { status: 402 }
       );
     }
+    creditsDeducted = true;
 
     console.log("===========================================");
     console.log("VARIATION GENERATION");
@@ -293,8 +301,14 @@ export async function POST(request: Request) {
 
     if (!result.success || !result.imageUrls || result.imageUrls.length === 0) {
       console.error("[Variations] Failed:", result.error);
+      // Refund credits on failure
+      if (creditsDeducted && userId) {
+        console.log("[Variations] Generation failed, refunding credits...");
+        await refundCredits(userId, creditsNeeded);
+        creditsDeducted = false;
+      }
       return NextResponse.json(
-        { error: result.error || "Variation generation failed." },
+        { error: result.error || "Variation generation failed. Credits refunded." },
         { status: 500 }
       );
     }
@@ -330,8 +344,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // Deduct credits
-    await deductCredit(user.id, creditsNeeded);
+    // Credits already deducted atomically at the beginning
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
 
@@ -353,8 +366,12 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("[Variations] Unexpected error:", error);
+    // Refund credits on unexpected error
+    if (creditsDeducted && userId) {
+      await refundCredits(userId, creditsNeeded);
+    }
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Variation generation failed" },
+      { error: error instanceof Error ? error.message : "Variation generation failed. Credits refunded." },
       { status: 500 }
     );
   }

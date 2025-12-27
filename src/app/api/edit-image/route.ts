@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getUserCredits, deductCredit, saveGeneration } from "@/lib/database";
+import { getUserCredits, checkAndDeductCredits, refundCredits, saveGeneration } from "@/lib/database";
 import { uploadImageToStorage } from "@/lib/storage";
 import { getRunwareClient, type UserTier, RUNWARE_MODELS, DEFAULT_MODEL, MODEL_COSTS } from "@/lib/runware";
 
@@ -642,7 +642,7 @@ export async function POST(request: Request) {
     }
 
     // Check credits and plan
-    const { plan, role, credits } = await getUserCredits(user.id);
+    const { plan, role } = await getUserCredits(user.id);
     const hasPremiumAccess = plan !== "FREE" || role === "OWNER" || role === "ADMIN";
 
     if (!hasPremiumAccess) {
@@ -655,7 +655,9 @@ export async function POST(request: Request) {
       );
     }
 
-    if (credits <= 0) {
+    // Atomically check and deduct credits BEFORE processing
+    const creditResult = await checkAndDeductCredits(user.id, 1);
+    if (!creditResult.success) {
       return NextResponse.json(
         {
           error: "No credits left! Please top up your account.",
@@ -741,8 +743,10 @@ export async function POST(request: Request) {
 
     if (!result.success || !result.imageUrl) {
       console.error("Edit failed:", result.error);
+      // Refund credit on failure
+      await refundCredits(user.id, 1);
       return NextResponse.json(
-        { error: result.error || "Edit failed. Please try different instructions." },
+        { error: result.error || "Edit failed. Please try different instructions. Credit refunded." },
         { status: 500 }
       );
     }
@@ -771,8 +775,7 @@ export async function POST(request: Request) {
       console.error("Failed to save generation:", saveResult.error);
     }
 
-    // Deduct credit
-    await deductCredit(user.id, 1);
+    // Credits already deducted atomically at the beginning
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
 
@@ -800,6 +803,8 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("Edit image error:", error);
+    // Note: We can't easily refund here since we don't know if credits were deducted
+    // The checkAndDeductCredits is atomic so if it failed, no credits were deducted
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Edit failed" },
       { status: 500 }

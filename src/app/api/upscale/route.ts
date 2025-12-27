@@ -4,8 +4,9 @@ import { getUserCredits, checkAndDeductCredits, refundCredits, saveGeneration } 
 import { uploadImageToStorage } from "@/lib/storage";
 import { upscaleImage } from "@/lib/runware";
 
-// Plans that have access to Upscale (SPARK is excluded!)
-const ALLOWED_PLANS = ["FORGE", "INFINITE", "LIFETIME"];
+// Plans that have access to Upscale (Free and Starter are excluded)
+// PRO = Pro plan, UNLIMITED = Studio plan, LIFETIME = any lifetime deal
+const ALLOWED_PLANS = ["PRO", "UNLIMITED", "LIFETIME"];
 
 // ===========================================
 // UPSCALING CONFIGURATION
@@ -78,13 +79,13 @@ export async function POST(request: Request) {
 
     userId = user.id;
 
-    // Check user plan - only FORGE, INFINITE, LIFETIME can use Upscale
+    // Check user plan - only Pro, Studio, and Lifetime can use Upscale
     const { credits, plan, role } = await getUserCredits(user.id);
     const hasPremiumAccess = ALLOWED_PLANS.includes(plan) || role === "OWNER" || role === "ADMIN";
 
     if (!hasPremiumAccess) {
       return NextResponse.json(
-        { error: "Image upscaling is available for Forge, Infinite, and Lifetime plans. Upgrade to unlock this feature!" },
+        { error: "Image upscaling is available for Pro, Studio, and Lifetime plans. Upgrade to unlock this feature!" },
         { status: 403 }
       );
     }

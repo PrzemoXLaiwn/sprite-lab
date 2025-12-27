@@ -11,7 +11,8 @@ export async function getRunwareClient(): Promise<InstanceType<typeof Runware>> 
   if (!runwareInstance) {
     const apiKey = process.env.RUNWARE_API_KEY;
     if (!apiKey) {
-      throw new Error("RUNWARE_API_KEY is not set");
+      console.error("[Runware] RUNWARE_API_KEY environment variable is not set!");
+      throw new Error("Image generation service is temporarily unavailable. Please try again later.");
     }
     runwareInstance = new Runware({ apiKey });
   }
@@ -27,16 +28,25 @@ export type UserTier = "free" | "starter" | "pro" | "lifetime";
 // Model AIR identifiers from Runware
 // Format: "provider:model_id@version" or direct model name
 // See: https://runware.ai/docs/en/image-inference/text-to-image
+//
+// 🎮 MODEL QUALITY RANKING:
+// FLUX Pro    → 🥇 Best (details, lighting, textures)
+// FLUX Dev    → 🥈 Very good (90-95% of Pro quality)
+// FLUX Schnell → 🥉 Good (simpler, smoother, less detail)
+//
+// For pixel art/detailed styles → Use Dev (every pixel matters!)
+// For cartoon/vector → Schnell OK (simpler styles)
 export const RUNWARE_MODELS = {
-  // Tier 3 - Free/Budget (fast, cheap)
-  "flux-schnell": "runware:100@1", // FLUX.1 [schnell] - ultra fast 4-step
+  // Tier 3 - Free/Budget (fast, cheap, 4 steps)
+  "flux-schnell": "runware:100@1", // FLUX.1 [schnell] - 2-3 sec, simple styles OK
 
-  // Tier 2 - Starter (balance quality/speed)
-  "flux-dev": "runware:101@1", // FLUX.1 [dev] - high quality
+  // Tier 2 - Starter (quality, 20-28 steps)
+  "flux-dev": "runware:101@1", // FLUX.1 [dev] - 8-15 sec, great for pixel art
 
-  // Tier 1 - Pro/Premium (best quality) - using FLUX Dev for now
-  // Note: FLUX.2 Pro, Midjourney, Ideogram require checking availability
-  "flux-dev-pro": "runware:101@1", // FLUX.1 [dev] - best available
+  // Tier 1 - Pro/Lifetime (BEST quality!)
+  // BFL AIR IDs: bfl:2@1 = FLUX.1.1 Pro, bfl:2@2 = FLUX.1.1 Pro Ultra
+  // bfl:6@1 = FLUX.2 [flex], bfl:7@1 = FLUX.2 [max]
+  "flux-pro": "bfl:2@1", // FLUX.1.1 Pro - najlepsza jakość, detale, tekstury
 } as const;
 
 export type RunwareModelId = keyof typeof RUNWARE_MODELS;
@@ -45,23 +55,23 @@ export type RunwareModelId = keyof typeof RUNWARE_MODELS;
 export const TIER_MODELS: Record<UserTier, RunwareModelId[]> = {
   free: ["flux-schnell"],
   starter: ["flux-dev", "flux-schnell"],
-  pro: ["flux-dev-pro", "flux-dev", "flux-schnell"],
-  lifetime: ["flux-dev-pro", "flux-dev", "flux-schnell"],
+  pro: ["flux-pro", "flux-dev", "flux-schnell"],
+  lifetime: ["flux-pro", "flux-dev", "flux-schnell"],
 };
 
 // Default model per tier
 export const DEFAULT_MODEL: Record<UserTier, RunwareModelId> = {
   free: "flux-schnell",
   starter: "flux-dev",
-  pro: "flux-dev-pro",
-  lifetime: "flux-dev-pro",
+  pro: "flux-pro",      // 🔥 FLUX.1.1 Pro - najlepsza jakość!
+  lifetime: "flux-pro", // 🔥 FLUX.1.1 Pro - najlepsza jakość!
 };
 
 // Model costs (approximate USD per image)
 export const MODEL_COSTS: Record<RunwareModelId, number> = {
   "flux-schnell": 0.003,  // ~$0.003 per image (4 steps)
   "flux-dev": 0.01,       // ~$0.01 per image
-  "flux-dev-pro": 0.01,   // ~$0.01 per image
+  "flux-pro": 0.03,       // ~$0.03 per image (premium quality)
 };
 
 // ===========================================
@@ -107,18 +117,50 @@ export async function generateImage(
     const modelAIR = RUNWARE_MODELS[modelId];
     const cost = MODEL_COSTS[modelId];
 
-    console.log(`[Runware] 🚀 Generating with ${modelId} (AIR: ${modelAIR})`);
-    console.log(`[Runware] Prompt: ${options.prompt.substring(0, 100)}...`);
+    // 🔥 FLUX OPTIMIZATION: Limit by WORDS (optimal: 50-80, max: 100)
+    const MAX_PROMPT_WORDS = 100;
+    const MAX_NEGATIVE_WORDS = 60;
 
+    let safePrompt = options.prompt;
+    const promptWords = safePrompt.split(/\s+/);
+
+    if (promptWords.length > MAX_PROMPT_WORDS) {
+      console.log(`[Runware] ⚠️ PROMPT TOO LONG (${promptWords.length} words), limiting to ${MAX_PROMPT_WORDS}`);
+      safePrompt = promptWords.slice(0, MAX_PROMPT_WORDS).join(" ");
+    }
+
+    // Also limit negative prompt
+    let safeNegative = options.negativePrompt || "blurry, low quality, distorted, watermark, text, signature";
+    const negativeWords = safeNegative.split(/\s+/);
+
+    if (negativeWords.length > MAX_NEGATIVE_WORDS) {
+      console.log(`[Runware] ⚠️ NEGATIVE TOO LONG (${negativeWords.length} words), limiting to ${MAX_NEGATIVE_WORDS}`);
+      safeNegative = negativeWords.slice(0, MAX_NEGATIVE_WORDS).join(" ");
+    }
+
+    // Final character check (Runware hard limit: 3000)
+    if (safePrompt.length > 2900) {
+      console.log(`[Runware] ⚠️ Still too many chars (${safePrompt.length}), hard truncating`);
+      safePrompt = safePrompt.substring(0, 2900);
+      const lastSpace = safePrompt.lastIndexOf(" ");
+      if (lastSpace > 2700) safePrompt = safePrompt.substring(0, lastSpace);
+    }
+
+    const finalWordCount = safePrompt.split(/\s+/).length;
+    console.log(`[Runware] 🚀 Generating with ${modelId} (AIR: ${modelAIR})`);
+    console.log(`[Runware] Prompt: ${finalWordCount} words, ${safePrompt.length} chars`);
+    console.log(`[Runware] Preview: ${safePrompt.substring(0, 80)}...`);
+
+    // FLUX-optimized defaults: guidance 2-4, steps 20-28
     const result = await runware.imageInference({
-      positivePrompt: options.prompt,
-      negativePrompt: options.negativePrompt || "blurry, low quality, distorted, watermark, text, signature",
+      positivePrompt: safePrompt,
+      negativePrompt: safeNegative,
       model: modelAIR,
       width: options.width || 1024,
       height: options.height || 1024,
       seed: options.seed,
-      steps: options.steps || 25,
-      CFGScale: options.guidance || 7,
+      steps: options.steps || 25,           // FLUX optimal: 20-28
+      CFGScale: options.guidance || 3.5,    // FLUX optimal: 2-4 (NOT 7!)
       numberResults: options.numberOfImages || 1,
       outputType: "URL",
       outputFormat: "PNG",
@@ -198,20 +240,44 @@ export async function upscaleImage(
 // BACKGROUND REMOVAL
 // ===========================================
 
+// Timeout for background removal (20 seconds - reduced for faster fallback)
+const BG_REMOVAL_TIMEOUT = 20000;
+
 export async function removeBackground(
   imageUrl: string
 ): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
   try {
     const runware = await getRunwareClient();
 
-    console.log(`[Runware] ✂️ Removing background`);
+    console.log(`[Runware] ✂️ Removing background...`);
+
+    // Add timeout to prevent hanging on network issues
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error("Background removal timed out")), BG_REMOVAL_TIMEOUT);
+    });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = await (runware as any).removeBackground({
-      inputImage: imageUrl,
-      outputType: "URL",
-      outputFormat: "PNG",
-    });
+    let result;
+    try {
+      result = await Promise.race([
+        (runware as any).removeBackground({
+          inputImage: imageUrl,
+          outputType: "URL",
+          outputFormat: "PNG",
+        }),
+        timeoutPromise
+      ]);
+    } catch (innerError) {
+      // Check for network errors - return gracefully instead of throwing
+      const errorMsg = innerError instanceof Error ? innerError.message : String(innerError);
+      if (errorMsg.includes("timeout") || errorMsg.includes("ENOTFOUND") ||
+          errorMsg.includes("ECONNREFUSED") || errorMsg.includes("ERR_NAME_NOT_RESOLVED") ||
+          errorMsg.includes("fetch failed") || errorMsg.includes("network")) {
+        console.log(`[Runware] ⚠️ Background removal network issue: ${errorMsg}`);
+        return { success: false, error: `Network issue: ${errorMsg}` };
+      }
+      throw innerError;
+    }
 
     // Handle result - can be single object or array
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -238,6 +304,7 @@ export async function removeBackground(
     };
   }
 }
+
 
 // ===========================================
 // PROMPT ENHANCEMENT

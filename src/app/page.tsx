@@ -47,13 +47,22 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ ref?: string }>;
+}) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (user) {
     redirect("/dashboard");
   }
+
+  // Get referral code from URL params
+  const params = await searchParams;
+  const refCode = params.ref;
+  const registerUrl = refCode ? `/register?ref=${refCode}` : "/register";
 
   return (
     <main className="min-h-screen bg-[#030305] text-white overflow-x-hidden">
@@ -93,7 +102,7 @@ export default async function Home() {
               Log in
             </Link>
             <Link
-              href="/register"
+              href={registerUrl}
               className="text-xs sm:text-sm font-semibold px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-black hover:shadow-lg hover:shadow-[#00ff88]/25 transition-all hover:-translate-y-0.5"
             >
               Get Started
@@ -140,7 +149,7 @@ export default async function Home() {
           {/* CTA */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-8 sm:mb-12 animate-slide-up" style={{ animationDelay: "350ms" }}>
             <Link
-              href="/register"
+              href={registerUrl}
               className="group relative flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-4 rounded-xl bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-black font-bold text-base sm:text-lg transition-all hover:scale-105 shadow-xl shadow-[#00ff88]/30 hover:shadow-[#00ff88]/50 overflow-hidden w-full sm:w-auto justify-center"
             >
               <span className="relative z-10 flex items-center gap-2">
@@ -412,7 +421,7 @@ export default async function Home() {
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
                 <Link
-                  href="/register"
+                  href={registerUrl}
                   className="group relative inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-4 rounded-xl bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-black font-bold text-base sm:text-lg transition-all hover:scale-105 shadow-xl shadow-[#00ff88]/30 hover:shadow-[#00ff88]/50 overflow-hidden w-full sm:w-auto justify-center"
                 >
                   <span className="relative z-10 flex items-center gap-2">

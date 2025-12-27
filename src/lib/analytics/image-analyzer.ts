@@ -15,6 +15,38 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
+/**
+ * Fetch image as base64 to avoid robots.txt issues
+ * Claude's URL fetch can be blocked by robots.txt, so we fetch it ourselves
+ */
+async function fetchImageAsBase64(imageUrl: string): Promise<{ base64: string; mediaType: "image/png" | "image/jpeg" | "image/gif" | "image/webp" }> {
+  try {
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+    }
+
+    const contentType = response.headers.get("content-type") || "image/png";
+    const arrayBuffer = await response.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString("base64");
+
+    // Determine media type
+    let mediaType: "image/png" | "image/jpeg" | "image/gif" | "image/webp" = "image/png";
+    if (contentType.includes("jpeg") || contentType.includes("jpg")) {
+      mediaType = "image/jpeg";
+    } else if (contentType.includes("gif")) {
+      mediaType = "image/gif";
+    } else if (contentType.includes("webp")) {
+      mediaType = "image/webp";
+    }
+
+    return { base64, mediaType };
+  } catch (error) {
+    console.error("[ImageAnalyzer] Failed to fetch image as base64:", error);
+    throw new Error(`Failed to fetch image: ${error instanceof Error ? error.message : "Unknown error"}`);
+  }
+}
+
 // Analysis result interface
 interface AnalysisResult {
   // Detected content
@@ -100,7 +132,12 @@ IMPORTANT:
 Respond ONLY with valid JSON, no other text.`;
 
   try {
-    // Call Claude Vision API
+    // Fetch image as base64 to avoid robots.txt blocking issues
+    console.log(`[ImageAnalyzer] Fetching image as base64...`);
+    const { base64, mediaType } = await fetchImageAsBase64(imageUrl);
+    console.log(`[ImageAnalyzer] Image fetched (${mediaType}, ${Math.round(base64.length / 1024)}KB)`);
+
+    // Call Claude Vision API with base64 image
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 1500,
@@ -111,8 +148,9 @@ Respond ONLY with valid JSON, no other text.`;
             {
               type: "image",
               source: {
-                type: "url",
-                url: imageUrl,
+                type: "base64",
+                media_type: mediaType,
+                data: base64,
               },
             },
             {

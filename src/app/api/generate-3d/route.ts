@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import Replicate from "replicate";
 import { getCategoryById, getSubcategoryById } from "@/lib/categories";
-import { getOrCreateUser, getUserCredits, deductCredit, saveGeneration } from "@/lib/database";
+import { getOrCreateUser, checkAndDeductCredits, refundCredits, saveGeneration } from "@/lib/database";
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
@@ -446,7 +446,7 @@ interface Model3DConfig {
   estimatedTime: string;
   outputFormats: string[];
   description: string;
-  getInput: (imageUrl: string) => Record<string, unknown>;
+  getInput: (imageUrl: string, qualityPreset?: string) => Record<string, unknown>;
   parseOutput: (output: unknown) => { modelUrl: string | null; thumbnailUrl?: string; videoUrl?: string };
 }
 
@@ -461,10 +461,12 @@ const MODEL_3D_CONFIGS: Record<string, Model3DConfig> = {
     estimatedTime: "30-60s",
     outputFormats: ["glb", "fbx", "obj", "usdz"],
     description: "High quality, PBR materials, reliable",
-    getInput: (imageUrl: string) => ({
+    getInput: (imageUrl: string, qualityPreset?: string) => ({
       prompt: "3D model of the object in the image, game-ready asset, clean topology",
       images: [imageUrl],
-      quality: "medium",
+      // Map quality preset to Rodin's quality parameter
+      // low = faster, fewer polygons | medium = balanced | high = more detail
+      quality: qualityPreset === "high" ? "high" : qualityPreset === "low" ? "low" : "medium",
       material: "PBR",
       geometry_file_format: "glb",
       mesh_mode: "Quad",
@@ -773,7 +775,8 @@ async function generateReferenceImage(
 // ===========================================
 async function generate3DFromImage(
   modelId: string,
-  imageUrl: string
+  imageUrl: string,
+  qualityPreset?: string
 ): Promise<{
   success: boolean;
   modelUrl?: string;
@@ -783,7 +786,7 @@ async function generate3DFromImage(
   error?: string;
 }> {
   const config = MODEL_3D_CONFIGS[modelId];
-  
+
   if (!config) {
     return { success: false, error: `Unknown 3D model: ${modelId}` };
   }
@@ -791,8 +794,9 @@ async function generate3DFromImage(
   try {
     console.log(`[3D Gen] Starting ${config.name}...`);
     console.log(`[3D Gen] Input image: ${imageUrl}`);
+    console.log(`[3D Gen] Quality preset: ${qualityPreset || "medium"}`);
 
-    const input = config.getInput(imageUrl);
+    const input = config.getInput(imageUrl, qualityPreset);
     console.log(`[3D Gen] Input params:`, JSON.stringify(input, null, 2));
 
     const output = await runWithRetry(async () => {
@@ -889,6 +893,7 @@ export async function POST(request: Request) {
       subcategoryId,
       modelId = "rodin",
       style = "REALISTIC",
+      qualityPreset = "medium", // low, medium, high
       seed,
     } = body;
 
@@ -900,6 +905,7 @@ export async function POST(request: Request) {
     console.log("Category:", categoryId, "->", subcategoryId);
     console.log("Style:", style);
     console.log("3D Model:", modelId);
+    console.log("Quality:", qualityPreset);
 
     // Validation
     if (!prompt || typeof prompt !== "string" || prompt.trim().length === 0) {
@@ -940,15 +946,16 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check credits
+    // Check and deduct credits ATOMICALLY (prevents race condition)
     const CREDITS_REQUIRED = modelConfig.credits;
     await getOrCreateUser(user.id, user.email!);
-    const { credits } = await getUserCredits(user.id);
 
-    if (credits < CREDITS_REQUIRED) {
+    const creditResult = await checkAndDeductCredits(user.id, CREDITS_REQUIRED);
+
+    if (!creditResult.success) {
       return NextResponse.json(
         {
-          error: `Not enough credits. Need ${CREDITS_REQUIRED}, have ${credits}.`,
+          error: `Not enough credits. You need ${CREDITS_REQUIRED} credits for 3D generation.`,
           noCredits: true,
         },
         { status: 402 }
@@ -967,7 +974,7 @@ export async function POST(request: Request) {
     // STEP 1: Generate reference image with ENHANCED PROMPT
     // ===========================================
     console.log("\n[Step 1/2] Generating reference image with enhanced prompt...");
-    
+
     const referenceResult = await generateReferenceImage(
       prompt.trim(),
       categoryId,
@@ -977,6 +984,9 @@ export async function POST(request: Request) {
     );
 
     if (!referenceResult.success || !referenceResult.imageUrl) {
+      // Refund credits on failure
+      console.log("[3D Gen] Reference image failed, refunding credits...");
+      await refundCredits(user.id, CREDITS_REQUIRED);
       return NextResponse.json(
         { error: `Reference image failed: ${referenceResult.error}` },
         { status: 500 }
@@ -989,10 +999,13 @@ export async function POST(request: Request) {
     // STEP 2: Convert to 3D model
     // ===========================================
     console.log(`\n[Step 2/2] Converting to 3D with ${modelConfig.name}...`);
-    
-    const model3DResult = await generate3DFromImage(modelId, referenceResult.imageUrl);
+
+    const model3DResult = await generate3DFromImage(modelId, referenceResult.imageUrl, qualityPreset);
 
     if (!model3DResult.success || !model3DResult.modelUrl) {
+      // Refund credits on failure
+      console.log("[3D Gen] 3D conversion failed, refunding credits...");
+      await refundCredits(user.id, CREDITS_REQUIRED);
       return NextResponse.json(
         { error: `3D conversion failed: ${model3DResult.error}` },
         { status: 500 }
@@ -1000,9 +1013,6 @@ export async function POST(request: Request) {
     }
 
     console.log("[Step 2/2] ✓ COMPLETE");
-
-    // Deduct credits
-    await deductCredit(user.id, CREDITS_REQUIRED);
 
     // Save to database
     await saveGeneration({

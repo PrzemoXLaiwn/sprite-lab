@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { checkAndDeductCredits, refundCredits } from "@/lib/database";
 import Replicate from "replicate";
 import { ASSET_PACKS, COLOR_PALETTES } from "@/config/features";
 import { STYLES_2D_FULL } from "@/config";
@@ -85,30 +86,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check credits (use atomic transaction to prevent race conditions)
+    // Check and deduct credits atomically
     const totalCredits = pack.creditsRequired;
 
-    const dbUser = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: { credits: true },
-    });
-
-    if (!dbUser || dbUser.credits < totalCredits) {
+    const creditResult = await checkAndDeductCredits(user.id, totalCredits);
+    if (!creditResult.success) {
       return NextResponse.json(
         {
-          error: "Insufficient credits",
-          required: totalCredits,
-          available: dbUser?.credits || 0,
+          error: `Insufficient credits. You need ${totalCredits} credits for this asset pack.`,
+          noCredits: true,
         },
         { status: 402 }
       );
     }
-
-    // Deduct credits atomically
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { credits: { decrement: totalCredits } },
-    });
 
     // Generate all items in the pack
     const baseSeed = customSeed || Math.floor(Math.random() * 2147483647);
@@ -197,16 +187,13 @@ export async function POST(request: NextRequest) {
       // If generation fails, refund credits for items not generated
       const itemsNotGenerated = pack.items.length - generatedItems.length;
       if (itemsNotGenerated > 0) {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { credits: { increment: itemsNotGenerated } },
-        });
+        await refundCredits(user.id, itemsNotGenerated);
       }
 
       console.error("Asset pack generation error:", genError);
       return NextResponse.json(
         {
-          error: "Generation failed",
+          error: "Generation failed. Unused credits refunded.",
           message:
             genError instanceof Error ? genError.message : "Unknown error",
           partialResults: generatedItems,

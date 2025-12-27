@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Shield,
   AlertTriangle,
@@ -22,8 +23,10 @@ import {
   Image,
   Settings,
   ArrowRight,
+  FlaskConical,
 } from "lucide-react";
 import Link from "next/link";
+import { VerificationPanel } from "@/components/dashboard/VerificationPanel";
 
 interface QualityData {
   overview: {
@@ -222,8 +225,22 @@ export default function QualityDashboardPage() {
         </Button>
       </div>
 
-      {/* Overview Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
+      {/* Tabs */}
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2 mb-6">
+          <TabsTrigger value="overview" className="flex items-center gap-2">
+            <Target className="w-4 h-4" />
+            Overview & Problems
+          </TabsTrigger>
+          <TabsTrigger value="verification" className="flex items-center gap-2">
+            <FlaskConical className="w-4 h-4" />
+            Fix Verification
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6">
+          {/* Overview Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between mb-2">
@@ -691,6 +708,12 @@ export default function QualityDashboardPage() {
           </Card>
         </div>
       </div>
+        </TabsContent>
+
+        <TabsContent value="verification">
+          <VerificationPanel />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

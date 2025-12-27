@@ -381,8 +381,8 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
   );
 }
 
-// Hook to check if user needs onboarding
-// Priority: Server data (generations count) > localStorage
+// 🔥 FIXED: Hook to check if user needs onboarding
+// Shows for ANY user with 0 generations (removed 10-minute restriction)
 export function useOnboarding() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
@@ -390,7 +390,15 @@ export function useOnboarding() {
   useEffect(() => {
     const checkIfNeedsOnboarding = async () => {
       try {
-        // FIRST: Check server - this is the source of truth
+        // Check if already completed in localStorage (fast path)
+        const completed = localStorage.getItem("spritelab_onboarding_complete");
+        if (completed === "true") {
+          setShowOnboarding(false);
+          setIsChecking(false);
+          return;
+        }
+
+        // Check server for user data
         const response = await fetch("/api/user/stats");
 
         if (response.ok) {
@@ -404,20 +412,21 @@ export function useOnboarding() {
             return;
           }
 
-          // User has 0 generations - they NEED onboarding regardless of localStorage
-          // This handles the case where localStorage has stale data
-          setShowOnboarding(true);
-          setIsChecking(false);
-          return;
+          // 🔥 FIX: Show onboarding for ANY user with 0 generations!
+          // Removed the 10-minute check that was blocking returning users
+          if (data.totalGenerations === 0) {
+            setShowOnboarding(true);
+            setIsChecking(false);
+            return;
+          }
         }
       } catch (err) {
-        // API failed - fall back to localStorage (but this is rare)
-        console.warn("[Onboarding] API check failed, using localStorage fallback");
+        // API failed - don't show onboarding to avoid annoying returning users
+        console.warn("[Onboarding] API check failed, skipping onboarding");
       }
 
-      // Fallback: only if API fails, check localStorage
-      const completed = localStorage.getItem("spritelab_onboarding_complete");
-      setShowOnboarding(!completed);
+      // Fallback: if anything fails, don't show onboarding
+      setShowOnboarding(false);
       setIsChecking(false);
     };
 
