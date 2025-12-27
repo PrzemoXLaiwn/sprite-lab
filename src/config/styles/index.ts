@@ -20,6 +20,8 @@ export {
   STYLE_3D_IDS,
   DEFAULT_STYLE_3D,
   DEFAULT_MODEL_3D,
+  QUALITY_3D_PRESETS,
+  DEFAULT_QUALITY_3D,
 } from "./styles-3d";
 
 // Re-export types

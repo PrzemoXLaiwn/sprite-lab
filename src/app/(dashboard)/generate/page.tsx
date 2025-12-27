@@ -46,6 +46,9 @@ import { PremiumFeatures } from "@/components/generate/PremiumFeatures";
 import { ItemBuilder } from "@/components/generate/ItemBuilder";
 import { CategoryExamples } from "@/components/generate/CategoryExamples";
 import { InfoTooltip, GENERATOR_INFO } from "@/components/ui/InfoTooltip";
+import { StyleButton } from "@/components/generate/StylePreviewTooltip";
+import { PromptHistory } from "@/components/generate/PromptHistory";
+import { usePromptHistory } from "@/hooks/usePromptHistory";
 import {
   ALL_CATEGORIES,
   STYLES_2D_UI,
@@ -192,6 +195,8 @@ export default function GeneratePage() {
   const [bgOption, setBgOption] = useState<string>("transparent");
   const [outlineOption, setOutlineOption] = useState<string>("none");
   const [paletteOption, setPaletteOption] = useState<string>("original");
+  const [qualityPreset, setQualityPreset] = useState<string>("normal"); // draft, normal, hd
+  const [batchSize, setBatchSize] = useState<number>(1); // 1-4 variations
   
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -206,6 +211,10 @@ export default function GeneratePage() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [lastSeed, setLastSeed] = useState<number | null>(null);
   const [copiedSeed, setCopiedSeed] = useState(false);
+
+  // Batch generation results
+  const [batchResults, setBatchResults] = useState<Array<{ imageUrl: string; seed: number }>>([]);
+  const [selectedBatchIndex, setSelectedBatchIndex] = useState<number>(0);
 
   // 3D Generation streaming state
   const [currentStep, setCurrentStep] = useState(0);
@@ -264,6 +273,14 @@ export default function GeneratePage() {
 
   // User plan for premium features
   const [userPlan, setUserPlan] = useState<string>("FREE");
+
+  // Prompt history hook
+  const {
+    history: promptHistory,
+    addToHistory: addPromptToHistory,
+    removeFromHistory: removePromptFromHistory,
+    clearHistory: clearPromptHistory,
+  } = usePromptHistory();
 
   const currentCategory = ALL_CATEGORIES.find(c => c.id === categoryId);
   const currentSubcategory = currentCategory?.subcategories.find(s => s.id === subcategoryId);
@@ -771,23 +788,47 @@ export default function GeneratePage() {
 
     try {
       if (mode === "2d") {
-        // 2D generation - standard fetch
-        const response = await fetch("/api/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            prompt: effectivePrompt,
-            categoryId: finalCategoryId,
-            subcategoryId: finalSubcategoryId,
-            styleId,
-            seed: seed ? Number(seed) : undefined,
-            // Premium features
-            enableStyleMix,
-            style2Id: enableStyleMix ? style2Id : undefined,
-            style1Weight: enableStyleMix ? style1Weight : undefined,
-            colorPaletteId: colorPaletteId || undefined,
-          }),
-        });
+        // Use batch API if generating multiple variations
+        const useBatchApi = batchSize > 1;
+        const apiUrl = useBatchApi ? "/api/generate-batch" : "/api/generate";
+
+        // Frontend timeout (3 minutes for batch, 2 minutes for single)
+        const timeoutMs = useBatchApi ? 180000 : 120000;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+        // 2D generation - standard fetch (or batch)
+        let response: Response;
+        try {
+          response = await fetch(apiUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            signal: controller.signal,
+            body: JSON.stringify({
+              prompt: effectivePrompt,
+              categoryId: finalCategoryId,
+              subcategoryId: finalSubcategoryId,
+              styleId,
+              seed: seed ? Number(seed) : undefined,
+              // Quality preset (draft/normal/hd)
+              qualityPreset,
+              // Batch size (for batch API)
+              ...(useBatchApi && { batchSize }),
+              // Premium features
+              enableStyleMix,
+              style2Id: enableStyleMix ? style2Id : undefined,
+              style1Weight: enableStyleMix ? style1Weight : undefined,
+              colorPaletteId: colorPaletteId || undefined,
+            }),
+          });
+        } catch (fetchError) {
+          clearTimeout(timeoutId);
+          if (fetchError instanceof Error && fetchError.name === "AbortError") {
+            throw new Error("Request timed out. Please try again.");
+          }
+          throw fetchError;
+        }
+        clearTimeout(timeoutId);
 
         const data = await response.json();
         if (!response.ok) {
@@ -801,11 +842,33 @@ export default function GeneratePage() {
 
         setProgress(100);
         setProgressMessage("Complete!");
-        setGeneratedUrl(data.imageUrl);
+
+        if (useBatchApi && data.images && data.images.length > 0) {
+          // Batch generation - store all results
+          setBatchResults(data.images);
+          setSelectedBatchIndex(0);
+          setGeneratedUrl(data.images[0].imageUrl);
+          setLastSeed(data.images[0].seed);
+          if (data.images[0].seed) setSeed(data.images[0].seed.toString());
+        } else {
+          // Single generation
+          setBatchResults([]);
+          setGeneratedUrl(data.imageUrl);
+          setLastSeed(data.seed);
+          if (data.seed) setSeed(data.seed.toString());
+        }
+
         setGeneratedFormat("png");
         setIs3DModel(false);
-        setLastSeed(data.seed);
-        if (data.seed) setSeed(data.seed.toString());
+
+        // Save to prompt history
+        const currentStyle = STYLES_2D_UI.find(s => s.id === styleId);
+        addPromptToHistory(
+          effectivePrompt,
+          styleId,
+          currentStyle?.name || styleId,
+          "2d"
+        );
       } else {
         // 3D generation - use streaming SSE
         const response = await fetch("/api/generate-3d-stream", {
@@ -881,6 +944,15 @@ export default function GeneratePage() {
                       setGeneratedFormat(data.format || "glb");
                       setIs3DModel(true);
                       setThumbnailUrl(data.referenceImageUrl);
+
+                      // Save to prompt history (3D)
+                      const current3DStyle = STYLES_3D.find(s => s.id === style3DId);
+                      addPromptToHistory(
+                        effectivePrompt,
+                        style3DId,
+                        current3DStyle?.name || style3DId,
+                        "3d"
+                      );
                       break;
 
                     case "error":
@@ -948,7 +1020,7 @@ export default function GeneratePage() {
     }
   };
 
-  const getCredits = () => mode === "2d" ? 1 : selected3DModel.credits;
+  const getCredits = () => mode === "2d" ? batchSize : selected3DModel.credits;
 
   return (
     <div className="min-h-screen bg-[#030305] relative overflow-hidden">
@@ -1058,10 +1130,31 @@ export default function GeneratePage() {
 
             {/* STEP 1: PROMPT (ALWAYS FIRST) */}
             <div className="glass-card rounded-2xl p-5">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center text-[#030305] font-bold text-sm">1</div>
-                <h3 className="font-semibold text-white">Describe Your Asset</h3>
-                <InfoTooltip {...GENERATOR_INFO.prompt} />
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center text-[#030305] font-bold text-sm">1</div>
+                  <h3 className="font-semibold text-white">Describe Your Asset</h3>
+                  <InfoTooltip {...GENERATOR_INFO.prompt} />
+                </div>
+                {/* Prompt History */}
+                {promptHistory.length > 0 && (
+                  <PromptHistory
+                    history={promptHistory}
+                    onSelect={(item) => {
+                      setPrompt(item.prompt);
+                      if (item.mode === "2d") {
+                        setMode("2d");
+                        setStyleId(item.styleId);
+                      } else {
+                        setMode("3d");
+                        setStyle3DId(item.styleId);
+                      }
+                    }}
+                    onRemove={removePromptFromHistory}
+                    onClear={clearPromptHistory}
+                    maxItems={5}
+                  />
+                )}
               </div>
 
               <div className="relative">
@@ -1161,26 +1254,15 @@ export default function GeneratePage() {
                   <InfoTooltip {...GENERATOR_INFO.artStyle} />
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                  {STYLES_2D_UI.map((style) => {
-                    const isSelected = styleId === style.id;
-                    return (
-                      <button
-                        key={style.id}
-                        onClick={() => setStyleId(style.id)}
-                        className={`p-3 rounded-xl text-center transition-all duration-200 border ${
-                          isSelected
-                            ? "border-[#00ff88] bg-[#00ff88]/10 neon-glow"
-                            : "border-[#2a2a3d] hover:border-[#00ff88]/50 hover:bg-white/5"
-                        }`}
-                      >
-                        <div className="text-2xl mb-1">{style.emoji}</div>
-                        <span className={`text-xs font-medium block ${isSelected ? "text-[#00ff88]" : "text-white"}`}>
-                          {style.name}
-                        </span>
-                        <span className="text-[10px] text-[#a0a0b0] block mt-0.5">{style.description}</span>
-                      </button>
-                    );
-                  })}
+                  {STYLES_2D_UI.map((style) => (
+                    <StyleButton
+                      key={style.id}
+                      style={style}
+                      isSelected={styleId === style.id}
+                      onClick={() => setStyleId(style.id)}
+                      showPreviewOnHover={true}
+                    />
+                  ))}
                 </div>
               </div>
             )}
@@ -1197,6 +1279,71 @@ export default function GeneratePage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
+                  {/* Quality Preset */}
+                  <div className="col-span-2">
+                    <label className="text-xs text-[#a0a0b0] mb-2 block">Quality</label>
+                    <div className="flex gap-2">
+                      {[
+                        { id: "draft", label: "Draft", desc: "Fast (~3s)", emoji: "⚡", steps: 15, guidance: 2.5 },
+                        { id: "normal", label: "Normal", desc: "Balanced (~5s)", emoji: "✨", steps: 25, guidance: 3.0 },
+                        { id: "hd", label: "HD", desc: "Best (~10s)", emoji: "💎", steps: 35, guidance: 3.5 },
+                      ].map((quality) => (
+                        <button
+                          key={quality.id}
+                          onClick={() => setQualityPreset(quality.id)}
+                          className={`flex-1 p-3 rounded-xl text-center transition-all border ${
+                            qualityPreset === quality.id
+                              ? "border-[#00ff88] bg-[#00ff88]/10"
+                              : "border-[#2a2a3d] hover:border-[#00ff88]/50"
+                          }`}
+                        >
+                          <div className="text-xl mb-1">{quality.emoji}</div>
+                          <div className={`text-sm font-medium ${qualityPreset === quality.id ? "text-[#00ff88]" : "text-white"}`}>
+                            {quality.label}
+                          </div>
+                          <div className="text-[10px] text-[#a0a0b0]">{quality.desc}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Batch Size - Generate Multiple Variations */}
+                  <div className="col-span-2">
+                    <label className="text-xs text-[#a0a0b0] mb-2 block flex items-center gap-2">
+                      Variations
+                      <span className="px-1.5 py-0.5 rounded bg-[#c084fc]/20 text-[#c084fc] text-[10px]">Pro</span>
+                    </label>
+                    <div className="flex gap-2">
+                      {[
+                        { count: 1, label: "1x", desc: "Single", credits: 1 },
+                        { count: 2, label: "2x", desc: "Pair", credits: 2 },
+                        { count: 3, label: "3x", desc: "Triple", credits: 3 },
+                        { count: 4, label: "4x", desc: "Quad", credits: 4 },
+                      ].map((option) => (
+                        <button
+                          key={option.count}
+                          onClick={() => setBatchSize(option.count)}
+                          className={`flex-1 p-2 rounded-xl text-center transition-all border ${
+                            batchSize === option.count
+                              ? "border-[#c084fc] bg-[#c084fc]/10"
+                              : "border-[#2a2a3d] hover:border-[#c084fc]/50"
+                          }`}
+                        >
+                          <div className={`text-lg font-bold ${batchSize === option.count ? "text-[#c084fc]" : "text-white"}`}>
+                            {option.label}
+                          </div>
+                          <div className="text-[10px] text-[#a0a0b0]">{option.credits} credit{option.credits > 1 ? "s" : ""}</div>
+                        </button>
+                      ))}
+                    </div>
+                    {batchSize > 1 && (
+                      <p className="text-[10px] text-[#c084fc] mt-2 flex items-center gap-1">
+                        <Sparkles className="w-3 h-3" />
+                        Generate {batchSize} unique variations with different seeds
+                      </p>
+                    )}
+                  </div>
+
                   {/* Output Size */}
                   <div>
                     <label className="text-xs text-[#a0a0b0] mb-2 block">Size</label>
@@ -1874,20 +2021,78 @@ export default function GeneratePage() {
                     </div>
                   </div>
                 ) : (
-                  // Simple 2D progress
-                  <>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-white">{progressMessage}</span>
-                      <span className="text-sm font-mono text-[#00ff88]">{Math.round(progress)}%</span>
+                  // Enhanced 2D progress with visual steps
+                  <div className="space-y-4">
+                    {/* Step indicators for 2D */}
+                    <div className="flex items-center justify-between px-4">
+                      {[
+                        { step: 1, label: "Processing", threshold: 0 },
+                        { step: 2, label: "Generating", threshold: 30 },
+                        { step: 3, label: "Finalizing", threshold: 80 },
+                      ].map(({ step, label, threshold }, index) => (
+                        <div key={step} className="flex items-center flex-1">
+                          {index > 0 && (
+                            <div className={`h-0.5 flex-1 mx-2 transition-all duration-500 ${
+                              progress > threshold
+                                ? "bg-gradient-to-r from-[#00ff88] to-[#00d4ff]"
+                                : "bg-[#2a2a3d]"
+                            }`} />
+                          )}
+                          <div className="flex flex-col items-center">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
+                              progress >= threshold + 20
+                                ? "bg-[#00ff88] text-[#030305]"
+                                : progress >= threshold
+                                  ? "bg-[#00ff88]/30 text-[#00ff88] animate-pulse"
+                                  : "bg-[#1a1a28] text-[#a0a0b0]"
+                            }`}>
+                              {progress >= threshold + 20 ? (
+                                <Check className="w-4 h-4" />
+                              ) : progress >= threshold ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <span className="text-xs font-bold">{step}</span>
+                              )}
+                            </div>
+                            <span className={`text-[10px] mt-1 ${
+                              progress >= threshold ? "text-[#00ff88]" : "text-[#a0a0b0]"
+                            }`}>{label}</span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                    <div className="w-full h-2 bg-[#1a1a28] rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-[#00ff88] to-[#00d4ff] transition-all duration-500 ease-out"
-                        style={{ width: `${progress}%` }}
-                      />
+
+                    {/* Progress message and bar */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-[#00ff88] animate-pulse" />
+                          <span className="text-sm font-medium text-white">{progressMessage}</span>
+                        </div>
+                        <span className="text-sm font-mono text-[#00ff88]">{Math.round(progress)}%</span>
+                      </div>
+                      <div className="w-full h-2 bg-[#1a1a28] rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-[#00ff88] to-[#00d4ff] transition-all duration-500 ease-out relative"
+                          style={{ width: `${progress}%` }}
+                        >
+                          <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-xs text-[#a0a0b0] mt-2">Estimated time: 15-30s</p>
-                  </>
+
+                    {/* Helpful tip while waiting */}
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-[#00ff88]/5 border border-[#00ff88]/10">
+                      <Lightbulb className="w-3 h-3 text-[#00ff88]" />
+                      <span className="text-xs text-[#a0a0b0]">
+                        {progress < 50
+                          ? "AI is analyzing your prompt and style preferences..."
+                          : progress < 80
+                            ? "Creating your sprite with pixel-perfect details..."
+                            : "Almost done! Applying final touches..."}
+                      </span>
+                    </div>
+                  </div>
                 )}
               </div>
             )}
@@ -1984,11 +2189,53 @@ export default function GeneratePage() {
                         format={get3DFormat(generatedUrl)}
                       />
                     ) : (
-                      <img
-                        src={generatedUrl}
-                        alt="Generated sprite"
-                        className="w-full h-full object-contain p-4"
-                      />
+                      <div className="w-full h-full flex flex-col">
+                        {/* Main image */}
+                        <img
+                          src={generatedUrl}
+                          alt="Generated sprite"
+                          className="flex-1 w-full object-contain p-4"
+                        />
+
+                        {/* Batch thumbnails - if multiple variations generated */}
+                        {batchResults.length > 1 && (
+                          <div className="p-3 border-t border-[#2a2a3d] bg-[#0a0a0f]/50">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Sparkles className="w-3 h-3 text-[#c084fc]" />
+                              <span className="text-xs text-[#a0a0b0]">
+                                {batchResults.length} variations generated
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-4 gap-2">
+                              {batchResults.map((result, index) => (
+                                <button
+                                  key={result.seed}
+                                  onClick={() => {
+                                    setSelectedBatchIndex(index);
+                                    setGeneratedUrl(result.imageUrl);
+                                    setLastSeed(result.seed);
+                                    setSeed(result.seed.toString());
+                                  }}
+                                  className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${
+                                    selectedBatchIndex === index
+                                      ? "border-[#c084fc] ring-2 ring-[#c084fc]/30"
+                                      : "border-[#2a2a3d] hover:border-[#c084fc]/50"
+                                  }`}
+                                >
+                                  <img
+                                    src={result.imageUrl}
+                                    alt={`Variation ${index + 1}`}
+                                    className="w-full h-full object-contain bg-[#0a0a0f]"
+                                  />
+                                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-1">
+                                    <span className="text-[8px] text-white font-mono">#{index + 1}</span>
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     )
                   ) : (
                     <div className="text-center p-8 relative z-10">

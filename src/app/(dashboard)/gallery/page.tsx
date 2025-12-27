@@ -277,7 +277,6 @@ export default function GalleryPage() {
       console.error("Failed to load pending jobs:", error);
     }
   };
-=======
 
   const cancelPendingJob = async (jobId: string) => {
     try {

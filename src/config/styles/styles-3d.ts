@@ -19,6 +19,33 @@ export const STYLES_3D: Style3DConfig[] = [
 ];
 
 // ===========================================
+// 3D QUALITY PRESETS (affects polygon count and detail)
+// ===========================================
+
+export const QUALITY_3D_PRESETS = [
+  {
+    id: "low",
+    name: "Game Ready",
+    description: "~10K polygons - Fast & optimized for mobile/web games",
+    polyCount: "~10K",
+  },
+  {
+    id: "medium",
+    name: "Balanced",
+    description: "~50K polygons - Good detail with reasonable performance",
+    polyCount: "~50K",
+  },
+  {
+    id: "high",
+    name: "High Detail",
+    description: "~100K+ polygons - Maximum detail for AAA/cinematic",
+    polyCount: "100K+",
+  },
+];
+
+export const DEFAULT_QUALITY_3D = "medium";
+
+// ===========================================
 // 3D MODELS
 // ===========================================
 
