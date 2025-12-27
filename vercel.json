@@ -1,4 +1,6 @@
 {
+  "buildCommand": "npm run build",
+  "installCommand": "npm ci",
   "crons": [
     {
       "path": "/api/cron/analyze",
@@ -7,6 +9,19 @@
     {
       "path": "/api/cron/emails",
       "schedule": "0 10 * * *"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "sprite-lab.vercel.app"
+        }
+      ],
+      "destination": "https://www.sprite-lab.com/:path*",
+      "permanent": true
     }
   ]
 }
