@@ -132,6 +132,10 @@ const faqs = [
     a: "One credit = one AI-generated image. Each time you create a sprite, character, or any game asset, it uses 1 credit. It's that simple!",
   },
   {
+    q: "What does the discounted pricing mean?",
+    a: "Our launch pricing is significantly lower than regular prices (shown with strikethrough). If you subscribe now, you lock in this low price FOREVER - even when we raise prices for new users later. The prices you see today are the prices you'll always pay!",
+  },
+  {
     q: "Can I use assets commercially?",
     a: "Absolutely! All paid plans include full commercial rights. Use your assets in games, apps, or any project you sell. Free plan is for testing only.",
   },
@@ -251,6 +255,14 @@ export default function PricingPage() {
   });
 
   useEffect(() => {
+    const loadUserPlan = async () => {
+      const result = await fetchUserPlan();
+      if (result.success) {
+        setCurrentPlan(result.plan);
+      }
+      setIsLoading(false);
+    };
+
     loadUserPlan();
     // Fetch real stats from database
     fetch("/api/stats")
@@ -274,14 +286,6 @@ export default function PricingPage() {
           .catch(() => {});
       });
   }, []);
-
-  const loadUserPlan = async () => {
-    const result = await fetchUserPlan();
-    if (result.success) {
-      setCurrentPlan(result.plan);
-    }
-    setIsLoading(false);
-  };
 
   const handlePlanClick = (stripePlan: string) => {
     if (stripePlan === "FREE" || currentPlan === stripePlan) return;
@@ -342,7 +346,7 @@ export default function PricingPage() {
       <div className="pt-12 pb-8 text-center px-4">
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#00ff88]/10 border border-[#00ff88]/30 text-[#00ff88] text-sm mb-6">
           <Gift className="w-4 h-4" />
-          <span>First {slotsRemaining} users get 50% OFF forever!</span>
+          <span>Launch pricing locked forever for early adopters!</span>
         </div>
         <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
           Simple, Transparent Pricing

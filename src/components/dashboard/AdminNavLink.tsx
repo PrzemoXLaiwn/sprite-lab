@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Shield, ShieldCheck, ChevronRight } from "lucide-react";
 import { checkAdminAccess } from "@/app/(dashboard)/admin/page.actions";
@@ -9,15 +9,15 @@ export function AdminNavLink({ className }: { className?: string }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isModerator, setIsModerator] = useState(false);
 
-  useEffect(() => {
-    checkAccess();
-  }, []);
-
-  const checkAccess = async () => {
+  const checkAccess = useCallback(async () => {
     const result = await checkAdminAccess();
     setIsAdmin(result.isAdmin);
     setIsModerator(result.isModerator);
-  };
+  }, []);
+
+  useEffect(() => {
+    checkAccess();
+  }, [checkAccess]);
 
   // Show nothing if not at least moderator
   if (!isAdmin && !isModerator) return null;
