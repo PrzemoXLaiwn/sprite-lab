@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* ============================================
-   🎮 SPRITELAB PREMIUM DESIGN SYSTEM
+   SPRITELAB PREMIUM DESIGN SYSTEM
 
    Colors:
    - Primary: #00ff88 (Neon Green)
@@ -152,7 +152,7 @@
 }
 
 /* ============================================
-   🎬 PREMIUM ANIMATIONS
+   PREMIUM ANIMATIONS
    ============================================ */
 
 /* Float - organic floating motion */
@@ -766,7 +766,7 @@
 }
 
 /* ============================================
-   🌟 PREMIUM HOVER EFFECTS
+   PREMIUM HOVER EFFECTS
    ============================================ */
 
 /* Magnetic hover - element follows cursor slightly */
@@ -863,7 +863,7 @@
 }
 
 /* ============================================
-   🎯 INTERACTIVE ELEMENTS
+   INTERACTIVE ELEMENTS
    ============================================ */
 
 /* Premium button with animated gradient border */
@@ -981,7 +981,7 @@
 }
 
 /* ============================================
-   💎 PREMIUM CARD STYLES
+   PREMIUM CARD STYLES
    ============================================ */
 
 /* Card with animated border */
@@ -1068,7 +1068,7 @@
 }
 
 /* ============================================
-   ✨ TEXT EFFECTS
+   TEXT EFFECTS
    ============================================ */
 
 /* Gradient text with animation */
@@ -1109,7 +1109,7 @@
 }
 
 /* ============================================
-   🔮 BACKGROUND EFFECTS
+   BACKGROUND EFFECTS
    ============================================ */
 
 /* Animated mesh gradient background */
@@ -1159,7 +1159,7 @@
 }
 
 /* ============================================
-   🎪 SPECIAL COMPONENTS
+   SPECIAL COMPONENTS
    ============================================ */
 
 /* Glowing orb */
@@ -1279,7 +1279,7 @@
 }
 
 /* ============================================
-   📱 RESPONSIVE IMPROVEMENTS
+   RESPONSIVE IMPROVEMENTS
    ============================================ */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -1313,7 +1313,7 @@
 }
 
 /* ============================================
-   🚧 WORK IN PROGRESS BANNER
+   WORK IN PROGRESS BANNER
    ============================================ */
 
 /* Animated industrial stripes */

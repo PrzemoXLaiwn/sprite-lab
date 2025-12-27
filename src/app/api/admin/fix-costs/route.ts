@@ -3,15 +3,16 @@ import { createClient } from "@/lib/supabase/server";
 import { isOwner } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 
-// Model costs for historical data
+// Runware API model costs (USD per image)
+// Based on: https://runware.ai/pricing
 const MODEL_COSTS: Record<string, number> = {
-  "flux-dev": 0.025,
-  "flux-schnell": 0.003,
-  "sdxl": 0.0023,
+  "flux-schnell": 0.003,  // FLUX.1 Schnell - fast, 4 steps
+  "flux-dev": 0.01,       // FLUX.1 Dev - quality, 25 steps
+  "flux-pro": 0.03,       // FLUX.1.1 Pro - premium quality
 };
 
-// Default cost if model unknown (average)
-const DEFAULT_COST = 0.015;
+// Default cost for Runware (average between schnell and dev)
+const DEFAULT_COST = 0.007;
 
 export async function POST(request: Request) {
   try {
@@ -41,24 +42,24 @@ export async function POST(request: Request) {
 
     console.log(`Found ${generationsWithoutCost.length} generations without cost`);
 
-    // Update each generation with estimated cost
+    // Update each generation with estimated Runware cost
     let updated = 0;
     for (const gen of generationsWithoutCost) {
-      // Try to determine model from styleId
-      // Most styles use flux-dev or sdxl
+      // Estimate cost based on user tier/style
+      // Free tier uses flux-schnell, Starter uses flux-dev, Pro uses flux-pro
       let cost = DEFAULT_COST;
 
-      // Pixel art styles typically use SDXL
+      // Pixel art and simpler styles - likely free tier (flux-schnell)
       if (gen.styleId?.includes("PIXEL") || gen.styleId?.includes("8BIT") || gen.styleId?.includes("16BIT")) {
-        cost = MODEL_COSTS["sdxl"];
+        cost = MODEL_COSTS["flux-schnell"];
       }
-      // High quality styles use flux-dev
+      // High quality styles - likely starter/pro tier (flux-dev)
       else if (gen.styleId?.includes("HAND_PAINTED") || gen.styleId?.includes("ANIME") || gen.styleId?.includes("DARK_FANTASY")) {
         cost = MODEL_COSTS["flux-dev"];
       }
-      // Default to sdxl for most game art
+      // Default to flux-schnell for most generations (free tier was most common)
       else {
-        cost = MODEL_COSTS["sdxl"];
+        cost = MODEL_COSTS["flux-schnell"];
       }
 
       await prisma.generation.update({

@@ -126,7 +126,7 @@ interface AdminStats {
   totalUsers: number;
   totalGenerations: number;
   totalRevenue: number;
-  totalReplicateCost: number;
+  totalRunwareCost: number;
   profit: number;
   recentTransactions: Array<{
     id: string;
@@ -409,7 +409,7 @@ export default function AdminPage() {
   }, [currentView, reportFilter, loadReports]);
 
   const handleFixCosts = async () => {
-    if (!confirm("This will calculate and update Replicate costs for all historical generations. Continue?")) return;
+    if (!confirm("This will calculate and update Runware API costs for all historical generations. Continue?")) return;
     setFixingCosts(true);
     try {
       const res = await fetch("/api/admin/fix-costs", { method: "POST" });
@@ -945,11 +945,11 @@ export default function AdminPage() {
         <Card className="cursor-pointer hover:border-red-500/50 transition-colors" onClick={handleFixCosts}>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-muted-foreground">Replicate Cost</p>
+              <p className="text-sm font-medium text-muted-foreground">Runware Cost</p>
               <DollarSign className="w-5 h-5 text-red-600" />
             </div>
-            <p className="text-3xl font-bold">${stats?.totalReplicateCost.toFixed(2) || "0.00"}</p>
-            {stats?.totalReplicateCost === 0 && (
+            <p className="text-3xl font-bold">${stats?.totalRunwareCost.toFixed(2) || "0.00"}</p>
+            {stats?.totalRunwareCost === 0 && (
               <p className="text-xs text-muted-foreground mt-1">
                 {fixingCosts ? "Calculating..." : "Click to fix"}
               </p>

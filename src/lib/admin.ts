@@ -251,9 +251,9 @@ export async function getAdminStats(adminId: string) {
       }),
     ]);
 
-    // Calculate Replicate costs
-    const replicateCosts = await prisma.generation.aggregate({
-      _sum: { replicateCost: true },
+    // Calculate Runware API costs (field will be renamed after migration)
+    const apiCosts = await prisma.generation.aggregate({
+      _sum: { replicateCost: true }, // TODO: rename to runwareCost after migration
       _count: true,
     });
 
@@ -261,8 +261,8 @@ export async function getAdminStats(adminId: string) {
       totalUsers,
       totalGenerations,
       totalRevenue: totalRevenue._sum.moneyAmount || 0,
-      totalReplicateCost: replicateCosts._sum.replicateCost || 0,
-      profit: (totalRevenue._sum.moneyAmount || 0) - (replicateCosts._sum.replicateCost || 0),
+      totalRunwareCost: apiCosts._sum?.replicateCost || 0, // Runware costs (using old field name until migration)
+      profit: (totalRevenue._sum.moneyAmount || 0) - (apiCosts._sum?.replicateCost || 0),
       recentTransactions,
     };
 
