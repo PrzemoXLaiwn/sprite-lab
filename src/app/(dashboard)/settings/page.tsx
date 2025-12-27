@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -91,40 +91,40 @@ export default function SettingsPage() {
   });
   const [savingEmailPrefs, setSavingEmailPrefs] = useState(false);
 
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      const [profileResult, transactionsResult, emailPrefsResult] = await Promise.all([
-        fetchUserProfile(),
-        fetchCreditHistory(),
-        fetchEmailPreferences(),
-      ]);
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    const [profileResult, transactionsResult, emailPrefsResult] = await Promise.all([
+      fetchUserProfile(),
+      fetchCreditHistory(),
+      fetchEmailPreferences(),
+    ]);
 
-      if (profileResult.success && profileResult.user) {
-        const u = profileResult.user as UserData;
-        setUser(u);
-        setName(u.name || "");
-        setUsername(u.username || "");
-        setBio(u.bio || "");
-        setWebsite(u.website || "");
-        setSocialTwitter(u.socialTwitter || "");
-        setSocialGithub(u.socialGithub || "");
-        setIsProfilePublic(u.isProfilePublic ?? true);
-      }
+    if (profileResult.success && profileResult.user) {
+      const u = profileResult.user as UserData;
+      setUser(u);
+      setName(u.name || "");
+      setUsername(u.username || "");
+      setBio(u.bio || "");
+      setWebsite(u.website || "");
+      setSocialTwitter(u.socialTwitter || "");
+      setSocialGithub(u.socialGithub || "");
+      setIsProfilePublic(u.isProfilePublic ?? true);
+    }
 
-      if (transactionsResult.success) {
-        setTransactions(transactionsResult.transactions);
-      }
+    if (transactionsResult.success) {
+      setTransactions(transactionsResult.transactions);
+    }
 
-      if (emailPrefsResult.success && emailPrefsResult.preferences) {
-        setEmailPrefs(emailPrefsResult.preferences);
-      }
+    if (emailPrefsResult.success && emailPrefsResult.preferences) {
+      setEmailPrefs(emailPrefsResult.preferences);
+    }
 
-      setLoading(false);
-    };
-
-    loadData();
+    setLoading(false);
   }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   // Check username availability with debounce
   useEffect(() => {
