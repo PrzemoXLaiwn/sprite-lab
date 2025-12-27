@@ -89,6 +89,12 @@ export interface StyleUI {
   name: string;
   emoji: string;
   description: string;
+  // Preview information for style selector
+  preview?: {
+    colors: string[]; // Gradient colors representing the style
+    bestFor: string[]; // Best use cases
+    example: string; // Example of what it creates
+  };
 }
 
 /**
