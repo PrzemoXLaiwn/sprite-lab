@@ -1,6 +1,7 @@
 {
-  "buildCommand": "npm run build",
-  "installCommand": "npm ci",
+  "framework": "nextjs",
+  "buildCommand": "rm -rf .next && npm run build",
+  "installCommand": "rm -rf node_modules/.cache && npm ci",
   "crons": [
     {
       "path": "/api/cron/analyze",

@@ -7,12 +7,12 @@ import {
   XCircle,
   AlertTriangle,
   RefreshCw,
-  Trash2,
   Play,
   Loader2,
   FlaskConical,
   Sparkles,
   RotateCcw,
+  Zap,
 } from "lucide-react";
 
 interface VerificationStats {
@@ -64,8 +64,10 @@ export function VerificationPanel() {
   const [isLoading, setIsLoading] = useState(true);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isCleaning, setIsCleaning] = useState(false);
+  const [isApplying, setIsApplying] = useState(false);
   const [verificationResults, setVerificationResults] = useState<VerificationResult[] | null>(null);
   const [selectedPatternId, setSelectedPatternId] = useState<string | null>(null);
+  const [applyResults, setApplyResults] = useState<{ total: number; byType: Record<string, number> } | null>(null);
 
   const fetchData = async () => {
     try {
@@ -150,6 +152,35 @@ export function VerificationPanel() {
       alert("Batch verification failed");
     } finally {
       setIsVerifying(false);
+    }
+  };
+
+  // Apply fixes to all patterns (instant, no image generation)
+  const applyAllFixes = async () => {
+    setIsApplying(true);
+    setApplyResults(null);
+
+    try {
+      const response = await fetch("/api/admin/batch-verify", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "generate_fixes" }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setApplyResults(data.summary);
+        alert(`✅ Applied fixes to ${data.summary.total} patterns!\n\nBy type:\n${Object.entries(data.summary.byType).map(([k, v]) => `  ${k}: ${v}`).join('\n')}`);
+        fetchData();
+      } else {
+        alert(data.error || "Apply fixes failed");
+      }
+    } catch (error) {
+      console.error("Apply fixes error:", error);
+      alert("Apply fixes failed");
+    } finally {
+      setIsApplying(false);
     }
   };
 
@@ -292,6 +323,34 @@ export function VerificationPanel() {
           Verify Top 10
         </Button>
 
+        <Button
+          onClick={() => runBatchVerification(9999)}
+          disabled={isVerifying || patterns.length === 0}
+          variant="outline"
+          className="border-[#c084fc]/30 text-[#c084fc] hover:bg-[#c084fc]/10 font-bold"
+        >
+          {isVerifying ? (
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          ) : (
+            <Zap className="w-4 h-4 mr-2" />
+          )}
+          Verify ALL ({stats?.activePatterns || 0})
+        </Button>
+
+        <Button
+          onClick={applyAllFixes}
+          disabled={isApplying || (stats?.activePatterns || 0) === 0}
+          variant="outline"
+          className="border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 font-bold"
+        >
+          {isApplying ? (
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          ) : (
+            <Sparkles className="w-4 h-4 mr-2" />
+          )}
+          Apply Fixes (FREE)
+        </Button>
+
         <div className="flex-1" />
 
         <Button
@@ -318,6 +377,21 @@ export function VerificationPanel() {
           Reset All
         </Button>
       </div>
+
+      {/* Apply Fixes Results */}
+      {applyResults && (
+        <div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/30">
+          <h3 className="font-bold text-yellow-500 mb-2">Fixes Applied!</h3>
+          <p className="text-white mb-2">Updated {applyResults.total} patterns with optimized fixes.</p>
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(applyResults.byType).map(([type, count]) => (
+              <span key={type} className="px-2 py-1 rounded bg-yellow-500/20 text-yellow-400 text-xs">
+                {type}: {count as number}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Verification Results */}
       {verificationResults && verificationResults.length > 0 && (

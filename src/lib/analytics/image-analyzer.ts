@@ -383,17 +383,44 @@ async function trackHallucinationPattern(
 
   const triggerKeywords = JSON.stringify(keywords);
 
-  // Auto-generate prevention prompt based on hallucination type
-  let autoFix = suggestedFix;
+  // Auto-generate SHORT, EFFECTIVE prevention prompt based on hallucination type
+  // 🔥 CRITICAL: Keep these SHORT (max 5 words) for FLUX compatibility!
+  let autoFix = "";
+
+  // First try to extract short keywords from suggestedFix
+  if (suggestedFix) {
+    const words = suggestedFix.split(/\s+/);
+    if (words.length <= 5) {
+      autoFix = suggestedFix;
+    } else {
+      // Extract quoted phrases
+      const quoted = suggestedFix.match(/['"]([^'"]+)['"]/g);
+      if (quoted && quoted.length > 0) {
+        autoFix = quoted.map(q => q.replace(/['"]/g, '')).slice(0, 2).join(', ');
+      }
+    }
+  }
+
+  // If no good fix from suggestion, generate based on type
   if (!autoFix) {
     if (hallucinationType === "missing_element" && missingElements && missingElements.length > 0) {
-      autoFix = `MUST include ${missingElements.join(", ")}`;
+      // Just list the missing elements (short!)
+      autoFix = missingElements.slice(0, 3).join(", ");
     } else if (hallucinationType === "wrong_element" && extraElements && extraElements.length > 0) {
-      autoFix = `DO NOT add ${extraElements.join(", ")}, only requested elements`;
+      // Short negative: "no X"
+      autoFix = `no ${extraElements[0]}`;
     } else if (hallucinationType === "style_mismatch") {
-      autoFix = "strictly follow the exact requested art style";
+      autoFix = "exact style match";
     } else if (hallucinationType === "extra_element") {
-      autoFix = "single object only, no extra elements";
+      autoFix = "single object only";
+    }
+  }
+
+  // Ensure autoFix is max 5 words
+  if (autoFix) {
+    const fixWords = autoFix.split(/\s+/);
+    if (fixWords.length > 5) {
+      autoFix = fixWords.slice(0, 5).join(' ');
     }
   }
 

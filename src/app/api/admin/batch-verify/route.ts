@@ -271,18 +271,98 @@ export async function POST(request: Request) {
         } else if (newAnalysis.hallucinationType === pattern.hallucinationType) {
           status = "STILL_BROKEN";
           message = `❌ Still broken. Same hallucination persists.`;
-          
-          // Clear the prevention prompt for re-learning
+
+          // Generate a BETTER prevention prompt based on the analysis
+          let betterFix: string | null = null;
+          if (newAnalysis.suggestedFix) {
+            // Extract short keywords from the suggestion
+            const words = newAnalysis.suggestedFix.split(/\s+/);
+            if (words.length <= 6) {
+              betterFix = newAnalysis.suggestedFix;
+            } else {
+              // Extract quoted phrases or first few words
+              const quoted = newAnalysis.suggestedFix.match(/['"]([^'"]+)['"]/g);
+              if (quoted && quoted.length > 0) {
+                betterFix = quoted.map(q => q.replace(/['"]/g, '')).slice(0, 2).join(', ');
+              } else {
+                betterFix = words.slice(0, 5).join(' ');
+              }
+            }
+          }
+
+          // Update with new/better fix instead of clearing
           await prisma.hallucinationPattern.update({
             where: { id: pattern.id },
-            data: { 
-              preventionPrompt: null,
+            data: {
+              preventionPrompt: betterFix || `fix ${pattern.hallucinationType}`,
               occurrenceCount: { increment: 1 },
             },
           });
+
+          message = `❌ Still broken. Updated fix to: "${betterFix || 'fix ' + pattern.hallucinationType}"`;
         } else {
           status = "DIFFERENT_ISSUE";
           message = `⚠️ Original fixed but new issue: ${newAnalysis.hallucinationType}`;
+
+          // Mark original as fixed (it worked!)
+          await prisma.hallucinationPattern.update({
+            where: { id: pattern.id },
+            data: { isActive: false },
+          });
+
+          // Create NEW pattern for the new issue
+          if (newAnalysis.hallucinationType) {
+            const existingNew = await prisma.hallucinationPattern.findFirst({
+              where: {
+                categoryId: gen.categoryId,
+                subcategoryId: gen.subcategoryId,
+                styleId: gen.styleId,
+                hallucinationType: newAnalysis.hallucinationType,
+                isActive: true,
+              },
+            });
+
+            if (!existingNew) {
+              // Generate fix for the new issue type
+              let newFix = "";
+              switch (newAnalysis.hallucinationType) {
+                case "missing_element":
+                  newFix = "include all elements";
+                  break;
+                case "wrong_element":
+                  newFix = "only requested items";
+                  break;
+                case "style_mismatch":
+                  newFix = "exact style match";
+                  break;
+                case "extra_element":
+                  newFix = "single object only";
+                  break;
+                default:
+                  newFix = newAnalysis.suggestedFix?.split(/\s+/).slice(0, 5).join(' ') || "quality fix";
+              }
+
+              await prisma.hallucinationPattern.create({
+                data: {
+                  categoryId: gen.categoryId,
+                  subcategoryId: gen.subcategoryId,
+                  styleId: gen.styleId,
+                  hallucinationType: newAnalysis.hallucinationType,
+                  preventionPrompt: newFix,
+                  triggerKeywords: "[]",
+                  occurrenceCount: 1,
+                  isActive: true,
+                },
+              });
+              message = `⚠️ Original fixed! Created new pattern for: ${newAnalysis.hallucinationType}`;
+            } else {
+              // Increment existing pattern
+              await prisma.hallucinationPattern.update({
+                where: { id: existingNew.id },
+                data: { occurrenceCount: { increment: 1 } },
+              });
+            }
+          }
         }
 
         // Save verification record
@@ -350,6 +430,144 @@ export async function POST(request: Request) {
   }
 }
 
+
+// PUT /api/admin/batch-verify
+// Apply fixes to all patterns WITHOUT generating images (instant, free)
+export async function PUT(request: Request) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { role: true },
+    });
+
+    if (!dbUser || !["ADMIN", "OWNER"].includes(dbUser.role)) {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const { mode = "generate_fixes" } = body;
+
+    const results: Array<{
+      patternId: string;
+      hallucinationType: string;
+      category: string;
+      oldFix: string | null;
+      newFix: string;
+    }> = [];
+
+    if (mode === "generate_fixes") {
+      // Get all patterns that need better fixes
+      const patterns = await prisma.hallucinationPattern.findMany({
+        where: { isActive: true },
+        orderBy: { occurrenceCount: "desc" },
+      });
+
+      console.log(`[BatchApply] Processing ${patterns.length} patterns...`);
+
+      for (const pattern of patterns) {
+        // Generate a SHORT, EFFECTIVE fix based on hallucination type
+        let newFix = "";
+
+        switch (pattern.hallucinationType) {
+          case "missing_element":
+            newFix = "include all elements";
+            break;
+          case "wrong_element":
+            newFix = "only requested items";
+            break;
+          case "style_mismatch":
+            newFix = "exact style match";
+            break;
+          case "extra_element":
+            newFix = "single object only";
+            break;
+          case "color_mismatch":
+            newFix = "correct colors";
+            break;
+          case "proportion_issue":
+            newFix = "correct proportions";
+            break;
+          case "background_issue":
+            newFix = "clean background";
+            break;
+          default:
+            newFix = `fix ${pattern.hallucinationType}`;
+        }
+
+        // Only update if fix is different or missing
+        if (pattern.preventionPrompt !== newFix) {
+          await prisma.hallucinationPattern.update({
+            where: { id: pattern.id },
+            data: { preventionPrompt: newFix },
+          });
+
+          results.push({
+            patternId: pattern.id,
+            hallucinationType: pattern.hallucinationType,
+            category: `${pattern.categoryId}/${pattern.subcategoryId}`,
+            oldFix: pattern.preventionPrompt,
+            newFix,
+          });
+        }
+      }
+
+      // Also ensure OptimizedPrompts are updated
+      for (const pattern of patterns) {
+        const existingOpt = await prisma.optimizedPrompt.findFirst({
+          where: {
+            categoryId: pattern.categoryId,
+            subcategoryId: pattern.subcategoryId,
+            styleId: pattern.styleId,
+            isActive: true,
+          },
+        });
+
+        if (!existingOpt) {
+          // Create new optimized prompt with the fix
+          await prisma.optimizedPrompt.create({
+            data: {
+              categoryId: pattern.categoryId,
+              subcategoryId: pattern.subcategoryId,
+              styleId: pattern.styleId,
+              promptTemplate: "{subject}, game asset",
+              requiredKeywords: JSON.stringify([pattern.preventionPrompt || "quality"]),
+              avoidKeywords: JSON.stringify([]),
+              version: 1,
+              isActive: true,
+            },
+          });
+        }
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `Applied fixes to ${results.length} patterns`,
+      results,
+      summary: {
+        total: results.length,
+        byType: results.reduce((acc, r) => {
+          acc[r.hallucinationType] = (acc[r.hallucinationType] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>),
+      },
+    });
+
+  } catch (error) {
+    console.error("[BatchApply] Error:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Batch apply failed" },
+      { status: 500 }
+    );
+  }
+}
 
 // DELETE /api/admin/batch-verify
 // Clean up verified/fixed hallucinations
