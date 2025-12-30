@@ -1,51 +1,64 @@
 /**
  * Migration Script: Supabase Storage → Cloudflare R2
  * 
- * Ten skrypt:
- * 1. Pobiera wszystkie rekordy z image_url wskazującym na Supabase
- * 2. Downloaduje obrazy z Supabase Storage
- * 3. Uploaduje je na Cloudflare R2
- * 4. Aktualizuje URL-e w bazie danych
- * 
  * Uruchom: npx tsx migrate-to-r2.ts
  */
 
+import { config } from "dotenv";
 import { createClient } from "@supabase/supabase-js";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
+// Load .env.local first, then .env
+config({ path: ".env.local" });
+config({ path: ".env" });
+
 // ============================================
-// KONFIGURACJA - UZUPEŁNIJ SWOIMI DANYMI
+// KONFIGURACJA
 // ============================================
 
-const CONFIG = {
-  // Supabase
-  SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || "https://gbwujuoybibdvyqyz.supabase.co",
-  SUPABASE_SERVICE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || "YOUR_SERVICE_ROLE_KEY",
-  
-  // Cloudflare R2
-  R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID || "190c02b6d902949de53acc9975069c81",
-  R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID || "YOUR_R2_ACCESS_KEY",
-  R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY || "YOUR_R2_SECRET_KEY",
-  R2_BUCKET_NAME: process.env.R2_BUCKET_NAME || "spritelab-images",
-  R2_PUBLIC_URL: process.env.R2_PUBLIC_URL || "https://pub-6411769b95ba423f9b01e8987f6d6e34.r2.dev",
-  
-  // Migration settings
-  BATCH_SIZE: 10, // Ile obrazów przetwarzać naraz
-  DRY_RUN: false, // true = tylko pokaż co by zrobił, bez zmian
-};
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
+const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
+const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
+const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || "spritelab-images";
+const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL;
+
+// Validate config
+console.log("🔧 Checking configuration...");
+console.log(`   SUPABASE_URL: ${SUPABASE_URL ? "✅" : "❌ MISSING"}`);
+console.log(`   SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY ? "✅" : "❌ MISSING"}`);
+console.log(`   R2_ACCOUNT_ID: ${R2_ACCOUNT_ID ? "✅" : "❌ MISSING"}`);
+console.log(`   R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID ? "✅" : "❌ MISSING"}`);
+console.log(`   R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY ? "✅" : "❌ MISSING"}`);
+console.log(`   R2_PUBLIC_URL: ${R2_PUBLIC_URL ? "✅" : "❌ MISSING"}`);
+console.log("");
+
+if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+  console.error("❌ Missing Supabase configuration! Check your .env.local file.");
+  process.exit(1);
+}
+
+if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_PUBLIC_URL) {
+  console.error("❌ Missing R2 configuration! Check your .env.local file.");
+  process.exit(1);
+}
+
+const BATCH_SIZE = 10;
+const DRY_RUN = false;
 
 // ============================================
 // SETUP CLIENTS
 // ============================================
 
-const supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_SERVICE_KEY);
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 const r2Client = new S3Client({
   region: "auto",
-  endpoint: `https://${CONFIG.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
   credentials: {
-    accessKeyId: CONFIG.R2_ACCESS_KEY_ID,
-    secretAccessKey: CONFIG.R2_SECRET_ACCESS_KEY,
+    accessKeyId: R2_ACCESS_KEY_ID,
+    secretAccessKey: R2_SECRET_ACCESS_KEY,
   },
 });
 
@@ -58,6 +71,25 @@ interface Generation {
   image_url: string;
   user_id: string;
   created_at: string;
+}
+
+async function testSupabaseConnection(): Promise<boolean> {
+  console.log("🔌 Testing Supabase connection...");
+  try {
+    const { count, error } = await supabase
+      .from("generations")
+      .select("*", { count: "exact", head: true });
+    
+    if (error) {
+      console.error(`   ❌ Connection failed: ${error.message}`);
+      return false;
+    }
+    console.log(`   ✅ Connected! Found ${count} total records in generations table.`);
+    return true;
+  } catch (err) {
+    console.error(`   ❌ Connection failed: ${err}`);
+    return false;
+  }
 }
 
 async function getSupabaseGenerations(): Promise<Generation[]> {
@@ -87,17 +119,14 @@ async function downloadImage(url: string): Promise<Buffer> {
 }
 
 function generateR2Path(userId: string, originalUrl: string): string {
-  // Wyciągnij oryginalną nazwę pliku lub wygeneruj nową
   const urlParts = originalUrl.split("/");
   const originalFileName = urlParts[urlParts.length - 1];
-  
-  // Format: users/{userId}/generations/{filename}
   return `users/${userId}/generations/${originalFileName}`;
 }
 
 async function uploadToR2(buffer: Buffer, filePath: string): Promise<string> {
   const command = new PutObjectCommand({
-    Bucket: CONFIG.R2_BUCKET_NAME,
+    Bucket: R2_BUCKET_NAME,
     Key: filePath,
     Body: buffer,
     ContentType: "image/png",
@@ -105,7 +134,7 @@ async function uploadToR2(buffer: Buffer, filePath: string): Promise<string> {
   });
 
   await r2Client.send(command);
-  return `${CONFIG.R2_PUBLIC_URL}/${filePath}`;
+  return `${R2_PUBLIC_URL}/${filePath}`;
 }
 
 async function updateDatabaseUrl(id: string, newUrl: string): Promise<void> {
@@ -125,12 +154,21 @@ async function updateDatabaseUrl(id: string, newUrl: string): Promise<void> {
 
 async function migrate() {
   console.log("🚀 Starting migration: Supabase Storage → Cloudflare R2\n");
-  console.log(`   Dry run: ${CONFIG.DRY_RUN ? "YES (no changes)" : "NO (will make changes)"}\n`);
+
+  // Test connection first
+  const connected = await testSupabaseConnection();
+  if (!connected) {
+    console.error("\n❌ Cannot connect to Supabase. Is the service still restricted?");
+    console.error("   Check: https://supabase.com/dashboard → your project → Usage");
+    process.exit(1);
+  }
+
+  console.log(`\n   Dry run: ${DRY_RUN ? "YES (no changes)" : "NO (will make changes)"}\n`);
 
   const generations = await getSupabaseGenerations();
 
   if (generations.length === 0) {
-    console.log("✅ Brak rekordów do migracji!");
+    console.log("✅ Brak rekordów do migracji - wszystkie obrazy są już na R2!");
     return;
   }
 
@@ -139,16 +177,16 @@ async function migrate() {
   const errors: { id: string; error: string }[] = [];
 
   // Process in batches
-  for (let i = 0; i < generations.length; i += CONFIG.BATCH_SIZE) {
-    const batch = generations.slice(i, i + CONFIG.BATCH_SIZE);
-    console.log(`\n📦 Batch ${Math.floor(i / CONFIG.BATCH_SIZE) + 1}/${Math.ceil(generations.length / CONFIG.BATCH_SIZE)}`);
+  for (let i = 0; i < generations.length; i += BATCH_SIZE) {
+    const batch = generations.slice(i, i + BATCH_SIZE);
+    console.log(`\n📦 Batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(generations.length / BATCH_SIZE)}`);
 
     await Promise.all(
       batch.map(async (gen) => {
         try {
           console.log(`   [${gen.id.slice(0, 8)}] Przetwarzanie...`);
 
-          if (CONFIG.DRY_RUN) {
+          if (DRY_RUN) {
             console.log(`   [${gen.id.slice(0, 8)}] ✓ (dry run)`);
             success++;
             return;
@@ -165,7 +203,7 @@ async function migrate() {
 
           // 3. Update database
           await updateDatabaseUrl(gen.id, newUrl);
-          console.log(`   [${gen.id.slice(0, 8)}] ✅ Done → ${newUrl.slice(0, 50)}...`);
+          console.log(`   [${gen.id.slice(0, 8)}] ✅ Done`);
 
           success++;
         } catch (error) {
@@ -177,8 +215,8 @@ async function migrate() {
       })
     );
 
-    // Small delay between batches to avoid rate limits
-    if (i + CONFIG.BATCH_SIZE < generations.length) {
+    // Small delay between batches
+    if (i + BATCH_SIZE < generations.length) {
       await new Promise((r) => setTimeout(r, 1000));
     }
   }

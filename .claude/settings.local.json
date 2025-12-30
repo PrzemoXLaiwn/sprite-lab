@@ -51,7 +51,9 @@
       "Bash(git status:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: Replace Replicate with Runware costs and fix CSS emoji issue\n\n- Update admin panel to show \"Runware Cost\" instead of \"Replicate Cost\"\n- Update fix-costs API to use Runware pricing \\($0.003-$0.03\\)\n- Remove emojis from globals.css comments \\(fixes Tailwind CSS 4 build error\\)\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(powershell -Command:*)",
-      "Bash(xxd:*)"
+      "Bash(xxd:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: Downgrade Tailwind CSS to 4.1.8 to fix CSS build error\n\n- Changed tailwindcss from 4.1.17 to 4.1.8\n- Changed @tailwindcss/postcss from 4.1.17 to 4.1.8\n- Updated vercel.json with cache clearing commands\n- Added batch verification improvements\n- Added \"Apply Fixes\" instant fix functionality\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(node test-supabase.js:*)"
     ],
     "deny": [],
     "ask": []
