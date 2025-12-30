@@ -53,7 +53,8 @@
       "Bash(powershell -Command:*)",
       "Bash(xxd:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: Downgrade Tailwind CSS to 4.1.8 to fix CSS build error\n\n- Changed tailwindcss from 4.1.17 to 4.1.8\n- Changed @tailwindcss/postcss from 4.1.17 to 4.1.8\n- Updated vercel.json with cache clearing commands\n- Added batch verification improvements\n- Added \"Apply Fixes\" instant fix functionality\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(node test-supabase.js:*)"
+      "Bash(node test-supabase.js:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []
