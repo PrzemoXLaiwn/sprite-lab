@@ -379,9 +379,23 @@ export async function POST(request: Request) {
     });
 
   } catch (error) {
-    console.error("[API] ❌ Unexpected error:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+
+    console.error("[API] ❌ Unexpected error:", {
+      message: errorMessage,
+      stack: errorStack,
+      name: error instanceof Error ? error.name : "Unknown",
+    });
+
+    // Return more detailed error in development/preview
+    const isDev = process.env.NODE_ENV !== "production" || process.env.VERCEL_ENV === "preview";
+
     return NextResponse.json(
-      { error: "Something went wrong. Please try again." },
+      {
+        error: isDev ? `Error: ${errorMessage}` : "Something went wrong. Please try again.",
+        details: isDev ? errorStack : undefined,
+      },
       { status: 500 }
     );
   }
