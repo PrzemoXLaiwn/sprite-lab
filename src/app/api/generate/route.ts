@@ -388,13 +388,11 @@ export async function POST(request: Request) {
       name: error instanceof Error ? error.name : "Unknown",
     });
 
-    // Return more detailed error in development/preview
-    const isDev = process.env.NODE_ENV !== "production" || process.env.VERCEL_ENV === "preview";
-
+    // Always return error details for debugging (temporarily)
     return NextResponse.json(
       {
-        error: isDev ? `Error: ${errorMessage}` : "Something went wrong. Please try again.",
-        details: isDev ? errorStack : undefined,
+        error: errorMessage || "Something went wrong. Please try again.",
+        errorType: error instanceof Error ? error.name : "Unknown",
       },
       { status: 500 }
     );
