@@ -182,10 +182,18 @@ export async function generateImage(
 
     return { success: true, images };
   } catch (error) {
-    console.error("[Runware] ❌ Error:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorDetails = error instanceof Error && 'cause' in error ? String(error.cause) : undefined;
+
+    console.error("[Runware] ❌ Error:", {
+      message: errorMessage,
+      details: errorDetails,
+      fullError: error,
+    });
+
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Generation failed",
+      error: `Runware: ${errorMessage}${errorDetails ? ` (${errorDetails})` : ''}`,
     };
   }
 }
