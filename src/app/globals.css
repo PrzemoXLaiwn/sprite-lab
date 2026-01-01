@@ -173,22 +173,22 @@
   100% { background-position: 56.57px 0; }
 }
 
-.animate-float { animation: float 3s ease-in-out infinite; }
-.animate-float-sway { animation: float-sway 4s ease-in-out infinite; }
-.animate-bounce-soft { animation: bounce-soft 2s ease-in-out infinite; }
-.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
-.animate-breathe-glow { animation: breathe-glow 3s ease-in-out infinite; }
-.animate-gradient { background-size: 200% 200%; animation: gradient-shift 5s ease infinite; }
-.animate-gradient-fast { background-size: 200% 200%; animation: gradient-shift 2s ease infinite; }
-.animate-glow-pulse { animation: glow-pulse 2s ease-in-out infinite; }
-.animate-neon-flicker { animation: neon-flicker 3s ease-in-out infinite; }
-.animate-shimmer { background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent); background-size: 200% 100%; animation: shimmer 2s infinite; }
-.animate-slide-up { animation: slide-up 0.5s ease-out forwards; }
-.animate-slide-down { animation: slide-down 0.5s ease-out forwards; }
-.animate-scale-in { animation: scale-in 0.3s ease-out forwards; }
-.animate-wiggle { animation: wiggle 0.5s ease-in-out; }
-.animate-pulse-ring { animation: pulse-ring 1.5s ease-out infinite; }
-.animate-wip-stripes { animation: wip-stripes 1s linear infinite; }
+.animate-float { animation: float 3s ease-in-out infinite; will-change: transform; }
+.animate-float-sway { animation: float-sway 4s ease-in-out infinite; will-change: transform; }
+.animate-bounce-soft { animation: bounce-soft 2s ease-in-out infinite; will-change: transform; }
+.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; will-change: box-shadow; }
+.animate-breathe-glow { animation: breathe-glow 3s ease-in-out infinite; will-change: box-shadow, transform; }
+.animate-gradient { background-size: 200% 200%; animation: gradient-shift 5s ease infinite; will-change: background-position; }
+.animate-gradient-fast { background-size: 200% 200%; animation: gradient-shift 2s ease infinite; will-change: background-position; }
+.animate-glow-pulse { animation: glow-pulse 2s ease-in-out infinite; will-change: opacity; }
+.animate-neon-flicker { animation: neon-flicker 3s ease-in-out infinite; will-change: opacity; }
+.animate-shimmer { background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent); background-size: 200% 100%; animation: shimmer 2s infinite; will-change: background-position; }
+.animate-slide-up { animation: slide-up 0.5s ease-out forwards; will-change: transform, opacity; }
+.animate-slide-down { animation: slide-down 0.5s ease-out forwards; will-change: transform, opacity; }
+.animate-scale-in { animation: scale-in 0.3s ease-out forwards; will-change: transform, opacity; }
+.animate-wiggle { animation: wiggle 0.5s ease-in-out; will-change: transform; }
+.animate-pulse-ring { animation: pulse-ring 1.5s ease-out infinite; will-change: transform, opacity; }
+.animate-wip-stripes { animation: wip-stripes 1s linear infinite; will-change: background-position; }
 
 .animation-delay-100 { animation-delay: 100ms; }
 .animation-delay-200 { animation-delay: 200ms; }
@@ -202,6 +202,7 @@
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(0, 255, 136, 0.1);
+  transform: translateZ(0);
 }
 .glass-card {
   background: linear-gradient(135deg, rgba(10, 10, 15, 0.9), rgba(26, 26, 40, 0.8));
@@ -209,6 +210,8 @@
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(0, 255, 136, 0.15);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  transform: translateZ(0);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .glass-card:hover {
   border-color: rgba(0, 255, 136, 0.3);
@@ -337,9 +340,16 @@
   image-rendering: crisp-edges;
 }
 
-.hover-lift { transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
-.hover-lift:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(0, 255, 136, 0.2), 0 5px 15px rgba(0, 0, 0, 0.3); }
-.hover-glow { transition: all 0.3s ease; }
+.hover-lift {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+  will-change: transform;
+  transform: translateZ(0);
+}
+.hover-lift:hover { transform: translateY(-4px) translateZ(0); box-shadow: 0 10px 30px rgba(0, 255, 136, 0.2), 0 5px 15px rgba(0, 0, 0, 0.3); }
+.hover-glow {
+  transition: box-shadow 0.3s ease;
+  transform: translateZ(0);
+}
 .hover-glow:hover { box-shadow: 0 0 20px rgba(0, 255, 136, 0.3), 0 0 40px rgba(0, 255, 136, 0.1); }
 
 .writing-vertical {
