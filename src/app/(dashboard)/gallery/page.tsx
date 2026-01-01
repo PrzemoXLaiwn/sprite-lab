@@ -34,6 +34,7 @@ import {
   Paintbrush,
   Gamepad2,
 } from "lucide-react";
+import Image from "next/image";
 import { SpriteEditor } from "@/components/editor/SpriteEditor";
 import { SpritePlayground } from "@/components/playground/SpritePlayground";
 import { GenerationFeedback } from "@/components/analytics/GenerationFeedback";
@@ -625,10 +626,13 @@ export default function GalleryPage() {
             {/* Coreling waving for empty state */}
             <div className="w-32 h-32 mx-auto mb-6 relative">
               <div className="absolute inset-0 bg-[#c084fc]/20 rounded-full blur-2xl" />
-              <img
+              <Image
                 src="/coreling-wave.png"
                 alt="Coreling Waving"
+                width={128}
+                height={128}
                 className="relative w-full h-full object-contain animate-float drop-shadow-xl"
+                priority
               />
             </div>
             <h3 className="text-xl font-bold text-white mb-2">
@@ -703,9 +707,11 @@ export default function GalleryPage() {
                             <div className={`absolute inset-0 rounded-full blur-xl opacity-40 animate-pulse ${
                               job.mode === "3d" ? "bg-[#c084fc]" : "bg-[#00ff88]"
                             }`} />
-                            <img
+                            <Image
                               src="/coreling-working.png"
                               alt="Generating"
+                              width={80}
+                              height={80}
                               className="relative w-full h-full object-contain animate-bounce"
                               style={{ animationDuration: "1.5s" }}
                             />
@@ -818,11 +824,14 @@ export default function GalleryPage() {
                         compact={true}
                       />
                     ) : (
-                      // 2D Image
-                      <img
+                      // 2D Image - optimized with next/image
+                      <Image
                         src={gen.imageUrl}
                         alt={gen.prompt}
-                        className="w-full h-full object-contain p-4 relative z-10"
+                        fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                        className="object-contain p-4 relative z-10"
+                        loading="lazy"
                       />
                     )}
                     

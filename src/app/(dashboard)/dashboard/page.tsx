@@ -13,6 +13,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { fetchDashboardData } from "./page.actions";
 import { CommunityShowcase } from "@/components/dashboard/CommunityShowcase";
 
@@ -204,12 +205,15 @@ export default function DashboardPage() {
                   {data.recentGenerations.map((gen) => (
                     <div
                       key={gen.id}
-                      className="relative aspect-square rounded-lg overflow-hidden border border-border hover:border-primary/50 transition-all group"
+                      className="relative aspect-square rounded-lg overflow-hidden border border-border hover:border-primary/50 transition-colors group"
                     >
-                      <img
+                      <Image
                         src={gen.imageUrl}
                         alt={gen.prompt}
-                        className="w-full h-full object-cover"
+                        fill
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 200px"
+                        className="object-cover"
+                        loading="lazy"
                       />
                       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-2">
                         <p className="text-xs text-white text-center line-clamp-3">

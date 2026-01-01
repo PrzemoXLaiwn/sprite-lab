@@ -1,6 +1,5 @@
 {
-  "buildCommand": "rm -rf .next node_modules/.cache && npm run build",
-  "installCommand": "rm -rf node_modules && npm ci",
+  "buildCommand": "NEXT_DISABLE_TURBOPACK=1 npm run build",
   "crons": [
     {
       "path": "/api/cron/analyze",

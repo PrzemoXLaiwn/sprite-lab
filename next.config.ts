@@ -27,6 +27,24 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "**.supabase.in",
       },
+      // Cloudflare R2 storage
+      {
+        protocol: "https",
+        hostname: "**.r2.dev",
+      },
+      {
+        protocol: "https",
+        hostname: "**.cloudflare.com",
+      },
+      // Runware AI generated images
+      {
+        protocol: "https",
+        hostname: "**.runware.ai",
+      },
+      {
+        protocol: "https",
+        hostname: "im.runware.ai",
+      },
     ],
     // Modern image formats for better compression
     formats: ["image/avif", "image/webp"],
@@ -102,6 +120,26 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      // Cache JS/CSS bundles
+      {
+        source: "/_next/static/(.*)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      // API routes - short cache for dynamic content
+      {
+        source: "/api/(.*)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-store, must-revalidate",
+          },
+        ],
+      },
     ];
   },
 
@@ -137,9 +175,6 @@ const nextConfig: NextConfig = {
       "zod",
     ],
   },
-
-  // Turbopack configuration (Next.js 16+ default bundler)
-  turbopack: {},
 
   // Powered by header - hide for security
   poweredByHeader: false,
