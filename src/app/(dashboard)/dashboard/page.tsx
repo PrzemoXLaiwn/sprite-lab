@@ -11,6 +11,8 @@ import {
   TrendingUp,
   Calendar,
   ArrowRight,
+  Loader2,
+  Cuboid,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -31,6 +33,16 @@ interface DashboardData {
     imageUrl: string;
     createdAt: Date;
   }>;
+}
+
+interface PendingJob {
+  id: string;
+  prompt: string;
+  mode: string;
+  status: "pending" | "processing" | "completed" | "failed";
+  progress: number;
+  progressMessage: string | null;
+  creditsUsed: number;
 }
 
 // Skeleton components
@@ -58,7 +70,9 @@ function ImageSkeleton() {
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pendingJobs, setPendingJobs] = useState<PendingJob[]>([]);
   const isMounted = useRef(true);
+  const previousCompletedRef = useRef<Set<string>>(new Set());
 
   const loadData = useCallback(async () => {
     try {
@@ -73,11 +87,56 @@ export default function DashboardPage() {
     }
   }, []);
 
+  const loadPendingJobs = useCallback(async () => {
+    try {
+      const response = await fetch("/api/queue/status");
+      if (response.ok && isMounted.current) {
+        const result = await response.json();
+        const jobs: PendingJob[] = result.jobs || [];
+
+        // Check for newly completed jobs
+        const newlyCompleted = jobs.filter(
+          (job) =>
+            job.status === "completed" &&
+            !previousCompletedRef.current.has(job.id)
+        );
+
+        // Update previous completed set
+        jobs.forEach((job) => {
+          if (job.status === "completed") {
+            previousCompletedRef.current.add(job.id);
+          }
+        });
+
+        setPendingJobs(jobs);
+
+        // Auto-refresh dashboard data when jobs complete
+        if (newlyCompleted.length > 0) {
+          loadData();
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load pending jobs:", error);
+    }
+  }, [loadData]);
+
   useEffect(() => {
     isMounted.current = true;
     loadData();
-    return () => { isMounted.current = false; };
-  }, [loadData]);
+    loadPendingJobs();
+
+    // Poll for pending jobs every 3 seconds
+    const interval = setInterval(loadPendingJobs, 3000);
+
+    return () => {
+      isMounted.current = false;
+      clearInterval(interval);
+    };
+  }, [loadData, loadPendingJobs]);
+
+  const activePendingJobs = pendingJobs.filter(
+    (job) => job.status === "pending" || job.status === "processing"
+  );
 
   const formatDate = (date: Date | string) => {
     const dateObj = typeof date === "string" ? new Date(date) : date;
@@ -132,6 +191,52 @@ export default function DashboardPage() {
         </h1>
         <p className="text-muted-foreground">Welcome back! Here's your overview</p>
       </div>
+
+      {/* Active Generations */}
+      {activePendingJobs.length > 0 && (
+        <Card className="mb-6 border-primary/30 bg-primary/5">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+              <CardTitle className="text-base">
+                Generating ({activePendingJobs.length})
+              </CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {activePendingJobs.map((job) => (
+                <div
+                  key={job.id}
+                  className="flex items-center gap-4 p-3 rounded-lg bg-background/50 border border-border"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    {job.mode === "3d" ? (
+                      <Cuboid className="w-5 h-5 text-purple-400" />
+                    ) : (
+                      <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{job.prompt}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-primary to-purple-500 transition-all duration-500"
+                          style={{ width: `${job.progress}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {job.progressMessage || (job.status === "processing" ? "Processing..." : "Queued")}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

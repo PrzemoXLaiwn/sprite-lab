@@ -33,8 +33,10 @@ import {
   PartyPopper,
   Paintbrush,
   Gamepad2,
+  Archive,
 } from "lucide-react";
 import Image from "next/image";
+import JSZip from "jszip";
 import { SpriteEditor } from "@/components/editor/SpriteEditor";
 import { SpritePlayground } from "@/components/playground/SpritePlayground";
 import { GenerationFeedback } from "@/components/analytics/GenerationFeedback";
@@ -201,6 +203,7 @@ export default function GalleryPage() {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   // Toast state
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -256,22 +259,24 @@ export default function GalleryPage() {
             .filter(job => job.status === "completed")
             .map(job => job.id)
         );
-        
+
         const newlyCompleted = jobs.filter(
-          (job: PendingJob) => 
-            job.status === "completed" && 
+          (job: PendingJob) =>
+            job.status === "completed" &&
             !previousCompletedIds.has(job.id)
         );
-        
+
         setPendingJobs(jobs);
 
-        // Show toast notification for newly completed jobs (don't auto-refresh!)
+        // Auto-refresh gallery when jobs complete
         if (newlyCompleted.length > 0) {
           showToast(
             "success",
             `${newlyCompleted.length} generation${newlyCompleted.length > 1 ? 's' : ''} completed!`,
-            "Click the refresh button to see your new assets."
+            "Your new assets have been added to the gallery."
           );
+          // Auto-refresh gallery to show new assets
+          loadGenerations();
         }
       }
     } catch (error) {
@@ -309,16 +314,28 @@ export default function GalleryPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this generation?")) return;
 
+    // Optimistic update - remove immediately
+    const previousGenerations = generations;
+    setGenerations((prev) => prev.filter((g) => g.id !== id));
+    showToast("info", "Deleting...", "Removing from gallery");
+
     try {
       const response = await fetch(`/api/generations/${id}`, {
         method: "DELETE",
       });
 
       if (response.ok) {
-        setGenerations(generations.filter((g) => g.id !== id));
+        showToast("success", "Deleted", "Asset removed from gallery");
+      } else {
+        // Rollback on error
+        setGenerations(previousGenerations);
+        showToast("error", "Delete failed", "Please try again");
       }
     } catch (error) {
       console.error("Failed to delete:", error);
+      // Rollback on error
+      setGenerations(previousGenerations);
+      showToast("error", "Delete failed", "Please try again");
     }
   };
 
@@ -375,35 +392,96 @@ export default function GalleryPage() {
     setSelectMode(false);
   };
 
-  // Bulk delete
+  // Bulk delete with optimistic UI
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
 
     const count = selectedIds.size;
     if (!confirm(`Are you sure you want to delete ${count} item(s)? This cannot be undone.`)) return;
 
+    // Optimistic update - remove immediately
+    const previousGenerations = generations;
+    const idsToDelete = new Set(selectedIds);
+    setGenerations((prev) => prev.filter((g) => !idsToDelete.has(g.id)));
+    clearSelection();
     setDeleting(true);
+    showToast("info", `Deleting ${count} items...`, "This may take a moment");
+
     try {
       const response = await fetch("/api/generations", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: Array.from(selectedIds) }),
+        body: JSON.stringify({ ids: Array.from(idsToDelete) }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        setGenerations(prev => prev.filter(g => !selectedIds.has(g.id)));
-        clearSelection();
-        alert(`Successfully deleted ${data.deleted} item(s).`);
+        showToast("success", "Deleted", `${data.deleted} items removed`);
       } else {
+        // Rollback on error
+        setGenerations(previousGenerations);
         const error = await response.json();
-        alert(error.error || "Failed to delete items");
+        showToast("error", "Delete failed", error.error || "Please try again");
       }
     } catch (error) {
       console.error("Bulk delete failed:", error);
-      alert("Failed to delete items. Please try again.");
+      // Rollback on error
+      setGenerations(previousGenerations);
+      showToast("error", "Delete failed", "Please try again");
     } finally {
       setDeleting(false);
+    }
+  };
+
+  // Batch download as ZIP
+  const handleBatchDownload = async () => {
+    if (selectedIds.size === 0) return;
+
+    setDownloading(true);
+    showToast("info", "Preparing download...", `Packaging ${selectedIds.size} files`);
+
+    try {
+      const zip = new JSZip();
+      const selectedGens = generations.filter((g) => selectedIds.has(g.id));
+
+      // Download all files in parallel
+      const downloadPromises = selectedGens.map(async (gen, index) => {
+        try {
+          const response = await fetch(gen.imageUrl);
+          if (!response.ok) throw new Error("Failed to fetch");
+
+          const blob = await response.blob();
+          const is3D = is3DFormat(gen.imageUrl) || is3DStyle(gen.styleId);
+          const ext = is3D ? get3DFormat(gen.imageUrl).toLowerCase() : "png";
+          const safeName = gen.prompt.slice(0, 30).replace(/[^a-zA-Z0-9]/g, "_");
+          const fileName = `${index + 1}_${safeName}_${gen.seed || gen.id.slice(0, 8)}.${ext}`;
+
+          zip.file(fileName, blob);
+        } catch (err) {
+          console.error(`Failed to download ${gen.id}:`, err);
+        }
+      });
+
+      await Promise.all(downloadPromises);
+
+      // Generate and download ZIP
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `spritelab-assets-${new Date().toISOString().slice(0, 10)}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      showToast("success", "Download complete!", `${selectedIds.size} files packaged`);
+      clearSelection();
+    } catch (error) {
+      console.error("Batch download failed:", error);
+      showToast("error", "Download failed", "Please try again");
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -1055,6 +1133,25 @@ export default function GalleryPage() {
 
               <Button
                 size="sm"
+                onClick={handleBatchDownload}
+                disabled={downloading}
+                className="bg-[#00ff88] hover:bg-[#00ff88]/90 text-black"
+              >
+                {downloading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                    Packaging...
+                  </>
+                ) : (
+                  <>
+                    <Archive className="w-4 h-4 mr-1" />
+                    Download ZIP
+                  </>
+                )}
+              </Button>
+
+              <Button
+                size="sm"
                 onClick={handleBulkDelete}
                 disabled={deleting}
                 className="bg-destructive hover:bg-destructive/90 text-white"
@@ -1067,7 +1164,7 @@ export default function GalleryPage() {
                 ) : (
                   <>
                     <Trash2 className="w-4 h-4 mr-1" />
-                    Delete Selected
+                    Delete
                   </>
                 )}
               </Button>
