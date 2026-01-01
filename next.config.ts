@@ -97,7 +97,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "font-src 'self' data:",
               "img-src 'self' data: blob: https: http:",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://replicate.delivery https://*.replicate.delivery https://va.vercel-scripts.com https://vitals.vercel-insights.com wss://ws-us3.pusher.com https://pagead2.googlesyndication.com https://www.google-analytics.com https://fundingchoicesmessages.google.com https://www.googletagmanager.com https://googletagmanager.com https://region1.google-analytics.com https://www.google.com https://*.google.com https://www.google.pl https://*.google.pl https://googleads.g.doubleclick.net https://www.googleadservices.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google https://adservice.google.com https://partner.googleadservices.com https://tpc.googlesyndication.com https://analytics.tiktok.com https://*.tiktok.com https://ads.tiktok.com",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://replicate.delivery https://*.replicate.delivery https://va.vercel-scripts.com https://vitals.vercel-insights.com wss://ws-us3.pusher.com https://pagead2.googlesyndication.com https://www.google-analytics.com https://fundingchoicesmessages.google.com https://www.googletagmanager.com https://googletagmanager.com https://region1.google-analytics.com https://www.google.com https://*.google.com https://www.google.pl https://*.google.pl https://googleads.g.doubleclick.net https://www.googleadservices.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google https://adservice.google.com https://partner.googleadservices.com https://tpc.googlesyndication.com https://analytics.tiktok.com https://*.tiktok.com https://ads.tiktok.com https://*.tiktokw.us",
               "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://vercel.live https://googleads.g.doubleclick.net https://www.google.com https://tpc.googlesyndication.com https://fundingchoicesmessages.google.com https://www.googletagmanager.com https://pagead2.googlesyndication.com",
               "worker-src 'self' blob:",
               "media-src 'self' blob: https:",
@@ -155,8 +155,6 @@ const nextConfig: NextConfig = {
 
   // Experimental features for performance
   experimental: {
-    // CSS optimization for smaller bundles
-    optimizeCss: true,
     // Optimize package imports - tree shaking for smaller bundles
     optimizePackageImports: [
       "lucide-react",
