@@ -6,17 +6,53 @@ import { Runware } from "@runware/sdk-js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let runwareInstance: InstanceType<typeof Runware> | null = null;
+let isConnected = false;
 
 export async function getRunwareClient(): Promise<InstanceType<typeof Runware>> {
-  if (!runwareInstance) {
-    const apiKey = process.env.RUNWARE_API_KEY;
-    if (!apiKey) {
-      console.error("[Runware] RUNWARE_API_KEY environment variable is not set!");
-      throw new Error("Image generation service is temporarily unavailable. Please try again later.");
-    }
-    runwareInstance = new Runware({ apiKey });
+  const apiKey = process.env.RUNWARE_API_KEY;
+  if (!apiKey) {
+    console.error("[Runware] RUNWARE_API_KEY environment variable is not set!");
+    throw new Error("Image generation service is temporarily unavailable. Please try again later.");
   }
+
+  // Create new instance if needed
+  if (!runwareInstance) {
+    console.log("[Runware] Creating new client instance...");
+    runwareInstance = new Runware({ apiKey });
+    isConnected = false;
+  }
+
+  // Ensure connection is established
+  if (!isConnected) {
+    try {
+      console.log("[Runware] Ensuring connection...");
+      await runwareInstance.ensureConnection();
+      isConnected = true;
+      console.log("[Runware] ✅ Connected successfully");
+    } catch (connError) {
+      console.error("[Runware] ❌ Connection failed:", connError);
+      // Reset instance to try fresh on next attempt
+      runwareInstance = null;
+      isConnected = false;
+      throw new Error(`Failed to connect to Runware: ${connError instanceof Error ? connError.message : String(connError)}`);
+    }
+  }
+
   return runwareInstance;
+}
+
+// Reset connection (useful for error recovery)
+export function resetRunwareConnection(): void {
+  if (runwareInstance) {
+    try {
+      runwareInstance.disconnect();
+    } catch {
+      // Ignore disconnect errors
+    }
+  }
+  runwareInstance = null;
+  isConnected = false;
+  console.log("[Runware] Connection reset");
 }
 
 // ===========================================
@@ -182,23 +218,50 @@ export async function generateImage(
 
     return { success: true, images };
   } catch (error) {
+    // Reset connection on error for fresh retry next time
+    resetRunwareConnection();
+
     let errorMessage: string;
 
     if (error instanceof Error) {
       errorMessage = error.message;
     } else if (typeof error === 'object' && error !== null) {
-      // Handle Runware API error objects
+      // Handle Runware API error objects - try multiple common fields
       const errObj = error as Record<string, unknown>;
-      errorMessage = (errObj.message as string)
-        || (errObj.error as string)
-        || (errObj.errorMessage as string)
-        || (errObj.errors ? JSON.stringify(errObj.errors) : null)
-        || JSON.stringify(error);
+
+      // Try to extract meaningful error message
+      if (typeof errObj.message === 'string') {
+        errorMessage = errObj.message;
+      } else if (typeof errObj.error === 'string') {
+        errorMessage = errObj.error;
+      } else if (typeof errObj.errorMessage === 'string') {
+        errorMessage = errObj.errorMessage;
+      } else if (errObj.errors && Array.isArray(errObj.errors)) {
+        errorMessage = errObj.errors.map((e: unknown) =>
+          typeof e === 'string' ? e : JSON.stringify(e)
+        ).join(', ');
+      } else if (errObj.data && typeof errObj.data === 'object') {
+        // Some APIs nest error in data field
+        const dataObj = errObj.data as Record<string, unknown>;
+        errorMessage = (dataObj.message as string) || (dataObj.error as string) || JSON.stringify(errObj.data);
+      } else {
+        // Last resort - stringify the whole object
+        try {
+          errorMessage = JSON.stringify(error, null, 0);
+        } catch {
+          errorMessage = "Unknown error object";
+        }
+      }
     } else {
       errorMessage = String(error);
     }
 
-    console.error("[Runware] ❌ Error:", JSON.stringify(error, null, 2));
+    console.error("[Runware] ❌ Error details:", {
+      type: typeof error,
+      isError: error instanceof Error,
+      message: errorMessage,
+      raw: error,
+    });
 
     return {
       success: false,
