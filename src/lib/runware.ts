@@ -155,7 +155,6 @@ export async function generateImage(
 
     // 🔥 FLUX OPTIMIZATION: Limit by WORDS (optimal: 50-80, max: 100)
     const MAX_PROMPT_WORDS = 100;
-    const MAX_NEGATIVE_WORDS = 60;
 
     let safePrompt = options.prompt;
     const promptWords = safePrompt.split(/\s+/);
@@ -163,15 +162,6 @@ export async function generateImage(
     if (promptWords.length > MAX_PROMPT_WORDS) {
       console.log(`[Runware] ⚠️ PROMPT TOO LONG (${promptWords.length} words), limiting to ${MAX_PROMPT_WORDS}`);
       safePrompt = promptWords.slice(0, MAX_PROMPT_WORDS).join(" ");
-    }
-
-    // Also limit negative prompt
-    let safeNegative = options.negativePrompt || "blurry, low quality, distorted, watermark, text, signature";
-    const negativeWords = safeNegative.split(/\s+/);
-
-    if (negativeWords.length > MAX_NEGATIVE_WORDS) {
-      console.log(`[Runware] ⚠️ NEGATIVE TOO LONG (${negativeWords.length} words), limiting to ${MAX_NEGATIVE_WORDS}`);
-      safeNegative = negativeWords.slice(0, MAX_NEGATIVE_WORDS).join(" ");
     }
 
     // Final character check (Runware hard limit: 3000)
@@ -188,9 +178,9 @@ export async function generateImage(
     console.log(`[Runware] Preview: ${safePrompt.substring(0, 80)}...`);
 
     // FLUX-optimized defaults: guidance 2-4, steps 20-28
+    // Note: Runware API does not support negativePrompt parameter
     const result = await runware.imageInference({
       positivePrompt: safePrompt,
-      negativePrompt: safeNegative,
       model: modelAIR,
       width: options.width || 1024,
       height: options.height || 1024,
