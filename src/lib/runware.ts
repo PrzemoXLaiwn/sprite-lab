@@ -182,18 +182,27 @@ export async function generateImage(
 
     return { success: true, images };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorDetails = error instanceof Error && 'cause' in error ? String(error.cause) : undefined;
+    let errorMessage: string;
 
-    console.error("[Runware] ❌ Error:", {
-      message: errorMessage,
-      details: errorDetails,
-      fullError: error,
-    });
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'object' && error !== null) {
+      // Handle Runware API error objects
+      const errObj = error as Record<string, unknown>;
+      errorMessage = (errObj.message as string)
+        || (errObj.error as string)
+        || (errObj.errorMessage as string)
+        || (errObj.errors ? JSON.stringify(errObj.errors) : null)
+        || JSON.stringify(error);
+    } else {
+      errorMessage = String(error);
+    }
+
+    console.error("[Runware] ❌ Error:", JSON.stringify(error, null, 2));
 
     return {
       success: false,
-      error: `Runware: ${errorMessage}${errorDetails ? ` (${errorDetails})` : ''}`,
+      error: `Runware: ${errorMessage}`,
     };
   }
 }
