@@ -85,14 +85,14 @@ export async function POST(request: Request) {
     let height = builtPrompt.category.defaultSize.height;
 
     if (isPixelArt) {
-      // Pixel art MUST use tiny sizes to force blocky pixels
-      // 16-bit style = 64x64, 32-bit style = 128x128
+      // Pixel art uses smallest allowed size (Runware min: 256, multiples of 32)
+      // 16-bit style = 256x256, 32-bit style = 320x320
       if (styleId === "pixel-16") {
-        width = 64;
-        height = 64;
+        width = 256;
+        height = 256;
       } else {
-        width = 128;
-        height = 128;
+        width = 320;
+        height = 320;
       }
     }
 
