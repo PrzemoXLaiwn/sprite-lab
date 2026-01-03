@@ -78,17 +78,31 @@ export async function POST(request: Request) {
       ? Number(seed)
       : Math.floor(Math.random() * 2147483647);
 
-    // 7. Generate image
+    // 7. Determine size based on style
+    // For pixel art, use smaller sizes to get actual visible pixels
+    const isPixelArt = styleId.startsWith("pixel");
+    let width = builtPrompt.category.defaultSize.width;
+    let height = builtPrompt.category.defaultSize.height;
+
+    if (isPixelArt) {
+      // Pixel art works better with smaller output sizes
+      // This forces the AI to create actual pixel-style graphics
+      width = 256;
+      height = 256;
+    }
+
+    // 8. Generate image
     console.log(`[Generate V2] 🎨 Generating: ${builtPrompt.prompt.substring(0, 80)}...`);
+    console.log(`[Generate V2] Size: ${width}x${height}, Style: ${styleId}`);
 
     const result = await generateImage(
       {
         prompt: builtPrompt.prompt,
         seed: usedSeed,
-        width: builtPrompt.category.defaultSize.width,
-        height: builtPrompt.category.defaultSize.height,
-        steps: 25,
-        guidance: 3.5,
+        width,
+        height,
+        steps: isPixelArt ? 30 : 25, // More steps for pixel art detail
+        guidance: isPixelArt ? 4.0 : 3.5, // Higher guidance for pixel art
       },
       userTier
     );
@@ -104,7 +118,7 @@ export async function POST(request: Request) {
 
     const generatedImage = result.images[0];
 
-    // 8. Remove background
+    // 9. Remove background (skip for pixel art to preserve crisp edges)
     console.log("[Generate V2] 🔪 Removing background...");
     let finalImageUrl = generatedImage.imageURL;
 
