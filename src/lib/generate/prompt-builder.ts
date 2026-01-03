@@ -13,6 +13,7 @@ interface PromptBuildParams {
 
 interface BuiltPrompt {
   prompt: string;
+  negativePrompt?: string;
   category: AssetCategory;
   style: ArtStyle;
 }
@@ -30,33 +31,54 @@ export function buildPrompt(params: PromptBuildParams): BuiltPrompt {
     throw new Error(`Invalid style: ${styleId}`);
   }
 
-  // Quality prefixes - always at the start
-  const qualityPrefix = [
-    "high quality",
-    "game-ready asset",
-    "clean design",
-    "professional",
-    "single object",
-    "centered composition",
-  ].join(", ");
+  // Check if it's a pixel art style - needs special handling
+  const isPixelArt = styleId.startsWith("pixel");
+
+  // Quality prefixes - adjusted for pixel art (remove "clean" which might cause smoothing)
+  const qualityPrefix = isPixelArt
+    ? ["game-ready sprite", "single object", "centered composition"].join(", ")
+    : [
+        "high quality",
+        "game-ready asset",
+        "clean design",
+        "professional",
+        "single object",
+        "centered composition",
+      ].join(", ");
 
   // Background suffix - transparent for most assets
   const backgroundSuffix =
-    "isolated on transparent background, no background, PNG ready, clean edges";
+    "isolated on transparent background, no background, PNG ready";
 
-  // Build final prompt
-  const promptParts = [
-    qualityPrefix,
-    category.promptPrefix,
-    userPrompt.trim(),
-    style.promptSuffix,
-    backgroundSuffix,
-  ];
+  // For pixel art, add explicit exclusions into the prompt itself
+  // Since Runware doesn't support negativePrompt, we emphasize what we DON'T want
+  const pixelArtExclusions = isPixelArt
+    ? "NOT smooth, NOT blurry, NOT gradient, NOT anti-aliased, strictly pixelated"
+    : "";
+
+  // Build final prompt - style comes FIRST for pixel art to emphasize it
+  const promptParts = isPixelArt
+    ? [
+        style.promptSuffix, // Style FIRST for pixel art
+        qualityPrefix,
+        category.promptPrefix,
+        userPrompt.trim(),
+        pixelArtExclusions,
+        backgroundSuffix,
+      ]
+    : [
+        qualityPrefix,
+        category.promptPrefix,
+        userPrompt.trim(),
+        style.promptSuffix,
+        backgroundSuffix,
+      ];
 
   const prompt = promptParts.filter(Boolean).join(", ");
 
   return {
     prompt,
+    negativePrompt: style.negativePrompt,
     category,
     style,
   };

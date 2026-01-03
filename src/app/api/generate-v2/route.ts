@@ -79,16 +79,21 @@ export async function POST(request: Request) {
       : Math.floor(Math.random() * 2147483647);
 
     // 7. Determine size based on style
-    // For pixel art, use smaller sizes to get actual visible pixels
+    // For pixel art, use VERY small sizes to force actual visible pixels
     const isPixelArt = styleId.startsWith("pixel");
     let width = builtPrompt.category.defaultSize.width;
     let height = builtPrompt.category.defaultSize.height;
 
     if (isPixelArt) {
-      // Pixel art works better with smaller output sizes
-      // This forces the AI to create actual pixel-style graphics
-      width = 256;
-      height = 256;
+      // Pixel art MUST use tiny sizes to force blocky pixels
+      // 16-bit style = 64x64, 32-bit style = 128x128
+      if (styleId === "pixel-16") {
+        width = 64;
+        height = 64;
+      } else {
+        width = 128;
+        height = 128;
+      }
     }
 
     // 8. Generate image
