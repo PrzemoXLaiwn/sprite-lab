@@ -19,7 +19,7 @@ export const ASSET_CATEGORIES: AssetCategory[] = [
     name: "Characters",
     icon: "👤",
     description: "Heroes, enemies, NPCs",
-    promptPrefix: "game character sprite, clean single character design, no extra accessories unless specified, simple clean character",
+    promptPrefix: "single game character sprite, clean minimalist design, NO extra accessories, NO hats unless specifically requested, NO additional clothing items, basic character only with specified features, simple clean design",
     defaultSize: { width: 512, height: 512 },
     subcategories: ["hero", "enemy", "npc", "boss", "animal", "creature"],
     suggestions: [
@@ -36,7 +36,7 @@ export const ASSET_CATEGORIES: AssetCategory[] = [
     name: "Weapons",
     icon: "⚔️",
     description: "Swords, guns, magic staffs",
-    promptPrefix: "game weapon icon, isolated weapon on transparent background, clearly defined weapon parts, accurate weapon design",
+    promptPrefix: "isolated game weapon, single weapon only, accurate proportions, crystal elements should be translucent and clear like glass, transparent materials visible, clean weapon design against neutral background",
     defaultSize: { width: 256, height: 256 },
     subcategories: ["sword", "axe", "bow", "gun", "staff", "shield"],
     suggestions: [
@@ -121,7 +121,7 @@ export const ASSET_CATEGORIES: AssetCategory[] = [
     name: "Effects",
     icon: "✨",
     description: "Explosions, magic, particles",
-    promptPrefix: "game visual effect, magic spell effect, particle effect, energy blast, NO characters or people, pure visual effect only",
+    promptPrefix: "pure magical effect only, NO people, NO characters, NO wizards, NO humans, isolated spell effect, energy burst, particle system, magic aura, lightning bolt, fire blast, ice crystal formation, pure visual effect without any living beings",
     defaultSize: { width: 256, height: 256 },
     subcategories: ["explosion", "fire", "lightning", "magic", "smoke"],
     suggestions: [
@@ -148,6 +148,23 @@ export const ASSET_CATEGORIES: AssetCategory[] = [
       "post-apocalyptic car",
       "flying broom, magical",
       "armored tank, futuristic",
+    ],
+  },
+  {
+    id: "spritesheets",
+    name: "Sprite Sheets",
+    icon: "🎬",
+    description: "Animation frames, sequences",
+    promptPrefix: "game sprite sheet, multiple animation frames in horizontal row, consistent character across frames, frame-by-frame animation sequence, idle-walk-attack-death cycle, clearly separated frames, game development ready",
+    defaultSize: { width: 512, height: 128 },
+    subcategories: ["walk-cycle", "attack", "idle", "death", "jump"],
+    suggestions: [
+      "knight walk cycle, 4 frames",
+      "slime bounce animation, 6 frames",
+      "sword slash attack sequence",
+      "wizard casting spell animation",
+      "character death animation",
+      "idle breathing animation",
     ],
   },
 ];

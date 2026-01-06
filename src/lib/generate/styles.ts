@@ -17,18 +17,18 @@ export const ART_STYLES: ArtStyle[] = [
     name: "Pixel Art 16-bit",
     description: "Retro SNES/GBA style",
     promptSuffix:
-      "STRICT 16-bit pixel art, blocky chunky pixels, each individual pixel clearly visible, hard pixel edges with NO anti-aliasing, limited 16-color palette only, old school retro SNES sprite, dithering for shading, NO smooth gradients, NO realistic rendering, pure pixelated game sprite",
+      "STRICT 16-bit pixel art style, MAXIMUM 16x16 or 32x32 pixel resolution, chunky blocky pixels, each individual pixel clearly visible and countable, hard jagged pixel edges, ZERO anti-aliasing, limited 16-color palette maximum, SNES-era sprite quality, visible dithering for shading, retro 1990s video game sprite",
     negativePrompt:
-      "smooth, realistic, 3D render, anti-aliased, blurred edges, gradients, photorealistic, painted, too many colors, modern graphics, HD, detailed textures",
+      "smooth, realistic, 3D render, anti-aliased, blurred edges, gradients, photorealistic, painted, too many colors, modern graphics, HD, detailed textures, 32-bit style, high resolution",
   },
   {
     id: "pixel-32",
     name: "Pixel Art 32-bit",
     description: "PS1/Saturn era style",
     promptSuffix:
-      "STRICT 32-bit pixel art, visible pixel grid structure, blocky pixelated style, 32x32 or 64x64 pixel resolution, expanded color palette but still pixelated, retro PlayStation 1 sprite quality, hard pixel edges, NO anti-aliasing, each pixel deliberately placed",
+      "32-bit pixel art style, 32x32 to 64x64 pixel resolution, MORE detailed than 16-bit but still pixelated, expanded color palette up to 256 colors, Super Nintendo late-era or early PlayStation quality, visible pixel structure but smoother than 16-bit, retro gaming sprite with enhanced detail",
     negativePrompt:
-      "smooth, realistic, 3D render, anti-aliased, blurred, photorealistic, painted, modern HD graphics, soft edges, detailed textures",
+      "16-bit style, too chunky pixels, overly limited colors, smooth realistic rendering, 3D, anti-aliased, modern HD graphics, photorealistic",
   },
   {
     id: "painted",
@@ -62,9 +62,9 @@ export const ART_STYLES: ArtStyle[] = [
     name: "Cartoon",
     description: "Fun exaggerated style",
     promptSuffix:
-      "cartoon style, bold thick outlines, exaggerated proportions and features, bright fun colors, playful and whimsical design, animated movie quality, smooth shapes, expressive and dynamic, family friendly aesthetic, professional animation style",
+      "cartoon illustration style, NEVER pixel art, smooth vector-like shapes, bold black outlines, flat cel-shaded coloring, exaggerated proportions, animated movie aesthetic, Disney Pixar inspired, completely non-pixelated, bright fun colors, playful design",
     negativePrompt:
-      "pixel art, photorealistic, anime style, 3D render, realistic proportions, dark gritty, complex details, thin lines",
+      "pixel art, pixelated, blocky, retro gaming, 8-bit, 16-bit, grain, noise, realistic textures, photography, photorealistic",
   },
   {
     id: "realistic",
