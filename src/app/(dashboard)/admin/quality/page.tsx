@@ -32,28 +32,13 @@ import {
 import Link from "next/link";
 import { VerificationPanel } from "@/components/dashboard/VerificationPanel";
 
-interface AIOptimization {
-  category: string;
-  subcategory: string;
-  style: string;
-  rootCause?: string;
-  promptTemplate: string;
-  requiredKeywords: string[];
-  avoidKeywords: string[];
-  specialInstructions?: string;
-  action?: string;
-}
-
 interface AIOptimizationResult {
   success: boolean;
   analysis?: string;
-  optimizations?: AIOptimization[];
-  globalRecommendations?: string[];
   stats?: {
-    analyzedHallucinations: number;
-    patternsFound: number;
-    problemCategories: number;
-    optimizationsGenerated: number;
+    analyzedPatterns: number;
+    stylesCount: number;
+    categoriesCount: number;
   };
   error?: string;
 }
@@ -789,7 +774,7 @@ export default function QualityDashboardPage() {
                 AI-Powered Prompt Optimization
               </CardTitle>
               <CardDescription>
-                Claude AI analizuje wszystkie halucynacje i generuje zoptymalizowane prompty dla kazdej problematycznej kategorii
+                Claude AI analizuje halucynacje i generuje rekomendacje zmian w kodzie do skopiowania
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -797,12 +782,13 @@ export default function QualityDashboardPage() {
                 <Button
                   onClick={generateAIOptimizations}
                   disabled={generatingOpt}
-                  className="gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                  size="lg"
+                  className="gap-2 bg-purple-600 hover:bg-purple-700"
                 >
                   {generatingOpt ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      Analyzing with Claude AI...
+                      Analyzing...
                     </>
                   ) : (
                     <>
@@ -812,19 +798,19 @@ export default function QualityDashboardPage() {
                   )}
                 </Button>
                 <p className="text-sm text-muted-foreground">
-                  Analizuje {data?.overview.hallucinationCount || 0} halucynacji i {data?.hallucinationPatterns.length || 0} wzorcow
+                  Analizuje {data?.hallucinationPatterns.length || 0} wzorcow halucynacji
                 </p>
               </div>
 
-              {/* Progress/Status */}
+              {/* Progress */}
               {generatingOpt && (
                 <div className="mt-4 p-4 rounded-lg bg-purple-500/10 border border-purple-500/30">
                   <div className="flex items-center gap-3">
                     <Loader2 className="w-5 h-5 animate-spin text-purple-500" />
                     <div>
-                      <p className="font-medium">Claude AI analizuje dane...</p>
+                      <p className="font-medium">Claude AI analizuje halucynacje...</p>
                       <p className="text-sm text-muted-foreground">
-                        Zbieranie halucynacji, analiza wzorcow, generowanie optymalizacji
+                        Generowanie rekomendacji zmian w kodzie
                       </p>
                     </div>
                   </div>
@@ -843,184 +829,44 @@ export default function QualityDashboardPage() {
             </CardContent>
           </Card>
 
-          {/* AI Analysis Results */}
-          {aiOptResult?.success && (
-            <>
-              {/* Stats */}
-              {aiOptResult.stats && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <Card>
-                    <CardContent className="pt-4">
-                      <p className="text-sm text-muted-foreground">Analyzed</p>
-                      <p className="text-2xl font-bold">{aiOptResult.stats.analyzedHallucinations}</p>
-                      <p className="text-xs text-muted-foreground">hallucinations</p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="pt-4">
-                      <p className="text-sm text-muted-foreground">Patterns</p>
-                      <p className="text-2xl font-bold">{aiOptResult.stats.patternsFound}</p>
-                      <p className="text-xs text-muted-foreground">identified</p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="pt-4">
-                      <p className="text-sm text-muted-foreground">Categories</p>
-                      <p className="text-2xl font-bold">{aiOptResult.stats.problemCategories}</p>
-                      <p className="text-xs text-muted-foreground">with issues</p>
-                    </CardContent>
-                  </Card>
-                  <Card className="border-green-500/30">
-                    <CardContent className="pt-4">
-                      <p className="text-sm text-muted-foreground">Generated</p>
-                      <p className="text-2xl font-bold text-green-500">{aiOptResult.stats.optimizationsGenerated}</p>
-                      <p className="text-xs text-muted-foreground">optimizations</p>
-                    </CardContent>
-                  </Card>
+          {/* AI Analysis Results - Markdown to copy */}
+          {aiOptResult?.success && aiOptResult.analysis && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Lightbulb className="w-5 h-5 text-yellow-500" />
+                    Rekomendacje AI ({aiOptResult.stats?.analyzedPatterns || 0} wzorcow)
+                  </CardTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => copyToClipboard(aiOptResult.analysis || "", "full-analysis")}
+                  >
+                    {copiedTemplate === "full-analysis" ? (
+                      <>
+                        <Check className="w-4 h-4 text-green-500" />
+                        Skopiowano!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        Kopiuj wszystko
+                      </>
+                    )}
+                  </Button>
                 </div>
-              )}
-
-              {/* Overall Analysis */}
-              {aiOptResult.analysis && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Lightbulb className="w-5 h-5 text-yellow-500" />
-                      AI Analysis Summary
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm whitespace-pre-wrap">{aiOptResult.analysis}</p>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Global Recommendations */}
-              {aiOptResult.globalRecommendations && aiOptResult.globalRecommendations.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Target className="w-5 h-5 text-blue-500" />
-                      Global Recommendations
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2">
-                      {aiOptResult.globalRecommendations.map((rec, idx) => (
-                        <li key={idx} className="flex items-start gap-2 text-sm">
-                          <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                          <span>{rec}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Generated Optimizations */}
-              {aiOptResult.optimizations && aiOptResult.optimizations.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Zap className="w-5 h-5 text-green-500" />
-                      Generated Prompt Optimizations ({aiOptResult.optimizations.length})
-                    </CardTitle>
-                    <CardDescription>
-                      Te optymalizacje zostaly automatycznie zapisane i beda stosowane przy generowaniu
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {aiOptResult.optimizations.map((opt, idx) => (
-                      <div
-                        key={idx}
-                        className={`p-4 rounded-lg border ${
-                          opt.action === "created"
-                            ? "border-green-500/30 bg-green-500/5"
-                            : "border-blue-500/30 bg-blue-500/5"
-                        }`}
-                      >
-                        {/* Header */}
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline">
-                              {opt.category}/{opt.subcategory}
-                            </Badge>
-                            <Badge className="bg-purple-500/20 text-purple-500">
-                              {opt.style}
-                            </Badge>
-                          </div>
-                          <Badge className={opt.action === "created" ? "bg-green-500/20 text-green-500" : "bg-blue-500/20 text-blue-500"}>
-                            {opt.action === "created" ? "NEW" : "UPDATED"}
-                          </Badge>
-                        </div>
-
-                        {/* Root Cause */}
-                        {opt.rootCause && (
-                          <div className="mb-3 p-2 rounded bg-red-500/10 border border-red-500/20">
-                            <p className="text-xs text-red-400 font-medium mb-1">Root Cause:</p>
-                            <p className="text-sm">{opt.rootCause}</p>
-                          </div>
-                        )}
-
-                        {/* Prompt Template */}
-                        <div className="mb-3">
-                          <div className="flex items-center justify-between mb-1">
-                            <p className="text-xs text-muted-foreground font-medium">Optimized Prompt Template:</p>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 px-2"
-                              onClick={() => copyToClipboard(opt.promptTemplate, `template-${idx}`)}
-                            >
-                              {copiedTemplate === `template-${idx}` ? (
-                                <Check className="w-3 h-3 text-green-500" />
-                              ) : (
-                                <Copy className="w-3 h-3" />
-                              )}
-                            </Button>
-                          </div>
-                          <div className="p-2 rounded bg-muted font-mono text-xs break-all">
-                            {opt.promptTemplate}
-                          </div>
-                        </div>
-
-                        {/* Keywords */}
-                        <div className="grid grid-cols-2 gap-3 mb-3">
-                          <div>
-                            <p className="text-xs text-green-500 font-medium mb-1">Required Keywords:</p>
-                            <div className="flex flex-wrap gap-1">
-                              {opt.requiredKeywords.map((kw, i) => (
-                                <Badge key={i} className="text-xs bg-green-500/20 text-green-500">
-                                  {kw}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                          <div>
-                            <p className="text-xs text-red-400 font-medium mb-1">Avoid Keywords:</p>
-                            <div className="flex flex-wrap gap-1">
-                              {opt.avoidKeywords.map((kw, i) => (
-                                <Badge key={i} variant="destructive" className="text-xs">
-                                  {kw}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Special Instructions */}
-                        {opt.specialInstructions && (
-                          <div className="p-2 rounded bg-yellow-500/10 border border-yellow-500/20">
-                            <p className="text-xs text-yellow-500 font-medium mb-1">Special Instructions:</p>
-                            <p className="text-sm">{opt.specialInstructions}</p>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              )}
-            </>
+                <CardDescription>
+                  Skopiuj ponizsze rekomendacje i wklej do Claude w VSCode
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="p-4 rounded-lg bg-muted/50 border overflow-auto max-h-[600px]">
+                  <pre className="text-sm whitespace-pre-wrap font-mono">{aiOptResult.analysis}</pre>
+                </div>
+              </CardContent>
+            </Card>
           )}
 
           {/* Empty State */}
@@ -1029,9 +875,9 @@ export default function QualityDashboardPage() {
               <CardContent className="py-12">
                 <div className="text-center">
                   <Brain className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
-                  <h3 className="text-lg font-medium mb-2">No AI Optimizations Generated Yet</h3>
+                  <h3 className="text-lg font-medium mb-2">Brak wygenerowanych optymalizacji</h3>
                   <p className="text-muted-foreground mb-4">
-                    Click "Generate AI Optimizations" to analyze all hallucinations and create optimized prompt templates
+                    Kliknij "Generate AI Optimizations" aby przeanalizowac halucynacje i wygenerowac rekomendacje
                   </p>
                 </div>
               </CardContent>
