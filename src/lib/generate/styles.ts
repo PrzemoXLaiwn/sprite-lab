@@ -17,18 +17,18 @@ export const ART_STYLES: ArtStyle[] = [
     name: "Pixel Art 16-bit",
     description: "Retro SNES/GBA style",
     promptSuffix:
-      "16-bit pixel art, retro SNES era graphics, strictly limited palette of 16 colors maximum, each pixel clearly visible and deliberately placed, no anti-aliasing, no smooth gradients, use dithering technique for shading and color transitions, chunky blocky pixels, crisp hard pixel edges, nostalgic 1990s video game sprite aesthetic, low resolution pixelated artwork",
+      "STRICT 16-bit pixel art, blocky chunky pixels, each individual pixel clearly visible, hard pixel edges with NO anti-aliasing, limited 16-color palette only, old school retro SNES sprite, dithering for shading, NO smooth gradients, NO realistic rendering, pure pixelated game sprite",
     negativePrompt:
-      "smooth, blurry, gradient, anti-aliased, high resolution, photorealistic, 3D render, painterly, too many colors, soft edges",
+      "smooth, realistic, 3D render, anti-aliased, blurred edges, gradients, photorealistic, painted, too many colors, modern graphics, HD, detailed textures",
   },
   {
     id: "pixel-32",
     name: "Pixel Art 32-bit",
     description: "PS1/Saturn era style",
     promptSuffix:
-      "32-bit pixel art, PlayStation 1 and Sega Saturn era graphics, expanded color palette up to 256 colors, visible pixel grid structure, subtle dithering allowed, more detailed sprites while maintaining pixel art integrity, no anti-aliasing on edges, retro 32-bit console game aesthetic, each pixel intentionally placed",
+      "STRICT 32-bit pixel art, visible pixel grid structure, blocky pixelated style, 32x32 or 64x64 pixel resolution, expanded color palette but still pixelated, retro PlayStation 1 sprite quality, hard pixel edges, NO anti-aliasing, each pixel deliberately placed",
     negativePrompt:
-      "smooth gradients, blurry, anti-aliased, photorealistic, 3D render, painterly, modern HD graphics, soft airbrushed look",
+      "smooth, realistic, 3D render, anti-aliased, blurred, photorealistic, painted, modern HD graphics, soft edges, detailed textures",
   },
   {
     id: "painted",

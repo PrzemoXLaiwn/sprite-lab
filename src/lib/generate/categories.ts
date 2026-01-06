@@ -19,7 +19,7 @@ export const ASSET_CATEGORIES: AssetCategory[] = [
     name: "Characters",
     icon: "👤",
     description: "Heroes, enemies, NPCs",
-    promptPrefix: "game character sprite",
+    promptPrefix: "game character sprite, clean single character design, no extra accessories unless specified, simple clean character",
     defaultSize: { width: 512, height: 512 },
     subcategories: ["hero", "enemy", "npc", "boss", "animal", "creature"],
     suggestions: [
@@ -36,7 +36,7 @@ export const ASSET_CATEGORIES: AssetCategory[] = [
     name: "Weapons",
     icon: "⚔️",
     description: "Swords, guns, magic staffs",
-    promptPrefix: "game weapon icon",
+    promptPrefix: "game weapon icon, isolated weapon on transparent background, clearly defined weapon parts, accurate weapon design",
     defaultSize: { width: 256, height: 256 },
     subcategories: ["sword", "axe", "bow", "gun", "staff", "shield"],
     suggestions: [
@@ -53,7 +53,7 @@ export const ASSET_CATEGORIES: AssetCategory[] = [
     name: "Items",
     icon: "💎",
     description: "Potions, coins, power-ups",
-    promptPrefix: "game item icon",
+    promptPrefix: "game item icon, single item object, clean item design, game inventory style icon",
     defaultSize: { width: 128, height: 128 },
     subcategories: ["potion", "coin", "gem", "food", "key", "scroll"],
     suggestions: [
@@ -121,7 +121,7 @@ export const ASSET_CATEGORIES: AssetCategory[] = [
     name: "Effects",
     icon: "✨",
     description: "Explosions, magic, particles",
-    promptPrefix: "game visual effect sprite",
+    promptPrefix: "game visual effect, magic spell effect, particle effect, energy blast, NO characters or people, pure visual effect only",
     defaultSize: { width: 256, height: 256 },
     subcategories: ["explosion", "fire", "lightning", "magic", "smoke"],
     suggestions: [
