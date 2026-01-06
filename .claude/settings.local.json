@@ -56,7 +56,8 @@
       "Bash(node test-supabase.js:*)",
       "Bash(git checkout:*)",
       "Bash(set NEXT_TURBOPACK=0)",
-      "Bash(npx vercel:*)"
+      "Bash(npx vercel:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: Add AI-powered prompt optimization system\n\n- New /api/admin/generate-optimizations endpoint\n- Claude AI analyzes all hallucinations and patterns\n- Generates optimized prompt templates per category/style\n- Identifies root causes, required/avoid keywords\n- Auto-saves optimizations to database\n- New \"AI Optimizations\" tab in Quality Dashboard\n- Shows analysis summary, global recommendations\n- Displays generated optimizations with copy-to-clipboard\n- Visual feedback for new vs updated optimizations\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ],
     "deny": [],
     "ask": []
