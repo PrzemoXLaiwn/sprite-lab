@@ -23,11 +23,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // 1. Get hallucination patterns (these exist for sure)
+    // 1. Get ALL hallucination patterns
     const hallucinationPatterns = await prisma.hallucinationPattern.findMany({
       where: { isActive: true },
       orderBy: { occurrenceCount: "desc" },
-      take: 50,
+      take: 200, // Get all patterns for comprehensive analysis
     });
 
     // 2. Get current style definitions

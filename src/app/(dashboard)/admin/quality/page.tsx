@@ -497,10 +497,10 @@ export default function QualityDashboardPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 text-red-500" />
-                Recent Problems ({data.recentProblems.length})
+                All Problems ({data.recentProblems.length} shown / {data.overview.hallucinationCount} total hallucinations)
               </CardTitle>
               <CardDescription>
-                Ostatnie generacje z problemami - kliknij aby zobaczyc szczegoly
+                Generacje z halucynacjami lub niskim alignment - kliknij aby zobaczyc szczegoly
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -510,8 +510,8 @@ export default function QualityDashboardPage() {
                   <p>No recent problems detected!</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {data.recentProblems.slice(0, 12).map((problem) => (
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                  {data.recentProblems.map((problem) => (
                     <div
                       key={problem.id}
                       className={`relative aspect-square rounded-lg overflow-hidden border-2 cursor-pointer transition-all hover:scale-105 ${

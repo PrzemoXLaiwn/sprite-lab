@@ -88,10 +88,10 @@ export async function GET(request: NextRequest) {
       take: 10,
     });
 
-    // 4. Wzorce halucynacji z sugestiami naprawy
+    // 4. Wzorce halucynacji z sugestiami naprawy (ALL patterns)
     const hallucinationPatterns = await prisma.hallucinationPattern.findMany({
       orderBy: { occurrenceCount: "desc" },
-      take: 20,
+      take: 100, // Increased from 20 to get more patterns
     });
 
     // 5. Ostatnie problematyczne generacje (niski alignment lub halucynacje)
@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
         ],
       },
       orderBy: { createdAt: "desc" },
-      take: 20,
+      take: 100, // Increased from 20 to see more problems
       include: {
         generation: {
           select: {
