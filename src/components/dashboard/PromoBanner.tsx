@@ -1,18 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Zap, Gift, TrendingUp, Users } from "lucide-react";
+import { X, Zap, Gift, TrendingUp } from "lucide-react";
 import Link from "next/link";
 
-// FOMO Config - First 100 users
-const PROMO_CONFIG = {
-  totalSlots: 100,
-  claimedSlots: 23, // TODO: Fetch from database
-};
+// FOMO Config - Total slots available
+const TOTAL_SLOTS = 100;
 
 export function PromoBanner() {
   const [isDismissed, setIsDismissed] = useState(false);
   const [totalAssets, setTotalAssets] = useState(1247);
+  const [claimedSlots, setClaimedSlots] = useState(0);
 
   useEffect(() => {
     // Check if dismissed in this session
@@ -22,17 +20,30 @@ export function PromoBanner() {
       return;
     }
 
-    // Fetch real total assets count
-    fetch("/api/stats/total-generations")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.total) {
-          setTotalAssets(data.total);
-        }
-      })
-      .catch(() => {
-        // Keep default value on error
-      });
+    // Fetch real data in parallel
+    Promise.all([
+      // Fetch total assets count
+      fetch("/api/stats/total-generations")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.total) {
+            setTotalAssets(data.total);
+          }
+        })
+        .catch(() => {}),
+      // Fetch claimed lifetime slots
+      fetch("/api/lifetime-slots")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.slots) {
+            // Sum all sold slots across all plans
+            const totalSold = Object.values(data.slots as Record<string, { sold: number }>)
+              .reduce((sum, slot) => sum + slot.sold, 0);
+            setClaimedSlots(totalSold);
+          }
+        })
+        .catch(() => {}),
+    ]);
   }, []);
 
   const handleDismiss = () => {
@@ -40,7 +51,7 @@ export function PromoBanner() {
     sessionStorage.setItem("promoBannerDismissed", "true");
   };
 
-  const slotsRemaining = PROMO_CONFIG.totalSlots - PROMO_CONFIG.claimedSlots;
+  const slotsRemaining = Math.max(0, TOTAL_SLOTS - claimedSlots);
 
   if (isDismissed) return null;
 

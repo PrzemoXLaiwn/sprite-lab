@@ -18,6 +18,22 @@ interface BuiltPrompt {
   style: ArtStyle;
 }
 
+/**
+ * Convert negativePrompt to exclusions that work in positive prompt
+ * Since Runware/FLUX doesn't support negative prompts, we embed them as exclusions
+ */
+function buildExclusions(negativePrompt: string | undefined): string {
+  if (!negativePrompt) return "";
+
+  // Convert negative prompt items to "NEVER X, NEVER Y" format
+  const items = negativePrompt.split(",").map(s => s.trim()).filter(Boolean);
+
+  // Take most important exclusions (limit to avoid prompt bloat)
+  const topExclusions = items.slice(0, 8);
+
+  return topExclusions.map(item => `NEVER ${item}`).join(", ");
+}
+
 export function buildPrompt(params: PromptBuildParams): BuiltPrompt {
   const { categoryId, styleId, userPrompt } = params;
 
@@ -33,10 +49,14 @@ export function buildPrompt(params: PromptBuildParams): BuiltPrompt {
 
   // Check if it's a pixel art style - needs special handling
   const isPixelArt = styleId.startsWith("pixel");
+  const isCartoon = styleId === "cartoon";
+
+  // Build exclusions from negativePrompt (since Runware doesn't support negative prompts)
+  const styleExclusions = buildExclusions(style.negativePrompt);
 
   // Quality prefixes - adjusted for pixel art (remove "clean" which might cause smoothing)
   const qualityPrefix = isPixelArt
-    ? ["game-ready sprite", "single object", "centered composition"].join(", ")
+    ? "retro video game sprite, single object, centered"
     : [
         "high quality",
         "game-ready asset",
@@ -50,29 +70,48 @@ export function buildPrompt(params: PromptBuildParams): BuiltPrompt {
   const backgroundSuffix =
     "isolated on transparent background, no background, PNG ready";
 
-  // For pixel art, add explicit exclusions into the prompt itself
-  // Since Runware doesn't support negativePrompt, we emphasize what we DON'T want
-  const pixelArtExclusions = isPixelArt
-    ? "NOT smooth, NOT blurry, NOT gradient, NOT anti-aliased, strictly pixelated"
-    : "";
+  // Build final prompt based on style type
+  let promptParts: string[];
 
-  // Build final prompt - style comes FIRST for pixel art to emphasize it
-  const promptParts = isPixelArt
-    ? [
-        style.promptSuffix, // Style FIRST for pixel art
-        qualityPrefix,
-        category.promptPrefix,
-        userPrompt.trim(),
-        pixelArtExclusions,
-        backgroundSuffix,
-      ]
-    : [
-        qualityPrefix,
-        category.promptPrefix,
-        userPrompt.trim(),
-        style.promptSuffix,
-        backgroundSuffix,
-      ];
+  if (isPixelArt) {
+    // PIXEL ART: Style emphasis at START and END, with strong exclusions
+    // Format: [PIXEL ART EMPHASIS] + [what to draw] + [reinforcement] + [exclusions]
+    const pixelEmphasis = styleId === "pixel-16"
+      ? "IMPORTANT: 16-bit pixel art, each pixel must be clearly visible as a square, chunky blocky pixels like SNES games"
+      : "IMPORTANT: 32-bit pixel art, visible pixel grid, retro PlayStation era sprite";
+
+    promptParts = [
+      pixelEmphasis,
+      style.promptSuffix,
+      qualityPrefix,
+      category.promptPrefix,
+      userPrompt.trim(),
+      styleExclusions,
+      "MUST have visible square pixels, jagged edges, limited color palette",
+      backgroundSuffix,
+    ];
+  } else if (isCartoon) {
+    // CARTOON: Emphasize smooth, non-pixelated look
+    promptParts = [
+      "IMPORTANT: Smooth cartoon illustration, NOT pixel art, completely smooth lines",
+      qualityPrefix,
+      category.promptPrefix,
+      userPrompt.trim(),
+      style.promptSuffix,
+      styleExclusions,
+      backgroundSuffix,
+    ];
+  } else {
+    // OTHER STYLES: Standard order with exclusions
+    promptParts = [
+      qualityPrefix,
+      category.promptPrefix,
+      userPrompt.trim(),
+      style.promptSuffix,
+      styleExclusions,
+      backgroundSuffix,
+    ];
+  }
 
   const prompt = promptParts.filter(Boolean).join(", ");
 

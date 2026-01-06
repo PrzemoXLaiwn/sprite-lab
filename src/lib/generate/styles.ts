@@ -17,18 +17,18 @@ export const ART_STYLES: ArtStyle[] = [
     name: "Pixel Art 16-bit",
     description: "Retro SNES/GBA style",
     promptSuffix:
-      "STRICT 16-bit pixel art style, MAXIMUM 16x16 or 32x32 pixel resolution, chunky blocky pixels, each individual pixel clearly visible and countable, hard jagged pixel edges, ZERO anti-aliasing, limited 16-color palette maximum, SNES-era sprite quality, visible dithering for shading, retro 1990s video game sprite",
+      "authentic 16-bit pixel art sprite, pixelated retro game character, 16x16 or 32x32 pixel sprite, chunky square pixels clearly visible, NES SNES Game Boy style, 8-bit 16-bit era graphics, pixel perfect edges, limited color palette, dithering shading, retro gaming aesthetic, classic video game sprite art",
     negativePrompt:
-      "smooth, realistic, 3D render, anti-aliased, blurred edges, gradients, photorealistic, painted, too many colors, modern graphics, HD, detailed textures, 32-bit style, high resolution",
+      "smooth, realistic, 3D render, anti-aliased, blurred, gradients, photorealistic, painted, modern graphics, HD, high resolution, soft edges",
   },
   {
     id: "pixel-32",
     name: "Pixel Art 32-bit",
     description: "PS1/Saturn era style",
     promptSuffix:
-      "32-bit pixel art style, 32x32 to 64x64 pixel resolution, MORE detailed than 16-bit but still pixelated, expanded color palette up to 256 colors, Super Nintendo late-era or early PlayStation quality, visible pixel structure but smoother than 16-bit, retro gaming sprite with enhanced detail",
+      "32-bit pixel art sprite, PlayStation 1 era graphics, visible pixel grid, retro gaming sprite, 32x32 to 64x64 pixels, more colors than 16-bit, late SNES early PS1 quality, pixel-based artwork, nostalgic video game aesthetic",
     negativePrompt:
-      "16-bit style, too chunky pixels, overly limited colors, smooth realistic rendering, 3D, anti-aliased, modern HD graphics, photorealistic",
+      "smooth realistic rendering, 3D rendered, modern HD graphics, photorealistic, anti-aliased soft edges",
   },
   {
     id: "painted",
