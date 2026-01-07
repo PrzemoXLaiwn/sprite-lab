@@ -19,7 +19,7 @@ export const ASSET_CATEGORIES: AssetCategory[] = [
     name: "Characters",
     icon: "👤",
     description: "Heroes, enemies, NPCs",
-    promptPrefix: "single game character sprite, clean minimalist design, NO extra accessories, NO hats unless specifically requested, NO additional clothing items, basic character only with specified features, simple clean design",
+    promptPrefix: "single clean game character sprite, minimalist design, ONLY specified features and clothing, NO additional accessories unless explicitly requested, NO extra hats, NO additional clothing items, NO background elements, basic character with ONLY the described attributes, clean simple design",
     defaultSize: { width: 512, height: 512 },
     subcategories: ["hero", "enemy", "npc", "boss", "animal", "creature"],
     suggestions: [
@@ -36,7 +36,7 @@ export const ASSET_CATEGORIES: AssetCategory[] = [
     name: "Weapons",
     icon: "⚔️",
     description: "Swords, guns, magic staffs",
-    promptPrefix: "isolated game weapon, single weapon only, accurate proportions, crystal elements should be translucent and clear like glass, transparent materials visible, clean weapon design against neutral background",
+    promptPrefix: "isolated single weapon only, MUST include ALL described elements and features, crystal elements must be translucent like clear glass, runes should be visible and glowing if specified, accurate weapon proportions, clean weapon design, neutral background, ONLY the weapon described",
     defaultSize: { width: 256, height: 256 },
     subcategories: ["sword", "axe", "bow", "gun", "staff", "shield"],
     suggestions: [
@@ -121,7 +121,7 @@ export const ASSET_CATEGORIES: AssetCategory[] = [
     name: "Effects",
     icon: "✨",
     description: "Explosions, magic, particles",
-    promptPrefix: "pure magical effect only, NO people, NO characters, NO wizards, NO humans, isolated spell effect, energy burst, particle system, magic aura, lightning bolt, fire blast, ice crystal formation, pure visual effect without any living beings",
+    promptPrefix: "MAGICAL EFFECT ONLY, absolutely NO characters, NO people, NO wizards, NO humans, NO animals, NO living beings, pure abstract magical effect, isolated spell effect without caster, energy burst, particle system, magic aura, lightning bolt, fire blast, ice crystal formation, glowing orb, energy wave, pure visual effect, abstract magical phenomena",
     defaultSize: { width: 256, height: 256 },
     subcategories: ["explosion", "fire", "lightning", "magic", "smoke"],
     suggestions: [
@@ -155,7 +155,7 @@ export const ASSET_CATEGORIES: AssetCategory[] = [
     name: "Sprite Sheets",
     icon: "🎬",
     description: "Animation frames, sequences",
-    promptPrefix: "game sprite sheet, multiple animation frames in horizontal row, consistent character across frames, frame-by-frame animation sequence, idle-walk-attack-death cycle, clearly separated frames, game development ready",
+    promptPrefix: "COMPLETE sprite sheet with ALL requested frames, horizontal row layout, MUST include idle-walk-attack-death animation sequence, consistent character design across all frames, clearly separated frames with equal spacing, frame-by-frame animation ready, ALL specified animation states must be present, game development ready sprite sheet",
     defaultSize: { width: 512, height: 128 },
     subcategories: ["walk-cycle", "attack", "idle", "death", "jump"],
     suggestions: [
