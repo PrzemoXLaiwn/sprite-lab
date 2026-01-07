@@ -149,6 +149,8 @@ export interface EmailPreferences {
   marketing: boolean;
   productUpdates: boolean;
   creditAlerts: boolean;
+  dailyReminders: boolean;
+  weeklyDigest: boolean;
 }
 
 export async function fetchEmailPreferences(): Promise<{
@@ -174,6 +176,8 @@ export async function fetchEmailPreferences(): Promise<{
       marketing: true,
       productUpdates: true,
       creditAlerts: true,
+      dailyReminders: false,
+      weeklyDigest: true,
     };
 
     const prefs = dbUser?.emailPreferences as Partial<EmailPreferences> | null;

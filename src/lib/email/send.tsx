@@ -4,6 +4,9 @@ import { ReEngagementEmail } from "./templates/ReEngagementEmail";
 import { PromoEmail } from "./templates/PromoEmail";
 import { AbandonedCartEmail } from "./templates/AbandonedCartEmail";
 import { SpecialOfferEmail } from "./templates/SpecialOfferEmail";
+import { DailyReminderEmail } from "./templates/DailyReminderEmail";
+import { WeeklyDigestEmail } from "./templates/WeeklyDigestEmail";
+import { NewFeaturesEmail } from "./templates/NewFeaturesEmail";
 import { prisma } from "@/lib/prisma";
 import { render } from "@react-email/render";
 
@@ -13,7 +16,16 @@ export type EmailResult = {
   error?: string;
 };
 
-export type EmailType = "WELCOME" | "RE_ENGAGEMENT" | "PROMO" | "SYSTEM" | "ABANDONED_CART" | "SPECIAL_OFFER";
+export type EmailType =
+  | "WELCOME"
+  | "RE_ENGAGEMENT"
+  | "PROMO"
+  | "SYSTEM"
+  | "ABANDONED_CART"
+  | "SPECIAL_OFFER"
+  | "DAILY_REMINDER"
+  | "WEEKLY_DIGEST"
+  | "NEW_FEATURES";
 
 /**
  * Log email to database for tracking
@@ -406,6 +418,250 @@ export async function sendSpecialOfferEmail(
       status: "failed",
       errorMessage: errorMsg,
       metadata: { promoCode: options.promoCode, discountPercent: options.discountPercent },
+    });
+    return { success: false, error: errorMsg };
+  }
+}
+
+/**
+ * Send daily reminder email
+ */
+export async function sendDailyReminderEmail(
+  email: string,
+  userName?: string,
+  options: {
+    credits: number;
+    loginStreak?: number;
+    streakBonus?: number;
+    trendingCategory?: string;
+    totalAssetsCreated?: number;
+  } = { credits: 0 },
+  userId?: string
+): Promise<EmailResult> {
+  const subject = options.loginStreak && options.loginStreak > 1
+    ? `🔥 Day ${options.loginStreak} streak! Your daily SpriteLab update`
+    : `Good morning! Your daily SpriteLab update ☀️`;
+
+  try {
+    const html = await render(
+      <DailyReminderEmail
+        userName={userName}
+        credits={options.credits}
+        loginStreak={options.loginStreak}
+        streakBonus={options.streakBonus}
+        trendingCategory={options.trendingCategory}
+        totalAssetsCreated={options.totalAssetsCreated}
+      />
+    );
+
+    const { data, error } = await resend.emails.send({
+      from: EMAIL_FROM,
+      to: email,
+      replyTo: EMAIL_REPLY_TO,
+      subject,
+      html,
+    });
+
+    if (error) {
+      console.error("[Email] Daily reminder email error:", error);
+      await logEmail({
+        email,
+        userId,
+        type: "DAILY_REMINDER",
+        subject,
+        status: "failed",
+        errorMessage: error.message,
+        metadata: { loginStreak: options.loginStreak },
+      });
+      return { success: false, error: error.message };
+    }
+
+    console.log("[Email] Daily reminder email sent to:", email, "ID:", data?.id);
+    await logEmail({
+      email,
+      userId,
+      type: "DAILY_REMINDER",
+      subject,
+      status: "sent",
+      messageId: data?.id,
+      metadata: { loginStreak: options.loginStreak },
+    });
+    return { success: true, messageId: data?.id };
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : "Unknown error";
+    console.error("[Email] Daily reminder email exception:", error);
+    await logEmail({
+      email,
+      userId,
+      type: "DAILY_REMINDER",
+      subject,
+      status: "failed",
+      errorMessage: errorMsg,
+      metadata: { loginStreak: options.loginStreak },
+    });
+    return { success: false, error: errorMsg };
+  }
+}
+
+/**
+ * Send weekly digest email
+ */
+export async function sendWeeklyDigestEmail(
+  email: string,
+  userName: string | undefined,
+  options: {
+    credits: number;
+    weeklyStats: {
+      assetsCreated: number;
+      topCategory?: string;
+      topStyle?: string;
+    };
+    communityStats: {
+      totalAssetsThisWeek: number;
+      popularPrompt?: string;
+    };
+    newFeatures?: string[];
+    topCreators?: Array<{ name: string; count: number }>;
+  },
+  userId?: string
+): Promise<EmailResult> {
+  const subject = `Your weekly SpriteLab digest - ${options.weeklyStats.assetsCreated} assets created! 📊`;
+
+  try {
+    const html = await render(
+      <WeeklyDigestEmail
+        userName={userName}
+        credits={options.credits}
+        weeklyStats={options.weeklyStats}
+        communityStats={options.communityStats}
+        newFeatures={options.newFeatures}
+        topCreators={options.topCreators}
+      />
+    );
+
+    const { data, error } = await resend.emails.send({
+      from: EMAIL_FROM,
+      to: email,
+      replyTo: EMAIL_REPLY_TO,
+      subject,
+      html,
+    });
+
+    if (error) {
+      console.error("[Email] Weekly digest email error:", error);
+      await logEmail({
+        email,
+        userId,
+        type: "WEEKLY_DIGEST",
+        subject,
+        status: "failed",
+        errorMessage: error.message,
+        metadata: { assetsCreated: options.weeklyStats.assetsCreated },
+      });
+      return { success: false, error: error.message };
+    }
+
+    console.log("[Email] Weekly digest email sent to:", email, "ID:", data?.id);
+    await logEmail({
+      email,
+      userId,
+      type: "WEEKLY_DIGEST",
+      subject,
+      status: "sent",
+      messageId: data?.id,
+      metadata: { assetsCreated: options.weeklyStats.assetsCreated },
+    });
+    return { success: true, messageId: data?.id };
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : "Unknown error";
+    console.error("[Email] Weekly digest email exception:", error);
+    await logEmail({
+      email,
+      userId,
+      type: "WEEKLY_DIGEST",
+      subject,
+      status: "failed",
+      errorMessage: errorMsg,
+      metadata: { assetsCreated: options.weeklyStats.assetsCreated },
+    });
+    return { success: false, error: errorMsg };
+  }
+}
+
+/**
+ * Send new features announcement email
+ */
+export async function sendNewFeaturesEmail(
+  email: string,
+  userName: string | undefined,
+  options: {
+    features: Array<{
+      title: string;
+      description: string;
+      emoji: string;
+    }>;
+    ctaText?: string;
+    ctaUrl?: string;
+    campaignId?: string;
+  },
+  userId?: string
+): Promise<EmailResult> {
+  const subject = `🎉 New in SpriteLab: ${options.features[0]?.title || "Exciting updates!"}`;
+
+  try {
+    const html = await render(
+      <NewFeaturesEmail
+        userName={userName}
+        features={options.features}
+        ctaText={options.ctaText}
+        ctaUrl={options.ctaUrl}
+      />
+    );
+
+    const { data, error } = await resend.emails.send({
+      from: EMAIL_FROM,
+      to: email,
+      replyTo: EMAIL_REPLY_TO,
+      subject,
+      html,
+    });
+
+    if (error) {
+      console.error("[Email] New features email error:", error);
+      await logEmail({
+        email,
+        userId,
+        type: "NEW_FEATURES",
+        subject,
+        status: "failed",
+        errorMessage: error.message,
+        metadata: { campaignId: options.campaignId },
+      });
+      return { success: false, error: error.message };
+    }
+
+    console.log("[Email] New features email sent to:", email, "ID:", data?.id);
+    await logEmail({
+      email,
+      userId,
+      type: "NEW_FEATURES",
+      subject,
+      status: "sent",
+      messageId: data?.id,
+      metadata: { campaignId: options.campaignId },
+    });
+    return { success: true, messageId: data?.id };
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : "Unknown error";
+    console.error("[Email] New features email exception:", error);
+    await logEmail({
+      email,
+      userId,
+      type: "NEW_FEATURES",
+      subject,
+      status: "failed",
+      errorMessage: errorMsg,
+      metadata: { campaignId: options.campaignId },
     });
     return { success: false, error: errorMsg };
   }

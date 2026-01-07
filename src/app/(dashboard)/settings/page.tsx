@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { fetchUserProfile, updateProfile, fetchCreditHistory, checkUsername, uploadAvatar, fetchEmailPreferences, updateEmailPreferences, EmailPreferences } from "./page.actions";
 import Link from "next/link";
-import { Mail, Megaphone, Package, Coins } from "lucide-react";
+import { Mail, Megaphone, Package, Coins, Sun, CalendarDays } from "lucide-react";
 
 interface UserData {
   id: string;
@@ -88,6 +88,8 @@ export default function SettingsPage() {
     marketing: true,
     productUpdates: true,
     creditAlerts: true,
+    dailyReminders: false,
+    weeklyDigest: true,
   });
   const [savingEmailPrefs, setSavingEmailPrefs] = useState(false);
 
@@ -608,6 +610,46 @@ export default function SettingsPage() {
                   <Switch
                     checked={emailPrefs.creditAlerts}
                     onCheckedChange={(checked) => handleEmailPrefChange("creditAlerts", checked)}
+                    disabled={savingEmailPrefs}
+                  />
+                </div>
+
+                {/* Daily Reminders */}
+                <div className="flex items-center justify-between p-4 rounded-lg border border-border">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[#f59e0b]/10 flex items-center justify-center">
+                      <Sun className="w-5 h-5 text-[#f59e0b]" />
+                    </div>
+                    <div>
+                      <p className="font-medium">Daily Reminders</p>
+                      <p className="text-sm text-muted-foreground">
+                        Morning motivation with tips and trending categories
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={emailPrefs.dailyReminders}
+                    onCheckedChange={(checked) => handleEmailPrefChange("dailyReminders", checked)}
+                    disabled={savingEmailPrefs}
+                  />
+                </div>
+
+                {/* Weekly Digest */}
+                <div className="flex items-center justify-between p-4 rounded-lg border border-border">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[#8b5cf6]/10 flex items-center justify-center">
+                      <CalendarDays className="w-5 h-5 text-[#8b5cf6]" />
+                    </div>
+                    <div>
+                      <p className="font-medium">Weekly Digest</p>
+                      <p className="text-sm text-muted-foreground">
+                        Your stats, community highlights, and new features
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={emailPrefs.weeklyDigest}
+                    onCheckedChange={(checked) => handleEmailPrefChange("weeklyDigest", checked)}
                     disabled={savingEmailPrefs}
                   />
                 </div>
