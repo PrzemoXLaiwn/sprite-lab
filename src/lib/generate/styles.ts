@@ -17,18 +17,18 @@ export const ART_STYLES: ArtStyle[] = [
     name: "Pixel Art 16-bit",
     description: "Retro SNES/GBA style",
     promptSuffix:
-      "STRICT 16-BIT PIXEL ART MANDATORY, every single pixel must be a visible square block, ZERO anti-aliasing, ZERO smooth edges, chunky blocky pixels only, retro 8-bit NES SNES Game Boy graphics, maximum 16 colors, hard dithering for shading, pixel grid clearly visible, each pixel = solid color square",
+      "FORCE CHUNKY PIXEL ART ONLY, 16x16 pixel tiles, visible square pixel blocks, NES/Game Boy graphics, absolutely NO smooth rendering, hard pixelated edges mandatory, retro 8-bit sprite art, limited 16-color palette, pixel grid must be visible, chunky blocky style enforced, old school video game graphics",
     negativePrompt:
-      "smooth, realistic, 3D render, anti-aliased, blurred, gradients, photorealistic, painted, modern graphics, HD, high resolution, soft edges, rounded corners, smooth shading, detailed textures, cartoon, vector, clean lines, soft rendering",
+      "smooth, realistic, 3D render, anti-aliased, blurred, gradients, photorealistic, painted, modern graphics, HD, high resolution, soft edges, rounded corners, smooth shading, detailed textures, cartoon, vector, clean lines, soft rendering, airbrushed, digital painting",
   },
   {
     id: "pixel-32",
     name: "Pixel Art 32-bit",
     description: "PS1/Saturn era style",
     promptSuffix:
-      "STRICT 32-BIT PIXEL ART MANDATORY, visible chunky pixel grid, hard pixelated edges only, NO smooth rendering whatsoever, PlayStation 1 era pixel sprites, 32x32 to 128x128 resolution, flat pixel blocks, limited color palette, sharp pixel boundaries, each pixel clearly defined square",
+      "ENFORCE 32x32 PIXEL TILES, chunky pixel blocks mandatory, visible pixel grid, hard pixelated edges only, retro 16-bit console graphics, absolutely NO anti-aliasing, square pixel blocks enforced, limited color palette, classic arcade game sprite style, pixelated texture required",
     negativePrompt:
-      "smooth realistic rendering, 3D rendered, modern HD graphics, photorealistic, anti-aliased, soft edges, gradients, blurred, detailed textures, cartoon, vector, clean lines, soft shading",
+      "smooth realistic rendering, 3D rendered, modern HD graphics, photorealistic, anti-aliased, soft edges, gradients, blurred, detailed textures, cartoon, vector, clean lines, soft shading, airbrushed, digital painting",
   },
   {
     id: "painted",

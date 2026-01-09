@@ -84,20 +84,22 @@ export function buildPrompt(params: PromptBuildParams): BuiltPrompt {
   let promptParts: string[];
 
   if (isPixelArt) {
-    // PIXEL ART: Style emphasis at START and END, with strong exclusions
-    // Format: [PIXEL ART EMPHASIS] + [what to draw] + [reinforcement] + [exclusions]
+    // PIXEL ART: Triple enforcement - START, MIDDLE, END
+    // Research shows FLUX needs repeated emphasis for style compliance
     const pixelEmphasis = styleId === "pixel-16"
-      ? "CRITICAL: STRICT 16-BIT PIXEL ART ONLY, every pixel MUST be a visible square block, chunky blocky pixels like NES/SNES/Game Boy"
-      : "CRITICAL: STRICT 32-BIT PIXEL ART ONLY, visible pixel grid, each pixel clearly defined square, PlayStation 1 era sprite";
+      ? "PIXEL ART ONLY, 16x16 chunky pixel tiles, old school NES/Game Boy graphics, absolutely NO smooth rendering"
+      : "PIXEL ART ONLY, 32x32 chunky pixel tiles, retro arcade graphics, absolutely NO smooth rendering";
+
+    const pixelMiddle = "visible square pixel blocks, hard pixelated edges, retro video game sprite";
 
     const pixelReinforcement = styleId === "pixel-16"
-      ? "MANDATORY: visible square pixels, jagged pixelated edges, maximum 16 colors, NO anti-aliasing, NO smooth gradients"
-      : "MANDATORY: visible pixel blocks, hard pixelated edges, limited color palette, NO smooth rendering, NO anti-aliasing";
+      ? "ENFORCE: visible pixels, jagged edges, 16 colors max, NO anti-aliasing, NO gradients, chunky blocky pixels"
+      : "ENFORCE: visible pixels, pixelated edges, limited palette, NO anti-aliasing, NO smooth textures, blocky pixels";
 
     promptParts = [
       pixelEmphasis,
       style.promptSuffix,
-      qualityPrefix,
+      pixelMiddle,
       category.promptPrefix,
       userPrompt.trim(),
       pixelReinforcement,

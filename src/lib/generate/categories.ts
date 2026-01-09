@@ -19,7 +19,7 @@ export const ASSET_CATEGORIES: AssetCategory[] = [
     name: "Characters",
     icon: "👤",
     description: "Heroes, enemies, NPCs",
-    promptPrefix: "single clean character sprite, EXACTLY as described - no additional elements, ZERO extra accessories, ZERO blood, ZERO wounds, ZERO additional clothing unless specified, basic clean character design, neutral pose, simple design, ONLY the explicitly requested features and clothing",
+    promptPrefix: "single clean character sprite, EXACTLY as described, crown elements = golden circlet or band on helmet/head, NO horns unless specified, NO spikes unless specified, NO extra decorations, clean armor design, neutral pose, ONLY explicitly requested features, accurate proportions, ZERO blood, ZERO wounds",
     defaultSize: { width: 512, height: 512 },
     subcategories: ["hero", "enemy", "npc", "boss", "animal", "creature"],
     suggestions: [
@@ -36,7 +36,7 @@ export const ASSET_CATEGORIES: AssetCategory[] = [
     name: "Weapons",
     icon: "⚔️",
     description: "Swords, guns, magic staffs",
-    promptPrefix: "single weapon only, isolated weapon sprite, ALL described elements MUST be present exactly as specified, crystal elements = transparent glass-like material, glowing effects = bright luminous aura, metallic parts = reflective metal texture, accurate weapon proportions, clean design, transparent or neutral background",
+    promptPrefix: "single weapon only, isolated weapon sprite, ALL described elements MANDATORY, glowing runes = bright magical symbols carved into surface with visible light emission, crystal elements = clear transparent glass texture, glowing effects = intense bright aura with light rays, magical energy visible, luminous enchantments clearly shown, accurate proportions, clean design",
     defaultSize: { width: 256, height: 256 },
     subcategories: ["sword", "axe", "bow", "gun", "staff", "shield"],
     suggestions: [
@@ -53,7 +53,7 @@ export const ASSET_CATEGORIES: AssetCategory[] = [
     name: "Items",
     icon: "💎",
     description: "Potions, coins, power-ups",
-    promptPrefix: "game item icon, single item object, clean item design, game inventory style icon",
+    promptPrefix: "game item icon, single item object, clean design, glowing potions = bright luminous bottles with visible magical aura and light emission, magical items = clearly visible enchantment effects, coins = simple metallic design, inventory style icon",
     defaultSize: { width: 128, height: 128 },
     subcategories: ["potion", "coin", "gem", "food", "key", "scroll"],
     suggestions: [
@@ -87,7 +87,7 @@ export const ASSET_CATEGORIES: AssetCategory[] = [
     name: "Environment",
     icon: "🌳",
     description: "Trees, rocks, props",
-    promptPrefix: "game environment prop",
+    promptPrefix: "game environment asset, trees = chunky pixelated trunk and foliage if pixel art style, fantasy elements clearly visible, organic shapes adapted to chosen art style, clean prop design, game-ready asset",
     defaultSize: { width: 512, height: 512 },
     subcategories: ["tree", "rock", "bush", "grass", "flower", "prop"],
     suggestions: [
