@@ -19,7 +19,7 @@ export const ASSET_CATEGORIES: AssetCategory[] = [
     name: "Characters",
     icon: "👤",
     description: "Heroes, enemies, NPCs",
-    promptPrefix: "single clean character sprite, EXACTLY as described, crown elements = golden circlet or band on helmet/head, NO horns unless specified, NO spikes unless specified, NO extra decorations, clean armor design, neutral pose, ONLY explicitly requested features, accurate proportions, ZERO blood, ZERO wounds",
+    promptPrefix: "single clean character sprite, EXACTLY as described - nothing more nothing less, NO armor unless specified, NO crown unless specified, NO helmet unless specified, NO horns, NO spikes, NO extra decorations, wizard = robes and staff and pointed hat, knight = armor, neutral pose, ONLY explicitly requested features, accurate proportions, ZERO blood, ZERO wounds",
     defaultSize: { width: 512, height: 512 },
     subcategories: ["hero", "enemy", "npc", "boss", "animal", "creature"],
     suggestions: [

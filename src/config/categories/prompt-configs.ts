@@ -66,9 +66,9 @@ export const WEAPONS_PROMPT_CONFIG: Record<string, SubcategoryPromptConfig> = {
 export const ARMOR_PROMPT_CONFIG: Record<string, SubcategoryPromptConfig> = {
   HELMETS: {
     objectType: "((isolated helmet equipment icon)), game inventory helmet item, loot drop helmet",
-    visualDesc: "ISOLATED helmet as equipment icon - protective headgear rendered as ((STANDALONE INVENTORY ICON)), empty hollow helmet like RPG loot drop, game item pickup style, equipment slot icon rendering, ((NO HEAD OR FACE INSIDE))",
-    composition: "single empty helmet displayed as game item icon, ((COMPLETELY EMPTY INSIDE - NO HEAD)), helmet floating or on invisible stand like inventory loot, front or 3/4 view, equipment icon presentation",
-    avoid: "head inside helmet, person wearing it, face visible, neck attached, mannequin head, body parts, multiple helmets, worn helmet, helmet on head, human head, skull inside, eyes visible, face inside, portrait, character",
+    visualDesc: "ISOLATED helmet as equipment icon - protective headgear rendered as ((STANDALONE INVENTORY ICON)), empty hollow helmet like RPG loot drop, game item pickup style, equipment slot icon rendering, ((NO HEAD OR FACE INSIDE)), ((NO HORNS unless explicitly requested)), simple clean helmet design",
+    composition: "single empty helmet displayed as game item icon, ((COMPLETELY EMPTY INSIDE - NO HEAD)), helmet floating or on invisible stand like inventory loot, front or 3/4 view, equipment icon presentation, if crown requested = simple golden band or circlet, NO horn decorations",
+    avoid: "head inside helmet, person wearing it, face visible, neck attached, mannequin head, body parts, multiple helmets, worn helmet, helmet on head, human head, skull inside, eyes visible, face inside, portrait, character, horns, viking horns, demon horns, spikes unless requested",
   },
   CHEST_ARMOR: {
     objectType: "((isolated chest armor equipment icon)), game inventory armor item, loot drop breastplate",
@@ -204,9 +204,9 @@ export const QUEST_ITEMS_PROMPT_CONFIG: Record<string, SubcategoryPromptConfig> 
 export const CHARACTERS_PROMPT_CONFIG: Record<string, SubcategoryPromptConfig> = {
   HEROES: {
     objectType: "hero character",
-    visualDesc: "heroic adventurer with appropriate equipment, strong capable appearance, ready for action, confident pose",
-    composition: "single character full body visible, standing neutral or heroic pose, facing forward or 3/4 view",
-    avoid: "multiple characters, just face portrait closeup, action blur or motion, background scene, enemies in frame",
+    visualDesc: "heroic adventurer with ONLY explicitly requested equipment - if wizard mentioned = robes staff pointed hat and long beard, if knight mentioned = armor sword shield, if rogue mentioned = leather hood daggers, match character type EXACTLY to description",
+    composition: "single character full body visible, standing neutral or heroic pose, facing forward or 3/4 view, ONLY the equipment mentioned in prompt - NO extra armor/crown/helmet unless requested",
+    avoid: "multiple characters, just face portrait closeup, action blur or motion, background scene, enemies in frame, wrong character type equipment (no armor on wizards, no robes on knights unless specified)",
   },
   ENEMIES: {
     objectType: "enemy character",
