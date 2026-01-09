@@ -5,6 +5,9 @@
 import { getCategoryById, type AssetCategory } from "./categories";
 import { getStyleById, type ArtStyle } from "./styles";
 
+// Global negative prompts for common quality issues
+const GLOBAL_NEGATIVES = "blurry, low quality, distorted, malformed, extra limbs, multiple subjects when single requested, watermarks, text overlays, signatures, deformed, ugly, bad anatomy, disfigured";
+
 interface PromptBuildParams {
   categoryId: string;
   styleId: string;
@@ -22,16 +25,23 @@ interface BuiltPrompt {
  * Convert negativePrompt to exclusions that work in positive prompt
  * Since Runware/FLUX doesn't support negative prompts, we embed them as exclusions
  */
-function buildExclusions(negativePrompt: string | undefined): string {
-  if (!negativePrompt) return "";
+function buildExclusions(negativePrompt: string | undefined, includeGlobal: boolean = true): string {
+  const allNegatives: string[] = [];
 
-  // Convert negative prompt items to "NEVER X, NEVER Y" format
-  const items = negativePrompt.split(",").map(s => s.trim()).filter(Boolean);
+  // Add global negatives first
+  if (includeGlobal) {
+    allNegatives.push(...GLOBAL_NEGATIVES.split(",").map(s => s.trim()).filter(Boolean));
+  }
 
-  // Take most important exclusions (limit to avoid prompt bloat)
-  const topExclusions = items.slice(0, 8);
+  // Add style-specific negatives
+  if (negativePrompt) {
+    allNegatives.push(...negativePrompt.split(",").map(s => s.trim()).filter(Boolean));
+  }
 
-  return topExclusions.map(item => `NEVER ${item}`).join(", ");
+  // Remove duplicates and take most important exclusions (limit to avoid prompt bloat)
+  const uniqueExclusions = [...new Set(allNegatives)].slice(0, 12);
+
+  return uniqueExclusions.map(item => `NEVER ${item}`).join(", ");
 }
 
 export function buildPrompt(params: PromptBuildParams): BuiltPrompt {
@@ -77,8 +87,12 @@ export function buildPrompt(params: PromptBuildParams): BuiltPrompt {
     // PIXEL ART: Style emphasis at START and END, with strong exclusions
     // Format: [PIXEL ART EMPHASIS] + [what to draw] + [reinforcement] + [exclusions]
     const pixelEmphasis = styleId === "pixel-16"
-      ? "IMPORTANT: 16-bit pixel art, each pixel must be clearly visible as a square, chunky blocky pixels like SNES games"
-      : "IMPORTANT: 32-bit pixel art, visible pixel grid, retro PlayStation era sprite";
+      ? "CRITICAL: STRICT 16-BIT PIXEL ART ONLY, every pixel MUST be a visible square block, chunky blocky pixels like NES/SNES/Game Boy"
+      : "CRITICAL: STRICT 32-BIT PIXEL ART ONLY, visible pixel grid, each pixel clearly defined square, PlayStation 1 era sprite";
+
+    const pixelReinforcement = styleId === "pixel-16"
+      ? "MANDATORY: visible square pixels, jagged pixelated edges, maximum 16 colors, NO anti-aliasing, NO smooth gradients"
+      : "MANDATORY: visible pixel blocks, hard pixelated edges, limited color palette, NO smooth rendering, NO anti-aliasing";
 
     promptParts = [
       pixelEmphasis,
@@ -86,8 +100,8 @@ export function buildPrompt(params: PromptBuildParams): BuiltPrompt {
       qualityPrefix,
       category.promptPrefix,
       userPrompt.trim(),
+      pixelReinforcement,
       styleExclusions,
-      "MUST have visible square pixels, jagged edges, limited color palette",
       backgroundSuffix,
     ];
   } else if (isCartoon) {

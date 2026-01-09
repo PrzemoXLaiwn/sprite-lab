@@ -28,6 +28,9 @@ import {
   Brain,
   Copy,
   Check,
+  Trash2,
+  Play,
+  TestTube,
 } from "lucide-react";
 import Link from "next/link";
 import { VerificationPanel } from "@/components/dashboard/VerificationPanel";
@@ -145,6 +148,22 @@ export default function QualityDashboardPage() {
   const [generatingOpt, setGeneratingOpt] = useState(false);
   const [copiedTemplate, setCopiedTemplate] = useState<string | null>(null);
 
+  // Reset & Test Generation state
+  const [resetting, setResetting] = useState(false);
+  const [batchTesting, setBatchTesting] = useState(false);
+  const [batchTestProgress, setBatchTestProgress] = useState<{
+    current: number;
+    total: number;
+    successCount: number;
+    failCount: number;
+  } | null>(null);
+  const [batchTestResults, setBatchTestResults] = useState<Array<{
+    job: { styleId: string; categoryId: string; subcategoryId: string; prompt: string };
+    success: boolean;
+    imageUrl?: string;
+    error?: string;
+  }> | null>(null);
+
   const fetchData = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
     setRefreshing(!showLoading);
@@ -190,6 +209,74 @@ export default function QualityDashboardPage() {
     navigator.clipboard.writeText(text);
     setCopiedTemplate(id);
     setTimeout(() => setCopiedTemplate(null), 2000);
+  };
+
+  // Reset quality data
+  const handleReset = async (mode: "problems" | "patterns" | "all") => {
+    const confirmMsg = mode === "all"
+      ? "This will DELETE all quality data (analyses, patterns, optimizations). Are you sure?"
+      : mode === "problems"
+      ? "This will DELETE all image analyses and jobs. Are you sure?"
+      : "This will DELETE all learned patterns and optimizations. Are you sure?";
+
+    if (!confirm(confirmMsg)) return;
+
+    setResetting(true);
+    try {
+      const res = await fetch("/api/admin/quality-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        alert(`Successfully cleared: ${JSON.stringify(json.results)}`);
+        fetchData(false);
+      } else {
+        alert("Failed to reset: " + json.error);
+      }
+    } catch (err) {
+      alert("Error resetting data");
+    } finally {
+      setResetting(false);
+    }
+  };
+
+  // Run batch test generation
+  const handleBatchTest = async () => {
+    if (!confirm("This will generate ~48 test images (6 styles x 8 categories) and use credits. Continue?")) return;
+
+    setBatchTesting(true);
+    setBatchTestProgress({ current: 0, total: 48, successCount: 0, failCount: 0 });
+    setBatchTestResults(null);
+
+    try {
+      const res = await fetch("/api/admin/batch-test-generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dryRun: false }),
+      });
+      const json = await res.json();
+
+      if (json.success) {
+        setBatchTestResults(json.results);
+        setBatchTestProgress({
+          current: json.totalTests,
+          total: json.totalTests,
+          successCount: json.successCount,
+          failCount: json.failCount,
+        });
+        alert(`Batch test complete: ${json.successCount} success, ${json.failCount} failed`);
+        // Refresh data after batch test
+        fetchData(false);
+      } else {
+        alert("Batch test failed: " + json.error);
+      }
+    } catch (err) {
+      alert("Error running batch test");
+    } finally {
+      setBatchTesting(false);
+    }
   };
 
   useEffect(() => {
@@ -264,16 +351,145 @@ export default function QualityDashboardPage() {
             Monitor image quality, detect issues, and get recommendations for fixes
           </p>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => fetchData(false)}
-          disabled={refreshing}
-          className="gap-2"
-        >
-          <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Batch Test Button */}
+          <Button
+            variant="default"
+            onClick={handleBatchTest}
+            disabled={batchTesting || resetting}
+            className="gap-2 bg-green-600 hover:bg-green-700"
+          >
+            {batchTesting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Testing...
+              </>
+            ) : (
+              <>
+                <TestTube className="w-4 h-4" />
+                Run Test Suite
+              </>
+            )}
+          </Button>
+
+          {/* Reset Dropdown */}
+          <div className="relative group">
+            <Button
+              variant="outline"
+              disabled={resetting || batchTesting}
+              className="gap-2 text-red-500 border-red-500/30 hover:bg-red-500/10"
+            >
+              {resetting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4" />
+              )}
+              Clear Data
+            </Button>
+            <div className="absolute right-0 top-full mt-1 bg-background border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 min-w-[200px]">
+              <button
+                onClick={() => handleReset("problems")}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-muted flex items-center gap-2"
+              >
+                <AlertTriangle className="w-4 h-4 text-yellow-500" />
+                Clear Problems Only
+              </button>
+              <button
+                onClick={() => handleReset("patterns")}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-muted flex items-center gap-2"
+              >
+                <Brain className="w-4 h-4 text-purple-500" />
+                Clear Patterns Only
+              </button>
+              <button
+                onClick={() => handleReset("all")}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-red-500/10 text-red-500 flex items-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                Clear ALL Data
+              </button>
+            </div>
+          </div>
+
+          <Button
+            variant="outline"
+            onClick={() => fetchData(false)}
+            disabled={refreshing}
+            className="gap-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
+
+      {/* Batch Test Progress */}
+      {batchTestProgress && batchTesting && (
+        <Card className="mb-6 border-green-500/30">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <Loader2 className="w-6 h-6 animate-spin text-green-500" />
+              <div className="flex-1">
+                <p className="font-medium">Running Test Suite...</p>
+                <p className="text-sm text-muted-foreground">
+                  Generating test images for each style + category combination
+                </p>
+                <div className="mt-2 w-full bg-muted rounded-full h-2">
+                  <div
+                    className="bg-green-500 h-2 rounded-full transition-all"
+                    style={{ width: `${(batchTestProgress.current / batchTestProgress.total) * 100}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Batch Test Results */}
+      {batchTestResults && !batchTesting && (
+        <Card className="mb-6 border-green-500/30">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <TestTube className="w-5 h-5 text-green-500" />
+                Test Results: {batchTestProgress?.successCount} Success, {batchTestProgress?.failCount} Failed
+              </CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => setBatchTestResults(null)}>
+                <XCircle className="w-4 h-4" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 max-h-[400px] overflow-y-auto">
+              {batchTestResults.map((result, idx) => (
+                <div
+                  key={idx}
+                  className={`relative aspect-square rounded-lg overflow-hidden border-2 ${
+                    result.success ? "border-green-500" : "border-red-500"
+                  }`}
+                >
+                  {result.success && result.imageUrl ? (
+                    <img
+                      src={result.imageUrl}
+                      alt={result.job.prompt}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-red-500/10">
+                      <XCircle className="w-8 h-8 text-red-500" />
+                    </div>
+                  )}
+                  <div className="absolute bottom-0 left-0 right-0 p-1 bg-black/70 text-xs text-white">
+                    <p className="truncate">{result.job.styleId}</p>
+                    <p className="truncate text-white/70">{result.job.categoryId}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tabs */}
       <Tabs defaultValue="overview" className="w-full">
