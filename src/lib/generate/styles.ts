@@ -17,18 +17,18 @@ export const ART_STYLES: ArtStyle[] = [
     name: "Pixel Art 16-bit",
     description: "Retro SNES/GBA style",
     promptSuffix:
-      "FORCE CHUNKY PIXEL ART ONLY, 16x16 pixel tiles, visible square pixel blocks, NES/Game Boy graphics, absolutely NO smooth rendering, hard pixelated edges mandatory, retro 8-bit sprite art, limited 16-color palette, pixel grid must be visible, chunky blocky style enforced, old school video game graphics",
+      "16-bit pixel art sprite, 64x64 pixels, visible chunky square pixels, NES SNES Game Boy retro graphics, hard pixelated edges, limited 16 color palette, classic video game sprite",
     negativePrompt:
-      "smooth, realistic, 3D render, anti-aliased, blurred, gradients, photorealistic, painted, modern graphics, HD, high resolution, soft edges, rounded corners, smooth shading, detailed textures, cartoon, vector, clean lines, soft rendering, airbrushed, digital painting",
+      "photorealistic, 3D render, smooth gradients, anti-aliased, modern HD graphics, soft shading",
   },
   {
     id: "pixel-32",
     name: "Pixel Art 32-bit",
     description: "PS1/Saturn era style",
     promptSuffix:
-      "ENFORCE 32x32 PIXEL TILES, chunky pixel blocks mandatory, visible pixel grid, hard pixelated edges only, retro 16-bit console graphics, absolutely NO anti-aliasing, square pixel blocks enforced, limited color palette, classic arcade game sprite style, pixelated texture required",
+      "32-bit pixel art sprite, 128x128 pixels, visible pixel blocks, retro PlayStation era graphics, pixelated edges, limited color palette, classic arcade sprite style",
     negativePrompt:
-      "smooth realistic rendering, 3D rendered, modern HD graphics, photorealistic, anti-aliased, soft edges, gradients, blurred, detailed textures, cartoon, vector, clean lines, soft shading, airbrushed, digital painting",
+      "photorealistic, 3D render, smooth gradients, anti-aliased, modern HD graphics, soft shading",
   },
   {
     id: "painted",

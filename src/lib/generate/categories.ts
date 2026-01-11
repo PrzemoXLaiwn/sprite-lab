@@ -19,7 +19,7 @@ export const ASSET_CATEGORIES: AssetCategory[] = [
     name: "Characters",
     icon: "👤",
     description: "Heroes, enemies, NPCs",
-    promptPrefix: "single clean character sprite, EXACTLY as described - nothing more nothing less, NO armor unless specified, NO crown unless specified, NO helmet unless specified, NO horns, NO spikes, NO extra decorations, wizard = robes and staff and pointed hat, knight = armor, neutral pose, ONLY explicitly requested features, accurate proportions, ZERO blood, ZERO wounds",
+    promptPrefix: "single character sprite, clean simple design, only features explicitly mentioned in description, neutral standing pose, accurate game character proportions, wizard = robed mage with staff and pointed hat, knight = armored warrior",
     defaultSize: { width: 512, height: 512 },
     subcategories: ["hero", "enemy", "npc", "boss", "animal", "creature"],
     suggestions: [
@@ -36,7 +36,7 @@ export const ASSET_CATEGORIES: AssetCategory[] = [
     name: "Weapons",
     icon: "⚔️",
     description: "Swords, guns, magic staffs",
-    promptPrefix: "single weapon only, isolated weapon sprite, ALL described elements MANDATORY, glowing runes = bright magical symbols carved into surface with visible light emission, crystal elements = clear transparent glass texture, glowing effects = intense bright aura with light rays, magical energy visible, luminous enchantments clearly shown, accurate proportions, clean design",
+    promptPrefix: "single weapon sprite on transparent background, when 'glowing' mentioned: BRIGHT LUMINOUS AURA with visible light rays and energy particles, when 'runes' mentioned: GLOWING magical symbols carved deep into surface emitting bright light, magical weapons must show INTENSE magical energy effects",
     defaultSize: { width: 256, height: 256 },
     subcategories: ["sword", "axe", "bow", "gun", "staff", "shield"],
     suggestions: [
@@ -53,7 +53,7 @@ export const ASSET_CATEGORIES: AssetCategory[] = [
     name: "Items",
     icon: "💎",
     description: "Potions, coins, power-ups",
-    promptPrefix: "game item icon, single item object, clean design, glowing potions = bright luminous bottles with visible magical aura and light emission, magical items = clearly visible enchantment effects, coins = simple metallic design, inventory style icon",
+    promptPrefix: "single game item sprite, when 'glowing' mentioned: BRIGHT MAGICAL AURA surrounding object with visible light particles and energy emission, when 'potion' mentioned: glass bottle with cork containing colored liquid, magical items must show INTENSE glowing effects",
     defaultSize: { width: 128, height: 128 },
     subcategories: ["potion", "coin", "gem", "food", "key", "scroll"],
     suggestions: [
@@ -155,7 +155,7 @@ export const ASSET_CATEGORIES: AssetCategory[] = [
     name: "Sprite Sheets",
     icon: "🎬",
     description: "Animation frames, sequences",
-    promptPrefix: "SPRITE SHEET FORMAT MANDATORY: horizontal row of animation frames, minimum 4 frames (idle-walk-attack-death), each frame same size, equal spacing between frames, white background separation, consistent character across all frames, frame-by-frame animation sequence, game development ready format, ALL frames clearly visible",
+    promptPrefix: "SPRITESHEET GRID LAYOUT: 4x1 or 8x1 horizontal grid of identical-sized square frames, each frame 64x64 pixels, character centered in each frame, frame 1: idle pose, frame 2: walking step, frame 3: attack pose, frame 4: damaged pose, consistent character design across ALL frames, white grid lines separating frames, pixel-perfect alignment, game animation ready, NO single character - MUST be grid of multiple frames",
     defaultSize: { width: 512, height: 128 },
     subcategories: ["walk-cycle", "attack", "idle", "death", "jump"],
     suggestions: [

@@ -84,26 +84,16 @@ export function buildPrompt(params: PromptBuildParams): BuiltPrompt {
   let promptParts: string[];
 
   if (isPixelArt) {
-    // PIXEL ART: Triple enforcement - START, MIDDLE, END
-    // Research shows FLUX needs repeated emphasis for style compliance
-    const pixelEmphasis = styleId === "pixel-16"
-      ? "PIXEL ART ONLY, 16x16 chunky pixel tiles, old school NES/Game Boy graphics, absolutely NO smooth rendering"
-      : "PIXEL ART ONLY, 32x32 chunky pixel tiles, retro arcade graphics, absolutely NO smooth rendering";
-
-    const pixelMiddle = "visible square pixel blocks, hard pixelated edges, retro video game sprite";
-
-    const pixelReinforcement = styleId === "pixel-16"
-      ? "ENFORCE: visible pixels, jagged edges, 16 colors max, NO anti-aliasing, NO gradients, chunky blocky pixels"
-      : "ENFORCE: visible pixels, pixelated edges, limited palette, NO anti-aliasing, NO smooth textures, blocky pixels";
+    // PIXEL ART: Simplified approach - let style suffix do the work
+    // Runware/FLUX responds better to concrete pixel dimensions
+    const pixelSize = styleId === "pixel-16" ? "64x64" : "128x128";
 
     promptParts = [
-      pixelEmphasis,
+      `${pixelSize} pixel art sprite`,
       style.promptSuffix,
-      pixelMiddle,
       category.promptPrefix,
       userPrompt.trim(),
-      pixelReinforcement,
-      styleExclusions,
+      "visible pixels, pixelated edges",
       backgroundSuffix,
     ];
   } else if (isCartoon) {
