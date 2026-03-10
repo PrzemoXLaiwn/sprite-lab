@@ -167,6 +167,13 @@ export async function POST(request: Request) {
     // ── 7. Delegate to service ────────────────────────────────────────────────
     const result = await generateAssets(serviceRequest);
     const asset = result.assets[0];
+    if (!asset) {
+      throw new GenerationError({
+        code: "UNEXPECTED_ERROR",
+        userMessage: "Something went wrong. Please try again.",
+        message: "generateAssets returned empty assets array for mode:single",
+      });
+    }
     const styleConfig = STYLES_2D_FULL[styleId];
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
 

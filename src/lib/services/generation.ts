@@ -482,10 +482,18 @@ async function generateSinglePipeline(
   // ── Credit deduction (case A boundary) ────────────────────────────────────
   const creditResult = await checkAndDeductCredits(request.userId, creditsRequired);
   if (!creditResult.success) {
+    if (creditResult.error === "Not enough credits") {
+      throw new GenerationError({
+        code: "INSUFFICIENT_CREDITS",
+        userMessage: `Not enough credits. You need ${creditsRequired} credit.`,
+        isExpected: true,
+      });
+    }
     throw new GenerationError({
-      code: "INSUFFICIENT_CREDITS",
-      userMessage: `Not enough credits. You need ${creditsRequired} credit.`,
-      isExpected: true,
+      code: "UNEXPECTED_ERROR",
+      userMessage: "Something went wrong. Please try again.",
+      isExpected: false,
+      message: `Credit deduction failed: ${creditResult.error}`,
     });
   }
   // ── CREDITS DEDUCTED — failures from here require refund (case B) ─────────
@@ -539,10 +547,18 @@ async function generateMultiPipeline(
   // ── Credit deduction ───────────────────────────────────────────────────────
   const creditResult = await checkAndDeductCredits(request.userId, creditsRequired);
   if (!creditResult.success) {
+    if (creditResult.error === "Not enough credits") {
+      throw new GenerationError({
+        code: "INSUFFICIENT_CREDITS",
+        userMessage: `Not enough credits. You need ${creditsRequired} credits.`,
+        isExpected: true,
+      });
+    }
     throw new GenerationError({
-      code: "INSUFFICIENT_CREDITS",
-      userMessage: `Not enough credits. You need ${creditsRequired} credits.`,
-      isExpected: true,
+      code: "UNEXPECTED_ERROR",
+      userMessage: "Something went wrong. Please try again.",
+      isExpected: false,
+      message: `Credit deduction failed: ${creditResult.error}`,
     });
   }
   // ── CREDITS DEDUCTED ──────────────────────────────────────────────────────
@@ -723,8 +739,8 @@ async function generateSingle2D(request: GenerationRequest): Promise<GeneratedAs
     negativePrompt,
     model: modelId,
     seed: request.seed,
-    steps: quality.steps || styleSteps,
-    guidance: quality.guidance || styleGuidance,
+    steps: quality.steps ?? styleSteps,
+    guidance: quality.guidance ?? styleGuidance,
     width: 1024,
     height: 1024,
   };
