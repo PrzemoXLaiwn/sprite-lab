@@ -3,8 +3,56 @@ import { headers } from "next/headers";
 import { stripe, getPlanByPriceId, getCreditsForPlan } from "@/lib/stripe";
 import prisma from "@/lib/prisma";
 import Stripe from "stripe";
+import { z } from "zod";
+
+// ─── Metadata validators ──────────────────────────────────────────────────────
+// IMPORTANT: Zod runs AFTER stripe.webhooks.constructEvent() succeeds.
+// We never touch the raw body before signature verification — that would
+// break Stripe's HMAC check.
+//
+// These schemas validate the metadata fields we read from verified events.
+// They do not replace Stripe's own type definitions — they add safe guards
+// on the string fields we control (userId, credits, type).
+
+const CheckoutMetadataSchema = z.object({
+  userId: z.string().min(1, "Missing userId in session metadata"),
+  type: z.string().optional(),
+  credits: z.string().optional(),
+});
+
+const CreditPackMetadataSchema = z.object({
+  userId: z.string().min(1),
+  credits: z
+    .string()
+    .refine((v) => !isNaN(parseInt(v, 10)) && parseInt(v, 10) > 0, {
+      message: "credits metadata must be a positive integer string",
+    }),
+});
+
+// ─── Env guard ───────────────────────────────────────────────────────────────
+// Checked once at request time so misconfiguration produces a clear log.
+function getWebhookSecret(): string | null {
+  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!secret) {
+    console.error("[Webhook] STRIPE_WEBHOOK_SECRET is not set");
+    return null;
+  }
+  return secret;
+}
 
 export async function POST(request: Request) {
+  // ── 1. Env guard — fail fast with a clear error if secret is missing ────────
+  const webhookSecret = getWebhookSecret();
+  if (!webhookSecret) {
+    return NextResponse.json(
+      { error: "Webhook not configured" },
+      { status: 500 }
+    );
+  }
+
+  // ── 2. Read raw body as text — MUST happen before any JSON parsing ──────────
+  // stripe.webhooks.constructEvent() computes an HMAC over the exact raw bytes.
+  // Any transformation (JSON.parse → re-stringify) would break the signature.
   const body = await request.text();
   const headersList = await headers();
   const signature = headersList.get("stripe-signature");
@@ -16,14 +64,11 @@ export async function POST(request: Request) {
     );
   }
 
+  // ── 3. Verify signature — all validation happens on the verified event ──────
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET!
-    );
+    event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
   } catch (error) {
     console.error("Webhook signature verification failed:", error);
     return NextResponse.json(
@@ -89,12 +134,19 @@ export async function POST(request: Request) {
 // ===========================================
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
-  const userId = session.metadata?.userId;
-
-  if (!userId) {
-    console.error("No userId in session metadata");
+  // Validate the metadata fields we depend on
+  const metaParsed = CheckoutMetadataSchema.safeParse(session.metadata);
+  if (!metaParsed.success) {
+    console.error(
+      "handleCheckoutCompleted: invalid metadata:",
+      metaParsed.error.issues[0]?.message,
+      "raw metadata:",
+      session.metadata
+    );
     return;
   }
+
+  const { userId } = metaParsed.data;
 
   console.log("Checkout completed for user:", userId);
   console.log("Session mode:", session.mode);
@@ -116,19 +168,19 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 }
 
 async function handleCreditPackPurchase(session: Stripe.Checkout.Session, userId: string) {
-  const creditsStr = session.metadata?.credits;
-
-  if (!creditsStr) {
-    console.error("No credits amount in session metadata");
+  // Validate credits metadata before using parseInt
+  const packMetaParsed = CreditPackMetadataSchema.safeParse(session.metadata);
+  if (!packMetaParsed.success) {
+    console.error(
+      "handleCreditPackPurchase: invalid credits metadata:",
+      packMetaParsed.error.issues[0]?.message,
+      "raw metadata:",
+      session.metadata
+    );
     return;
   }
 
-  const credits = parseInt(creditsStr, 10);
-
-  if (isNaN(credits) || credits <= 0) {
-    console.error("Invalid credits amount:", creditsStr);
-    return;
-  }
+  const credits = parseInt(packMetaParsed.data.credits, 10);
 
   const amountPaid = (session.amount_total || 0) / 100;
 
