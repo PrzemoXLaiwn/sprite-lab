@@ -207,7 +207,8 @@ export const UI_ELEMENTS: CategoryUI = {
   subcategories: [
     // ITEM ICONS - Most important! For generating inventory item icons
     { id: "ITEM_ICONS", name: "Item Icons", examples: ["gold bars icon", "potion icon", "sword icon", "gem icon", "coin stack icon", "key icon"] },
-    { id: "SKILL_ICONS", name: "Skill Icons", examples: ["attack skill", "heal skill", "buff icon", "fireball skill", "shield ability"] },
+    { id: "SKILL_ICONS", name: "Skill Icons", examples: ["attack skill", "heal skill", "fireball skill", "shield ability", "lightning strike"] },
+    { id: "STATUS_ICONS", name: "Status Icons", examples: ["poison icon", "burn icon", "freeze icon", "curse icon", "stun icon", "bleed icon", "shield buff icon"] },
     { id: "ICONS_UI", name: "UI Icons", examples: ["settings icon", "inventory icon", "map icon", "quest icon", "menu icon"] },
     { id: "BUTTONS", name: "Buttons", examples: ["play button", "menu button", "close button", "action button"] },
     { id: "BARS", name: "Bars", examples: ["health bar", "mana bar", "XP bar", "stamina bar"] },

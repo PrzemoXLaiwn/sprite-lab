@@ -54,6 +54,7 @@ const GENERATOR_CATEGORIES = [
     subcategories: [
       { categoryId: "UI_ELEMENTS", subcategoryId: "ITEM_ICONS",  label: "Item Icons" },
       { categoryId: "UI_ELEMENTS", subcategoryId: "SKILL_ICONS", label: "Skill Icons" },
+      { categoryId: "UI_ELEMENTS", subcategoryId: "STATUS_ICONS",label: "Status Icons" },
       { categoryId: "UI_ELEMENTS", subcategoryId: "ICONS_UI",    label: "UI Icons" },
       { categoryId: "UI_ELEMENTS", subcategoryId: "BUTTONS",     label: "Buttons" },
       { categoryId: "UI_ELEMENTS", subcategoryId: "BARS",        label: "Bars" },
@@ -154,6 +155,7 @@ const SUBTYPE_PLACEHOLDERS: Record<string, string> = {
   COLLECTIBLES: "e.g. silver medal with crown engraving",
   ITEM_ICONS:   "e.g. coin stack icon, golden",
   SKILL_ICONS:  "e.g. fireball spell icon, orange flames",
+  STATUS_ICONS: "e.g. poison icon, freeze icon, burn status, shield buff",
   ICONS_UI:     "e.g. settings gear icon",
   BUTTONS:      "e.g. medieval wooden play button",
   BARS:         "e.g. health bar, red with black border",

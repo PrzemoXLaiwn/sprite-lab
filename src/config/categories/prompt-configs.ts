@@ -411,22 +411,28 @@ export const TILESETS_PROMPT_CONFIG: Record<string, SubcategoryPromptConfig> = {
 export const UI_ELEMENTS_PROMPT_CONFIG: Record<string, SubcategoryPromptConfig> = {
   // !!! MOST IMPORTANT - Item icons for inventory !!!
   ITEM_ICONS: {
-    objectType: "game item icon for inventory",
-    visualDesc: "SINGLE game item icon suitable for inventory slot - clearly recognizable item rendered as icon, simplified stylized appearance, bold outlines, high contrast, game-ready inventory icon style like RPG loot icons",
-    composition: "SINGLE ITEM ICON centered on transparent background, square format (fits in inventory slot), item fills most of the frame, clean simple iconic representation, NOT a grid of items, NOT multiple objects",
-    avoid: "multiple items, inventory grid or slots, UI frame around it, realistic photo style, tiny item in corner, cluttered composition, full scene, grid layout, slot borders",
+    objectType: "inventory item icon, single game item rendered as a bold square icon",
+    visualDesc: "one clearly recognizable game item as an icon — simplified, bold outlines, high contrast, RPG loot icon style. The item is the full subject, not a scene. Examples: coin stack, potion bottle, sword silhouette, gem",
+    composition: "single icon, square format, item fills 80% of frame, centered on transparent background, flat iconic representation, readable at 32x32 pixels, no background elements, no frame border, no scene",
+    avoid: "multiple items, inventory grid or slots, UI frame around it, realistic photo style, tiny item in corner, cluttered composition, full scene, grid layout, slot borders, character holding item",
   },
   SKILL_ICONS: {
-    objectType: "skill ability icon",
-    visualDesc: "ability or spell icon showing skill effect visually - like fireball attack, healing spell, buff aura, or combat ability, bold iconic style",
-    composition: "single skill icon, square format suitable for skill bar, clear visual representation of the ability effect, iconic and readable at small size",
-    avoid: "skill bar with multiple abilities, character casting the spell, cooldown overlay timer, tooltip text, realistic scene",
+    objectType: "active skill icon, ability symbol for a skill bar",
+    visualDesc: "one bold symbolic icon representing an active game ability — shown as a clean centered symbol or stylized element. Like a flame for fire spell, a sword arc for slash attack, a green cross for heal, a lightning bolt for shock. Flat symbolic icon, NOT a scene, NOT a character casting",
+    composition: "single icon, square format, symbol fills 80% of frame, centered on transparent background, bold readable at 32x32 pixels, flat 2D iconic style, high contrast, no background, no character, no scene",
+    avoid: "character casting the spell, hand or arm visible, cooldown overlay timer, tooltip text, realistic spell scene, multiple icons, icon sheet, skill bar with all abilities, background scene, atmospheric lighting, 3D depth",
+  },
+  STATUS_ICONS: {
+    objectType: "status effect icon, buff or debuff indicator badge for game UI",
+    visualDesc: "one small symbolic icon representing a game status condition — shown as a clean flat symbol. Poison = skull or green droplet, Burn = flame, Freeze = snowflake or ice crystal, Stun = stars or lightning, Bleed = blood droplet, Curse = dark rune, Shield buff = shield symbol. Bold flat symbol NOT a scene or illustration",
+    composition: "single icon, square format, symbol fills 80% of frame, centered on transparent background, flat 2D symbolic badge, highly readable at 16x16 pixels, high contrast, minimal detail, clean silhouette, no background, no character, no scene",
+    avoid: "character affected by the status, spell effect or particle cloud scene, potion bottle or item, creature, atmospheric illustration, realistic rendering, 3D depth shading, multiple symbols, icon sheet, character casting or receiving the effect, landscape or environment",
   },
   ICONS_UI: {
-    objectType: "UI icon symbol",
-    visualDesc: "interface icon like settings gear, menu hamburger, map marker, quest tracker, or notification symbol, clean vector-like style",
-    composition: "single icon centered, clear symbolic meaning at small size, works as interface element",
-    avoid: "multiple icons set, icon placed in interface context, text label attached, full HUD layout",
+    objectType: "UI navigation icon, interface symbol",
+    visualDesc: "one clean interface icon — like a gear for settings, magnifier for search, map pin for location, shield for inventory, envelope for mail. Simple flat vector-like symbol, not an illustration",
+    composition: "single icon, square format, symbol fills 80% of frame, centered on transparent background, flat monochromatic or two-tone symbol, clean readable silhouette at 16x16 pixels, no background, no text, no frame",
+    avoid: "multiple icons set, icon placed in interface context with surrounding UI, text label attached, full HUD layout, realistic illustration, decorative borders, 3D shading, scene",
   },
   BUTTONS: {
     objectType: "UI button element",
