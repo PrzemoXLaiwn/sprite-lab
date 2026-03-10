@@ -8,6 +8,34 @@ import {
   STYLES_2D_FULL,
 } from "@/config";
 import { getOrCreateUser, checkAndDeductCredits, refundCredits } from "@/lib/database";
+import { z } from "zod";
+import { parseJsonBody, validateBody } from "@/lib/validation/common";
+
+// ─── Input validation schema ──────────────────────────────────────────────────
+const QueueSubmitSchema = z.object({
+  prompt: z
+    .string()
+    .min(1, "Please enter a description.")
+    .max(500, "Description too long. Maximum 500 characters.")
+    .transform((v) => v.trim()),
+  categoryId: z
+    .string()
+    .min(1, "Please select a category."),
+  subcategoryId: z
+    .string()
+    .min(1, "Please select a type."),
+  styleId: z.string().optional().default("PIXEL_ART_16"),
+  mode: z.enum(["2d", "3d"]).optional().default("2d"),
+  seed: z.union([z.number(), z.string(), z.null()]).optional(),
+  model3DId: z
+    .enum(["rodin", "trellis", "hunyuan3d", "wonder3d"])
+    .optional()
+    .default("rodin"),
+  quality3D: z
+    .enum(["low", "medium", "high"])
+    .optional()
+    .default("medium"),
+});
 
 // ===========================================
 // SUBMIT GENERATION TO BACKGROUND QUEUE
@@ -27,47 +55,39 @@ export async function POST(request: Request) {
       );
     }
 
-    // 📦 Parse Request
-    const body = await request.json();
+    // 📦 Parse + validate request body
+    const rawBody = await parseJsonBody(request);
+    if (rawBody === null) {
+      return NextResponse.json(
+        { error: "Invalid request body.", code: "INVALID_JSON" },
+        { status: 400 }
+      );
+    }
+
+    const parsed = validateBody(QueueSubmitSchema, rawBody);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error, code: "VALIDATION_ERROR" },
+        { status: 400 }
+      );
+    }
+
     const {
       prompt,
       categoryId,
       subcategoryId,
-      styleId = "PIXEL_ART_16",
-      mode = "2d", // "2d" or "3d"
+      styleId,
+      mode,
       seed,
-      // 3D specific
-      model3DId = "rodin",
-      quality3D = "medium",
-    } = body;
+      model3DId,
+      quality3D,
+    } = parsed.data;
 
-    // ✅ Validation
-    if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
-      return NextResponse.json(
-        { error: "Please enter a description." },
-        { status: 400 }
-      );
-    }
-
-    if (prompt.trim().length > 500) {
-      return NextResponse.json(
-        { error: "Description too long. Maximum 500 characters." },
-        { status: 400 }
-      );
-    }
-
-    if (!categoryId || !subcategoryId) {
-      return NextResponse.json(
-        { error: "Please select a category and type." },
-        { status: 400 }
-      );
-    }
-
-    // Validate category/subcategory exist
+    // ✅ Semantic validation (category/subcategory/style existence)
     const category = getCategoryById(categoryId);
     if (!category) {
       return NextResponse.json(
-        { error: `Invalid category: ${categoryId}` },
+        { error: `Invalid category: ${categoryId}`, code: "VALIDATION_ERROR" },
         { status: 400 }
       );
     }
@@ -75,7 +95,7 @@ export async function POST(request: Request) {
     const subcategory = getSubcategoryById(categoryId, subcategoryId);
     if (!subcategory) {
       return NextResponse.json(
-        { error: `Invalid type: ${subcategoryId}` },
+        { error: `Invalid type: ${subcategoryId}`, code: "VALIDATION_ERROR" },
         { status: 400 }
       );
     }
@@ -83,7 +103,7 @@ export async function POST(request: Request) {
     // Validate style for 2D
     if (mode === "2d" && !STYLES_2D_FULL[styleId]) {
       return NextResponse.json(
-        { error: `Invalid style: ${styleId}` },
+        { error: `Invalid style: ${styleId}`, code: "VALIDATION_ERROR" },
         { status: 400 }
       );
     }

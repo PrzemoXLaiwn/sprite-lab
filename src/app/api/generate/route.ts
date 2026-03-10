@@ -12,11 +12,41 @@ import { getOrCreateUser, checkAndDeductCredits, refundCredits, saveGeneration, 
 import { uploadImageToStorage } from "@/lib/storage";
 import { uploadToR2, isR2Configured } from "@/lib/r2";
 import { generateImage, removeBackground, RUNWARE_MODELS, MODEL_COSTS, type RunwareModelId } from "@/lib/runware";
-// 🔥 NEW: Import the prompt enhancer!
 import { enhancePromptWithLearnedFixes } from "@/lib/analytics/prompt-enhancer";
+import { z } from "zod";
+import { parseJsonBody, validateBody } from "@/lib/validation/common";
 
 // Timeout for API calls (2 minutes)
 const API_TIMEOUT = 120000;
+
+// ─── Input validation schema ──────────────────────────────────────────────────
+// This validates the raw request body before any business logic runs.
+// Fields beyond this schema (qualityPreset, enableStyleMix, etc.) are
+// extracted from the validated body below — Zod uses .passthrough() so
+// unknown keys are preserved.
+const GenerateBodySchema = z
+  .object({
+    prompt: z
+      .string()
+      .min(1, "Please enter a description for your sprite.")
+      .max(500, "Description too long. Maximum 500 characters.")
+      .transform((v) => v.trim()),
+    categoryId: z
+      .string()
+      .min(1, "Please select a category."),
+    subcategoryId: z
+      .string()
+      .min(1, "Please select a type."),
+    styleId: z.string().optional().default("PIXEL_ART_16"),
+    seed: z.union([z.number(), z.string(), z.null()]).optional(),
+    qualityPreset: z.enum(["draft", "normal", "hd"]).optional().default("normal"),
+    enableStyleMix: z.boolean().optional().default(false),
+    style2Id: z.string().optional(),
+    style1Weight: z.number().min(0).max(100).optional().default(70),
+    colorPaletteId: z.string().optional(),
+    modelId: z.string().optional(),
+  })
+  .passthrough();
 
 // ===========================================
 // 🔁 RETRY WRAPPER
@@ -66,21 +96,36 @@ export async function POST(request: Request) {
       );
     }
 
-    // 📦 Parse Request
-    const body = await request.json();
+    // 📦 Parse + validate request body
+    const rawBody = await parseJsonBody(request);
+    if (rawBody === null) {
+      return NextResponse.json(
+        { error: "Invalid request body.", code: "INVALID_JSON" },
+        { status: 400 }
+      );
+    }
+
+    const parsed = validateBody(GenerateBodySchema, rawBody);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error, code: "VALIDATION_ERROR" },
+        { status: 400 }
+      );
+    }
+
     const {
       prompt,
       categoryId,
       subcategoryId,
-      styleId = "PIXEL_ART_16",
+      styleId,
       seed,
-      qualityPreset = "normal",
-      enableStyleMix = false,
+      qualityPreset,
+      enableStyleMix,
       style2Id,
-      style1Weight = 70,
+      style1Weight,
       colorPaletteId,
       modelId,
-    } = body;
+    } = parsed.data;
 
     // Quality preset settings
     const QUALITY_SETTINGS: Record<string, { steps: number; guidance: number }> = {
@@ -90,32 +135,11 @@ export async function POST(request: Request) {
     };
     const qualityConfig = QUALITY_SETTINGS[qualityPreset] || QUALITY_SETTINGS.normal;
 
-    // ✅ Validation
-    if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
-      return NextResponse.json(
-        { error: "Please enter a description for your sprite." },
-        { status: 400 }
-      );
-    }
-
-    if (prompt.trim().length > 500) {
-      return NextResponse.json(
-        { error: "Description too long. Maximum 500 characters." },
-        { status: 400 }
-      );
-    }
-
-    if (!categoryId || !subcategoryId) {
-      return NextResponse.json(
-        { error: "Please select a category and type." },
-        { status: 400 }
-      );
-    }
-
+    // ✅ Semantic validation (category/subcategory/style existence checks)
     const category = getCategoryById(categoryId);
     if (!category) {
       return NextResponse.json(
-        { error: `Invalid category: ${categoryId}` },
+        { error: `Invalid category: ${categoryId}`, code: "VALIDATION_ERROR" },
         { status: 400 }
       );
     }
@@ -123,14 +147,14 @@ export async function POST(request: Request) {
     const subcategory = getSubcategoryById(categoryId, subcategoryId);
     if (!subcategory) {
       return NextResponse.json(
-        { error: `Invalid type: ${subcategoryId}` },
+        { error: `Invalid type: ${subcategoryId}`, code: "VALIDATION_ERROR" },
         { status: 400 }
       );
     }
 
     if (!STYLES_2D_FULL[styleId]) {
       return NextResponse.json(
-        { error: `Invalid style: ${styleId}` },
+        { error: `Invalid style: ${styleId}`, code: "VALIDATION_ERROR" },
         { status: 400 }
       );
     }
