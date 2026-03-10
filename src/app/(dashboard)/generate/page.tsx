@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
@@ -215,12 +215,26 @@ export default function GeneratePage() {
   const [subtypeOpen, setSubtypeOpen]       = useState(false);
   const subtypeRef                          = useRef<HTMLDivElement>(null);
 
+  // ── Seed ref (for synchronous reads in handleRegenerate) ──────────────────
+  const seedRef                             = useRef("");
+
   // Derived state
   const isGenerating = status === "generating";
   const activeResult = history[selectedIndex] ?? null;
   const currentGroup = GENERATOR_CATEGORIES.find((g) => g.label === activeGroup)!;
   const placeholder  = SUBTYPE_PLACEHOLDERS[subtype.subcategoryId] ?? "Describe your asset...";
   const isFormValid  = prompt.trim().length >= 3;
+
+  // ── Close subtype dropdown on outside click ───────────────────────────────
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (subtypeRef.current && !subtypeRef.current.contains(e.target as Node)) {
+        setSubtypeOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // ── Group change ──────────────────────────────────────────────────────────
   const handleGroupChange = (group: CategoryGroup) => {
@@ -257,7 +271,7 @@ export default function GeneratePage() {
           subcategoryId: subtype.subcategoryId,
           styleId:       styleId,
           qualityPreset: detail,
-          seed:          seed.trim() || undefined,
+          seed:          seedRef.current.trim() || undefined,
         }),
       });
 
@@ -281,7 +295,7 @@ export default function GeneratePage() {
       const newResult: GeneratedResult = {
         id:           `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         imageUrl:     data.imageUrl,
-        seed:         data.seed,
+        seed:         data.seed ?? 0,
         categoryId:   subtype.categoryId,
         subcategoryId:subtype.subcategoryId,
         subtypeLabel: subtype.label,
@@ -302,10 +316,11 @@ export default function GeneratePage() {
       setStatus("error");
       setErrorMessage(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     }
-  }, [isFormValid, isGenerating, view, prompt, subtype, styleId, detail, seed, styleLocked]);
+  }, [isFormValid, isGenerating, view, prompt, subtype, styleId, detail, styleLocked]);
 
   // ── Regenerate (new seed) ─────────────────────────────────────────────────
   const handleRegenerate = () => {
+    seedRef.current = "";
     setSeed("");
     handleGenerate();
   };
@@ -523,10 +538,10 @@ export default function GeneratePage() {
             </div>
           </div>
 
-          {/* ── Step 5: Prompt ────────────────────────────────────────────── */}
+          {/* ── Prompt ────────────────────────────────────────────────────── */}
           <div>
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-              5. Describe your {subtype.label.toLowerCase()}
+              Describe your {subtype.label.toLowerCase()}
             </p>
             <div className="relative">
               <textarea
@@ -560,7 +575,7 @@ export default function GeneratePage() {
               max={2147483647}
               placeholder="Leave empty for random"
               value={seed}
-              onChange={(e) => setSeed(e.target.value)}
+              onChange={(e) => { setSeed(e.target.value); seedRef.current = e.target.value; }}
               className="
                 w-full px-3 py-2 rounded-lg border border-border bg-card
                 text-sm outline-none focus:border-primary/60 transition-colors
