@@ -139,8 +139,8 @@ export default async function Home({
 
           {/* Subheadline */}
           <p className="text-base sm:text-xl text-white/60 max-w-2xl mx-auto mb-6 sm:mb-8 animate-slide-up px-2" style={{ animationDelay: "200ms" }}>
-            Create stunning 2D sprites, 3D models, icons, and UI elements for your games using AI.
-            <span className="block mt-1 text-white/40 text-sm sm:text-base">Perfect for indie developers and game studios.</span>
+            Type what you need. Pick a style. Download in 5 seconds — transparent PNG, game-ready.
+            <span className="block mt-1 text-white/40 text-sm sm:text-base">No design skills required. No subscription to start.</span>
           </p>
 
           {/* Hero Gallery - Dynamic from Database */}
@@ -329,6 +329,77 @@ export default async function Home({
         </div>
       </section>
 
+
+      {/* How It Works */}
+      <section id="how-it-works" className="py-16 sm:py-24 relative">
+        <div className="max-w-5xl mx-auto px-3 sm:px-4">
+          <div className="text-center mb-10 sm:mb-16">
+            <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-[#00d4ff]/10 border border-[#00d4ff]/20 text-[#00d4ff] text-xs sm:text-sm mb-4 sm:mb-6">
+              <Zap className="w-3.5 h-3.5" />
+              <span>Simple as 1-2-3</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold mb-3 sm:mb-4">
+              How It <span className="text-[#00d4ff]">Works</span>
+            </h2>
+            <p className="text-white/50 max-w-xl mx-auto text-sm sm:text-base">
+              From idea to downloadable game asset in under 10 seconds.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 relative">
+            {/* Connector line desktop */}
+            <div className="hidden md:block absolute top-10 left-[calc(33%-20px)] right-[calc(33%-20px)] h-px bg-gradient-to-r from-[#00ff88]/40 via-[#00d4ff]/40 to-[#c084fc]/40" />
+
+            {[
+              {
+                step: "01",
+                color: "#00ff88",
+                icon: "🎮",
+                title: "Pick asset type",
+                desc: "Choose from weapons, enemies, icons, potions, armor and more. Pick a subtype to be precise.",
+              },
+              {
+                step: "02",
+                color: "#00d4ff",
+                icon: "✏️",
+                title: "Describe it",
+                desc: "Write a short description: what it looks like, what material, what style. The more specific, the better.",
+              },
+              {
+                step: "03",
+                color: "#c084fc",
+                icon: "⚡",
+                title: "Download PNG",
+                desc: "Your asset generates in ~5 seconds. Transparent background, ready to drop into Unity, Godot, or any engine.",
+              },
+            ].map((item, i) => (
+              <div key={i} className="relative flex flex-col items-center text-center p-6 rounded-2xl bg-[#0a0a0f]/80 border border-white/10 hover:border-white/20 transition-all">
+                {/* Step badge */}
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold mb-4 border"
+                  style={{ borderColor: item.color + "50", backgroundColor: item.color + "15", color: item.color }}
+                >
+                  {item.step}
+                </div>
+                <div className="text-4xl mb-4">{item.icon}</div>
+                <h3 className="text-base sm:text-lg font-bold mb-2">{item.title}</h3>
+                <p className="text-white/50 text-sm leading-relaxed">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="text-center mt-10 sm:mt-12">
+            <Link
+              href={registerUrl}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-black font-bold hover:scale-105 transition-all shadow-lg shadow-[#00ff88]/20"
+            >
+              Try it free — 5 credits included
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* Examples Gallery */}
       <ExamplesGallery />
 
@@ -413,10 +484,10 @@ export default async function Home({
               </div>
 
               <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold mb-3 sm:mb-4">
-                Ready to Create <span className="text-gradient-animated">Amazing</span> Assets?
+                Your game needs assets.<span className="text-gradient-animated"> We make them.</span>
               </h2>
               <p className="text-white/60 mb-6 sm:mb-10 max-w-xl mx-auto text-sm sm:text-lg px-2">
-                Join thousands of game developers using SpriteLab to bring their games to life.
+                5 free credits on signup. No card required. Start generating in 30 seconds.
               </p>
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
