@@ -34,6 +34,7 @@ import {
   Paintbrush,
   Gamepad2,
   Archive,
+  Wand2,
 } from "lucide-react";
 import Image from "next/image";
 import JSZip from "jszip";
@@ -977,6 +978,28 @@ export default function GalleryPage() {
                             >
                               <Gamepad2 className="w-4 h-4 mr-1" />
                               Test Sprite
+                            </Button>
+                          </div>
+
+                          {/* Remix prompt in generator */}
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                const params = new URLSearchParams({
+                                  prompt: gen.prompt.replace(/^\[3D\]\s*/, ""),
+                                  categoryId: gen.categoryId ?? "",
+                                  subcategoryId: gen.subcategoryId ?? "",
+                                  styleId: gen.styleId ?? "",
+                                });
+                                window.location.href = `/generate?${params.toString()}`;
+                              }}
+                              className="border-[#00ff88] bg-[#00ff88]/10 hover:bg-[#00ff88]/20 text-[#00ff88]"
+                              title="Re-generate with this prompt"
+                            >
+                              <Wand2 className="w-4 h-4 mr-1" />
+                              Remix
                             </Button>
                           </div>
                         </>

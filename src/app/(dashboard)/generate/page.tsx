@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,14 +12,16 @@ import {
   Copy,
   Check,
   Lock,
+  Unlock,
   ChevronDown,
   Wand2,
+  History,
 } from "lucide-react";
 import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
 import { triggerUpgradeModal } from "@/components/dashboard/UpgradeModal";
 
 // =============================================================================
-// GENERATOR DATA — real backend IDs only
+// GENERATOR DATA
 // =============================================================================
 
 const GENERATOR_CATEGORIES = [
@@ -26,50 +29,50 @@ const GENERATOR_CATEGORIES = [
     label: "Items",
     icon: "💎",
     subcategories: [
-      { categoryId: "WEAPONS",     subcategoryId: "SWORDS",      label: "Swords" },
-      { categoryId: "WEAPONS",     subcategoryId: "AXES",        label: "Axes & Hammers" },
-      { categoryId: "WEAPONS",     subcategoryId: "BOWS",        label: "Bows" },
-      { categoryId: "WEAPONS",     subcategoryId: "STAFFS",      label: "Staffs & Wands" },
-      { categoryId: "WEAPONS",     subcategoryId: "GUNS",        label: "Firearms" },
-      { categoryId: "WEAPONS",     subcategoryId: "THROWING",    label: "Throwing Weapons" },
-      { categoryId: "ARMOR",       subcategoryId: "HELMETS",     label: "Helmets" },
-      { categoryId: "ARMOR",       subcategoryId: "CHEST_ARMOR", label: "Chest Armor" },
-      { categoryId: "ARMOR",       subcategoryId: "SHIELDS",     label: "Shields" },
-      { categoryId: "ARMOR",       subcategoryId: "ACCESSORIES", label: "Accessories" },
-      { categoryId: "CONSUMABLES", subcategoryId: "POTIONS",     label: "Potions" },
-      { categoryId: "CONSUMABLES", subcategoryId: "FOOD",        label: "Food" },
-      { categoryId: "CONSUMABLES", subcategoryId: "SCROLLS",     label: "Scrolls" },
-      { categoryId: "RESOURCES",   subcategoryId: "GEMS",        label: "Gems" },
-      { categoryId: "RESOURCES",   subcategoryId: "ORES",        label: "Ores" },
-      { categoryId: "QUEST_ITEMS", subcategoryId: "KEYS",        label: "Keys" },
-      { categoryId: "QUEST_ITEMS", subcategoryId: "CONTAINERS",  label: "Containers" },
-      { categoryId: "QUEST_ITEMS", subcategoryId: "COLLECTIBLES",label: "Collectibles" },
+      { categoryId: "WEAPONS",     subcategoryId: "SWORDS",      label: "Swords",           chips: ["iron", "golden", "rusted", "crystal", "shadow", "fire", "ancient", "enchanted"] },
+      { categoryId: "WEAPONS",     subcategoryId: "AXES",        label: "Axes & Hammers",   chips: ["battle axe", "war hammer", "bone handle", "runic", "double-headed", "stone"] },
+      { categoryId: "WEAPONS",     subcategoryId: "BOWS",        label: "Bows",             chips: ["longbow", "golden", "elvish", "recurve", "crossbow", "magical", "silver"] },
+      { categoryId: "WEAPONS",     subcategoryId: "STAFFS",      label: "Staffs & Wands",   chips: ["crystal orb", "fire", "ice", "wooden", "golden", "arcane", "shadow"] },
+      { categoryId: "WEAPONS",     subcategoryId: "GUNS",        label: "Firearms",         chips: ["flintlock", "steampunk", "golden", "ornate", "double barrel", "laser"] },
+      { categoryId: "WEAPONS",     subcategoryId: "THROWING",    label: "Throwing Weapons", chips: ["shuriken", "kunai", "boomerang", "throwing knife", "chakram", "dart"] },
+      { categoryId: "ARMOR",       subcategoryId: "HELMETS",     label: "Helmets",          chips: ["knight", "viking", "horned", "golden", "demon", "wizard hat", "crown"] },
+      { categoryId: "ARMOR",       subcategoryId: "CHEST_ARMOR", label: "Chest Armor",      chips: ["plate", "chainmail", "leather", "golden", "rune-engraved", "dark", "elven"] },
+      { categoryId: "ARMOR",       subcategoryId: "SHIELDS",     label: "Shields",          chips: ["tower shield", "round", "buckler", "lion crest", "spiked", "wooden", "golden"] },
+      { categoryId: "ARMOR",       subcategoryId: "ACCESSORIES", label: "Accessories",      chips: ["amulet", "ring", "bracelet", "cape", "belt", "earring", "brooch"] },
+      { categoryId: "CONSUMABLES", subcategoryId: "POTIONS",     label: "Potions",          chips: ["health", "mana", "poison", "strength", "glowing", "blue", "red", "golden"] },
+      { categoryId: "CONSUMABLES", subcategoryId: "FOOD",        label: "Food",             chips: ["roasted chicken", "apple", "bread", "cheese", "pie", "mushroom", "meat"] },
+      { categoryId: "CONSUMABLES", subcategoryId: "SCROLLS",     label: "Scrolls",          chips: ["ancient", "glowing runes", "spell", "fire", "ice", "rolled up", "sealed"] },
+      { categoryId: "RESOURCES",   subcategoryId: "GEMS",        label: "Gems",             chips: ["ruby", "sapphire", "emerald", "diamond", "amethyst", "cut", "raw", "glowing"] },
+      { categoryId: "RESOURCES",   subcategoryId: "ORES",        label: "Ores",             chips: ["iron", "gold", "copper", "mythril", "obsidian", "raw chunk", "crystal"] },
+      { categoryId: "QUEST_ITEMS", subcategoryId: "KEYS",        label: "Keys",             chips: ["golden", "skeleton", "ornate", "crystal", "ancient", "rusted", "glowing"] },
+      { categoryId: "QUEST_ITEMS", subcategoryId: "CONTAINERS",  label: "Containers",       chips: ["treasure chest", "wooden crate", "locked", "gold trim", "ancient", "small"] },
+      { categoryId: "QUEST_ITEMS", subcategoryId: "COLLECTIBLES",label: "Collectibles",     chips: ["gold coin", "medal", "trophy", "badge", "gem", "crown", "artifact"] },
     ],
   },
   {
     label: "Icons",
     icon: "🎮",
     subcategories: [
-      { categoryId: "UI_ELEMENTS", subcategoryId: "ITEM_ICONS",  label: "Item Icons" },
-      { categoryId: "UI_ELEMENTS", subcategoryId: "SKILL_ICONS", label: "Skill Icons" },
-      { categoryId: "UI_ELEMENTS", subcategoryId: "STATUS_ICONS",label: "Status Icons" },
-      { categoryId: "UI_ELEMENTS", subcategoryId: "ICONS_UI",    label: "UI Icons" },
-      { categoryId: "UI_ELEMENTS", subcategoryId: "BUTTONS",     label: "Buttons" },
-      { categoryId: "UI_ELEMENTS", subcategoryId: "BARS",        label: "Bars" },
-      { categoryId: "UI_ELEMENTS", subcategoryId: "FRAMES",      label: "Frames" },
+      { categoryId: "UI_ELEMENTS", subcategoryId: "ITEM_ICONS",  label: "Item Icons",   chips: ["coin stack", "potion", "sword", "gem", "key", "shield", "arrow", "gold bars"] },
+      { categoryId: "UI_ELEMENTS", subcategoryId: "SKILL_ICONS", label: "Skill Icons",  chips: ["fireball", "heal", "lightning", "ice spike", "shield buff", "dark magic", "arrow"] },
+      { categoryId: "UI_ELEMENTS", subcategoryId: "STATUS_ICONS",label: "Status Icons", chips: ["poison", "burn", "freeze", "stun", "bleed", "curse", "shield buff", "haste"] },
+      { categoryId: "UI_ELEMENTS", subcategoryId: "ICONS_UI",    label: "UI Icons",     chips: ["settings", "inventory", "map", "quest", "menu", "shop", "chat", "close"] },
+      { categoryId: "UI_ELEMENTS", subcategoryId: "BUTTONS",     label: "Buttons",      chips: ["play", "close", "menu", "wooden", "stone", "golden", "glowing", "round"] },
+      { categoryId: "UI_ELEMENTS", subcategoryId: "BARS",        label: "Bars",         chips: ["health", "mana", "stamina", "XP", "red", "blue", "green", "segmented"] },
+      { categoryId: "UI_ELEMENTS", subcategoryId: "FRAMES",      label: "Frames",       chips: ["ornate gold", "wooden", "stone", "dark", "elegant", "dialog box", "tooltip"] },
     ],
   },
   {
     label: "Enemies",
     icon: "👾",
     subcategories: [
-      { categoryId: "CHARACTERS",  subcategoryId: "ENEMIES",     label: "Enemies" },
-      { categoryId: "CHARACTERS",  subcategoryId: "BOSSES",      label: "Bosses" },
-      { categoryId: "CHARACTERS",  subcategoryId: "HEROES",      label: "Heroes" },
-      { categoryId: "CHARACTERS",  subcategoryId: "NPCS",        label: "NPCs" },
-      { categoryId: "CREATURES",   subcategoryId: "ANIMALS",     label: "Animals" },
-      { categoryId: "CREATURES",   subcategoryId: "MYTHICAL",    label: "Mythical Beasts" },
-      { categoryId: "CREATURES",   subcategoryId: "ELEMENTALS",  label: "Elementals" },
+      { categoryId: "CHARACTERS",  subcategoryId: "ENEMIES",   label: "Enemies",        chips: ["goblin", "skeleton", "zombie", "orc", "bandit", "slime", "bat", "spider"] },
+      { categoryId: "CHARACTERS",  subcategoryId: "BOSSES",    label: "Bosses",          chips: ["demon lord", "dragon", "lich king", "giant", "golem", "vampire", "hydra"] },
+      { categoryId: "CHARACTERS",  subcategoryId: "HEROES",    label: "Heroes",          chips: ["knight", "mage", "rogue", "archer", "paladin", "warrior", "wizard"] },
+      { categoryId: "CHARACTERS",  subcategoryId: "NPCS",      label: "NPCs",            chips: ["blacksmith", "merchant", "guard", "villager", "innkeeper", "sage", "alchemist"] },
+      { categoryId: "CREATURES",   subcategoryId: "ANIMALS",   label: "Animals",         chips: ["wolf", "bear", "eagle", "deer", "fox", "snake", "crow", "horse"] },
+      { categoryId: "CREATURES",   subcategoryId: "MYTHICAL",  label: "Mythical Beasts", chips: ["dragon", "phoenix", "unicorn", "griffin", "hydra", "basilisk", "wyvern"] },
+      { categoryId: "CREATURES",   subcategoryId: "ELEMENTALS",label: "Elementals",      chips: ["fire", "ice", "lightning", "earth", "shadow", "water", "wind", "void"] },
     ],
   },
 ] as const;
@@ -79,12 +82,13 @@ type SubcategoryEntry = {
   categoryId: string;
   subcategoryId: string;
   label: string;
+  chips: readonly string[];
 };
 
 const DEFAULT_SUBTYPE: Record<CategoryGroup, SubcategoryEntry> = {
-  Items:   GENERATOR_CATEGORIES[0].subcategories[0],
-  Icons:   GENERATOR_CATEGORIES[1].subcategories[0],
-  Enemies: GENERATOR_CATEGORIES[2].subcategories[0],
+  Items:   GENERATOR_CATEGORIES[0].subcategories[0] as SubcategoryEntry,
+  Icons:   GENERATOR_CATEGORIES[1].subcategories[0] as SubcategoryEntry,
+  Enemies: GENERATOR_CATEGORIES[2].subcategories[0] as SubcategoryEntry,
 };
 
 // =============================================================================
@@ -123,6 +127,16 @@ const DETAIL_OPTIONS = [
 
 type DetailId = (typeof DETAIL_OPTIONS)[number]["id"];
 
+// Background preview modes
+const BG_MODES = [
+  { id: "checker", label: "Transparent", style: { backgroundImage: "repeating-conic-gradient(#80808015 0% 25%, transparent 0% 50%)", backgroundSize: "24px 24px" } },
+  { id: "dark",    label: "Dark",        style: { background: "#111827" } },
+  { id: "light",   label: "Light",       style: { background: "#f3f4f6" } },
+  { id: "game",    label: "Game",        style: { background: "#1e293b", backgroundImage: "repeating-conic-gradient(#ffffff08 0% 25%, transparent 0% 50%)", backgroundSize: "32px 32px" } },
+] as const;
+
+type BgModeId = (typeof BG_MODES)[number]["id"];
+
 // =============================================================================
 // PLACEHOLDER MAP
 // =============================================================================
@@ -148,7 +162,7 @@ const SUBTYPE_PLACEHOLDERS: Record<string, string> = {
   COLLECTIBLES: "e.g. silver medal with crown engraving",
   ITEM_ICONS:   "e.g. coin stack icon, golden",
   SKILL_ICONS:  "e.g. fireball spell icon, orange flames",
-  STATUS_ICONS: "e.g. poison icon, freeze icon, burn status, shield buff",
+  STATUS_ICONS: "e.g. poison status, green skull symbol",
   ICONS_UI:     "e.g. settings gear icon",
   BUTTONS:      "e.g. medieval wooden play button",
   BARS:         "e.g. health bar, red with black border",
@@ -161,6 +175,18 @@ const SUBTYPE_PLACEHOLDERS: Record<string, string> = {
   MYTHICAL:     "e.g. red dragon, large wings spread",
   ELEMENTALS:   "e.g. fire elemental, swirling flame body",
 };
+
+// =============================================================================
+// PROMPT QUALITY INDICATOR
+// =============================================================================
+
+function getPromptQuality(prompt: string): { level: "empty" | "short" | "ok" | "good"; label: string; color: string } {
+  const words = prompt.trim().split(/\s+/).filter(Boolean).length;
+  if (words === 0) return { level: "empty", label: "Describe your asset above", color: "text-muted-foreground/40" };
+  if (words < 3)   return { level: "short", label: "Too short — add color, material, details", color: "text-orange-400" };
+  if (words < 7)   return { level: "ok",    label: "Good — more detail improves results", color: "text-yellow-400" };
+  return               { level: "good",  label: "Detailed prompt — great results likely", color: "text-green-400" };
+}
 
 // =============================================================================
 // TYPES
@@ -182,13 +208,31 @@ interface GeneratedResult {
 // =============================================================================
 
 export default function GeneratePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen p-8 max-w-6xl mx-auto flex items-center justify-center"><Loader2 className="w-8 h-8 text-primary animate-spin" /></div>}>
+      <GeneratePageInner />
+    </Suspense>
+  );
+}
+
+function GeneratePageInner() {
+  const searchParams = useSearchParams();
+
+  // Pre-fill from URL params (e.g. from "Use this prompt" in gallery)
+  const urlPrompt  = searchParams.get("prompt") ?? "";
+  const urlStyleId = (searchParams.get("styleId") ?? "") as StyleId | "";
+
   const [activeGroup, setActiveGroup]     = useState<CategoryGroup>("Items");
   const [subtype, setSubtype]             = useState<SubcategoryEntry>(DEFAULT_SUBTYPE["Items"]);
-  const [styleId, setStyleId]             = useState<StyleId>("PIXEL_ART_16");
+  const [styleId, setStyleId]             = useState<StyleId>(
+    urlStyleId && STYLE_PRESETS.some((s) => s.id === urlStyleId) ? urlStyleId : "PIXEL_ART_16"
+  );
   const [view, setView]                   = useState<ViewId>("none");
   const [detail, setDetail]               = useState<DetailId>("normal");
-  const [prompt, setPrompt]               = useState("");
+  const [prompt, setPrompt]               = useState(urlPrompt);
   const [seed, setSeed]                   = useState("");
+  const [bgMode, setBgMode]               = useState<BgModeId>("checker");
+  const [seedLocked, setSeedLocked]       = useState(false);
 
   const [status, setStatus]               = useState<"idle" | "generating" | "error">("idle");
   const [errorMessage, setErrorMessage]   = useState<string | null>(null);
@@ -207,7 +251,28 @@ export default function GeneratePage() {
   const currentGroup = GENERATOR_CATEGORIES.find((g) => g.label === activeGroup)!;
   const placeholder  = SUBTYPE_PLACEHOLDERS[subtype.subcategoryId] ?? "Describe your asset...";
   const isFormValid  = prompt.trim().length >= 3;
+  const promptQuality = getPromptQuality(prompt);
+  const activeBg = BG_MODES.find((b) => b.id === bgMode)!;
 
+  // Pre-fill subtype from URL params
+  useEffect(() => {
+    const urlCatId = searchParams.get("categoryId");
+    const urlSubId = searchParams.get("subcategoryId");
+    if (!urlCatId || !urlSubId) return;
+    for (const group of GENERATOR_CATEGORIES) {
+      const found = group.subcategories.find(
+        (s) => s.categoryId === urlCatId && s.subcategoryId === urlSubId
+      );
+      if (found) {
+        setActiveGroup(group.label as CategoryGroup);
+        setSubtype(found as SubcategoryEntry);
+        break;
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Close subtype dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (subtypeRef.current && !subtypeRef.current.contains(e.target as Node)) {
@@ -227,6 +292,15 @@ export default function GeneratePage() {
   const handleSubtypeChange = (entry: SubcategoryEntry) => {
     setSubtype(entry);
     setSubtypeOpen(false);
+  };
+
+  // Append chip word to prompt
+  const handleChipClick = (chip: string) => {
+    setPrompt((prev) => {
+      const trimmed = prev.trimEnd();
+      if (trimmed.toLowerCase().includes(chip.toLowerCase())) return prev;
+      return trimmed ? trimmed + ", " + chip : chip;
+    });
   };
 
   const handleGenerate = useCallback(async () => {
@@ -279,7 +353,7 @@ export default function GeneratePage() {
         prompt:        prompt.trim(),
       };
 
-      setHistory((prev) => [newResult, ...prev].slice(0, 10));
+      setHistory((prev) => [newResult, ...prev].slice(0, 12));
       setSelectedIndex(0);
       setStatus("idle");
 
@@ -292,9 +366,28 @@ export default function GeneratePage() {
   }, [isFormValid, isGenerating, view, prompt, subtype, styleId, detail, styleLocked]);
 
   const handleRegenerate = () => {
-    seedRef.current = "";
-    setSeed("");
+    if (seedLocked && activeResult) {
+      // Keep same seed
+      seedRef.current = String(activeResult.seed);
+      setSeed(String(activeResult.seed));
+    } else {
+      seedRef.current = "";
+      setSeed("");
+    }
     handleGenerate();
+  };
+
+  const handleLockSeed = () => {
+    if (!activeResult) return;
+    if (seedLocked) {
+      setSeedLocked(false);
+      setSeed("");
+      seedRef.current = "";
+    } else {
+      setSeedLocked(true);
+      setSeed(String(activeResult.seed));
+      seedRef.current = String(activeResult.seed);
+    }
   };
 
   const handleDownload = async () => {
@@ -330,7 +423,7 @@ export default function GeneratePage() {
 
       {/* Page header */}
       <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
+        <div className="flex items-center gap-3 mb-1">
           <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center">
             <Wand2 className="w-5 h-5 text-primary" />
           </div>
@@ -346,7 +439,7 @@ export default function GeneratePage() {
         {/* ================================================================
             LEFT COLUMN — Form
         ================================================================ */}
-        <div className="space-y-5">
+        <div className="space-y-4">
 
           {/* ── 1. Asset Type ─────────────────────────────────────────── */}
           <div className="rounded-xl border border-border bg-card p-4">
@@ -382,35 +475,21 @@ export default function GeneratePage() {
             <div ref={subtypeRef} className="relative">
               <button
                 onClick={() => setSubtypeOpen((o) => !o)}
-                className="
-                  w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg
-                  border border-border bg-background text-sm font-medium
-                  hover:border-primary/50 transition-colors
-                "
+                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg border border-border bg-background text-sm font-medium hover:border-primary/50 transition-colors"
               >
                 <span>{subtype.label}</span>
                 <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${subtypeOpen ? "rotate-180" : ""}`} />
               </button>
 
               {subtypeOpen && (
-                <div className="
-                  absolute z-20 top-full mt-1.5 w-full bg-card border border-border
-                  rounded-xl shadow-2xl max-h-60 overflow-y-auto
-                ">
+                <div className="absolute z-20 top-full mt-1.5 w-full bg-card border border-border rounded-xl shadow-2xl max-h-60 overflow-y-auto">
                   {currentGroup.subcategories.map((entry) => {
                     const isActive = subtype.subcategoryId === entry.subcategoryId && subtype.categoryId === entry.categoryId;
                     return (
                       <button
                         key={`${entry.categoryId}-${entry.subcategoryId}`}
-                        onClick={() => handleSubtypeChange(entry)}
-                        className={`
-                          w-full text-left px-3.5 py-2.5 text-sm transition-colors
-                          first:rounded-t-xl last:rounded-b-xl
-                          ${isActive
-                            ? "text-primary bg-primary/8 font-medium"
-                            : "text-foreground hover:bg-muted/60"
-                          }
-                        `}
+                        onClick={() => handleSubtypeChange(entry as SubcategoryEntry)}
+                        className={`w-full text-left px-3.5 py-2.5 text-sm transition-colors first:rounded-t-xl last:rounded-b-xl ${isActive ? "text-primary bg-primary/8 font-medium" : "text-foreground hover:bg-muted/60"}`}
                       >
                         {entry.label}
                       </button>
@@ -433,13 +512,7 @@ export default function GeneratePage() {
                   <button
                     key={style.id}
                     onClick={() => setStyleId(style.id)}
-                    className={`
-                      relative p-3 rounded-xl border text-left transition-all duration-150 group
-                      ${isActive
-                        ? "border-primary bg-primary/10 shadow-sm shadow-primary/20"
-                        : "border-border bg-background hover:border-primary/40 hover:bg-primary/5"
-                      }
-                    `}
+                    className={`relative p-3 rounded-xl border text-left transition-all duration-150 ${isActive ? "border-primary bg-primary/10 shadow-sm shadow-primary/20" : "border-border bg-background hover:border-primary/40 hover:bg-primary/5"}`}
                   >
                     {styleLocked && isActive && (
                       <div className="absolute top-2 right-2">
@@ -459,44 +532,27 @@ export default function GeneratePage() {
           <div className="rounded-xl border border-border bg-card p-4">
             <div className="grid grid-cols-2 gap-5">
               <div>
-                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">
-                  View
-                </p>
+                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">View</p>
                 <div className="flex flex-wrap gap-1.5">
                   {VIEW_OPTIONS.map((v) => (
                     <button
                       key={v.id}
                       onClick={() => setView(v.id as ViewId)}
-                      className={`
-                        px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all
-                        ${view === v.id
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border bg-background text-foreground hover:border-primary/40"
-                        }
-                      `}
+                      className={`px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all ${view === v.id ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-foreground hover:border-primary/40"}`}
                     >
                       {v.label}
                     </button>
                   ))}
                 </div>
               </div>
-
               <div>
-                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">
-                  Detail
-                </p>
+                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">Detail</p>
                 <div className="flex gap-1.5">
                   {DETAIL_OPTIONS.map((d) => (
                     <button
                       key={d.id}
                       onClick={() => setDetail(d.id as DetailId)}
-                      className={`
-                        flex-1 py-1.5 rounded-lg border text-xs font-medium transition-all
-                        ${detail === d.id
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border bg-background text-foreground hover:border-primary/40"
-                        }
-                      `}
+                      className={`flex-1 py-1.5 rounded-lg border text-xs font-medium transition-all ${detail === d.id ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-foreground hover:border-primary/40"}`}
                       title={d.description}
                     >
                       {d.label}
@@ -507,11 +563,18 @@ export default function GeneratePage() {
             </div>
           </div>
 
-          {/* ── Prompt ────────────────────────────────────────────────── */}
+          {/* ── Prompt + Chips + Quality ───────────────────────────────── */}
           <div className="rounded-xl border border-border bg-card p-4">
-            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">
-              Describe your {subtype.label.toLowerCase()}
-            </p>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
+                Describe your {subtype.label.toLowerCase()}
+              </p>
+              {/* Prompt quality indicator */}
+              <span className={`text-[10px] font-medium ${promptQuality.color} transition-colors`}>
+                {promptQuality.level !== "empty" ? promptQuality.label : ""}
+              </span>
+            </div>
+
             <div className="relative">
               <textarea
                 value={prompt}
@@ -519,11 +582,7 @@ export default function GeneratePage() {
                 placeholder={placeholder}
                 maxLength={200}
                 rows={3}
-                className="
-                  w-full px-3.5 py-2.5 rounded-lg border border-border bg-background
-                  text-sm resize-none outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/20
-                  transition-all placeholder:text-muted-foreground/50
-                "
+                className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-sm resize-none outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/50"
               />
               {prompt.length > 150 && (
                 <span className="absolute bottom-2.5 right-3 text-[10px] text-muted-foreground">
@@ -532,7 +591,32 @@ export default function GeneratePage() {
               )}
             </div>
 
-            {/* Seed row inline */}
+            {/* Quality indicator bar (shows when prompt is short/empty) */}
+            {(promptQuality.level === "empty" || promptQuality.level === "short") && prompt.length === 0 && (
+              <p className="text-[11px] text-muted-foreground/50 mt-2">
+                Tip: describe color, material, and style for best results
+              </p>
+            )}
+
+            {/* Quick chips */}
+            {subtype.chips && subtype.chips.length > 0 && (
+              <div className="mt-3">
+                <p className="text-[10px] text-muted-foreground/60 mb-1.5 uppercase tracking-wider">Quick add</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {subtype.chips.slice(0, 8).map((chip) => (
+                    <button
+                      key={chip}
+                      onClick={() => handleChipClick(chip)}
+                      className="px-2 py-1 rounded-md border border-border bg-background text-[11px] text-muted-foreground hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-all"
+                    >
+                      + {chip}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Seed row */}
             <div className="mt-3 flex items-center gap-2">
               <label className="text-xs text-muted-foreground shrink-0 font-medium">Seed:</label>
               <input
@@ -541,13 +625,19 @@ export default function GeneratePage() {
                 max={2147483647}
                 placeholder="Random"
                 value={seed}
-                onChange={(e) => { setSeed(e.target.value); seedRef.current = e.target.value; }}
-                className="
-                  flex-1 px-2.5 py-1.5 rounded-lg border border-border bg-background
-                  text-xs outline-none focus:border-primary/60 transition-colors
-                  placeholder:text-muted-foreground/50
-                "
+                onChange={(e) => { setSeed(e.target.value); seedRef.current = e.target.value; setSeedLocked(false); }}
+                className="flex-1 px-2.5 py-1.5 rounded-lg border border-border bg-background text-xs outline-none focus:border-primary/60 transition-colors placeholder:text-muted-foreground/50"
               />
+              {activeResult && (
+                <button
+                  onClick={handleLockSeed}
+                  title={seedLocked ? "Unlock seed (randomize)" : "Lock this seed (same composition)"}
+                  className={`flex items-center gap-1 px-2 py-1.5 rounded-lg border text-xs font-medium transition-all ${seedLocked ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-primary"}`}
+                >
+                  {seedLocked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+                  {seedLocked ? "Locked" : "Lock"}
+                </button>
+              )}
             </div>
           </div>
 
@@ -555,7 +645,7 @@ export default function GeneratePage() {
           <Button
             onClick={handleGenerate}
             disabled={!isFormValid || isGenerating}
-            className="w-full h-13 text-base font-bold rounded-xl shadow-lg shadow-primary/20 transition-all"
+            className="w-full h-12 text-base font-bold rounded-xl shadow-lg shadow-primary/20 transition-all"
             size="lg"
           >
             {isGenerating ? (
@@ -589,7 +679,8 @@ export default function GeneratePage() {
 
           {/* ── Result panel ──────────────────────────────────────────── */}
           <div className="rounded-xl border border-border bg-card overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
               <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Result</p>
               {activeResult && (
                 <span className="text-[10px] text-muted-foreground">
@@ -598,13 +689,23 @@ export default function GeneratePage() {
               )}
             </div>
 
-            {/* Checkerboard canvas */}
+            {/* Background preview toggle */}
+            <div className="flex border-b border-border">
+              {BG_MODES.map((mode) => (
+                <button
+                  key={mode.id}
+                  onClick={() => setBgMode(mode.id)}
+                  className={`flex-1 py-1.5 text-[10px] font-medium transition-colors ${bgMode === mode.id ? "bg-primary/10 text-primary border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  {mode.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Canvas */}
             <div
               className="relative aspect-square"
-              style={{
-                backgroundImage: "repeating-conic-gradient(#80808015 0% 25%, transparent 0% 50%)",
-                backgroundSize: "24px 24px",
-              }}
+              style={activeBg.style as React.CSSProperties}
             >
               {activeResult && (
                 <Image
@@ -634,23 +735,28 @@ export default function GeneratePage() {
               )}
             </div>
 
-            {/* Action row */}
+            {/* Actions */}
             {activeResult && (
               <div className="px-4 py-3 border-t border-border space-y-3">
                 {/* Seed row */}
-                <button
-                  onClick={handleCopySeed}
-                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors w-full"
-                >
-                  {seedCopied
-                    ? <Check className="w-3 h-3 text-green-500 shrink-0" />
-                    : <Copy className="w-3 h-3 shrink-0" />
-                  }
-                  <span>Seed: {activeResult.seed}</span>
-                  <span className="ml-auto text-[10px] opacity-60">{seedCopied ? "Copied!" : "Copy"}</span>
-                </button>
+                <div className="flex items-center justify-between">
+                  <button
+                    onClick={handleCopySeed}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {seedCopied ? <Check className="w-3 h-3 text-green-500 shrink-0" /> : <Copy className="w-3 h-3 shrink-0" />}
+                    <span>Seed: {activeResult.seed}</span>
+                  </button>
+                  <button
+                    onClick={handleLockSeed}
+                    className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded-md border transition-all ${seedLocked ? "border-primary/50 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-primary hover:border-primary/40"}`}
+                  >
+                    {seedLocked ? <Lock className="w-2.5 h-2.5" /> : <Unlock className="w-2.5 h-2.5" />}
+                    {seedLocked ? "Seed locked" : "Lock seed"}
+                  </button>
+                </div>
 
-                {/* Buttons */}
+                {/* Action buttons */}
                 <div className="flex gap-2">
                   <Button onClick={handleDownload} className="flex-1 font-semibold">
                     <Download className="w-4 h-4 mr-2" />
@@ -660,11 +766,19 @@ export default function GeneratePage() {
                     variant="outline"
                     onClick={handleRegenerate}
                     disabled={isGenerating}
-                    className="px-3"
+                    title={seedLocked ? "Regenerate with same seed" : "Regenerate with new seed"}
+                    className="px-3 gap-1.5"
                   >
                     <RefreshCw className={`w-4 h-4 ${isGenerating ? "animate-spin" : ""}`} />
+                    {seedLocked && <Lock className="w-2.5 h-2.5 text-primary" />}
                   </Button>
                 </div>
+
+                {seedLocked && (
+                  <p className="text-[10px] text-primary/70 text-center">
+                    Seed locked — regenerating keeps the same composition
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -672,24 +786,21 @@ export default function GeneratePage() {
           {/* ── Session history ───────────────────────────────────────── */}
           {history.length > 0 && (
             <div className="rounded-xl border border-border bg-card p-4">
-              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">
-                This session
-              </p>
-              <div className="flex gap-2 overflow-x-auto pb-1">
+              <div className="flex items-center gap-2 mb-3">
+                <History className="w-3.5 h-3.5 text-muted-foreground" />
+                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
+                  This session ({history.length})
+                </p>
+              </div>
+              <div className="grid grid-cols-6 gap-1.5">
                 {history.map((item, index) => (
                   <button
                     key={item.id}
                     onClick={() => setSelectedIndex(index)}
-                    className={`
-                      relative shrink-0 w-16 h-16 rounded-xl border overflow-hidden transition-all
-                      ${selectedIndex === index
-                        ? "border-primary ring-2 ring-primary/30"
-                        : "border-border hover:border-primary/50"
-                      }
-                    `}
+                    className={`relative aspect-square rounded-lg border overflow-hidden transition-all ${selectedIndex === index ? "border-primary ring-2 ring-primary/30" : "border-border hover:border-primary/50"}`}
                     style={{
                       backgroundImage: "repeating-conic-gradient(#80808015 0% 25%, transparent 0% 50%)",
-                      backgroundSize: "12px 12px",
+                      backgroundSize: "10px 10px",
                     }}
                     title={item.prompt}
                   >
