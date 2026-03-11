@@ -12,6 +12,7 @@ import {
   Check,
   Lock,
   ChevronDown,
+  Wand2,
 } from "lucide-react";
 import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
 import { triggerUpgradeModal } from "@/components/dashboard/UpgradeModal";
@@ -19,9 +20,6 @@ import { triggerUpgradeModal } from "@/components/dashboard/UpgradeModal";
 // =============================================================================
 // GENERATOR DATA — real backend IDs only
 // =============================================================================
-
-// UI groups → backend categoryId + subcategoryId
-// All IDs here are exactly what /api/generate expects (getCategoryById validated)
 
 const GENERATOR_CATEGORIES = [
   {
@@ -83,7 +81,6 @@ type SubcategoryEntry = {
   label: string;
 };
 
-// Default subtype per group (used on group selection)
 const DEFAULT_SUBTYPE: Record<CategoryGroup, SubcategoryEntry> = {
   Items:   GENERATOR_CATEGORIES[0].subcategories[0],
   Icons:   GENERATOR_CATEGORIES[1].subcategories[0],
@@ -91,22 +88,22 @@ const DEFAULT_SUBTYPE: Record<CategoryGroup, SubcategoryEntry> = {
 };
 
 // =============================================================================
-// STYLES — 6 presets, real STYLES_2D_FULL IDs
+// STYLES
 // =============================================================================
 
 const STYLE_PRESETS = [
-  { id: "PIXEL_ART_16",    name: "Pixel Art",     emoji: "🎮", description: "Classic retro 16-bit" },
-  { id: "PIXEL_ART_32",    name: "Pixel HD",      emoji: "👾", description: "Modern indie pixel" },
-  { id: "VECTOR_CLEAN",    name: "Vector",        emoji: "🔷", description: "Clean mobile style" },
-  { id: "ANIME_GAME",      name: "Anime",         emoji: "🌸", description: "JRPG / Gacha" },
-  { id: "HAND_PAINTED",    name: "Hand Painted",  emoji: "🖌️", description: "Hollow Knight style" },
-  { id: "CARTOON_WESTERN", name: "Cartoon",       emoji: "🎨", description: "Expressive cartoon" },
+  { id: "PIXEL_ART_16",    name: "Pixel Art",    emoji: "🎮", description: "Classic retro 16-bit" },
+  { id: "PIXEL_ART_32",    name: "Pixel HD",     emoji: "👾", description: "Modern indie pixel" },
+  { id: "VECTOR_CLEAN",    name: "Vector",       emoji: "🔷", description: "Clean mobile style" },
+  { id: "ANIME_GAME",      name: "Anime",        emoji: "🌸", description: "JRPG / Gacha" },
+  { id: "HAND_PAINTED",    name: "Hand Painted", emoji: "🖌️", description: "Hollow Knight style" },
+  { id: "CARTOON_WESTERN", name: "Cartoon",      emoji: "🎨", description: "Expressive cartoon" },
 ] as const;
 
 type StyleId = (typeof STYLE_PRESETS)[number]["id"];
 
 // =============================================================================
-// VIEW — injected into prompt text (no backend field in V1)
+// VIEW + DETAIL
 // =============================================================================
 
 const VIEW_OPTIONS = [
@@ -118,10 +115,6 @@ const VIEW_OPTIONS = [
 
 type ViewId = (typeof VIEW_OPTIONS)[number]["id"];
 
-// =============================================================================
-// DETAIL LEVEL → qualityPreset
-// =============================================================================
-
 const DETAIL_OPTIONS = [
   { id: "draft",  label: "Fast",   description: "Quick, icon-safe" },
   { id: "normal", label: "Medium", description: "Balanced quality" },
@@ -131,7 +124,7 @@ const DETAIL_OPTIONS = [
 type DetailId = (typeof DETAIL_OPTIONS)[number]["id"];
 
 // =============================================================================
-// PLACEHOLDER MAP — dynamic per subtype
+// PLACEHOLDER MAP
 // =============================================================================
 
 const SUBTYPE_PLACEHOLDERS: Record<string, string> = {
@@ -189,45 +182,32 @@ interface GeneratedResult {
 // =============================================================================
 
 export default function GeneratePage() {
-  // ── Form state ────────────────────────────────────────────────────────────
-  const [activeGroup, setActiveGroup]       = useState<CategoryGroup>("Items");
-  const [subtype, setSubtype]               = useState<SubcategoryEntry>(DEFAULT_SUBTYPE["Items"]);
-  const [styleId, setStyleId]               = useState<StyleId>("PIXEL_ART_16");
-  const [view, setView]                     = useState<ViewId>("none");
-  const [detail, setDetail]                 = useState<DetailId>("normal");
-  const [prompt, setPrompt]                 = useState("");
-  const [seed, setSeed]                     = useState("");
+  const [activeGroup, setActiveGroup]     = useState<CategoryGroup>("Items");
+  const [subtype, setSubtype]             = useState<SubcategoryEntry>(DEFAULT_SUBTYPE["Items"]);
+  const [styleId, setStyleId]             = useState<StyleId>("PIXEL_ART_16");
+  const [view, setView]                   = useState<ViewId>("none");
+  const [detail, setDetail]               = useState<DetailId>("normal");
+  const [prompt, setPrompt]               = useState("");
+  const [seed, setSeed]                   = useState("");
 
-  // ── Generation state ─────────────────────────────────────────────────────
-  const [status, setStatus]                 = useState<"idle" | "generating" | "error">("idle");
-  const [errorMessage, setErrorMessage]     = useState<string | null>(null);
-  const [noCredits, setNoCredits]           = useState(false);
+  const [status, setStatus]               = useState<"idle" | "generating" | "error">("idle");
+  const [errorMessage, setErrorMessage]   = useState<string | null>(null);
+  const [noCredits, setNoCredits]         = useState(false);
 
-  // ── Result + history state ────────────────────────────────────────────────
-  const [history, setHistory]               = useState<GeneratedResult[]>([]);
-  const [selectedIndex, setSelectedIndex]   = useState(0);
+  const [history, setHistory]             = useState<GeneratedResult[]>([]);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [styleLocked, setStyleLocked]     = useState(false);
+  const [seedCopied, setSeedCopied]       = useState(false);
+  const [subtypeOpen, setSubtypeOpen]     = useState(false);
+  const subtypeRef                        = useRef<HTMLDivElement>(null);
+  const seedRef                           = useRef("");
 
-  // ── Style lock (visual only) ──────────────────────────────────────────────
-  const [styleLocked, setStyleLocked]       = useState(false);
-
-  // ── Seed copy ─────────────────────────────────────────────────────────────
-  const [seedCopied, setSeedCopied]         = useState(false);
-
-  // ── Subtype dropdown ──────────────────────────────────────────────────────
-  const [subtypeOpen, setSubtypeOpen]       = useState(false);
-  const subtypeRef                          = useRef<HTMLDivElement>(null);
-
-  // ── Seed ref (for synchronous reads in handleRegenerate) ──────────────────
-  const seedRef                             = useRef("");
-
-  // Derived state
   const isGenerating = status === "generating";
   const activeResult = history[selectedIndex] ?? null;
   const currentGroup = GENERATOR_CATEGORIES.find((g) => g.label === activeGroup)!;
   const placeholder  = SUBTYPE_PLACEHOLDERS[subtype.subcategoryId] ?? "Describe your asset...";
   const isFormValid  = prompt.trim().length >= 3;
 
-  // ── Close subtype dropdown on outside click ───────────────────────────────
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (subtypeRef.current && !subtypeRef.current.contains(e.target as Node)) {
@@ -238,20 +218,17 @@ export default function GeneratePage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // ── Group change ──────────────────────────────────────────────────────────
   const handleGroupChange = (group: CategoryGroup) => {
     setActiveGroup(group);
     setSubtype(DEFAULT_SUBTYPE[group]);
     setSubtypeOpen(false);
   };
 
-  // ── Subtype change ────────────────────────────────────────────────────────
   const handleSubtypeChange = (entry: SubcategoryEntry) => {
     setSubtype(entry);
     setSubtypeOpen(false);
   };
 
-  // ── Generate ──────────────────────────────────────────────────────────────
   const handleGenerate = useCallback(async () => {
     if (!isFormValid || isGenerating) return;
 
@@ -259,7 +236,6 @@ export default function GeneratePage() {
     setErrorMessage(null);
     setNoCredits(false);
 
-    // Inject view prefix into prompt
     const viewOption  = VIEW_OPTIONS.find((v) => v.id === view)!;
     const finalPrompt = viewOption.prefix + prompt.trim();
 
@@ -290,29 +266,24 @@ export default function GeneratePage() {
         throw new Error(data.error ?? "Generation failed. Please try again.");
       }
 
-      if (!data.imageUrl) {
-        throw new Error("Generation failed. Please try again.");
-      }
+      if (!data.imageUrl) throw new Error("Generation failed. Please try again.");
 
       const newResult: GeneratedResult = {
-        id:           `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        imageUrl:     data.imageUrl,
-        seed:         data.seed ?? 0,
-        categoryId:   subtype.categoryId,
-        subcategoryId:subtype.subcategoryId,
-        subtypeLabel: subtype.label,
-        styleId:      styleId,
-        prompt:       prompt.trim(),
+        id:            `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        imageUrl:      data.imageUrl,
+        seed:          data.seed ?? 0,
+        categoryId:    subtype.categoryId,
+        subcategoryId: subtype.subcategoryId,
+        subtypeLabel:  subtype.label,
+        styleId:       styleId,
+        prompt:        prompt.trim(),
       };
 
       setHistory((prev) => [newResult, ...prev].slice(0, 10));
       setSelectedIndex(0);
       setStatus("idle");
 
-      // Activate style lock after first successful generation
       if (!styleLocked) setStyleLocked(true);
-
-      // Refresh credit balance in sidebar
       triggerCreditsRefresh();
     } catch (err) {
       setStatus("error");
@@ -320,14 +291,12 @@ export default function GeneratePage() {
     }
   }, [isFormValid, isGenerating, view, prompt, subtype, styleId, detail, styleLocked]);
 
-  // ── Regenerate (new seed) ─────────────────────────────────────────────────
   const handleRegenerate = () => {
     seedRef.current = "";
     setSeed("");
     handleGenerate();
   };
 
-  // ── Download ──────────────────────────────────────────────────────────────
   const handleDownload = async () => {
     if (!activeResult) return;
     try {
@@ -346,17 +315,11 @@ export default function GeneratePage() {
     }
   };
 
-  // ── Copy seed ─────────────────────────────────────────────────────────────
   const handleCopySeed = () => {
     if (!activeResult) return;
     navigator.clipboard.writeText(String(activeResult.seed));
     setSeedCopied(true);
     setTimeout(() => setSeedCopied(false), 2000);
-  };
-
-  // ── Restore from history ──────────────────────────────────────────────────
-  const handleHistorySelect = (index: number) => {
-    setSelectedIndex(index);
   };
 
   // ==========================================================================
@@ -367,25 +330,27 @@ export default function GeneratePage() {
 
       {/* Page header */}
       <div className="mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold mb-2 flex items-center gap-2">
-          <Sparkles className="w-7 h-7 text-primary" />
-          Generate Asset
-        </h1>
-        <p className="text-muted-foreground text-sm">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center">
+            <Wand2 className="w-5 h-5 text-primary" />
+          </div>
+          <h1 className="text-2xl md:text-3xl font-bold">Generate Asset</h1>
+        </div>
+        <p className="text-muted-foreground text-sm ml-12">
           Pick a type, choose a style, describe your asset.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-6 lg:gap-8 items-start">
 
         {/* ================================================================
             LEFT COLUMN — Form
         ================================================================ */}
-        <div className="space-y-6">
+        <div className="space-y-5">
 
-          {/* ── Step 1: Asset group ──────────────────────────────────────── */}
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+          {/* ── 1. Asset Type ─────────────────────────────────────────── */}
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">
               1. Asset Type
             </p>
             <div className="flex gap-2">
@@ -394,93 +359,95 @@ export default function GeneratePage() {
                   key={group.label}
                   onClick={() => handleGroupChange(group.label as CategoryGroup)}
                   className={`
-                    flex-1 py-2.5 px-3 rounded-lg border text-sm font-medium transition-all
-                    flex items-center justify-center gap-1.5
+                    flex-1 py-3 px-3 rounded-lg border text-sm font-semibold transition-all
+                    flex items-center justify-center gap-2
                     ${activeGroup === group.label
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border bg-card text-foreground hover:border-primary/40"
+                      ? "border-primary bg-primary/10 text-primary shadow-sm shadow-primary/20"
+                      : "border-border bg-background text-foreground hover:border-primary/40 hover:bg-primary/5"
                     }
                   `}
                 >
-                  <span>{group.icon}</span>
+                  <span className="text-base">{group.icon}</span>
                   <span>{group.label}</span>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* ── Step 2: Subtype dropdown ─────────────────────────────────── */}
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+          {/* ── 2. Subtype ────────────────────────────────────────────── */}
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">
               2. Subtype
             </p>
             <div ref={subtypeRef} className="relative">
               <button
                 onClick={() => setSubtypeOpen((o) => !o)}
                 className="
-                  w-full flex items-center justify-between px-3 py-2.5 rounded-lg
-                  border border-border bg-card text-sm hover:border-primary/40
-                  transition-colors
+                  w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg
+                  border border-border bg-background text-sm font-medium
+                  hover:border-primary/50 transition-colors
                 "
               >
                 <span>{subtype.label}</span>
-                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${subtypeOpen ? "rotate-180" : ""}`} />
+                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${subtypeOpen ? "rotate-180" : ""}`} />
               </button>
 
               {subtypeOpen && (
                 <div className="
-                  absolute z-20 top-full mt-1 w-full bg-card border border-border
-                  rounded-lg shadow-xl max-h-56 overflow-y-auto
+                  absolute z-20 top-full mt-1.5 w-full bg-card border border-border
+                  rounded-xl shadow-2xl max-h-60 overflow-y-auto
                 ">
-                  {currentGroup.subcategories.map((entry) => (
-                    <button
-                      key={`${entry.categoryId}-${entry.subcategoryId}`}
-                      onClick={() => handleSubtypeChange(entry)}
-                      className={`
-                        w-full text-left px-3 py-2 text-sm transition-colors
-                        hover:bg-primary/5
-                        ${subtype.subcategoryId === entry.subcategoryId && subtype.categoryId === entry.categoryId
-                          ? "text-primary bg-primary/5"
-                          : "text-foreground"
-                        }
-                      `}
-                    >
-                      {entry.label}
-                    </button>
-                  ))}
+                  {currentGroup.subcategories.map((entry) => {
+                    const isActive = subtype.subcategoryId === entry.subcategoryId && subtype.categoryId === entry.categoryId;
+                    return (
+                      <button
+                        key={`${entry.categoryId}-${entry.subcategoryId}`}
+                        onClick={() => handleSubtypeChange(entry)}
+                        className={`
+                          w-full text-left px-3.5 py-2.5 text-sm transition-colors
+                          first:rounded-t-xl last:rounded-b-xl
+                          ${isActive
+                            ? "text-primary bg-primary/8 font-medium"
+                            : "text-foreground hover:bg-muted/60"
+                          }
+                        `}
+                      >
+                        {entry.label}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
           </div>
 
-          {/* ── Step 3: Style presets ─────────────────────────────────────── */}
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+          {/* ── 3. Style ──────────────────────────────────────────────── */}
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">
               3. Style
             </p>
             <div className="grid grid-cols-3 gap-2">
               {STYLE_PRESETS.map((style) => {
-                const isActive  = styleId === style.id;
-                const showLock  = styleLocked && isActive;
+                const isActive = styleId === style.id;
                 return (
                   <button
                     key={style.id}
                     onClick={() => setStyleId(style.id)}
                     className={`
-                      relative p-2.5 rounded-lg border text-left transition-all
+                      relative p-3 rounded-xl border text-left transition-all duration-150 group
                       ${isActive
-                        ? "border-primary bg-primary/10"
-                        : "border-border bg-card hover:border-primary/40"
+                        ? "border-primary bg-primary/10 shadow-sm shadow-primary/20"
+                        : "border-border bg-background hover:border-primary/40 hover:bg-primary/5"
                       }
                     `}
                   >
-                    {showLock && (
-                      <div className="absolute top-1.5 right-1.5">
-                        <Lock className="w-3 h-3 text-primary/60" />
+                    {styleLocked && isActive && (
+                      <div className="absolute top-2 right-2">
+                        <Lock className="w-3 h-3 text-primary/50" />
                       </div>
                     )}
-                    <div className="text-xl mb-1">{style.emoji}</div>
-                    <div className="text-xs font-medium leading-tight">{style.name}</div>
+                    <div className="text-2xl mb-1.5 leading-none">{style.emoji}</div>
+                    <div className={`text-xs font-semibold leading-tight ${isActive ? "text-primary" : ""}`}>{style.name}</div>
                     <div className="text-[10px] text-muted-foreground mt-0.5 leading-tight">{style.description}</div>
                   </button>
                 );
@@ -488,61 +455,61 @@ export default function GeneratePage() {
             </div>
           </div>
 
-          {/* ── Step 4: View + Detail in one row ──────────────────────────── */}
-          <div className="grid grid-cols-2 gap-4">
-            {/* View */}
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                View
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {VIEW_OPTIONS.map((v) => (
-                  <button
-                    key={v.id}
-                    onClick={() => setView(v.id as ViewId)}
-                    className={`
-                      px-2.5 py-1.5 rounded-md border text-xs font-medium transition-all
-                      ${view === v.id
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border bg-card text-foreground hover:border-primary/40"
-                      }
-                    `}
-                  >
-                    {v.label}
-                  </button>
-                ))}
+          {/* ── 4. View + Detail ──────────────────────────────────────── */}
+          <div className="rounded-xl border border-border bg-card p-4">
+            <div className="grid grid-cols-2 gap-5">
+              <div>
+                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">
+                  View
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {VIEW_OPTIONS.map((v) => (
+                    <button
+                      key={v.id}
+                      onClick={() => setView(v.id as ViewId)}
+                      className={`
+                        px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all
+                        ${view === v.id
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border bg-background text-foreground hover:border-primary/40"
+                        }
+                      `}
+                    >
+                      {v.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* Detail */}
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                Detail
-              </p>
-              <div className="flex gap-1.5">
-                {DETAIL_OPTIONS.map((d) => (
-                  <button
-                    key={d.id}
-                    onClick={() => setDetail(d.id as DetailId)}
-                    className={`
-                      flex-1 py-1.5 rounded-md border text-xs font-medium transition-all
-                      ${detail === d.id
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border bg-card text-foreground hover:border-primary/40"
-                      }
-                    `}
-                    title={d.description}
-                  >
-                    {d.label}
-                  </button>
-                ))}
+              <div>
+                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">
+                  Detail
+                </p>
+                <div className="flex gap-1.5">
+                  {DETAIL_OPTIONS.map((d) => (
+                    <button
+                      key={d.id}
+                      onClick={() => setDetail(d.id as DetailId)}
+                      className={`
+                        flex-1 py-1.5 rounded-lg border text-xs font-medium transition-all
+                        ${detail === d.id
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border bg-background text-foreground hover:border-primary/40"
+                        }
+                      `}
+                      title={d.description}
+                    >
+                      {d.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* ── Prompt ────────────────────────────────────────────────────── */}
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+          {/* ── Prompt ────────────────────────────────────────────────── */}
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">
               Describe your {subtype.label.toLowerCase()}
             </p>
             <div className="relative">
@@ -553,44 +520,42 @@ export default function GeneratePage() {
                 maxLength={200}
                 rows={3}
                 className="
-                  w-full px-3 py-2.5 rounded-lg border border-border bg-card
-                  text-sm resize-none outline-none focus:border-primary/60
-                  transition-colors placeholder:text-muted-foreground/60
+                  w-full px-3.5 py-2.5 rounded-lg border border-border bg-background
+                  text-sm resize-none outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/20
+                  transition-all placeholder:text-muted-foreground/50
                 "
               />
               {prompt.length > 150 && (
-                <span className="absolute bottom-2 right-2 text-[10px] text-muted-foreground">
+                <span className="absolute bottom-2.5 right-3 text-[10px] text-muted-foreground">
                   {prompt.length}/200
                 </span>
               )}
             </div>
+
+            {/* Seed row inline */}
+            <div className="mt-3 flex items-center gap-2">
+              <label className="text-xs text-muted-foreground shrink-0 font-medium">Seed:</label>
+              <input
+                type="number"
+                min={0}
+                max={2147483647}
+                placeholder="Random"
+                value={seed}
+                onChange={(e) => { setSeed(e.target.value); seedRef.current = e.target.value; }}
+                className="
+                  flex-1 px-2.5 py-1.5 rounded-lg border border-border bg-background
+                  text-xs outline-none focus:border-primary/60 transition-colors
+                  placeholder:text-muted-foreground/50
+                "
+              />
+            </div>
           </div>
 
-          {/* ── Seed (optional) ───────────────────────────────────────────── */}
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-              Seed <span className="normal-case font-normal">(optional)</span>
-            </p>
-            <input
-              type="number"
-              min={0}
-              max={2147483647}
-              placeholder="Leave empty for random"
-              value={seed}
-              onChange={(e) => { setSeed(e.target.value); seedRef.current = e.target.value; }}
-              className="
-                w-full px-3 py-2 rounded-lg border border-border bg-card
-                text-sm outline-none focus:border-primary/60 transition-colors
-                placeholder:text-muted-foreground/60
-              "
-            />
-          </div>
-
-          {/* ── Generate button ───────────────────────────────────────────── */}
+          {/* ── Generate button ───────────────────────────────────────── */}
           <Button
             onClick={handleGenerate}
             disabled={!isFormValid || isGenerating}
-            className="w-full h-12 text-base font-semibold"
+            className="w-full h-13 text-base font-bold rounded-xl shadow-lg shadow-primary/20 transition-all"
             size="lg"
           >
             {isGenerating ? (
@@ -606,14 +571,12 @@ export default function GeneratePage() {
             )}
           </Button>
 
-          {/* ── Error state ───────────────────────────────────────────────── */}
+          {/* ── Error ─────────────────────────────────────────────────── */}
           {status === "error" && errorMessage && (
-            <div className="p-3 rounded-lg border border-destructive/30 bg-destructive/5 text-sm space-y-1">
-              <p className="text-destructive font-medium">{errorMessage}</p>
+            <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/5 text-sm space-y-1">
+              <p className="text-destructive font-semibold">{errorMessage}</p>
               {!noCredits && (
-                <p className="text-muted-foreground text-xs">
-                  No credits were charged.
-                </p>
+                <p className="text-muted-foreground text-xs">No credits were charged.</p>
               )}
             </div>
           )}
@@ -622,112 +585,110 @@ export default function GeneratePage() {
         {/* ================================================================
             RIGHT COLUMN — Result + History
         ================================================================ */}
-        <div className="space-y-4">
+        <div className="space-y-4 lg:sticky lg:top-6">
 
-          {/* ── Result preview ────────────────────────────────────────────── */}
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-              Result
-            </p>
+          {/* ── Result panel ──────────────────────────────────────────── */}
+          <div className="rounded-xl border border-border bg-card overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Result</p>
+              {activeResult && (
+                <span className="text-[10px] text-muted-foreground">
+                  {activeResult.subtypeLabel} · {STYLE_PRESETS.find((s) => s.id === activeResult.styleId)?.name}
+                </span>
+              )}
+            </div>
 
-            {/* Image area — checkerboard shows transparency */}
+            {/* Checkerboard canvas */}
             <div
-              className="relative aspect-square rounded-xl border border-border overflow-hidden"
+              className="relative aspect-square"
               style={{
-                backgroundImage:
-                  "repeating-conic-gradient(#80808015 0% 25%, transparent 0% 50%)",
+                backgroundImage: "repeating-conic-gradient(#80808015 0% 25%, transparent 0% 50%)",
                 backgroundSize: "24px 24px",
               }}
             >
-              {/* Previous result stays dimmed during generation */}
               {activeResult && (
                 <Image
                   src={activeResult.imageUrl}
                   alt={activeResult.prompt}
                   fill
-                  className={`object-contain p-3 transition-opacity duration-200 ${isGenerating ? "opacity-40" : "opacity-100"}`}
+                  className={`object-contain p-4 transition-opacity duration-200 ${isGenerating ? "opacity-30" : "opacity-100"}`}
                   unoptimized
                 />
               )}
 
-              {/* Loading overlay */}
               {isGenerating && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <Loader2 className="w-10 h-10 text-primary animate-spin mb-3" />
-                  <p className="text-sm text-muted-foreground">Creating your asset…</p>
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                  <div className="relative">
+                    <div className="w-14 h-14 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+                    <Sparkles className="absolute inset-0 m-auto w-5 h-5 text-primary" />
+                  </div>
+                  <p className="text-sm text-muted-foreground font-medium">Creating your asset…</p>
                 </div>
               )}
 
-              {/* Empty state */}
               {!activeResult && !isGenerating && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground/40">
-                  <Sparkles className="w-12 h-12 mb-3" />
-                  <p className="text-sm">Your asset will appear here</p>
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-muted-foreground/30">
+                  <Sparkles className="w-14 h-14" />
+                  <p className="text-sm font-medium">Your asset will appear here</p>
                 </div>
               )}
             </div>
-          </div>
 
-          {/* ── Actions + metadata ────────────────────────────────────────── */}
-          {activeResult && (
-            <div className="space-y-3">
-              {/* Seed + metadata row */}
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span className="truncate mr-2">
-                  {activeResult.subtypeLabel} · {STYLE_PRESETS.find((s) => s.id === activeResult.styleId)?.name ?? activeResult.styleId}
-                </span>
+            {/* Action row */}
+            {activeResult && (
+              <div className="px-4 py-3 border-t border-border space-y-3">
+                {/* Seed row */}
                 <button
                   onClick={handleCopySeed}
-                  className="flex items-center gap-1 hover:text-foreground transition-colors shrink-0"
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors w-full"
                 >
                   {seedCopied
-                    ? <Check className="w-3 h-3 text-green-500" />
-                    : <Copy className="w-3 h-3" />
+                    ? <Check className="w-3 h-3 text-green-500 shrink-0" />
+                    : <Copy className="w-3 h-3 shrink-0" />
                   }
-                  Seed: {activeResult.seed}
+                  <span>Seed: {activeResult.seed}</span>
+                  <span className="ml-auto text-[10px] opacity-60">{seedCopied ? "Copied!" : "Copy"}</span>
                 </button>
-              </div>
 
-              {/* Action buttons */}
-              <div className="flex gap-2">
-                <Button onClick={handleDownload} className="flex-1">
-                  <Download className="w-4 h-4 mr-2" />
-                  Download PNG
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleRegenerate}
-                  disabled={isGenerating}
-                >
-                  <RefreshCw className={`w-4 h-4 mr-2 ${isGenerating ? "animate-spin" : ""}`} />
-                  Regen
-                </Button>
+                {/* Buttons */}
+                <div className="flex gap-2">
+                  <Button onClick={handleDownload} className="flex-1 font-semibold">
+                    <Download className="w-4 h-4 mr-2" />
+                    Download PNG
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleRegenerate}
+                    disabled={isGenerating}
+                    className="px-3"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isGenerating ? "animate-spin" : ""}`} />
+                  </Button>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
-          {/* ── Session history strip ─────────────────────────────────────── */}
+          {/* ── Session history ───────────────────────────────────────── */}
           {history.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            <div className="rounded-xl border border-border bg-card p-4">
+              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">
                 This session
               </p>
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {history.map((item, index) => (
                   <button
                     key={item.id}
-                    onClick={() => handleHistorySelect(index)}
+                    onClick={() => setSelectedIndex(index)}
                     className={`
-                      relative shrink-0 w-16 h-16 rounded-lg border overflow-hidden
-                      transition-all
+                      relative shrink-0 w-16 h-16 rounded-xl border overflow-hidden transition-all
                       ${selectedIndex === index
-                        ? "border-primary ring-1 ring-primary/40"
-                        : "border-border hover:border-primary/40"
+                        ? "border-primary ring-2 ring-primary/30"
+                        : "border-border hover:border-primary/50"
                       }
                     `}
                     style={{
-                      backgroundImage:
-                        "repeating-conic-gradient(#80808015 0% 25%, transparent 0% 50%)",
+                      backgroundImage: "repeating-conic-gradient(#80808015 0% 25%, transparent 0% 50%)",
                       backgroundSize: "12px 12px",
                     }}
                     title={item.prompt}

@@ -60,8 +60,7 @@ export default function AuthLayout({
           </h1>
 
           <p className="text-white/60 text-lg mb-10 max-w-md leading-relaxed">
-            Join thousands of game developers using AI to create stunning
-            sprites, 3D models, and game assets.
+            AI-powered sprites, icons, and 3D models — ready in seconds, transparent PNG, commercial use included.
           </p>
 
           {/* Happy Coreling Mascot */}
@@ -93,7 +92,7 @@ export default function AuthLayout({
           {/* Trust badge */}
           <div className="mt-10 flex items-center gap-2 text-white/40 text-sm">
             <Sparkles className="w-4 h-4 text-[#00ff88]" />
-            <span>Trusted by 10,000+ game developers</span>
+            <span>Built for indie game developers</span>
           </div>
         </div>
       </div>
