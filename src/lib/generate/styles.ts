@@ -17,18 +17,18 @@ export const ART_STYLES: ArtStyle[] = [
     name: "Pixel Art 16-bit",
     description: "Retro SNES/GBA style",
     promptSuffix:
-      "16-bit pixel art sprite, 64x64 pixels, visible chunky square pixels, NES SNES Game Boy retro graphics, hard pixelated edges, limited 16 color palette, classic video game sprite",
+      "STRICT 16-bit pixel art sprite, EXACTLY 64x64 pixels maximum, HARD CHUNKY SQUARE PIXELS clearly visible, ZERO anti-aliasing, ZERO smooth edges, retro NES SNES Game Boy graphics, blocky pixelated style, maximum 16 colors, classic 8-bit video game sprite, crisp pixel edges, NO gradients, NO blending",
     negativePrompt:
-      "photorealistic, 3D render, smooth gradients, anti-aliased, modern HD graphics, soft shading",
+      "smooth, anti-aliased, realistic, photorealistic, 3D render, gradients, soft shading, blended colors, modern graphics, HD, high resolution, painted, vector art, clean edges, cel-shaded",
   },
   {
     id: "pixel-32",
     name: "Pixel Art 32-bit",
     description: "PS1/Saturn era style",
     promptSuffix:
-      "32-bit pixel art sprite, 128x128 pixels, visible pixel blocks, retro PlayStation era graphics, pixelated edges, limited color palette, classic arcade sprite style",
+      "STRICT 32-bit pixel art sprite, EXACTLY 128x128 pixels maximum, MASSIVE CHUNKY SQUARE PIXELS clearly visible, ZERO anti-aliasing, ZERO smooth edges, retro PlayStation SNES era graphics, heavily pixelated blocky style, limited color palette, arcade pixel sprite, crisp pixel boundaries, NO gradients, NO blending",
     negativePrompt:
-      "photorealistic, 3D render, smooth gradients, anti-aliased, modern HD graphics, soft shading",
+      "smooth, anti-aliased, realistic, photorealistic, 3D render, gradients, soft shading, blended colors, modern graphics, HD, high resolution, painted, vector art, clean edges, cel-shaded",
   },
   {
     id: "painted",
@@ -62,9 +62,9 @@ export const ART_STYLES: ArtStyle[] = [
     name: "Cartoon",
     description: "Fun exaggerated style",
     promptSuffix:
-      "smooth cartoon illustration style, NEVER pixel art, completely non-pixelated, vector-like smooth shapes, bold black outlines, flat cel-shaded coloring, exaggerated proportions, animated movie aesthetic, Disney Pixar inspired, bright fun colors, playful design, smooth rounded edges",
+      "SMOOTH cartoon illustration style, COMPLETELY non-pixelated, ZERO visible pixels, vector-like perfectly smooth shapes, bold black outlines, flat cel-shaded coloring, exaggerated proportions, animated movie aesthetic, Disney Pixar inspired style, bright saturated colors, playful design, perfectly smooth rounded edges, ANTI-ALIASED smooth curves",
     negativePrompt:
-      "pixel art, pixelated, blocky, retro gaming, 8-bit, 16-bit, 32-bit, chunky pixels, square pixels, pixel grid, visible pixels, Game Boy graphics, NES graphics, SNES graphics, retro sprites, grain, noise, realistic textures, photography, photorealistic",
+      "pixel art, pixelated, blocky, chunky pixels, square pixels, retro gaming, 8-bit, 16-bit, 32-bit, pixel grid, visible pixels, Game Boy graphics, NES graphics, SNES graphics, retro sprites, low resolution, jagged edges, grain, noise",
   },
   {
     id: "realistic",

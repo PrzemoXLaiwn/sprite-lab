@@ -19,7 +19,7 @@ export const ASSET_CATEGORIES: AssetCategory[] = [
     name: "Characters",
     icon: "👤",
     description: "Heroes, enemies, NPCs",
-    promptPrefix: "single character sprite, clean simple design, only features explicitly mentioned in description, neutral standing pose, accurate game character proportions, wizard = robed mage with staff and pointed hat, knight = armored warrior",
+    promptPrefix: "EXACTLY ONE single character sprite ONLY, ZERO additional characters, ZERO background characters, ZERO multiple people, clean isolated character design, neutral standing pose, character alone on transparent background, wizard = SINGLE robed mage with staff and pointed hat, knight = SINGLE armored warrior, NO companions, NO duplicates",
     defaultSize: { width: 512, height: 512 },
     subcategories: ["hero", "enemy", "npc", "boss", "animal", "creature"],
     suggestions: [
@@ -36,7 +36,7 @@ export const ASSET_CATEGORIES: AssetCategory[] = [
     name: "Weapons",
     icon: "⚔️",
     description: "Swords, guns, magic staffs",
-    promptPrefix: "single weapon sprite on transparent background, when 'glowing' mentioned: BRIGHT LUMINOUS AURA with visible light rays and energy particles, when 'runes' mentioned: GLOWING magical symbols carved deep into surface emitting bright light, magical weapons must show INTENSE magical energy effects",
+    promptPrefix: "single weapon sprite on transparent background, WHEN 'glowing' mentioned: INTENSE BRIGHT LUMINOUS AURA radiating from entire weapon with visible light rays and energy particles, WHEN 'runes' mentioned: GLOWING magical symbols CARVED DEEP into weapon surface EMITTING BRIGHT COLORED LIGHT, WHEN 'magical': weapon SURROUNDED by swirling energy effects, all magical weapons MUST show DRAMATIC glowing effects",
     defaultSize: { width: 256, height: 256 },
     subcategories: ["sword", "axe", "bow", "gun", "staff", "shield"],
     suggestions: [
@@ -53,7 +53,7 @@ export const ASSET_CATEGORIES: AssetCategory[] = [
     name: "Items",
     icon: "💎",
     description: "Potions, coins, power-ups",
-    promptPrefix: "single game item sprite, when 'glowing' mentioned: BRIGHT MAGICAL AURA surrounding object with visible light particles and energy emission, when 'potion' mentioned: glass bottle with cork containing colored liquid, magical items must show INTENSE glowing effects",
+    promptPrefix: "single game item sprite, WHEN 'glowing' mentioned: BRIGHT MAGICAL AURA completely surrounding object with visible light particles and energy emission radiating outward, WHEN 'potion' mentioned: transparent glass bottle with cork stopper containing brightly colored liquid, WHEN magical item: INTENSE glowing magical effects visible around entire object, all magical items MUST display dramatic luminous effects",
     defaultSize: { width: 128, height: 128 },
     subcategories: ["potion", "coin", "gem", "food", "key", "scroll"],
     suggestions: [
@@ -121,7 +121,7 @@ export const ASSET_CATEGORIES: AssetCategory[] = [
     name: "Effects",
     icon: "✨",
     description: "Explosions, magic, particles",
-    promptPrefix: "PURE MAGICAL EFFECT ONLY - ZERO characters, ZERO people, ZERO wizards, ZERO humans, ZERO faces, ZERO bodies, ZERO living creatures, abstract magical phenomenon only, isolated spell effect, energy manifestation, particle system, magic aura, elemental effect, pure visual magic without any caster or person",
+    promptPrefix: "ABSTRACT MAGICAL EFFECT ONLY - ABSOLUTELY ZERO people, ZERO wizards, ZERO characters, ZERO humans, ZERO faces, ZERO bodies, ZERO hands, ZERO creatures, ZERO living beings of any kind, pure isolated spell effect, floating magical energy, elemental phenomenon, particle system, magic aura, energy burst, NO CASTER VISIBLE, just the effect itself floating in space",
     defaultSize: { width: 256, height: 256 },
     subcategories: ["explosion", "fire", "lightning", "magic", "smoke"],
     suggestions: [
@@ -155,7 +155,7 @@ export const ASSET_CATEGORIES: AssetCategory[] = [
     name: "Sprite Sheets",
     icon: "🎬",
     description: "Animation frames, sequences",
-    promptPrefix: "SPRITESHEET GRID LAYOUT: 4x1 or 8x1 horizontal grid of identical-sized square frames, each frame 64x64 pixels, character centered in each frame, frame 1: idle pose, frame 2: walking step, frame 3: attack pose, frame 4: damaged pose, consistent character design across ALL frames, white grid lines separating frames, pixel-perfect alignment, game animation ready, NO single character - MUST be grid of multiple frames",
+    promptPrefix: "MANDATORY SPRITESHEET: visible white grid layout showing 4x1 OR 8x1 horizontal row of separate square frames, each frame EXACTLY same size, character repeated in EACH frame with different pose, frame 1: idle standing, frame 2: walking step, frame 3: attack pose, frame 4: hurt/damaged, WHITE BORDER LINES separating each frame clearly, game animation spritesheet format, NEVER single character - MUST be multiple frames in grid, pixel-perfect frame alignment",
     defaultSize: { width: 512, height: 128 },
     subcategories: ["walk-cycle", "attack", "idle", "death", "jump"],
     suggestions: [
