@@ -419,7 +419,7 @@ function GeneratePageInner() {
   // RENDER
   // ==========================================================================
   return (
-    <div className="min-h-screen p-4 md:p-8 max-w-6xl mx-auto">
+    <div className="min-h-screen p-3 sm:p-4 md:p-8 max-w-6xl mx-auto">
 
       {/* Page header */}
       <div className="mb-8">
@@ -427,14 +427,14 @@ function GeneratePageInner() {
           <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center">
             <Wand2 className="w-5 h-5 text-primary" />
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold">Generate Asset</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Generate Asset</h1>
         </div>
         <p className="text-muted-foreground text-sm ml-12">
           Pick a type, choose a style, describe your asset.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-6 lg:gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px] gap-4 sm:gap-6 lg:gap-8 items-start">
 
         {/* ================================================================
             LEFT COLUMN — Form
@@ -446,13 +446,13 @@ function GeneratePageInner() {
             <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">
               1. Asset Type
             </p>
-            <div className="flex gap-2">
+            <div className="flex gap-1.5 sm:gap-2">
               {GENERATOR_CATEGORIES.map((group) => (
                 <button
                   key={group.label}
                   onClick={() => handleGroupChange(group.label as CategoryGroup)}
                   className={`
-                    flex-1 py-3 px-3 rounded-lg border text-sm font-semibold transition-all
+                    flex-1 py-2.5 sm:py-3 px-2 sm:px-3 rounded-lg border text-xs sm:text-sm font-semibold transition-all
                     flex items-center justify-center gap-2
                     ${activeGroup === group.label
                       ? "border-primary bg-primary/10 text-primary shadow-sm shadow-primary/20"
@@ -505,7 +505,7 @@ function GeneratePageInner() {
             <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">
               3. Style
             </p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {STYLE_PRESETS.map((style) => {
                 const isActive = styleId === style.id;
                 return (
@@ -530,7 +530,7 @@ function GeneratePageInner() {
 
           {/* ── 4. View + Detail ──────────────────────────────────────── */}
           <div className="rounded-xl border border-border bg-card p-4">
-            <div className="grid grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
                 <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">View</p>
                 <div className="flex flex-wrap gap-1.5">
@@ -792,7 +792,7 @@ function GeneratePageInner() {
                   This session ({history.length})
                 </p>
               </div>
-              <div className="grid grid-cols-6 gap-1.5">
+              <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5">
                 {history.map((item, index) => (
                   <button
                     key={item.id}

@@ -348,10 +348,10 @@ export default function PricingPage() {
           <Gift className="w-4 h-4" />
           <span>Launch pricing locked forever for early adopters!</span>
         </div>
-        <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+        <h1 className="text-2xl sm:text-4xl md:text-5xl font-bold text-white mb-3 sm:mb-4">
           Simple, Transparent Pricing
         </h1>
-        <p className="text-xl text-white/60 max-w-2xl mx-auto">
+        <p className="text-base sm:text-xl text-white/60 max-w-2xl mx-auto px-2">
           No hidden fees. No surprises. Cancel anytime.
         </p>
       </div>
@@ -359,8 +359,8 @@ export default function PricingPage() {
       {/* ============================================ */}
       {/* PRICING CARDS */}
       {/* ============================================ */}
-      <div className="max-w-6xl mx-auto px-4 pb-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 pb-12 sm:pb-16">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {plans.map((plan) => {
             const Icon = plan.icon;
             const isCurrent = currentPlan === plan.stripePlan;
@@ -477,16 +477,16 @@ export default function PricingPage() {
       {/* ============================================ */}
       {/* VALUE COMPARISON */}
       {/* ============================================ */}
-      <div className="bg-[#0f0f18] py-16 px-4">
+      <div className="bg-[#0f0f18] py-10 sm:py-16 px-3 sm:px-4">
         <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl font-bold text-white text-center mb-4">
+          <h2 className="text-2xl sm:text-3xl font-bold text-white text-center mb-3 sm:mb-4">
             Why SpriteLab is Worth It
           </h2>
-          <p className="text-white/60 text-center mb-12 max-w-2xl mx-auto">
+          <p className="text-white/60 text-center mb-8 sm:mb-12 max-w-2xl mx-auto text-sm sm:text-base">
             Compare the cost of hiring an artist vs. using SpriteLab
           </p>
 
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="grid md:grid-cols-2 gap-4 sm:gap-8">
             {/* Traditional Way */}
             <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-6">
               <h3 className="text-xl font-bold text-red-400 mb-4">Traditional Artist</h3>
@@ -553,15 +553,15 @@ export default function PricingPage() {
       {/* ============================================ */}
       {/* GUARANTEE */}
       {/* ============================================ */}
-      <div className="py-16 px-4">
+      <div className="py-10 sm:py-16 px-3 sm:px-4">
         <div className="max-w-2xl mx-auto text-center">
-          <div className="inline-flex p-4 rounded-full bg-[#00ff88]/10 mb-6">
-            <Shield className="w-12 h-12 text-[#00ff88]" />
+          <div className="inline-flex p-3 sm:p-4 rounded-full bg-[#00ff88]/10 mb-4 sm:mb-6">
+            <Shield className="w-8 h-8 sm:w-12 sm:h-12 text-[#00ff88]" />
           </div>
-          <h2 className="text-3xl font-bold text-white mb-4">
+          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3 sm:mb-4">
             7-Day Money-Back Guarantee
           </h2>
-          <p className="text-white/60 text-lg">
+          <p className="text-white/60 text-sm sm:text-lg">
             Not satisfied? Get a full refund within 7 days. No questions asked.
             We're confident you'll love SpriteLab.
           </p>
@@ -571,9 +571,9 @@ export default function PricingPage() {
       {/* ============================================ */}
       {/* FAQ */}
       {/* ============================================ */}
-      <div className="bg-[#0f0f18] py-16 px-4">
+      <div className="bg-[#0f0f18] py-10 sm:py-16 px-3 sm:px-4">
         <div className="max-w-3xl mx-auto">
-          <h2 className="text-3xl font-bold text-white text-center mb-12">
+          <h2 className="text-2xl sm:text-3xl font-bold text-white text-center mb-8 sm:mb-12">
             Frequently Asked Questions
           </h2>
           <div className="space-y-4">
@@ -587,7 +587,7 @@ export default function PricingPage() {
       {/* ============================================ */}
       {/* FLOATING CTA */}
       {/* ============================================ */}
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 sm:hidden">
+      <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 sm:hidden">
         <Button
           onClick={() => handlePlanClick("PRO")}
           className="bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-black font-bold px-8 py-6 rounded-full shadow-lg shadow-[#00ff88]/30"

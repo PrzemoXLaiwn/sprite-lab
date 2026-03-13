@@ -26,6 +26,7 @@ import { OnboardingOverlay, TutorialOverlay } from "@/components/onboarding/Onbo
 import { DailyBonusPopup } from "@/components/dashboard/DailyBonusPopup";
 import { ReferralPanel } from "@/components/dashboard/ReferralPanel";
 import { UpgradeModal } from "@/components/dashboard/UpgradeModal";
+import { AdBannerSidebar } from "@/components/ads/AdBanner";
 import { prisma } from "@/lib/prisma";
 
 const navItems = [
@@ -124,6 +125,9 @@ export default async function DashboardLayout({
             {/* Credits Box */}
             <CreditsDisplay />
 
+            {/* Ad Banner */}
+            <AdBannerSidebar className="mb-2" />
+
             {/* Referral Panel */}
             <ReferralPanel />
 
@@ -175,7 +179,7 @@ export default async function DashboardLayout({
       </div>
 
       {/* Mobile Bottom Nav */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 border-t border-white/5 bg-[#0a0a0f]/95 backdrop-blur-xl z-40">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 border-t border-white/5 bg-[#0a0a0f]/95 backdrop-blur-xl z-40 pb-[env(safe-area-inset-bottom)]">
         <nav className="flex items-center justify-around h-16">
           {navItems.slice(0, 4).map((item) => (
             <Link

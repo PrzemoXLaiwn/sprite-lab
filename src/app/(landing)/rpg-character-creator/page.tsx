@@ -75,15 +75,15 @@ const features = [
 
 export default function RPGCharacterCreatorPage() {
   return (
-    <main className="min-h-screen bg-[#0a0a0f] text-white">
+    <main className="min-h-screen bg-[#0a0a0f] text-white overflow-x-hidden">
       {/* Hero */}
-      <section className="relative min-h-[80vh] flex items-center justify-center pt-20 pb-16 overflow-hidden">
+      <section className="relative min-h-[60vh] sm:min-h-[80vh] flex items-center justify-center pt-20 pb-16 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-[#c084fc]/5 via-transparent to-transparent" />
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#c084fc]/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#00ff88]/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/4 left-1/4 w-48 sm:w-96 h-48 sm:h-96 bg-[#c084fc]/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-48 sm:w-96 h-48 sm:h-96 bg-[#00ff88]/10 rounded-full blur-3xl" />
 
-        <div className="max-w-6xl mx-auto px-4 relative z-10">
-          <Link href="/" className="flex items-center justify-center gap-2 mb-8">
+        <div className="max-w-6xl mx-auto px-3 sm:px-4 relative z-10">
+          <Link href="/" className="flex items-center justify-center gap-2 mb-5 sm:mb-8">
             <Image src="/logo.png" alt="SpriteLab" width={40} height={40} />
             <span className="font-display font-bold text-2xl">
               Sprite<span className="text-[#00ff88]">Lab</span>
@@ -91,39 +91,39 @@ export default function RPGCharacterCreatorPage() {
           </Link>
 
           <div className="text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#c084fc]/10 border border-[#c084fc]/20 text-[#c084fc] text-sm font-medium mb-6">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#c084fc]/10 border border-[#c084fc]/20 text-[#c084fc] text-xs sm:text-sm font-medium mb-6">
               <Users className="w-4 h-4" />
               AI Character Generator
             </div>
 
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
+            <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
               Create <span className="text-[#c084fc]">RPG Characters</span>
               <br />
               <span className="text-white/80">in Seconds</span>
             </h1>
 
-            <p className="text-lg md:text-xl text-white/60 max-w-2xl mx-auto mb-10">
+            <p className="text-base sm:text-lg md:text-xl text-white/60 max-w-2xl mx-auto mb-10">
               Generate unique heroes, villains, NPCs, and monsters for your RPG.
               Any class, any race, any fantasy style. Just describe your character.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
               <Link
                 href="/register"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-[#c084fc] to-[#00d4ff] text-black font-semibold rounded-lg hover:opacity-90 transition-opacity text-lg"
+                className="inline-flex items-center justify-center gap-2 px-5 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-[#c084fc] to-[#00d4ff] text-black font-semibold rounded-lg hover:opacity-90 transition-opacity text-base sm:text-lg"
               >
                 Create Characters Free
                 <ArrowRight className="w-5 h-5" />
               </Link>
               <Link
                 href="/#try-it"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white/5 border border-white/10 text-white font-semibold rounded-lg hover:bg-white/10 transition-colors text-lg"
+                className="inline-flex items-center justify-center gap-2 px-5 sm:px-8 py-3 sm:py-4 bg-white/5 border border-white/10 text-white font-semibold rounded-lg hover:bg-white/10 transition-colors text-base sm:text-lg"
               >
                 Try Without Account
               </Link>
             </div>
 
-            <p className="text-white/40 text-sm mt-6">
+            <p className="text-white/40 text-xs sm:text-sm mt-6">
               5 free credits • No credit card required
             </p>
           </div>
@@ -131,24 +131,24 @@ export default function RPGCharacterCreatorPage() {
       </section>
 
       {/* Character Types */}
-      <section className="py-20 relative">
-        <div className="max-w-6xl mx-auto px-4">
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">
+      <section className="py-12 sm:py-20 relative">
+        <div className="max-w-6xl mx-auto px-3 sm:px-4">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-4">
             Any <span className="text-[#c084fc]">Character Type</span>
           </h2>
-          <p className="text-white/60 text-center mb-12 max-w-xl mx-auto">
+          <p className="text-sm sm:text-base text-white/60 text-center mb-8 sm:mb-12 max-w-xl mx-auto">
             From legendary heroes to terrifying monsters
           </p>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
             {characterTypes.map((type) => (
               <div
                 key={type.name}
-                className="bg-white/5 border border-white/10 rounded-xl p-6 hover:border-[#c084fc]/50 transition-colors"
+                className="bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6 hover:border-[#c084fc]/50 transition-colors"
               >
-                <div className="text-4xl mb-4">{type.emoji}</div>
-                <h3 className="text-xl font-bold mb-2">{type.name}</h3>
-                <p className="text-white/60 text-sm">{type.examples}</p>
+                <div className="text-3xl sm:text-4xl mb-4">{type.emoji}</div>
+                <h3 className="text-lg sm:text-xl font-bold mb-2">{type.name}</h3>
+                <p className="text-white/60 text-xs sm:text-sm">{type.examples}</p>
               </div>
             ))}
           </div>
@@ -156,23 +156,23 @@ export default function RPGCharacterCreatorPage() {
       </section>
 
       {/* Features */}
-      <section className="py-20 bg-white/[0.02]">
-        <div className="max-w-4xl mx-auto px-4">
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">
+      <section className="py-12 sm:py-20 bg-white/[0.02]">
+        <div className="max-w-4xl mx-auto px-3 sm:px-4">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-4">
             Game-Ready <span className="text-[#00ff88]">Characters</span>
           </h2>
-          <p className="text-white/60 text-center mb-12">
+          <p className="text-sm sm:text-base text-white/60 text-center mb-8 sm:mb-12">
             Everything you need to bring your RPG to life
           </p>
 
-          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
             {features.map((feature) => (
               <div
                 key={feature}
-                className="flex items-center gap-3 p-4 bg-white/5 rounded-lg"
+                className="flex items-center gap-3 p-3 sm:p-4 bg-white/5 rounded-lg"
               >
                 <Check className="w-5 h-5 text-[#00ff88] flex-shrink-0" />
-                <span className="text-sm">{feature}</span>
+                <span className="text-xs sm:text-sm">{feature}</span>
               </div>
             ))}
           </div>
@@ -180,13 +180,13 @@ export default function RPGCharacterCreatorPage() {
       </section>
 
       {/* Example Prompts */}
-      <section className="py-20">
-        <div className="max-w-4xl mx-auto px-4">
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">
+      <section className="py-12 sm:py-20">
+        <div className="max-w-4xl mx-auto px-3 sm:px-4">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-8 sm:mb-12">
             Example <span className="text-[#00d4ff]">Prompts</span>
           </h2>
 
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
             {[
               "A wise elven mage with silver hair and glowing staff",
               "Fierce orc warrior with battle scars and iron armor",
@@ -197,9 +197,9 @@ export default function RPGCharacterCreatorPage() {
             ].map((prompt) => (
               <div
                 key={prompt}
-                className="p-4 bg-white/5 border border-white/10 rounded-lg"
+                className="p-3 sm:p-4 bg-white/5 border border-white/10 rounded-lg"
               >
-                <p className="text-white/80 italic">&quot;{prompt}&quot;</p>
+                <p className="text-white/80 italic text-sm sm:text-base">&quot;{prompt}&quot;</p>
               </div>
             ))}
           </div>
@@ -207,18 +207,18 @@ export default function RPGCharacterCreatorPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-20 relative overflow-hidden">
+      <section className="py-12 sm:py-20 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-[#c084fc]/10 via-transparent to-[#00d4ff]/10" />
-        <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
-          <h2 className="text-3xl md:text-5xl font-bold mb-6">
+        <div className="max-w-4xl mx-auto px-3 sm:px-4 text-center relative z-10">
+          <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold mb-6">
             Build Your <span className="text-[#c084fc]">Party</span> Today
           </h2>
-          <p className="text-white/60 mb-8 max-w-xl mx-auto">
+          <p className="text-sm sm:text-base text-white/60 mb-8 max-w-xl mx-auto">
             Stop searching for character assets. Create exactly what your RPG needs.
           </p>
           <Link
             href="/register"
-            className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-[#c084fc] to-[#00d4ff] text-black font-semibold rounded-lg hover:opacity-90 transition-opacity text-lg"
+            className="inline-flex items-center justify-center gap-2 px-5 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-[#c084fc] to-[#00d4ff] text-black font-semibold rounded-lg hover:opacity-90 transition-opacity text-base sm:text-lg"
           >
             Get 5 Free Credits
             <ArrowRight className="w-5 h-5" />
@@ -228,14 +228,14 @@ export default function RPGCharacterCreatorPage() {
 
       {/* Footer */}
       <footer className="py-8 border-t border-white/5">
-        <div className="max-w-6xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="max-w-6xl mx-auto px-3 sm:px-4 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
           <Link href="/" className="flex items-center gap-2">
             <Image src="/logo.png" alt="SpriteLab" width={24} height={24} />
             <span className="font-display font-bold">
               Sprite<span className="text-[#00ff88]">Lab</span>
             </span>
           </Link>
-          <div className="flex items-center gap-6 text-sm text-white/40">
+          <div className="flex items-center gap-4 sm:gap-6 text-xs sm:text-sm text-white/40">
             <Link href="/pricing" className="hover:text-white">Pricing</Link>
             <Link href="/privacy" className="hover:text-white">Privacy</Link>
             <Link href="/terms" className="hover:text-white">Terms</Link>

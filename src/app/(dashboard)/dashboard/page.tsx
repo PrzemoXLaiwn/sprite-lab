@@ -88,11 +88,11 @@ function NewUserWelcome({ credits }: { credits: number }) {
         </div>
 
         {/* Quick example tiles */}
-        <div className="grid grid-cols-3 gap-2 shrink-0">
+        <div className="grid grid-cols-3 sm:grid-cols-3 gap-1.5 sm:gap-2 shrink-0">
           {["⚔️", "🧪", "👾", "💎", "🛡️", "🔮"].map((emoji, i) => (
             <div
               key={i}
-              className="w-16 h-16 rounded-xl border border-border bg-background/60 flex items-center justify-center text-2xl hover:scale-105 transition-transform"
+              className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl border border-border bg-background/60 flex items-center justify-center text-2xl hover:scale-105 transition-transform"
             >
               {emoji}
             </div>
@@ -160,7 +160,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="p-6 lg:p-8 max-w-7xl mx-auto">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
         <div className="h-8 w-40 bg-muted rounded animate-pulse mb-8" />
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
           {[1, 2, 3].map((i) => <StatSkeleton key={i} />)}
@@ -179,7 +179,7 @@ export default function DashboardPage() {
   const recentGens = data?.recentGenerations ?? [];
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
 
       {/* ── Active Generations ───────────────────────────────────────── */}
       {activePendingJobs.length > 0 && (

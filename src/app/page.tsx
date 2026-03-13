@@ -26,6 +26,7 @@ import { SocialProof } from "@/components/landing/SocialProof";
 import { ScrollAnimation } from "@/components/landing/ScrollAnimations";
 import { FloatingOrbs } from "@/components/landing/ParticleBackground";
 import { HeroGallery } from "@/components/landing/HeroGallery";
+import { AdBannerHorizontal } from "@/components/ads/AdBanner";
 
 export const metadata: Metadata = {
   title: "SpriteLab - AI Game Asset Generator | Create Sprites in Seconds",
@@ -330,6 +331,9 @@ export default async function Home({
       </section>
 
 
+      {/* Ad Banner */}
+      <AdBannerHorizontal />
+
       {/* How It Works */}
       <section id="how-it-works" className="py-16 sm:py-24 relative">
         <div className="max-w-5xl mx-auto px-3 sm:px-4">
@@ -405,6 +409,9 @@ export default async function Home({
 
       {/* Social Proof - Testimonials & Stats */}
       <SocialProof />
+
+      {/* Ad Banner */}
+      <AdBannerHorizontal />
 
       {/* Try It Now - Guest Generation */}
       <TryItNow />
@@ -540,7 +547,7 @@ export default async function Home({
 
             {/* Copyright */}
             <p className="text-xs sm:text-sm text-white/30">
-              © 2025 SpriteLab. All rights reserved.
+              © 2026 SpriteLab. All rights reserved.
             </p>
           </div>
 

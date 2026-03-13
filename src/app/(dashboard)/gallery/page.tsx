@@ -543,32 +543,33 @@ export default function GalleryPage() {
       {/* Background */}
       <div className="fixed inset-0 gradient-mesh pointer-events-none" />
       <div className="fixed inset-0 grid-pattern pointer-events-none opacity-50" />
-      <div className="fixed top-20 left-10 w-96 h-96 bg-[#00ff88]/10 rounded-full blur-[120px] animate-glow-pulse pointer-events-none" />
-      <div className="fixed bottom-20 right-10 w-80 h-80 bg-[#00d4ff]/10 rounded-full blur-[100px] animate-glow-pulse pointer-events-none" style={{ animationDelay: "1s" }} />
+      <div className="fixed top-20 left-10 w-48 sm:w-96 h-48 sm:h-96 bg-[#00ff88]/10 rounded-full blur-[80px] sm:blur-[120px] animate-glow-pulse pointer-events-none" />
+      <div className="fixed bottom-20 right-10 w-40 sm:w-80 h-40 sm:h-80 bg-[#00d4ff]/10 rounded-full blur-[60px] sm:blur-[100px] animate-glow-pulse pointer-events-none" style={{ animationDelay: "1s" }} />
 
-      <div className="relative z-10 p-4 lg:p-8 max-w-7xl mx-auto">
+      <div className="relative z-10 p-3 sm:p-4 lg:p-8 max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-3xl font-display font-black gradient-text neon-text mb-2">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-display font-black gradient-text neon-text mb-1 sm:mb-2">
                 YOUR GALLERY
               </h1>
-              <p className="text-muted-foreground">
+              <p className="text-xs sm:text-sm text-muted-foreground">
                 {filteredGenerations.length} assets • {total2D} sprites • {total3D} 3D models
               </p>
             </div>
             <Link href="/generate">
-              <Button className="btn-primary">
-                <Sparkles className="w-4 h-4 mr-2" />
-                Generate New
+              <Button className="btn-primary text-xs sm:text-sm">
+                <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+                <span className="hidden sm:inline">Generate New</span>
+                <span className="sm:hidden">New</span>
               </Button>
             </Link>
           </div>
 
           {/* Controls */}
-          <div className="glass-card rounded-2xl p-4">
-            <div className="flex flex-col sm:flex-row gap-4">
+          <div className="glass-card rounded-xl sm:rounded-2xl p-3 sm:p-4">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
               {/* Search */}
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -620,7 +621,7 @@ export default function GalleryPage() {
               <select
                 value={filterCategory}
                 onChange={(e) => setFilterCategory(e.target.value)}
-                className="px-4 py-2 rounded-lg bg-[#1a1a28] border border-border text-white focus:border-[#00ff88] focus:outline-none"
+                className="px-2 sm:px-4 py-2 rounded-lg bg-[#1a1a28] border border-border text-white text-xs sm:text-sm focus:border-[#00ff88] focus:outline-none min-w-0"
               >
                 <option value="all">All Categories</option>
                 <option value="WEAPONS">Weapons</option>
@@ -701,7 +702,7 @@ export default function GalleryPage() {
             </div>
           </div>
         ) : filteredGenerations.length === 0 ? (
-          <div className="glass-card rounded-2xl p-12 text-center">
+          <div className="glass-card rounded-xl sm:rounded-2xl p-6 sm:p-12 text-center">
             {/* Coreling waving for empty state */}
             <div className="w-32 h-32 mx-auto mb-6 relative">
               <div className="absolute inset-0 bg-[#c084fc]/20 rounded-full blur-2xl" />
@@ -1125,50 +1126,53 @@ export default function GalleryPage() {
 
         {/* Floating Selection Action Bar */}
         {selectMode && selectedIds.size > 0 && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-            <div className="glass-card rounded-2xl p-4 flex items-center gap-4 border border-[#00ff88]/30 shadow-lg shadow-[#00ff88]/10">
-              <span className="text-white font-medium">
+          <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-1.5rem)] sm:w-auto max-w-lg sm:max-w-none">
+            <div className="glass-card rounded-xl sm:rounded-2xl p-3 sm:p-4 flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-4 border border-[#00ff88]/30 shadow-lg shadow-[#00ff88]/10">
+              <span className="text-white font-medium text-sm sm:text-base">
                 {selectedIds.size} selected
               </span>
 
-              <div className="h-6 w-px bg-border" />
+              <div className="hidden sm:block h-6 w-px bg-border" />
 
               <Button
                 size="sm"
                 variant="outline"
                 onClick={selectAll}
-                className="border-[#00d4ff] bg-[#00d4ff]/10 text-[#00d4ff] hover:bg-[#00d4ff]/20"
+                className="border-[#00d4ff] bg-[#00d4ff]/10 text-[#00d4ff] hover:bg-[#00d4ff]/20 text-xs sm:text-sm"
               >
-                <CheckSquare className="w-4 h-4 mr-1" />
-                Select All ({filteredGenerations.length})
+                <CheckSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />
+                <span className="hidden sm:inline">Select All ({filteredGenerations.length})</span>
+                <span className="sm:hidden">All</span>
               </Button>
 
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => setSelectedIds(new Set())}
-                className="border-border"
+                className="border-border text-xs sm:text-sm"
               >
                 Clear
               </Button>
 
-              <div className="h-6 w-px bg-border" />
+              <div className="hidden sm:block h-6 w-px bg-border" />
 
               <Button
                 size="sm"
                 onClick={handleBatchDownload}
                 disabled={downloading}
-                className="bg-[#00ff88] hover:bg-[#00ff88]/90 text-black"
+                className="bg-[#00ff88] hover:bg-[#00ff88]/90 text-black text-xs sm:text-sm"
               >
                 {downloading ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                    Packaging...
+                    <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 animate-spin" />
+                    <span className="hidden sm:inline">Packaging...</span>
+                    <span className="sm:hidden">...</span>
                   </>
                 ) : (
                   <>
-                    <Archive className="w-4 h-4 mr-1" />
-                    Download ZIP
+                    <Archive className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />
+                    <span className="hidden sm:inline">Download ZIP</span>
+                    <span className="sm:hidden">ZIP</span>
                   </>
                 )}
               </Button>
@@ -1177,16 +1181,17 @@ export default function GalleryPage() {
                 size="sm"
                 onClick={handleBulkDelete}
                 disabled={deleting}
-                className="bg-destructive hover:bg-destructive/90 text-white"
+                className="bg-destructive hover:bg-destructive/90 text-white text-xs sm:text-sm"
               >
                 {deleting ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                    Deleting...
+                    <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 animate-spin" />
+                    <span className="hidden sm:inline">Deleting...</span>
+                    <span className="sm:hidden">...</span>
                   </>
                 ) : (
                   <>
-                    <Trash2 className="w-4 h-4 mr-1" />
+                    <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />
                     Delete
                   </>
                 )}

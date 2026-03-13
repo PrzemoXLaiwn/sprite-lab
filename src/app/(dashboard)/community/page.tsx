@@ -391,10 +391,10 @@ export default function CommunityPage() {
       <div className="relative z-10 flex h-screen">
         {/* Main Content */}
         <div className={`flex-1 overflow-y-auto transition-all duration-300 ${chatOpen ? 'mr-80' : 'mr-0'}`}>
-          <div className="p-6 lg:p-8">
+          <div className="p-3 sm:p-6 lg:p-8">
             {/* Hero Header */}
             <div className="mb-8">
-              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#c084fc]/20 via-[#0a0a0f] to-[#00d4ff]/20 border border-white/10 p-8 mb-8">
+              <div className="relative overflow-hidden rounded-xl sm:rounded-3xl bg-gradient-to-br from-[#c084fc]/20 via-[#0a0a0f] to-[#00d4ff]/20 border border-white/10 p-4 sm:p-8 mb-6 sm:mb-8">
                 <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMtOS45NDEgMC0xOCA4LjA1OS0xOCAxOHM4LjA1OSAxOCAxOCAxOCAxOC04LjA1OSAxOC0xOC04LjA1OS0xOC0xOC0xOHptMCAzMmMtNy43MzIgMC0xNC02LjI2OC0xNC0xNHM2LjI2OC0xNCAxNC0xNCAxNCA2LjI2OCAxNCAxNC02LjI2OCAxNC0xNCAxNHoiIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iLjAyIi8+PC9nPjwvc3ZnPg==')] opacity-50" />
 
                 <div className="relative flex flex-col lg:flex-row items-center justify-between gap-6">
@@ -405,20 +405,20 @@ export default function CommunityPage() {
                       <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse" />
                     </div>
 
-                    <h1 className="text-4xl lg:text-5xl font-black mb-3">
+                    <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black mb-2 sm:mb-3">
                       <span className="bg-gradient-to-r from-white via-[#c084fc] to-[#00d4ff] bg-clip-text text-transparent">
                         Community Gallery
                       </span>
                     </h1>
-                    <p className="text-white/60 text-lg max-w-xl">
+                    <p className="text-white/60 text-sm sm:text-lg max-w-xl">
                       Discover amazing game assets created by our community. Get inspired, download, and share your own creations!
                     </p>
                   </div>
 
-                  <div className="flex gap-3">
+                  <div className="flex gap-2 sm:gap-3">
                     <Link href="/generate">
-                      <Button className="h-12 px-6 bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-black font-bold hover:opacity-90 transition-all hover:scale-105 shadow-lg shadow-[#00ff88]/25">
-                        <Sparkles className="w-5 h-5 mr-2" />
+                      <Button className="h-10 sm:h-12 px-4 sm:px-6 text-sm sm:text-base bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-black font-bold hover:opacity-90 transition-all hover:scale-105 shadow-lg shadow-[#00ff88]/25">
+                        <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2" />
                         Create Asset
                       </Button>
                     </Link>
@@ -433,20 +433,20 @@ export default function CommunityPage() {
                 </div>
 
                 {/* Stats Bar */}
-                <div className="relative mt-8 grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="relative mt-4 sm:mt-8 grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
                   {[
                     { label: "Total Assets", value: total, icon: ImageIcon, color: "text-[#00ff88]" },
                     { label: "2D Sprites", value: total2D, icon: ImageIcon, color: "text-[#00d4ff]" },
                     { label: "3D Models", value: total3D, icon: Cuboid, color: "text-[#c084fc]" },
                     { label: "Active Now", value: chatMessages.length > 0 ? "Live" : "0", icon: MessageSquare, color: "text-yellow-400" },
                   ].map((stat, i) => (
-                    <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
-                      <div className={`w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center ${stat.color}`}>
-                        <stat.icon className="w-5 h-5" />
+                    <div key={i} className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg sm:rounded-xl bg-white/5 border border-white/10">
+                      <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-white/10 flex items-center justify-center ${stat.color}`}>
+                        <stat.icon className="w-4 h-4 sm:w-5 sm:h-5" />
                       </div>
                       <div>
-                        <p className="text-2xl font-bold text-white">{stat.value}</p>
-                        <p className="text-xs text-white/50">{stat.label}</p>
+                        <p className="text-lg sm:text-2xl font-bold text-white">{stat.value}</p>
+                        <p className="text-[10px] sm:text-xs text-white/50">{stat.label}</p>
                       </div>
                     </div>
                   ))}

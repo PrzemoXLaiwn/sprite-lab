@@ -77,6 +77,26 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.7,
     },
 
+    // === SEO LANDING PAGES (high priority for organic traffic) ===
+    {
+      url: `${baseUrl}/pixel-art-generator`,
+      lastModified: currentDate,
+      changeFrequency: "weekly",
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/game-weapon-generator`,
+      lastModified: currentDate,
+      changeFrequency: "weekly",
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/rpg-character-creator`,
+      lastModified: currentDate,
+      changeFrequency: "weekly",
+      priority: 0.9,
+    },
+
     // === DASHBOARD ===
     {
       url: `${baseUrl}/dashboard`,
