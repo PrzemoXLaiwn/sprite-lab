@@ -21,13 +21,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Find all generations that don't have an analysis yet and don't have a pending job
+    // Find generations already in queue (pending or processing)
+    const existingJobs = await prisma.analysisJob.findMany({
+      where: { status: { in: ["pending", "processing"] } },
+      select: { generationId: true },
+    });
+    const inQueueIds = existingJobs.map(j => j.generationId);
+
+    // Find all generations that don't have an analysis yet and aren't queued
     const unanalyzed = await prisma.generation.findMany({
       where: {
-        AND: [
-          { analysis: null },
-          { NOT: { id: { in: (await prisma.analysisJob.findMany({ where: { status: { in: ["pending", "processing"] } }, select: { generationId: true } })).map(j => j.generationId) } } },
-        ],
+        analysis: null,
+        ...(inQueueIds.length > 0 ? { NOT: { id: { in: inQueueIds } } } : {}),
       },
       select: { id: true },
     });
@@ -96,7 +101,7 @@ export async function GET(request: NextRequest) {
     });
 
     // 3. Quality scores per category
-    const qualityByCategory = await prisma.$queryRaw<
+    const qualityByCategoryRaw = await prisma.$queryRaw<
       Array<{
         category_id: string;
         subcategory_id: string;
@@ -112,11 +117,11 @@ export async function GET(request: NextRequest) {
         g.category_id,
         g.subcategory_id,
         g.style_id,
-        COUNT(*)::bigint as count,
+        COUNT(*) as count,
         ROUND(AVG(ia.quality_score)::numeric, 1) as avg_quality,
         ROUND(AVG(ia.prompt_alignment)::numeric, 1) as avg_alignment,
         ROUND(AVG(ia.style_accuracy)::numeric, 1) as avg_style_accuracy,
-        COUNT(CASE WHEN ia.has_hallucination THEN 1 END)::bigint as hallucination_count
+        COUNT(CASE WHEN ia.has_hallucination THEN 1 END) as hallucination_count
       FROM generations g
       JOIN image_analyses ia ON ia.generation_id = g.id
       GROUP BY g.category_id, g.subcategory_id, g.style_id
@@ -124,6 +129,12 @@ export async function GET(request: NextRequest) {
       ORDER BY AVG(ia.prompt_alignment) ASC
       LIMIT 50
     `;
+    // Convert bigint to number for JSON serialization
+    const qualityByCategory = qualityByCategoryRaw.map(q => ({
+      ...q,
+      count: Number(q.count),
+      hallucination_count: Number(q.hallucination_count),
+    }));
 
     // 4. Most common hallucination patterns
     const hallucinationPatterns = await prisma.hallucinationPattern.findMany({
@@ -211,11 +222,11 @@ export async function GET(request: NextRequest) {
         category: q.category_id,
         subcategory: q.subcategory_id,
         style: q.style_id,
-        count: Number(q.count),
+        count: q.count,
         avgQuality: q.avg_quality,
         avgAlignment: q.avg_alignment,
         avgStyleAccuracy: q.avg_style_accuracy,
-        hallucinationRate: Number(q.count) > 0 ? `${Math.round((Number(q.hallucination_count) / Number(q.count)) * 100)}%` : "0%",
+        hallucinationRate: q.count > 0 ? `${Math.round((q.hallucination_count / q.count) * 100)}%` : "0%",
         status: q.avg_alignment >= 80 ? "GOOD" : q.avg_alignment >= 60 ? "NEEDS_WORK" : "BROKEN",
       })),
       hallucinationPatterns: hallucinationPatterns.map((p) => ({
@@ -278,11 +289,11 @@ interface QualityRow {
   category_id: string;
   subcategory_id: string;
   style_id: string;
-  count: bigint;
+  count: number;
   avg_quality: number;
   avg_alignment: number;
   avg_style_accuracy: number;
-  hallucination_count: bigint;
+  hallucination_count: number;
 }
 
 function buildRecommendations(
@@ -303,7 +314,7 @@ function buildRecommendations(
   for (const q of qualityByCategory) {
     const key = `${q.category_id}|${q.subcategory_id}|${q.style_id}`;
     const demand = demandMap.get(key) || 0;
-    const halRate = Number(q.count) > 0 ? Number(q.hallucination_count) / Number(q.count) : 0;
+    const halRate = q.count > 0 ? q.hallucination_count / q.count : 0;
 
     if (q.avg_alignment < 60 && demand >= 5) {
       recs.push({
@@ -313,7 +324,7 @@ function buildRecommendations(
         style: q.style_id,
         issue: `Avg alignment ${q.avg_alignment}% with ${demand} user generations`,
         recommendation: `Rewrite prompt config for ${q.subcategory_id}. Current alignment is critically low.`,
-        evidence: `${Number(q.count)} analyzed, ${Math.round(halRate * 100)}% hallucination rate`,
+        evidence: `${q.count} analyzed, ${Math.round(halRate * 100)}% hallucination rate`,
       });
     } else if (halRate > 0.4 && demand >= 3) {
       recs.push({
@@ -323,7 +334,7 @@ function buildRecommendations(
         style: q.style_id,
         issue: `${Math.round(halRate * 100)}% hallucination rate with ${demand} user generations`,
         recommendation: `Add stronger negative prompts for ${q.subcategory_id} + ${q.style_id}`,
-        evidence: `${Number(q.hallucination_count)}/${Number(q.count)} hallucinated`,
+        evidence: `${q.hallucination_count}/${q.count} hallucinated`,
       });
     }
   }

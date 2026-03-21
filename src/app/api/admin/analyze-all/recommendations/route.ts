@@ -38,10 +38,10 @@ export async function POST(request: NextRequest) {
         category_id: string;
         subcategory_id: string;
         style_id: string;
-        count: bigint;
+        count: number;
         avg_alignment: number;
         avg_quality: number;
-        hallucination_count: bigint;
+        hallucination_count: number;
         sample_prompts: string;
         missing_elements: string;
         extra_elements: string;
@@ -51,10 +51,10 @@ export async function POST(request: NextRequest) {
           g.category_id,
           g.subcategory_id,
           g.style_id,
-          COUNT(*)::bigint as count,
+          COUNT(*) as count,
           ROUND(AVG(ia.prompt_alignment)::numeric, 1) as avg_alignment,
           ROUND(AVG(ia.quality_score)::numeric, 1) as avg_quality,
-          COUNT(CASE WHEN ia.has_hallucination THEN 1 END)::bigint as hallucination_count,
+          COUNT(CASE WHEN ia.has_hallucination THEN 1 END) as hallucination_count,
           STRING_AGG(DISTINCT LEFT(g.prompt, 100), ' | ' ORDER BY LEFT(g.prompt, 100)) as sample_prompts,
           STRING_AGG(DISTINCT ia.missing_elements, ' | ' ORDER BY ia.missing_elements) as missing_elements,
           STRING_AGG(DISTINCT ia.extra_elements, ' | ' ORDER BY ia.extra_elements) as extra_elements,
@@ -117,7 +117,7 @@ Average Style Accuracy: ${totalStats._avg.styleAccuracy?.toFixed(1)}/100
 WORST PERFORMING COMBINATIONS (need fixes):
 ${worstCombos.map(w => `
 - ${w.category_id} / ${w.subcategory_id} / ${w.style_id}
-  Count: ${Number(w.count)}, Avg Alignment: ${w.avg_alignment}%, Hallucination Rate: ${Number(w.count) > 0 ? Math.round(Number(w.hallucination_count) / Number(w.count) * 100) : 0}%
+  Count: ${w.count}, Avg Alignment: ${w.avg_alignment}%, Hallucination Rate: ${w.count > 0 ? Math.round(w.hallucination_count / w.count * 100) : 0}%
   Sample prompts: ${w.sample_prompts?.slice(0, 200)}
   Missing elements: ${w.missing_elements?.slice(0, 200)}
   Extra elements: ${w.extra_elements?.slice(0, 200)}
