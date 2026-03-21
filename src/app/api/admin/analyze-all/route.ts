@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { queueForAnalysis } from "@/lib/analytics/image-analyzer";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -21,27 +20,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Find generations already in queue (pending or processing)
-    const existingJobs = await prisma.analysisJob.findMany({
-      where: { status: { in: ["pending", "processing"] } },
-      select: { generationId: true },
-    });
-    const inQueueIds = existingJobs.map(j => j.generationId);
+    // Find generations already in queue or analyzed
+    const [existingJobs, existingAnalyses] = await Promise.all([
+      prisma.analysisJob.findMany({
+        where: { status: { in: ["pending", "processing"] } },
+        select: { generationId: true },
+      }),
+      prisma.imageAnalysis.findMany({
+        select: { generationId: true },
+      }),
+    ]);
+    const skipIds = new Set([
+      ...existingJobs.map(j => j.generationId),
+      ...existingAnalyses.map(a => a.generationId),
+    ]);
 
-    // Find all generations that don't have an analysis yet and aren't queued
-    const unanalyzed = await prisma.generation.findMany({
-      where: {
-        analysis: null,
-        ...(inQueueIds.length > 0 ? { NOT: { id: { in: inQueueIds } } } : {}),
-      },
+    // Find all generations not yet queued or analyzed
+    const allGenerations = await prisma.generation.findMany({
       select: { id: true },
     });
+    const toQueue = allGenerations.filter(g => !skipIds.has(g.id));
 
-    // Queue them all
-    let queued = 0;
-    for (const gen of unanalyzed) {
-      await queueForAnalysis(gen.id, 1); // priority 1 = bulk analysis
-      queued++;
+    // Batch insert all jobs at once (not one-by-one)
+    const queued = toQueue.length;
+    if (queued > 0) {
+      await prisma.analysisJob.createMany({
+        data: toQueue.map(g => ({
+          generationId: g.id,
+          status: "pending",
+          priority: 1,
+        })),
+        skipDuplicates: true,
+      });
     }
 
     // Get current stats

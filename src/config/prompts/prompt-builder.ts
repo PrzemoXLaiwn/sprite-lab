@@ -127,22 +127,73 @@ export function buildUltimatePrompt(
   subcategoryId: string,
   styleId: string
 ): BuildPromptResult {
-  // Delegate to prompt-configs.ts single source of truth
-  const configResult = buildAssetPrompt({
-    category: categoryId,
-    subcategory: subcategoryId,
-    style: styleId,
-    userPrompt: userPrompt.trim(),
-  });
+  try {
+    // Delegate to prompt-configs.ts single source of truth
+    const configResult = buildAssetPrompt({
+      category: categoryId,
+      subcategory: subcategoryId,
+      style: styleId,
+      userPrompt: userPrompt.trim(),
+    });
 
-  const result = bridgeResult(configResult, styleId);
+    const result = bridgeResult(configResult, styleId);
 
-  if (process.env.NODE_ENV !== "production") {
-    console.log(`[PromptBuilder] ${categoryId}/${subcategoryId} style=${styleId}`);
-    console.log(`[PromptBuilder] PROMPT: ${result.prompt.slice(0, 200)}...`);
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`[PromptBuilder] ${categoryId}/${subcategoryId} style=${styleId}`);
+    }
+
+    return result;
+  } catch {
+    // Fallback for categories not yet in prompt-configs.ts
+    // (ISOMETRIC, TILESETS, EFFECTS, PROJECTILES)
+    console.warn(`[PromptBuilder] Fallback for ${categoryId}/${subcategoryId}`);
+    return buildFallbackPrompt(userPrompt.trim(), categoryId, subcategoryId, styleId);
   }
+}
 
-  return result;
+// Fallback for categories not yet covered by prompt-configs.ts
+function buildFallbackPrompt(
+  userPrompt: string,
+  categoryId: string,
+  subcategoryId: string,
+  styleId: string
+): BuildPromptResult {
+  const styleAnchor = getStyleAnchor(styleId);
+  const styleNegs = getStyleNegatives(styleId);
+
+  // Use CATEGORY_PROMPT_CONFIGS from the old system if available
+  let objectType = "";
+  let composition = "";
+  let avoid = "";
+  try {
+    const { CATEGORY_PROMPT_CONFIGS } = require("../categories/prompt-configs");
+    const config = CATEGORY_PROMPT_CONFIGS[categoryId]?.[subcategoryId];
+    if (config) {
+      objectType = config.objectType || "";
+      composition = config.composition || "";
+      avoid = config.avoid || "";
+    }
+  } catch { /* ignore */ }
+
+  const prompt = dedupeJoin([
+    "single isolated game asset, transparent background, centered",
+    objectType,
+    userPrompt,
+    styleAnchor,
+    composition,
+  ].filter(Boolean).join(", "));
+
+  const negative = dedupeJoin([
+    "multiple objects, background, scenery, cropped, blurry, watermark, text",
+    avoid,
+    styleNegs,
+  ].filter(Boolean).join(", "));
+
+  return {
+    prompt,
+    negativePrompt: negative,
+    ...getModelParams(styleId),
+  };
 }
 
 // ===========================================
@@ -163,16 +214,27 @@ export function buildEnhancedPrompt(
 ): BuildPromptResult {
   const { enableStyleMix, style2Id, style1Weight = 50, colorPaletteId } = options;
 
-  // Base prompt from config
-  const configResult = buildAssetPrompt({
-    category: categoryId,
-    subcategory: subcategoryId,
-    style: styleId,
-    userPrompt: userPrompt.trim(),
-    color: colorPaletteId && COLOR_PALETTE_PROMPTS[colorPaletteId]
-      ? [COLOR_PALETTE_PROMPTS[colorPaletteId]]
-      : undefined,
-  });
+  // Base prompt from config (with fallback for unsupported categories)
+  let configResult: PromptBuildResult;
+  try {
+    configResult = buildAssetPrompt({
+      category: categoryId,
+      subcategory: subcategoryId,
+      style: styleId,
+      userPrompt: userPrompt.trim(),
+      color: colorPaletteId && COLOR_PALETTE_PROMPTS[colorPaletteId]
+        ? [COLOR_PALETTE_PROMPTS[colorPaletteId]]
+        : undefined,
+    });
+  } catch {
+    // Fallback — wrap the simple builder result
+    const fallback = buildFallbackPrompt(userPrompt.trim(), categoryId, subcategoryId, styleId);
+    configResult = {
+      fullPrompt: fallback.prompt,
+      negativePrompt: fallback.negativePrompt,
+      debug: { resolvedCategory: categoryId, resolvedSubcategory: subcategoryId, resolvedStyle: styleId, resolvedView: "DEFAULT", resolvedQuality: "MEDIUM" },
+    };
+  }
 
   // Style mixing: blend two style anchors
   let extraPositive = "";
