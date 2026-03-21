@@ -884,6 +884,12 @@ export default function AdminPage() {
             Quality Dashboard
           </Button>
         </Link>
+        <Link href="/admin/analyze">
+          <Button variant="outline" className="gap-2">
+            <Image className="w-4 h-4" />
+            Analyze All
+          </Button>
+        </Link>
         <Link href="/admin/email">
           <Button variant="outline" className="gap-2">
             <Mail className="w-4 h-4" />
