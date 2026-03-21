@@ -7,10 +7,10 @@ import { usePathname } from "next/navigation";
 import {
   Menu,
   X,
-  LayoutDashboard,
   Zap,
   Images,
-  Users,
+  Palette,
+  BarChart3,
   Settings,
   LogOut,
   ChevronRight,
@@ -21,10 +21,10 @@ import {
 import { Button } from "@/components/ui/button";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, color: "text-[#00ff88]" },
   { href: "/generate", label: "Generate", icon: Zap, color: "text-[#00d4ff]", badge: "AI" },
-  { href: "/gallery", label: "My Gallery", icon: Images, color: "text-[#c084fc]" },
-  { href: "/community", label: "Community", icon: Users, color: "text-[#ffd93d]" },
+  { href: "/assets", label: "My Assets", icon: Images, color: "text-[#c084fc]" },
+  { href: "/presets", label: "Style Presets", icon: Palette, color: "text-[#ffd93d]" },
+  { href: "/usage", label: "Usage", icon: BarChart3, color: "text-[#00ff88]" },
   { href: "/settings", label: "Settings", icon: Settings, color: "text-white/70" },
 ];
 

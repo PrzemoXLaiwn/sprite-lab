@@ -10,8 +10,8 @@
 
 import { z } from "zod";
 import { SeedSchema } from "./common";
-import { ASSET_CATEGORIES } from "@/lib/generate/categories";
-import { ART_STYLES } from "@/lib/generate/styles";
+import { ALL_CATEGORIES } from "@/config/categories/all-categories";
+import { STYLES_2D_FULL } from "@/config/styles/styles-2d";
 
 // -----------------------------------------------------------------------------
 // DERIVED ENUM VALUES FROM EXISTING CATEGORY / STYLE CONFIGS
@@ -19,12 +19,12 @@ import { ART_STYLES } from "@/lib/generate/styles";
 // new categories or styles are added.
 // -----------------------------------------------------------------------------
 
-const CATEGORY_IDS = ASSET_CATEGORIES.map((c) => c.id) as [
+const CATEGORY_IDS = ALL_CATEGORIES.map((c) => c.id) as [
   string,
   ...string[],
 ];
 
-const STYLE_IDS = ART_STYLES.map((s) => s.id) as [string, ...string[]];
+const STYLE_IDS = Object.keys(STYLES_2D_FULL) as [string, ...string[]];
 
 // -----------------------------------------------------------------------------
 // SHARED FIELD SCHEMAS

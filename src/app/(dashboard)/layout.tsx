@@ -6,35 +6,26 @@ import {
   Images,
   Settings,
   LogOut,
-  LayoutDashboard,
   Zap,
-  Users,
   ChevronRight,
   Rocket,
-  Gift
+  Palette,
+  BarChart3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreditsDisplay } from "@/components/dashboard/CreditsDisplay";
 import { AdminNavLink } from "@/components/dashboard/AdminNavLink";
 import { UserPlanBadge } from "@/components/dashboard/UserPlanBadge";
-import { PromoBanner } from "@/components/dashboard/PromoBanner";
-import { PresenceTracker } from "@/components/PresenceTracker";
 import { MobileMenu } from "@/components/dashboard/MobileMenu";
 import { NotificationPopup } from "@/components/dashboard/NotificationPopup";
-import { FeedbackPopup } from "@/components/dashboard/FeedbackPopup";
-import { OnboardingOverlay, TutorialOverlay } from "@/components/onboarding/OnboardingProvider";
-import { DailyBonusPopup } from "@/components/dashboard/DailyBonusPopup";
-import { ReferralPanel } from "@/components/dashboard/ReferralPanel";
 import { UpgradeModal } from "@/components/dashboard/UpgradeModal";
-import { AdBannerSidebar } from "@/components/ads/AdBanner";
 import { prisma } from "@/lib/prisma";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, color: "group-hover:text-[#00ff88]" },
   { href: "/generate", label: "Generate", icon: Zap, color: "group-hover:text-[#00d4ff]", badge: "AI" },
-  { href: "/gallery", label: "My Gallery", icon: Images, color: "group-hover:text-[#c084fc]" },
-  { href: "/referrals", label: "Referrals", icon: Gift, color: "group-hover:text-[#ff9500]" },
-  { href: "/community", label: "Community", icon: Users, color: "group-hover:text-[#ffd93d]" },
+  { href: "/assets", label: "My Assets", icon: Images, color: "group-hover:text-[#c084fc]" },
+  { href: "/presets", label: "Style Presets", icon: Palette, color: "group-hover:text-[#ffd93d]" },
+  { href: "/usage", label: "Usage", icon: BarChart3, color: "group-hover:text-[#00ff88]" },
   { href: "/settings", label: "Settings", icon: Settings, color: "group-hover:text-white/70" },
 ];
 
@@ -58,9 +49,6 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen flex flex-col bg-[#030305]">
-      {/* Promo Banner - Sticky Top */}
-      <PromoBanner />
-
       <div className="flex flex-1">
       {/* Sidebar - Desktop */}
       <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 border-r border-white/5 bg-[#0a0a0f]/80 backdrop-blur-xl">
@@ -125,12 +113,6 @@ export default async function DashboardLayout({
             {/* Credits Box */}
             <CreditsDisplay />
 
-            {/* Ad Banner */}
-            <AdBannerSidebar className="mb-2" />
-
-            {/* Referral Panel */}
-            <ReferralPanel />
-
             {/* User */}
             <UserPlanBadge email={user.email!} />
           </div>
@@ -190,8 +172,8 @@ export default async function DashboardLayout({
               <div className="relative">
                 <div className={`absolute inset-0 rounded-lg blur-md opacity-0 group-hover:opacity-100 transition-opacity ${
                   item.href === "/generate" ? "bg-[#00d4ff]/30" :
-                  item.href === "/gallery" ? "bg-[#c084fc]/30" :
-                  item.href === "/community" ? "bg-[#ffd93d]/30" :
+                  item.href === "/assets" ? "bg-[#c084fc]/30" :
+                  item.href === "/presets" ? "bg-[#ffd93d]/30" :
                   "bg-[#00ff88]/30"
                 }`} />
                 <item.icon className="relative w-5 h-5 group-hover:scale-110 transition-transform" />
@@ -215,26 +197,11 @@ export default async function DashboardLayout({
         </div>
       </main>
 
-      {/* Track user presence for online status */}
-      <PresenceTracker />
-
       {/* Notification popup for credit grants and other alerts */}
       <NotificationPopup />
 
-      {/* Daily Login Bonus Popup */}
-      <DailyBonusPopup />
-
       {/* Upgrade Modal when out of credits */}
       <UpgradeModal />
-
-      {/* Periodic Feedback Popup */}
-      <FeedbackPopup />
-
-      {/* Onboarding Wizard for new users */}
-      <OnboardingOverlay />
-
-      {/* Tutorial for generator (shows after first generation) */}
-      <TutorialOverlay />
       </div>
     </div>
   );

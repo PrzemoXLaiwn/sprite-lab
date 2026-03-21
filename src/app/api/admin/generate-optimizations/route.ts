@@ -31,8 +31,10 @@ export async function POST(request: NextRequest) {
     });
 
     // 2. Get current style definitions
-    const { ART_STYLES } = await import("@/lib/generate/styles");
-    const { ASSET_CATEGORIES } = await import("@/lib/generate/categories");
+    const { ALL_CATEGORIES } = await import("@/config/categories/all-categories");
+    const { STYLES_2D_FULL } = await import("@/config/styles/styles-2d");
+    const ART_STYLES = Object.values(STYLES_2D_FULL);
+    const ASSET_CATEGORIES = ALL_CATEGORIES;
 
     if (hallucinationPatterns.length === 0) {
       return NextResponse.json({
@@ -57,14 +59,14 @@ export async function POST(request: NextRequest) {
     const stylesSummary = ART_STYLES.map(s => ({
       id: s.id,
       name: s.name,
-      currentPrompt: s.promptSuffix,
-      negativePrompt: s.negativePrompt || "brak",
+      currentPrompt: [s.styleCore, s.rendering, s.colors, s.edges].filter(Boolean).join(", "),
+      negativePrompt: s.negatives || "brak",
     }));
 
     const categoriesSummary = ASSET_CATEGORIES.map(c => ({
       id: c.id,
       name: c.name,
-      promptPrefix: c.promptPrefix,
+      description: c.description,
     }));
 
     // 4. Call Claude to analyze and generate recommendations

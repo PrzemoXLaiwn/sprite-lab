@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import Replicate from "replicate";
 import { z } from "zod";
-import { rateLimitGuestGeneration, getClientIp } from "@/lib/rate-limit";
+import { rateLimitGuestGeneration } from "@/lib/rate-limit";
 import { parseJsonBody, validateBody } from "@/lib/validation/common";
 
 // ===========================================
@@ -12,47 +12,6 @@ import { parseJsonBody, validateBody } from "@/lib/validation/common";
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
 });
-
-// ─── In-memory fallback limiter ───────────────────────────────────────────────
-// Upstash Redis (rate-limit.ts) is the durable layer in production.
-// This Map acts as secondary check + local-dev fallback when Redis is absent.
-const guestGenerations = new Map<string, { count: number; resetTime: number }>();
-const MAX_GUEST_GENERATIONS = 2;
-const GUEST_LIMIT_WINDOW = 24 * 60 * 60 * 1000; // 24 hours
-const MAX_MAP_SIZE = 50000;
-
-function cleanupMap(now: number) {
-  if (guestGenerations.size > MAX_MAP_SIZE) {
-    for (const [key, value] of guestGenerations.entries()) {
-      if (now > value.resetTime) {
-        guestGenerations.delete(key);
-      }
-    }
-  }
-}
-
-function checkGuestLimit(ip: string): { allowed: boolean; remaining: number } {
-  const now = Date.now();
-  cleanupMap(now);
-  const record = guestGenerations.get(ip);
-  if (!record || now > record.resetTime) {
-    return { allowed: true, remaining: MAX_GUEST_GENERATIONS };
-  }
-  if (record.count >= MAX_GUEST_GENERATIONS) {
-    return { allowed: false, remaining: 0 };
-  }
-  return { allowed: true, remaining: MAX_GUEST_GENERATIONS - record.count };
-}
-
-function incrementGuestCount(ip: string): void {
-  const now = Date.now();
-  const record = guestGenerations.get(ip);
-  if (!record || now > record.resetTime) {
-    guestGenerations.set(ip, { count: 1, resetTime: now + GUEST_LIMIT_WINDOW });
-  } else {
-    record.count++;
-  }
-}
 
 // ─── Validation schema ────────────────────────────────────────────────────────
 const GuestGenerateSchema = z.object({
@@ -85,29 +44,11 @@ export async function POST(request: Request) {
   const startTime = Date.now();
 
   try {
-    // 1. Durable rate limit (Upstash Redis, fail-open when not configured)
+    // 1. Rate limit (Upstash Redis, fail-open when not configured)
     const { blocked } = await rateLimitGuestGeneration(request);
     if (blocked) return blocked;
 
-    // 2. Get client IP for in-memory fallback limiter
-    const ip = getClientIp(request);
-
-    // 3. In-memory fallback rate check (2 per 24h)
-    const { allowed, remaining } = checkGuestLimit(ip);
-    if (!allowed) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "You've used your 2 free generations. Sign up for 5 free credits!",
-          code: "RATE_LIMITED",
-          limitReached: true,
-          signupUrl: "/register",
-        },
-        { status: 429 }
-      );
-    }
-
-    // 4. Parse body safely — handles empty body, non-JSON, wrong Content-Type
+    // 2. Parse body safely — handles empty body, non-JSON, wrong Content-Type
     const rawBody = await parseJsonBody(request);
     if (rawBody === null) {
       return NextResponse.json(
@@ -134,8 +75,6 @@ export async function POST(request: Request) {
     console.log("===========================================");
     console.log("GUEST GENERATION");
     console.log("===========================================");
-    console.log("IP:", ip);
-    console.log("Remaining after this:", remaining - 1);
     console.log("Prompt:", prompt);
 
     // 7. Generate
@@ -179,9 +118,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // 9. Increment count AFTER successful generation
-    incrementGuestCount(ip);
-
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
 
     console.log("===========================================");
@@ -192,12 +128,7 @@ export async function POST(request: Request) {
       success: true,
       imageUrl,
       style: styleConfig.name,
-      remaining: remaining - 1,
       duration: `${duration}s`,
-      message:
-        remaining - 1 === 0
-          ? "This was your last free generation! Sign up for 8 more credits."
-          : `You have ${remaining - 1} free generation${remaining - 1 === 1 ? "" : "s"} left.`,
     });
   } catch (error) {
     console.error("[Guest Generate] Error:", error);
@@ -209,13 +140,11 @@ export async function POST(request: Request) {
 }
 
 // ─── GET — Check remaining generations ───────────────────────────────────────
-export async function GET(request: Request) {
-  const ip = getClientIp(request);
-  const { remaining } = checkGuestLimit(ip);
-
+export async function GET() {
+  // Rate limiting is now handled entirely by Upstash Redis.
+  // This endpoint returns static info for the frontend.
   return NextResponse.json({
-    remaining,
-    max: MAX_GUEST_GENERATIONS,
-    signupBonus: 15,
+    max: 3,
+    signupBonus: 10,
   });
 }

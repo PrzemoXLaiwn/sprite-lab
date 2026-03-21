@@ -19,14 +19,9 @@ import {
   Play,
 } from "lucide-react";
 import { PricingSection } from "@/components/landing/PricingSection";
-import { LifetimePromoPopup, LifetimePromoBanner } from "@/components/landing/LifetimePromoPopup";
 import { TryItNow } from "@/components/landing/TryItNow";
 import { ExamplesGallery } from "@/components/landing/ExamplesGallery";
-import { SocialProof } from "@/components/landing/SocialProof";
-import { ScrollAnimation } from "@/components/landing/ScrollAnimations";
-import { FloatingOrbs } from "@/components/landing/ParticleBackground";
 import { HeroGallery } from "@/components/landing/HeroGallery";
-import { AdBannerHorizontal } from "@/components/ads/AdBanner";
 
 export const metadata: Metadata = {
   title: "SpriteLab - AI Game Asset Generator | Create Sprites in Seconds",
@@ -67,10 +62,7 @@ export default async function Home({
 
   return (
     <main className="min-h-screen bg-[#030305] text-white overflow-x-hidden">
-      {/* Enhanced Animated Background with Floating Orbs */}
-      <FloatingOrbs />
-      
-      {/* Additional Background Effects */}
+      {/* Background Effects */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         {/* Grid pattern overlay */}
         <div className="absolute inset-0 grid-pattern opacity-20" />
@@ -265,8 +257,7 @@ export default async function Home({
         </div>
 
         <div className="max-w-6xl mx-auto px-3 sm:px-4 relative z-10">
-          <ScrollAnimation animation="fade-up">
-            <div className="text-center mb-10 sm:mb-16">
+          <div className="text-center mb-10 sm:mb-16">
               <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-[#00ff88]/10 border border-[#00ff88]/20 text-[#00ff88] text-xs sm:text-sm mb-4 sm:mb-6">
                 <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 <span>Powerful Features</span>
@@ -278,7 +269,6 @@ export default async function Home({
                 Everything you need to create game-ready assets in minutes
               </p>
             </div>
-          </ScrollAnimation>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {[
@@ -289,8 +279,8 @@ export default async function Home({
               { icon: Clock, title: "Save Hours", desc: "What took days now takes minutes - focus on your game", color: "text-orange-400", bg: "bg-orange-400/10", borderColor: "group-hover:border-orange-400/40" },
               { icon: Shield, title: "Commercial Use", desc: "Full ownership and rights to all generated assets", color: "text-blue-400", bg: "bg-blue-400/10", borderColor: "group-hover:border-blue-400/40" },
             ].map((f, i) => (
-              <ScrollAnimation key={i} animation="fade-up" delay={i * 100}>
-                <div
+              <div
+                  key={i}
                   className={`group relative p-4 sm:p-6 rounded-xl sm:rounded-2xl bg-[#0a0a0f]/80 backdrop-blur-sm border border-white/10 ${f.borderColor} transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/20`}
                 >
                 {/* Subtle glow on hover */}
@@ -304,7 +294,6 @@ export default async function Home({
                     <p className="text-white/50 text-xs sm:text-sm leading-relaxed">{f.desc}</p>
                   </div>
                 </div>
-              </ScrollAnimation>
             ))}
           </div>
 
@@ -330,9 +319,6 @@ export default async function Home({
         </div>
       </section>
 
-
-      {/* Ad Banner */}
-      <AdBannerHorizontal />
 
       {/* How It Works */}
       <section id="how-it-works" className="py-16 sm:py-24 relative">
@@ -406,12 +392,6 @@ export default async function Home({
 
       {/* Examples Gallery */}
       <ExamplesGallery />
-
-      {/* Social Proof - Testimonials & Stats */}
-      <SocialProof />
-
-      {/* Ad Banner */}
-      <AdBannerHorizontal />
 
       {/* Try It Now - Guest Generation */}
       <TryItNow />
@@ -560,9 +540,6 @@ export default async function Home({
         </div>
       </footer>
 
-      {/* Lifetime Promo Popup & Banner */}
-      <LifetimePromoPopup />
-      <LifetimePromoBanner />
     </main>
   );
 }

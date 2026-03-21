@@ -182,6 +182,24 @@ const nextConfig: NextConfig = {
 
   // Output standalone for smaller deployments
   output: "standalone",
+
+  // ===========================================
+  // REDIRECTS — route aliases
+  // ===========================================
+  async redirects() {
+    return [
+      {
+        source: "/gallery",
+        destination: "/assets",
+        permanent: true,
+      },
+      {
+        source: "/dashboard",
+        destination: "/usage",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
