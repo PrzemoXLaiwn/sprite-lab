@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import Anthropic from "@anthropic-ai/sdk";
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
 // POST - Generate concrete prompt config recommendations using Claude
@@ -55,21 +55,21 @@ export async function POST(request: NextRequest) {
           ROUND(AVG(ia.prompt_alignment)::numeric, 1) as avg_alignment,
           ROUND(AVG(ia.quality_score)::numeric, 1) as avg_quality,
           COUNT(CASE WHEN ia.has_hallucination THEN 1 END) as hallucination_count,
-          STRING_AGG(DISTINCT LEFT(g.prompt, 100), ' | ' ORDER BY LEFT(g.prompt, 100)) as sample_prompts,
-          STRING_AGG(DISTINCT ia.missing_elements, ' | ' ORDER BY ia.missing_elements) as missing_elements,
-          STRING_AGG(DISTINCT ia.extra_elements, ' | ' ORDER BY ia.extra_elements) as extra_elements,
-          STRING_AGG(DISTINCT ia.suggested_fix, ' | ' ORDER BY ia.suggested_fix) as suggested_fixes
+          LEFT(STRING_AGG(DISTINCT LEFT(g.prompt, 60), ' | ' ORDER BY LEFT(g.prompt, 60)), 200) as sample_prompts,
+          LEFT(STRING_AGG(DISTINCT ia.missing_elements, ' | ' ORDER BY ia.missing_elements), 150) as missing_elements,
+          LEFT(STRING_AGG(DISTINCT ia.extra_elements, ' | ' ORDER BY ia.extra_elements), 150) as extra_elements,
+          LEFT(STRING_AGG(DISTINCT ia.suggested_fix, ' | ' ORDER BY ia.suggested_fix), 200) as suggested_fixes
         FROM generations g
         JOIN image_analyses ia ON ia.generation_id = g.id
         GROUP BY g.category_id, g.subcategory_id, g.style_id
         ORDER BY AVG(ia.prompt_alignment) ASC
-        LIMIT 20
+        LIMIT 10
       `,
       // All active hallucination patterns
       prisma.hallucinationPattern.findMany({
-        where: { isActive: true, occurrenceCount: { gte: 2 } },
+        where: { isActive: true, occurrenceCount: { gte: 3 } },
         orderBy: { occurrenceCount: "desc" },
-        take: 30,
+        take: 15,
       }),
       // Best performing prompts (to learn FROM)
       prisma.$queryRaw<Array<{
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
           AND ia.has_hallucination = false
           AND ia.quality_score >= 75
         ORDER BY ia.prompt_alignment DESC
-        LIMIT 30
+        LIMIT 10
       `,
       // Overall stats
       prisma.imageAnalysis.aggregate({
@@ -115,28 +115,16 @@ Average Prompt Alignment: ${totalStats._avg.promptAlignment?.toFixed(1)}/100
 Average Style Accuracy: ${totalStats._avg.styleAccuracy?.toFixed(1)}/100
 
 WORST PERFORMING COMBINATIONS (need fixes):
-${worstCombos.map(w => `
-- ${w.category_id} / ${w.subcategory_id} / ${w.style_id}
-  Count: ${w.count}, Avg Alignment: ${w.avg_alignment}%, Hallucination Rate: ${w.count > 0 ? Math.round(w.hallucination_count / w.count * 100) : 0}%
-  Sample prompts: ${w.sample_prompts?.slice(0, 200)}
-  Missing elements: ${w.missing_elements?.slice(0, 200)}
-  Extra elements: ${w.extra_elements?.slice(0, 200)}
-  AI suggestions: ${w.suggested_fixes?.slice(0, 300)}
-`).join("")}
+${worstCombos.map(w => `- ${w.category_id}/${w.subcategory_id}/${w.style_id}: align=${w.avg_alignment}%, halluc=${w.count > 0 ? Math.round(w.hallucination_count / w.count * 100) : 0}%, n=${w.count}
+  missing: ${w.missing_elements?.slice(0, 100) || "none"}
+  extra: ${w.extra_elements?.slice(0, 100) || "none"}
+  fix: ${w.suggested_fixes?.slice(0, 100) || "none"}`).join("\n")}
 
-RECURRING HALLUCINATION PATTERNS:
-${hallucinationPatterns.map(p => `
-- ${p.categoryId}/${p.subcategoryId}/${p.styleId}: ${p.hallucinationType} (${p.occurrenceCount}x)
-  Triggers: ${p.triggerKeywords}
-  Current fix: ${p.preventionPrompt || "NONE"}
-`).join("")}
+HALLUCINATION PATTERNS:
+${hallucinationPatterns.map(p => `- ${p.categoryId}/${p.subcategoryId}: ${p.hallucinationType} (${p.occurrenceCount}x) fix=${p.preventionPrompt || "NONE"}`).join("\n")}
 
-BEST PERFORMING PROMPTS (learn from these):
-${bestPrompts.slice(0, 15).map(b => `
-- ${b.category_id}/${b.subcategory_id}/${b.style_id}: alignment=${b.alignment}%, quality=${b.quality}%
-  User prompt: "${b.prompt}"
-  Full system prompt: "${b.full_prompt?.slice(0, 300)}"
-`).join("")}
+BEST PROMPTS:
+${bestPrompts.slice(0, 5).map(b => `- ${b.category_id}/${b.subcategory_id}: align=${b.alignment}% prompt="${b.prompt}"`).join("\n")}
 `;
 
     // Ask Claude to generate concrete prompt config recommendations
@@ -144,7 +132,7 @@ ${bestPrompts.slice(0, 15).map(b => `
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 4000,
+      max_tokens: 2500,
       messages: [{
         role: "user",
         content: `You are an expert at optimizing AI image generation prompts for FLUX model.
