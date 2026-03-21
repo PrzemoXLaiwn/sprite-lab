@@ -13,98 +13,21 @@ import {
   Check,
   Lock,
   Unlock,
-  ChevronDown,
   Wand2,
   History,
 } from "lucide-react";
 import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
 import { triggerUpgradeModal } from "@/components/dashboard/UpgradeModal";
+import { GENERATE_CATEGORIES, SUBTYPE_PLACEHOLDERS, type GenerateCategory, type GenerateSubcategory } from "@/data/generate-categories";
+import { GENERATE_STYLES, ALL_GENERATE_STYLE_IDS } from "@/data/generate-styles";
+import { CategorySelector } from "@/components/generate/CategorySelector";
+import { SubcategoryChips } from "@/components/generate/SubcategoryChips";
+import { PromptChips } from "@/components/generate/PromptChips";
+import { StyleSelector } from "@/components/generate/StyleSelector";
 
 // =============================================================================
-// GENERATOR DATA
+// GENERATOR DATA (imported from src/data/)
 // =============================================================================
-
-const GENERATOR_CATEGORIES = [
-  {
-    label: "Items",
-    icon: "💎",
-    subcategories: [
-      { categoryId: "WEAPONS",     subcategoryId: "SWORDS",      label: "Swords",           chips: ["iron", "golden", "rusted", "crystal", "shadow", "fire", "ancient", "enchanted"] },
-      { categoryId: "WEAPONS",     subcategoryId: "AXES",        label: "Axes & Hammers",   chips: ["battle axe", "war hammer", "bone handle", "runic", "double-headed", "stone"] },
-      { categoryId: "WEAPONS",     subcategoryId: "BOWS",        label: "Bows",             chips: ["longbow", "golden", "elvish", "recurve", "crossbow", "magical", "silver"] },
-      { categoryId: "WEAPONS",     subcategoryId: "STAFFS",      label: "Staffs & Wands",   chips: ["crystal orb", "fire", "ice", "wooden", "golden", "arcane", "shadow"] },
-      { categoryId: "WEAPONS",     subcategoryId: "GUNS",        label: "Firearms",         chips: ["flintlock", "steampunk", "golden", "ornate", "double barrel", "laser"] },
-      { categoryId: "WEAPONS",     subcategoryId: "THROWING",    label: "Throwing Weapons", chips: ["shuriken", "kunai", "boomerang", "throwing knife", "chakram", "dart"] },
-      { categoryId: "ARMOR",       subcategoryId: "HELMETS",     label: "Helmets",          chips: ["knight", "viking", "horned", "golden", "demon", "wizard hat", "crown"] },
-      { categoryId: "ARMOR",       subcategoryId: "CHEST_ARMOR", label: "Chest Armor",      chips: ["plate", "chainmail", "leather", "golden", "rune-engraved", "dark", "elven"] },
-      { categoryId: "ARMOR",       subcategoryId: "SHIELDS",     label: "Shields",          chips: ["tower shield", "round", "buckler", "lion crest", "spiked", "wooden", "golden"] },
-      { categoryId: "ARMOR",       subcategoryId: "ACCESSORIES", label: "Accessories",      chips: ["amulet", "ring", "bracelet", "cape", "belt", "earring", "brooch"] },
-      { categoryId: "CONSUMABLES", subcategoryId: "POTIONS",     label: "Potions",          chips: ["health", "mana", "poison", "strength", "glowing", "blue", "red", "golden"] },
-      { categoryId: "CONSUMABLES", subcategoryId: "FOOD",        label: "Food",             chips: ["roasted chicken", "apple", "bread", "cheese", "pie", "mushroom", "meat"] },
-      { categoryId: "CONSUMABLES", subcategoryId: "SCROLLS",     label: "Scrolls",          chips: ["ancient", "glowing runes", "spell", "fire", "ice", "rolled up", "sealed"] },
-      { categoryId: "RESOURCES",   subcategoryId: "GEMS",        label: "Gems",             chips: ["ruby", "sapphire", "emerald", "diamond", "amethyst", "cut", "raw", "glowing"] },
-      { categoryId: "RESOURCES",   subcategoryId: "ORES",        label: "Ores",             chips: ["iron", "gold", "copper", "mythril", "obsidian", "raw chunk", "crystal"] },
-      { categoryId: "QUEST_ITEMS", subcategoryId: "KEYS",        label: "Keys",             chips: ["golden", "skeleton", "ornate", "crystal", "ancient", "rusted", "glowing"] },
-      { categoryId: "QUEST_ITEMS", subcategoryId: "CONTAINERS",  label: "Containers",       chips: ["treasure chest", "wooden crate", "locked", "gold trim", "ancient", "small"] },
-      { categoryId: "QUEST_ITEMS", subcategoryId: "COLLECTIBLES",label: "Collectibles",     chips: ["gold coin", "medal", "trophy", "badge", "gem", "crown", "artifact"] },
-    ],
-  },
-  {
-    label: "Icons",
-    icon: "🎮",
-    subcategories: [
-      { categoryId: "UI_ELEMENTS", subcategoryId: "ITEM_ICONS",  label: "Item Icons",   chips: ["coin stack", "potion", "sword", "gem", "key", "shield", "arrow", "gold bars"] },
-      { categoryId: "UI_ELEMENTS", subcategoryId: "SKILL_ICONS", label: "Skill Icons",  chips: ["fireball", "heal", "lightning", "ice spike", "shield buff", "dark magic", "arrow"] },
-      { categoryId: "UI_ELEMENTS", subcategoryId: "STATUS_ICONS",label: "Status Icons", chips: ["poison", "burn", "freeze", "stun", "bleed", "curse", "shield buff", "haste"] },
-      { categoryId: "UI_ELEMENTS", subcategoryId: "ICONS_UI",    label: "UI Icons",     chips: ["settings", "inventory", "map", "quest", "menu", "shop", "chat", "close"] },
-      { categoryId: "UI_ELEMENTS", subcategoryId: "BUTTONS",     label: "Buttons",      chips: ["play", "close", "menu", "wooden", "stone", "golden", "glowing", "round"] },
-      { categoryId: "UI_ELEMENTS", subcategoryId: "BARS",        label: "Bars",         chips: ["health", "mana", "stamina", "XP", "red", "blue", "green", "segmented"] },
-      { categoryId: "UI_ELEMENTS", subcategoryId: "FRAMES",      label: "Frames",       chips: ["ornate gold", "wooden", "stone", "dark", "elegant", "dialog box", "tooltip"] },
-    ],
-  },
-  {
-    label: "Enemies",
-    icon: "👾",
-    subcategories: [
-      { categoryId: "CHARACTERS",  subcategoryId: "ENEMIES",   label: "Enemies",        chips: ["goblin", "skeleton", "zombie", "orc", "bandit", "slime", "bat", "spider"] },
-      { categoryId: "CHARACTERS",  subcategoryId: "BOSSES",    label: "Bosses",          chips: ["demon lord", "dragon", "lich king", "giant", "golem", "vampire", "hydra"] },
-      { categoryId: "CHARACTERS",  subcategoryId: "HEROES",    label: "Heroes",          chips: ["knight", "mage", "rogue", "archer", "paladin", "warrior", "wizard"] },
-      { categoryId: "CHARACTERS",  subcategoryId: "NPCS",      label: "NPCs",            chips: ["blacksmith", "merchant", "guard", "villager", "innkeeper", "sage", "alchemist"] },
-      { categoryId: "CREATURES",   subcategoryId: "ANIMALS",   label: "Animals",         chips: ["wolf", "bear", "eagle", "deer", "fox", "snake", "crow", "horse"] },
-      { categoryId: "CREATURES",   subcategoryId: "MYTHICAL",  label: "Mythical Beasts", chips: ["dragon", "phoenix", "unicorn", "griffin", "hydra", "basilisk", "wyvern"] },
-      { categoryId: "CREATURES",   subcategoryId: "ELEMENTALS",label: "Elementals",      chips: ["fire", "ice", "lightning", "earth", "shadow", "water", "wind", "void"] },
-    ],
-  },
-] as const;
-
-type CategoryGroup = (typeof GENERATOR_CATEGORIES)[number]["label"];
-type SubcategoryEntry = {
-  categoryId: string;
-  subcategoryId: string;
-  label: string;
-  chips: readonly string[];
-};
-
-const DEFAULT_SUBTYPE: Record<CategoryGroup, SubcategoryEntry> = {
-  Items:   GENERATOR_CATEGORIES[0].subcategories[0] as SubcategoryEntry,
-  Icons:   GENERATOR_CATEGORIES[1].subcategories[0] as SubcategoryEntry,
-  Enemies: GENERATOR_CATEGORIES[2].subcategories[0] as SubcategoryEntry,
-};
-
-// =============================================================================
-// STYLES
-// =============================================================================
-
-const STYLE_PRESETS = [
-  { id: "PIXEL_ART_16",    name: "Pixel Art",    emoji: "🎮", description: "Classic retro 16-bit" },
-  { id: "PIXEL_ART_32",    name: "Pixel HD",     emoji: "👾", description: "Modern indie pixel" },
-  { id: "VECTOR_CLEAN",    name: "Vector",       emoji: "🔷", description: "Clean mobile style" },
-  { id: "ANIME_GAME",      name: "Anime",        emoji: "🌸", description: "JRPG / Gacha" },
-  { id: "HAND_PAINTED",    name: "Hand Painted", emoji: "🖌️", description: "Hollow Knight style" },
-  { id: "CARTOON_WESTERN", name: "Cartoon",      emoji: "🎨", description: "Expressive cartoon" },
-] as const;
-
-type StyleId = (typeof STYLE_PRESETS)[number]["id"];
 
 // =============================================================================
 // VIEW + DETAIL
@@ -137,44 +60,7 @@ const BG_MODES = [
 
 type BgModeId = (typeof BG_MODES)[number]["id"];
 
-// =============================================================================
-// PLACEHOLDER MAP
-// =============================================================================
-
-const SUBTYPE_PLACEHOLDERS: Record<string, string> = {
-  SWORDS:       "e.g. iron sword with red gem in the hilt",
-  AXES:         "e.g. bone-handled battle axe with runes",
-  BOWS:         "e.g. golden recurve bow with silver tips",
-  STAFFS:       "e.g. crystal staff with glowing purple orb",
-  GUNS:         "e.g. steampunk flintlock pistol",
-  THROWING:     "e.g. star-shaped shuriken with red glow",
-  HELMETS:      "e.g. knight helmet with plume",
-  CHEST_ARMOR:  "e.g. golden plate armor with rune engravings",
-  SHIELDS:      "e.g. tower shield with lion crest",
-  ACCESSORIES:  "e.g. silver amulet with blue gem",
-  POTIONS:      "e.g. glowing red health potion in glass bottle",
-  FOOD:         "e.g. roasted chicken leg",
-  SCROLLS:      "e.g. ancient scroll with glowing runes",
-  GEMS:         "e.g. large cut ruby, deep red",
-  ORES:         "e.g. raw gold ore chunk",
-  KEYS:         "e.g. ornate golden skeleton key",
-  CONTAINERS:   "e.g. wooden treasure chest with gold trim",
-  COLLECTIBLES: "e.g. silver medal with crown engraving",
-  ITEM_ICONS:   "e.g. coin stack icon, golden",
-  SKILL_ICONS:  "e.g. fireball spell icon, orange flames",
-  STATUS_ICONS: "e.g. poison status, green skull symbol",
-  ICONS_UI:     "e.g. settings gear icon",
-  BUTTONS:      "e.g. medieval wooden play button",
-  BARS:         "e.g. health bar, red with black border",
-  FRAMES:       "e.g. ornate gold dialog frame",
-  ENEMIES:      "e.g. skeleton archer with cracked bones",
-  BOSSES:       "e.g. demon lord with wings and horns",
-  HEROES:       "e.g. female warrior with silver armor",
-  NPCS:         "e.g. friendly blacksmith with leather apron",
-  ANIMALS:      "e.g. grey wolf with glowing eyes",
-  MYTHICAL:     "e.g. red dragon, large wings spread",
-  ELEMENTALS:   "e.g. fire elemental, swirling flame body",
-};
+// SUBTYPE_PLACEHOLDERS imported from @/data/generate-categories
 
 // =============================================================================
 // PROMPT QUALITY INDICATOR
@@ -198,8 +84,7 @@ interface GeneratedResult {
   seed: number;
   categoryId: string;
   subcategoryId: string;
-  subtypeLabel: string;
-  styleId: StyleId;
+  styleId: string;
   prompt: string;
 }
 
@@ -220,12 +105,12 @@ function GeneratePageInner() {
 
   // Pre-fill from URL params (e.g. from "Use this prompt" in gallery)
   const urlPrompt  = searchParams.get("prompt") ?? "";
-  const urlStyleId = (searchParams.get("styleId") ?? "") as StyleId | "";
+  const urlStyleId = searchParams.get("styleId") ?? "";
 
-  const [activeGroup, setActiveGroup]     = useState<CategoryGroup>("Items");
-  const [subtype, setSubtype]             = useState<SubcategoryEntry>(DEFAULT_SUBTYPE["Items"]);
-  const [styleId, setStyleId]             = useState<StyleId>(
-    urlStyleId && STYLE_PRESETS.some((s) => s.id === urlStyleId) ? urlStyleId : "PIXEL_ART_16"
+  const [selectedCategory, setSelectedCategory] = useState<GenerateCategory>(GENERATE_CATEGORIES[0]);
+  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState(GENERATE_CATEGORIES[0].subcategories[0].subcategoryId);
+  const [styleId, setStyleId]             = useState(
+    urlStyleId && (ALL_GENERATE_STYLE_IDS as readonly string[]).includes(urlStyleId) ? urlStyleId : "PIXEL_ART_16"
   );
   const [view, setView]                   = useState<ViewId>("none");
   const [detail, setDetail]               = useState<DetailId>("normal");
@@ -242,56 +127,39 @@ function GeneratePageInner() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [styleLocked, setStyleLocked]     = useState(false);
   const [seedCopied, setSeedCopied]       = useState(false);
-  const [subtypeOpen, setSubtypeOpen]     = useState(false);
-  const subtypeRef                        = useRef<HTMLDivElement>(null);
   const seedRef                           = useRef("");
 
   const isGenerating = status === "generating";
   const activeResult = history[selectedIndex] ?? null;
-  const currentGroup = GENERATOR_CATEGORIES.find((g) => g.label === activeGroup)!;
-  const placeholder  = SUBTYPE_PLACEHOLDERS[subtype.subcategoryId] ?? "Describe your asset...";
+  const selectedSub  = selectedCategory.subcategories.find((s) => s.subcategoryId === selectedSubcategoryId) ?? selectedCategory.subcategories[0];
+  const placeholder  = SUBTYPE_PLACEHOLDERS[selectedSubcategoryId] ?? "Describe your asset...";
   const isFormValid  = prompt.trim().length >= 3;
   const promptQuality = getPromptQuality(prompt);
   const activeBg = BG_MODES.find((b) => b.id === bgMode)!;
 
-  // Pre-fill subtype from URL params
+  // Pre-fill from URL params
   useEffect(() => {
     const urlCatId = searchParams.get("categoryId");
     const urlSubId = searchParams.get("subcategoryId");
     if (!urlCatId || !urlSubId) return;
-    for (const group of GENERATOR_CATEGORIES) {
-      const found = group.subcategories.find(
-        (s) => s.categoryId === urlCatId && s.subcategoryId === urlSubId
-      );
-      if (found) {
-        setActiveGroup(group.label as CategoryGroup);
-        setSubtype(found as SubcategoryEntry);
-        break;
+    const cat = GENERATE_CATEGORIES.find((c) => c.id === urlCatId);
+    if (cat) {
+      const sub = cat.subcategories.find((s) => s.subcategoryId === urlSubId);
+      if (sub) {
+        setSelectedCategory(cat);
+        setSelectedSubcategoryId(sub.subcategoryId);
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Close subtype dropdown on outside click
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (subtypeRef.current && !subtypeRef.current.contains(e.target as Node)) {
-        setSubtypeOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const handleGroupChange = (group: CategoryGroup) => {
-    setActiveGroup(group);
-    setSubtype(DEFAULT_SUBTYPE[group]);
-    setSubtypeOpen(false);
+  const handleCategoryChange = (cat: GenerateCategory) => {
+    setSelectedCategory(cat);
+    setSelectedSubcategoryId(cat.subcategories[0].subcategoryId);
   };
 
-  const handleSubtypeChange = (entry: SubcategoryEntry) => {
-    setSubtype(entry);
-    setSubtypeOpen(false);
+  const handleSubcategoryChange = (sub: GenerateSubcategory) => {
+    setSelectedSubcategoryId(sub.subcategoryId);
   };
 
   // Append chip word to prompt
@@ -319,8 +187,8 @@ function GeneratePageInner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt:        finalPrompt,
-          categoryId:    subtype.categoryId,
-          subcategoryId: subtype.subcategoryId,
+          categoryId:    selectedSub.categoryId,
+          subcategoryId: selectedSubcategoryId,
           styleId:       styleId,
           qualityPreset: detail,
           seed:          seedRef.current.trim() || undefined,
@@ -346,9 +214,8 @@ function GeneratePageInner() {
         id:            `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         imageUrl:      data.imageUrl,
         seed:          data.seed ?? 0,
-        categoryId:    subtype.categoryId,
-        subcategoryId: subtype.subcategoryId,
-        subtypeLabel:  subtype.label,
+        categoryId:    selectedSub.categoryId,
+        subcategoryId: selectedSubcategoryId,
         styleId:       styleId,
         prompt:        prompt.trim(),
       };
@@ -363,7 +230,7 @@ function GeneratePageInner() {
       setStatus("error");
       setErrorMessage(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     }
-  }, [isFormValid, isGenerating, view, prompt, subtype, styleId, detail, styleLocked]);
+  }, [isFormValid, isGenerating, view, prompt, selectedSub, selectedSubcategoryId, styleId, detail, styleLocked]);
 
   const handleRegenerate = () => {
     if (seedLocked && activeResult) {
@@ -441,91 +308,35 @@ function GeneratePageInner() {
         ================================================================ */}
         <div className="space-y-4">
 
-          {/* ── 1. Asset Type ─────────────────────────────────────────── */}
+          {/* ── 1. Category ────────────────────────────────────────── */}
           <div className="rounded-xl border border-border bg-card p-4">
             <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">
-              1. Asset Type
+              Category
             </p>
-            <div className="flex gap-1.5 sm:gap-2">
-              {GENERATOR_CATEGORIES.map((group) => (
-                <button
-                  key={group.label}
-                  onClick={() => handleGroupChange(group.label as CategoryGroup)}
-                  className={`
-                    flex-1 py-2.5 sm:py-3 px-2 sm:px-3 rounded-lg border text-xs sm:text-sm font-semibold transition-all
-                    flex items-center justify-center gap-2
-                    ${activeGroup === group.label
-                      ? "border-primary bg-primary/10 text-primary shadow-sm shadow-primary/20"
-                      : "border-border bg-background text-foreground hover:border-primary/40 hover:bg-primary/5"
-                    }
-                  `}
-                >
-                  <span className="text-base">{group.icon}</span>
-                  <span>{group.label}</span>
-                </button>
-              ))}
-            </div>
+            <CategorySelector
+              selectedCategoryId={selectedCategory.id}
+              onSelect={handleCategoryChange}
+            />
           </div>
 
-          {/* ── 2. Subtype ────────────────────────────────────────────── */}
+          {/* ── 2. Subcategory ──────────────────────────────────────── */}
           <div className="rounded-xl border border-border bg-card p-4">
             <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">
-              2. Subtype
+              Subcategory
             </p>
-            <div ref={subtypeRef} className="relative">
-              <button
-                onClick={() => setSubtypeOpen((o) => !o)}
-                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg border border-border bg-background text-sm font-medium hover:border-primary/50 transition-colors"
-              >
-                <span>{subtype.label}</span>
-                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${subtypeOpen ? "rotate-180" : ""}`} />
-              </button>
-
-              {subtypeOpen && (
-                <div className="absolute z-20 top-full mt-1.5 w-full bg-card border border-border rounded-xl shadow-2xl max-h-60 overflow-y-auto">
-                  {currentGroup.subcategories.map((entry) => {
-                    const isActive = subtype.subcategoryId === entry.subcategoryId && subtype.categoryId === entry.categoryId;
-                    return (
-                      <button
-                        key={`${entry.categoryId}-${entry.subcategoryId}`}
-                        onClick={() => handleSubtypeChange(entry as SubcategoryEntry)}
-                        className={`w-full text-left px-3.5 py-2.5 text-sm transition-colors first:rounded-t-xl last:rounded-b-xl ${isActive ? "text-primary bg-primary/8 font-medium" : "text-foreground hover:bg-muted/60"}`}
-                      >
-                        {entry.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            <SubcategoryChips
+              subcategories={selectedCategory.subcategories}
+              selectedId={selectedSubcategoryId}
+              onSelect={handleSubcategoryChange}
+            />
           </div>
 
           {/* ── 3. Style ──────────────────────────────────────────────── */}
           <div className="rounded-xl border border-border bg-card p-4">
             <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">
-              3. Style
+              Style
             </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {STYLE_PRESETS.map((style) => {
-                const isActive = styleId === style.id;
-                return (
-                  <button
-                    key={style.id}
-                    onClick={() => setStyleId(style.id)}
-                    className={`relative p-3 rounded-xl border text-left transition-all duration-150 ${isActive ? "border-primary bg-primary/10 shadow-sm shadow-primary/20" : "border-border bg-background hover:border-primary/40 hover:bg-primary/5"}`}
-                  >
-                    {styleLocked && isActive && (
-                      <div className="absolute top-2 right-2">
-                        <Lock className="w-3 h-3 text-primary/50" />
-                      </div>
-                    )}
-                    <div className="text-2xl mb-1.5 leading-none">{style.emoji}</div>
-                    <div className={`text-xs font-semibold leading-tight ${isActive ? "text-primary" : ""}`}>{style.name}</div>
-                    <div className="text-[10px] text-muted-foreground mt-0.5 leading-tight">{style.description}</div>
-                  </button>
-                );
-              })}
-            </div>
+            <StyleSelector selectedStyleId={styleId} onSelect={setStyleId} />
           </div>
 
           {/* ── 4. View + Detail ──────────────────────────────────────── */}
@@ -567,7 +378,7 @@ function GeneratePageInner() {
           <div className="rounded-xl border border-border bg-card p-4">
             <div className="flex items-center justify-between mb-3">
               <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
-                Describe your {subtype.label.toLowerCase()}
+                Describe your {selectedSub.label.toLowerCase()}
               </p>
               {/* Prompt quality indicator */}
               <span className={`text-[10px] font-medium ${promptQuality.color} transition-colors`}>
@@ -598,23 +409,10 @@ function GeneratePageInner() {
               </p>
             )}
 
-            {/* Quick chips */}
-            {subtype.chips && subtype.chips.length > 0 && (
-              <div className="mt-3">
-                <p className="text-[10px] text-muted-foreground/60 mb-1.5 uppercase tracking-wider">Quick add</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {subtype.chips.slice(0, 8).map((chip) => (
-                    <button
-                      key={chip}
-                      onClick={() => handleChipClick(chip)}
-                      className="px-2 py-1 rounded-md border border-border bg-background text-[11px] text-muted-foreground hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-all"
-                    >
-                      + {chip}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Contextual prompt chips */}
+            <div className="mt-3">
+              <PromptChips categoryId={selectedCategory.id} onChipClick={handleChipClick} />
+            </div>
 
             {/* Seed row */}
             <div className="mt-3 flex items-center gap-2">
@@ -684,7 +482,7 @@ function GeneratePageInner() {
               <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Result</p>
               {activeResult && (
                 <span className="text-[10px] text-muted-foreground">
-                  {activeResult.subtypeLabel} · {STYLE_PRESETS.find((s) => s.id === activeResult.styleId)?.name}
+                  {GENERATE_CATEGORIES.flatMap((c) => c.subcategories).find((s) => s.subcategoryId === activeResult.subcategoryId)?.label ?? activeResult.subcategoryId} · {GENERATE_STYLES.find((s) => s.id === activeResult.styleId)?.name ?? activeResult.styleId}
                 </span>
               )}
             </div>
