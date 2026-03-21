@@ -19,7 +19,7 @@ export {
   buildCompleteNegativePrompt,
 } from "./negative-prompts";
 
-// Prompt builder
+// Prompt builder (v13 — delegates to prompt-configs.ts)
 export {
   buildUltimatePrompt,
   buildEnhancedPrompt,

@@ -64,7 +64,7 @@ export {
   CATEGORY_PROMPT_CONFIGS,
   CATEGORY_BASE_DESCRIPTIONS,
 
-  // Individual prompt configs (if needed)
+  // Individual prompt configs
   WEAPONS_PROMPT_CONFIG,
   ARMOR_PROMPT_CONFIG,
   CONSUMABLES_PROMPT_CONFIG,
@@ -73,11 +73,17 @@ export {
   CHARACTERS_PROMPT_CONFIG,
   CREATURES_PROMPT_CONFIG,
   ENVIRONMENT_PROMPT_CONFIG,
-  ISOMETRIC_PROMPT_CONFIG,
-  TILESETS_PROMPT_CONFIG,
   UI_ELEMENTS_PROMPT_CONFIG,
-  EFFECTS_PROMPT_CONFIG,
-  PROJECTILES_PROMPT_CONFIG,
+
+  // Prompt builder from prompt-configs.ts
+  buildAssetPrompt,
+  resolveStyleKey,
+  resolveCategoryKey,
+  resolveSubcategoryKey,
+  resolveViewKey,
+  resolveQualityKey,
+  getPromptConfig,
+  validatePromptConfigs,
 
   // Helper functions
   getCategoryById,

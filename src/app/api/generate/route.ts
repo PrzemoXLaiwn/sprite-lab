@@ -250,7 +250,7 @@ export async function GET() {
 
   const categories = Object.keys(CATEGORY_PROMPT_CONFIGS).map(catId => ({
     id: catId,
-    subcategories: Object.keys(CATEGORY_PROMPT_CONFIGS[catId]),
+    subcategories: Object.keys((CATEGORY_PROMPT_CONFIGS as Record<string, Record<string, unknown>>)[catId] || {}),
   }));
 
   const models = Object.entries(RUNWARE_MODELS).map(([id, air]) => ({

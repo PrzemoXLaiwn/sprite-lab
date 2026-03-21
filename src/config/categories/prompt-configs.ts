@@ -1,566 +1,1351 @@
 // ===========================================
-// SPRITELAB CONFIG - CATEGORY PROMPT CONFIGS (FIXED v2.0)
+// SPRITELAB - ULTIMATE PROMPT CONFIG
+// Version: 4.0
+// Purpose:
+// - deterministic prompt assembly
+// - minimal hallucination / minimal wrong composition
+// - strong control over view / style / quality
+// - backward compatibility aliases
+// - category/subcategory safe resolution
+// - UI-ready labels aligned with current app
 // ===========================================
-// CHANGES:
-// - Added PANELS subcategory for UI with multiple slots
-// - Fixed INVENTORY to not block slot grids
-// - Combined AXES/HAMMERS properly
-// - Better avoid lists that don't block valid requests
-// - More specific visual descriptions
 
 import type { SubcategoryPromptConfig } from "../types";
 
-// ===========================================
-// WEAPONS CATEGORY PROMPT CONFIGS
-// ===========================================
-export const WEAPONS_PROMPT_CONFIG: Record<string, SubcategoryPromptConfig> = {
-  SWORDS: {
-    objectType: "((ONE single sword weapon))",
-    visualDesc: "long metal blade with handle, crossguard or tsuba, grip wrapping, pommel end, sharp cutting edge",
-    composition: "((ONLY ONE sword)), single isolated sword shown flat or slight angle, full blade visible from tip to pommel, weapon displayed as single game item icon, centered on transparent background",
-    avoid: "multiple swords, many swords, sword collection, sword set, sprite sheet, weapon grid, broken blade, hand holding it, sword in stone, sheathed in scabbard, combat scene, different swords, variety of weapons",
+// --------------------------------------------------
+// CORE TYPES
+// --------------------------------------------------
+export type AssetCategory =
+  | "WEAPONS"
+  | "ARMOR"
+  | "CONSUMABLES"
+  | "RESOURCES"
+  | "CHARACTERS"
+  | "CREATURES"
+  | "UI_ELEMENTS"
+  | "ENVIRONMENT"
+  | "QUEST_ITEMS";
+
+export type AssetView =
+  | "DEFAULT"
+  | "SIDE_VIEW"
+  | "FRONT"
+  | "TOP_DOWN";
+
+export type AssetQuality = "FAST" | "MEDIUM" | "HD";
+
+export type AssetStyle =
+  | "PIXEL_16"
+  | "PIXEL_HD"
+  | "HAND_PAINTED"
+  | "ANIME"
+  | "DARK_FANTASY"
+  | "CARTOON"
+  | "VECTOR"
+  | "REALISTIC";
+
+export interface PromptBuildInput {
+  category: string;
+  subcategory: string;
+  style?: string;
+  view?: string;
+  quality?: string;
+  userPrompt?: string;
+  element?: string[];
+  material?: string[];
+  color?: string[];
+  extraTags?: string[];
+}
+
+export interface PromptBuildResult {
+  fullPrompt: string;
+  negativePrompt: string;
+  debug: {
+    resolvedCategory: string;
+    resolvedSubcategory: string;
+    resolvedStyle: string;
+    resolvedView: string;
+    resolvedQuality: string;
+  };
+}
+
+export interface StylePromptConfig {
+  positive: string;
+  negative: string;
+}
+
+export interface ViewPromptConfig {
+  positive: string;
+  negative: string;
+  categoryOverrides?: Partial<Record<AssetCategory, string>>;
+  subcategoryOverrides?: Record<string, string>;
+}
+
+export interface QualityPromptConfig {
+  positive: string;
+  negative: string;
+}
+
+export interface CategoryMeta {
+  label: string;
+  description: string;
+}
+
+export interface SubcategoryMeta {
+  label: string;
+}
+
+export interface ExtendedSubcategoryPromptConfig extends SubcategoryPromptConfig {
+  // Optional stronger overrides
+  viewOverrides?: Partial<Record<AssetView, string>>;
+  additionalNegativeByView?: Partial<Record<AssetView, string>>;
+}
+
+// --------------------------------------------------
+// HELPERS
+// --------------------------------------------------
+function compact(parts: Array<string | undefined | null | false>): string[] {
+  return parts
+    .flatMap((part) => String(part ?? "").split(","))
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function joinCsv(parts: Array<string | undefined | null | false>): string {
+  return compact(parts).join(", ");
+}
+
+function dedupeCsv(parts: Array<string | undefined | null | false>): string {
+  const seen = new Set<string>();
+  const out: string[] = [];
+
+  for (const item of compact(parts)) {
+    const key = item.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      out.push(item);
+    }
+  }
+
+  return out.join(", ");
+}
+
+function makeConfig(
+  objectType: string,
+  visualDesc: string,
+  composition: string,
+  avoid: string,
+  extras?: Partial<ExtendedSubcategoryPromptConfig>
+): ExtendedSubcategoryPromptConfig {
+  return {
+    objectType,
+    visualDesc,
+    composition,
+    avoid,
+    ...extras,
+  };
+}
+
+function normalizeKey(input?: string): string {
+  return String(input ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[\s&/-]+/g, "_")
+    .replace(/[^A-Z0-9_]/g, "");
+}
+
+// --------------------------------------------------
+// GLOBAL RENDER RULES
+// --------------------------------------------------
+export const GLOBAL_POSITIVE_BASE = dedupeCsv([
+  "single isolated game asset",
+  "transparent background",
+  "centered composition",
+  "clear silhouette",
+  "clean readable shape",
+  "subject fully visible",
+  "game-ready asset render",
+  "no scene unless explicitly required",
+  "icon-like clarity",
+  "high subject separation",
+]);
+
+export const GLOBAL_NEGATIVE_BASE = dedupeCsv([
+  "multiple objects unless explicitly requested",
+  "crowd",
+  "busy background",
+  "environment scene",
+  "landscape",
+  "cinematic shot",
+  "cropped subject",
+  "subject cut off by frame",
+  "partial object only",
+  "tiny subject",
+  "off-center composition",
+  "text",
+  "watermark",
+  "logo",
+  "caption",
+  "UI overlay",
+  "mockup",
+  "frame unless explicitly requested",
+  "hands holding object unless explicitly requested",
+  "person wearing or using item unless explicitly requested",
+  "photo studio props",
+  "random extra objects",
+  "duplicate subjects",
+]);
+
+// --------------------------------------------------
+// VIEW CONFIGS
+// Important:
+// - DEFAULT = neutral readable product/icon angle
+// - SIDE_VIEW = orthographic side/readable profile
+// - FRONT = straight front-facing / symmetrical where applicable
+// - TOP_DOWN = camera from above, NOT isometric, NOT front
+// --------------------------------------------------
+export const VIEW_PROMPT_CONFIGS: Record<AssetView, ViewPromptConfig> = {
+  DEFAULT: {
+    positive: dedupeCsv([
+      "neutral readable presentation angle",
+      "best angle for readability",
+      "full subject clearly shown",
+      "game asset showcase view",
+    ]),
+    negative: dedupeCsv([
+      "extreme perspective distortion",
+      "dramatic cinematic angle",
+      "top-down unless requested",
+      "front orthographic unless requested",
+      "side orthographic unless requested",
+    ]),
   },
-  AXES: {
-    objectType: "((ONE single axe or hammer weapon))",
-    visualDesc: "heavy head mounted on sturdy handle - axe with sharp blade edge OR hammer with blunt crushing head, possibly spiked or decorated",
-    composition: "((ONLY ONE weapon)), single isolated weapon shown from side, full head and handle visible, displayed as single collectible item icon, centered on transparent background",
-    avoid: "multiple weapons, many axes, axe collection, weapon set, sprite sheet, stuck in wood or stone, hand holding it, logging or smithing scene, broken handle",
+
+  SIDE_VIEW: {
+    positive: dedupeCsv([
+      "strict side view",
+      "profile view",
+      "side-facing presentation",
+      "orthographic-style readable silhouette",
+      "full object visible from one side",
+    ]),
+    negative: dedupeCsv([
+      "front view",
+      "top-down view",
+      "three-quarter cinematic angle",
+      "isometric angle",
+      "foreshortening",
+    ]),
+    categoryOverrides: {
+      WEAPONS: "weapon shown from side profile, full length from tip to handle visible",
+      ARMOR: "equipment shown from side or slight profile only if side readability is possible",
+      UI_ELEMENTS: "flat side-neutral icon presentation, no perspective frame depth",
+    },
   },
-  POLEARMS: {
-    objectType: "((ONE single polearm weapon))",
-    visualDesc: "long wooden or metal shaft with spearhead, blade, halberd head, or pointed tip at the end",
-    composition: "((ONLY ONE polearm)), single isolated polearm shown vertically or diagonal, full length visible from tip to butt, centered on transparent background",
-    avoid: "multiple spears, many polearms, weapon collection, sprite sheet, broken shaft, soldier holding it, battle scene, just the head without shaft",
+
+  FRONT: {
+    positive: dedupeCsv([
+      "strict front view",
+      "straight-on view",
+      "front-facing presentation",
+      "symmetrical readable layout when applicable",
+    ]),
+    negative: dedupeCsv([
+      "side profile",
+      "top-down view",
+      "isometric angle",
+      "tilted perspective",
+      "dynamic camera angle",
+    ]),
+    categoryOverrides: {
+      ARMOR: "front-facing equipment icon presentation",
+      CHARACTERS: "full body character facing forward",
+      CREATURES: "full body creature facing forward or near-front, readable silhouette",
+      UI_ELEMENTS: "flat front-facing interface icon presentation",
+    },
   },
-  BOWS: {
-    objectType: "((ONE single bow ranged weapon))",
-    visualDesc: "curved bow limbs made of wood or composite materials, taut bowstring connecting both ends",
-    composition: "((ONLY ONE bow)), single isolated bow shown front or slight angle, full curve and string visible, no arrow nocked, at rest position, centered on transparent background",
-    avoid: "multiple bows, many bows, bow collection, sprite sheet, archer holding it, arrow already nocked, quiver of arrows, drawing the bow",
-  },
-  STAFFS: {
-    objectType: "((ONE single magical staff or wand))",
-    visualDesc: "long wooden or metal staff with magical crystal, glowing orb, or ornate ornament on top, may have runes or magical carvings",
-    composition: "((ONLY ONE staff)), single isolated staff shown vertically, full length with magical top visible, floating or standing, centered on transparent background",
-    avoid: "multiple staffs, many staffs, staff collection, sprite sheet, wizard holding it, plain walking stick without magic, broken or cracked",
-  },
-  GUNS: {
-    objectType: "((ONE single firearm ranged weapon))",
-    visualDesc: "gun with barrel, trigger mechanism, grip handle, possibly ornate steampunk or magical design elements",
-    composition: "((ONLY ONE gun)), single isolated gun shown from side profile, full weapon visible from barrel to grip, centered on transparent background",
-    avoid: "multiple guns, many guns, gun collection, sprite sheet, hand holding it, bullets or ammo separate, holster, firing with muzzle flash",
-  },
-  THROWING: {
-    objectType: "((ONE single throwing weapon))",
-    visualDesc: "aerodynamic throwable weapon like shuriken star, kunai knife, throwing dagger, or dart with balanced design",
-    composition: "((ONLY ONE throwing weapon)), single isolated throwing weapon centered, shown flat displaying full shape and details, centered on transparent background",
-    avoid: "multiple throwing weapons, many shurikens, throwing weapon collection, sprite sheet, hand throwing it, target or impact, in-flight motion blur",
+
+  TOP_DOWN: {
+    positive: dedupeCsv([
+      "true top-down view",
+      "camera directly above the subject",
+      "bird's-eye asset presentation",
+      "top surface visible",
+      "not isometric",
+      "not side view",
+      "not front view",
+    ]),
+    negative: dedupeCsv([
+      "front view",
+      "side view",
+      "profile view",
+      "isometric angle",
+      "three-quarter perspective",
+      "horizon line",
+      "cinematic perspective",
+    ]),
+    categoryOverrides: {
+      WEAPONS: "weapon laid flat and viewed from directly above",
+      ARMOR: "equipment laid flat and viewed from directly above like inventory layout",
+      CONSUMABLES: "item viewed from above, clearly readable top-down inventory render",
+      RESOURCES: "resource item viewed from above, clean top-down game asset",
+      UI_ELEMENTS: "flat UI element seen directly from above with no perspective depth",
+      QUEST_ITEMS: "quest item laid flat or presented from true top-down view",
+    },
+    subcategoryOverrides: {
+      HEROES: "top-down character sprite orientation, character seen from above, readable for top-down game",
+      ENEMIES: "top-down enemy sprite orientation, seen from above, readable for top-down gameplay",
+      NPCS: "top-down NPC sprite orientation, seen from above, readable for top-down gameplay",
+      BOSSES: "top-down boss sprite orientation, seen from above, readable for top-down gameplay",
+      ANIMALS: "animal seen from above, top-down game sprite readability",
+      MYTHICAL: "mythical creature seen from above, top-down game sprite readability",
+      COMPANIONS: "companion creature seen from above, top-down game sprite readability",
+      ELEMENTALS: "elemental seen from above, top-down sprite readability",
+      TREES_PLANTS: "vegetation seen from directly above, top canopy readable",
+      ROCKS_TERRAIN: "terrain prop seen from directly above",
+      BUILDINGS: "building roof-dominant top-down view, not isometric",
+      PROPS: "prop seen from directly above, silhouette readable",
+      DUNGEON: "dungeon prop seen from directly above, gameplay readability prioritized",
+    },
   },
 };
 
-// ===========================================
-// ARMOR CATEGORY PROMPT CONFIGS
-// ===========================================
-// PRO v3.1: Enhanced to prevent body parts in equipment renders
-// Key: Use "equipment icon", "loot drop", "inventory item" framing to get isolated objects
-export const ARMOR_PROMPT_CONFIG: Record<string, SubcategoryPromptConfig> = {
-  HELMETS: {
-    objectType: "((isolated helmet equipment icon)), game inventory helmet item, loot drop helmet",
-    visualDesc: "ISOLATED helmet as equipment icon - protective headgear rendered as ((STANDALONE INVENTORY ICON)), empty hollow helmet like RPG loot drop, game item pickup style, equipment slot icon rendering, ((NO HEAD OR FACE INSIDE)), ((NO HORNS unless explicitly requested)), simple clean helmet design",
-    composition: "single empty helmet displayed as game item icon, ((COMPLETELY EMPTY INSIDE - NO HEAD)), helmet floating or on invisible stand like inventory loot, front or 3/4 view, equipment icon presentation, if crown requested = simple golden band or circlet, NO horn decorations",
-    avoid: "head inside helmet, person wearing it, face visible, neck attached, mannequin head, body parts, multiple helmets, worn helmet, helmet on head, human head, skull inside, eyes visible, face inside, portrait, character, horns, viking horns, demon horns, spikes unless requested",
+// --------------------------------------------------
+// STYLE CONFIGS
+// --------------------------------------------------
+export const STYLE_PROMPT_CONFIGS: Record<AssetStyle, StylePromptConfig> = {
+  PIXEL_16: {
+    positive: dedupeCsv([
+      "16-bit pixel art style",
+      "classic retro game asset",
+      "clean pixel clusters",
+      "low-resolution readability",
+      "limited color palette",
+      "crisp sprite edges",
+      "designed for game sprite use",
+    ]),
+    negative: dedupeCsv([
+      "blurry anti-aliased painting",
+      "realistic photo textures",
+      "3D render look",
+      "high-frequency micro-detail",
+      "soft painterly brushwork",
+      "vector gradients",
+    ]),
   },
-  CHEST_ARMOR: {
-    objectType: "((isolated chest armor equipment icon)), game inventory armor item, loot drop breastplate",
-    visualDesc: "ISOLATED chest armor as equipment icon - breastplate or chest piece rendered as ((STANDALONE INVENTORY ICON)), empty armor like RPG loot drop, game item pickup style, ((NO BODY OR TORSO INSIDE))",
-    composition: "single empty chest armor displayed as game item icon, ((COMPLETELY EMPTY - NO TORSO)), armor floating or on invisible stand like inventory loot, front view, equipment icon presentation",
-    avoid: "body inside armor, person wearing it, arms attached, shoulders with arms, mannequin body, body parts, full figure, torso visible, character wearing armor, human torso, chest visible, skin showing, human form inside",
+
+  PIXEL_HD: {
+    positive: dedupeCsv([
+      "HD pixel art style",
+      "modern indie pixel asset",
+      "higher detail pixel clusters",
+      "clean silhouette",
+      "pixel-perfect readability",
+      "game sprite polish",
+    ]),
+    negative: dedupeCsv([
+      "photo realism",
+      "soft painted blur",
+      "3D model render look",
+      "vector flat icon style",
+    ]),
   },
-  SHIELDS: {
-    objectType: "((isolated shield equipment icon)), game inventory shield item, loot drop shield",
-    visualDesc: "shield as equipment icon - round, kite, tower, or buckler shape rendered as ((STANDALONE INVENTORY ICON)), may have emblem, boss, or magical runes, game item pickup style, ((NO ARM OR HAND HOLDING IT))",
-    composition: "single shield shown front face as game item icon, full shield visible including rim, floating or standing like inventory loot, equipment icon presentation",
-    avoid: "person holding it, arm holding shield, hand gripping it, multiple shields, broken shield, shield on back, character with shield, warrior, arm visible, hand visible",
+
+  HAND_PAINTED: {
+    positive: dedupeCsv([
+      "hand-painted game art style",
+      "painterly brushwork",
+      "stylized fantasy asset rendering",
+      "rich material definition",
+      "clean subject readability",
+    ]),
+    negative: dedupeCsv([
+      "pixel art",
+      "vector flat icon",
+      "photo realism",
+      "hard 3D CGI look",
+      "messy background scene",
+    ]),
   },
-  GLOVES: {
-    objectType: "((isolated gloves equipment icon)), game inventory gauntlets item, loot drop gloves",
-    visualDesc: "ISOLATED gloves as equipment icon - metal gauntlets or leather gloves rendered as ((STANDALONE INVENTORY ICONS)), empty gloves like RPG loot drop, game item pickup style, ((NO HANDS OR ARMS INSIDE))",
-    composition: "gloves displayed as game item icons lying flat or arranged together, ((COMPLETELY EMPTY - NO HANDS INSIDE)), empty hollow gloves as inventory loot, equipment icon presentation",
-    avoid: "hands inside gloves, arms attached, fingers visible, worn on body, mannequin hands, human hands, body parts, hands wearing them, arms or wrists, fingers, skin, human arm, character hands",
+
+  ANIME: {
+    positive: dedupeCsv([
+      "anime-inspired game asset style",
+      "clean stylized linework",
+      "controlled cel-shaded rendering",
+      "clear readable forms",
+    ]),
+    negative: dedupeCsv([
+      "photo realism",
+      "western comic exaggeration",
+      "messy painterly texture",
+      "pixel art",
+    ]),
   },
-  BOOTS: {
-    objectType: "((isolated boots equipment icon)), game inventory boots item, loot drop footwear",
-    visualDesc: "ISOLATED boots as equipment icon - armored boots or leather boots rendered as ((STANDALONE INVENTORY ICONS)), empty boots like RPG loot drop, game item pickup style, ((NO LEGS OR FEET INSIDE))",
-    composition: "boots displayed as game item icons standing or lying, ((COMPLETELY EMPTY - NO FEET INSIDE)), empty hollow boots as inventory loot, equipment icon presentation",
-    avoid: "legs inside boots, feet wearing them, worn on body, mannequin legs, human legs, body parts, legs attached, ankles or calves visible, toes, feet, skin, human leg, character feet",
+
+  DARK_FANTASY: {
+    positive: dedupeCsv([
+      "dark fantasy aesthetic",
+      "grim medieval mood",
+      "cold restrained palette",
+      "worn believable materials",
+      "moody but readable asset design",
+    ]),
+    negative: dedupeCsv([
+      "cute toy-like style",
+      "bright cheerful palette",
+      "sci-fi neon theme",
+      "cartoony comedy look",
+    ]),
   },
-  ACCESSORIES: {
-    objectType: "((isolated accessory equipment icon)), game inventory accessory item, loot drop accessory",
-    visualDesc: "accessory as equipment icon - belt, cape, ring, amulet, or bracelet rendered as ((STANDALONE INVENTORY ICON)), game item pickup style, ((NOT WORN ON BODY))",
-    composition: "single accessory item as game item icon, full item visible with details clear, floating or displayed like inventory loot, equipment icon presentation",
-    avoid: "person wearing it, worn on body, multiple accessories, full outfit, character, body part visible, neck with amulet, finger with ring, waist with belt",
+
+  CARTOON: {
+    positive: dedupeCsv([
+      "cartoon game asset style",
+      "bold shapes",
+      "simplified readable forms",
+      "friendly stylization",
+      "high clarity silhouette",
+    ]),
+    negative: dedupeCsv([
+      "photo realism",
+      "grim dark over-texturing",
+      "pixel art",
+      "overly detailed gritty rendering",
+    ]),
+  },
+
+  VECTOR: {
+    positive: dedupeCsv([
+      "clean vector-like game asset style",
+      "flat shapes",
+      "minimal controlled detail",
+      "high readability",
+      "mobile-friendly icon clarity",
+    ]),
+    negative: dedupeCsv([
+      "photo realism",
+      "painterly brush texture",
+      "pixel art dithering",
+      "3D depth-heavy rendering",
+    ]),
+  },
+
+  REALISTIC: {
+    positive: dedupeCsv([
+      "realistic game concept asset style",
+      "believable materials",
+      "accurate lighting on subject",
+      "high detail",
+      "AAA asset concept clarity",
+    ]),
+    negative: dedupeCsv([
+      "cartoon exaggeration",
+      "vector flat simplification",
+      "pixel art",
+      "anime cel shading",
+    ]),
   },
 };
 
-// ===========================================
-// CONSUMABLES CATEGORY PROMPT CONFIGS
-// ===========================================
-export const CONSUMABLES_PROMPT_CONFIG: Record<string, SubcategoryPromptConfig> = {
-  POTIONS: {
-    objectType: "potion bottle",
-    visualDesc: "glass flask or bottle containing colored magical liquid, cork or cap stopper, may glow or have bubbles",
-    composition: "single potion bottle standing upright, full bottle visible including stopper and liquid inside",
-    avoid: "multiple potions, spilled or splashing liquid, hand holding it, potion shop shelf, completely empty bottle",
+// --------------------------------------------------
+// QUALITY CONFIGS
+// Note:
+// quality should influence polish/detail,
+// not composition or count of objects
+// --------------------------------------------------
+export const QUALITY_PROMPT_CONFIGS: Record<AssetQuality, QualityPromptConfig> = {
+  FAST: {
+    positive: dedupeCsv([
+      "simple clean rendering",
+      "fast readable asset generation",
+      "minimal but clear detail",
+    ]),
+    negative: dedupeCsv([
+      "overly intricate decoration",
+      "micro-details everywhere",
+      "excessive texture noise",
+    ]),
   },
-  FOOD: {
-    objectType: "food item",
-    visualDesc: "edible food like cooked meat leg, bread loaf, cheese wheel, fresh fruit, or prepared meal dish",
-    composition: "single food item on invisible surface, appetizing presentation, fresh and appealing look",
-    avoid: "multiple different food items, plate or dish container, dining table scene, someone eating, rotten or spoiled",
+
+  MEDIUM: {
+    positive: dedupeCsv([
+      "balanced detail level",
+      "clean polished game asset",
+      "good material readability",
+    ]),
+    negative: dedupeCsv([
+      "extreme over-detail",
+      "visual clutter",
+    ]),
   },
-  SCROLLS: {
-    objectType: "magic scroll",
-    visualDesc: "rolled parchment scroll with wax seal, may show magical glowing runes, arcane symbols, or mystical text",
-    composition: "single scroll partially unrolled or fully rolled, seal or ribbon visible",
-    avoid: "multiple scrolls, fully open book (not scroll), scroll case container, library scene, torn or burned",
+
+  HD: {
+    positive: dedupeCsv([
+      "high detail polished asset",
+      "refined materials",
+      "extra surface detail where appropriate",
+      "premium concept quality",
+    ]),
+    negative: dedupeCsv([
+      "messy noisy detail",
+      "detail that breaks silhouette",
+    ]),
   },
 };
 
-// ===========================================
-// RESOURCES CATEGORY PROMPT CONFIGS
-// ===========================================
-export const RESOURCES_PROMPT_CONFIG: Record<string, SubcategoryPromptConfig> = {
-  GEMS: {
-    objectType: "gemstone",
-    visualDesc: "cut precious gem with facets catching and refracting light, clear or colored crystalline structure",
-    composition: "single gemstone centered, showing brilliant facets and internal light",
-    avoid: "multiple gems pile, uncut rough ore stone, jewelry setting or ring, mine or cave scene",
+// --------------------------------------------------
+// CATEGORY LABELS / UI METADATA
+// --------------------------------------------------
+export const CATEGORY_META: Record<AssetCategory, CategoryMeta> = {
+  WEAPONS: {
+    label: "Weapons",
+    description: "Game weapon items and combat equipment.",
   },
-  ORES: {
-    objectType: "ore mineral chunk",
-    visualDesc: "raw rocky ore chunk with visible metal veins, crystal deposits, or valuable material embedded in stone",
-    composition: "single ore piece centered, rough natural chunk shape, metallic or crystal glints visible",
-    avoid: "multiple ore pieces, refined metal ingot or bar, mining scene, pile of rocks, pickaxe tool",
+  ARMOR: {
+    label: "Armor",
+    description: "Protective gear and wearable equipment icons.",
   },
-  WOOD_STONE: {
-    objectType: "raw material",
-    visualDesc: "natural material like wood log with bark and tree rings visible, or stone chunk with natural texture",
-    composition: "single piece of material centered, natural texture and form clearly visible",
-    avoid: "multiple pieces scattered, processed lumber planks, stone wall, forest or quarry scene",
+  CONSUMABLES: {
+    label: "Consumables",
+    description: "Potions, food, scrolls and usable pickups.",
   },
-  PLANTS: {
-    objectType: "magical plant herb",
-    visualDesc: "special herb or plant with distinctive leaves, magical flowers, or glowing mystical properties",
-    composition: "single plant or herb bunch centered, roots or stems visible, magical essence apparent",
-    avoid: "multiple different plant species, potted houseplant, garden scene, wilted or dead plant",
+  RESOURCES: {
+    label: "Resources",
+    description: "Crafting materials, ores, gems, plants and drops.",
   },
-  MONSTER_PARTS: {
-    objectType: "monster drop item",
-    visualDesc: "creature part like iridescent dragon scale, sharp monster fang, curved beast claw, or magical feather",
-    composition: "single monster part centered, detail and texture clearly visible",
-    avoid: "multiple parts pile, full monster creature, gore or blood pool, hunting scene, complete skeleton",
+  CHARACTERS: {
+    label: "Characters",
+    description: "Heroes, NPCs, enemies and bosses.",
   },
-  MAGIC_MATERIALS: {
-    objectType: "magical essence material",
-    visualDesc: "pure magical material like glowing soul gem, pulsing mana crystal, swirling essence orb, or sparkling arcane dust",
-    composition: "single magical item centered, glow and magical energy effect visible",
-    avoid: "multiple items scattered, crafting scene, wizard character, container full of many materials",
+  CREATURES: {
+    label: "Creatures",
+    description: "Animals, mythical creatures, companions and elementals.",
   },
-};
-
-// ===========================================
-// QUEST ITEMS CATEGORY PROMPT CONFIGS
-// ===========================================
-export const QUEST_ITEMS_PROMPT_CONFIG: Record<string, SubcategoryPromptConfig> = {
-  KEYS: {
-    objectType: "special key",
-    visualDesc: "ornate unique key with distinctive decorative design, possibly magical glowing, ancient weathered, or elaborately crafted",
-    composition: "single key centered, full key from decorative bow to teeth/bit visible",
-    avoid: "multiple keys, keyring with many keys, lock or door, hand holding key, plain simple modern key",
+  UI_ELEMENTS: {
+    label: "Icons",
+    description: "Game UI icons, slots, buttons, bars, frames and panels.",
   },
-  ARTIFACTS: {
-    objectType: "ancient artifact",
-    visualDesc: "unique powerful relic like mysterious idol, legendary grail, magic mirror, glowing orb, or ancient mystical device",
-    composition: "single artifact centered, mysterious and important appearance, magical aura suggested",
-    avoid: "multiple artifacts, museum display case, hand holding it, broken pieces or shards",
+  ENVIRONMENT: {
+    label: "Environment",
+    description: "Props, buildings, trees, dungeon objects and terrain assets.",
   },
-  CONTAINERS: {
-    objectType: "treasure container",
-    visualDesc: "special container like ornate treasure chest, decorated box, magical pouch or bag, or special carrying case",
-    composition: "single container centered, closed state (not open), lock clasp or magical seal visible",
-    avoid: "multiple containers, open showing contents inside, pile of chests, loot spilling out everywhere",
-  },
-  COLLECTIBLES: {
-    objectType: "collectible item",
-    visualDesc: "valuable collectible like shiny gold coin, hero medal, winner trophy, achievement badge, or special token",
-    composition: "single collectible centered, detail and value clearly visible, prestigious appearance",
-    avoid: "multiple collectibles, pile of coins, display case, hand holding it",
+  QUEST_ITEMS: {
+    label: "Loot",
+    description: "Keys, artifacts, containers and collectibles.",
   },
 };
 
-// ===========================================
-// CHARACTERS CATEGORY PROMPT CONFIGS
-// ===========================================
-export const CHARACTERS_PROMPT_CONFIG: Record<string, SubcategoryPromptConfig> = {
-  HEROES: {
-    objectType: "hero character",
-    visualDesc: "heroic adventurer with ONLY explicitly requested equipment - if wizard mentioned = robes staff pointed hat and long beard, if knight mentioned = armor sword shield, if rogue mentioned = leather hood daggers, match character type EXACTLY to description",
-    composition: "single character full body visible, standing neutral or heroic pose, facing forward or 3/4 view, ONLY the equipment mentioned in prompt - NO extra armor/crown/helmet unless requested",
-    avoid: "multiple characters, just face portrait closeup, action blur or motion, background scene, enemies in frame, wrong character type equipment (no armor on wizards, no robes on knights unless specified)",
-  },
-  ENEMIES: {
-    objectType: "enemy character",
-    visualDesc: "hostile enemy creature or humanoid, threatening menacing appearance, combat ready stance",
-    composition: "single enemy full body visible, standing battle stance, facing forward or aggressive pose",
-    avoid: "multiple enemies or swarm, dead or defeated lying down, hero fighting it, dungeon scene background",
-  },
-  NPCS: {
-    objectType: "NPC character",
-    visualDesc: "non-player character like friendly merchant, town guard, helpful villager, or mysterious questgiver",
-    composition: "single NPC full body visible, standing neutral friendly pose, approachable appearance",
-    avoid: "multiple NPCs, hero player character, shop interior background, crowd scene",
-  },
-  BOSSES: {
-    objectType: "boss enemy character",
-    visualDesc: "powerful imposing boss creature, large intimidating presence, unique memorable design, ultimate threat",
-    composition: "single boss full body visible, powerful dominant stance, showing full impressive form and scale",
-    avoid: "multiple bosses, tiny minions around it, health bar UI, arena background, dead or defeated",
-  },
+// --------------------------------------------------
+// SUBCATEGORY LABELS / ALIASES
+// --------------------------------------------------
+export const SUBCATEGORY_META: Record<string, SubcategoryMeta> = {
+  SWORDS: { label: "Swords" },
+  AXES_HAMMERS: { label: "Axes & Hammers" },
+  POLEARMS: { label: "Polearms" },
+  BOWS: { label: "Bows" },
+  STAFFS_WANDS: { label: "Staffs & Wands" },
+  FIREARMS: { label: "Firearms" },
+  THROWING: { label: "Throwing" },
+
+  HELMETS: { label: "Helmets" },
+  CHEST_ARMOR: { label: "Chest Armor" },
+  SHIELDS: { label: "Shields" },
+  GLOVES: { label: "Gloves" },
+  BOOTS: { label: "Boots" },
+  ACCESSORIES: { label: "Accessories" },
+
+  POTIONS: { label: "Potions" },
+  FOOD: { label: "Food" },
+  SCROLLS: { label: "Scrolls" },
+
+  GEMS: { label: "Gems" },
+  ORES: { label: "Ores" },
+  WOOD_STONE: { label: "Wood & Stone" },
+  PLANTS: { label: "Plants" },
+  MONSTER_PARTS: { label: "Monster Parts" },
+  MAGIC_MATERIALS: { label: "Magic Materials" },
+
+  HEROES: { label: "Heroes" },
+  ENEMIES: { label: "Enemies" },
+  NPCS: { label: "NPCs" },
+  BOSSES: { label: "Bosses" },
+
+  ANIMALS: { label: "Animals" },
+  MYTHICAL: { label: "Mythical" },
+  COMPANIONS: { label: "Companions" },
+  ELEMENTALS: { label: "Elementals" },
+
+  ITEM_ICONS: { label: "Item Icons" },
+  SKILL_ICONS: { label: "Skill Icons" },
+  STATUS_ICONS: { label: "Status Icons" },
+  UI_ICONS: { label: "UI Icons" },
+  BUTTONS: { label: "Buttons" },
+  BARS: { label: "Bars" },
+  FRAMES: { label: "Frames" },
+  PANELS: { label: "Panels" },
+  SLOTS_GRID: { label: "Slots Grid" },
+
+  TREES_PLANTS: { label: "Trees & Plants" },
+  ROCKS_TERRAIN: { label: "Rocks & Terrain" },
+  BUILDINGS: { label: "Buildings" },
+  PROPS: { label: "Props" },
+  DUNGEON: { label: "Dungeon" },
+
+  KEYS: { label: "Keys" },
+  ARTIFACTS: { label: "Artifacts" },
+  CONTAINERS: { label: "Containers" },
+  COLLECTIBLES: { label: "Collectibles" },
 };
 
-// ===========================================
-// CREATURES CATEGORY PROMPT CONFIGS
-// ===========================================
-export const CREATURES_PROMPT_CONFIG: Record<string, SubcategoryPromptConfig> = {
-  ANIMALS: {
-    objectType: "animal creature",
-    visualDesc: "realistic or stylized animal like fierce wolf, powerful bear, majestic eagle, noble horse, or graceful deer",
-    composition: "single animal full body visible, natural standing or alert pose, animal's character clear",
-    avoid: "multiple animals herd, rider on mount, hunting scene, dead animal, pack or flock",
-  },
-  MYTHICAL: {
-    objectType: "mythical creature",
-    visualDesc: "legendary beast like majestic dragon, blazing phoenix, noble unicorn, proud griffin, or multi-headed hydra",
-    composition: "single creature full body visible, majestic or powerful pose, wings spread if applicable",
-    avoid: "multiple creatures, rider on creature, battle scene, egg or baby version only, skeleton undead version",
-  },
-  PETS: {
-    objectType: "pet companion creature",
-    visualDesc: "cute friendly companion like adorable cat, loyal dog, tiny fairy, baby dragon, or friendly slime blob",
-    composition: "single pet full body visible, cute friendly pose, approachable and endearing appearance",
-    avoid: "multiple pets, owner with pet, pet shop scene, aggressive attacking pose, injured or sad",
-  },
-  ELEMENTALS: {
-    objectType: "elemental being",
-    visualDesc: "creature made of pure element like blazing fire elemental, flowing water spirit, rocky earth golem, or wispy air elemental",
-    composition: "single elemental full form visible, element clearly identifiable, floating or standing majestically",
-    avoid: "multiple elementals, wizard summoning it, mixed elements together, dissipating or dying",
-  },
+export const CATEGORY_ALIASES: Record<string, AssetCategory> = {
+  ICONS: "UI_ELEMENTS",
+  UI: "UI_ELEMENTS",
+  LOOT: "QUEST_ITEMS",
+  QUEST_ITEMS: "QUEST_ITEMS",
 };
 
-// ===========================================
-// ENVIRONMENT CATEGORY PROMPT CONFIGS
-// ===========================================
-export const ENVIRONMENT_PROMPT_CONFIG: Record<string, SubcategoryPromptConfig> = {
-  TREES_PLANTS: {
-    objectType: "vegetation prop",
-    visualDesc: "tree, decorative bush, flower cluster, or plant suitable for game environment decoration",
-    composition: "single tree or plant, full form from ground/roots to top, natural organic shape",
-    avoid: "forest scene with many trees, multiple different species, character under tree, seasonal transition scene",
-  },
-  ROCKS_TERRAIN: {
-    objectType: "rock formation prop",
-    visualDesc: "boulder, rock cluster, crystal formation, cliff piece, or natural terrain element",
-    composition: "single rock formation, stable grounded natural appearance, usable as game prop",
-    avoid: "mountain range landscape, cave interior scene, character climbing, many separate rocks scattered randomly",
-  },
-  BUILDINGS: {
-    objectType: "building structure",
-    visualDesc: "single building like cozy house, tall tower, friendly shop, ancient temple, or castle section",
-    composition: "single building front or 3/4 exterior view, full structure visible from ground to roof",
-    avoid: "city scene with many buildings, interior room view, character in doorway, ruins or destroyed",
-  },
-  PROPS: {
-    objectType: "furniture prop",
-    visualDesc: "interior or exterior prop like wooden chair, sturdy table, storage barrel, wooden crate, wall torch, or signpost",
-    composition: "single prop item, standing naturally in usable position, full object visible",
-    avoid: "room scene with many props, multiple props together, character using or sitting on it, store inventory display",
-  },
-  DUNGEON: {
-    objectType: "dungeon prop element",
-    visualDesc: "dungeon element like deadly spike trap, mechanical lever, heavy door, sacrificial altar, hanging cage, or wall torch holder",
-    composition: "single dungeon element, functional purpose clear, atmospheric and dangerous appearance",
-    avoid: "dungeon room scene, multiple traps together, character triggering or dying to it, maze layout overview",
-  },
-  // Isometric subcategories in Environment
-  ISO_BUILDINGS: {
-    objectType: "isometric building",
-    visualDesc: "isometric 2.5D building viewed from above at 26.57-degree angle, showing roof top and two visible walls, strategy game architecture",
-    composition: "single isometric building, diamond footprint visible, complete structure with roof and walls, grounded on invisible tile grid",
-    avoid: "front view, side view only, perspective 3D, top-down flat, multiple buildings, interior view, wrong angle",
-  },
-  ISO_TREES: {
-    objectType: "isometric tree",
-    visualDesc: "isometric 2.5D tree viewed from above, round or conical canopy, visible trunk base casting small shadow",
-    composition: "single isometric tree, full tree from grounded base to crown, canopy shape clear, suitable for tile placement",
-    avoid: "side view tree, flat tree sprite, forest scene, multiple trees, dead leafless tree, wrong projection angle",
-  },
-  ISO_PROPS: {
-    objectType: "isometric prop decoration",
-    visualDesc: "isometric 2.5D small prop or decoration, viewed from strategy game angle, functional or decorative purpose",
-    composition: "single isometric prop, small scale relative to buildings, complete object, fits on tile grid",
-    avoid: "flat front view, multiple props clustered, perspective view, building scale (too large)",
-  },
-  ISO_TERRAIN: {
-    objectType: "isometric terrain feature",
-    visualDesc: "isometric 2.5D terrain element like rock formation, water feature, or natural ground decoration from above",
-    composition: "single terrain feature, isometric projection consistent, integrates with tile grid, natural appearance",
-    avoid: "landscape panorama scene, flat terrain texture, multiple formations scattered, perspective view",
-  },
+export const SUBCATEGORY_ALIASES: Record<string, string> = {
+  AXES: "AXES_HAMMERS",
+  HAMMERS: "AXES_HAMMERS",
+  AXES_HAMMERS: "AXES_HAMMERS",
+
+  STAFFS: "STAFFS_WANDS",
+  WANDS: "STAFFS_WANDS",
+  STAFFS_WANDS: "STAFFS_WANDS",
+
+  GUNS: "FIREARMS",
+  FIREARMS: "FIREARMS",
+
+  PETS: "COMPANIONS",
+  COMPANIONS: "COMPANIONS",
+
+  ICONS_UI: "UI_ICONS",
+  UI_ICONS: "UI_ICONS",
+
+  INVENTORY: "SLOTS_GRID",
+  SLOTS: "SLOTS_GRID",
+  SLOTS_GRID: "SLOTS_GRID",
 };
 
-// ===========================================
-// ISOMETRIC CATEGORY PROMPT CONFIGS
-// ===========================================
-export const ISOMETRIC_PROMPT_CONFIG: Record<string, SubcategoryPromptConfig> = {
-  ISO_HOUSES: {
-    objectType: "isometric residential house",
-    visualDesc: "cozy isometric house with pitched roof, windows, door, chimney, warm residential home appearance viewed from 2.5D strategy angle",
-    composition: "single isometric house, complete structure from foundation to roof, visible roof top and two adjacent walls, grounded stable base",
-    avoid: "flat front view, interior view, multiple houses neighborhood, damaged or destroyed, construction scaffolding",
-  },
-  ISO_COMMERCIAL: {
-    objectType: "isometric shop building",
-    visualDesc: "isometric commercial building with shop front, signage area, display windows, merchant or store business appearance",
-    composition: "single isometric shop, complete structure, shop features clearly visible, commercial purpose obvious",
-    avoid: "residential house style, interior view, marketplace with crowds, multiple shops row, flat view",
-  },
-  ISO_MILITARY: {
-    objectType: "isometric military structure",
-    visualDesc: "isometric defensive structure like guard tower, fortress wall section, or military barracks, sturdy imposing defensive appearance",
-    composition: "single military structure, isometric projection, defensive features clear, solid fortified construction",
-    avoid: "battle scene with soldiers, damaged ruins, multiple towers forming wall, flat view, perspective 3D",
-  },
-  ISO_PRODUCTION: {
-    objectType: "isometric production building",
-    visualDesc: "isometric industrial or production building like windmill, farm building, mine entrance, or craftsman workshop with functional features",
-    composition: "single production building, isometric projection consistent, working features visible like wheels or smokestacks, functional appearance",
-    avoid: "workers or farmers, production animation effects, multiple buildings complex, flat view, landscape scene",
-  },
-  ISO_SPECIAL: {
-    objectType: "isometric special landmark building",
-    visualDesc: "isometric unique landmark building like grand temple, victory monument, or wonder structure with distinctive impressive architecture",
-    composition: "single special building, isometric view consistent, landmark quality design, decorative impressive details",
-    avoid: "common house design, multiple buildings, interior view, flat view, generic city building",
-  },
-  ISO_VEGETATION: {
-    objectType: "isometric vegetation",
-    visualDesc: "isometric tree or plant cluster viewed from 2.5D strategy game angle, natural rounded organic shapes",
-    composition: "single vegetation element, isometric projection, complete plant visible, appropriate scale for tile placement",
-    avoid: "forest scene with many plants, flat top-down view, multiple different plants scattered, wilted dead, abstract shapes",
-  },
-  ISO_DECORATIONS: {
-    objectType: "isometric decoration prop",
-    visualDesc: "small isometric decoration object like stone well, park bench, hero statue, or street lamp, detail prop for game world beautification",
-    composition: "single decoration prop, isometric view, small scale appropriate for decoration, detailed and complete",
-    avoid: "large building scale, multiple decorations clustered, flat view, oversized prop",
-  },
-  ISO_TILES: {
-    objectType: "isometric ground tile",
-    visualDesc: "isometric diamond-shaped ground tile, seamless edges that connect with other tiles, surface texture like grass, dirt, stone, or water",
-    composition: "single isometric tile, diamond shape clearly defined, seamlessly tileable edges, consistent lighting from top-left",
-    avoid: "square tile shape, objects or characters on tile, non-tileable mismatched edges, perspective view instead of isometric",
-  },
+// --------------------------------------------------
+// PROMPT CONFIGS - WEAPONS
+// --------------------------------------------------
+export const WEAPONS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
+  SWORDS: makeConfig(
+    "one single sword weapon",
+    "long metal blade, handle grip, crossguard or tsuba, pommel, sharp cutting edge",
+    "single isolated sword, full weapon visible from tip to pommel, centered, no sheath unless requested",
+    "multiple swords, weapon set, sword collection, broken blade, hand holding it, sword in stone, battle scene, scabbard unless requested"
+  ),
+
+  AXES_HAMMERS: makeConfig(
+    "one single melee weapon, either axe or hammer based on user description",
+    "heavy weapon head on sturdy handle, axe blade or hammer head, reinforced striking design",
+    "single isolated weapon shown clearly, full head and handle visible, centered game item presentation",
+    "multiple weapons, weapon rack, collection, hand holding it, blacksmith scene, broken handle, mixed weapon set"
+  ),
+
+  POLEARMS: makeConfig(
+    "one single polearm weapon",
+    "long shaft weapon with spearhead, halberd blade, glaive edge, or pointed tip",
+    "single isolated polearm, full length visible from tip to butt end, readable centered presentation",
+    "multiple spears, group of weapons, soldier holding it, battle scene, broken shaft, head without shaft"
+  ),
+
+  BOWS: makeConfig(
+    "one single bow weapon",
+    "curved limbs, bowstring, wooden or composite construction",
+    "single isolated bow, full curve and string visible, no arrow nocked unless requested",
+    "multiple bows, quiver, archer, drawn bow, firing scene, bow set"
+  ),
+
+  STAFFS_WANDS: makeConfig(
+    "one single magical staff or wand",
+    "magic channeling focus, wood or metal shaft, crystal or orb or carved magical headpiece",
+    "single isolated magical focus item, fully visible, centered, clear magical identity",
+    "multiple staffs, wizard holding it, walking stick without magical identity, spell scene, broken staff"
+  ),
+
+  FIREARMS: makeConfig(
+    "one single firearm weapon",
+    "barrel, grip, trigger mechanism, compact or long-ranged gun silhouette, game-ready readable weapon design",
+    "single isolated firearm shown clearly from readable angle, full weapon visible, centered",
+    "multiple guns, ammo spread, hand holding it, firing scene, muzzle flash, holster, weapon wall"
+  ),
+
+  THROWING: makeConfig(
+    "one single throwing weapon",
+    "throwing knife, shuriken, kunai, dart, or similar compact throwable weapon",
+    "single isolated throwing weapon, full silhouette visible, centered, readable as one item",
+    "multiple shurikens, volley of weapons, hand throwing it, target impact, motion blur scene"
+  ),
 };
 
-// ===========================================
-// TILESETS CATEGORY PROMPT CONFIGS
-// ===========================================
-export const TILESETS_PROMPT_CONFIG: Record<string, SubcategoryPromptConfig> = {
-  GROUND: {
-    objectType: "ground tile texture",
-    visualDesc: "seamless floor or ground texture like grass field, dirt path, stone floor, sand beach, or wood planks",
-    composition: "single square tile, seamlessly tileable in all directions, edges match opposite edges perfectly",
-    avoid: "scene showing ground area, character standing on it, objects placed on ground, non-tileable obvious edges",
-  },
-  WALLS: {
-    objectType: "wall tile texture",
-    visualDesc: "seamless vertical wall texture like brick wall, stone blocks, wood panels, or dungeon wall surface",
-    composition: "single square tile, seamlessly tileable, suitable for vertical wall surface, consistent pattern",
-    avoid: "room with walls scene, doorway or window in wall, character against wall, non-tileable pattern breaks",
-  },
-  PLATFORMS: {
-    objectType: "platform tile",
-    visualDesc: "platformer game surface piece like grass platform edge, stone ledge block, or floating island chunk",
-    composition: "single platform tile piece, clear top walkable surface, edges defined for platformer use",
-    avoid: "full level layout overview, character standing on platform, multiple platforms scene, background scenery",
-  },
-  DECORATIVE: {
-    objectType: "decorative tile overlay",
-    visualDesc: "overlay decoration texture like crack pattern, moss growth patch, blood splatter stain, or carpet pattern",
-    composition: "single decorative tile, transparent background for overlay use on top of base tiles",
-    avoid: "full decorated scene, base tile included underneath, character, multiple overlay types combined",
-  },
+// --------------------------------------------------
+// PROMPT CONFIGS - ARMOR
+// --------------------------------------------------
+export const ARMOR_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
+  HELMETS: makeConfig(
+    "isolated helmet equipment icon",
+    "empty wearable helmet, protective headgear, inventory loot style, no person inside",
+    "single empty helmet presented as inventory item, hollow interior implied, front-readable",
+    "head inside helmet, face, eyes, neck, person wearing it, mannequin, body parts, horns unless requested, multiple helmets"
+  ),
+
+  CHEST_ARMOR: makeConfig(
+    "isolated chest armor equipment icon",
+    "empty breastplate or chest piece, standalone armor item, inventory loot presentation",
+    "single empty chest armor displayed as equipment icon, no torso or body inside",
+    "person wearing armor, torso inside, arms attached, mannequin body, skin visible, full character, multiple armors"
+  ),
+
+  SHIELDS: makeConfig(
+    "isolated shield equipment icon",
+    "single standalone shield, defensive gear, clear face design, usable game equipment item",
+    "single shield fully visible from readable angle, centered, no hand or arm",
+    "hand holding shield, arm attached, warrior using shield, multiple shields, shield wall, battle scene"
+  ),
+
+  GLOVES: makeConfig(
+    "isolated gloves equipment icon",
+    "pair of empty gloves or gauntlets, standalone wearable item, inventory presentation",
+    "single pair of gloves shown as one equipment item, empty inside, readable and centered",
+    "hands inside gloves, arms attached, skin, worn on person, mannequin hands, multiple glove pairs"
+  ),
+
+  BOOTS: makeConfig(
+    "isolated boots equipment icon",
+    "pair of empty boots, standalone wearable footwear item, inventory presentation",
+    "single pair of boots shown as one equipment item, empty inside, readable and centered",
+    "legs inside boots, feet visible, worn on person, mannequin legs, skin, multiple pairs"
+  ),
+
+  ACCESSORIES: makeConfig(
+    "isolated accessory equipment icon",
+    "single wearable accessory item such as ring, amulet, belt, cape clasp, bracelet, charm",
+    "single standalone accessory item, centered inventory style presentation, not worn on a body",
+    "person wearing item, neck with amulet, finger with ring, full outfit, character, accessory set"
+  ),
 };
 
-// ===========================================
-// UI ELEMENTS CATEGORY PROMPT CONFIGS
-// ===========================================
-// MAJOR UPDATE v3.0: Added ITEM_ICONS for inventory item icons
-// Renamed INVENTORY to SLOTS_GRID for empty UI grids
-export const UI_ELEMENTS_PROMPT_CONFIG: Record<string, SubcategoryPromptConfig> = {
-  // !!! MOST IMPORTANT - Item icons for inventory !!!
-  ITEM_ICONS: {
-    objectType: "inventory item icon, single game item rendered as a bold square icon",
-    visualDesc: "one clearly recognizable game item as an icon — simplified, bold outlines, high contrast, RPG loot icon style. The item is the full subject, not a scene. Examples: coin stack, potion bottle, sword silhouette, gem",
-    composition: "single icon, square format, item fills 80% of frame, centered on transparent background, flat iconic representation, readable at 32x32 pixels, no background elements, no frame border, no scene",
-    avoid: "multiple items, inventory grid or slots, UI frame around it, realistic photo style, tiny item in corner, cluttered composition, full scene, grid layout, slot borders, character holding item",
-  },
-  SKILL_ICONS: {
-    objectType: "active skill icon, ability symbol for a skill bar",
-    visualDesc: "one bold symbolic icon representing an active game ability — shown as a clean centered symbol or stylized element. Like a flame for fire spell, a sword arc for slash attack, a green cross for heal, a lightning bolt for shock. Flat symbolic icon, NOT a scene, NOT a character casting",
-    composition: "single icon, square format, symbol fills 80% of frame, centered on transparent background, bold readable at 32x32 pixels, flat 2D iconic style, high contrast, no background, no character, no scene",
-    avoid: "character casting the spell, hand or arm visible, cooldown overlay timer, tooltip text, realistic spell scene, multiple icons, icon sheet, skill bar with all abilities, background scene, atmospheric lighting, 3D depth",
-  },
-  STATUS_ICONS: {
-    objectType: "status effect icon, buff or debuff indicator badge for game UI",
-    visualDesc: "one small symbolic icon representing a game status condition — shown as a clean flat symbol. Poison = skull or green droplet, Burn = flame, Freeze = snowflake or ice crystal, Stun = stars or lightning, Bleed = blood droplet, Curse = dark rune, Shield buff = shield symbol. Bold flat symbol NOT a scene or illustration",
-    composition: "single icon, square format, symbol fills 80% of frame, centered on transparent background, flat 2D symbolic badge, highly readable at 16x16 pixels, high contrast, minimal detail, clean silhouette, no background, no character, no scene",
-    avoid: "character affected by the status, spell effect or particle cloud scene, potion bottle or item, creature, atmospheric illustration, realistic rendering, 3D depth shading, multiple symbols, icon sheet, character casting or receiving the effect, landscape or environment",
-  },
-  ICONS_UI: {
-    objectType: "UI navigation icon, interface symbol",
-    visualDesc: "one clean interface icon — like a gear for settings, magnifier for search, map pin for location, shield for inventory, envelope for mail. Simple flat vector-like symbol, not an illustration",
-    composition: "single icon, square format, symbol fills 80% of frame, centered on transparent background, flat monochromatic or two-tone symbol, clean readable silhouette at 16x16 pixels, no background, no text, no frame",
-    avoid: "multiple icons set, icon placed in interface context with surrounding UI, text label attached, full HUD layout, realistic illustration, decorative borders, 3D shading, scene",
-  },
-  BUTTONS: {
-    objectType: "UI button element",
-    visualDesc: "clickable game button with clear visual states, rounded or rectangular shape, suitable for game interface",
-    composition: "single button centered, readable at small size, clear clickable interactive appearance",
-    avoid: "full menu screen, text on button (keep empty for user to add text), cursor clicking animation",
-  },
-  BARS: {
-    objectType: "UI progress bar element",
-    visualDesc: "progress bar like health bar, mana bar, experience bar, stamina bar, or loading bar with frame and fill",
-    composition: "single bar element, horizontal rectangle, showing both empty frame and filled portion example",
-    avoid: "full HUD layout, character portrait attached, screen corner placement, multiple different bars",
-  },
-  FRAMES: {
-    objectType: "UI frame border",
-    visualDesc: "decorative frame or panel border for menus, dialogs, or windows - just the border/frame element itself",
-    composition: "single frame border, can be 9-slice compatible for scaling, ornate corners and edge decoration",
-    avoid: "content inside the frame, full menu with buttons, multiple frames stacked, text inside",
-  },
-  PANELS: {
-    objectType: "UI panel with internal layout",
-    visualDesc: "game panel or window containing visible internal structure - may include grid of slots, sections, or organized areas",
-    composition: "single panel with visible internal organization, if slots are mentioned show them as distinct bordered cells arranged in a grid pattern",
-    avoid: "items filling the slots (keep slots empty), character equipment on body, just a plain frame without internal structure",
-  },
-  // Renamed from INVENTORY - this is for empty slot grids/UI elements only
-  SLOTS_GRID: {
-    objectType: "inventory slot grid UI element",
-    visualDesc: "empty inventory UI element - either single item slot OR grid of multiple empty slots arranged in rows and columns, each slot is a distinct bordered square cell",
-    composition: "slots shown as clearly bordered empty squares, if multiple slots requested arrange them in organized grid pattern (e.g., 2x2 for 4 slots, 3x3 for 9 slots)",
-    avoid: "items inside slots (keep empty), character equipment screen with body, scattered unorganized slots, actual item icons",
-  },
+// --------------------------------------------------
+// PROMPT CONFIGS - CONSUMABLES
+// --------------------------------------------------
+export const CONSUMABLES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
+  POTIONS: makeConfig(
+    "single potion bottle",
+    "glass flask or bottle with magical liquid, cork or cap, alchemy-style usable item",
+    "single upright potion bottle, full bottle visible, clear liquid and container shape",
+    "multiple potions, potion shelf, hand holding it, spilled liquid, potion shop scene, empty bottle"
+  ),
+
+  FOOD: makeConfig(
+    "single food item",
+    "game consumable food such as bread, meat, fruit, cheese, stew bowl or ration item depending on request",
+    "single isolated food item, centered, readable as one pickup or consumable",
+    "banquet table, multiple food items, person eating, restaurant scene, rotten food unless requested"
+  ),
+
+  SCROLLS: makeConfig(
+    "single magic or quest scroll",
+    "rolled parchment scroll, ribbon or wax seal, arcane markings or mystical script if appropriate",
+    "single isolated scroll, rolled or slightly unrolled, fully visible, centered",
+    "stack of scrolls, open book, library scene, torn burnt paper unless requested"
+  ),
 };
 
-// ===========================================
-// EFFECTS CATEGORY PROMPT CONFIGS
-// ===========================================
-export const EFFECTS_PROMPT_CONFIG: Record<string, SubcategoryPromptConfig> = {
-  COMBAT_EFFECTS: {
-    objectType: "combat VFX sprite",
-    visualDesc: "combat visual effect like sword slash arc, hit impact burst, damage splatter, or punch impact effect",
-    composition: "single effect frame, transparent background, dynamic energy and motion visible in the effect",
-    avoid: "character performing the action, multiple effects overlapping, animation sequence sprite sheet, weapon shown separately",
-  },
-  MAGIC_EFFECTS: {
-    objectType: "magic VFX sprite",
-    visualDesc: "magical visual effect like spell cast burst, healing aura glow, buff sparkle effect, or magic circle formation",
-    composition: "single magic effect, transparent background, glowing magical energy clearly visible",
-    avoid: "wizard or mage casting, spell hitting target enemy, multiple spells combined, wand or staff shown",
-  },
-  ELEMENTAL: {
-    objectType: "elemental effect sprite",
-    visualDesc: "elemental VFX like fire burst flames, ice crystal shards, lightning bolt strike, or water splash wave",
-    composition: "single elemental effect, transparent background, element type clearly identifiable",
-    avoid: "elemental creature (use Creatures category), environment damage, multiple elements mixed together, character",
-  },
-  AMBIENT: {
-    objectType: "ambient particle effect",
-    visualDesc: "ambient effect like magical sparkle, floating dust mote, smoke puff wisp, rain drop, or snow flake particle",
-    composition: "single particle or small cluster of same particle type, transparent background for overlay use",
-    avoid: "weather system full scene, smokey room environment, dusty cave, multiple different effect types combined",
-  },
+// --------------------------------------------------
+// PROMPT CONFIGS - RESOURCES
+// --------------------------------------------------
+export const RESOURCES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
+  GEMS: makeConfig(
+    "single gemstone resource",
+    "cut gem crystal with clear facets, strong internal shine, readable game material",
+    "single centered gem, full crystal visible, not mounted in jewelry",
+    "pile of gems, ring, necklace, mine scene, multiple gemstones, uncut ore unless requested"
+  ),
+
+  ORES: makeConfig(
+    "single ore resource chunk",
+    "rough ore rock with embedded mineral veins or valuable material",
+    "single rough ore chunk, centered, readable natural silhouette",
+    "multiple ore chunks, ingot, refined metal bar, mining scene, rock pile"
+  ),
+
+  WOOD_STONE: makeConfig(
+    "single raw material resource",
+    "natural wood log, timber chunk, stone block, rock piece, or similar raw crafting material depending on request",
+    "single isolated material piece, centered, readable natural texture",
+    "multiple logs, forest scene, quarry scene, lumber stack, wall made of stone"
+  ),
+
+  PLANTS: makeConfig(
+    "single herb or plant resource",
+    "harvestable plant, herb, flower, mushroom, root or magical flora item",
+    "single isolated plant resource, centered, roots or stem visible when useful",
+    "garden scene, potted plant, bouquet, multiple species mixed together, landscape"
+  ),
+
+  MONSTER_PARTS: makeConfig(
+    "single monster drop resource",
+    "one creature-derived crafting component such as fang, claw, scale, horn fragment, feather, shell or eye depending on request",
+    "single isolated monster part, centered, readable as one loot drop item",
+    "full monster, gore scene, pile of body parts, blood pool, hunting scene, complete skeleton"
+  ),
+
+  MAGIC_MATERIALS: makeConfig(
+    "single magical crafting material",
+    "mana crystal, soul shard, glowing orb, enchanted dust cluster, magical essence item",
+    "single isolated magical material item, centered, clearly magical and readable",
+    "wizard casting scene, container full of materials, multiple items scattered, spell explosion"
+  ),
 };
 
-// ===========================================
-// PROJECTILES CATEGORY PROMPT CONFIGS
-// ===========================================
-export const PROJECTILES_PROMPT_CONFIG: Record<string, SubcategoryPromptConfig> = {
-  ARROWS: {
-    objectType: "arrow projectile",
-    visualDesc: "flying arrow with pointed arrowhead, straight shaft, and fletching feathers at the end",
-    composition: "single arrow in horizontal flight pose, full arrow visible from tip to fletching, motion direction clear",
-    avoid: "multiple arrows volley, quiver container, bow weapon, archer character, arrow stuck in target",
-  },
-  BULLETS: {
-    objectType: "bullet projectile",
-    visualDesc: "ammunition like metal bullet, heavy cannonball, explosive rocket, or energy shot blast",
-    composition: "single projectile, motion direction clear, full projectile visible, possibly with speed trail",
-    avoid: "multiple bullets spray, gun firing with muzzle flash, impact explosion, shell casing, ammo box container",
-  },
-  MAGIC_PROJECTILES: {
-    objectType: "magic projectile spell",
-    visualDesc: "magical projectile like blazing fireball, sharp ice shard, dark shadow bolt, or glowing arcane missile",
-    composition: "single magic projectile, glowing magical energy, motion direction clear, trailing magic effect",
-    avoid: "wizard casting the spell, spell impact on target, multiple projectiles barrage, spell effect on enemy",
-  },
-  THROWN: {
-    objectType: "thrown projectile item",
-    visualDesc: "thrown weapon in mid-flight like spinning throwing knife, ticking bomb, hurled javelin, or bouncing grenade",
-    composition: "single thrown object, flight pose with motion implied through angle and trail, mid-air",
-    avoid: "multiple thrown items volley, thrower character, impact moment explosion, target being hit",
-  },
+// --------------------------------------------------
+// PROMPT CONFIGS - CHARACTERS
+// --------------------------------------------------
+export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
+  HEROES: makeConfig(
+    "single hero character",
+    "playable hero-type character with equipment only if explicitly requested, archetype must match user description exactly",
+    "single full body character, isolated, readable silhouette, no extra gear beyond the request",
+    "multiple characters, party scene, portrait close-up only, background environment, wrong class gear, extra armor or crown unless requested",
+    {
+      viewOverrides: {
+        FRONT: "single full body hero character facing directly forward, readable symmetrical front-facing sprite or concept presentation",
+        TOP_DOWN: "single top-down hero character sprite, seen from directly above, readable for top-down gameplay",
+      },
+    }
+  ),
+
+  ENEMIES: makeConfig(
+    "single enemy character",
+    "hostile enemy or humanoid foe, threatening silhouette, role and design based on request",
+    "single full body enemy character, isolated, clear readable combat-ready posture",
+    "enemy group, hero fighting it, background scene, corpse, defeated pose, cropped figure",
+    {
+      viewOverrides: {
+        FRONT: "single full body enemy facing forward, readable silhouette",
+        TOP_DOWN: "single top-down enemy sprite, seen from directly above, readable for top-down gameplay",
+      },
+    }
+  ),
+
+  NPCS: makeConfig(
+    "single NPC character",
+    "non-playable character such as merchant, villager, guard, blacksmith, priest, scholar or quest giver based on request",
+    "single full body NPC, isolated, neutral readable pose, no scene clutter",
+    "multiple NPCs, town crowd, shop background, dialogue window, portrait only",
+    {
+      viewOverrides: {
+        FRONT: "single full body NPC facing forward, readable and neutral front-facing presentation",
+        TOP_DOWN: "single top-down NPC sprite, seen from directly above, readable for top-down gameplay",
+      },
+    }
+  ),
+
+  BOSSES: makeConfig(
+    "single boss character",
+    "large unique boss enemy with strong silhouette and memorable presence",
+    "single full body boss, isolated, complete form visible, dominant readable design",
+    "minions, arena scene, boss UI, health bars, defeated boss, multiple bosses",
+    {
+      viewOverrides: {
+        FRONT: "single full body boss facing forward, readable imposing front-facing presentation",
+        TOP_DOWN: "single top-down boss sprite, seen from directly above, readable for top-down gameplay",
+      },
+    }
+  ),
 };
 
-// ===========================================
+// --------------------------------------------------
+// PROMPT CONFIGS - CREATURES
+// --------------------------------------------------
+export const CREATURES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
+  ANIMALS: makeConfig(
+    "single animal creature",
+    "one animal based on request, realistic or stylized game creature design",
+    "single full body animal, isolated, readable silhouette, complete body visible",
+    "animal herd, rider, landscape scene, dead animal, cropped body"
+  ),
+
+  MYTHICAL: makeConfig(
+    "single mythical creature",
+    "legendary creature such as dragon, griffin, phoenix, unicorn, hydra or other mythic beast depending on request",
+    "single full body mythical creature, isolated, readable shape and defining anatomy visible",
+    "multiple creatures, rider on creature, battle scene, hatchling only unless requested, dead version"
+  ),
+
+  COMPANIONS: makeConfig(
+    "single companion creature",
+    "friendly pet or companion creature suitable for game sidekick or summon role",
+    "single full body companion, isolated, readable cute or loyal silhouette",
+    "multiple pets, owner with companion, pet shop scene, sad injured animal, crowded scene"
+  ),
+
+  ELEMENTALS: makeConfig(
+    "single elemental creature",
+    "creature made from a dominant element such as fire, ice, water, stone, lightning, shadow or nature depending on request",
+    "single full form elemental, isolated, clearly readable as one element-based being",
+    "wizard summoning it, mixed elements without request, environment scene, multiple elementals"
+  ),
+};
+
+// --------------------------------------------------
+// PROMPT CONFIGS - UI ELEMENTS
+// --------------------------------------------------
+export const UI_ELEMENTS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
+  ITEM_ICONS: makeConfig(
+    "single inventory item icon",
+    "one bold item icon, simplified readable shape, icon-first design, square-friendly composition",
+    "single centered icon, item fills most of frame, transparent background, readable at small size",
+    "inventory grid, multiple icons, full scene, tiny object in corner, character holding item, UI sheet"
+  ),
+
+  SKILL_ICONS: makeConfig(
+    "single skill icon",
+    "one symbolic ability icon, readable as a clean game skill symbol, not a scene",
+    "single centered icon, symbol fills most of frame, transparent background, small-size readability",
+    "character casting spell, multiple icons, full combat scene, spellbook page, UI bar strip"
+  ),
+
+  STATUS_ICONS: makeConfig(
+    "single status icon",
+    "one compact symbolic buff or debuff icon, very readable, flat badge-like design",
+    "single centered icon, clear simple status symbol, transparent background, tiny-size readability",
+    "character affected by status, multiple icons, potion bottle unless requested, full scene, tooltip"
+  ),
+
+  UI_ICONS: makeConfig(
+    "single UI navigation icon",
+    "one clean interface symbol such as gear, bag, map pin, sword, shield, chat, mail, home",
+    "single centered interface icon, transparent background, very readable at small size",
+    "icon set, full menu, text label, realistic illustration, screenshot UI"
+  ),
+
+  BUTTONS: makeConfig(
+    "single UI button element",
+    "clean game button shape, clickable appearance, empty textless button unless user requests label",
+    "single centered button, readable shape, no full menu around it",
+    "full menu screen, cursor click scene, multiple buttons panel, text unless requested"
+  ),
+
+  BARS: makeConfig(
+    "single UI bar element",
+    "single progress bar such as health, mana, stamina, xp or loading bar",
+    "single horizontal UI bar, centered, readable frame and fill",
+    "full HUD, multiple bars at once, portrait attached, full screen interface"
+  ),
+
+  FRAMES: makeConfig(
+    "single UI frame element",
+    "decorative border or scalable UI frame for menus and windows",
+    "single centered frame only, border visible, interior empty",
+    "menu content inside, stacked windows, text, buttons, full interface"
+  ),
+
+  PANELS: makeConfig(
+    "single UI panel element",
+    "game UI panel or window with internal organization, sections or layout structure",
+    "single centered panel, readable internal structure, empty content areas",
+    "items filling the panel, full interface screen, character equipment screen, multiple windows"
+  ),
+
+  SLOTS_GRID: makeConfig(
+    "empty inventory slot grid",
+    "one empty slot or organized empty grid of square item slots, no items inside",
+    "empty bordered slot layout, centered, clean grid structure, readable spacing",
+    "items inside slots, full inventory screen, character paperdoll equipment screen, messy scattered slots"
+  ),
+};
+
+// --------------------------------------------------
+// PROMPT CONFIGS - ENVIRONMENT
+// --------------------------------------------------
+export const ENVIRONMENT_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
+  TREES_PLANTS: makeConfig(
+    "single vegetation prop",
+    "one placeable environment plant asset such as tree, bush, shrub, flower patch, cactus or fungus depending on request",
+    "single isolated vegetation asset, complete form visible, grounded readable silhouette",
+    "forest scene, landscape, multiple species mixed together, character next to tree"
+  ),
+
+  ROCKS_TERRAIN: makeConfig(
+    "single terrain prop",
+    "one environment terrain asset such as rock, boulder, crystal cluster, stump, mound, cliff fragment or ground feature",
+    "single isolated terrain prop, readable natural shape, centered and complete",
+    "mountain landscape, quarry scene, multiple random rocks, character climbing it"
+  ),
+
+  BUILDINGS: makeConfig(
+    "single building prop",
+    "one placeable building asset such as house, hut, tower, cabin, forge, temple, shop or ruin depending on request",
+    "single isolated building exterior, complete structure visible, centered, no surrounding town",
+    "city block, interior view, multiple buildings, street scene, characters around building",
+    {
+      viewOverrides: {
+        TOP_DOWN: "single building viewed from directly above, roof-dominant top-down game asset, not isometric",
+        FRONT: "single building shown from straight front view, readable facade and full structure",
+      },
+    }
+  ),
+
+  PROPS: makeConfig(
+    "single environment prop",
+    "one placeable prop such as barrel, crate, chair, table, signpost, torch, altar, campfire, lamp or similar object",
+    "single isolated prop, complete object visible, centered game-ready presentation",
+    "room scene, prop collection, character using it, storefront display"
+  ),
+
+  DUNGEON: makeConfig(
+    "single dungeon prop",
+    "one dungeon-related gameplay asset such as trap, lever, gate, altar, cage, brazier, obelisk or ritual object",
+    "single isolated dungeon prop, centered, functional gameplay-readability prioritized",
+    "whole dungeon room, multiple traps, character triggering it, labyrinth scene"
+  ),
+};
+
+// --------------------------------------------------
+// PROMPT CONFIGS - QUEST ITEMS / LOOT
+// --------------------------------------------------
+export const QUEST_ITEMS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
+  KEYS: makeConfig(
+    "single key item",
+    "one special key with distinct silhouette and decorative design, fantasy or game loot style",
+    "single isolated key, fully visible from bow to teeth, centered",
+    "keyring with many keys, lock and door scene, hand holding key, plain modern house key unless requested"
+  ),
+
+  ARTIFACTS: makeConfig(
+    "single artifact item",
+    "one unique relic or magical artifact, powerful and special-looking, design driven by request",
+    "single isolated artifact, centered, complete item visible, mysterious but readable",
+    "artifact collection, museum scene, hand holding it, shattered fragments unless requested"
+  ),
+
+  CONTAINERS: makeConfig(
+    "single loot container item",
+    "one container such as chest, box, satchel, urn, crate or magical vessel depending on request",
+    "single isolated closed container, centered, complete silhouette visible",
+    "multiple containers, open chest with loot explosion, storage room scene, hand opening it"
+  ),
+
+  COLLECTIBLES: makeConfig(
+    "single collectible item",
+    "one collectible such as coin, token, medal, badge, emblem, trophy or unique pickup item",
+    "single isolated collectible, centered, readable and valuable-looking",
+    "pile of coins, display shelf, hand holding item, multiple collectibles"
+  ),
+};
+
+// --------------------------------------------------
 // COMBINED CATEGORY CONFIGS
-// ===========================================
-export const CATEGORY_PROMPT_CONFIGS: Record<string, Record<string, SubcategoryPromptConfig>> = {
+// --------------------------------------------------
+export const CATEGORY_PROMPT_CONFIGS: Record<AssetCategory, Record<string, ExtendedSubcategoryPromptConfig>> = {
   WEAPONS: WEAPONS_PROMPT_CONFIG,
   ARMOR: ARMOR_PROMPT_CONFIG,
   CONSUMABLES: CONSUMABLES_PROMPT_CONFIG,
   RESOURCES: RESOURCES_PROMPT_CONFIG,
-  QUEST_ITEMS: QUEST_ITEMS_PROMPT_CONFIG,
   CHARACTERS: CHARACTERS_PROMPT_CONFIG,
   CREATURES: CREATURES_PROMPT_CONFIG,
-  ENVIRONMENT: ENVIRONMENT_PROMPT_CONFIG,
-  ISOMETRIC: ISOMETRIC_PROMPT_CONFIG,
-  TILESETS: TILESETS_PROMPT_CONFIG,
   UI_ELEMENTS: UI_ELEMENTS_PROMPT_CONFIG,
-  EFFECTS: EFFECTS_PROMPT_CONFIG,
-  PROJECTILES: PROJECTILES_PROMPT_CONFIG,
+  ENVIRONMENT: ENVIRONMENT_PROMPT_CONFIG,
+  QUEST_ITEMS: QUEST_ITEMS_PROMPT_CONFIG,
 };
 
-// ===========================================
-// CATEGORY BASE DESCRIPTIONS
-// ===========================================
-export const CATEGORY_BASE_DESCRIPTIONS: Record<string, string> = {
-  WEAPONS: "game weapon item, combat equipment sprite, isolated weapon asset",
-  ARMOR: "protective armor equipment, defensive gear sprite, isolated armor piece",
-  CONSUMABLES: "consumable game item, usable pickup sprite, isolated consumable",
-  RESOURCES: "crafting resource material, gatherable item sprite, isolated resource",
-  QUEST_ITEMS: "quest item artifact, special collectible sprite, isolated quest object",
-  CHARACTERS: "game character sprite, full body figure, isolated character on transparent background",
-  CREATURES: "creature beast sprite, full body monster or animal, isolated creature",
-  ENVIRONMENT: "environment prop sprite, world decoration object, isolated placeable prop",
-  ISOMETRIC: "isometric 2.5D game asset, strategy game sprite, dimetric projection view, isolated isometric object",
-  TILESETS: "tileable game texture, seamless pattern tile, isolated tileable texture",
-  UI_ELEMENTS: "game UI element, interface graphic sprite, isolated UI component",
-  EFFECTS: "visual effect sprite, VFX game element, isolated effect with transparency",
-  PROJECTILES: "projectile sprite, flying ammunition object, isolated projectile with motion",
+// --------------------------------------------------
+// BASE CATEGORY DESCRIPTIONS
+// --------------------------------------------------
+export const CATEGORY_BASE_DESCRIPTIONS: Record<AssetCategory, string> = {
+  WEAPONS: "game weapon item, isolated combat asset, readable equipment design",
+  ARMOR: "game armor equipment, isolated wearable item icon, loot-style presentation",
+  CONSUMABLES: "game consumable item, isolated pickup asset, usable inventory object",
+  RESOURCES: "game crafting resource, isolated material drop, readable inventory item",
+  CHARACTERS: "game character asset, isolated full-body figure, gameplay-readable silhouette",
+  CREATURES: "game creature asset, isolated full-body monster or animal, readable silhouette",
+  UI_ELEMENTS: "game UI graphic element, isolated interface asset, readable small-size design",
+  ENVIRONMENT: "game environment prop, isolated placeable world object, clean asset presentation",
+  QUEST_ITEMS: "game loot or quest item, isolated important pickup object, readable collectible design",
 };
+
+// --------------------------------------------------
+// RESOLVERS
+// --------------------------------------------------
+export function resolveCategoryKey(category: string): AssetCategory | undefined {
+  const normalized = normalizeKey(category);
+  return CATEGORY_ALIASES[normalized] ?? (normalized as AssetCategory);
+}
+
+export function resolveSubcategoryKey(subcategory: string): string {
+  const normalized = normalizeKey(subcategory);
+  return SUBCATEGORY_ALIASES[normalized] ?? normalized;
+}
+
+export function resolveStyleKey(style?: string): AssetStyle {
+  const normalized = normalizeKey(style) || "PIXEL_16";
+  const map: Record<string, AssetStyle> = {
+    // Canonical names
+    PIXEL_16: "PIXEL_16",
+    PIXEL16: "PIXEL_16",
+    PIXEL_HD: "PIXEL_HD",
+    PIXELHD: "PIXEL_HD",
+    HAND_PAINTED: "HAND_PAINTED",
+    HANDPAINTED: "HAND_PAINTED",
+    ANIME: "ANIME",
+    DARK_FANTASY: "DARK_FANTASY",
+    DARKFANTASY: "DARK_FANTASY",
+    CARTOON: "CARTOON",
+    VECTOR: "VECTOR",
+    REALISTIC: "REALISTIC",
+    // Aliases from STYLES_2D_FULL (src/config/styles/styles-2d.ts)
+    PIXEL_ART_16: "PIXEL_16",
+    PIXELART16: "PIXEL_16",
+    PIXEL_ART_32: "PIXEL_HD",
+    PIXELART32: "PIXEL_HD",
+    VECTOR_CLEAN: "VECTOR",
+    VECTORCLEAN: "VECTOR",
+    ANIME_GAME: "ANIME",
+    ANIMEGAME: "ANIME",
+    CARTOON_WESTERN: "CARTOON",
+    CARTOONWESTERN: "CARTOON",
+    DARK_SOULS: "DARK_FANTASY",
+    DARKSOULS: "DARK_FANTASY",
+    CHIBI_CUTE: "CARTOON",
+    CHIBICUTE: "CARTOON",
+    REALISTIC_PAINTED: "REALISTIC",
+    REALISTICPAINTED: "REALISTIC",
+    // Isometric styles map to PIXEL_16 for prompt purposes (iso view handled separately)
+    ISOMETRIC: "PIXEL_16",
+    ISOMETRIC_PIXEL: "PIXEL_16",
+    ISOMETRICPIXEL: "PIXEL_16",
+    ISOMETRIC_CARTOON: "CARTOON",
+    ISOMETRICCARTOON: "CARTOON",
+    // Frontend generate page IDs (lowercase kebab)
+    PIXEL_16_BIT: "PIXEL_16",
+    PIXEL_HD_2: "PIXEL_HD",
+  };
+
+  return map[normalized] ?? "PIXEL_16";
+}
+
+export function resolveViewKey(view?: string): AssetView {
+  const normalized = normalizeKey(view) || "DEFAULT";
+  const map: Record<string, AssetView> = {
+    DEFAULT: "DEFAULT",
+    SIDE_VIEW: "SIDE_VIEW",
+    SIDEVIEW: "SIDE_VIEW",
+    SIDE: "SIDE_VIEW",
+    FRONT: "FRONT",
+    TOP_DOWN: "TOP_DOWN",
+    TOPDOWN: "TOP_DOWN",
+    TOP: "TOP_DOWN",
+  };
+
+  return map[normalized] ?? "DEFAULT";
+}
+
+export function resolveQualityKey(quality?: string): AssetQuality {
+  const normalized = normalizeKey(quality) || "MEDIUM";
+  const map: Record<string, AssetQuality> = {
+    FAST: "FAST",
+    MEDIUM: "MEDIUM",
+    HD: "HD",
+  };
+
+  return map[normalized] ?? "MEDIUM";
+}
+
+export function getPromptConfig(
+  category: string,
+  subcategory: string
+): ExtendedSubcategoryPromptConfig | undefined {
+  const resolvedCategory = resolveCategoryKey(category);
+  if (!resolvedCategory) return undefined;
+
+  const categoryConfig = CATEGORY_PROMPT_CONFIGS[resolvedCategory];
+  if (!categoryConfig) return undefined;
+
+  const resolvedSubcategory = resolveSubcategoryKey(subcategory);
+  return categoryConfig[resolvedSubcategory];
+}
+
+// --------------------------------------------------
+// TOKEN TAG NORMALIZATION
+// --------------------------------------------------
+export function normalizeTagList(values?: string[]): string[] {
+  return (values ?? [])
+    .map((v) => v.trim())
+    .filter(Boolean)
+    .slice(0, 12);
+}
+
+export function buildTagPrompt(
+  label: string,
+  values?: string[]
+): string {
+  const clean = normalizeTagList(values);
+  if (!clean.length) return "";
+  return `${label}: ${clean.join(", ")}`;
+}
+
+// --------------------------------------------------
+// VIEW APPLICATION
+// Order of precedence:
+// 1. subcategory.viewOverrides[view]
+// 2. view.subcategoryOverrides[subcategory]
+// 3. view.categoryOverrides[category]
+// 4. view.positive
+// --------------------------------------------------
+export function getViewPositive(
+  category: AssetCategory,
+  subcategory: string,
+  config: ExtendedSubcategoryPromptConfig,
+  view: AssetView
+): string {
+  const subOverride = config.viewOverrides?.[view];
+  if (subOverride) return subOverride;
+
+  const viewConfig = VIEW_PROMPT_CONFIGS[view];
+  const subcategoryOverride = viewConfig.subcategoryOverrides?.[subcategory];
+  if (subcategoryOverride) return subcategoryOverride;
+
+  const categoryOverride = viewConfig.categoryOverrides?.[category];
+  if (categoryOverride) return categoryOverride;
+
+  return viewConfig.positive;
+}
+
+export function getViewNegative(
+  config: ExtendedSubcategoryPromptConfig,
+  view: AssetView
+): string {
+  return dedupeCsv([
+    VIEW_PROMPT_CONFIGS[view].negative,
+    config.additionalNegativeByView?.[view],
+  ]);
+}
+
+// --------------------------------------------------
+// MAIN PROMPT BUILDER
+// --------------------------------------------------
+export function buildAssetPrompt(input: PromptBuildInput): PromptBuildResult {
+  const resolvedCategory = resolveCategoryKey(input.category);
+  if (!resolvedCategory) {
+    throw new Error(`Unknown category: ${input.category}`);
+  }
+
+  const resolvedSubcategory = resolveSubcategoryKey(input.subcategory);
+  const config = getPromptConfig(resolvedCategory, resolvedSubcategory);
+
+  if (!config) {
+    throw new Error(
+      `Missing prompt config for ${resolvedCategory}.${resolvedSubcategory}`
+    );
+  }
+
+  const resolvedStyle = resolveStyleKey(input.style);
+  const resolvedView = resolveViewKey(input.view);
+  const resolvedQuality = resolveQualityKey(input.quality);
+
+  const categoryBase = CATEGORY_BASE_DESCRIPTIONS[resolvedCategory];
+  const styleConfig = STYLE_PROMPT_CONFIGS[resolvedStyle];
+  const qualityConfig = QUALITY_PROMPT_CONFIGS[resolvedQuality];
+
+  const elementPrompt = buildTagPrompt("elemental theme", input.element);
+  const materialPrompt = buildTagPrompt("materials", input.material);
+  const colorPrompt = buildTagPrompt("colors", input.color);
+  const extraTagsPrompt = normalizeTagList(input.extraTags).join(", ");
+
+  const viewPositive = getViewPositive(
+    resolvedCategory,
+    resolvedSubcategory,
+    config,
+    resolvedView
+  );
+  const viewNegative = getViewNegative(config, resolvedView);
+
+  const fullPrompt = dedupeCsv([
+    GLOBAL_POSITIVE_BASE,
+    categoryBase,
+    config.objectType,
+    config.visualDesc,
+    config.composition,
+    viewPositive,
+    styleConfig.positive,
+    qualityConfig.positive,
+    elementPrompt,
+    materialPrompt,
+    colorPrompt,
+    extraTagsPrompt,
+    input.userPrompt,
+  ]);
+
+  const negativePrompt = dedupeCsv([
+    GLOBAL_NEGATIVE_BASE,
+    config.avoid,
+    viewNegative,
+    styleConfig.negative,
+    qualityConfig.negative,
+  ]);
+
+  return {
+    fullPrompt,
+    negativePrompt,
+    debug: {
+      resolvedCategory,
+      resolvedSubcategory,
+      resolvedStyle,
+      resolvedView,
+      resolvedQuality,
+    },
+  };
+}
+
+// --------------------------------------------------
+// VALIDATION
+// --------------------------------------------------
+export function validatePromptConfigs(): string[] {
+  const errors: string[] = [];
+
+  for (const [category, configMap] of Object.entries(CATEGORY_PROMPT_CONFIGS)) {
+    if (!CATEGORY_BASE_DESCRIPTIONS[category as AssetCategory]) {
+      errors.push(`Missing CATEGORY_BASE_DESCRIPTIONS entry for ${category}`);
+    }
+
+    for (const [subcategory, config] of Object.entries(configMap)) {
+      if (!config.objectType?.trim()) {
+        errors.push(`${category}.${subcategory}: missing objectType`);
+      }
+      if (!config.visualDesc?.trim()) {
+        errors.push(`${category}.${subcategory}: missing visualDesc`);
+      }
+      if (!config.composition?.trim()) {
+        errors.push(`${category}.${subcategory}: missing composition`);
+      }
+      if (!config.avoid?.trim()) {
+        errors.push(`${category}.${subcategory}: missing avoid`);
+      }
+
+      if (config.viewOverrides) {
+        for (const [viewKey, value] of Object.entries(config.viewOverrides)) {
+          if (!value?.trim()) {
+            errors.push(`${category}.${subcategory}: empty view override for ${viewKey}`);
+          }
+        }
+      }
+    }
+  }
+
+  return errors;
+}
+
+// --------------------------------------------------
+// DEV CHECK
+// --------------------------------------------------
+export function assertPromptConfigValidity(): void {
+  const errors = validatePromptConfigs();
+  if (errors.length) {
+    throw new Error(`SPRITELAB prompt config validation failed:\n${errors.join("\n")}`);
+  }
+}

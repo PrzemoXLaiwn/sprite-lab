@@ -32,13 +32,17 @@ export {
   CHARACTERS_PROMPT_CONFIG,
   CREATURES_PROMPT_CONFIG,
   ENVIRONMENT_PROMPT_CONFIG,
-  ISOMETRIC_PROMPT_CONFIG,
-  TILESETS_PROMPT_CONFIG,
   UI_ELEMENTS_PROMPT_CONFIG,
-  EFFECTS_PROMPT_CONFIG,
-  PROJECTILES_PROMPT_CONFIG,
   CATEGORY_PROMPT_CONFIGS,
   CATEGORY_BASE_DESCRIPTIONS,
+  buildAssetPrompt,
+  resolveStyleKey,
+  resolveCategoryKey,
+  resolveSubcategoryKey,
+  resolveViewKey,
+  resolveQualityKey,
+  getPromptConfig,
+  validatePromptConfigs,
 } from "./prompt-configs";
 
 // Re-export types
@@ -56,6 +60,7 @@ export type {
 import { ALL_CATEGORIES } from "./all-categories";
 import { CATEGORY_PROMPT_CONFIGS } from "./prompt-configs";
 import type { CategoryUI, SubcategoryUI, SubcategoryPromptConfig } from "../types";
+import type { AssetCategory } from "./prompt-configs";
 
 /**
  * Get a category by ID
@@ -83,7 +88,7 @@ export function getSubcategoryPromptConfig(
   categoryId: string,
   subcategoryId: string
 ): SubcategoryPromptConfig | null {
-  const categoryConfig = CATEGORY_PROMPT_CONFIGS[categoryId];
+  const categoryConfig = CATEGORY_PROMPT_CONFIGS[categoryId as AssetCategory];
   if (!categoryConfig) return null;
   return categoryConfig[subcategoryId] || null;
 }
