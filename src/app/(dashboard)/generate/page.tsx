@@ -13,7 +13,6 @@ import {
   Check,
   Lock,
   Unlock,
-  Wand2,
   History,
 } from "lucide-react";
 import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
@@ -289,15 +288,10 @@ function GeneratePageInner() {
     <div className="min-h-screen p-3 sm:p-4 md:p-8 max-w-6xl mx-auto">
 
       {/* Page header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center">
-            <Wand2 className="w-5 h-5 text-primary" />
-          </div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Generate Asset</h1>
-        </div>
-        <p className="text-muted-foreground text-sm ml-12">
-          Pick a type, choose a style, describe your asset.
+      <div className="mb-6 sm:mb-10">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Create Game Asset</h1>
+        <p className="text-muted-foreground text-sm mt-1">
+          Choose a category, pick your style, describe what you need.
         </p>
       </div>
 
@@ -306,81 +300,79 @@ function GeneratePageInner() {
         {/* ================================================================
             LEFT COLUMN — Form
         ================================================================ */}
-        <div className="space-y-4">
+        <div className="space-y-6">
 
-          {/* ── 1. Category ────────────────────────────────────────── */}
-          <div className="rounded-xl border border-border bg-card p-4">
-            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">
-              Category
-            </p>
+          {/* ── Step 1: Category ─────────────────────────────────────── */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="flex items-center gap-2.5 mb-4">
+              <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/15 text-primary text-xs font-bold">1</span>
+              <p className="text-sm font-semibold text-foreground">What are you creating?</p>
+            </div>
             <CategorySelector
               selectedCategoryId={selectedCategory.id}
               onSelect={handleCategoryChange}
             />
+            <div className="mt-4">
+              <p className="text-[11px] text-muted-foreground/60 uppercase tracking-wider mb-2">Subcategory</p>
+              <SubcategoryChips
+                subcategories={selectedCategory.subcategories}
+                selectedId={selectedSubcategoryId}
+                onSelect={handleSubcategoryChange}
+              />
+            </div>
           </div>
 
-          {/* ── 2. Subcategory ──────────────────────────────────────── */}
-          <div className="rounded-xl border border-border bg-card p-4">
-            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">
-              Subcategory
-            </p>
-            <SubcategoryChips
-              subcategories={selectedCategory.subcategories}
-              selectedId={selectedSubcategoryId}
-              onSelect={handleSubcategoryChange}
-            />
-          </div>
-
-          {/* ── 3. Style ──────────────────────────────────────────────── */}
-          <div className="rounded-xl border border-border bg-card p-4">
-            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">
-              Style
-            </p>
+          {/* ── Step 2: Style ────────────────────────────────────────── */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="flex items-center gap-2.5 mb-4">
+              <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/15 text-primary text-xs font-bold">2</span>
+              <p className="text-sm font-semibold text-foreground">Choose art style</p>
+            </div>
             <StyleSelector selectedStyleId={styleId} onSelect={setStyleId} />
-          </div>
 
-          {/* ── 4. View + Detail ──────────────────────────────────────── */}
-          <div className="rounded-xl border border-border bg-card p-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <div>
-                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">View</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {VIEW_OPTIONS.map((v) => (
-                    <button
-                      key={v.id}
-                      onClick={() => setView(v.id as ViewId)}
-                      className={`px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all ${view === v.id ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-foreground hover:border-primary/40"}`}
-                    >
-                      {v.label}
-                    </button>
-                  ))}
+            {/* View + Detail — compact row */}
+            <div className="mt-4 pt-4 border-t border-border/50">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-[11px] text-muted-foreground/60 uppercase tracking-wider mb-2">View</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {VIEW_OPTIONS.map((v) => (
+                      <button
+                        key={v.id}
+                        onClick={() => setView(v.id as ViewId)}
+                        className={`px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all ${view === v.id ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-foreground hover:border-primary/40"}`}
+                      >
+                        {v.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <div>
-                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">Detail</p>
-                <div className="flex gap-1.5">
-                  {DETAIL_OPTIONS.map((d) => (
-                    <button
-                      key={d.id}
-                      onClick={() => setDetail(d.id as DetailId)}
-                      className={`flex-1 py-1.5 rounded-lg border text-xs font-medium transition-all ${detail === d.id ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-foreground hover:border-primary/40"}`}
-                      title={d.description}
-                    >
-                      {d.label}
-                    </button>
-                  ))}
+                <div>
+                  <p className="text-[11px] text-muted-foreground/60 uppercase tracking-wider mb-2">Quality</p>
+                  <div className="flex gap-1.5">
+                    {DETAIL_OPTIONS.map((d) => (
+                      <button
+                        key={d.id}
+                        onClick={() => setDetail(d.id as DetailId)}
+                        className={`flex-1 py-1.5 rounded-lg border text-xs font-medium transition-all ${detail === d.id ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-foreground hover:border-primary/40"}`}
+                        title={d.description}
+                      >
+                        {d.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* ── Prompt + Chips + Quality ───────────────────────────────── */}
-          <div className="rounded-xl border border-border bg-card p-4">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
-                Describe your {selectedSub.label.toLowerCase()}
-              </p>
-              {/* Prompt quality indicator */}
+          {/* ── Step 3: Describe ──────────────────────────────────────── */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/15 text-primary text-xs font-bold">3</span>
+                <p className="text-sm font-semibold text-foreground">Describe your {selectedSub.label.toLowerCase()}</p>
+              </div>
               <span className={`text-[10px] font-medium ${promptQuality.color} transition-colors`}>
                 {promptQuality.level !== "empty" ? promptQuality.label : ""}
               </span>
@@ -392,20 +384,19 @@ function GeneratePageInner() {
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder={placeholder}
                 maxLength={200}
-                rows={3}
-                className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-sm resize-none outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/50"
+                rows={4}
+                className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm resize-none outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/15 transition-all placeholder:text-muted-foreground/40"
               />
               {prompt.length > 150 && (
-                <span className="absolute bottom-2.5 right-3 text-[10px] text-muted-foreground">
+                <span className="absolute bottom-3 right-3.5 text-[10px] text-muted-foreground">
                   {prompt.length}/200
                 </span>
               )}
             </div>
 
-            {/* Quality indicator bar (shows when prompt is short/empty) */}
-            {(promptQuality.level === "empty" || promptQuality.level === "short") && prompt.length === 0 && (
-              <p className="text-[11px] text-muted-foreground/50 mt-2">
-                Tip: describe color, material, and style for best results
+            {prompt.length === 0 && (
+              <p className="text-[11px] text-muted-foreground/40 mt-2">
+                Tip: describe color, material, and details for best results
               </p>
             )}
 
@@ -415,7 +406,7 @@ function GeneratePageInner() {
             </div>
 
             {/* Seed row */}
-            <div className="mt-3 flex items-center gap-2">
+            <div className="mt-4 pt-3 border-t border-border/50 flex items-center gap-2">
               <label className="text-xs text-muted-foreground shrink-0 font-medium">Seed:</label>
               <input
                 type="number"
@@ -526,9 +517,14 @@ function GeneratePageInner() {
               )}
 
               {!activeResult && !isGenerating && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-muted-foreground/30">
-                  <Sparkles className="w-14 h-14" />
-                  <p className="text-sm font-medium">Your asset will appear here</p>
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-8">
+                  <div className="w-16 h-16 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center">
+                    <Sparkles className="w-7 h-7 text-muted-foreground/20" />
+                  </div>
+                  <div className="text-center space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground/40">Ready to generate</p>
+                    <p className="text-xs text-muted-foreground/25">Fill in the steps on the left and click Generate</p>
+                  </div>
                 </div>
               )}
             </div>
