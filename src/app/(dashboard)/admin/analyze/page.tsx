@@ -81,14 +81,26 @@ export default function AnalyzeAllPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [totalProcessed, setTotalProcessed] = useState(0);
 
+  // Safe JSON parse helper
+  const safeFetch = async (url: string, opts?: RequestInit) => {
+    const res = await fetch(url, opts);
+    const text = await res.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error(text.slice(0, 200) || `HTTP ${res.status}`);
+    }
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    return data;
+  };
+
   // Step 1: Queue all unanalyzed generations
   const handleQueue = useCallback(async () => {
     setStep("queuing");
     setError(null);
     try {
-      const res = await fetch("/api/admin/analyze-all", { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to queue");
+      const data = await safeFetch("/api/admin/analyze-all", { method: "POST" });
       setQueueResult(data);
       setStep("processing");
     } catch (err) {
@@ -102,19 +114,16 @@ export default function AnalyzeAllPage() {
     setIsProcessing(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/analyze-all/process", {
+      const data: ProcessResult = await safeFetch("/api/admin/analyze-all/process", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ batchSize: 25, runLearning: false }),
       });
-      const data: ProcessResult = await res.json();
-      if (!res.ok) throw new Error((data as unknown as { error: string }).error || "Failed");
       setProcessLog(prev => [...prev, data]);
       setTotalProcessed(prev => prev + data.processed);
 
       // Auto-continue if still pending
       if (data.queue.pending > 0) {
-        // Small delay to avoid hammering
         setTimeout(() => handleProcessBatch(), 2000);
       } else {
         setIsProcessing(false);
@@ -131,9 +140,7 @@ export default function AnalyzeAllPage() {
     setStep("reporting");
     setError(null);
     try {
-      const res = await fetch("/api/admin/analyze-all");
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed");
+      const data = await safeFetch("/api/admin/analyze-all");
       setReport(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed");
@@ -145,9 +152,7 @@ export default function AnalyzeAllPage() {
     setStep("recommending");
     setError(null);
     try {
-      const res = await fetch("/api/admin/analyze-all/recommendations", { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed");
+      const data = await safeFetch("/api/admin/analyze-all/recommendations", { method: "POST" });
       setAiRecs(data);
       setStep("done");
     } catch (err) {

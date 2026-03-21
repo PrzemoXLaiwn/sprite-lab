@@ -213,7 +213,7 @@ Be CONCRETE and SPECIFIC. No vague advice.`,
 
     const recommendations = JSON.parse(jsonText);
 
-    return NextResponse.json({
+    const responseData = {
       success: true,
       analysisDataUsed: {
         totalAnalyzed: totalStats._count,
@@ -222,11 +222,16 @@ Be CONCRETE and SPECIFIC. No vague advice.`,
         bestPrompts: bestPrompts.length,
       },
       recommendations,
-    });
+    };
+
+    // Safe serialization (handles bigint from Prisma)
+    const body = JSON.stringify(responseData, (_key, value) =>
+      typeof value === "bigint" ? Number(value) : value
+    );
+    return new Response(body, { status: 200, headers: { "Content-Type": "application/json" } });
   } catch (error) {
     console.error("[Recommendations] Error:", error);
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : "Failed",
-    }, { status: 500 });
+    const msg = error instanceof Error ? error.message : "Failed";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

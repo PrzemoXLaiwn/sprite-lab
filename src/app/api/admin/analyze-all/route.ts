@@ -65,8 +65,9 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("[AnalyzeAll] Error:", error);
-    return NextResponse.json({ error: "Failed to queue analyses" }, { status: 500 });
+    console.error("[AnalyzeAll] Queue error:", error);
+    const msg = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: `Failed to queue: ${msg}` }, { status: 500 });
   }
 }
 
@@ -205,7 +206,7 @@ export async function GET(request: NextRequest) {
       topCombinations
     );
 
-    return NextResponse.json({
+    return safeJsonResponse({
       coverage: {
         totalGenerations,
         totalAnalyzed,
@@ -276,13 +277,25 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("[AnalyzeAll] Report error:", error);
-    return NextResponse.json({ error: "Failed to generate report" }, { status: 500 });
+    const msg = error instanceof Error ? error.message : "Unknown error";
+    return safeJsonResponse({ error: `Failed to generate report: ${msg}` }, 500);
   }
 }
 
 function safeParseJSON(str: string | null | undefined): unknown {
   if (!str) return null;
   try { return JSON.parse(str); } catch { return str; }
+}
+
+// Safe JSON response that handles bigint
+function safeJsonResponse(data: unknown, status = 200) {
+  const body = JSON.stringify(data, (_key, value) =>
+    typeof value === "bigint" ? Number(value) : value
+  );
+  return new Response(body, {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 interface QualityRow {
