@@ -217,17 +217,9 @@ export default function AdminPage() {
   const [reportFilter, setReportFilter] = useState<string>("PENDING");
   const [processingReport, setProcessingReport] = useState<string | null>(null);
 
-  // Fetch online users - lightweight poll
+  // Presence tracking removed (endpoint deleted in Sprint 1)
   const fetchOnlineUsers = useCallback(async () => {
-    try {
-      const res = await fetch("/api/presence", { cache: "no-store" });
-      if (res.ok && isMounted.current) {
-        const data = await res.json();
-        setOnlineUsers(data.onlineUsers || []);
-      }
-    } catch (error) {
-      console.error("Failed to fetch online users:", error);
-    }
+    // noop — /api/presence was removed
   }, []);
 
   // Independent stats fetch

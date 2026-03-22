@@ -284,8 +284,6 @@ export default function RootLayout({
         {/* Resource Hints - Performance Optimization */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
-        <link rel="dns-prefetch" href="https://www.google-analytics.com" />
         <link rel="dns-prefetch" href="https://js.stripe.com" />
         <link rel="dns-prefetch" href="https://replicate.delivery" />
         <link rel="preconnect" href="https://va.vercel-scripts.com" />
@@ -314,28 +312,6 @@ export default function RootLayout({
         <Analytics />
         <SpeedInsights />
 
-        {/* Google Tag (gtag.js) - Conversion Tracking + Remarketing */}
-        <Script
-          async
-          src="https://www.googletagmanager.com/gtag/js?id=AW-17802754923"
-          strategy="afterInteractive"
-        />
-        <Script
-          id="gtag-init"
-          strategy="afterInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-              gtag('config', 'AW-17802754923', {
-                'allow_enhanced_conversions': true,
-                'send_page_view': true,
-                'remarketing': true
-              });
-            `,
-          }}
-        />
       </body>
     </html>
   );
