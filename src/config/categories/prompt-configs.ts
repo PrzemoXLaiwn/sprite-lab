@@ -24,7 +24,9 @@ export type AssetCategory =
   | "CREATURES"
   | "UI_ELEMENTS"
   | "ENVIRONMENT"
-  | "QUEST_ITEMS";
+  | "QUEST_ITEMS"
+  | "EFFECTS"
+  | "PROJECTILES";
 
 export type AssetView =
   | "DEFAULT"
@@ -534,6 +536,14 @@ export const CATEGORY_META: Record<AssetCategory, CategoryMeta> = {
     label: "Loot",
     description: "Keys, artifacts, containers and collectibles.",
   },
+  EFFECTS: {
+    label: "Effects",
+    description: "Combat VFX, magic effects, elemental bursts and particles.",
+  },
+  PROJECTILES: {
+    label: "Projectiles",
+    description: "Arrows, bullets, magic projectiles and thrown weapons.",
+  },
 };
 
 // --------------------------------------------------
@@ -614,6 +624,11 @@ export const CATEGORY_ALIASES: Record<string, AssetCategory> = {
   UI_ELEMENTS: "UI_ELEMENTS",
   // From old data/generate-categories.ts
   ITEMS: "CONSUMABLES",
+  // Added categories
+  EFFECTS: "EFFECTS",
+  PROJECTILES: "PROJECTILES",
+  VFX: "EFFECTS",
+  SPELLS: "EFFECTS",
 };
 
 export const SUBCATEGORY_ALIASES: Record<string, string> = {
@@ -647,7 +662,7 @@ export const WEAPONS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConf
     "((ONE single sword weapon)), isolated game item sprite",
     "long metal blade with handle grip, crossguard or tsuba, pommel end, sharp cutting edge, weapon loot drop style",
     "((ONLY ONE sword)), single isolated sword shown flat or slight angle, full blade visible from tip to pommel, weapon displayed as single game item icon, centered on transparent background",
-    "multiple swords, many swords, sword collection, weapon set, sprite sheet, weapon grid, broken blade, hand holding it, sword in stone, sheathed in scabbard, combat scene, different swords, variety of weapons, smooth shading, realistic metal, anti-aliasing, 3D render, gradient"
+    "multiple swords, many swords, sword collection, weapon set, sprite sheet, weapon grid, broken blade, hand holding it, sword in stone, sheathed in scabbard, combat scene, different swords, variety of weapons, smooth shading, realistic metal, anti-aliasing, 3D render, gradient, hand gripping, fingers on handle, arm visible, warrior character, person wielding, knight holding, magical aura unless described, glowing blade unless described, fire on blade unless described, runes unless described, enchanted glow unless described, extra gems unless described, energy effects unless described, ground or surface, background scene, display rack"
   ),
 
   AXES_HAMMERS: makeConfig(
@@ -701,7 +716,7 @@ export const ARMOR_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig
     "((isolated helmet equipment icon)), game inventory helmet item, loot drop helmet",
     "ISOLATED helmet as standalone inventory icon, empty hollow helmet like RPG loot drop, game item pickup style, ((NO HEAD OR FACE INSIDE)), ((NO BODY PARTS))",
     "((ONLY ONE helmet)), single empty helmet displayed as game item icon, ((COMPLETELY EMPTY INSIDE - NO HEAD)), helmet floating as inventory loot, front or 3/4 view, centered on transparent background",
-    "head inside helmet, face visible, eyes visible, neck attached, person wearing it, mannequin head, body parts, multiple helmets, worn helmet, helmet on head, human head, skull inside, horns unless requested, portrait, character body"
+    "head inside helmet, face visible, eyes visible, neck attached, person wearing it, mannequin head, body parts, multiple helmets, worn helmet, helmet on head, human head, skull inside, horns unless requested, portrait, character body, shoulders visible, torso, armor stand with body shape, knight character, warrior wearing, hair visible, chin visible, ears visible, skin showing, human features inside, glowing eyes inside unless requested"
   ),
 
   CHEST_ARMOR: makeConfig(
@@ -748,7 +763,7 @@ export const CONSUMABLES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPrompt
     "((ONE single potion bottle)), isolated game item sprite",
     "glass flask or bottle containing colored magical liquid, cork or cap stopper, alchemy-style consumable item, game loot drop presentation",
     "((ONLY ONE potion bottle)), single upright potion bottle centered on transparent background, full bottle visible including stopper and liquid inside, inventory item style",
-    "multiple potions, many bottles, potion set, potion shelf, potion shop, hand holding it, spilled liquid, empty bottle, brewing scene, cauldron, table with potions, background scene, extra bottles, potion collection, scattered items"
+    "multiple potions, many bottles, potion set, potion shelf, potion shop, hand holding it, spilled liquid, empty bottle, brewing scene, cauldron, table with potions, background scene, extra bottles, potion collection, scattered items, wizard, character, person drinking, alchemy lab, ingredient jars, mortar pestle, magical aura unless described, glowing effects unless described, smoke unless described, bubbles unless described, extra decorations, ornate stand, wooden table, shelf background"
   ),
 
   FOOD: makeConfig(
@@ -774,7 +789,7 @@ export const RESOURCES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptCo
     "((ONE single gemstone)), isolated game resource item sprite",
     "cut precious gem with clear facets catching light, strong internal shine, readable game crafting material, loot drop style",
     "((ONLY ONE gemstone)), single centered gem on transparent background, full crystal visible, not mounted in jewelry, game item icon presentation",
-    "pile of gems, multiple gemstones, gem collection, ring, necklace, jewelry setting, mine scene, cave background, treasure chest, scattered gems, gem pile, uncut ore unless requested"
+    "pile of gems, multiple gemstones, gem collection, ring, necklace, jewelry setting, mine scene, cave background, treasure chest, scattered gems, gem pile, uncut ore unless requested, hand holding gem, person, character, crown with gems, scepter, staff with crystal, pedestal, display case, magical aura unless described, glowing energy unless described, floating particles unless described, extra gems nearby, ground or surface underneath"
   ),
 
   ORES: makeConfig(
@@ -878,7 +893,7 @@ export const CREATURES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptCo
     "((ONE single animal creature)), isolated game sprite",
     "one animal based on user request, stylized game creature design, complete body with all limbs visible",
     "((ONLY ONE animal)), single full body animal on transparent background, isolated, readable silhouette, complete body visible from nose to tail",
-    "animal herd, rider, landscape scene, dead animal, cropped body"
+    "animal herd, multiple animals, pack, flock, rider on mount, person with animal, landscape scene, dead animal, cropped body, forest background, grass ground, sky, nature scene, hunter, pet owner, leash collar unless requested, saddle unless requested, cage, zoo enclosure, barn interior"
   ),
 
   MYTHICAL: makeConfig(
@@ -993,7 +1008,7 @@ export const ENVIRONMENT_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPrompt
     "((ONE single building)), isolated game environment asset",
     "one placeable building asset such as house, hut, tower, cabin, forge, temple, shop or ruin depending on request, complete structure with roof and walls",
     "((ONLY ONE building)), single isolated building exterior on transparent background, complete structure visible from ground to roof, centered, no surrounding town or landscape",
-    "city block, town scene, interior view, multiple buildings, street scene, characters around building, neighborhood, landscape background, sky background",
+    "city block, town scene, interior view, multiple buildings, street scene, characters around building, neighborhood, landscape background, sky background, people walking, NPCs near building, vehicles, road, path, trees surrounding unless requested, garden unless requested, fence unless requested, other structures nearby, birds, clouds, sun, moon, panoramic view, aerial cityscape",
     {
       viewOverrides: {
         TOP_DOWN: "single building viewed from directly above, roof-dominant top-down game asset, not isometric",
@@ -1051,6 +1066,72 @@ export const QUEST_ITEMS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPrompt
 };
 
 // --------------------------------------------------
+// PROMPT CONFIGS - EFFECTS
+// --------------------------------------------------
+export const EFFECTS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
+  COMBAT_EFFECTS: makeConfig(
+    "((ONE single combat VFX sprite)), isolated visual effect, ZERO characters, ZERO people",
+    "combat visual effect like sword slash arc, hit impact burst, damage splatter, energy wave, NO character performing the action, pure VFX only",
+    "((ONLY the effect itself)), single isolated effect frame on transparent background, dynamic energy visible, NO character body, NO hands, NO weapons separate from effect",
+    "character performing action, person attacking, hand visible, arm swinging, warrior, fighter, weapon shown separately, full body, face, multiple effects overlapping, animation sheet, sprite sheet, background scene, floor, ground"
+  ),
+
+  MAGIC_EFFECTS: makeConfig(
+    "((ONE single magic VFX sprite)), isolated spell effect, ZERO characters, ZERO wizards, ZERO casters",
+    "magical visual effect like spell burst, healing aura glow, buff sparkle, magic circle, enchantment energy, pure magic phenomenon only",
+    "((ONLY the magical effect)), single isolated magic effect on transparent background, glowing energy clearly visible, NO caster, NO character casting",
+    "wizard casting, mage character, person casting spell, hands visible, staff or wand visible, character body, spell hitting target, multiple spells, animation sheet, background scene"
+  ),
+
+  ELEMENTAL: makeConfig(
+    "((ONE single elemental VFX sprite)), isolated element effect, ZERO characters",
+    "elemental visual effect like fire burst, ice crystal shards, lightning bolt, water splash, pure element manifestation",
+    "((ONLY the elemental effect)), single isolated element on transparent background, element type clearly identifiable",
+    "elemental creature, golem, character, person, wizard, multiple elements mixed, animation sheet, environment scene, landscape"
+  ),
+
+  AMBIENT: makeConfig(
+    "((ONE single ambient particle effect)), isolated subtle VFX",
+    "ambient effect like magical sparkle, floating dust motes, smoke wisp, rain drops, snow particle, subtle atmospheric element",
+    "single particle or small cluster of same particle type on transparent background, subtle and delicate",
+    "weather system scene, smokey room, dusty cave, multiple different effect types, landscape, character, full scene"
+  ),
+};
+
+// --------------------------------------------------
+// PROMPT CONFIGS - PROJECTILES
+// --------------------------------------------------
+export const PROJECTILES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
+  ARROWS: makeConfig(
+    "((ONE single arrow projectile)), isolated flying arrow sprite",
+    "arrow with pointed arrowhead, straight shaft, fletching feathers, in-flight pose",
+    "single arrow in horizontal flight, full arrow visible from tip to fletching, motion direction clear, on transparent background",
+    "multiple arrows volley, quiver, bow weapon, archer character, arrow stuck in target, hand holding arrow"
+  ),
+
+  BULLETS: makeConfig(
+    "((ONE single bullet or ammunition projectile)), isolated ammunition sprite",
+    "ammunition like metal bullet, cannonball, rocket, or energy shot, compact projectile design",
+    "single projectile on transparent background, motion direction clear, full projectile visible, speed trail optional",
+    "multiple bullets spray, gun firing, muzzle flash, impact explosion, shell casing, ammo box, character shooting"
+  ),
+
+  MAGIC_PROJECTILES: makeConfig(
+    "((ONE single magic projectile)), isolated spell projectile sprite, ZERO characters",
+    "magical projectile like fireball, ice shard, shadow bolt, arcane missile, glowing spell energy in flight",
+    "single magic projectile on transparent background, glowing energy, motion direction clear, trailing magic effect",
+    "wizard casting, mage character, spell impact on target, multiple projectiles, barrage, character body, hands visible"
+  ),
+
+  THROWN: makeConfig(
+    "((ONE single thrown projectile)), isolated throwing weapon in flight",
+    "thrown weapon in mid-flight like spinning throwing knife, bomb, javelin, or grenade",
+    "single thrown object in flight pose on transparent background, motion implied through angle, mid-air",
+    "multiple thrown items, thrower character, person throwing, impact explosion, target being hit, hand visible"
+  ),
+};
+
+// --------------------------------------------------
 // COMBINED CATEGORY CONFIGS
 // --------------------------------------------------
 export const CATEGORY_PROMPT_CONFIGS: Record<AssetCategory, Record<string, ExtendedSubcategoryPromptConfig>> = {
@@ -1063,6 +1144,8 @@ export const CATEGORY_PROMPT_CONFIGS: Record<AssetCategory, Record<string, Exten
   UI_ELEMENTS: UI_ELEMENTS_PROMPT_CONFIG,
   ENVIRONMENT: ENVIRONMENT_PROMPT_CONFIG,
   QUEST_ITEMS: QUEST_ITEMS_PROMPT_CONFIG,
+  EFFECTS: EFFECTS_PROMPT_CONFIG,
+  PROJECTILES: PROJECTILES_PROMPT_CONFIG,
 };
 
 // --------------------------------------------------
@@ -1078,6 +1161,8 @@ export const CATEGORY_BASE_DESCRIPTIONS: Record<AssetCategory, string> = {
   UI_ELEMENTS: "game UI graphic element, isolated interface asset, readable small-size design",
   ENVIRONMENT: "game environment prop, isolated placeable world object, clean asset presentation",
   QUEST_ITEMS: "game loot or quest item, isolated important pickup object, readable collectible design",
+  EFFECTS: "game visual effect sprite, isolated VFX element, ZERO characters or people, pure effect only",
+  PROJECTILES: "game projectile sprite, isolated flying ammunition or spell, motion-implied design",
 };
 
 // --------------------------------------------------
