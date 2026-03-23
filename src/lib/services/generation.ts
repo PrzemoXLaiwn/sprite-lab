@@ -102,6 +102,7 @@ export interface GenerationRequest {
   categoryId: string;
   subcategoryId: string;
   styleId: string;
+  view?: string;
 
   // Optional overrides
   seed?: number;
@@ -258,6 +259,7 @@ export async function buildPromptForGeneration(
     enableStyleMix?: boolean;
     styleMix?: StyleMixOptions;
     colorPaletteId?: string;
+    view?: string;
   }
 ): Promise<{
   finalPrompt: string;
@@ -282,8 +284,9 @@ export async function buildPromptForGeneration(
         style2Id: options?.styleMix?.style2Id,
         style1Weight: options?.styleMix?.style1Weight ?? 70,
         colorPaletteId: options?.colorPaletteId,
+        view: options?.view,
       })
-    : buildUltimatePrompt(prompt, categoryId, subcategoryId, styleId);
+    : buildUltimatePrompt(prompt, categoryId, subcategoryId, styleId, options?.view);
 
   // Apply learned optimizations from analytics layer
   const { enhancedPrompt, enhancedNegative, appliedFixes, warnings } =
@@ -722,6 +725,7 @@ async function generateSingle2D(request: GenerationRequest): Promise<GeneratedAs
       enableStyleMix: request.enableStyleMix,
       styleMix: request.styleMix,
       colorPaletteId: request.colorPaletteId,
+      view: request.view,
     }
   );
 

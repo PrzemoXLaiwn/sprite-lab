@@ -32,6 +32,7 @@ const GenerateBodySchema = z
       .string()
       .min(1, "Please select a type."),
     styleId: z.string().optional().default("PIXEL_ART_16"),
+    view: z.string().optional().default("DEFAULT"),
     seed: z.union([z.number(), z.string(), z.null()]).optional(),
     qualityPreset: z.enum(["draft", "normal", "hd"]).optional().default("normal"),
     enableStyleMix: z.boolean().optional().default(false),
@@ -98,6 +99,7 @@ export async function POST(request: Request) {
       categoryId,
       subcategoryId,
       styleId,
+      view,
       seed,
       qualityPreset,
       enableStyleMix,
@@ -154,6 +156,7 @@ export async function POST(request: Request) {
       categoryId,
       subcategoryId,
       styleId,
+      view,
       seed: resolvedSeed,
       qualityPreset,
       modelId: modelId as RunwareModelId | undefined,

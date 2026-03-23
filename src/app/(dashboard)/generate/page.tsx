@@ -177,18 +177,24 @@ function GeneratePageInner() {
     setErrorMessage(null);
     setNoCredits(false);
 
-    const viewOption  = VIEW_OPTIONS.find((v) => v.id === view)!;
-    const finalPrompt = viewOption.prefix + prompt.trim();
+    // Map frontend view IDs to backend view keys
+    const viewMap: Record<string, string> = {
+      none: "DEFAULT",
+      side: "SIDE_VIEW",
+      front: "FRONT",
+      topdown: "TOP_DOWN",
+    };
 
     try {
       const response = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt:        finalPrompt,
+          prompt:        prompt.trim(),
           categoryId:    selectedSub.categoryId,
           subcategoryId: selectedSubcategoryId,
           styleId:       styleId,
+          view:          viewMap[view] || "DEFAULT",
           qualityPreset: detail,
           seed:          seedRef.current.trim() || undefined,
         }),

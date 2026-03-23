@@ -125,7 +125,8 @@ export function buildUltimatePrompt(
   userPrompt: string,
   categoryId: string,
   subcategoryId: string,
-  styleId: string
+  styleId: string,
+  view?: string
 ): BuildPromptResult {
   try {
     // Delegate to prompt-configs.ts single source of truth
@@ -133,6 +134,7 @@ export function buildUltimatePrompt(
       category: categoryId,
       subcategory: subcategoryId,
       style: styleId,
+      view: view,
       userPrompt: userPrompt.trim(),
     });
 
@@ -210,9 +212,10 @@ export function buildEnhancedPrompt(
     style2Id?: string;
     style1Weight?: number;
     colorPaletteId?: string;
+    view?: string;
   } = {}
 ): BuildPromptResult {
-  const { enableStyleMix, style2Id, style1Weight = 50, colorPaletteId } = options;
+  const { enableStyleMix, style2Id, style1Weight = 50, colorPaletteId, view } = options;
 
   // Base prompt from config (with fallback for unsupported categories)
   let configResult: PromptBuildResult;
@@ -221,6 +224,7 @@ export function buildEnhancedPrompt(
       category: categoryId,
       subcategory: subcategoryId,
       style: styleId,
+      view: view,
       userPrompt: userPrompt.trim(),
       color: colorPaletteId && COLOR_PALETTE_PROMPTS[colorPaletteId]
         ? [COLOR_PALETTE_PROMPTS[colorPaletteId]]
