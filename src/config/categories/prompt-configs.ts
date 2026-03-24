@@ -159,44 +159,16 @@ function normalizeKey(input?: string): string {
 // --------------------------------------------------
 // GLOBAL RENDER RULES
 // --------------------------------------------------
-export const GLOBAL_POSITIVE_BASE = dedupeCsv([
-  "single isolated game asset",
-  "transparent background",
-  "centered composition",
-  "clear silhouette",
-  "clean readable shape",
-  "subject fully visible",
-  "game-ready asset render",
-  "no scene unless explicitly required",
-  "icon-like clarity",
-  "high subject separation",
-]);
+// Compact — the inline base in buildAssetPrompt() handles essentials.
+// This is kept for backward compat exports but NOT used in prompt assembly.
+export const GLOBAL_POSITIVE_BASE =
+  "single isolated game asset, transparent background, centered, clear silhouette, fully visible";
 
-export const GLOBAL_NEGATIVE_BASE = dedupeCsv([
-  "multiple objects unless explicitly requested",
-  "crowd",
-  "busy background",
-  "environment scene",
-  "landscape",
-  "cinematic shot",
-  "cropped subject",
-  "subject cut off by frame",
-  "partial object only",
-  "tiny subject",
-  "off-center composition",
-  "text",
-  "watermark",
-  "logo",
-  "caption",
-  "UI overlay",
-  "mockup",
-  "frame unless explicitly requested",
-  "hands holding object unless explicitly requested",
-  "person wearing or using item unless explicitly requested",
-  "photo studio props",
-  "random extra objects",
-  "duplicate subjects",
-]);
+export const GLOBAL_NEGATIVE_BASE =
+  "multiple objects, crowd, busy background, landscape, environment scene, " +
+  "cropped, cut off, partial, tiny subject, text, watermark, logo, " +
+  "UI overlay, frame, hands holding unless requested, " +
+  "person wearing unless requested, duplicate, extra objects";
 
 // --------------------------------------------------
 // VIEW CONFIGS
@@ -212,22 +184,8 @@ export const VIEW_PROMPT_CONFIGS: Record<AssetView, ViewPromptConfig> = {
   // Most readable for isolated assets: slight angle shows
   // depth without dramatic foreshortening.
   DEFAULT: {
-    positive: dedupeCsv([
-      "neutral 3/4 angle presentation",
-      "slight perspective showing depth and form",
-      "full subject clearly visible",
-      "clean game asset showcase angle",
-      "stable grounded composition",
-    ]),
-    negative: dedupeCsv([
-      "extreme perspective distortion",
-      "dramatic cinematic camera angle",
-      "dutch angle",
-      "fisheye lens",
-      "extreme close-up",
-      "extreme wide shot",
-      "worm's eye view",
-    ]),
+    positive: "neutral 3/4 angle, full subject visible, game asset showcase",
+    negative: "extreme perspective, dutch angle, fisheye, worm's eye view, extreme close-up",
     categoryOverrides: {
       WEAPONS: "weapon shown at slight angle, full weapon from tip to handle clearly visible, classic RPG inventory presentation",
       ARMOR: "equipment shown at neutral angle, full piece visible, empty armor presented as inventory loot drop icon",
@@ -244,26 +202,8 @@ export const VIEW_PROMPT_CONFIGS: Record<AssetView, ViewPromptConfig> = {
   // Strict profile: camera at exact 90° to the subject's side.
   // Like a platformer sprite or weapon blueprint.
   SIDE_VIEW: {
-    positive: dedupeCsv([
-      "((strict side view))",
-      "exact profile angle",
-      "camera perpendicular to subject side",
-      "flat 2D side-on presentation",
-      "silhouette clearly readable from the side",
-      "zero rotation toward or away from camera",
-    ]),
-    negative: dedupeCsv([
-      "front view",
-      "front-facing",
-      "looking at camera",
-      "top-down view",
-      "three-quarter angle",
-      "3/4 view",
-      "isometric angle",
-      "foreshortening",
-      "rotated toward viewer",
-      "angled perspective",
-    ]),
+    positive: "((strict side view)), exact profile angle, camera perpendicular to subject side, flat 2D side-on, facing right",
+    negative: "front view, front-facing, looking at camera, top-down, 3/4 view, isometric, rotated toward viewer",
     categoryOverrides: {
       WEAPONS: "weapon shown in strict side profile, full length from tip to pommel visible horizontally, like a weapon blueprint",
       ARMOR: "equipment shown in strict side profile, shape and depth readable, empty armor piece as side-view icon",
@@ -287,26 +227,8 @@ export const VIEW_PROMPT_CONFIGS: Record<AssetView, ViewPromptConfig> = {
   // Straight-on frontal view: camera directly in front of subject.
   // Symmetrical presentation, like a character select screen.
   FRONT: {
-    positive: dedupeCsv([
-      "((strict front view))",
-      "camera directly in front of subject",
-      "straight-on frontal presentation",
-      "symmetrical when applicable",
-      "subject facing directly at the viewer",
-      "no rotation to left or right",
-    ]),
-    negative: dedupeCsv([
-      "side view",
-      "side profile",
-      "back view",
-      "top-down view",
-      "isometric angle",
-      "three-quarter angle",
-      "3/4 view",
-      "tilted perspective",
-      "turned away from camera",
-      "looking sideways",
-    ]),
+    positive: "((strict front view)), camera directly in front, straight-on frontal, symmetrical, subject facing viewer",
+    negative: "side view, side profile, back view, top-down, isometric, 3/4 angle, turned away, looking sideways",
     categoryOverrides: {
       WEAPONS: "weapon shown front-on, blade or head facing viewer, handle pointing down, symmetrical presentation",
       ARMOR: "equipment shown front-on, as if on an invisible mannequin facing the viewer, symmetrical, no body inside",
@@ -334,29 +256,8 @@ export const VIEW_PROMPT_CONFIGS: Record<AssetView, ViewPromptConfig> = {
   // down at 90°. Shows the top surface only. NOT isometric.
   // Used for top-down RPGs (Zelda, Stardew Valley).
   TOP_DOWN: {
-    positive: dedupeCsv([
-      "((true top-down view))",
-      "((camera directly above looking straight down))",
-      "90-degree overhead perspective",
-      "only top surface visible",
-      "flat overhead game asset",
-      "like RPG Maker or Zelda top-down sprite",
-    ]),
-    negative: dedupeCsv([
-      "front view",
-      "side view",
-      "profile view",
-      "isometric angle",
-      "isometric projection",
-      "2.5D view",
-      "three-quarter perspective",
-      "3/4 angle",
-      "horizon line visible",
-      "walls visible from side",
-      "depth perspective",
-      "vanishing point",
-      "eye-level camera",
-    ]),
+    positive: "((true top-down view)), ((camera directly above looking straight down)), 90-degree overhead, only top surface visible, RPG Maker Zelda top-down sprite",
+    negative: "front view, side view, profile, isometric, 2.5D, 3/4 angle, horizon line, walls from side, eye-level camera, vanishing point",
     categoryOverrides: {
       WEAPONS: "weapon laid completely flat on ground, viewed from directly above, full outline visible like dropped loot in top-down RPG",
       ARMOR: "equipment piece laid flat, viewed from directly above, like inventory slot or dropped loot in top-down game",
