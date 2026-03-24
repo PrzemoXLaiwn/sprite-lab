@@ -1426,9 +1426,10 @@ export function buildAssetPrompt(input: PromptBuildInput): PromptBuildResult {
   const resolvedView = resolveViewKey(input.view);
   const resolvedQuality = resolveQualityKey(input.quality);
 
-  const categoryBase = CATEGORY_BASE_DESCRIPTIONS[resolvedCategory];
-  const styleConfig = STYLE_PROMPT_CONFIGS[resolvedStyle];
-  const qualityConfig = QUALITY_PROMPT_CONFIGS[resolvedQuality];
+  // categoryBase, styleConfig, qualityConfig intentionally not used in prompt assembly.
+  // Style comes from STYLES_2D_FULL via prompt-builder.ts bridgeResult().
+  // Quality comes from generation service QUALITY_SETTINGS (steps/guidance).
+  // This avoids bloating the prompt past FLUX's 80-word sweet spot.
 
   const elementPrompt = buildTagPrompt("elemental theme", input.element);
   const materialPrompt = buildTagPrompt("materials", input.material);
@@ -1443,28 +1444,37 @@ export function buildAssetPrompt(input: PromptBuildInput): PromptBuildResult {
   );
   const viewNegative = getViewNegative(config, resolvedView);
 
+  // ═══════════════════════════════════════════════════════
+  // POSITIVE PROMPT ORDER — optimized for FLUX (50-80 words ideal)
+  // FLUX gives highest weight to FIRST phrases in prompt.
+  // Order: identity → user intent → camera → framing → base rules
+  // ═══════════════════════════════════════════════════════
+  // NOTE: styleConfig.positive and qualityConfig.positive are intentionally
+  // EXCLUDED from here — they are redundant with STYLES_2D_FULL which adds
+  // styleCore + styleMandatory via prompt-builder.ts bridgeResult().
+  // Including both would bloat the prompt past the 100-word enhancer limit
+  // and cause critical phrases to be truncated.
   const fullPrompt = dedupeCsv([
-    GLOBAL_POSITIVE_BASE,
-    categoryBase,
-    config.objectType,
-    config.visualDesc,
-    config.composition,
-    viewPositive,
-    styleConfig.positive,
-    qualityConfig.positive,
-    elementPrompt,
+    config.objectType,        // 1. WHAT it is (highest FLUX weight)
+    input.userPrompt,         // 2. WHAT user wants (second highest)
+    config.visualDesc,        // 3. HOW it looks
+    viewPositive,             // 4. CAMERA angle (must be early to take effect)
+    config.composition,       // 5. FRAMING rules
+    elementPrompt,            // 6. Optional tags
     materialPrompt,
     colorPrompt,
     extraTagsPrompt,
-    input.userPrompt,
+    "transparent background, centered, single isolated game asset",  // 7. Base rules (compact)
   ]);
 
+  // ═══════════════════════════════════════════════════════
+  // NEGATIVE PROMPT — blocks hallucinations
+  // styleConfig.negative excluded — STYLES_2D_FULL.negatives handles it
+  // ═══════════════════════════════════════════════════════
   const negativePrompt = dedupeCsv([
     GLOBAL_NEGATIVE_BASE,
     config.avoid,
     viewNegative,
-    styleConfig.negative,
-    qualityConfig.negative,
   ]);
 
   return {
