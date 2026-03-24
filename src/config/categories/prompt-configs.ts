@@ -741,9 +741,9 @@ export const SUBCATEGORY_ALIASES: Record<string, string> = {
 // --------------------------------------------------
 export const WEAPONS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
   SWORDS: makeConfig(
-    "((ONE single sword weapon)), isolated game item sprite",
-    "long metal blade with handle grip, crossguard or tsuba, pommel end, sharp cutting edge, weapon loot drop style",
-    "((ONLY ONE sword)), single isolated sword shown flat or slight angle, full blade visible from tip to pommel, weapon displayed as single game item icon, centered on transparent background",
+    "((exactly one single sword)), isolated weapon game sprite, NOT multiple swords",
+    "one blade with handle and crossguard, sharp weapon, game loot icon style, clean readable design",
+    "((ONLY ONE SWORD)), one isolated sword on transparent background, full blade from tip to pommel visible, flat or slight angle, game inventory icon, NO other weapons nearby, centered",
     "multiple swords, many swords, sword collection, weapon set, sprite sheet, weapon grid, broken blade, hand holding it, sword in stone, sheathed in scabbard, combat scene, different swords, variety of weapons, smooth shading, realistic metal, anti-aliasing, 3D render, gradient, hand gripping, fingers on handle, arm visible, warrior character, person wielding, knight holding, magical aura unless described, glowing blade unless described, fire on blade unless described, runes unless described, enchanted glow unless described, extra gems unless described, energy effects unless described, ground or surface, background scene, display rack"
   ),
 
@@ -795,10 +795,10 @@ export const WEAPONS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConf
 // --------------------------------------------------
 export const ARMOR_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
   HELMETS: makeConfig(
-    "((isolated helmet equipment icon)), game inventory helmet item, loot drop helmet",
-    "ISOLATED helmet as standalone inventory icon, empty hollow helmet like RPG loot drop, game item pickup style, ((NO HEAD OR FACE INSIDE)), ((NO BODY PARTS))",
-    "((ONLY ONE helmet)), single empty helmet displayed as game item icon, ((COMPLETELY EMPTY INSIDE - NO HEAD)), helmet floating as inventory loot, front or 3/4 view, centered on transparent background",
-    "head inside helmet, face visible, eyes visible, neck attached, person wearing it, mannequin head, body parts, multiple helmets, worn helmet, helmet on head, human head, skull inside, horns unless requested, portrait, character body, shoulders visible, torso, armor stand with body shape, knight character, warrior wearing, hair visible, chin visible, ears visible, skin showing, human features inside, glowing eyes inside unless requested"
+    "((one empty helmet)), game equipment icon, hollow armor piece with NO head inside",
+    "empty helmet floating alone, no face no head no skull inside, visor open or closed showing empty dark interior, game inventory loot drop presentation",
+    "((ONE HELMET ONLY)), empty hollow helmet on transparent background, ((ABSOLUTELY NO HEAD INSIDE)), no body no neck no shoulders, helmet displayed as game loot pickup icon, front or 3/4 view",
+    "head inside helmet, face visible, eyes visible, skull inside, person wearing it, neck attached, mannequin head, body parts, multiple helmets, worn helmet, human head, portrait, character body, shoulders visible, torso, armor stand, knight character, warrior wearing, hair visible, chin visible, ears visible, skin showing, human features inside, glowing eyes inside unless requested, horns unless requested"
   ),
 
   CHEST_ARMOR: makeConfig(
@@ -842,10 +842,10 @@ export const ARMOR_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig
 // --------------------------------------------------
 export const CONSUMABLES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
   POTIONS: makeConfig(
-    "((ONE single potion bottle)), isolated game item sprite",
-    "glass flask or bottle containing colored magical liquid, cork or cap stopper, alchemy-style consumable item, game loot drop presentation",
-    "((ONLY ONE potion bottle)), single upright potion bottle centered on transparent background, full bottle visible including stopper and liquid inside, inventory item style",
-    "multiple potions, many bottles, potion set, potion shelf, potion shop, hand holding it, spilled liquid, empty bottle, brewing scene, cauldron, table with potions, background scene, extra bottles, potion collection, scattered items, wizard, character, person drinking, alchemy lab, ingredient jars, mortar pestle, magical aura unless described, glowing effects unless described, smoke unless described, bubbles unless described, extra decorations, ornate stand, wooden table, shelf background"
+    "((exactly one potion bottle)), isolated game item, single flask only",
+    "one glass bottle with colored liquid inside and cork stopper, simple clean potion design, game inventory item style",
+    "((ONLY ONE BOTTLE)), single potion bottle upright on transparent background, full bottle visible, NO other bottles nearby, NO shelf NO table NO background, centered inventory icon",
+    "multiple potions, many bottles, two bottles, potion set, potion shelf, potion shop, potion rack, row of potions, hand holding it, spilled liquid, empty bottle, brewing scene, cauldron, table, background scene, extra bottles, potion collection, scattered items, wizard, character, person, alchemy lab, ingredient jars, mortar pestle, magical aura unless described, glowing effects unless described, smoke unless described, extra decorations, ornate stand, wooden table, shelf"
   ),
 
   FOOD: makeConfig(
@@ -868,10 +868,10 @@ export const CONSUMABLES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPrompt
 // --------------------------------------------------
 export const RESOURCES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
   GEMS: makeConfig(
-    "((ONE single gemstone)), isolated game resource item sprite",
-    "cut precious gem with clear facets catching light, strong internal shine, readable game crafting material, loot drop style",
-    "((ONLY ONE gemstone)), single centered gem on transparent background, full crystal visible, not mounted in jewelry, game item icon presentation",
-    "pile of gems, multiple gemstones, gem collection, ring, necklace, jewelry setting, mine scene, cave background, treasure chest, scattered gems, gem pile, uncut ore unless requested, hand holding gem, person, character, crown with gems, scepter, staff with crystal, pedestal, display case, magical aura unless described, glowing energy unless described, floating particles unless described, extra gems nearby, ground or surface underneath"
+    "((exactly one gemstone)), isolated game resource sprite, single cut crystal only",
+    "one faceted precious gem catching light, clean readable game crafting material, loot drop icon style",
+    "((ONLY ONE GEM)), single gemstone centered on transparent background, full crystal visible, NOT in jewelry NOT in ring NOT in crown, game inventory icon, NO other gems nearby",
+    "pile of gems, multiple gemstones, two gems, gem collection, gem cluster, scattered gems, ring, necklace, jewelry setting, crown, scepter, mine scene, cave background, treasure chest, gem pile, uncut ore unless requested, hand holding gem, person, character, staff with crystal, pedestal, display case, ground or surface underneath, magical aura unless described, glowing energy unless described, floating particles unless described"
   ),
 
   ORES: makeConfig(
@@ -915,10 +915,10 @@ export const RESOURCES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptCo
 // --------------------------------------------------
 export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
   HEROES: makeConfig(
-    "((EXACTLY ONE single hero character)), isolated game character sprite",
-    "playable hero-type character with equipment ONLY if explicitly requested, archetype must match user description exactly, wizard = robed mage with staff, knight = armored warrior, rogue = leather hood daggers",
-    "((ONLY ONE character)), single full body character on transparent background, isolated, readable silhouette, neutral standing pose, no extra gear beyond the request",
-    "multiple characters, party scene, two or more people, portrait close-up only, background environment, wrong class gear, extra armor or crown unless requested, companion, duplicate, group, crowd",
+    "((exactly one hero character)), isolated game character sprite, single person only",
+    "one playable character, equipment matching user description ONLY, wizard = robed mage with staff and pointed hat, knight = armored warrior with sword, rogue = leather hood with daggers, archer = bow and quiver",
+    "((ONLY ONE CHARACTER)), single full body character on transparent background, head to feet visible, neutral standing or heroic pose, NO companions NO pets NO extra people, centered game sprite",
+    "multiple characters, two people, party scene, group, crowd, companion, duplicate, portrait close-up only, background scene, forest, castle, dungeon, landscape, room, wrong class gear, extra armor unless requested, crown unless requested, wings unless requested, pet unless requested",
     {
       viewOverrides: {
         FRONT: "single full body hero character facing directly forward, readable symmetrical front-facing sprite or concept presentation",
@@ -928,10 +928,10 @@ export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptC
   ),
 
   ENEMIES: makeConfig(
-    "((EXACTLY ONE single enemy character)), isolated game character sprite",
-    "hostile enemy creature or humanoid foe, threatening menacing appearance, combat ready stance, design based on user request",
-    "((ONLY ONE enemy)), single full body enemy character on transparent background, isolated, clear readable combat-ready posture",
-    "enemy group, multiple enemies, swarm, hero fighting it, background scene, corpse, defeated pose, cropped figure, companion, duplicate",
+    "((exactly one enemy character)), isolated game enemy sprite, single hostile creature only",
+    "one threatening enemy based on user description, menacing combat-ready pose, complete body visible",
+    "((ONLY ONE ENEMY)), single full body enemy on transparent background, head to feet visible, NO other characters nearby, NO hero fighting it, NO background, centered game sprite",
+    "enemy group, multiple enemies, two enemies, swarm, horde, hero fighting it, background scene, dungeon, cave, forest, corpse, defeated pose, dead body, cropped figure, companion, duplicate, landscape",
     {
       viewOverrides: {
         FRONT: "single full body enemy facing forward, readable silhouette",
@@ -972,10 +972,10 @@ export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptC
 // --------------------------------------------------
 export const CREATURES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
   ANIMALS: makeConfig(
-    "((ONE single animal creature)), isolated game sprite",
-    "one animal based on user request, stylized game creature design, complete body with all limbs visible",
-    "((ONLY ONE animal)), single full body animal on transparent background, isolated, readable silhouette, complete body visible from nose to tail",
-    "animal herd, multiple animals, pack, flock, rider on mount, person with animal, landscape scene, dead animal, cropped body, forest background, grass ground, sky, nature scene, hunter, pet owner, leash collar unless requested, saddle unless requested, cage, zoo enclosure, barn interior"
+    "((exactly one animal)), isolated game creature sprite, single animal only",
+    "one complete animal with all limbs visible, stylized game creature design, clear readable silhouette",
+    "((ONLY ONE ANIMAL)), single full body animal on transparent background, complete body from nose to tail, NO other animals nearby, NO background, centered game sprite",
+    "animal herd, multiple animals, two animals, pack, flock, group, rider on mount, person with animal, landscape scene, dead animal, cropped body, forest background, grass ground, sky, nature scene, hunter, pet owner, leash collar unless requested, saddle unless requested, cage, zoo enclosure, barn interior, trees, rocks, water"
   ),
 
   MYTHICAL: makeConfig(
@@ -1005,10 +1005,10 @@ export const CREATURES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptCo
 // --------------------------------------------------
 export const UI_ELEMENTS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
   ITEM_ICONS: makeConfig(
-    "((ONE single inventory item icon)), game UI icon sprite",
-    "one bold item icon rendered as square game icon, simplified readable shape, high contrast, RPG loot icon style, item fills 80% of frame",
-    "((ONLY ONE icon)), single centered item icon on transparent background, square format, item fills most of frame, no frame border, no background elements, readable at 32x32 pixels",
-    "inventory grid, multiple icons, icon sheet, icon collection, icon set, full scene, tiny object in corner, character holding item, UI frame around it, slot borders, grid layout, realistic photo style, cluttered composition"
+    "((exactly one item icon)), game inventory icon sprite, single symbol only",
+    "one bold simplified item rendered as flat game icon, high contrast, RPG inventory style, fills 80% of frame, readable at small size",
+    "((ONLY ONE ICON)), single centered item icon on transparent background, square format, NO frame border NO grid NO slot, NO multiple icons, clean flat icon presentation",
+    "inventory grid, multiple icons, two icons, icon sheet, icon collection, icon set, icon pack, full scene, tiny object in corner, character holding item, UI frame around it, slot borders, grid layout, realistic photo style, cluttered composition, background behind icon, 3D depth shading, perspective"
   ),
 
   SKILL_ICONS: makeConfig(
@@ -1073,10 +1073,10 @@ export const UI_ELEMENTS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPrompt
 // --------------------------------------------------
 export const ENVIRONMENT_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
   TREES_PLANTS: makeConfig(
-    "((ONE single vegetation prop)), isolated game environment asset",
-    "one placeable environment plant asset such as tree, bush, shrub, flower patch, cactus or fungus depending on request, game prop style",
-    "((ONLY ONE plant/tree)), single isolated vegetation asset on transparent background, complete form from ground to top visible, grounded readable silhouette, centered",
-    "forest scene, landscape, multiple trees, multiple species mixed together, character next to tree, garden scene, many plants, row of trees"
+    "((exactly one tree or plant)), isolated game prop, single vegetation only",
+    "one placeable tree bush shrub or plant, game environment decoration, complete from roots to top",
+    "((ONLY ONE TREE OR PLANT)), single isolated vegetation on transparent background, complete form visible, NO forest NO landscape NO sky, centered game prop asset",
+    "forest scene, landscape, multiple trees, two trees, row of trees, many plants, mixed species, character next to tree, garden scene, sky, sun, clouds, grass ground, path, river, background scene, animals, birds"
   ),
 
   ROCKS_TERRAIN: makeConfig(
@@ -1087,10 +1087,10 @@ export const ENVIRONMENT_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPrompt
   ),
 
   BUILDINGS: makeConfig(
-    "((ONE single building)), isolated game environment asset",
-    "one placeable building asset such as house, hut, tower, cabin, forge, temple, shop or ruin depending on request, complete structure with roof and walls",
-    "((ONLY ONE building)), single isolated building exterior on transparent background, complete structure visible from ground to roof, centered, no surrounding town or landscape",
-    "city block, town scene, interior view, multiple buildings, street scene, characters around building, neighborhood, landscape background, sky background, people walking, NPCs near building, vehicles, road, path, trees surrounding unless requested, garden unless requested, fence unless requested, other structures nearby, birds, clouds, sun, moon, panoramic view, aerial cityscape",
+    "((exactly one building)), isolated game environment asset, single structure only",
+    "one complete building with roof and walls, game-ready placeable asset, clean readable structure",
+    "((ONLY ONE BUILDING)), single isolated building on transparent background, complete from ground to roof, NO other buildings, NO town, NO landscape, NO sky, centered game asset",
+    "city block, town scene, two buildings, interior view, multiple buildings, street scene, neighborhood, landscape background, sky background, people, NPCs, characters, vehicles, road, path, trees unless requested, garden unless requested, fence unless requested, other structures, birds, clouds, sun, moon, panoramic view, aerial cityscape, ground texture, grass, water",
     {
       viewOverrides: {
         TOP_DOWN: "single building viewed from directly above, roof-dominant top-down game asset, not isometric",
@@ -1152,10 +1152,10 @@ export const QUEST_ITEMS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPrompt
 // --------------------------------------------------
 export const EFFECTS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
   COMBAT_EFFECTS: makeConfig(
-    "((ONE single combat VFX sprite)), isolated visual effect, ZERO characters, ZERO people",
-    "combat visual effect like sword slash arc, hit impact burst, damage splatter, energy wave, NO character performing the action, pure VFX only",
-    "((ONLY the effect itself)), single isolated effect frame on transparent background, dynamic energy visible, NO character body, NO hands, NO weapons separate from effect",
-    "character performing action, person attacking, hand visible, arm swinging, warrior, fighter, weapon shown separately, full body, face, multiple effects overlapping, animation sheet, sprite sheet, background scene, floor, ground"
+    "((one combat visual effect only)), pure VFX sprite, ABSOLUTELY NO characters NO people NO hands",
+    "isolated slash arc or impact burst or energy wave, abstract combat effect, NO person performing it, just the effect floating alone",
+    "((ONLY THE EFFECT)), single VFX element on transparent background, NO character NO body NO hands NO arms NO weapon separate from effect, pure energy or motion graphic",
+    "character performing action, person attacking, hand visible, arm swinging, warrior, fighter, human body, weapon shown separately, full body, face, head, torso, legs, multiple effects overlapping, animation sheet, sprite sheet, background scene, floor, ground, sword, shield, armor"
   ),
 
   MAGIC_EFFECTS: makeConfig(

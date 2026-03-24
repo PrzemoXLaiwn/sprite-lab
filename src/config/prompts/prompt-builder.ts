@@ -48,8 +48,16 @@ const COLOR_PALETTE_PROMPTS: Record<string, string> = {
 function getStyleAnchor(styleId: string): string {
   const style: StyleConfig | undefined = STYLES_2D_FULL[styleId];
   if (!style) return "";
-  // Use styleCore as the rendering anchor (short, model-tuned)
-  return style.styleCore || "";
+  // Use styleCore (rendering cues) + styleMandatory (condensed enforcement).
+  // styleMandatory is short (~10 words) and written specifically for FLUX.
+  // We skip rendering/edges/styleEnforcement individually because prompt-enhancer
+  // enforces a 100-word limit — adding all of them would push important phrases
+  // past the cutoff. styleMandatory contains the critical enforcement in compact form.
+  const parts = [
+    style.styleCore,
+    style.styleMandatory,
+  ].filter(Boolean);
+  return parts.join(", ");
 }
 
 function getStyleNegatives(styleId: string): string {
