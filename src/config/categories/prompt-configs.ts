@@ -817,8 +817,9 @@ export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptC
     "multiple characters, two people, party scene, group, crowd, companion, duplicate, portrait close-up only, background scene, forest, castle, dungeon, landscape, room, wrong class gear, extra armor unless requested, crown unless requested, wings unless requested, pet unless requested",
     {
       viewOverrides: {
-        FRONT: "single full body hero character facing directly forward, readable symmetrical front-facing sprite or concept presentation",
-        TOP_DOWN: "single top-down hero character sprite, seen from directly above, readable for top-down gameplay",
+        FRONT: "hero facing directly at camera, full body visible, symmetrical character select screen pose",
+        TOP_DOWN: "hero seen from directly above, top of head and shoulders visible, Zelda SNES overhead RPG sprite",
+        SIDE_VIEW: "hero facing right in strict side profile, full body, platformer walking sprite like Mario or Mega Man",
       },
     }
   ),
@@ -830,8 +831,9 @@ export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptC
     "enemy group, multiple enemies, two enemies, swarm, horde, hero fighting it, background scene, dungeon, cave, forest, corpse, defeated pose, dead body, cropped figure, companion, duplicate, landscape",
     {
       viewOverrides: {
-        FRONT: "single full body enemy facing forward, readable silhouette",
-        TOP_DOWN: "single top-down enemy sprite, seen from directly above, readable for top-down gameplay",
+        FRONT: "enemy facing directly at camera, full body visible, threatening frontal pose",
+        TOP_DOWN: "enemy seen from directly above, back and head visible, top-down RPG enemy sprite",
+        SIDE_VIEW: "enemy facing right in strict side profile, full body, platformer enemy sprite",
       },
     }
   ),
@@ -843,8 +845,9 @@ export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptC
     "multiple NPCs, town crowd, shop background, dialogue window, portrait only",
     {
       viewOverrides: {
-        FRONT: "single full body NPC facing forward, readable and neutral front-facing presentation",
-        TOP_DOWN: "single top-down NPC sprite, seen from directly above, readable for top-down gameplay",
+        FRONT: "NPC facing directly at camera, full body visible, neutral welcoming pose",
+        TOP_DOWN: "NPC seen from directly above, head and shoulders visible, top-down RPG villager sprite",
+        SIDE_VIEW: "NPC facing right in strict side profile, full body, idle standing pose",
       },
     }
   ),
@@ -856,8 +859,9 @@ export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptC
     "minions, arena scene, boss UI, health bars, defeated boss, multiple bosses",
     {
       viewOverrides: {
-        FRONT: "single full body boss facing forward, readable imposing front-facing presentation",
-        TOP_DOWN: "single top-down boss sprite, seen from directly above, readable for top-down gameplay",
+        FRONT: "boss facing directly at camera, full imposing form visible, intimidating frontal pose",
+        TOP_DOWN: "boss seen from directly above, large imposing top-down silhouette, overhead RPG boss",
+        SIDE_VIEW: "boss facing right in strict side profile, full imposing form visible",
       },
     }
   ),
@@ -989,8 +993,9 @@ export const ENVIRONMENT_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPrompt
     "city block, town scene, two buildings, interior view, multiple buildings, street scene, neighborhood, landscape background, sky background, people, NPCs, characters, vehicles, road, path, trees unless requested, garden unless requested, fence unless requested, other structures, birds, clouds, sun, moon, panoramic view, aerial cityscape, ground texture, grass, water",
     {
       viewOverrides: {
-        TOP_DOWN: "single building viewed from directly above, roof-dominant top-down game asset, not isometric",
-        FRONT: "single building shown from straight front view, readable facade and full structure",
+        TOP_DOWN: "building roof seen from directly above, floor plan style, NO walls visible, bird's eye view",
+        FRONT: "building facade straight front view, full structure from ground to roof, front elevation",
+        SIDE_VIEW: "building side elevation, full structure from ground to roof, side profile",
       },
     }
   ),
@@ -1356,16 +1361,22 @@ export function buildAssetPrompt(input: PromptBuildInput): PromptBuildResult {
   // For DEFAULT view, object identity comes first (standard behavior).
   const isExplicitView = resolvedView !== "DEFAULT";
 
+  // User prompt is ALWAYS position #1 — it contains the user's core intent
+  // including colors, materials, and descriptors that FLUX must respect.
+  // "red health potion" must produce RED, not blue.
   const fullPrompt = dedupeCsv(isExplicitView ? [
-    viewPositive,             // 1. CAMERA angle FIRST (user's primary intent)
-    config.objectType,        // 2. WHAT it is
-    input.userPrompt,         // 3. WHAT user wants
+    input.userPrompt,         // 1. USER INTENT FIRST (colors, descriptors)
+    viewPositive,             // 2. CAMERA angle (user's explicit view choice)
+    config.objectType,        // 3. WHAT it is
     config.composition,       // 4. FRAMING rules
-    "transparent background, centered, game asset",  // 5. Base (compact)
+    elementPrompt,            // 5. Optional tags (element, material, color)
+    materialPrompt,
+    colorPrompt,
+    "transparent background, centered, game asset",  // 6. Base (compact)
   ] : [
-    config.objectType,        // 1. WHAT it is (highest FLUX weight)
-    input.userPrompt,         // 2. WHAT user wants
-    config.visualDesc,        // 3. HOW it looks
+    input.userPrompt,         // 1. USER INTENT FIRST (colors, descriptors, subject)
+    config.objectType,        // 2. WHAT it is (reinforces subject type)
+    config.visualDesc,        // 3. HOW it looks (details)
     viewPositive,             // 4. CAMERA angle (neutral = less critical)
     config.composition,       // 5. FRAMING rules
     elementPrompt,            // 6. Optional tags
