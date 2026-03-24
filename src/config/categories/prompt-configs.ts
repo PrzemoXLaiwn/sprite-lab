@@ -639,7 +639,7 @@ export const WEAPONS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConf
   SWORDS: makeConfig(
     "((exactly one single sword)), isolated weapon game sprite, NOT multiple swords",
     "one blade with handle and crossguard, sharp weapon, game loot icon style, clean readable design",
-    "((ONLY ONE SWORD)), one isolated sword on transparent background, full blade from tip to pommel visible, flat or slight angle, game inventory icon, NO other weapons nearby, centered",
+    "((ONLY ONE SWORD)), one isolated sword on transparent background, full blade from tip to pommel visible, game inventory icon, NO other weapons nearby, centered",
     "multiple swords, many swords, sword collection, weapon set, sprite sheet, weapon grid, broken blade, hand holding it, sword in stone, sheathed in scabbard, combat scene, different swords, variety of weapons, smooth shading, realistic metal, anti-aliasing, 3D render, gradient, hand gripping, fingers on handle, arm visible, warrior character, person wielding, knight holding, magical aura unless described, glowing blade unless described, fire on blade unless described, runes unless described, enchanted glow unless described, extra gems unless described, energy effects unless described, ground or surface, background scene, display rack"
   ),
 
@@ -693,14 +693,14 @@ export const ARMOR_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig
   HELMETS: makeConfig(
     "((one empty helmet)), game equipment icon, hollow armor piece with NO head inside",
     "empty helmet floating alone, no face no head no skull inside, visor open or closed showing empty dark interior, game inventory loot drop presentation",
-    "((ONE HELMET ONLY)), empty hollow helmet on transparent background, ((ABSOLUTELY NO HEAD INSIDE)), no body no neck no shoulders, helmet displayed as game loot pickup icon, front or 3/4 view",
+    "((ONE HELMET ONLY)), empty hollow helmet on transparent background, ((ABSOLUTELY NO HEAD INSIDE)), no body no neck no shoulders, helmet as game loot icon, centered",
     "head inside helmet, face visible, eyes visible, skull inside, person wearing it, neck attached, mannequin head, body parts, multiple helmets, worn helmet, human head, portrait, character body, shoulders visible, torso, armor stand, knight character, warrior wearing, hair visible, chin visible, ears visible, skin showing, human features inside, glowing eyes inside unless requested, horns unless requested"
   ),
 
   CHEST_ARMOR: makeConfig(
     "((isolated chest armor equipment icon)), game inventory armor item, loot drop breastplate",
     "ISOLATED chest armor as standalone inventory icon, empty breastplate or chest piece, ((NO BODY OR TORSO INSIDE)), game item pickup style",
-    "((ONLY ONE chest armor)), single empty chest armor displayed as equipment icon on transparent background, ((COMPLETELY EMPTY - NO TORSO)), armor floating as inventory loot, front view",
+    "((ONLY ONE chest armor)), single empty chest armor on transparent background, ((COMPLETELY EMPTY - NO TORSO)), armor floating as inventory loot icon, centered",
     "person wearing armor, body inside armor, torso inside, arms attached, mannequin body, skin visible, full character, human form, multiple armors, character wearing armor"
   ),
 
@@ -739,8 +739,8 @@ export const ARMOR_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig
 export const CONSUMABLES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
   POTIONS: makeConfig(
     "((exactly one potion bottle)), isolated game item, single flask only",
-    "one glass bottle with colored liquid inside and cork stopper, simple clean potion design, game inventory item style",
-    "((ONLY ONE BOTTLE)), single potion bottle upright on transparent background, full bottle visible, NO other bottles nearby, NO shelf NO table NO background, centered inventory icon",
+    "glass bottle with liquid inside and cork stopper, simple clean potion, game inventory item",
+    "((ONLY ONE BOTTLE)), single potion bottle upright on transparent background, full bottle visible, NO other bottles, NO shelf NO table, centered",
     "multiple potions, many bottles, two bottles, potion set, potion shelf, potion shop, potion rack, row of potions, hand holding it, spilled liquid, empty bottle, brewing scene, cauldron, table, background scene, extra bottles, potion collection, scattered items, wizard, character, person, alchemy lab, ingredient jars, mortar pestle, magical aura unless described, glowing effects unless described, smoke unless described, extra decorations, ornate stand, wooden table, shelf"
   ),
 

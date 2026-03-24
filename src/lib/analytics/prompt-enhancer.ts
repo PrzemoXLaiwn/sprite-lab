@@ -298,8 +298,9 @@ export async function enhancePromptWithLearnedFixes(
     enhancedPrompt = enhancedPrompt.replace(/,\s*$/, "");
   }
 
-  // Limit negative prompt to 60 words (less important, can be shorter)
-  const MAX_NEGATIVE_WORDS = 60;
+  // Limit negative prompt to 150 words — FLUX Dev handles long negatives well
+  // and view-specific negatives (e.g. "standing upright" for top-down) must not be cut
+  const MAX_NEGATIVE_WORDS = 150;
   if (negativeWords.length > MAX_NEGATIVE_WORDS) {
     console.log(`[PromptEnhancer] ⚠️ Negative too long (${negativeWords.length} words), limiting to ${MAX_NEGATIVE_WORDS}`);
     enhancedNegative = negativeWords.slice(0, MAX_NEGATIVE_WORDS).join(" ");

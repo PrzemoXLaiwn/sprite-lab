@@ -737,6 +737,17 @@ async function generateSingle2D(request: GenerationRequest): Promise<GeneratedAs
     optimizations: appliedOptimizations.length,
   });
 
+  // Full prompt debug — remove after debugging views/colors
+  console.log("\n" + "═".repeat(80));
+  console.log("🔍 FULL PROMPT SENT TO FLUX:");
+  console.log("═".repeat(80));
+  console.log("VIEW:", request.view || "DEFAULT");
+  console.log("POSITIVE:", finalPrompt);
+  console.log("─".repeat(80));
+  console.log("NEGATIVE:", negativePrompt);
+  console.log("WORDS:", finalPrompt.split(/\s+/).length, "positive /", negativePrompt.split(/\s+/).length, "negative");
+  console.log("═".repeat(80) + "\n");
+
   // ── 3. Generate via Runware ────────────────────────────────────────────────
   const generationOptions: GenerateImageOptions = {
     prompt: finalPrompt,
