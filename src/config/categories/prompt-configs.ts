@@ -202,24 +202,24 @@ export const VIEW_PROMPT_CONFIGS: Record<AssetView, ViewPromptConfig> = {
   // Strict profile: camera at exact 90° to the subject's side.
   // Like a platformer sprite or weapon blueprint.
   SIDE_VIEW: {
-    positive: "((strict side view)), exact profile angle, camera perpendicular to subject side, flat 2D side-on, facing right",
-    negative: "front view, front-facing, looking at camera, top-down, 3/4 view, isometric, rotated toward viewer",
+    positive: "((strict side view profile)), facing right, camera at exact 90 degrees to the side, 2D side-scrolling game sprite orientation",
+    negative: "front view, front-facing, looking at camera, top-down, 3/4 angle, three-quarter, isometric, rotated toward viewer, angled",
     categoryOverrides: {
-      WEAPONS: "weapon shown in strict side profile, full length from tip to pommel visible horizontally, like a weapon blueprint",
-      ARMOR: "equipment shown in strict side profile, shape and depth readable, empty armor piece as side-view icon",
-      CHARACTERS: "full body character in strict side profile, platformer sprite pose, walking or standing, facing right",
-      CREATURES: "full body creature in strict side profile facing right, all limbs readable, platformer enemy style",
-      CONSUMABLES: "item in strict side profile, full shape visible, bottle or container silhouette clear",
-      EFFECTS: "effect shown from the side, energy spread visible in profile",
-      PROJECTILES: "projectile in strict horizontal flight, side profile, full length visible, arrow or missile facing right",
+      WEAPONS: "weapon horizontal side profile like a blueprint, full length visible left to right",
+      ARMOR: "equipment side profile, shape readable from the side, empty armor piece",
+      CHARACTERS: "character facing right in strict side profile, full body visible, platformer sprite, like Mario or Mega Man side-scrolling pose",
+      CREATURES: "creature facing right in strict side profile, full body nose to tail, platformer enemy",
+      CONSUMABLES: "item side profile, bottle silhouette facing right",
+      EFFECTS: "effect side profile, energy spread visible from the side",
+      PROJECTILES: "projectile flying right, strict horizontal side profile, full length visible",
     },
     subcategoryOverrides: {
-      HEROES: "hero character strict side profile, full body facing right, platformer sprite orientation, running or standing pose",
-      ENEMIES: "enemy character strict side profile, full body facing right, combat-ready pose, platformer enemy sprite",
-      NPCS: "NPC character strict side profile, full body facing right, idle standing pose",
-      BOSSES: "boss creature strict side profile, full imposing form visible facing right",
-      ANIMALS: "animal in strict side profile facing right, full body from nose to tail visible",
-      MYTHICAL: "mythical creature in strict side profile facing right, wings and limbs readable",
+      HEROES: "hero facing right strict side profile, full body, platformer sprite like Mario or Mega Man, walking or standing",
+      ENEMIES: "enemy facing right strict side profile, full body, combat pose, platformer enemy sprite",
+      NPCS: "NPC facing right strict side profile, full body, idle pose",
+      BOSSES: "boss facing right strict side profile, full imposing form visible",
+      ANIMALS: "animal facing right strict side profile, full body nose to tail, like a safari field guide illustration",
+      MYTHICAL: "mythical creature facing right strict side profile, wings and limbs visible",
     },
   },
 
@@ -256,41 +256,36 @@ export const VIEW_PROMPT_CONFIGS: Record<AssetView, ViewPromptConfig> = {
   // down at 90°. Shows the top surface only. NOT isometric.
   // Used for top-down RPGs (Zelda, Stardew Valley).
   TOP_DOWN: {
-    positive: "((true top-down view)), ((camera directly above looking straight down)), 90-degree overhead, only top surface visible, RPG Maker Zelda top-down sprite",
-    negative: "front view, side view, profile, isometric, 2.5D, 3/4 angle, horizon line, walls from side, eye-level camera, vanishing point",
+    positive: "((bird's eye view from directly above)), ((top-down overhead camera)), looking straight down at 90 degrees, only the top surface visible, flat lay photography angle",
+    negative: "front view, side view, profile, isometric, 2.5D, 3/4 angle, three-quarter, horizon line, walls from side, eye-level, vanishing point, standing upright",
     categoryOverrides: {
-      WEAPONS: "weapon laid completely flat on ground, viewed from directly above, full outline visible like dropped loot in top-down RPG",
-      ARMOR: "equipment piece laid flat, viewed from directly above, like inventory slot or dropped loot in top-down game",
-      CONSUMABLES: "item viewed from directly above, circular cap or lid visible, top-down inventory item",
-      RESOURCES: "resource viewed from directly above, top surface texture visible, top-down game pickup",
-      CHARACTERS: "character sprite viewed from directly above, head and shoulders visible, top-down RPG movement sprite",
-      CREATURES: "creature viewed from directly above, back and head visible, top-down game enemy sprite",
-      UI_ELEMENTS: "flat UI icon, no perspective depth, purely 2D overhead presentation",
-      ENVIRONMENT: "environment prop viewed from directly above, roof or canopy visible, top-down game tilemap asset",
-      QUEST_ITEMS: "quest item viewed from directly above, full shape outline visible, top-down RPG loot",
-      EFFECTS: "effect viewed from directly above, circular or radial spread pattern, top-down spell circle",
-      PROJECTILES: "projectile viewed from directly above, flight path visible as top-down shadow or outline",
+      WEAPONS: "flat lay weapon on table photographed from directly above, bird's eye view, weapon laying horizontal",
+      ARMOR: "flat lay armor piece photographed from directly above, equipment on table, bird's eye view",
+      CONSUMABLES: "item photographed from directly above showing round cap, bird's eye view, on table",
+      RESOURCES: "resource photographed from directly above showing top surface, bird's eye flat lay",
+      CHARACTERS: "character seen from directly above showing top of head and shoulders, like top-down RPG Maker sprite, Zelda SNES overhead view",
+      CREATURES: "creature seen from directly above showing back of body, top-down RPG enemy, overhead game sprite",
+      UI_ELEMENTS: "flat 2D icon, no perspective depth, overhead presentation",
+      ENVIRONMENT: "prop seen from directly above, roof or canopy top visible, top-down tilemap game asset",
+      QUEST_ITEMS: "item photographed from directly above, flat lay, bird's eye view",
+      EFFECTS: "effect seen from directly above, radial circular spread, top-down spell circle on ground",
+      PROJECTILES: "projectile seen from directly above, top-down flight path visible",
     },
     subcategoryOverrides: {
-      HEROES: "hero sprite viewed from directly above, head visible, body foreshortened below, top-down RPG player character, like Zelda or Stardew Valley sprite",
-      ENEMIES: "enemy sprite viewed from directly above, top of head and body visible, top-down RPG enemy",
-      NPCS: "NPC sprite viewed from directly above, head and shoulders visible, top-down RPG villager",
-      BOSSES: "boss sprite viewed from directly above, large imposing top-down silhouette, top-down RPG boss",
-      ANIMALS: "animal viewed from directly above, back and head visible, top-down game animal sprite",
-      MYTHICAL: "mythical creature from directly above, wingspan or full body top surface visible",
-      COMPANIONS: "companion creature from directly above, small readable top-down pet sprite",
-      ELEMENTALS: "elemental from directly above, radiating energy pattern visible from overhead",
-      TREES_PLANTS: "tree or plant from directly above, canopy fills the frame, trunk hidden below foliage, round or organic top-down silhouette",
-      ROCKS_TERRAIN: "rock formation from directly above, top surface texture and shape visible",
-      BUILDINGS: "building from directly above, roof completely visible filling frame, NO walls visible from side, floor plan style, top-down RPG building",
-      PROPS: "prop from directly above, top surface visible, clean top-down game decoration",
-      DUNGEON: "dungeon element from directly above, trap plate or floor mechanism visible, top-down dungeon crawl asset",
-      SWORDS: "sword laid flat viewed from directly above, blade and handle forming clean top-down silhouette",
-      AXES_HAMMERS: "axe or hammer laid flat viewed from directly above, head and handle top-down outline",
-      BOWS: "bow laid flat viewed from directly above, curved shape and string visible from overhead",
-      STAFFS_WANDS: "staff laid flat viewed from directly above, full length and crystal top visible",
-      POTIONS: "potion viewed from directly above, round cap or cork visible, circular top-down shape",
-      SHIELDS: "shield laid flat viewed from directly above, full emblem and rim visible as circle or kite shape",
+      HEROES: "hero character seen from directly above, top of head visible, body below, top-down RPG sprite like Zelda SNES or Stardew Valley overhead",
+      ENEMIES: "enemy seen from directly above, top of head and back visible, top-down RPG enemy overhead sprite",
+      NPCS: "NPC seen from directly above, head and shoulders, top-down RPG villager overhead sprite",
+      BOSSES: "boss seen from directly above, large top-down silhouette, overhead RPG boss sprite",
+      ANIMALS: "animal seen from directly above, back and head visible, top-down overhead game sprite",
+      MYTHICAL: "mythical creature from directly above, wingspan visible, overhead top-down sprite",
+      TREES_PLANTS: "tree canopy seen from directly above filling frame, round organic shape, trunk hidden below",
+      BUILDINGS: "building roof seen from directly above, NO walls visible, floor plan style, top-down RPG building",
+      SWORDS: "sword laying flat on surface photographed from directly above, horizontal blade, bird's eye flat lay",
+      AXES_HAMMERS: "axe laying flat photographed from directly above, bird's eye flat lay",
+      BOWS: "bow laying flat photographed from directly above, curved shape visible, bird's eye flat lay",
+      STAFFS_WANDS: "staff laying flat photographed from directly above, full length visible, bird's eye",
+      POTIONS: "potion bottle from directly above showing round cork cap, circular top-down shape, bird's eye",
+      SHIELDS: "shield laying flat from directly above, full emblem visible as circle or kite, bird's eye flat lay",
     },
   },
 };
@@ -1355,17 +1350,29 @@ export function buildAssetPrompt(input: PromptBuildInput): PromptBuildResult {
   // styleCore + styleMandatory via prompt-builder.ts bridgeResult().
   // Including both would bloat the prompt past the 100-word enhancer limit
   // and cause critical phrases to be truncated.
-  const fullPrompt = dedupeCsv([
+  // When user explicitly picks a non-default view (TOP_DOWN, SIDE_VIEW, FRONT),
+  // the camera angle MUST be the very first thing FLUX sees — it's the user's
+  // primary intent and FLUX gives highest weight to the first phrases.
+  // For DEFAULT view, object identity comes first (standard behavior).
+  const isExplicitView = resolvedView !== "DEFAULT";
+
+  const fullPrompt = dedupeCsv(isExplicitView ? [
+    viewPositive,             // 1. CAMERA angle FIRST (user's primary intent)
+    config.objectType,        // 2. WHAT it is
+    input.userPrompt,         // 3. WHAT user wants
+    config.composition,       // 4. FRAMING rules
+    "transparent background, centered, game asset",  // 5. Base (compact)
+  ] : [
     config.objectType,        // 1. WHAT it is (highest FLUX weight)
-    input.userPrompt,         // 2. WHAT user wants (second highest)
+    input.userPrompt,         // 2. WHAT user wants
     config.visualDesc,        // 3. HOW it looks
-    viewPositive,             // 4. CAMERA angle (must be early to take effect)
+    viewPositive,             // 4. CAMERA angle (neutral = less critical)
     config.composition,       // 5. FRAMING rules
     elementPrompt,            // 6. Optional tags
     materialPrompt,
     colorPrompt,
     extraTagsPrompt,
-    "transparent background, centered, single isolated game asset",  // 7. Base rules (compact)
+    "transparent background, centered, single isolated game asset",  // 7. Base
   ]);
 
   // ═══════════════════════════════════════════════════════
