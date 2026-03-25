@@ -637,10 +637,10 @@ export const SUBCATEGORY_ALIASES: Record<string, string> = {
 // --------------------------------------------------
 export const WEAPONS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
   SWORDS: makeConfig(
-    "((exactly one single sword)), isolated weapon game sprite, NOT multiple swords",
-    "one blade with handle and crossguard, sharp weapon, game loot icon style, clean readable design",
-    "((ONLY ONE SWORD)), one isolated sword on transparent background, full blade from tip to pommel visible, game inventory icon, NO other weapons nearby, centered",
-    "multiple swords, many swords, sword collection, weapon set, sprite sheet, weapon grid, broken blade, hand holding it, sword in stone, sheathed in scabbard, combat scene, different swords, variety of weapons, smooth shading, realistic metal, anti-aliasing, 3D render, gradient, hand gripping, fingers on handle, arm visible, warrior character, person wielding, knight holding, magical aura unless described, glowing blade unless described, fire on blade unless described, runes unless described, enchanted glow unless described, extra gems unless described, energy effects unless described, ground or surface, background scene, display rack"
+    "single sword weapon, game item sprite",
+    "blade with handle and crossguard",
+    "weapon shown at slight angle, full blade visible tip to pommel, centered",
+    "multiple swords, sword collection, hand holding it, combat scene, person wielding, broken blade, sprite sheet, magical aura unless described, glowing unless described, fire unless described, runes unless described"
   ),
 
   AXES_HAMMERS: makeConfig(
@@ -691,17 +691,17 @@ export const WEAPONS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConf
 // --------------------------------------------------
 export const ARMOR_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
   HELMETS: makeConfig(
-    "((one empty helmet)), game equipment icon, hollow armor piece with NO head inside",
-    "empty helmet floating alone, no face no head no skull inside, visor open or closed showing empty dark interior, game inventory loot drop presentation",
-    "((ONE HELMET ONLY)), empty hollow helmet on transparent background, ((ABSOLUTELY NO HEAD INSIDE)), no body no neck no shoulders, helmet as game loot icon, centered",
-    "head inside helmet, face visible, eyes visible, skull inside, person wearing it, neck attached, mannequin head, body parts, multiple helmets, worn helmet, human head, portrait, character body, shoulders visible, torso, armor stand, knight character, warrior wearing, hair visible, chin visible, ears visible, skin showing, human features inside, glowing eyes inside unless requested, horns unless requested"
+    "single empty helmet, game equipment icon, NO head inside",
+    "hollow armor headpiece, empty dark interior visible, floating loot drop",
+    "one helmet centered, completely empty inside, inventory icon style",
+    "head inside helmet, face visible, skull inside, person wearing it, neck attached, body parts, multiple helmets, worn helmet, human features, skin showing, horns unless requested"
   ),
 
   CHEST_ARMOR: makeConfig(
-    "((isolated chest armor equipment icon)), game inventory armor item, loot drop breastplate",
-    "ISOLATED chest armor as standalone inventory icon, empty breastplate or chest piece, ((NO BODY OR TORSO INSIDE)), game item pickup style",
-    "((ONLY ONE chest armor)), single empty chest armor on transparent background, ((COMPLETELY EMPTY - NO TORSO)), armor floating as inventory loot icon, centered",
-    "person wearing armor, body inside armor, torso inside, arms attached, mannequin body, skin visible, full character, human form, multiple armors, character wearing armor"
+    "single empty chest armor, game equipment icon, NO body inside",
+    "isolated breastplate, empty hollow armor piece, loot drop style",
+    "one chest armor centered, completely empty, inventory icon",
+    "person wearing armor, body inside, torso, arms attached, skin visible, character, multiple armors"
   ),
 
   SHIELDS: makeConfig(
@@ -738,10 +738,10 @@ export const ARMOR_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig
 // --------------------------------------------------
 export const CONSUMABLES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
   POTIONS: makeConfig(
-    "((exactly one potion bottle)), isolated game item, single flask only",
-    "glass bottle with liquid inside and cork stopper, simple clean potion, game inventory item",
-    "((ONLY ONE BOTTLE)), single potion bottle upright on transparent background, full bottle visible, NO other bottles, NO shelf NO table, centered",
-    "multiple potions, many bottles, two bottles, potion set, potion shelf, potion shop, potion rack, row of potions, hand holding it, spilled liquid, empty bottle, brewing scene, cauldron, table, background scene, extra bottles, potion collection, scattered items, wizard, character, person, alchemy lab, ingredient jars, mortar pestle, magical aura unless described, glowing effects unless described, smoke unless described, extra decorations, ornate stand, wooden table, shelf"
+    "single potion bottle, game item",
+    "glass flask with colored liquid inside, cork stopper",
+    "one bottle centered, upright, full bottle visible",
+    "multiple potions, potion shelf, hand holding it, brewing scene, cauldron, table, wizard, character, extra bottles, alchemy lab, glowing unless described"
   ),
 
   FOOD: makeConfig(
@@ -764,10 +764,10 @@ export const CONSUMABLES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPrompt
 // --------------------------------------------------
 export const RESOURCES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
   GEMS: makeConfig(
-    "((exactly one gemstone)), isolated game resource sprite, single cut crystal only",
-    "one faceted precious gem catching light, clean readable game crafting material, loot drop icon style",
-    "((ONLY ONE GEM)), single gemstone centered on transparent background, full crystal visible, NOT in jewelry NOT in ring NOT in crown, game inventory icon, NO other gems nearby",
-    "pile of gems, multiple gemstones, two gems, gem collection, gem cluster, scattered gems, ring, necklace, jewelry setting, crown, scepter, mine scene, cave background, treasure chest, gem pile, uncut ore unless requested, hand holding gem, person, character, staff with crystal, pedestal, display case, ground or surface underneath, magical aura unless described, glowing energy unless described, floating particles unless described"
+    "single gemstone, game resource item",
+    "faceted precious crystal catching light, clean crafting material",
+    "one gem centered, full crystal visible, not in jewelry",
+    "multiple gems, gem pile, jewelry, ring, crown, necklace, mine scene, treasure chest, character, hand holding, glowing unless described"
   ),
 
   ORES: makeConfig(
@@ -811,10 +811,10 @@ export const RESOURCES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptCo
 // --------------------------------------------------
 export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
   HEROES: makeConfig(
-    "((exactly one hero character)), isolated game character sprite, single person only",
-    "one playable character, equipment matching user description ONLY, wizard = robed mage with staff and pointed hat, knight = armored warrior with sword, rogue = leather hood with daggers, archer = bow and quiver",
-    "((ONLY ONE CHARACTER)), single full body character on transparent background, head to feet visible, neutral standing or heroic pose, NO companions NO pets NO extra people, centered game sprite",
-    "multiple characters, two people, party scene, group, crowd, companion, duplicate, portrait close-up only, background scene, forest, castle, dungeon, landscape, room, wrong class gear, extra armor unless requested, crown unless requested, wings unless requested, pet unless requested",
+    "single game character, full body sprite",
+    "wizard = robed mage with staff, knight = armored warrior, rogue = leather hood daggers, archer = bow quiver",
+    "one character centered, head to feet visible, standing pose",
+    "multiple characters, party, crowd, companion, portrait only, background scene, wrong class gear, extra armor unless requested",
     {
       viewOverrides: {
         FRONT: "hero facing directly at camera, full body visible, symmetrical character select screen pose",
@@ -825,8 +825,8 @@ export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptC
   ),
 
   ENEMIES: makeConfig(
-    "((exactly one enemy character)), isolated game enemy sprite, single hostile creature only",
-    "one threatening enemy based on user description, menacing combat-ready pose, complete body visible",
+    "single enemy character, game sprite",
+    "threatening hostile creature, menacing combat pose, full body visible",
     "((ONLY ONE ENEMY)), single full body enemy on transparent background, head to feet visible, NO other characters nearby, NO hero fighting it, NO background, centered game sprite",
     "enemy group, multiple enemies, two enemies, swarm, horde, hero fighting it, background scene, dungeon, cave, forest, corpse, defeated pose, dead body, cropped figure, companion, duplicate, landscape",
     {
@@ -1335,7 +1335,7 @@ export function buildAssetPrompt(input: PromptBuildInput): PromptBuildResult {
   const elementPrompt = buildTagPrompt("elemental theme", input.element);
   const materialPrompt = buildTagPrompt("materials", input.material);
   const colorPrompt = buildTagPrompt("colors", input.color);
-  const extraTagsPrompt = normalizeTagList(input.extraTags).join(", ");
+  // extraTags not used in prompt — tags bloat prompt past FLUX optimal length
 
   const viewPositive = getViewPositive(
     resolvedCategory,
@@ -1361,39 +1361,42 @@ export function buildAssetPrompt(input: PromptBuildInput): PromptBuildResult {
   // For DEFAULT view, object identity comes first (standard behavior).
   const isExplicitView = resolvedView !== "DEFAULT";
 
-  // ── Color/descriptor reinforcement ──────────────────────────────
-  // FLUX "forgets" colors mentioned once at the start after seeing 80+ words.
-  // Detect key descriptors from user prompt and reinforce them in composition.
-  // "red health potion" → adds "RED colored" to ensure FLUX respects the color.
-  const COLOR_WORDS = ["red", "blue", "green", "purple", "gold", "golden", "black", "white", "orange", "yellow", "pink", "silver", "dark", "bright", "glowing", "ice", "fire", "crystal", "iron", "bone", "wooden"];
-  const userWords = (input.userPrompt || "").toLowerCase().split(/\s+/);
-  const detectedDescriptors = userWords.filter(w => COLOR_WORDS.includes(w));
-  const reinforcement = detectedDescriptors.length > 0
-    ? detectedDescriptors.map(d => d.toUpperCase() + " colored").join(", ")
+  // ── Color reinforcement ──────────────────────────────────────────
+  // FLUX forgets colors after 60+ words. Reinforce ACTUAL colors only.
+  // "dark" and "glowing" are descriptors, not colors — skip them.
+  const ACTUAL_COLORS = new Set(["red", "blue", "green", "purple", "gold", "golden", "black", "white", "orange", "yellow", "pink", "silver", "crimson"]);
+  const userLower = (input.userPrompt || "").toLowerCase();
+  const detectedColors = userLower.split(/\s+/).filter(w => ACTUAL_COLORS.has(w));
+  const colorReinforce = detectedColors.length > 0
+    ? detectedColors.map(c => `((${c.toUpperCase()}))`).join(" ")
     : "";
 
+  // ── PROMPT ASSEMBLY ────────────────────────────────────────────
+  // FLUX optimal: 50-70 words. Every word must earn its place.
+  // Style anchor is added AFTER by prompt-builder.ts (~15 words).
+  // So we target 40-55 words here to stay under 70 total.
+  //
+  // For explicit views: camera instruction FIRST (highest FLUX weight).
+  // For default: user intent first, then identity.
+  // visualDesc and composition are SKIPPED for explicit views to save tokens.
   const fullPrompt = dedupeCsv(isExplicitView ? [
-    input.userPrompt,         // 1. USER INTENT FIRST (colors, descriptors)
-    reinforcement,            // 1b. Color reinforcement (RED colored, FIRE colored)
-    viewPositive,             // 2. CAMERA angle (user's explicit view choice)
-    config.objectType,        // 3. WHAT it is
-    config.composition,       // 4. FRAMING rules
-    elementPrompt,            // 5. Optional tags (element, material, color)
+    viewPositive,             // 1. CAMERA angle FIRST
+    input.userPrompt,         // 2. User's description
+    colorReinforce,           // 3. Color reinforcement ((RED))
+    config.objectType,        // 4. What it is (short)
+    elementPrompt,            // 5. Tags if any
     materialPrompt,
-    colorPrompt,
-    "transparent background, centered, game asset",  // 6. Base (compact)
+    "transparent background, centered, game sprite",
   ] : [
-    input.userPrompt,         // 1. USER INTENT FIRST (colors, descriptors, subject)
-    reinforcement,            // 1b. Color reinforcement
-    config.objectType,        // 2. WHAT it is (reinforces subject type)
-    config.visualDesc,        // 3. HOW it looks (details)
-    viewPositive,             // 4. CAMERA angle (neutral = less critical)
-    config.composition,       // 5. FRAMING rules
-    elementPrompt,            // 6. Optional tags
+    input.userPrompt,         // 1. User intent FIRST (what they typed)
+    colorReinforce,           // 2. Color reinforcement
+    config.objectType,        // 3. What it is
+    config.visualDesc,        // 4. How it looks (skipped in view mode)
+    viewPositive,             // 5. Camera (neutral default)
+    elementPrompt,            // 6. Tags
     materialPrompt,
     colorPrompt,
-    extraTagsPrompt,
-    "transparent background, centered, single isolated game asset",  // 7. Base
+    "transparent background, centered, single isolated game sprite",
   ]);
 
   // ═══════════════════════════════════════════════════════
