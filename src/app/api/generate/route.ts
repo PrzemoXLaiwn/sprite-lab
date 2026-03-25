@@ -15,6 +15,7 @@ import {
   GenerationError,
   type GenerationRequest,
 } from "@/lib/services/generation";
+import { enhanceUserPrompt } from "@/lib/prompt-enhance";
 
 // ─── Input validation schema ──────────────────────────────────────────────────
 // Identical to Phase 2 schema — no breaking changes to accepted input.
@@ -136,8 +137,31 @@ export async function POST(request: Request) {
     }
 
     // ── 4. Ensure user record exists ──────────────────────────────────────────
-    // getOrCreateUser creates the DB row for first-time users.
-    await getOrCreateUser(user.id, user.email!);
+    const dbUser = await getOrCreateUser(user.id, user.email!);
+
+    // ── 4b. AI Prompt Enhancement (Pro/Studio only) ─────────────────────────
+    // Expands short prompts like "iron sword magic" into detailed visual
+    // descriptions while preserving the user's exact intent.
+    let finalUserPrompt = prompt;
+    let promptWasEnhanced = false;
+    const userPlan = dbUser?.user?.plan ?? "FREE";
+    const isPaidPlan = ["PRO", "UNLIMITED", "STARTER"].includes(userPlan);
+
+    if (isPaidPlan && prompt.split(/\s+/).length < 7) {
+      try {
+        const { enhanced, wasEnhanced } = await enhanceUserPrompt(
+          prompt,
+          categoryId,
+          subcategoryId
+        );
+        if (wasEnhanced) {
+          finalUserPrompt = enhanced;
+          promptWasEnhanced = true;
+        }
+      } catch {
+        // Enhancement failed — use original prompt, don't block generation
+      }
+    }
 
     // ── 5. Resolve seed ───────────────────────────────────────────────────────
     // Service accepts seed as number | undefined. Convert here before dispatch.
@@ -152,7 +176,7 @@ export async function POST(request: Request) {
     const serviceRequest: GenerationRequest = {
       userId: user.id,
       mode: "single",
-      prompt,
+      prompt: finalUserPrompt,
       categoryId,
       subcategoryId,
       styleId,
@@ -188,6 +212,7 @@ export async function POST(request: Request) {
       is2DSprite: true,
       transparentBackground: true,
       prompt: prompt.trim(),
+      enhancedPrompt: promptWasEnhanced ? finalUserPrompt : undefined,
       fullPrompt: asset.finalPrompt,
       seed: asset.seed,
       modelUsed: asset.model,
