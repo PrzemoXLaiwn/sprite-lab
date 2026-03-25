@@ -256,10 +256,10 @@ export const VIEW_PROMPT_CONFIGS: Record<AssetView, ViewPromptConfig> = {
   // down at 90°. Shows the top surface only. NOT isometric.
   // Used for top-down RPGs (Zelda, Stardew Valley).
   TOP_DOWN: {
-    positive: "((bird's eye view from directly above)), ((top-down overhead camera)), looking straight down at 90 degrees, only the top surface visible, flat lay photography angle",
-    negative: "front view, side view, profile, isometric, 2.5D, 3/4 angle, three-quarter, horizon line, walls from side, eye-level, vanishing point, standing upright",
+    positive: "((bird's eye view from directly above)), ((top-down overhead camera looking straight down)), 90 degree overhead angle, only top surface visible, flat lay product photography, NOT standing upright NOT vertical",
+    negative: "front view, side view, profile, isometric, 2.5D, 3/4 angle, three-quarter, horizon line, walls from side, eye-level, vanishing point, standing upright, vertical orientation, upright position",
     categoryOverrides: {
-      WEAPONS: "flat lay weapon on table photographed from directly above, bird's eye view, weapon laying horizontal",
+      WEAPONS: "((flat lay weapon on table)), photographed from directly above, bird's eye view, weapon laying HORIZONTAL on flat surface, like product photography from overhead",
       ARMOR: "flat lay armor piece photographed from directly above, equipment on table, bird's eye view",
       CONSUMABLES: "item photographed from directly above showing round cap, bird's eye view, on table",
       RESOURCES: "resource photographed from directly above showing top surface, bird's eye flat lay",
@@ -280,7 +280,7 @@ export const VIEW_PROMPT_CONFIGS: Record<AssetView, ViewPromptConfig> = {
       MYTHICAL: "mythical creature from directly above, wingspan visible, overhead top-down sprite",
       TREES_PLANTS: "tree canopy seen from directly above filling frame, round organic shape, trunk hidden below",
       BUILDINGS: "building roof seen from directly above, NO walls visible, floor plan style, top-down RPG building",
-      SWORDS: "sword laying flat on surface photographed from directly above, horizontal blade, bird's eye flat lay",
+      SWORDS: "((sword laying flat horizontally on table)), photographed from directly above, bird's eye flat lay, blade pointing left handle pointing right, NO vertical sword",
       AXES_HAMMERS: "axe laying flat photographed from directly above, bird's eye flat lay",
       BOWS: "bow laying flat photographed from directly above, curved shape visible, bird's eye flat lay",
       STAFFS_WANDS: "staff laying flat photographed from directly above, full length visible, bird's eye",
@@ -1361,11 +1361,20 @@ export function buildAssetPrompt(input: PromptBuildInput): PromptBuildResult {
   // For DEFAULT view, object identity comes first (standard behavior).
   const isExplicitView = resolvedView !== "DEFAULT";
 
-  // User prompt is ALWAYS position #1 — it contains the user's core intent
-  // including colors, materials, and descriptors that FLUX must respect.
-  // "red health potion" must produce RED, not blue.
+  // ── Color/descriptor reinforcement ──────────────────────────────
+  // FLUX "forgets" colors mentioned once at the start after seeing 80+ words.
+  // Detect key descriptors from user prompt and reinforce them in composition.
+  // "red health potion" → adds "RED colored" to ensure FLUX respects the color.
+  const COLOR_WORDS = ["red", "blue", "green", "purple", "gold", "golden", "black", "white", "orange", "yellow", "pink", "silver", "dark", "bright", "glowing", "ice", "fire", "crystal", "iron", "bone", "wooden"];
+  const userWords = (input.userPrompt || "").toLowerCase().split(/\s+/);
+  const detectedDescriptors = userWords.filter(w => COLOR_WORDS.includes(w));
+  const reinforcement = detectedDescriptors.length > 0
+    ? detectedDescriptors.map(d => d.toUpperCase() + " colored").join(", ")
+    : "";
+
   const fullPrompt = dedupeCsv(isExplicitView ? [
     input.userPrompt,         // 1. USER INTENT FIRST (colors, descriptors)
+    reinforcement,            // 1b. Color reinforcement (RED colored, FIRE colored)
     viewPositive,             // 2. CAMERA angle (user's explicit view choice)
     config.objectType,        // 3. WHAT it is
     config.composition,       // 4. FRAMING rules
@@ -1375,6 +1384,7 @@ export function buildAssetPrompt(input: PromptBuildInput): PromptBuildResult {
     "transparent background, centered, game asset",  // 6. Base (compact)
   ] : [
     input.userPrompt,         // 1. USER INTENT FIRST (colors, descriptors, subject)
+    reinforcement,            // 1b. Color reinforcement
     config.objectType,        // 2. WHAT it is (reinforces subject type)
     config.visualDesc,        // 3. HOW it looks (details)
     viewPositive,             // 4. CAMERA angle (neutral = less critical)
