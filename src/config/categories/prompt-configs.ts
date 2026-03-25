@@ -184,17 +184,17 @@ export const VIEW_PROMPT_CONFIGS: Record<AssetView, ViewPromptConfig> = {
   // Most readable for isolated assets: slight angle shows
   // depth without dramatic foreshortening.
   DEFAULT: {
-    positive: "neutral 3/4 angle, full subject visible, game asset showcase",
+    positive: "Displayed at a neutral slight angle for clear readability",
     negative: "extreme perspective, dutch angle, fisheye, worm's eye view, extreme close-up",
     categoryOverrides: {
-      WEAPONS: "weapon shown at slight angle, full weapon from tip to handle clearly visible, classic RPG inventory presentation",
-      ARMOR: "equipment shown at neutral angle, full piece visible, empty armor presented as inventory loot drop icon",
-      CHARACTERS: "full body character in neutral standing pose, slight 3/4 angle, head to feet visible",
-      CREATURES: "full body creature, neutral pose, slight 3/4 angle showing form clearly",
-      CONSUMABLES: "item at slight angle, full object visible, clean inventory item presentation",
-      RESOURCES: "resource at slight angle, full material visible, clean crafting material icon",
-      EFFECTS: "effect shown at neutral angle, pure VFX element, no perspective distortion",
-      PROJECTILES: "projectile at slight angle showing flight direction, full projectile visible",
+      WEAPONS: "Displayed at a slight angle showing blade and handle clearly, like an RPG inventory icon",
+      ARMOR: "Displayed at a neutral angle as an empty equipment icon, no body inside",
+      CHARACTERS: "Standing in neutral pose at slight 3/4 angle, full body from head to feet visible",
+      CREATURES: "In neutral pose at slight 3/4 angle, full body visible from head to tail",
+      CONSUMABLES: "Displayed upright at slight angle, full object visible as inventory item",
+      RESOURCES: "Displayed at slight angle showing material texture clearly",
+      EFFECTS: "Displayed as isolated VFX element at neutral angle",
+      PROJECTILES: "Displayed at slight angle showing flight direction",
     },
   },
 
@@ -812,7 +812,7 @@ export const RESOURCES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptCo
 export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
   HEROES: makeConfig(
     "single game character, full body sprite",
-    "wizard = robed mage with staff, knight = armored warrior, rogue = leather hood daggers, archer = bow quiver",
+    "heroic adventurer with equipment matching the description exactly",
     "one character centered, head to feet visible, standing pose",
     "multiple characters, party, crowd, companion, portrait only, background scene, wrong class gear, extra armor unless requested",
     {
@@ -827,7 +827,7 @@ export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptC
   ENEMIES: makeConfig(
     "single enemy character, game sprite",
     "threatening hostile creature, menacing combat pose, full body visible",
-    "((ONLY ONE ENEMY)), single full body enemy on transparent background, head to feet visible, NO other characters nearby, NO hero fighting it, NO background, centered game sprite",
+    "one enemy centered, full body head to feet, combat-ready pose",
     "enemy group, multiple enemies, two enemies, swarm, horde, hero fighting it, background scene, dungeon, cave, forest, corpse, defeated pose, dead body, cropped figure, companion, duplicate, landscape",
     {
       viewOverrides: {
@@ -1361,43 +1361,43 @@ export function buildAssetPrompt(input: PromptBuildInput): PromptBuildResult {
   // For DEFAULT view, object identity comes first (standard behavior).
   const isExplicitView = resolvedView !== "DEFAULT";
 
-  // ── Color reinforcement ──────────────────────────────────────────
-  // FLUX forgets colors after 60+ words. Reinforce ACTUAL colors only.
-  // "dark" and "glowing" are descriptors, not colors — skip them.
+  // ── Color detection ───────────────────────────────────────────────
   const ACTUAL_COLORS = new Set(["red", "blue", "green", "purple", "gold", "golden", "black", "white", "orange", "yellow", "pink", "silver", "crimson"]);
   const userLower = (input.userPrompt || "").toLowerCase();
   const detectedColors = userLower.split(/\s+/).filter(w => ACTUAL_COLORS.has(w));
-  const colorReinforce = detectedColors.length > 0
-    ? detectedColors.map(c => `((${c.toUpperCase()}))`).join(" ")
+  const colorClause = detectedColors.length > 0
+    ? `The color is distinctly ${detectedColors.join(" and ")}.`
     : "";
 
-  // ── PROMPT ASSEMBLY ────────────────────────────────────────────
-  // FLUX optimal: 50-70 words. Every word must earn its place.
-  // Style anchor is added AFTER by prompt-builder.ts (~15 words).
-  // So we target 40-55 words here to stay under 70 total.
-  //
-  // For explicit views: camera instruction FIRST (highest FLUX weight).
-  // For default: user intent first, then identity.
-  // visualDesc and composition are SKIPPED for explicit views to save tokens.
-  const fullPrompt = dedupeCsv(isExplicitView ? [
-    viewPositive,             // 1. CAMERA angle FIRST
-    input.userPrompt,         // 2. User's description
-    colorReinforce,           // 3. Color reinforcement ((RED))
-    config.objectType,        // 4. What it is (short)
-    elementPrompt,            // 5. Tags if any
-    materialPrompt,
-    "transparent background, centered, game sprite",
-  ] : [
-    input.userPrompt,         // 1. User intent FIRST (what they typed)
-    colorReinforce,           // 2. Color reinforcement
-    config.objectType,        // 3. What it is
-    config.visualDesc,        // 4. How it looks (skipped in view mode)
-    viewPositive,             // 5. Camera (neutral default)
-    elementPrompt,            // 6. Tags
-    materialPrompt,
-    colorPrompt,
-    "transparent background, centered, single isolated game sprite",
-  ]);
+  // ── PROMPT ASSEMBLY — NATURAL SENTENCES for FLUX ────────────────
+  // FLUX.1 understands natural language better than comma-separated tags.
+  // Target: 50-70 words here. Style anchor adds ~15 words after.
+  // Write as a description, not a keyword list.
+  const userDesc = (input.userPrompt || "").trim();
+  const tags = [elementPrompt, materialPrompt, colorPrompt].filter(Boolean).join(", ");
+
+  let fullPrompt: string;
+  if (isExplicitView) {
+    // Explicit view: camera instruction is the primary intent
+    fullPrompt = [
+      `${viewPositive}.`,
+      `A ${config.objectType} described as: ${userDesc}.`,
+      colorClause,
+      tags ? `Details: ${tags}.` : "",
+      `Isolated on transparent background, centered, game-ready sprite.`,
+    ].filter(Boolean).join(" ");
+  } else {
+    // Default view: subject description is primary
+    fullPrompt = [
+      `A ${config.objectType} described as: ${userDesc}.`,
+      config.visualDesc ? `It has ${config.visualDesc}.` : "",
+      colorClause,
+      `${viewPositive}.`,
+      config.composition ? `Composition: ${config.composition}.` : "",
+      tags ? `Details: ${tags}.` : "",
+      `Isolated on transparent background, centered, single game sprite.`,
+    ].filter(Boolean).join(" ");
+  }
 
   // ═══════════════════════════════════════════════════════
   // NEGATIVE PROMPT — blocks hallucinations
