@@ -53,15 +53,16 @@ export default async function DashboardLayout({
         <div className="flex flex-col flex-1 min-h-0">
 
           {/* Logo */}
-          <div className="flex items-center h-14 px-5">
+          <div className="flex items-center h-14 px-3 border-b border-white/5">
             <Link href="/" className="flex items-center gap-2">
               <Image
                 src="/logo.png"
                 alt="SpriteLab"
-                width={26}
-                height={26}
+                width={24}
+                height={24}
+                className="shrink-0"
               />
-              <span className="font-display font-bold text-[15px] tracking-tight text-white/90">
+              <span className="font-display font-bold text-sm tracking-tight text-white/90 whitespace-nowrap">
                 Sprite<span className="text-[#00ff88]">Lab</span>
               </span>
             </Link>
