@@ -86,12 +86,15 @@ function bridgeResult(
   extraPositive?: string,
   extraNegative?: string
 ): BuildPromptResult {
-  const styleAnchor = getStyleAnchor(styleId);
   const styleNegs = getStyleNegatives(styleId);
 
-  // Merge style rendering anchor + style negatives from STYLES_2D_FULL
-  // (prompt-configs.ts has semantic style; styles-2d.ts has FLUX-tuned rendering)
-  const fullPrompt = [configResult.fullPrompt, styleAnchor, extraPositive]
+  // Style positive is now injected EARLY in buildAssetPrompt (position #1).
+  // We only add styleMandatory here as enforcement suffix (short, ~10 words).
+  // This keeps style in FLUX's high-weight zone (first 40 words).
+  const style: StyleConfig | undefined = STYLES_2D_FULL[styleId];
+  const enforcement = style?.styleMandatory || "";
+
+  const fullPrompt = [configResult.fullPrompt, enforcement, extraPositive]
     .filter(Boolean)
     .join(", ");
 

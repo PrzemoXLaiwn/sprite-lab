@@ -1369,33 +1369,34 @@ export function buildAssetPrompt(input: PromptBuildInput): PromptBuildResult {
     ? `The color is distinctly ${detectedColors.join(" and ")}.`
     : "";
 
-  // ── PROMPT ASSEMBLY — NATURAL SENTENCES for FLUX ────────────────
-  // FLUX.1 understands natural language better than comma-separated tags.
-  // Target: 50-70 words here. Style anchor adds ~15 words after.
-  // Write as a description, not a keyword list.
+  // ── PROMPT ASSEMBLY — STYLE EARLY for FLUX ──────────────────────
+  // FLUX gives highest weight to FIRST ~40 words.
+  // Style MUST appear in first 20 words or FLUX ignores it.
+  // Order: [style] [subject] [user desc] [view] [composition] [base]
   const userDesc = (input.userPrompt || "").trim();
   const tags = [elementPrompt, materialPrompt, colorPrompt].filter(Boolean).join(", ");
 
+  // Short style tag — injected at position #1 so FLUX renders correct style
+  const styleTag = STYLE_PROMPT_CONFIGS[resolvedStyle]?.positive || "";
+
   let fullPrompt: string;
   if (isExplicitView) {
-    // Explicit view: camera instruction is the primary intent
     fullPrompt = [
-      `${viewPositive}.`,
-      `A ${config.objectType} described as: ${userDesc}.`,
-      colorClause,
-      tags ? `Details: ${tags}.` : "",
-      `Isolated on transparent background, centered, game-ready sprite.`,
+      `${styleTag} ${viewPositive}.`,                              // 1. STYLE + CAMERA (first thing FLUX sees)
+      `${config.objectType}: ${userDesc}.`,                        // 2. WHAT + USER INTENT
+      colorClause,                                                  // 3. Color reinforcement
+      tags ? `${tags}.` : "",                                       // 4. Tags
+      `Isolated on transparent background, centered, game sprite.`, // 5. Base
     ].filter(Boolean).join(" ");
   } else {
-    // Default view: subject description is primary
     fullPrompt = [
-      `A ${config.objectType} described as: ${userDesc}.`,
-      config.visualDesc ? `It has ${config.visualDesc}.` : "",
-      colorClause,
-      `${viewPositive}.`,
-      config.composition ? `Composition: ${config.composition}.` : "",
-      tags ? `Details: ${tags}.` : "",
-      `Isolated on transparent background, centered, single game sprite.`,
+      `${styleTag} ${config.objectType}: ${userDesc}.`,            // 1. STYLE + WHAT + USER (first 15 words!)
+      config.visualDesc ? `${config.visualDesc}.` : "",             // 2. Visual details
+      colorClause,                                                  // 3. Color
+      `${viewPositive}.`,                                           // 4. Camera
+      config.composition ? `${config.composition}.` : "",           // 5. Framing
+      tags ? `${tags}.` : "",                                       // 6. Tags
+      `Transparent background, centered, single game sprite.`,      // 7. Base
     ].filter(Boolean).join(" ");
   }
 
