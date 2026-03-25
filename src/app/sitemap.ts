@@ -1,25 +1,21 @@
 import { MetadataRoute } from "next";
+import { prisma } from "@/lib/prisma";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = "https://www.sprite-lab.com";
   const now = new Date().toISOString();
 
-  return [
-    // ── PUBLIC PAGES (indexable, no auth required) ──────────────
+  // ── Static public pages ─────────────────────────────────────────
+  const staticPages: MetadataRoute.Sitemap = [
+    // Homepage — highest priority
     {
       url: baseUrl,
       lastModified: now,
       changeFrequency: "daily",
       priority: 1.0,
     },
-    {
-      url: `${baseUrl}/pricing`,
-      lastModified: now,
-      changeFrequency: "weekly",
-      priority: 0.9,
-    },
 
-    // ── SEO LANDING PAGES (organic traffic targets) ────────────
+    // SEO landing pages — high priority organic traffic targets
     {
       url: `${baseUrl}/pixel-art-generator`,
       lastModified: now,
@@ -39,21 +35,37 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.9,
     },
 
-    // ── AUTH PAGES (public, Google can render them) ─────────────
+    // Pricing — public, high conversion intent
+    {
+      url: `${baseUrl}/pricing`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.9,
+    },
+
+    // Community gallery — public, fresh content signals
+    {
+      url: `${baseUrl}/community`,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.8,
+    },
+
+    // Auth pages — indexable for brand searches
     {
       url: `${baseUrl}/login`,
       lastModified: now,
       changeFrequency: "monthly",
-      priority: 0.6,
+      priority: 0.5,
     },
     {
       url: `${baseUrl}/register`,
       lastModified: now,
       changeFrequency: "monthly",
-      priority: 0.6,
+      priority: 0.5,
     },
 
-    // ── LEGAL / INFO (low priority but indexable) ──────────────
+    // Info pages
     {
       url: `${baseUrl}/changelog`,
       lastModified: now,
@@ -72,10 +84,32 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "yearly",
       priority: 0.2,
     },
-
-    // ── NOTE: Auth-required pages are intentionally EXCLUDED ───
-    // /generate, /assets, /usage, /settings, /presets, /community
-    // These redirect to /login for Googlebot → "not indexed: redirect"
-    // Only public pages belong in sitemap.
   ];
+
+  // ── Dynamic: public user profiles ───────────────────────────────
+  // Each public profile is a unique indexable page with user-generated content
+  let profilePages: MetadataRoute.Sitemap = [];
+  try {
+    const publicUsers = await prisma.user.findMany({
+      where: {
+        isProfilePublic: true,
+        isActive: true,
+        username: { not: null },
+        totalGenerationsPublic: { gt: 0 },
+      },
+      select: { username: true, updatedAt: true },
+      take: 500, // Cap to prevent sitemap bloat
+    });
+
+    profilePages = publicUsers.map((user) => ({
+      url: `${baseUrl}/u/${user.username}`,
+      lastModified: user.updatedAt.toISOString(),
+      changeFrequency: "weekly" as const,
+      priority: 0.3,
+    }));
+  } catch {
+    // DB unavailable at build time — skip dynamic pages
+  }
+
+  return [...staticPages, ...profilePages];
 }

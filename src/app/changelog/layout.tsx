@@ -4,9 +4,11 @@ export const metadata: Metadata = {
   title: "Changelog - SpriteLab | Latest Updates & Features",
   description: "Stay up to date with SpriteLab's latest features, improvements, and bug fixes. See what's new in our AI game asset generator.",
   keywords: ["changelog", "updates", "new features", "SpriteLab news", "release notes"],
+  alternates: { canonical: "https://www.sprite-lab.com/changelog" },
   openGraph: {
     title: "Changelog - SpriteLab Updates",
     description: "See the latest features and improvements in SpriteLab.",
+    url: "https://www.sprite-lab.com/changelog",
   },
 };
 

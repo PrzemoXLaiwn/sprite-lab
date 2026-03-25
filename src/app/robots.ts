@@ -9,12 +9,18 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: "*",
         allow: [
           "/",
+          // SEO landing pages
           "/pixel-art-generator",
           "/game-weapon-generator",
           "/rpg-character-creator",
+          // Public app pages (no auth required)
           "/pricing",
+          "/community",
+          "/u/",
+          // Auth pages
           "/login",
           "/register",
+          // Info pages
           "/changelog",
           "/privacy",
           "/terms",
@@ -28,7 +34,6 @@ export default function robots(): MetadataRoute.Robots {
           "/dashboard",
           "/presets",
           "/settings",
-          "/community",
           "/referrals",
           "/edit",
           "/upscale",
