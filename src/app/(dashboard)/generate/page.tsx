@@ -293,43 +293,23 @@ function GeneratePageInner() {
   // RENDER
   // ==========================================================================
   return (
-    <div className="min-h-screen p-3 sm:p-4 md:p-8 max-w-6xl mx-auto">
+    <div className="min-h-screen p-3 sm:p-4 md:p-6 max-w-[1200px] mx-auto">
 
-      {/* Page header */}
-      <div className="mb-5 sm:mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Create Game Asset</h1>
-          <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">
-            Pick a type, choose a style, describe what you need.
-          </p>
-        </div>
-        {history.length > 0 && (
-          <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            {history.length} generated this session
-          </div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px] gap-4 sm:gap-5 lg:gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_440px] gap-4 lg:gap-5 items-start">
 
         {/* ================================================================
-            LEFT COLUMN — Form
+            LEFT COLUMN — Form (compact, Meshy-inspired)
         ================================================================ */}
-        <div className="space-y-6">
+        <div className="space-y-4">
 
-          {/* ── Step 1: Category ─────────────────────────────────────── */}
-          <div className="rounded-2xl border border-border bg-card p-5">
-            <div className="flex items-center gap-2.5 mb-4">
-              <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/15 text-primary text-xs font-bold">1</span>
-              <p className="text-sm font-semibold text-foreground">What are you creating?</p>
-            </div>
+          {/* ── Category + Subcategory ────────────────────────────────── */}
+          <div className="rounded-xl border border-white/6 bg-white/2 p-4">
+            <p className="text-xs font-medium text-white/50 mb-3">Asset Type</p>
             <CategorySelector
               selectedCategoryId={selectedCategory.id}
               onSelect={handleCategoryChange}
             />
-            <div className="mt-4">
-              <p className="text-[11px] text-muted-foreground/60 uppercase tracking-wider mb-2">Subcategory</p>
+            <div className="mt-3 flex flex-wrap gap-1.5">
               <SubcategoryChips
                 subcategories={selectedCategory.subcategories}
                 selectedId={selectedSubcategoryId}
@@ -338,82 +318,66 @@ function GeneratePageInner() {
             </div>
           </div>
 
-          {/* ── Step 2: Style ────────────────────────────────────────── */}
-          <div className="rounded-2xl border border-border bg-card p-5">
-            <div className="flex items-center gap-2.5 mb-4">
-              <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/15 text-primary text-xs font-bold">2</span>
-              <p className="text-sm font-semibold text-foreground">Choose art style</p>
-            </div>
+          {/* ── Style ───────────────────────────────────────────────── */}
+          <div className="rounded-xl border border-white/6 bg-white/2 p-4">
+            <p className="text-xs font-medium text-white/50 mb-3">Art Style</p>
             <StyleSelector selectedStyleId={styleId} onSelect={setStyleId} />
+          </div>
 
-            {/* View + Quality — inline row */}
-            <div className="mt-4 pt-4 border-t border-border/50 flex flex-wrap gap-x-6 gap-y-3">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-muted-foreground/50 uppercase tracking-wider shrink-0">View</span>
-                <div className="flex gap-1">
-                  {VIEW_OPTIONS.map((v) => (
-                    <button
-                      key={v.id}
-                      onClick={() => setView(v.id as ViewId)}
-                      title={v.desc}
-                      className={`px-2 py-1 rounded-md border text-[11px] font-medium transition-all ${view === v.id ? "border-primary bg-primary/10 text-primary" : "border-border/50 text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}
-                    >
-                      {v.label}
-                    </button>
-                  ))}
-                </div>
+          {/* ── View + Quality (single compact row) ─────────────────── */}
+          <div className="rounded-xl border border-white/6 bg-white/2 p-4 flex flex-wrap gap-x-6 gap-y-3">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-white/30 uppercase tracking-wider shrink-0">View</span>
+              <div className="flex gap-1">
+                {VIEW_OPTIONS.map((v) => (
+                  <button
+                    key={v.id}
+                    onClick={() => setView(v.id as ViewId)}
+                    title={v.desc}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${view === v.id ? "bg-primary/15 text-primary" : "text-white/40 hover:text-white/60 hover:bg-white/4"}`}
+                  >
+                    {v.label}
+                  </button>
+                ))}
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-muted-foreground/50 uppercase tracking-wider shrink-0">Quality</span>
-                <div className="flex gap-1">
-                  {DETAIL_OPTIONS.map((d) => (
-                    <button
-                      key={d.id}
-                      onClick={() => setDetail(d.id as DetailId)}
-                      title={d.description}
-                      className={`px-2 py-1 rounded-md border text-[11px] font-medium transition-all ${detail === d.id ? "border-primary bg-primary/10 text-primary" : "border-border/50 text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}
-                    >
-                      {d.label}
-                    </button>
-                  ))}
-                </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-white/30 uppercase tracking-wider shrink-0">Quality</span>
+              <div className="flex gap-1">
+                {DETAIL_OPTIONS.map((d) => (
+                  <button
+                    key={d.id}
+                    onClick={() => setDetail(d.id as DetailId)}
+                    title={d.description}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${detail === d.id ? "bg-primary/15 text-primary" : "text-white/40 hover:text-white/60 hover:bg-white/4"}`}
+                  >
+                    {d.label}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
 
-          {/* ── Step 3: Describe ──────────────────────────────────────── */}
-          <div className="rounded-2xl border border-border bg-card p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2.5">
-                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/15 text-primary text-xs font-bold">3</span>
-                <p className="text-sm font-semibold text-foreground">Describe your {selectedSub.label.toLowerCase()}</p>
-              </div>
+          {/* ── Prompt ──────────────────────────────────────────────── */}
+          <div className="rounded-xl border border-white/6 bg-white/2 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-medium text-white/50">Prompt</p>
               <span className={`text-[10px] font-medium ${promptQuality.color} transition-colors`}>
                 {promptQuality.level !== "empty" ? promptQuality.label : ""}
               </span>
             </div>
 
-            <div className="relative">
-              <textarea
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder={placeholder}
-                maxLength={200}
-                rows={4}
-                className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm resize-none outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/15 transition-all placeholder:text-muted-foreground/40"
-              />
-              {prompt.length > 150 && (
-                <span className="absolute bottom-3 right-3.5 text-[10px] text-muted-foreground">
-                  {prompt.length}/200
-                </span>
-              )}
-            </div>
+            <textarea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder={placeholder}
+              maxLength={500}
+              rows={3}
+              className="w-full px-3 py-2.5 rounded-lg border border-white/8 bg-white/3 text-sm resize-none outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-white/20"
+            />
 
             {prompt.length === 0 && (
-              <div className="mt-2 space-y-1.5">
-                <p className="text-[10px] text-muted-foreground/40">
-                  Try an example:
-                </p>
+              <div className="mt-2">
                 <div className="flex flex-wrap gap-1">
                   {[
                     selectedSub.subcategoryId === "SWORDS" ? "fire sword with glowing runes" :
@@ -429,9 +393,9 @@ function GeneratePageInner() {
                       key={ex}
                       type="button"
                       onClick={() => setPrompt(ex)}
-                      className="px-2 py-0.5 text-[10px] rounded border border-primary/20 bg-primary/5 text-primary/60 hover:bg-primary/10 hover:text-primary transition-all"
+                      className="px-2 py-0.5 text-[10px] rounded bg-white/4 text-white/30 hover:bg-primary/10 hover:text-primary/70 transition-all"
                     >
-                      &quot;{ex}&quot;
+                      {ex}
                     </button>
                   ))}
                 </div>
@@ -439,13 +403,13 @@ function GeneratePageInner() {
             )}
 
             {/* Contextual prompt chips */}
-            <div className="mt-3">
+            <div className="mt-2.5">
               <PromptChips categoryId={selectedCategory.id} onChipClick={handleChipClick} />
             </div>
 
-            {/* Seed row */}
-            <div className="mt-4 pt-3 border-t border-border/50 flex items-center gap-2">
-              <label className="text-xs text-muted-foreground shrink-0 font-medium">Seed:</label>
+            {/* Seed */}
+            <div className="mt-3 pt-2.5 border-t border-white/4 flex items-center gap-2">
+              <label className="text-[11px] text-white/30 shrink-0">Seed</label>
               <input
                 type="number"
                 min={0}
@@ -453,13 +417,13 @@ function GeneratePageInner() {
                 placeholder="Random"
                 value={seed}
                 onChange={(e) => { setSeed(e.target.value); seedRef.current = e.target.value; setSeedLocked(false); }}
-                className="flex-1 px-2.5 py-1.5 rounded-lg border border-border bg-background text-xs outline-none focus:border-primary/60 transition-colors placeholder:text-muted-foreground/50"
+                className="flex-1 px-2 py-1 rounded-md bg-white/3 border border-white/6 text-xs outline-none focus:border-primary/40 transition-colors placeholder:text-white/20"
               />
               {activeResult && (
                 <button
                   onClick={handleLockSeed}
-                  title={seedLocked ? "Unlock seed (randomize)" : "Lock this seed (same composition)"}
-                  className={`flex items-center gap-1 px-2 py-1.5 rounded-lg border text-xs font-medium transition-all ${seedLocked ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-primary"}`}
+                  title={seedLocked ? "Unlock seed" : "Lock seed"}
+                  className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium transition-all ${seedLocked ? "bg-primary/15 text-primary" : "text-white/30 hover:text-white/50 hover:bg-white/4"}`}
                 >
                   {seedLocked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
                   {seedLocked ? "Locked" : "Lock"}
@@ -469,31 +433,24 @@ function GeneratePageInner() {
           </div>
 
           {/* ── Generate button ───────────────────────────────────────── */}
-          <div className="space-y-2">
-            <Button
-              onClick={handleGenerate}
-              disabled={!isFormValid || isGenerating}
-              className="w-full h-11 text-sm font-bold rounded-xl shadow-lg shadow-primary/25 transition-all hover:shadow-primary/40"
-              size="lg"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Generating… ~5s
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  Generate · ⚡ 1 credit
-                </>
-              )}
-            </Button>
-            {!isFormValid && prompt.length > 0 && prompt.length < 3 && (
-              <p className="text-[10px] text-center text-muted-foreground/40">
-                Add at least 3 characters to your description
-              </p>
+          <Button
+            onClick={handleGenerate}
+            disabled={!isFormValid || isGenerating}
+            className="w-full h-11 text-sm font-bold rounded-xl shadow-lg shadow-primary/25 transition-all hover:shadow-primary/40 hover:scale-[1.01]"
+            size="lg"
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Generating… ~5s
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4 mr-2" />
+                Generate · ⚡ 1 credit
+              </>
             )}
-          </div>
+          </Button>
 
           {/* ── Error ─────────────────────────────────────────────────── */}
           {status === "error" && errorMessage && (
@@ -565,7 +522,7 @@ function GeneratePageInner() {
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6">
                   <div className="flex gap-2">
                     {["⚔️", "🧪", "🧙"].map((e, i) => (
-                      <div key={i} className="w-10 h-10 rounded-lg bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-lg opacity-30">
+                      <div key={i} className="w-10 h-10 rounded-lg bg-white/3 border border-white/6 flex items-center justify-center text-lg opacity-30">
                         {e}
                       </div>
                     ))}
