@@ -2,133 +2,80 @@ import { MetadataRoute } from "next";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = "https://www.sprite-lab.com";
-  const currentDate = new Date().toISOString();
+  const now = new Date().toISOString();
 
   return [
-    // === GŁÓWNE STRONY (najwyższy priorytet) ===
+    // ── PUBLIC PAGES (indexable, no auth required) ──────────────
     {
       url: baseUrl,
-      lastModified: currentDate,
+      lastModified: now,
       changeFrequency: "daily",
       priority: 1.0,
     },
     {
-      url: `${baseUrl}/generate`,
-      lastModified: currentDate,
-      changeFrequency: "daily",
-      priority: 0.95,
-    },
-    {
       url: `${baseUrl}/pricing`,
-      lastModified: currentDate,
+      lastModified: now,
       changeFrequency: "weekly",
       priority: 0.9,
     },
 
-    // === GŁÓWNE FUNKCJE (wysoki priorytet) ===
-    {
-      url: `${baseUrl}/gallery`,
-      lastModified: currentDate,
-      changeFrequency: "daily",
-      priority: 0.85,
-    },
-    {
-      url: `${baseUrl}/community`,
-      lastModified: currentDate,
-      changeFrequency: "hourly",
-      priority: 0.85,
-    },
-    {
-      url: `${baseUrl}/edit`,
-      lastModified: currentDate,
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/upscale`,
-      lastModified: currentDate,
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/remove-bg`,
-      lastModified: currentDate,
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/variations`,
-      lastModified: currentDate,
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
-
-    // === AUTENTYKACJA (średni priorytet) ===
-    {
-      url: `${baseUrl}/login`,
-      lastModified: currentDate,
-      changeFrequency: "monthly",
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/register`,
-      lastModified: currentDate,
-      changeFrequency: "monthly",
-      priority: 0.7,
-    },
-
-    // === SEO LANDING PAGES (high priority for organic traffic) ===
+    // ── SEO LANDING PAGES (organic traffic targets) ────────────
     {
       url: `${baseUrl}/pixel-art-generator`,
-      lastModified: currentDate,
+      lastModified: now,
       changeFrequency: "weekly",
       priority: 0.9,
     },
     {
       url: `${baseUrl}/game-weapon-generator`,
-      lastModified: currentDate,
+      lastModified: now,
       changeFrequency: "weekly",
       priority: 0.9,
     },
     {
       url: `${baseUrl}/rpg-character-creator`,
-      lastModified: currentDate,
+      lastModified: now,
       changeFrequency: "weekly",
       priority: 0.9,
     },
 
-    // === DASHBOARD ===
+    // ── AUTH PAGES (public, Google can render them) ─────────────
     {
-      url: `${baseUrl}/dashboard`,
-      lastModified: currentDate,
-      changeFrequency: "daily",
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/settings`,
-      lastModified: currentDate,
+      url: `${baseUrl}/login`,
+      lastModified: now,
       changeFrequency: "monthly",
-      priority: 0.5,
-    },
-
-    // === STRONY INFORMACYJNE (niższy priorytet) ===
-    {
-      url: `${baseUrl}/changelog`,
-      lastModified: currentDate,
-      changeFrequency: "weekly",
       priority: 0.6,
     },
     {
+      url: `${baseUrl}/register`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.6,
+    },
+
+    // ── LEGAL / INFO (low priority but indexable) ──────────────
+    {
+      url: `${baseUrl}/changelog`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.4,
+    },
+    {
       url: `${baseUrl}/privacy`,
-      lastModified: currentDate,
+      lastModified: now,
       changeFrequency: "yearly",
-      priority: 0.3,
+      priority: 0.2,
     },
     {
       url: `${baseUrl}/terms`,
-      lastModified: currentDate,
+      lastModified: now,
       changeFrequency: "yearly",
-      priority: 0.3,
+      priority: 0.2,
     },
+
+    // ── NOTE: Auth-required pages are intentionally EXCLUDED ───
+    // /generate, /assets, /usage, /settings, /presets, /community
+    // These redirect to /login for Googlebot → "not indexed: redirect"
+    // Only public pages belong in sitemap.
   ];
 }
