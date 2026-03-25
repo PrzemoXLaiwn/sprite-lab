@@ -33,10 +33,10 @@ import { StyleSelector } from "@/components/generate/StyleSelector";
 // =============================================================================
 
 const VIEW_OPTIONS = [
-  { id: "none",    label: "Default",   prefix: "" },
-  { id: "side",    label: "Side View", prefix: "side view, " },
-  { id: "front",   label: "Front",     prefix: "front-facing, " },
-  { id: "topdown", label: "Top-Down",  prefix: "top-down view, " },
+  { id: "none",    label: "Default",   desc: "3/4 angle" },
+  { id: "side",    label: "Side",      desc: "Profile right" },
+  { id: "front",   label: "Front",     desc: "Facing viewer" },
+  { id: "topdown", label: "Top-Down",  desc: "From above" },
 ] as const;
 
 type ViewId = (typeof VIEW_OPTIONS)[number]["id"];
@@ -294,14 +294,22 @@ function GeneratePageInner() {
     <div className="min-h-screen p-3 sm:p-4 md:p-8 max-w-6xl mx-auto">
 
       {/* Page header */}
-      <div className="mb-6 sm:mb-10">
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Create Game Asset</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Choose a category, pick your style, describe what you need.
-        </p>
+      <div className="mb-5 sm:mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Create Game Asset</h1>
+          <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">
+            Pick a type, choose a style, describe what you need.
+          </p>
+        </div>
+        {history.length > 0 && (
+          <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+            {history.length} generated this session
+          </div>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px] gap-4 sm:gap-6 lg:gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px] gap-4 sm:gap-5 lg:gap-6 items-start">
 
         {/* ================================================================
             LEFT COLUMN — Form
@@ -336,37 +344,36 @@ function GeneratePageInner() {
             </div>
             <StyleSelector selectedStyleId={styleId} onSelect={setStyleId} />
 
-            {/* View + Detail — compact row */}
-            <div className="mt-4 pt-4 border-t border-border/50">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-[11px] text-muted-foreground/60 uppercase tracking-wider mb-2">View</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {VIEW_OPTIONS.map((v) => (
-                      <button
-                        key={v.id}
-                        onClick={() => setView(v.id as ViewId)}
-                        className={`px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all ${view === v.id ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-foreground hover:border-primary/40"}`}
-                      >
-                        {v.label}
-                      </button>
-                    ))}
-                  </div>
+            {/* View + Quality — inline row */}
+            <div className="mt-4 pt-4 border-t border-border/50 flex flex-wrap gap-x-6 gap-y-3">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-muted-foreground/50 uppercase tracking-wider shrink-0">View</span>
+                <div className="flex gap-1">
+                  {VIEW_OPTIONS.map((v) => (
+                    <button
+                      key={v.id}
+                      onClick={() => setView(v.id as ViewId)}
+                      title={v.desc}
+                      className={`px-2 py-1 rounded-md border text-[11px] font-medium transition-all ${view === v.id ? "border-primary bg-primary/10 text-primary" : "border-border/50 text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}
+                    >
+                      {v.label}
+                    </button>
+                  ))}
                 </div>
-                <div>
-                  <p className="text-[11px] text-muted-foreground/60 uppercase tracking-wider mb-2">Quality</p>
-                  <div className="flex gap-1.5">
-                    {DETAIL_OPTIONS.map((d) => (
-                      <button
-                        key={d.id}
-                        onClick={() => setDetail(d.id as DetailId)}
-                        className={`flex-1 py-1.5 rounded-lg border text-xs font-medium transition-all ${detail === d.id ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-foreground hover:border-primary/40"}`}
-                        title={d.description}
-                      >
-                        {d.label}
-                      </button>
-                    ))}
-                  </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-muted-foreground/50 uppercase tracking-wider shrink-0">Quality</span>
+                <div className="flex gap-1">
+                  {DETAIL_OPTIONS.map((d) => (
+                    <button
+                      key={d.id}
+                      onClick={() => setDetail(d.id as DetailId)}
+                      title={d.description}
+                      className={`px-2 py-1 rounded-md border text-[11px] font-medium transition-all ${detail === d.id ? "border-primary bg-primary/10 text-primary" : "border-border/50 text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}
+                    >
+                      {d.label}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
@@ -401,9 +408,32 @@ function GeneratePageInner() {
             </div>
 
             {prompt.length === 0 && (
-              <p className="text-[11px] text-muted-foreground/40 mt-2">
-                Tip: describe color, material, and details for best results
-              </p>
+              <div className="mt-2 space-y-1.5">
+                <p className="text-[10px] text-muted-foreground/40">
+                  Try an example:
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {[
+                    selectedSub.subcategoryId === "SWORDS" ? "fire sword with glowing runes" :
+                    selectedSub.subcategoryId === "POTIONS" ? "red health potion, glowing" :
+                    selectedSub.subcategoryId === "HEROES" ? "dark wizard with staff and pointed hat" :
+                    selectedSub.subcategoryId === "ENEMIES" ? "skeleton warrior with rusty sword" :
+                    selectedSub.subcategoryId === "HELMETS" ? "golden viking helmet with horns" :
+                    selectedSub.subcategoryId === "GEMS" ? "glowing blue sapphire gem" :
+                    selectedSub.subcategoryId === "ANIMALS" ? "fierce wolf, silver fur" :
+                    `${selectedSub.label.toLowerCase()} with magical glow`,
+                  ].map((ex) => (
+                    <button
+                      key={ex}
+                      type="button"
+                      onClick={() => setPrompt(ex)}
+                      className="px-2 py-0.5 text-[10px] rounded border border-primary/20 bg-primary/5 text-primary/60 hover:bg-primary/10 hover:text-primary transition-all"
+                    >
+                      &quot;{ex}&quot;
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
 
             {/* Contextual prompt chips */}
@@ -437,24 +467,31 @@ function GeneratePageInner() {
           </div>
 
           {/* ── Generate button ───────────────────────────────────────── */}
-          <Button
-            onClick={handleGenerate}
-            disabled={!isFormValid || isGenerating}
-            className="w-full h-12 text-base font-bold rounded-xl shadow-lg shadow-primary/20 transition-all"
-            size="lg"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Generating…
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-5 h-5 mr-2" />
-                Generate · ⚡ 1 credit
-              </>
+          <div className="space-y-2">
+            <Button
+              onClick={handleGenerate}
+              disabled={!isFormValid || isGenerating}
+              className="w-full h-11 text-sm font-bold rounded-xl shadow-lg shadow-primary/25 transition-all hover:shadow-primary/40"
+              size="lg"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Generating… ~5s
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Generate · ⚡ 1 credit
+                </>
+              )}
+            </Button>
+            {!isFormValid && prompt.length > 0 && prompt.length < 3 && (
+              <p className="text-[10px] text-center text-muted-foreground/40">
+                Add at least 3 characters to your description
+              </p>
             )}
-          </Button>
+          </div>
 
           {/* ── Error ─────────────────────────────────────────────────── */}
           {status === "error" && errorMessage && (
@@ -523,13 +560,17 @@ function GeneratePageInner() {
               )}
 
               {!activeResult && !isGenerating && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-8">
-                  <div className="w-16 h-16 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center">
-                    <Sparkles className="w-7 h-7 text-muted-foreground/20" />
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6">
+                  <div className="flex gap-2">
+                    {["⚔️", "🧪", "🧙"].map((e, i) => (
+                      <div key={i} className="w-10 h-10 rounded-lg bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-lg opacity-30">
+                        {e}
+                      </div>
+                    ))}
                   </div>
-                  <div className="text-center space-y-1">
-                    <p className="text-sm font-medium text-muted-foreground/40">Ready to generate</p>
-                    <p className="text-xs text-muted-foreground/25">Fill in the steps on the left and click Generate</p>
+                  <div className="text-center space-y-0.5">
+                    <p className="text-sm font-medium text-muted-foreground/30">Your asset will appear here</p>
+                    <p className="text-[10px] text-muted-foreground/20">Choose a category and describe what you need</p>
                   </div>
                 </div>
               )}
