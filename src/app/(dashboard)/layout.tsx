@@ -7,8 +7,6 @@ import {
   Settings,
   LogOut,
   Zap,
-  ChevronRight,
-  Rocket,
   Palette,
   BarChart3,
 } from "lucide-react";
@@ -22,11 +20,11 @@ import { UpgradeModal } from "@/components/dashboard/UpgradeModal";
 import { prisma } from "@/lib/prisma";
 
 const navItems = [
-  { href: "/generate", label: "Generate", icon: Zap, color: "group-hover:text-[#00d4ff]", badge: "AI" },
-  { href: "/assets", label: "My Assets", icon: Images, color: "group-hover:text-[#c084fc]" },
-  { href: "/presets", label: "Style Presets", icon: Palette, color: "group-hover:text-[#ffd93d]" },
-  { href: "/usage", label: "Usage", icon: BarChart3, color: "group-hover:text-[#00ff88]" },
-  { href: "/settings", label: "Settings", icon: Settings, color: "group-hover:text-white/70" },
+  { href: "/generate", label: "Generate", icon: Zap },
+  { href: "/assets", label: "My Assets", icon: Images },
+  { href: "/presets", label: "Style Presets", icon: Palette },
+  { href: "/usage", label: "Usage", icon: BarChart3 },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 export default async function DashboardLayout({
@@ -41,92 +39,61 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  // Get user plan and role for mobile menu
   const dbUser = await prisma.user.findUnique({
     where: { id: user.id },
     select: { plan: true, role: true },
   });
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#030305]">
-      <div className="flex flex-1">
-      {/* Sidebar - Desktop */}
-      <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 border-r border-white/5 bg-[#0a0a0f]/80 backdrop-blur-xl">
-        {/* Subtle gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#00ff88]/5 via-transparent to-[#c084fc]/5 pointer-events-none" />
+    <div className="min-h-screen bg-[#030305]">
+      {/* ══════════════════════════════════════════════════════
+          SIDEBAR — Desktop (fixed, 220px)
+      ══════════════════════════════════════════════════════ */}
+      <aside className="hidden md:flex md:w-[220px] md:flex-col md:fixed md:inset-y-0 border-r border-white/5 bg-[#080810]">
+        <div className="flex flex-col flex-1 min-h-0">
 
-        <div className="relative flex flex-col flex-1 min-h-0">
           {/* Logo */}
-          <div className="flex items-center justify-between h-16 px-6 border-b border-white/5">
-            <Link href="/" className="flex items-center gap-2.5 group">
-              <div className="relative">
-                <div className="absolute inset-0 bg-[#00ff88]/30 rounded-lg blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
-                <Image
-                  src="/logo.png"
-                  alt="SpriteLab"
-                  width={32}
-                  height={32}
-                  className="relative"
-                />
-              </div>
-              <span className="font-display font-bold text-lg tracking-tight">
-                Sprite<span className="text-[#00ff88] text-glow">Lab</span>
+          <div className="flex items-center h-14 px-5">
+            <Link href="/" className="flex items-center gap-2">
+              <Image
+                src="/logo.png"
+                alt="SpriteLab"
+                width={26}
+                height={26}
+              />
+              <span className="font-display font-bold text-[15px] tracking-tight text-white/90">
+                Sprite<span className="text-[#00ff88]">Lab</span>
               </span>
             </Link>
-            {/* Early Access Badge */}
-            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30">
-              <Rocket className="w-3 h-3 text-emerald-400" />
-              <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">Early Access</span>
-            </div>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-3 py-4 space-y-1">
+          <nav className="flex-1 px-2.5 py-3 space-y-0.5">
             {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-white/60 hover:text-white hover:bg-white/5 transition-all duration-200`}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] text-white/50 hover:text-white hover:bg-white/5 transition-colors"
               >
-                {/* Hover glow effect */}
-                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-[#00ff88]/0 via-[#00ff88]/5 to-[#00ff88]/0 opacity-0 group-hover:opacity-100 transition-opacity" />
-
-                <item.icon className={`relative w-5 h-5 transition-colors ${item.color}`} />
-                <span className="relative flex-1">{item.label}</span>
-
-                {item.badge && (
-                  <span className="relative px-1.5 py-0.5 text-[10px] font-bold rounded bg-[#00d4ff]/20 text-[#00d4ff] border border-[#00d4ff]/30">
-                    {item.badge}
-                  </span>
-                )}
-
-                <ChevronRight className="relative w-4 h-4 opacity-0 -translate-x-2 group-hover:opacity-50 group-hover:translate-x-0 transition-all" />
+                <item.icon className="w-[18px] h-[18px]" />
+                <span>{item.label}</span>
               </Link>
             ))}
-
-            {/* Admin Link - Only shows for admins */}
-            <AdminNavLink className="group relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-white/60 hover:text-white hover:bg-white/5 transition-all duration-200" />
+            <AdminNavLink className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] text-white/50 hover:text-white hover:bg-white/5 transition-colors" />
           </nav>
 
-          {/* Credits, Referral & User - Scrollable */}
-          <div className="flex-1 overflow-y-auto p-4 border-t border-white/5 space-y-4">
-            {/* Credits Box */}
+          {/* Bottom section — Credits + User + Logout */}
+          <div className="mt-auto border-t border-white/5 p-3 space-y-3">
             <CreditsDisplay />
-
-            {/* User */}
             <UserPlanBadge email={user.email!} />
-          </div>
-
-          {/* Logout - Fixed at bottom */}
-          <div className="p-4 border-t border-white/5">
             <form action="/auth/signout" method="post">
               <Button
                 variant="ghost"
                 size="sm"
-                className="w-full justify-start text-white/40 hover:text-white hover:bg-white/5 rounded-xl"
+                className="w-full justify-start text-white/30 hover:text-white hover:bg-white/5 rounded-lg h-8 text-xs"
                 type="submit"
               >
-                <LogOut className="w-4 h-4 mr-2" />
+                <LogOut className="w-3.5 h-3.5 mr-2" />
                 Sign out
               </Button>
             </form>
@@ -134,21 +101,14 @@ export default async function DashboardLayout({
         </div>
       </aside>
 
-      {/* Mobile Header */}
-      <div className="md:hidden fixed top-0 left-0 right-0 h-16 border-b border-white/5 bg-[#030305]/95 backdrop-blur-xl z-40">
+      {/* ══════════════════════════════════════════════════════
+          MOBILE HEADER
+      ══════════════════════════════════════════════════════ */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-14 border-b border-white/5 bg-[#030305]/95 backdrop-blur-xl z-40">
         <div className="flex items-center justify-between h-full px-4">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="relative">
-              <div className="absolute inset-0 bg-[#00ff88]/30 rounded-lg blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
-              <Image
-                src="/logo.png"
-                alt="SpriteLab"
-                width={32}
-                height={32}
-                className="relative"
-              />
-            </div>
-            <span className="font-display font-bold tracking-tight">
+          <Link href="/" className="flex items-center gap-2">
+            <Image src="/logo.png" alt="SpriteLab" width={26} height={26} />
+            <span className="font-display font-bold text-sm tracking-tight">
               Sprite<span className="text-[#00ff88]">Lab</span>
             </span>
           </Link>
@@ -160,49 +120,35 @@ export default async function DashboardLayout({
         </div>
       </div>
 
-      {/* Mobile Bottom Nav */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 border-t border-white/5 bg-[#0a0a0f]/95 backdrop-blur-xl z-40 pb-[env(safe-area-inset-bottom)]">
-        <nav className="flex items-center justify-around h-16">
+      {/* ══════════════════════════════════════════════════════
+          MOBILE BOTTOM NAV
+      ══════════════════════════════════════════════════════ */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 border-t border-white/5 bg-[#080810]/95 backdrop-blur-xl z-40 pb-[env(safe-area-inset-bottom)]">
+        <nav className="flex items-center justify-around h-14">
           {navItems.slice(0, 4).map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className="group flex flex-col items-center gap-1 py-2 px-3 rounded-xl text-white/50 hover:text-white transition-all"
+              className="flex flex-col items-center gap-0.5 py-2 px-3 text-white/40 hover:text-white transition-colors"
             >
-              <div className="relative">
-                <div className={`absolute inset-0 rounded-lg blur-md opacity-0 group-hover:opacity-100 transition-opacity ${
-                  item.href === "/generate" ? "bg-[#00d4ff]/30" :
-                  item.href === "/assets" ? "bg-[#c084fc]/30" :
-                  item.href === "/presets" ? "bg-[#ffd93d]/30" :
-                  "bg-[#00ff88]/30"
-                }`} />
-                <item.icon className="relative w-5 h-5 group-hover:scale-110 transition-transform" />
-              </div>
-              <span className="text-[10px] font-medium">{item.label}</span>
+              <item.icon className="w-5 h-5" />
+              <span className="text-[9px] font-medium">{item.label}</span>
             </Link>
           ))}
         </nav>
       </div>
 
-      {/* Main Content */}
-      <main className="flex-1 md:pl-64 bg-[#030305]">
-        {/* Subtle background pattern */}
-        <div className="fixed inset-0 md:left-64 pointer-events-none">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#00ff88]/3 via-transparent to-transparent" />
-          <div className="absolute inset-0 grid-pattern opacity-20" />
-        </div>
-
-        <div className="relative pt-16 md:pt-0 pb-32 md:pb-0 min-h-screen">
+      {/* ══════════════════════════════════════════════════════
+          MAIN CONTENT
+      ══════════════════════════════════════════════════════ */}
+      <main className="md:pl-[220px] min-h-screen">
+        <div className="pt-14 md:pt-0 pb-20 md:pb-0">
           {children}
         </div>
       </main>
 
-      {/* Notification popup for credit grants and other alerts */}
       <NotificationPopup />
-
-      {/* Upgrade Modal when out of credits */}
       <UpgradeModal />
-      </div>
     </div>
   );
 }
