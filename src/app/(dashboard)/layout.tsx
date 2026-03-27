@@ -69,7 +69,7 @@ export default async function DashboardLayout({
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-2.5 py-3 space-y-0.5">
+          <nav className="px-2.5 py-3 space-y-0.5">
             {navItems.map((item) => (
               <Link
                 key={item.href}
@@ -83,15 +83,20 @@ export default async function DashboardLayout({
             <AdminNavLink className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] text-white/50 hover:text-white hover:bg-white/5 transition-colors" />
           </nav>
 
-          {/* Bottom section — Credits + User + Logout */}
-          <div className="mt-auto border-t border-white/5 p-3 space-y-3">
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Bottom section — Credits + User + Sign out */}
+          <div className="border-t border-white/5 p-3 space-y-2">
             <CreditsDisplay />
             <UserPlanBadge email={user.email!} />
+          </div>
+          <div className="px-3 pb-3">
             <form action="/auth/signout" method="post">
               <Button
                 variant="ghost"
                 size="sm"
-                className="w-full justify-start text-white/30 hover:text-white hover:bg-white/5 rounded-lg h-8 text-xs"
+                className="w-full justify-start text-white/30 hover:text-white hover:bg-white/5 rounded-lg h-9 text-xs"
                 type="submit"
               >
                 <LogOut className="w-3.5 h-3.5 mr-2" />

@@ -105,140 +105,58 @@ export default async function Home({
       </nav>
 
       {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center justify-center pt-14 sm:pt-16">
-        {/* Decorative elements */}
-        <div className="hidden lg:block absolute top-[20%] right-[20%] w-2 h-2 rounded-full bg-[#00ff88] animate-pulse shadow-lg shadow-[#00ff88]" />
-        <div className="hidden lg:block absolute bottom-[30%] left-[20%] w-1.5 h-1.5 rounded-full bg-[#c084fc] animate-pulse shadow-lg shadow-[#c084fc]" style={{ animationDelay: "1s" }} />
-        <div className="hidden lg:block absolute top-[40%] left-[10%] w-1 h-1 rounded-full bg-[#00d4ff] animate-pulse shadow-lg shadow-[#00d4ff]" style={{ animationDelay: "2s" }} />
+      <section className="relative pt-28 sm:pt-36 pb-16 sm:pb-24">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 text-center relative z-10">
 
-        <div className="max-w-5xl mx-auto px-3 sm:px-4 py-12 sm:py-20 text-center relative z-10">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-full bg-[#00ff88]/10 border border-[#00ff88]/30 text-[#00ff88] text-xs sm:text-sm mb-6 sm:mb-8 hover:bg-[#00ff88]/15 transition-colors cursor-default animate-slide-up">
-            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-pulse" />
-            <span className="font-medium">AI Game Asset Generator</span>
-            <span className="hidden xs:flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#00ff88]/20 text-xs">
-              <Star className="w-3 h-3" fill="currentColor" />
-              New
-            </span>
+          {/* Target audience badge */}
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/8 text-white/50 text-xs sm:text-sm mb-8">
+            For indie RPG, roguelike &amp; survival developers
           </div>
 
           {/* Headline */}
-          <h1 className="text-3xl sm:text-5xl md:text-7xl font-black mb-4 sm:mb-6 leading-tight animate-slide-up" style={{ animationDelay: "100ms" }}>
-            Generate Game Assets
-            <span className="block text-gradient-animated mt-1 sm:mt-2">
-              In Seconds
+          <h1 className="text-4xl sm:text-6xl md:text-7xl font-black mb-5 sm:mb-6 leading-[1.1] tracking-tight">
+            Game Assets.
+            <br />
+            <span className="bg-gradient-to-r from-[#00ff88] via-[#00d4ff] to-[#c084fc] bg-clip-text text-transparent">
+              Ready in Seconds.
             </span>
           </h1>
 
           {/* Subheadline */}
-          <p className="text-base sm:text-xl text-white/60 max-w-2xl mx-auto mb-6 sm:mb-8 animate-slide-up px-2" style={{ animationDelay: "200ms" }}>
-            Type what you need. Pick a style. Download in 5 seconds — transparent PNG, game-ready.
-            <span className="block mt-1 text-white/40 text-sm sm:text-base">No design skills required. No subscription to start.</span>
+          <p className="text-base sm:text-lg text-white/50 max-w-xl mx-auto mb-8 sm:mb-10 leading-relaxed">
+            Weapons, potions, characters, icons and props.
+            Pixel art to dark fantasy — pick a style, describe what you need, download transparent PNG.
           </p>
 
-          {/* Hero Gallery - Dynamic from Database */}
-          <HeroGallery />
-
           {/* CTA */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-8 sm:mb-12 animate-slide-up" style={{ animationDelay: "350ms" }}>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-10 sm:mb-14">
             <Link
               href={registerUrl}
-              className="group relative flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-4 rounded-xl bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-black font-bold text-base sm:text-lg transition-all hover:scale-105 shadow-xl shadow-[#00ff88]/30 hover:shadow-[#00ff88]/50 overflow-hidden w-full sm:w-auto justify-center"
+              className="group flex items-center gap-2 px-7 py-3.5 rounded-xl bg-[#00ff88] text-black font-bold text-base transition-all hover:bg-[#00ff88]/90 shadow-lg shadow-[#00ff88]/20 hover:shadow-[#00ff88]/40 w-full sm:w-auto justify-center"
             >
-              <span className="relative z-10 flex items-center gap-2">
-                Start Creating Free
-                <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
-              </span>
-              <div className="absolute inset-0 bg-gradient-to-r from-[#00d4ff] to-[#c084fc] opacity-0 group-hover:opacity-100 transition-opacity" />
+              Start Creating — 10 Free Credits
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Link>
             <Link
               href="#features"
-              className="group flex items-center gap-2 px-5 sm:px-6 py-3 sm:py-4 rounded-xl border border-white/10 hover:border-[#00ff88]/50 hover:bg-[#00ff88]/5 transition-all text-white/70 hover:text-white text-sm sm:text-base"
+              className="flex items-center gap-2 px-6 py-3.5 rounded-xl border border-white/10 hover:border-white/20 transition-colors text-white/60 hover:text-white text-sm"
             >
-              <Play className="w-4 h-4" />
               See how it works
+              <ChevronDown className="w-4 h-4" />
             </Link>
           </div>
 
-          {/* Trust indicators */}
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-6 text-xs sm:text-sm animate-slide-up" style={{ animationDelay: "450ms" }}>
-            <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-white/5 border border-white/10">
-              <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#00ff88]" />
-              <span className="text-white/60">5 free credits</span>
-            </div>
-            <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-white/5 border border-white/10">
-              <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#00ff88]" />
-              <span className="text-white/60">No card required</span>
-            </div>
-            <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-white/5 border border-white/10">
-              <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#00ff88]" />
-              <span className="text-white/60">Commercial license</span>
-            </div>
+          {/* Trust row — minimal */}
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-white/30 mb-12 sm:mb-16">
+            <span className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-[#00ff88]/60" /> 10 free credits</span>
+            <span className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-[#00ff88]/60" /> No credit card</span>
+            <span className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-[#00ff88]/60" /> Commercial license</span>
+            <span className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-[#00ff88]/60" /> Transparent PNG</span>
           </div>
 
-          {/* Stats bar */}
-          <div className="mt-8 sm:mt-12 flex items-center justify-center gap-4 sm:gap-8 md:gap-12 text-sm animate-slide-up" style={{ animationDelay: "550ms" }}>
-            <div className="flex flex-col items-center gap-0.5 sm:gap-1">
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400" />
-                <span className="text-xl sm:text-2xl font-bold text-white">~5s</span>
-              </div>
-              <span className="text-white/40 text-[10px] sm:text-xs">Generation time</span>
-            </div>
-            <div className="w-px h-8 sm:h-10 bg-white/10" />
-            <div className="flex flex-col items-center gap-0.5 sm:gap-1">
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5 text-[#00ff88]" />
-                <span className="text-xl sm:text-2xl font-bold text-white">2D</span>
-              </div>
-              <span className="text-white/40 text-[10px] sm:text-xs">Pixel & Vector</span>
-            </div>
-            <div className="w-px h-8 sm:h-10 bg-white/10" />
-            <div className="flex flex-col items-center gap-0.5 sm:gap-1">
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <Cuboid className="w-4 h-4 sm:w-5 sm:h-5 text-[#c084fc]" />
-                <span className="text-xl sm:text-2xl font-bold text-white">3D</span>
-              </div>
-              <span className="text-white/40 text-[10px] sm:text-xs">GLB & OBJ</span>
-            </div>
-          </div>
+          {/* Hero asset showcase — real generated assets, not emojis */}
+          <HeroGallery />
 
-          {/* Preview */}
-          <div className="mt-10 sm:mt-16 relative animate-slide-up" style={{ animationDelay: "650ms" }}>
-            {/* Glow background */}
-            <div className="absolute -inset-2 sm:-inset-4 bg-gradient-to-r from-[#00ff88]/20 via-[#00d4ff]/20 to-[#c084fc]/20 rounded-2xl sm:rounded-3xl blur-xl sm:blur-2xl animate-pulse" style={{ animationDuration: "4s" }} />
-
-            {/* Card */}
-            <div className="relative bg-[#0a0a0f]/90 backdrop-blur-xl border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 overflow-hidden">
-              {/* Corner accents */}
-              <div className="absolute top-0 left-0 w-12 sm:w-20 h-12 sm:h-20 border-l-2 border-t-2 border-[#00ff88]/30 rounded-tl-xl sm:rounded-tl-2xl" />
-              <div className="absolute bottom-0 right-0 w-12 sm:w-20 h-12 sm:h-20 border-r-2 border-b-2 border-[#c084fc]/30 rounded-br-xl sm:rounded-br-2xl" />
-
-              {/* Input row */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
-                <div className="flex-1 flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3.5 rounded-lg sm:rounded-xl bg-white/5 border border-white/10 hover:border-[#00ff88]/30 transition-colors group">
-                  <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-[#00ff88] group-hover:animate-pulse flex-shrink-0" />
-                  <span className="text-white/50 text-xs sm:text-sm truncate">golden sword with ruby gems, pixel art RPG style...</span>
-                </div>
-                <button className="px-4 sm:px-6 py-2.5 sm:py-3.5 rounded-lg sm:rounded-xl bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-black font-semibold hover:shadow-lg hover:shadow-[#00ff88]/30 transition-all hover:-translate-y-0.5 text-sm sm:text-base">
-                  Generate
-                </button>
-              </div>
-
-              {/* Asset grid */}
-              <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 sm:gap-3">
-                {["⚔️", "🛡️", "💎", "🧪", "🗝️", "📜", "🏹", "🔮", "👑", "🎭", "🪄", "💰"].map((emoji, i) => (
-                  <div
-                    key={i}
-                    className="group aspect-square rounded-lg sm:rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-xl sm:text-2xl md:text-3xl hover:scale-105 hover:border-[#00ff88]/50 hover:bg-[#00ff88]/5 transition-all cursor-pointer hover:shadow-lg hover:shadow-[#00ff88]/10"
-                    style={{ animationDelay: `${i * 50}ms` }}
-                  >
-                    <span className="group-hover:scale-110 transition-transform">{emoji}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Scroll indicator */}
