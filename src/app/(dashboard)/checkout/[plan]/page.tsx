@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, Shield, CheckCircle, ArrowLeft, CreditCard } from "lucide-react";
 import Link from "next/link";
-import { trackCheckoutStart, trackPurchase } from "@/lib/tiktok";
 
 // Load Stripe outside of component to avoid recreating on every render
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
@@ -77,7 +76,7 @@ function CheckoutForm({ plan, planDetails }: { plan: string; planDetails: PlanDe
         }
 
         // Track successful purchase for TikTok
-        trackPurchase(planDetails.name, planDetails.price);
+        // TikTok tracking removed
 
         setSuccess(true);
         setTimeout(() => {
@@ -186,7 +185,7 @@ export default function CheckoutPage() {
           setClientSecret(data.clientSecret);
           setPlanDetails(data.plan);
           // Track checkout initiation for TikTok
-          trackCheckoutStart(data.plan.name, data.plan.price);
+          // TikTok tracking removed
         }
       })
       .catch((err) => {

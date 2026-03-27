@@ -4,14 +4,13 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle, Sparkles, Rocket } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { trackRegistration } from "@/lib/tiktok";
 
 export default function EmailConfirmedPage() {
   const [countdown, setCountdown] = useState(5);
 
   // Track registration conversion for TikTok
   useEffect(() => {
-    trackRegistration();
+    // TikTok tracking removed
   }, []);
 
   useEffect(() => {
