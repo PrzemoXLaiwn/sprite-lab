@@ -40,7 +40,7 @@ export async function getOrCreateUser(supabaseUserId: string, email: string) {
         data: {
           id: supabaseUserId,
           email,
-          credits: 5,
+          credits: 10,
           plan: "FREE",
         },
       });

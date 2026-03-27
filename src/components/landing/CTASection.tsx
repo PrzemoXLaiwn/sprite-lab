@@ -51,7 +51,7 @@ export function CTASection() {
 
         <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
           Join thousands of indie developers who are already creating stunning game assets 
-          in seconds. Start with 5 free credits - no credit card required.
+          in seconds. Start with 10 free credits - no credit card required.
         </p>
 
         {/* Email Form */}
@@ -102,7 +102,7 @@ export function CTASection() {
           </div>
           <div className="flex items-center gap-2">
             <Check className="w-4 h-4 text-green-500" />
-            <span>5 free credits on signup</span>
+            <span>10 free credits on signup</span>
           </div>
           <div className="flex items-center gap-2">
             <Check className="w-4 h-4 text-green-500" />

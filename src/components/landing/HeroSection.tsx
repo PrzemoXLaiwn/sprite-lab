@@ -32,7 +32,7 @@ export function HeroSection() {
             className="mb-6 px-4 py-2 text-sm bg-primary/10 text-primary border-primary/20 hover:bg-primary/20"
           >
             <Sparkles className="w-4 h-4 mr-2" />
-            Now in Beta - Get 5 Free Credits
+            Get 10 Free Credits — No Card Required
           </Badge>
 
           {/* Main Headline */}

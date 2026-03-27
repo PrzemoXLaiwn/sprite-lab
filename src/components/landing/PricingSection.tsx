@@ -29,9 +29,9 @@ const plans = [
     description: "Perfect for trying out",
     price: 0,
     period: "forever",
-    credits: "5 credits",
+    credits: "10 credits",
     features: [
-      { text: "5 generation credits", included: true },
+      { text: "10 generation credits", included: true },
       { text: "All asset categories", included: true },
       { text: "All art styles", included: true },
       { text: "Premium AI models", included: true },

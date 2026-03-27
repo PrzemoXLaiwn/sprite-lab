@@ -64,7 +64,7 @@ async function logEmail(params: {
 export async function sendWelcomeEmail(
   email: string,
   userName?: string,
-  credits: number = 8,
+  credits: number = 10,
   userId?: string
 ): Promise<EmailResult> {
   const subject = `Welcome to SpriteLab! 🎮 Your ${credits} free credits are ready`;

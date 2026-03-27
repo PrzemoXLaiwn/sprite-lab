@@ -40,7 +40,7 @@ export async function GET(request: Request) {
               email: user.email!,
               name: user.user_metadata?.full_name || user.user_metadata?.name || null,
               avatarUrl: user.user_metadata?.avatar_url || null,
-              credits: 5,
+              credits: 10,
               plan: "FREE",
               role: "USER",
               isActive: true,

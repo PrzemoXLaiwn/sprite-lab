@@ -423,7 +423,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
       stripeSubscriptionId: null,
       stripePriceId: null,
       stripeCurrentPeriodEnd: null,
-      credits: 8, // Reset to free tier credits
+      credits: 10, // Reset to free tier credits
     },
   });
 

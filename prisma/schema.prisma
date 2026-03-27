@@ -13,7 +13,7 @@ model User {
   email                 String        @unique
   name                  String?
   avatarUrl             String?       @map("avatar_url")
-  credits               Int           @default(5)
+  credits               Int           @default(10)
   plan                  String        @default("FREE") // FREE, STARTER, PRO, UNLIMITED
   role                  String        @default("USER") // USER, SUPPORT, MODERATOR, ADMIN, OWNER (SEO)
   isLifetime            Boolean       @default(false) @map("is_lifetime") // Lifetime deal (no subscription renewal)

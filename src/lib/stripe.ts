@@ -25,11 +25,11 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 export const PLANS = {
   FREE: {
     name: "Free",
-    credits: 5,
+    credits: 10,
     price: 0,
     priceId: null,
     features: [
-      "5 generation credits",
+      "10 generation credits",
       "All asset categories",
       "Fast AI model",
       "PNG downloads",
