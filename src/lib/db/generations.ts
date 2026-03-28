@@ -22,6 +22,8 @@ export interface SaveGenerationParams {
   imageUrl: string;
   seed?: number;
   replicateCost?: number;
+  projectId?: string;
+  folderId?: string;
 }
 
 // -----------------------------------------------------------------------------
@@ -92,6 +94,8 @@ export async function saveGeneration(params: SaveGenerationParams) {
           imageUrl: params.imageUrl,
           seed: params.seed,
           replicateCost: params.replicateCost,
+          projectId: params.projectId || null,
+          folderId: params.folderId || null,
         },
       }),
       prisma.user.update({

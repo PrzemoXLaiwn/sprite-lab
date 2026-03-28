@@ -53,6 +53,7 @@ model User {
   referralCount         Int           @default(0) @map("referral_count") // How many people they referred
   referralEarnings      Int           @default(0) @map("referral_earnings") // Total credits earned from referrals
 
+  projects              Project[]
   generations           Generation[]
   // pendingGenerations removed - no FK constraint to avoid Supabase timeout
   creditTransactions    CreditTransaction[]
@@ -83,16 +84,69 @@ model Generation {
   replicateCost Float?   @map("replicate_cost") // Cost in USD from Runware API (legacy field name)
   isPublic      Boolean  @default(false) @map("is_public") // Share to community gallery
   likes         Int      @default(0) // Community likes count
+  projectId     String?  @map("project_id")
+  folderId      String?  @map("folder_id")
   createdAt     DateTime @default(now()) @map("created_at")
 
   user                User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project             Project?             @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  folder              ProjectFolder?       @relation(fields: [folderId], references: [id], onDelete: SetNull)
   analysis            ImageAnalysis?       // Auto-generated quality analysis
   verificationRecords VerificationRecord[] // Verification tests for hallucination fixes
 
   @@index([userId])
   @@index([createdAt])
   @@index([isPublic])
+  @@index([projectId])
+  @@index([folderId])
   @@map("generations")
+}
+
+// ===========================================
+// PROJECT SYSTEM
+// ===========================================
+
+model Project {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  name        String
+  gameType    String?  @map("game_type")     // dungeon crawler, platformer, RPG, etc.
+  perspective String?                         // top-down, side-scroll, isometric
+  artStyle    String?  @map("art_style")     // pixel art, hand-painted, dark fantasy
+  mood        String?                         // dark, colorful, gritty, whimsical
+  systems     String?                         // combat, inventory, crafting (comma-separated)
+  notes       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  folders     ProjectFolder[]
+  generations Generation[]
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("projects")
+}
+
+model ProjectFolder {
+  id            String   @id @default(cuid())
+  projectId     String   @map("project_id")
+  name          String                        // "Player Character", "Floor Tiles", etc.
+  category      String                        // CHARACTERS, ENVIRONMENT, UI, ITEMS, EFFECTS
+  subcategory   String?                       // HEROES, ENEMIES, POTIONS, etc.
+  description   String?                       // AI-generated description of what goes here
+  suggestedAssets String? @map("suggested_assets") // JSON: ["idle pose", "walk cycle", "attack"]
+  defaultStyleId String?  @map("default_style_id")  // Pre-set style from project
+  defaultView   String?  @map("default_view")       // Pre-set view from project
+  sortOrder     Int      @default(0) @map("sort_order")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  generations Generation[]
+
+  @@index([projectId])
+  @@index([category])
+  @@map("project_folders")
 }
 
 // ===========================================

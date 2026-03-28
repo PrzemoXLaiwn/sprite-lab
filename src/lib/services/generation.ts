@@ -103,6 +103,8 @@ export interface GenerationRequest {
   subcategoryId: string;
   styleId: string;
   view?: string;
+  projectId?: string;
+  folderId?: string;
 
   // Optional overrides
   seed?: number;
@@ -923,6 +925,8 @@ async function saveGeneratedAssets(
       imageUrl: asset.imageUrl,
       seed: asset.seed,
       replicateCost: asset.providerCost,
+      projectId: request.projectId,
+      folderId: request.folderId,
     };
 
     const saveResult = await saveGeneration(params);

@@ -41,6 +41,8 @@ const GenerateBodySchema = z
     style1Weight: z.number().min(0).max(100).optional().default(70),
     colorPaletteId: z.string().optional(),
     modelId: z.string().optional(),
+    projectId: z.string().optional(),
+    folderId: z.string().optional(),
   })
   .passthrough();
 
@@ -108,6 +110,8 @@ export async function POST(request: Request) {
       style1Weight,
       colorPaletteId,
       modelId,
+      projectId,
+      folderId,
     } = parsed.data;
 
     // ── 3. Semantic validation ────────────────────────────────────────────────
@@ -181,6 +185,8 @@ export async function POST(request: Request) {
       subcategoryId,
       styleId,
       view,
+      projectId,
+      folderId,
       seed: resolvedSeed,
       qualityPreset,
       modelId: modelId as RunwareModelId | undefined,
