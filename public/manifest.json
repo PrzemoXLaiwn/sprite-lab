@@ -4,8 +4,8 @@
   "description": "Create game-ready sprites, weapons, characters & items in seconds with AI.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#030305",
-  "theme_color": "#030305",
+  "background_color": "#0a0c10",
+  "theme_color": "#0a0c10",
   "icons": [
     {
       "src": "/icon-16.png",

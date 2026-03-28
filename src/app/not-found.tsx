@@ -15,16 +15,8 @@ export default function NotFound() {
 
       <div className="relative z-10 text-center max-w-lg">
         {/* Sad Coreling */}
-        <div className="relative w-56 h-56 mx-auto mb-8">
-          <div className="absolute inset-0 bg-[#c084fc]/30 rounded-full blur-3xl animate-pulse" style={{ animationDuration: "3s" }} />
-          <div className="absolute inset-0 animate-pulse-ring rounded-full border-2 border-[#c084fc]/20" />
-          <Image
-            src="/coreling-sad.png"
-            alt="Sad Coreling"
-            width={224}
-            height={224}
-            className="relative drop-shadow-2xl animate-float-sway"
-          />
+        <div className="w-16 h-16 mx-auto mb-8 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
+          <span className="text-3xl text-white/20">404</span>
         </div>
 
         {/* 404 Text */}

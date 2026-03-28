@@ -13,6 +13,7 @@ import {
   BarChart3,
   Settings,
   LogOut,
+  FolderOpen,
   ChevronRight,
   Sparkles,
   Crown,
@@ -21,11 +22,12 @@ import {
 import { Button } from "@/components/ui/button";
 
 const navItems = [
-  { href: "/generate", label: "Generate", icon: Zap, color: "text-[#00d4ff]", badge: "AI" },
-  { href: "/assets", label: "My Assets", icon: Images, color: "text-[#c084fc]" },
-  { href: "/presets", label: "Style Presets", icon: Palette, color: "text-[#ffd93d]" },
-  { href: "/usage", label: "Usage", icon: BarChart3, color: "text-[#00ff88]" },
-  { href: "/settings", label: "Settings", icon: Settings, color: "text-white/70" },
+  { href: "/generate", label: "Generate", icon: Zap, color: "text-[#FF6B2C]" },
+  { href: "/assets", label: "My Assets", icon: Images, color: "text-white/60" },
+  { href: "/presets", label: "Style Presets", icon: Palette, color: "text-white/60" },
+  { href: "/projects", label: "Projects", icon: FolderOpen, color: "text-white/60" },
+  { href: "/usage", label: "Usage", icon: BarChart3, color: "text-white/60" },
+  { href: "/settings", label: "Settings", icon: Settings, color: "text-white/60" },
 ];
 
 interface MobileMenuProps {
@@ -59,9 +61,9 @@ export function MobileMenu({ userEmail, userPlan = "FREE", userRole = "USER" }: 
 
   const getPlanColor = () => {
     switch (userPlan) {
-      case "UNLIMITED": return "from-[#ffd93d] to-[#ff6b6b]";
-      case "PRO": return "from-[#c084fc] to-[#00d4ff]";
-      case "STARTER": return "from-[#00d4ff] to-[#00ff88]";
+      case "UNLIMITED": return "from-[#f59e0b] to-[#ff6b6b]";
+      case "PRO": return "from-[#8b5cf6] to-[#FF6B2C]";
+      case "STARTER": return "from-[#FF6B2C] to-[#00ff88]";
       default: return "from-white/20 to-white/10";
     }
   };
@@ -98,7 +100,7 @@ export function MobileMenu({ userEmail, userPlan = "FREE", userRole = "USER" }: 
           <Link href="/" className="flex items-center gap-2" onClick={() => setIsOpen(false)}>
             <Image src="/logo.png" alt="SpriteLab" width={28} height={28} />
             <span className="font-display font-bold">
-              Sprite<span className="text-[#00ff88]">Lab</span>
+              Sprite<span className="text-[#FF6B2C]">Lab</span>
             </span>
           </Link>
           <Button
@@ -124,14 +126,14 @@ export function MobileMenu({ userEmail, userPlan = "FREE", userRole = "USER" }: 
               <p className="text-sm text-white truncate">{userEmail}</p>
               <div className="flex items-center gap-1.5 mt-0.5">
                 {userPlan !== "FREE" ? (
-                  <Crown className="w-3 h-3 text-[#ffd93d]" />
+                  <Crown className="w-3 h-3 text-[#f59e0b]" />
                 ) : (
                   <Sparkles className="w-3 h-3 text-white/40" />
                 )}
                 <span className={`text-xs font-medium ${
-                  userPlan === "UNLIMITED" ? "text-[#ffd93d]" :
-                  userPlan === "PRO" ? "text-[#c084fc]" :
-                  userPlan === "STARTER" ? "text-[#00d4ff]" :
+                  userPlan === "UNLIMITED" ? "text-[#f59e0b]" :
+                  userPlan === "PRO" ? "text-[#8b5cf6]" :
+                  userPlan === "STARTER" ? "text-[#FF6B2C]" :
                   "text-white/40"
                 }`}>
                   {userPlan === "UNLIMITED" ? "Titan" :
@@ -160,11 +162,6 @@ export function MobileMenu({ userEmail, userPlan = "FREE", userRole = "USER" }: 
               >
                 <item.icon className={`w-5 h-5 ${isActive ? item.color : ""}`} />
                 <span className="flex-1 font-medium">{item.label}</span>
-                {item.badge && (
-                  <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-[#00d4ff]/20 text-[#00d4ff] border border-[#00d4ff]/30">
-                    {item.badge}
-                  </span>
-                )}
                 <ChevronRight className={`w-4 h-4 transition-opacity ${isActive ? "opacity-100" : "opacity-0"}`} />
               </Link>
             );

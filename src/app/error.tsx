@@ -27,18 +27,9 @@ export default function Error({
       </div>
 
       <div className="relative z-10 text-center max-w-lg">
-        {/* Sad Coreling */}
-        <div className="relative w-56 h-56 mx-auto mb-8">
-          <div className="absolute inset-0 bg-[#ff4444]/30 rounded-full blur-3xl animate-pulse" style={{ animationDuration: "2s" }} />
-          <div className="absolute inset-0 animate-pulse-ring rounded-full border-2 border-[#ff4444]/20" />
-          <Image
-            src="/coreling-sad.png"
-            alt="Sad Coreling"
-            width={224}
-            height={224}
-            className="relative drop-shadow-2xl animate-float"
-            style={{ animationDuration: "2.5s" }}
-          />
+        {/* Error icon */}
+        <div className="w-16 h-16 mx-auto mb-8 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+          <span className="text-3xl">!</span>
         </div>
 
         {/* Error badge */}
