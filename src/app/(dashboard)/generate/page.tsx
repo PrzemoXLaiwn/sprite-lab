@@ -121,16 +121,32 @@ export default function GeneratePage() {
 function GeneratePageInner() {
   const searchParams = useSearchParams();
 
-  // Pre-fill from URL params (e.g. from "Use this prompt" in gallery)
-  const urlPrompt  = searchParams.get("prompt") ?? "";
-  const urlStyleId = searchParams.get("styleId") ?? "";
+  // Pre-fill from URL params (from gallery, projects, or direct links)
+  const urlPrompt    = searchParams.get("prompt") ?? "";
+  const urlStyleId   = searchParams.get("styleId") ?? "";
+  const urlCatId     = searchParams.get("categoryId") ?? "";
+  const urlSubId     = searchParams.get("subcategoryId") ?? "";
+  const urlView      = searchParams.get("view") ?? "";
+  const urlProjectId = searchParams.get("projectId") ?? "";
+  const urlFolderId  = searchParams.get("folderId") ?? "";
+  const urlFolderName = searchParams.get("folderName") ?? "";
 
-  const [selectedCategory, setSelectedCategory] = useState<GenerateCategory>(GENERATE_CATEGORIES[0]);
-  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState(GENERATE_CATEGORIES[0].subcategories[0].subcategoryId);
+  // Resolve initial category from URL
+  const initCat = GENERATE_CATEGORIES.find(c => c.id === urlCatId) ?? GENERATE_CATEGORIES[0];
+  const initSubId = (urlSubId && initCat.subcategories.some(s => s.subcategoryId === urlSubId))
+    ? urlSubId : initCat.subcategories[0].subcategoryId;
+
+  const viewFromUrl = ({"TOP_DOWN": "topdown", "SIDE_VIEW": "side", "FRONT": "front", "DEFAULT": "none"} as Record<string, string>)[urlView] || "none";
+
+  const [selectedCategory, setSelectedCategory] = useState<GenerateCategory>(initCat);
+  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState(initSubId);
   const [styleId, setStyleId]             = useState(
     urlStyleId && (ALL_GENERATE_STYLE_IDS as readonly string[]).includes(urlStyleId) ? urlStyleId : "PIXEL_ART_16"
   );
-  const [view, setView]                   = useState<ViewId>("none");
+  const [view, setView]                   = useState<ViewId>(viewFromUrl as ViewId || "none");
+  const [projectId] = useState(urlProjectId);
+  const [folderId] = useState(urlFolderId);
+  const [folderName] = useState(urlFolderName);
   const [detail, setDetail]               = useState<DetailId>("normal");
   const [prompt, setPrompt]               = useState(urlPrompt);
   const [seed, setSeed]                   = useState("");
@@ -156,22 +172,6 @@ function GeneratePageInner() {
   const isFormValid  = prompt.trim().length >= 3;
   const promptQuality = getPromptQuality(prompt);
   const activeBg = BG_MODES.find((b) => b.id === bgMode)!;
-
-  // Pre-fill from URL params
-  useEffect(() => {
-    const urlCatId = searchParams.get("categoryId");
-    const urlSubId = searchParams.get("subcategoryId");
-    if (!urlCatId || !urlSubId) return;
-    const cat = GENERATE_CATEGORIES.find((c) => c.id === urlCatId);
-    if (cat) {
-      const sub = cat.subcategories.find((s) => s.subcategoryId === urlSubId);
-      if (sub) {
-        setSelectedCategory(cat);
-        setSelectedSubcategoryId(sub.subcategoryId);
-      }
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const handleCategoryChange = (cat: GenerateCategory) => {
     setSelectedCategory(cat);
@@ -218,6 +218,8 @@ function GeneratePageInner() {
           view:          viewMap[view] || "DEFAULT",
           qualityPreset: detail,
           seed:          seedRef.current.trim() || undefined,
+          projectId:     projectId || undefined,
+          folderId:      folderId || undefined,
         }),
       });
 
@@ -343,7 +345,11 @@ function GeneratePageInner() {
           <div className="flex items-center gap-3">
             <h1 className="text-[13px] font-semibold text-white/80">Prompt Builder</h1>
             <span className="text-[10px] text-white/20">·</span>
-            <span className="text-[11px] text-white/30">{selectedCategory.label} → {selectedSub.label}</span>
+            {projectId ? (
+              <span className="text-[11px] text-[#FF6B2C]/60">{folderName || selectedSub.label}</span>
+            ) : (
+              <span className="text-[11px] text-white/30">{selectedCategory.label} → {selectedSub.label}</span>
+            )}
           </div>
           <span className="text-[11px] text-white/20 bg-white/5 px-2.5 py-1 rounded">1 credit / run</span>
         </div>
