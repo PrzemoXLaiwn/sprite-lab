@@ -130,9 +130,9 @@ function VariationsPageContent() {
 
   if (!generationId) {
     return (
-      <div className="min-h-screen bg-[#030305] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#0a0c10] flex items-center justify-center p-4">
         <div className="glass-card rounded-2xl p-8 text-center max-w-md">
-          <Flame className="w-16 h-16 text-[#ff4444] mx-auto mb-4" />
+          <Flame className="w-16 h-16 text-[#ef4444] mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-white mb-2">No Image Selected</h2>
           <p className="text-[#a0a0b0] mb-6">Please select an image from your gallery to create variations.</p>
           <Link href="/gallery">
@@ -147,17 +147,17 @@ function VariationsPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#030305] relative overflow-hidden">
+    <div className="min-h-screen bg-[#0a0c10] relative overflow-hidden">
       {/* Background */}
       <div className="fixed inset-0 gradient-mesh pointer-events-none" />
       <div className="fixed inset-0 grid-pattern pointer-events-none opacity-50" />
-      <div className="fixed top-20 left-10 w-96 h-96 bg-[#00d4ff]/10 rounded-full blur-[120px] animate-glow-pulse pointer-events-none" />
+      <div className="fixed top-20 left-10 w-96 h-96 bg-[#FF6B2C]/10 rounded-full blur-[120px] animate-glow-pulse pointer-events-none" />
 
       <div className="relative z-10 p-4 lg:p-8 max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <Link href="/gallery">
-            <Button variant="outline" className="mb-4 border-[#2a2a3d]">
+            <Button variant="outline" className="mb-4 border-[rgba(255,255,255,0.06)]">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Gallery
             </Button>
@@ -170,16 +170,16 @@ function VariationsPageContent() {
 
         {/* Original Image */}
         <div className="mb-6 glass-card rounded-2xl overflow-hidden">
-          <div className="p-4 border-b border-[#2a2a3d]">
+          <div className="p-4 border-b border-[rgba(255,255,255,0.06)]">
             <h3 className="font-semibold text-white flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-[#00ff88]" />
+              <Sparkles className="w-4 h-4 text-[#FF6B2C]" />
               Original Image
             </h3>
           </div>
-          <div className="aspect-video bg-[#0a0a0f] flex items-center justify-center relative">
+          <div className="aspect-video bg-[#11151b] flex items-center justify-center relative">
             <div className="absolute inset-0 grid-pattern-dense opacity-30" />
             {loadingOriginal ? (
-              <Loader2 className="w-12 h-12 text-[#00ff88] animate-spin" />
+              <Loader2 className="w-12 h-12 text-[#FF6B2C] animate-spin" />
             ) : originalImage ? (
               <img
                 src={originalImage}
@@ -197,12 +197,12 @@ function VariationsPageContent() {
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-white flex items-center gap-2">
-                <Shuffle className="w-5 h-5 text-[#00d4ff]" />
+                <Shuffle className="w-5 h-5 text-[#FF6B2C]" />
                 Generated Variations ({variationImages.length})
               </h3>
               <Button
                 onClick={handleDownloadAll}
-                className="bg-gradient-to-r from-[#00d4ff] to-[#00ff88] hover:opacity-90 text-white"
+                className="bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] hover:opacity-90 text-white"
               >
                 <Download className="w-4 h-4 mr-2" />
                 Download All
@@ -215,7 +215,7 @@ function VariationsPageContent() {
             }`}>
               {variationImages.map((imageUrl, index) => (
                 <div key={index} className="glass-card rounded-xl overflow-hidden group">
-                  <div className="aspect-square bg-[#0a0a0f] relative">
+                  <div className="aspect-square bg-[#11151b] relative">
                     <div className="absolute inset-0 grid-pattern-dense opacity-30" />
                     <img
                       src={imageUrl}
@@ -225,13 +225,13 @@ function VariationsPageContent() {
                     <Button
                       size="sm"
                       onClick={() => handleDownload(imageUrl, index)}
-                      className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-[#00d4ff] hover:bg-[#00d4ff]/80 text-white z-20"
+                      className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-[#FF6B2C] hover:bg-[#FF6B2C]/80 text-white z-20"
                     >
                       <Download className="w-3 h-3 mr-1" />
                       Download
                     </Button>
                   </div>
-                  <div className="p-3 border-t border-[#2a2a3d]">
+                  <div className="p-3 border-t border-[rgba(255,255,255,0.06)]">
                     <p className="text-xs text-[#a0a0b0]">Variation {index + 1}</p>
                   </div>
                 </div>
@@ -245,9 +245,9 @@ function VariationsPageContent() {
           <div className="mb-6 glass-card rounded-2xl p-12">
             <div className="text-center">
               <div className="relative w-24 h-24 mx-auto mb-4">
-                <div className="absolute inset-0 bg-[#00d4ff] rounded-full blur-xl opacity-50 animate-pulse" />
-                <div className="relative w-full h-full rounded-full border-4 border-[#2a2a3d] border-t-[#00d4ff] animate-spin" />
-                <Shuffle className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 text-[#00d4ff]" />
+                <div className="absolute inset-0 bg-[#FF6B2C] rounded-full blur-xl opacity-50 animate-pulse" />
+                <div className="relative w-full h-full rounded-full border-4 border-[rgba(255,255,255,0.06)] border-t-[#FF6B2C] animate-spin" />
+                <Shuffle className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 text-[#FF6B2C]" />
               </div>
               <p className="font-display font-bold text-white mb-2">Generating {numVariations} Variations...</p>
               <p className="text-sm text-[#a0a0b0]">This may take 60-120 seconds</p>
@@ -258,7 +258,7 @@ function VariationsPageContent() {
         {/* Controls */}
         <div className="glass-card rounded-2xl p-6">
           <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
-            <Shuffle className="w-5 h-5 text-[#00d4ff]" />
+            <Shuffle className="w-5 h-5 text-[#FF6B2C]" />
             Variation Settings
           </h3>
 
@@ -274,8 +274,8 @@ function VariationsPageContent() {
                     disabled={loading}
                     className={`p-4 rounded-xl border-2 transition-all ${
                       numVariations === num
-                        ? "border-[#00d4ff] bg-[#00d4ff]/10"
-                        : "border-[#2a2a3d] hover:border-[#00d4ff]/50"
+                        ? "border-[#FF6B2C] bg-[#FF6B2C]/10"
+                        : "border-[rgba(255,255,255,0.06)] hover:border-[#FF6B2C]/50"
                     }`}
                   >
                     <div className="text-2xl font-bold text-white mb-1">{num}</div>
@@ -296,13 +296,13 @@ function VariationsPageContent() {
                     disabled={loading}
                     className={`p-4 rounded-xl border-2 transition-all text-left ${
                       similarity === level.id
-                        ? "border-[#00d4ff] bg-[#00d4ff]/10"
-                        : "border-[#2a2a3d] hover:border-[#00d4ff]/50"
+                        ? "border-[#FF6B2C] bg-[#FF6B2C]/10"
+                        : "border-[rgba(255,255,255,0.06)] hover:border-[#FF6B2C]/50"
                     }`}
                   >
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-xl">{level.emoji}</span>
-                      <span className={`font-bold text-sm ${similarity === level.id ? "text-[#00d4ff]" : "text-white"}`}>
+                      <span className={`font-bold text-sm ${similarity === level.id ? "text-[#FF6B2C]" : "text-white"}`}>
                         {level.name}
                       </span>
                     </div>
@@ -326,9 +326,9 @@ function VariationsPageContent() {
               />
             </div>
 
-            <div className="p-3 rounded-lg bg-[#00d4ff]/10 border border-[#00d4ff]/20 flex items-start gap-2">
-              <Info className="w-4 h-4 text-[#00d4ff] mt-0.5 shrink-0" />
-              <p className="text-xs text-[#00d4ff]">
+            <div className="p-3 rounded-lg bg-[#FF6B2C]/10 border border-[#FF6B2C]/20 flex items-start gap-2">
+              <Info className="w-4 h-4 text-[#FF6B2C] mt-0.5 shrink-0" />
+              <p className="text-xs text-[#FF6B2C]">
                 <strong>Pro tip:</strong> High similarity keeps the original look with minor tweaks. Low similarity creates more creative variations. Each variation costs 1 credit.
               </p>
             </div>
@@ -336,7 +336,7 @@ function VariationsPageContent() {
             <Button
               onClick={handleGenerateVariations}
               disabled={loading || !originalImage}
-              className="w-full h-12 bg-gradient-to-r from-[#00d4ff] to-[#00ff88] hover:opacity-90 text-white font-display font-bold text-base disabled:opacity-50"
+              className="w-full h-12 bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] hover:opacity-90 text-white font-display font-bold text-base disabled:opacity-50"
             >
               {loading ? (
                 <>
@@ -352,7 +352,7 @@ function VariationsPageContent() {
             </Button>
 
             {error && (
-              <div className="p-4 rounded-xl bg-[#ff4444]/10 border border-[#ff4444]/30 text-[#ff4444] text-sm flex items-center gap-3">
+              <div className="p-4 rounded-xl bg-[#ef4444]/10 border border-[#ef4444]/30 text-[#ef4444] text-sm flex items-center gap-3">
                 <Flame className="w-5 h-5 shrink-0" />
                 {error}
               </div>
@@ -367,8 +367,8 @@ function VariationsPageContent() {
 export default function VariationsPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#030305] flex items-center justify-center">
-        <Loader2 className="w-12 h-12 text-[#00ff88] animate-spin" />
+      <div className="min-h-screen bg-[#0a0c10] flex items-center justify-center">
+        <Loader2 className="w-12 h-12 text-[#FF6B2C] animate-spin" />
       </div>
     }>
       <VariationsPageContent />

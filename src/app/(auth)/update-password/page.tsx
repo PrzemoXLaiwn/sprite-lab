@@ -98,9 +98,9 @@ export default function UpdatePasswordPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <div className="w-full max-w-md">
-          <div className="bg-[#0a0a0f]/80 border border-white/10 rounded-2xl p-8 backdrop-blur-xl text-center">
-            <div className="w-16 h-16 rounded-full bg-[#00ff88]/20 flex items-center justify-center mx-auto mb-6">
-              <CheckCircle className="w-8 h-8 text-[#00ff88]" />
+          <div className="bg-[#11151b]/80 border border-white/10 rounded-2xl p-8 backdrop-blur-xl text-center">
+            <div className="w-16 h-16 rounded-full bg-[#FF6B2C]/20 flex items-center justify-center mx-auto mb-6">
+              <CheckCircle className="w-8 h-8 text-[#FF6B2C]" />
             </div>
 
             <h1 className="text-2xl font-bold mb-2">Password updated!</h1>
@@ -109,7 +109,7 @@ export default function UpdatePasswordPage() {
             </p>
 
             <Link href="/login">
-              <Button className="w-full bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-black font-semibold">
+              <Button className="w-full bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] text-black font-semibold">
                 Go to login
               </Button>
             </Link>
@@ -125,19 +125,19 @@ export default function UpdatePasswordPage() {
         {/* Logo */}
         <Link href="/" className="flex items-center justify-center gap-2 mb-8 group">
           <div className="relative">
-            <div className="absolute inset-0 bg-[#00ff88]/30 rounded-lg blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="absolute inset-0 bg-[#FF6B2C]/30 rounded-lg blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
             <Image src="/logo.png" alt="SpriteLab" width={40} height={40} className="relative" />
           </div>
           <span className="font-display font-bold text-2xl tracking-tight">
-            Sprite<span className="text-[#00ff88]">Lab</span>
+            Sprite<span className="text-[#FF6B2C]">Lab</span>
           </span>
         </Link>
 
         {/* Update Form */}
-        <div className="bg-[#0a0a0f]/80 border border-white/10 rounded-2xl p-8 backdrop-blur-xl">
+        <div className="bg-[#11151b]/80 border border-white/10 rounded-2xl p-8 backdrop-blur-xl">
           <div className="text-center mb-8">
-            <div className="w-12 h-12 rounded-full bg-[#00d4ff]/20 flex items-center justify-center mx-auto mb-4">
-              <Lock className="w-6 h-6 text-[#00d4ff]" />
+            <div className="w-12 h-12 rounded-full bg-[#FF6B2C]/20 flex items-center justify-center mx-auto mb-4">
+              <Lock className="w-6 h-6 text-[#FF6B2C]" />
             </div>
             <h1 className="text-2xl font-bold mb-2">Set new password</h1>
             <p className="text-white/60">
@@ -155,7 +155,7 @@ export default function UpdatePasswordPage() {
                 {error.includes("expired") && (
                   <Link
                     href="/reset-password"
-                    className="text-[#00ff88] hover:underline text-xs mt-1"
+                    className="text-[#FF6B2C] hover:underline text-xs mt-1"
                   >
                     Request a new reset link →
                   </Link>
@@ -173,7 +173,7 @@ export default function UpdatePasswordPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="bg-white/5 border-white/10 focus:border-[#00ff88]/50 pr-10"
+                  className="bg-white/5 border-white/10 focus:border-[#FF6B2C]/50 pr-10"
                 />
                 <button
                   type="button"
@@ -207,16 +207,16 @@ export default function UpdatePasswordPage() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                className="bg-white/5 border-white/10 focus:border-[#00ff88]/50"
+                className="bg-white/5 border-white/10 focus:border-[#FF6B2C]/50"
               />
               {confirmPassword.length > 0 && (
                 <div className="flex items-center gap-1.5 mt-1">
                   {passwordChecks.match ? (
-                    <Check className="w-3.5 h-3.5 text-[#00ff88]" />
+                    <Check className="w-3.5 h-3.5 text-[#FF6B2C]" />
                   ) : (
                     <X className="w-3.5 h-3.5 text-red-400" />
                   )}
-                  <span className={`text-xs ${passwordChecks.match ? "text-[#00ff88]" : "text-red-400"}`}>
+                  <span className={`text-xs ${passwordChecks.match ? "text-[#FF6B2C]" : "text-red-400"}`}>
                     {passwordChecks.match ? "Passwords match" : "Passwords don't match"}
                   </span>
                 </div>
@@ -225,7 +225,7 @@ export default function UpdatePasswordPage() {
 
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-black font-semibold hover:opacity-90"
+              className="w-full bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] text-black font-semibold hover:opacity-90"
               disabled={isLoading || !isPasswordValid}
             >
               {isLoading ? (
@@ -248,11 +248,11 @@ function PasswordCheck({ passed, label }: { passed: boolean; label: string }) {
   return (
     <div className="flex items-center gap-1.5">
       {passed ? (
-        <Check className="w-3.5 h-3.5 text-[#00ff88]" />
+        <Check className="w-3.5 h-3.5 text-[#FF6B2C]" />
       ) : (
         <X className="w-3.5 h-3.5 text-white/30" />
       )}
-      <span className={`text-xs ${passed ? "text-[#00ff88]" : "text-white/40"}`}>{label}</span>
+      <span className={`text-xs ${passed ? "text-[#FF6B2C]" : "text-white/40"}`}>{label}</span>
     </div>
   );
 }

@@ -253,7 +253,7 @@ export function VerificationPanel() {
   if (isLoading) {
     return (
       <div className="p-6 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#00ff88]" />
+        <Loader2 className="w-8 h-8 animate-spin text-[#FF6B2C]" />
       </div>
     );
   }
@@ -263,14 +263,14 @@ export function VerificationPanel() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <FlaskConical className="w-6 h-6 text-[#00ff88]" />
+          <FlaskConical className="w-6 h-6 text-[#FF6B2C]" />
           <h2 className="text-xl font-bold text-white">Fix Verification System</h2>
         </div>
         <Button
           onClick={() => fetchData()}
           variant="outline"
           size="sm"
-          className="border-[#2a2a3d] hover:bg-white/5"
+          className="border-[rgba(255,255,255,0.06)] hover:bg-white/5"
         >
           <RefreshCw className="w-4 h-4 mr-2" />
           Refresh
@@ -280,20 +280,20 @@ export function VerificationPanel() {
       {/* Stats Cards */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="p-4 rounded-xl bg-[#0a0a0f] border border-[#2a2a3d]">
+          <div className="p-4 rounded-xl bg-[#11151b] border border-[rgba(255,255,255,0.06)]">
             <div className="text-2xl font-bold text-white">{stats.activePatterns}</div>
             <div className="text-sm text-[#a0a0b0]">Active Issues</div>
           </div>
-          <div className="p-4 rounded-xl bg-[#0a0a0f] border border-[#2a2a3d]">
+          <div className="p-4 rounded-xl bg-[#11151b] border border-[rgba(255,255,255,0.06)]">
             <div className="text-2xl font-bold text-green-500">{stats.verifiedFixed}</div>
             <div className="text-sm text-[#a0a0b0]">Verified Fixed</div>
           </div>
-          <div className="p-4 rounded-xl bg-[#0a0a0f] border border-[#2a2a3d]">
+          <div className="p-4 rounded-xl bg-[#11151b] border border-[rgba(255,255,255,0.06)]">
             <div className="text-2xl font-bold text-red-500">{stats.stillBroken}</div>
             <div className="text-sm text-[#a0a0b0]">Still Broken</div>
           </div>
-          <div className="p-4 rounded-xl bg-[#0a0a0f] border border-[#2a2a3d]">
-            <div className="text-2xl font-bold text-[#00ff88]">{stats.fixSuccessRate}%</div>
+          <div className="p-4 rounded-xl bg-[#11151b] border border-[rgba(255,255,255,0.06)]">
+            <div className="text-2xl font-bold text-[#FF6B2C]">{stats.fixSuccessRate}%</div>
             <div className="text-sm text-[#a0a0b0]">Success Rate</div>
           </div>
         </div>
@@ -304,7 +304,7 @@ export function VerificationPanel() {
         <Button
           onClick={() => runBatchVerification(5)}
           disabled={isVerifying || patterns.length === 0}
-          className="bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-black font-bold"
+          className="bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] text-black font-bold"
         >
           {isVerifying ? (
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -318,7 +318,7 @@ export function VerificationPanel() {
           onClick={() => runBatchVerification(10)}
           disabled={isVerifying || patterns.length === 0}
           variant="outline"
-          className="border-[#00ff88]/30 text-[#00ff88] hover:bg-[#00ff88]/10"
+          className="border-[#FF6B2C]/30 text-[#FF6B2C] hover:bg-[#FF6B2C]/10"
         >
           Verify Top 10
         </Button>
@@ -327,7 +327,7 @@ export function VerificationPanel() {
           onClick={() => runBatchVerification(9999)}
           disabled={isVerifying || patterns.length === 0}
           variant="outline"
-          className="border-[#c084fc]/30 text-[#c084fc] hover:bg-[#c084fc]/10 font-bold"
+          className="border-[#8b5cf6]/30 text-[#8b5cf6] hover:bg-[#8b5cf6]/10 font-bold"
         >
           {isVerifying ? (
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -395,7 +395,7 @@ export function VerificationPanel() {
 
       {/* Verification Results */}
       {verificationResults && verificationResults.length > 0 && (
-        <div className="p-4 rounded-xl bg-[#0a0a0f] border border-[#2a2a3d]">
+        <div className="p-4 rounded-xl bg-[#11151b] border border-[rgba(255,255,255,0.06)]">
           <h3 className="font-bold text-white mb-4">Verification Results</h3>
 
           {/* Summary */}
@@ -438,7 +438,7 @@ export function VerificationPanel() {
       )}
 
       {/* Patterns Pending Verification */}
-      <div className="p-4 rounded-xl bg-[#0a0a0f] border border-[#2a2a3d]">
+      <div className="p-4 rounded-xl bg-[#11151b] border border-[rgba(255,255,255,0.06)]">
         <h3 className="font-bold text-white mb-4">
           Patterns with Fixes ({patterns.length} pending)
         </h3>
@@ -454,7 +454,7 @@ export function VerificationPanel() {
             {patterns.map((pattern) => (
               <div
                 key={pattern.id}
-                className="p-3 rounded-lg bg-white/5 border border-[#2a2a3d] hover:border-[#00ff88]/30 transition-colors"
+                className="p-3 rounded-lg bg-white/5 border border-[rgba(255,255,255,0.06)] hover:border-[#FF6B2C]/30 transition-colors"
               >
                 <div className="flex items-center gap-3">
                   <div className="flex-1">
@@ -468,7 +468,7 @@ export function VerificationPanel() {
                       {pattern.categoryId} / {pattern.subcategoryId} / {pattern.styleId}
                     </div>
                     {pattern.preventionPrompt && (
-                      <div className="text-xs text-[#00ff88] mt-2 font-mono bg-[#00ff88]/10 px-2 py-1 rounded">
+                      <div className="text-xs text-[#FF6B2C] mt-2 font-mono bg-[#FF6B2C]/10 px-2 py-1 rounded">
                         Fix: {pattern.preventionPrompt}
                       </div>
                     )}
@@ -478,7 +478,7 @@ export function VerificationPanel() {
                     disabled={isVerifying}
                     size="sm"
                     variant="outline"
-                    className="border-[#00ff88]/30 text-[#00ff88] hover:bg-[#00ff88]/10"
+                    className="border-[#FF6B2C]/30 text-[#FF6B2C] hover:bg-[#FF6B2C]/10"
                   >
                     {isVerifying && selectedPatternId === pattern.id ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -495,7 +495,7 @@ export function VerificationPanel() {
 
       {/* Recent Verifications */}
       {recentVerifications.length > 0 && (
-        <div className="p-4 rounded-xl bg-[#0a0a0f] border border-[#2a2a3d]">
+        <div className="p-4 rounded-xl bg-[#11151b] border border-[rgba(255,255,255,0.06)]">
           <h3 className="font-bold text-white mb-4">Recent Verifications</h3>
           <div className="space-y-2">
             {recentVerifications.map((verification) => (
@@ -511,7 +511,7 @@ export function VerificationPanel() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm text-[#00ff88]">{verification.newAlignment.toFixed(0)}%</div>
+                  <div className="text-sm text-[#FF6B2C]">{verification.newAlignment.toFixed(0)}%</div>
                   <div className="text-xs text-[#606070]">
                     {new Date(verification.createdAt).toLocaleDateString()}
                   </div>
@@ -523,8 +523,8 @@ export function VerificationPanel() {
       )}
 
       {/* Help Section */}
-      <div className="p-4 rounded-xl bg-[#c084fc]/10 border border-[#c084fc]/30">
-        <h3 className="font-bold text-[#c084fc] mb-2">How Verification Works</h3>
+      <div className="p-4 rounded-xl bg-[#8b5cf6]/10 border border-[#8b5cf6]/30">
+        <h3 className="font-bold text-[#8b5cf6] mb-2">How Verification Works</h3>
         <ul className="text-sm text-[#a0a0b0] space-y-1">
           <li>• <strong>Verify</strong> - Re-generates image with same prompt + applied fixes</li>
           <li>• <strong>VERIFIED_FIXED</strong> - Hallucination is gone, pattern deactivated ✅</li>

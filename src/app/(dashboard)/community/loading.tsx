@@ -1,6 +1,6 @@
 export default function CommunityLoading() {
   return (
-    <div className="min-h-screen bg-[#030305] p-6">
+    <div className="min-h-screen bg-[#0a0c10] p-6">
       {/* Header */}
       <div className="mb-8 text-center">
         <div className="h-10 w-64 bg-white/5 rounded-lg animate-pulse mx-auto mb-3" />

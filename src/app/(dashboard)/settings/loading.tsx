@@ -1,6 +1,6 @@
 export default function SettingsLoading() {
   return (
-    <div className="min-h-screen bg-[#030305] p-6 max-w-4xl mx-auto">
+    <div className="min-h-screen bg-[#0a0c10] p-6 max-w-4xl mx-auto">
       {/* Header */}
       <div className="mb-8">
         <div className="h-8 w-40 bg-white/5 rounded-lg animate-pulse mb-2" />

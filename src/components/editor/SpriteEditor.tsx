@@ -495,9 +495,9 @@ export function SpriteEditor({
   return (
     <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-[#2a2a3d]">
+      <div className="flex items-center justify-between p-4 border-b border-[rgba(255,255,255,0.06)]">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-[#c084fc] to-[#00d4ff] flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-[#8b5cf6] to-[#FF6B2C] flex items-center justify-center">
             <Paintbrush className="w-5 h-5 text-white" />
           </div>
           <div>
@@ -518,15 +518,15 @@ export function SpriteEditor({
 
       <div className="flex-1 flex overflow-hidden">
         {/* Toolbar */}
-        <div className="w-16 border-r border-[#2a2a3d] p-2 flex flex-col gap-2">
+        <div className="w-16 border-r border-[rgba(255,255,255,0.06)] p-2 flex flex-col gap-2">
           {/* Tools */}
           <div className="space-y-1">
             <button
               onClick={() => setTool("brush")}
               className={`w-full aspect-square rounded-lg flex items-center justify-center transition-all ${
                 tool === "brush"
-                  ? "bg-[#c084fc] text-white"
-                  : "bg-[#1a1a28] text-[#a0a0b0] hover:text-white hover:bg-[#2a2a3d]"
+                  ? "bg-[#8b5cf6] text-white"
+                  : "bg-[#141821] text-[#a0a0b0] hover:text-white hover:bg-[rgba(255,255,255,0.06)]"
               }`}
               title="Brush (B)"
             >
@@ -537,8 +537,8 @@ export function SpriteEditor({
               onClick={() => setTool("eraser")}
               className={`w-full aspect-square rounded-lg flex items-center justify-center transition-all ${
                 tool === "eraser"
-                  ? "bg-[#c084fc] text-white"
-                  : "bg-[#1a1a28] text-[#a0a0b0] hover:text-white hover:bg-[#2a2a3d]"
+                  ? "bg-[#8b5cf6] text-white"
+                  : "bg-[#141821] text-[#a0a0b0] hover:text-white hover:bg-[rgba(255,255,255,0.06)]"
               }`}
               title="Eraser (E)"
             >
@@ -549,8 +549,8 @@ export function SpriteEditor({
               onClick={() => setTool("rectangle")}
               className={`w-full aspect-square rounded-lg flex items-center justify-center transition-all ${
                 tool === "rectangle"
-                  ? "bg-[#c084fc] text-white"
-                  : "bg-[#1a1a28] text-[#a0a0b0] hover:text-white hover:bg-[#2a2a3d]"
+                  ? "bg-[#8b5cf6] text-white"
+                  : "bg-[#141821] text-[#a0a0b0] hover:text-white hover:bg-[rgba(255,255,255,0.06)]"
               }`}
               title="Rectangle Select (R)"
             >
@@ -558,13 +558,13 @@ export function SpriteEditor({
             </button>
           </div>
 
-          <div className="h-px bg-[#2a2a3d] my-2" />
+          <div className="h-px bg-[rgba(255,255,255,0.06)] my-2" />
 
           {/* Actions */}
           <button
             onClick={undo}
             disabled={historyIndex <= 0}
-            className="w-full aspect-square rounded-lg flex items-center justify-center bg-[#1a1a28] text-[#a0a0b0] hover:text-white hover:bg-[#2a2a3d] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            className="w-full aspect-square rounded-lg flex items-center justify-center bg-[#141821] text-[#a0a0b0] hover:text-white hover:bg-[rgba(255,255,255,0.06)] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
             title="Undo (Ctrl+Z)"
           >
             <Undo2 className="w-5 h-5" />
@@ -573,7 +573,7 @@ export function SpriteEditor({
           <button
             onClick={redo}
             disabled={historyIndex >= history.length - 1}
-            className="w-full aspect-square rounded-lg flex items-center justify-center bg-[#1a1a28] text-[#a0a0b0] hover:text-white hover:bg-[#2a2a3d] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            className="w-full aspect-square rounded-lg flex items-center justify-center bg-[#141821] text-[#a0a0b0] hover:text-white hover:bg-[rgba(255,255,255,0.06)] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
             title="Redo (Ctrl+Y)"
           >
             <Redo2 className="w-5 h-5" />
@@ -581,21 +581,21 @@ export function SpriteEditor({
 
           <button
             onClick={clearMask}
-            className="w-full aspect-square rounded-lg flex items-center justify-center bg-[#1a1a28] text-[#a0a0b0] hover:text-white hover:bg-[#2a2a3d] transition-all"
+            className="w-full aspect-square rounded-lg flex items-center justify-center bg-[#141821] text-[#a0a0b0] hover:text-white hover:bg-[rgba(255,255,255,0.06)] transition-all"
             title="Clear Mask"
           >
             <Trash2 className="w-5 h-5" />
           </button>
 
-          <div className="h-px bg-[#2a2a3d] my-2" />
+          <div className="h-px bg-[rgba(255,255,255,0.06)] my-2" />
 
           {/* Toggle Mask Visibility */}
           <button
             onClick={() => setShowMask(!showMask)}
             className={`w-full aspect-square rounded-lg flex items-center justify-center transition-all ${
               showMask
-                ? "bg-[#00ff88]/20 text-[#00ff88]"
-                : "bg-[#1a1a28] text-[#a0a0b0] hover:text-white hover:bg-[#2a2a3d]"
+                ? "bg-[#FF6B2C]/20 text-[#FF6B2C]"
+                : "bg-[#141821] text-[#a0a0b0] hover:text-white hover:bg-[rgba(255,255,255,0.06)]"
             }`}
             title="Toggle Mask Visibility"
           >
@@ -606,7 +606,7 @@ export function SpriteEditor({
         {/* Canvas Area */}
         <div className="flex-1 flex flex-col">
           {/* Brush Size Slider */}
-          <div className="p-3 border-b border-[#2a2a3d] flex items-center gap-4">
+          <div className="p-3 border-b border-[rgba(255,255,255,0.06)] flex items-center gap-4">
             <span className="text-xs text-[#a0a0b0] w-20">Brush Size</span>
             <Slider
               value={[brushSize]}
@@ -622,11 +622,11 @@ export function SpriteEditor({
           {/* Canvas Container */}
           <div
             ref={containerRef}
-            className="flex-1 overflow-auto p-4 flex items-center justify-center bg-[#0a0a0f]"
+            className="flex-1 overflow-auto p-4 flex items-center justify-center bg-[#11151b]"
           >
             {loadingImage ? (
               <div className="text-center">
-                <Loader2 className="w-12 h-12 text-[#c084fc] animate-spin mx-auto mb-4" />
+                <Loader2 className="w-12 h-12 text-[#8b5cf6] animate-spin mx-auto mb-4" />
                 <p className="text-[#a0a0b0]">Loading image...</p>
               </div>
             ) : showResult && result ? (
@@ -640,7 +640,7 @@ export function SpriteEditor({
                 <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 flex gap-3">
                   <Button
                     onClick={handleAcceptResult}
-                    className="bg-[#00ff88] hover:bg-[#00ff88]/80 text-[#030305]"
+                    className="bg-[#FF6B2C] hover:bg-[#FF6B2C]/80 text-[#0a0c10]"
                   >
                     <Check className="w-4 h-4 mr-2" />
                     Accept
@@ -648,7 +648,7 @@ export function SpriteEditor({
                   <Button
                     onClick={handleRejectResult}
                     variant="outline"
-                    className="border-[#ff4444] text-[#ff4444] hover:bg-[#ff4444]/10"
+                    className="border-[#ef4444] text-[#ef4444] hover:bg-[#ef4444]/10"
                   >
                     <RotateCcw className="w-4 h-4 mr-2" />
                     Try Again
@@ -684,9 +684,9 @@ export function SpriteEditor({
                 {loading && (
                   <div className="absolute inset-0 rounded-lg bg-black/70 flex flex-col items-center justify-center">
                     <div className="relative w-20 h-20 mb-4">
-                      <div className="absolute inset-0 rounded-full bg-[#c084fc]/30 blur-xl animate-pulse" />
-                      <div className="relative w-full h-full rounded-full border-4 border-[#2a2a3d] border-t-[#c084fc] animate-spin" />
-                      <Wand2 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 text-[#c084fc]" />
+                      <div className="absolute inset-0 rounded-full bg-[#8b5cf6]/30 blur-xl animate-pulse" />
+                      <div className="relative w-full h-full rounded-full border-4 border-[rgba(255,255,255,0.06)] border-t-[#8b5cf6] animate-spin" />
+                      <Wand2 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 text-[#8b5cf6]" />
                     </div>
                     <p className="text-white font-medium">Regenerating area...</p>
                     <p className="text-sm text-[#a0a0b0]">This may take 15-30 seconds</p>
@@ -698,9 +698,9 @@ export function SpriteEditor({
         </div>
 
         {/* Right Panel - Prompt Input */}
-        <div className="w-80 border-l border-[#2a2a3d] p-4 flex flex-col">
+        <div className="w-80 border-l border-[rgba(255,255,255,0.06)] p-4 flex flex-col">
           <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
-            <Zap className="w-4 h-4 text-[#c084fc]" />
+            <Zap className="w-4 h-4 text-[#8b5cf6]" />
             What should appear here?
           </h3>
 
@@ -720,7 +720,7 @@ export function SpriteEditor({
             <div className="relative">
               <button
                 onClick={() => setShowQuickActions(!showQuickActions)}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-[#1a1a28] text-[#a0a0b0] hover:text-white hover:bg-[#2a2a3d] transition-all text-sm"
+                className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-[#141821] text-[#a0a0b0] hover:text-white hover:bg-[rgba(255,255,255,0.06)] transition-all text-sm"
               >
                 <span className="flex items-center gap-2">
                   <Palette className="w-4 h-4" />
@@ -730,7 +730,7 @@ export function SpriteEditor({
               </button>
 
               {showQuickActions && (
-                <div className="absolute top-full left-0 right-0 mt-1 p-2 rounded-lg bg-[#1a1a28] border border-[#2a2a3d] z-10 space-y-1">
+                <div className="absolute top-full left-0 right-0 mt-1 p-2 rounded-lg bg-[#141821] border border-[rgba(255,255,255,0.06)] z-10 space-y-1">
                   {quickActions.map((action) => (
                     <button
                       key={action.label}
@@ -738,7 +738,7 @@ export function SpriteEditor({
                         setPrompt(action.prompt);
                         setShowQuickActions(false);
                       }}
-                      className="w-full text-left px-3 py-2 rounded-md text-sm text-[#a0a0b0] hover:text-white hover:bg-[#2a2a3d] transition-all"
+                      className="w-full text-left px-3 py-2 rounded-md text-sm text-[#a0a0b0] hover:text-white hover:bg-[rgba(255,255,255,0.06)] transition-all"
                     >
                       {action.label}
                     </button>
@@ -748,7 +748,7 @@ export function SpriteEditor({
             </div>
 
             {/* Instructions */}
-            <div className="p-3 rounded-lg bg-[#c084fc]/10 border border-[#c084fc]/20 text-xs text-[#c084fc]">
+            <div className="p-3 rounded-lg bg-[#8b5cf6]/10 border border-[#8b5cf6]/20 text-xs text-[#8b5cf6]">
               <p className="font-medium mb-1">How to use:</p>
               <ol className="space-y-1 text-[#a0a0b0]">
                 <li>1. Paint the area you want to change (red overlay)</li>
@@ -758,7 +758,7 @@ export function SpriteEditor({
             </div>
 
             {error && (
-              <div className="p-3 rounded-lg bg-[#ff4444]/10 border border-[#ff4444]/30 text-sm text-[#ff4444]">
+              <div className="p-3 rounded-lg bg-[#ef4444]/10 border border-[#ef4444]/30 text-sm text-[#ef4444]">
                 {error}
               </div>
             )}
@@ -768,7 +768,7 @@ export function SpriteEditor({
           <Button
             onClick={handleInpaint}
             disabled={loading || !prompt.trim()}
-            className="w-full h-12 bg-gradient-to-r from-[#c084fc] to-[#00d4ff] hover:opacity-90 text-white font-semibold disabled:opacity-50"
+            className="w-full h-12 bg-gradient-to-r from-[#8b5cf6] to-[#FF6B2C] hover:opacity-90 text-white font-semibold disabled:opacity-50"
           >
             {loading ? (
               <>

@@ -13,7 +13,7 @@ interface FeaturedImage {
 
 // Fallback placeholder for loading state
 const PlaceholderImage = ({ index }: { index: number }) => {
-  const colors = ["#00ff88", "#00d4ff", "#c084fc", "#ff6b6b", "#ffd93d", "#ff88cc"];
+  const colors = ["#FF6B2C", "#FF6B2C", "#8b5cf6", "#ef4444", "#f59e0b", "#ff88cc"];
   return (
     <div
       className="w-full h-full animate-pulse flex items-center justify-center"
@@ -71,7 +71,7 @@ export function HeroGallery() {
           [...Array(6)].map((_, i) => (
             <div
               key={i}
-              className="relative aspect-square rounded-xl bg-[#0a0a0f]/80 border border-white/10 overflow-hidden"
+              className="relative aspect-square rounded-xl bg-[#11151b]/80 border border-white/10 overflow-hidden"
             >
               <PlaceholderImage index={i} />
             </div>
@@ -81,7 +81,7 @@ export function HeroGallery() {
           images.slice(0, 6).map((item, i) => (
             <div
               key={item.id}
-              className="group relative aspect-square rounded-xl bg-[#0a0a0f]/80 border border-white/10 hover:border-[#00ff88]/50 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-[#00ff88]/20 overflow-hidden"
+              className="group relative aspect-square rounded-xl bg-[#11151b]/80 border border-white/10 hover:border-[#FF6B2C]/50 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-[#FF6B2C]/20 overflow-hidden"
             >
               <Image
                 src={item.imageUrl}
@@ -94,7 +94,7 @@ export function HeroGallery() {
               {/* Hover label */}
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-2">
                 <p className="text-[10px] sm:text-xs text-white font-medium truncate">{item.prompt.slice(0, 20)}</p>
-                <p className="text-[8px] sm:text-[10px] text-[#00ff88]">{item.style}</p>
+                <p className="text-[8px] sm:text-[10px] text-[#FF6B2C]">{item.style}</p>
               </div>
             </div>
           ))

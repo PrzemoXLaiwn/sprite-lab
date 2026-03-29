@@ -55,13 +55,13 @@ export function Model3DViewer({
         {/* Content Overlay */}
         <div className="relative z-10">
           <div className="relative mb-3">
-            <div className="absolute inset-0 bg-[#c084fc]/30 rounded-full blur-xl animate-pulse" />
-            <FileBox className="relative w-12 h-12 text-[#c084fc]" />
+            <div className="absolute inset-0 bg-[#8b5cf6]/30 rounded-full blur-xl animate-pulse" />
+            <FileBox className="relative w-12 h-12 text-[#8b5cf6]" />
           </div>
 
-          <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#c084fc]/20 border border-[#c084fc]/40 mb-2">
-            <Cuboid className="w-3 h-3 text-[#c084fc]" />
-            <span className="text-[#c084fc] font-mono font-bold text-xs">{format}</span>
+          <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#8b5cf6]/20 border border-[#8b5cf6]/40 mb-2">
+            <Cuboid className="w-3 h-3 text-[#8b5cf6]" />
+            <span className="text-[#8b5cf6] font-mono font-bold text-xs">{format}</span>
           </div>
 
           {/* Video toggle button - only if video available */}
@@ -113,17 +113,17 @@ export function Model3DViewer({
       {/* Content Overlay */}
       <div className="relative z-10">
         <div className="relative mb-4">
-          <div className="absolute inset-0 bg-[#c084fc]/30 rounded-full blur-xl animate-pulse" />
-          <FileBox className="relative w-20 h-20 text-[#c084fc]" />
+          <div className="absolute inset-0 bg-[#8b5cf6]/30 rounded-full blur-xl animate-pulse" />
+          <FileBox className="relative w-20 h-20 text-[#8b5cf6]" />
         </div>
 
         <h3 className="text-xl font-bold text-white mb-2">
           3D Model Ready!
         </h3>
 
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#c084fc]/20 border border-[#c084fc]/40 mb-4">
-          <Cuboid className="w-4 h-4 text-[#c084fc]" />
-          <span className="text-[#c084fc] font-mono font-bold">{format}</span>
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#8b5cf6]/20 border border-[#8b5cf6]/40 mb-4">
+          <Cuboid className="w-4 h-4 text-[#8b5cf6]" />
+          <span className="text-[#8b5cf6] font-mono font-bold">{format}</span>
         </div>
 
         <p className="text-sm text-[#a0a0b0] max-w-xs mb-4">
@@ -145,7 +145,7 @@ export function Model3DViewer({
           {onDownload && (
             <Button
               onClick={onDownload}
-              className="bg-[#c084fc] hover:bg-[#a855f7] text-white"
+              className="bg-[#8b5cf6] hover:bg-[#a855f7] text-white"
             >
               <Download className="w-4 h-4 mr-2" />
               Download {format}
@@ -156,19 +156,19 @@ export function Model3DViewer({
         {/* Compatibility badges */}
         <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-[#a0a0b0]">
           <div className="flex items-center gap-1 justify-center">
-            <Check className="w-3 h-3 text-[#00ff88]" />
+            <Check className="w-3 h-3 text-[#FF6B2C]" />
             Unity
           </div>
           <div className="flex items-center gap-1 justify-center">
-            <Check className="w-3 h-3 text-[#00ff88]" />
+            <Check className="w-3 h-3 text-[#FF6B2C]" />
             Unreal
           </div>
           <div className="flex items-center gap-1 justify-center">
-            <Check className="w-3 h-3 text-[#00ff88]" />
+            <Check className="w-3 h-3 text-[#FF6B2C]" />
             Blender
           </div>
           <div className="flex items-center gap-1 justify-center">
-            <Check className="w-3 h-3 text-[#00ff88]" />
+            <Check className="w-3 h-3 text-[#FF6B2C]" />
             Godot
           </div>
         </div>

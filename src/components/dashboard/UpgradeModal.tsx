@@ -17,7 +17,7 @@ const PLANS = [
     price: 9,
     credits: 100,
     icon: Zap,
-    color: "#00ff88",
+    color: "#FF6B2C",
     features: ["100 credits/month", "All generation types", "Basic support"],
     popular: false,
   },
@@ -26,7 +26,7 @@ const PLANS = [
     price: 19,
     credits: 300,
     icon: Crown,
-    color: "#c084fc",
+    color: "#8b5cf6",
     features: ["300 credits/month", "Priority generation", "No watermarks", "Email support"],
     popular: true,
   },
@@ -35,7 +35,7 @@ const PLANS = [
     price: 49,
     credits: 1000,
     icon: Infinity,
-    color: "#ffd93d",
+    color: "#f59e0b",
     features: ["1000 credits/month", "Fastest generation", "API access", "Priority support"],
     popular: false,
   },
@@ -102,8 +102,8 @@ export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
         <div className="relative bg-gradient-to-br from-[#1a1a2e] to-[#0f0f1a] rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
           {/* Animated gradient background */}
           <div className="absolute inset-0 opacity-30">
-            <div className="absolute top-0 left-1/4 w-64 h-64 bg-[#00ff88] rounded-full blur-[100px] animate-pulse" />
-            <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-[#c084fc] rounded-full blur-[100px] animate-pulse" style={{ animationDelay: "1s" }} />
+            <div className="absolute top-0 left-1/4 w-64 h-64 bg-[#FF6B2C] rounded-full blur-[100px] animate-pulse" />
+            <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-[#8b5cf6] rounded-full blur-[100px] animate-pulse" style={{ animationDelay: "1s" }} />
           </div>
 
           {/* Close button */}
@@ -118,7 +118,7 @@ export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
           <div className="relative p-6 md:p-8">
             {/* Header */}
             <div className="text-center mb-8">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#ff4444]/20 border border-[#ff4444]/40 text-[#ff4444] text-sm font-medium mb-4">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#ef4444]/20 border border-[#ef4444]/40 text-[#ef4444] text-sm font-medium mb-4">
                 <Zap className="w-4 h-4" />
                 You&apos;re out of credits!
               </div>
@@ -139,13 +139,13 @@ export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
                     key={plan.name}
                     className={`relative p-5 rounded-xl border transition-all duration-300 hover:scale-[1.02] ${
                       plan.popular
-                        ? "bg-gradient-to-br from-[#c084fc]/20 to-transparent border-[#c084fc]/40"
+                        ? "bg-gradient-to-br from-[#8b5cf6]/20 to-transparent border-[#8b5cf6]/40"
                         : "bg-white/5 border-white/10 hover:border-white/20"
                     }`}
                   >
                     {/* Popular badge */}
                     {plan.popular && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gradient-to-r from-[#c084fc] to-[#00d4ff] text-black text-xs font-bold">
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gradient-to-r from-[#8b5cf6] to-[#FF6B2C] text-black text-xs font-bold">
                         MOST POPULAR
                       </div>
                     )}
@@ -182,7 +182,7 @@ export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
                     <ul className="space-y-2 mb-5">
                       {plan.features.map((feature, i) => (
                         <li key={i} className="flex items-center gap-2 text-sm text-white/70">
-                          <Check className="w-4 h-4 text-[#00ff88]" />
+                          <Check className="w-4 h-4 text-[#FF6B2C]" />
                           {feature}
                         </li>
                       ))}
@@ -193,7 +193,7 @@ export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
                       <Button
                         className={`w-full font-medium ${
                           plan.popular
-                            ? "bg-gradient-to-r from-[#c084fc] to-[#00d4ff] text-black hover:opacity-90"
+                            ? "bg-gradient-to-r from-[#8b5cf6] to-[#FF6B2C] text-black hover:opacity-90"
                             : "bg-white/10 text-white border border-white/20 hover:bg-white/20"
                         }`}
                       >
@@ -211,7 +211,7 @@ export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
               <p className="text-white/40 text-sm mb-2">Just need a few credits?</p>
               <Link
                 href="/pricing#credit-packs"
-                className="inline-flex items-center gap-2 text-[#00ff88] text-sm font-medium hover:underline"
+                className="inline-flex items-center gap-2 text-[#FF6B2C] text-sm font-medium hover:underline"
               >
                 View credit packs
                 <ArrowRight className="w-4 h-4" />

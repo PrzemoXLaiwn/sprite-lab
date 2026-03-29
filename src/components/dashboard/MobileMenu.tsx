@@ -61,9 +61,9 @@ export function MobileMenu({ userEmail, userPlan = "FREE", userRole = "USER" }: 
 
   const getPlanColor = () => {
     switch (userPlan) {
-      case "UNLIMITED": return "from-[#f59e0b] to-[#ff6b6b]";
+      case "UNLIMITED": return "from-[#f59e0b] to-[#ef4444]";
       case "PRO": return "from-[#8b5cf6] to-[#FF6B2C]";
-      case "STARTER": return "from-[#FF6B2C] to-[#00ff88]";
+      case "STARTER": return "from-[#FF6B2C] to-[#FF6B2C]";
       default: return "from-white/20 to-white/10";
     }
   };
@@ -91,7 +91,7 @@ export function MobileMenu({ userEmail, userPlan = "FREE", userRole = "USER" }: 
 
       {/* Slide-out Menu */}
       <div
-        className={`fixed top-0 right-0 h-full w-[280px] bg-[#0a0a0f] border-l border-white/10 z-50 transform transition-transform duration-300 ease-out md:hidden ${
+        className={`fixed top-0 right-0 h-full w-[280px] bg-[#11151b] border-l border-white/10 z-50 transform transition-transform duration-300 ease-out md:hidden ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
@@ -174,8 +174,8 @@ export function MobileMenu({ userEmail, userPlan = "FREE", userRole = "USER" }: 
               onClick={() => setIsOpen(false)}
               className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all ${
                 pathname === "/admin"
-                  ? "bg-[#ff4444]/10 text-[#ff4444]"
-                  : "text-white/60 hover:text-[#ff4444] hover:bg-[#ff4444]/5"
+                  ? "bg-[#ef4444]/10 text-[#ef4444]"
+                  : "text-white/60 hover:text-[#ef4444] hover:bg-[#ef4444]/5"
               }`}
             >
               <Shield className="w-5 h-5" />
@@ -186,7 +186,7 @@ export function MobileMenu({ userEmail, userPlan = "FREE", userRole = "USER" }: 
         </nav>
 
         {/* Footer */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10 bg-[#0a0a0f] safe-area-bottom">
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10 bg-[#11151b] safe-area-bottom">
           <form action="/auth/signout" method="post">
             <Button
               variant="ghost"

@@ -284,7 +284,7 @@ export default function SettingsPage() {
               <div className="flex items-center gap-4">
                 <div className="relative">
                   <div
-                    className="w-20 h-20 rounded-full bg-gradient-to-br from-[#00ff88]/20 to-[#00d4ff]/20 border-2 border-[#00ff88]/30 flex items-center justify-center overflow-hidden cursor-pointer hover:border-[#00ff88]/60 transition-colors"
+                    className="w-20 h-20 rounded-full bg-gradient-to-br from-[#FF6B2C]/20 to-[#FF6B2C]/20 border-2 border-[#FF6B2C]/30 flex items-center justify-center overflow-hidden cursor-pointer hover:border-[#FF6B2C]/60 transition-colors"
                     onClick={handleAvatarClick}
                   >
                     {user?.avatarUrl ? (
@@ -299,7 +299,7 @@ export default function SettingsPage() {
                     )}
                   </div>
                   <button
-                    className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-[#00ff88] flex items-center justify-center hover:bg-[#00ff88]/80 transition-colors"
+                    className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-[#FF6B2C] flex items-center justify-center hover:bg-[#FF6B2C]/80 transition-colors"
                     onClick={handleAvatarClick}
                     disabled={uploadingAvatar}
                   >
@@ -379,7 +379,7 @@ export default function SettingsPage() {
                 {user?.username && (
                   <Link
                     href={`/u/${user.username}`}
-                    className="text-xs text-[#00ff88] hover:underline inline-flex items-center gap-1 mt-1"
+                    className="text-xs text-[#FF6B2C] hover:underline inline-flex items-center gap-1 mt-1"
                   >
                     <LinkIcon className="w-3 h-3" />
                     View public profile
@@ -454,7 +454,7 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between p-4 rounded-lg border border-border">
                 <div className="flex items-center gap-3">
                   {isProfilePublic ? (
-                    <Eye className="w-5 h-5 text-[#00ff88]" />
+                    <Eye className="w-5 h-5 text-[#FF6B2C]" />
                   ) : (
                     <EyeOff className="w-5 h-5 text-muted-foreground" />
                   )}
@@ -557,8 +557,8 @@ export default function SettingsPage() {
                 {/* Marketing Emails */}
                 <div className="flex items-center justify-between p-4 rounded-lg border border-border">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[#c084fc]/10 flex items-center justify-center">
-                      <Megaphone className="w-5 h-5 text-[#c084fc]" />
+                    <div className="w-10 h-10 rounded-full bg-[#8b5cf6]/10 flex items-center justify-center">
+                      <Megaphone className="w-5 h-5 text-[#8b5cf6]" />
                     </div>
                     <div>
                       <p className="font-medium">Promotions & Offers</p>
@@ -577,8 +577,8 @@ export default function SettingsPage() {
                 {/* Product Updates */}
                 <div className="flex items-center justify-between p-4 rounded-lg border border-border">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[#00d4ff]/10 flex items-center justify-center">
-                      <Package className="w-5 h-5 text-[#00d4ff]" />
+                    <div className="w-10 h-10 rounded-full bg-[#FF6B2C]/10 flex items-center justify-center">
+                      <Package className="w-5 h-5 text-[#FF6B2C]" />
                     </div>
                     <div>
                       <p className="font-medium">Product Updates</p>
@@ -597,8 +597,8 @@ export default function SettingsPage() {
                 {/* Credit Alerts */}
                 <div className="flex items-center justify-between p-4 rounded-lg border border-border">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[#00ff88]/10 flex items-center justify-center">
-                      <Coins className="w-5 h-5 text-[#00ff88]" />
+                    <div className="w-10 h-10 rounded-full bg-[#FF6B2C]/10 flex items-center justify-center">
+                      <Coins className="w-5 h-5 text-[#FF6B2C]" />
                     </div>
                     <div>
                       <p className="font-medium">Credit Alerts</p>

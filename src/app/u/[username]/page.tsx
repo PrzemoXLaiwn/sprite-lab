@@ -94,34 +94,34 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   const getPlanBadgeColor = (plan: string) => {
     switch (plan) {
       case "PRO":
-        return "bg-[#c084fc]/20 text-[#c084fc] border-[#c084fc]/30";
+        return "bg-[#8b5cf6]/20 text-[#8b5cf6] border-[#8b5cf6]/30";
       case "UNLIMITED":
-        return "bg-[#ffd93d]/20 text-[#ffd93d] border-[#ffd93d]/30";
+        return "bg-[#f59e0b]/20 text-[#f59e0b] border-[#f59e0b]/30";
       case "STARTER":
-        return "bg-[#00ff88]/20 text-[#00ff88] border-[#00ff88]/30";
+        return "bg-[#FF6B2C]/20 text-[#FF6B2C] border-[#FF6B2C]/30";
       default:
         return "bg-white/10 text-white/60 border-white/10";
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#030305]">
+    <div className="min-h-screen bg-[#0a0c10]">
       {/* Background */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#00ff88]/5 via-transparent to-transparent" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-[#c084fc]/5 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#FF6B2C]/5 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-[#8b5cf6]/5 via-transparent to-transparent" />
       </div>
 
       {/* Header */}
-      <header className="relative border-b border-white/5 bg-[#0a0a0f]/80 backdrop-blur-xl">
+      <header className="relative border-b border-white/5 bg-[#11151b]/80 backdrop-blur-xl">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 group">
             <div className="relative">
-              <div className="absolute inset-0 bg-[#00ff88]/30 rounded-lg blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute inset-0 bg-[#FF6B2C]/30 rounded-lg blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
               <Image src="/logo.png" alt="SpriteLab" width={32} height={32} className="relative" />
             </div>
             <span className="font-display font-bold text-lg tracking-tight">
-              Sprite<span className="text-[#00ff88]">Lab</span>
+              Sprite<span className="text-[#FF6B2C]">Lab</span>
             </span>
           </Link>
           <Button variant="ghost" size="sm" asChild>
@@ -138,7 +138,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
         <div className="flex flex-col md:flex-row items-start gap-6 mb-8">
           {/* Avatar */}
           <div className="relative">
-            <div className="w-32 h-32 md:w-40 md:h-40 rounded-2xl bg-gradient-to-br from-[#00ff88]/20 to-[#00d4ff]/20 border-2 border-[#00ff88]/30 flex items-center justify-center overflow-hidden">
+            <div className="w-32 h-32 md:w-40 md:h-40 rounded-2xl bg-gradient-to-br from-[#FF6B2C]/20 to-[#FF6B2C]/20 border-2 border-[#FF6B2C]/30 flex items-center justify-center overflow-hidden">
               {user.avatarUrl ? (
                 <img src={user.avatarUrl} alt={user.name || user.username || ""} className="w-full h-full object-cover" />
               ) : (
@@ -167,12 +167,12 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
             {/* Stats */}
             <div className="flex flex-wrap gap-4 mb-4">
               <div className="flex items-center gap-2 text-white/60">
-                <Images className="w-4 h-4 text-[#00ff88]" />
+                <Images className="w-4 h-4 text-[#FF6B2C]" />
                 <span className="font-medium">{user._count.generations}</span>
                 <span className="text-sm">public assets</span>
               </div>
               <div className="flex items-center gap-2 text-white/60">
-                <Heart className="w-4 h-4 text-[#ff4444]" />
+                <Heart className="w-4 h-4 text-[#ef4444]" />
                 <span className="font-medium">{user.totalLikesReceived}</span>
                 <span className="text-sm">likes received</span>
               </div>
@@ -224,7 +224,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
         {/* Public Gallery */}
         <div>
           <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-[#00ff88]" />
+            <Sparkles className="w-5 h-5 text-[#FF6B2C]" />
             Public Gallery
           </h2>
 
@@ -233,7 +233,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
               {user.generations.map((gen) => (
                 <div
                   key={gen.id}
-                  className="group relative aspect-square rounded-xl overflow-hidden border border-white/10 hover:border-[#00ff88]/50 transition-all"
+                  className="group relative aspect-square rounded-xl overflow-hidden border border-white/10 hover:border-[#FF6B2C]/50 transition-all"
                 >
                   <img
                     src={gen.imageUrl}

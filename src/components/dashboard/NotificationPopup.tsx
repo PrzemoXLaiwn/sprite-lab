@@ -105,10 +105,10 @@ export function NotificationPopup() {
           isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"
         }`}
       >
-        <div className="relative bg-gradient-to-br from-[#0f0f1a] to-[#0a0a0f] rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
+        <div className="relative bg-gradient-to-br from-[#0f0f1a] to-[#11151b] rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
           {/* Glow effects */}
-          <div className="absolute inset-0 bg-gradient-to-br from-[#00ff88]/10 via-transparent to-[#c084fc]/10 pointer-events-none" />
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-32 bg-[#00ff88]/20 rounded-full blur-3xl" />
+          <div className="absolute inset-0 bg-gradient-to-br from-[#FF6B2C]/10 via-transparent to-[#8b5cf6]/10 pointer-events-none" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-32 bg-[#FF6B2C]/20 rounded-full blur-3xl" />
 
           {/* Confetti particles (CSS only) */}
           {currentNotification.type === "CREDIT_GRANT" && isVisible && (
@@ -119,7 +119,7 @@ export function NotificationPopup() {
                   className="absolute w-2 h-2 rounded-full animate-confetti"
                   style={{
                     left: `${Math.random() * 100}%`,
-                    backgroundColor: ["#00ff88", "#00d4ff", "#c084fc", "#ffd93d"][i % 4],
+                    backgroundColor: ["#FF6B2C", "#FF6B2C", "#8b5cf6", "#f59e0b"][i % 4],
                     animationDelay: `${Math.random() * 2}s`,
                     animationDuration: `${2 + Math.random() * 2}s`,
                   }}
@@ -141,16 +141,16 @@ export function NotificationPopup() {
             {/* Icon */}
             {currentNotification.type === "CREDIT_GRANT" ? (
               <div className="relative mx-auto w-20 h-20 mb-4">
-                <div className="absolute inset-0 bg-gradient-to-r from-[#00ff88] to-[#00d4ff] rounded-full blur-xl opacity-50 animate-pulse" />
-                <div className="relative w-full h-full rounded-full bg-gradient-to-br from-[#00ff88] to-[#00d4ff] flex items-center justify-center animate-bounce-slow">
+                <div className="absolute inset-0 bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] rounded-full blur-xl opacity-50 animate-pulse" />
+                <div className="relative w-full h-full rounded-full bg-gradient-to-br from-[#FF6B2C] to-[#FF6B2C] flex items-center justify-center animate-bounce-slow">
                   <Gift className="w-10 h-10 text-white" />
                 </div>
-                <Sparkles className="absolute -top-1 -right-1 w-6 h-6 text-[#ffd93d] animate-bounce" />
+                <Sparkles className="absolute -top-1 -right-1 w-6 h-6 text-[#f59e0b] animate-bounce" />
               </div>
             ) : (
               <div className="relative mx-auto w-20 h-20 mb-4">
-                <div className="absolute inset-0 bg-[#00d4ff]/30 rounded-full blur-xl" />
-                <div className="relative w-full h-full rounded-full bg-gradient-to-br from-[#00d4ff] to-[#c084fc] flex items-center justify-center">
+                <div className="absolute inset-0 bg-[#FF6B2C]/30 rounded-full blur-xl" />
+                <div className="relative w-full h-full rounded-full bg-gradient-to-br from-[#FF6B2C] to-[#8b5cf6] flex items-center justify-center">
                   <Sparkles className="w-10 h-10 text-white" />
                 </div>
               </div>
@@ -164,7 +164,7 @@ export function NotificationPopup() {
             {/* Credit amount for credit grants */}
             {currentNotification.type === "CREDIT_GRANT" && notificationData?.amount && (
               <div className="mb-4">
-                <span className="text-5xl font-display font-bold bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-transparent bg-clip-text animate-pulse">
+                <span className="text-5xl font-display font-bold bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] text-transparent bg-clip-text animate-pulse">
                   +{notificationData.amount}
                 </span>
                 <span className="text-lg text-white/60 ml-2">credits</span>
@@ -179,14 +179,14 @@ export function NotificationPopup() {
             {/* Admin info */}
             {notificationData?.adminName && (
               <p className="text-sm text-white/40 mb-6">
-                From: <span className="text-[#00ff88]">{notificationData.adminName}</span>
+                From: <span className="text-[#FF6B2C]">{notificationData.adminName}</span>
               </p>
             )}
 
             {/* CTA Button */}
             <Button
               onClick={handleDismiss}
-              className="w-full bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-black font-bold py-6 rounded-xl hover:opacity-90 transition-opacity"
+              className="w-full bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] text-black font-bold py-6 rounded-xl hover:opacity-90 transition-opacity"
             >
               Awesome, thanks!
             </Button>

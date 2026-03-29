@@ -218,15 +218,15 @@ export default function RegisterPage() {
 
       {/* Referral Code Banner */}
       {referralCode && (
-        <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-[#c084fc]/20 to-[#00d4ff]/20 border border-[#c084fc]/40">
+        <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-[#8b5cf6]/20 to-[#FF6B2C]/20 border border-[#8b5cf6]/40">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#c084fc] to-[#00d4ff] flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#8b5cf6] to-[#FF6B2C] flex items-center justify-center flex-shrink-0">
               <Gift className="w-5 h-5 text-white" />
             </div>
             <div>
               <p className="text-sm font-medium text-white">You&apos;ve been invited!</p>
               <p className="text-xs text-white/60">
-                Referral code <span className="font-mono text-[#00ff88]">{referralCode}</span> will be applied after signup
+                Referral code <span className="font-mono text-[#FF6B2C]">{referralCode}</span> will be applied after signup
               </p>
             </div>
           </div>

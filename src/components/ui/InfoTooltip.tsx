@@ -18,20 +18,20 @@ export function InfoTooltip({ title, content, tips, example }: InfoTooltipProps)
       {/* Info button */}
       <button
         onClick={() => setIsOpen(true)}
-        className="w-5 h-5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#00d4ff]/50 flex items-center justify-center transition-all group"
+        className="w-5 h-5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#FF6B2C]/50 flex items-center justify-center transition-all group"
         title={`Info about ${title}`}
       >
-        <Info className="w-3 h-3 text-[#606070] group-hover:text-[#00d4ff] transition-colors" />
+        <Info className="w-3 h-3 text-[#606070] group-hover:text-[#FF6B2C] transition-colors" />
       </button>
 
       {/* Modal overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[#030305]/80 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0c10]/80 backdrop-blur-sm p-4"
           onClick={() => setIsOpen(false)}
         >
           <div
-            className="relative w-full max-w-md bg-[#0a0a0f] border border-[#2a2a3d] rounded-2xl p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+            className="relative w-full max-w-md bg-[#11151b] border border-[rgba(255,255,255,0.06)] rounded-2xl p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close button */}
@@ -44,8 +44,8 @@ export function InfoTooltip({ title, content, tips, example }: InfoTooltipProps)
 
             {/* Header */}
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-[#00d4ff]/10 flex items-center justify-center">
-                <Info className="w-5 h-5 text-[#00d4ff]" />
+              <div className="w-10 h-10 rounded-xl bg-[#FF6B2C]/10 flex items-center justify-center">
+                <Info className="w-5 h-5 text-[#FF6B2C]" />
               </div>
               <h3 className="text-lg font-display font-bold text-white">{title}</h3>
             </div>
@@ -60,7 +60,7 @@ export function InfoTooltip({ title, content, tips, example }: InfoTooltipProps)
                 <ul className="space-y-1.5">
                   {tips.map((tip, index) => (
                     <li key={index} className="flex items-start gap-2 text-sm text-[#a0a0b0]">
-                      <span className="text-[#00ff88] mt-1">•</span>
+                      <span className="text-[#FF6B2C] mt-1">•</span>
                       <span>{tip}</span>
                     </li>
                   ))}
@@ -70,8 +70,8 @@ export function InfoTooltip({ title, content, tips, example }: InfoTooltipProps)
 
             {/* Example */}
             {example && (
-              <div className="p-3 rounded-xl bg-[#00ff88]/5 border border-[#00ff88]/20">
-                <h4 className="text-xs font-semibold text-[#00ff88] mb-1">Example:</h4>
+              <div className="p-3 rounded-xl bg-[#FF6B2C]/5 border border-[#FF6B2C]/20">
+                <h4 className="text-xs font-semibold text-[#FF6B2C] mb-1">Example:</h4>
                 <p className="text-sm text-white font-mono">{example}</p>
               </div>
             )}

@@ -294,12 +294,12 @@ const STYLE_PREVIEWS: Record<string, { colors: string[]; bestFor: string[]; exam
     example: "Painterly style like Hollow Knight or Ori",
   },
   VECTOR_CLEAN: {
-    colors: ["#00d4ff", "#00ff88", "#ff6b6b", "#feca57"],
+    colors: ["#FF6B2C", "#FF6B2C", "#ef4444", "#feca57"],
     bestFor: ["Mobile games", "Casual", "Puzzle"],
     example: "Clean flat design like Angry Birds",
   },
   ANIME_GAME: {
-    colors: ["#ff6b9d", "#c084fc", "#67e8f9", "#fbbf24"],
+    colors: ["#ff6b9d", "#8b5cf6", "#67e8f9", "#fbbf24"],
     bestFor: ["JRPGs", "Gacha", "Visual novels"],
     example: "Anime style like Genshin Impact",
   },

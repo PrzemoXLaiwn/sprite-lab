@@ -42,7 +42,7 @@ const createGameConfig = (
   parent,
   width: 800,
   height: 500,
-  backgroundColor: "#1a1a28",
+  backgroundColor: "#141821",
   physics: {
     default: "arcade",
     arcade: {
@@ -201,7 +201,7 @@ const createGameConfig = (
         .text(10, 10, "WASD / Arrow Keys to move\nSPACE to jump", {
           fontSize: "12px",
           color: "#a0a0b0",
-          backgroundColor: "#1a1a2800",
+          backgroundColor: "#14182100",
           padding: { x: 8, y: 4 },
         })
         .setDepth(100);
@@ -370,9 +370,9 @@ export function SpritePlayground({
   return (
     <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-[#2a2a3d]">
+      <div className="flex items-center justify-between p-4 border-b border-[rgba(255,255,255,0.06)]">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-[#00ff88] to-[#00d4ff] flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] flex items-center justify-center">
             <span className="text-xl">🎮</span>
           </div>
           <div>
@@ -388,7 +388,7 @@ export function SpritePlayground({
             variant="outline"
             size="sm"
             onClick={() => setShowControls(!showControls)}
-            className="border-[#2a2a3d]"
+            className="border-[rgba(255,255,255,0.06)]"
           >
             <Keyboard className="w-4 h-4 mr-1" />
             Controls
@@ -398,7 +398,7 @@ export function SpritePlayground({
             variant="outline"
             size="sm"
             onClick={handleReset}
-            className="border-[#2a2a3d]"
+            className="border-[rgba(255,255,255,0.06)]"
           >
             <RotateCcw className="w-4 h-4 mr-1" />
             Reset
@@ -408,7 +408,7 @@ export function SpritePlayground({
             variant="outline"
             size="sm"
             onClick={handleFullscreen}
-            className="border-[#2a2a3d]"
+            className="border-[rgba(255,255,255,0.06)]"
           >
             {isFullscreen ? (
               <Minimize className="w-4 h-4" />
@@ -421,7 +421,7 @@ export function SpritePlayground({
             variant="outline"
             size="sm"
             onClick={handleDownload}
-            className="border-[#00ff88] text-[#00ff88]"
+            className="border-[#FF6B2C] text-[#FF6B2C]"
           >
             <Download className="w-4 h-4 mr-1" />
             Download
@@ -442,7 +442,7 @@ export function SpritePlayground({
       <div className="flex-1 flex items-center justify-center p-4 relative">
         <div
           ref={gameContainerRef}
-          className="rounded-2xl overflow-hidden shadow-2xl border border-[#2a2a3d]"
+          className="rounded-2xl overflow-hidden shadow-2xl border border-[rgba(255,255,255,0.06)]"
           style={{ width: 800, height: 500 }}
         />
 
@@ -452,18 +452,18 @@ export function SpritePlayground({
             <div className="flex items-center gap-8">
               <div className="flex flex-col items-center gap-1">
                 <div className="flex gap-1">
-                  <kbd className="px-2 py-1 rounded bg-[#2a2a3d] text-white text-sm">
+                  <kbd className="px-2 py-1 rounded bg-[rgba(255,255,255,0.06)] text-white text-sm">
                     W
                   </kbd>
                 </div>
                 <div className="flex gap-1">
-                  <kbd className="px-2 py-1 rounded bg-[#2a2a3d] text-white text-sm">
+                  <kbd className="px-2 py-1 rounded bg-[rgba(255,255,255,0.06)] text-white text-sm">
                     A
                   </kbd>
-                  <kbd className="px-2 py-1 rounded bg-[#2a2a3d] text-white text-sm">
+                  <kbd className="px-2 py-1 rounded bg-[rgba(255,255,255,0.06)] text-white text-sm">
                     S
                   </kbd>
-                  <kbd className="px-2 py-1 rounded bg-[#2a2a3d] text-white text-sm">
+                  <kbd className="px-2 py-1 rounded bg-[rgba(255,255,255,0.06)] text-white text-sm">
                     D
                   </kbd>
                 </div>
@@ -474,28 +474,28 @@ export function SpritePlayground({
 
               <div className="flex flex-col items-center gap-1">
                 <div className="flex gap-1">
-                  <kbd className="px-2 py-1 rounded bg-[#2a2a3d] text-white text-sm">
+                  <kbd className="px-2 py-1 rounded bg-[rgba(255,255,255,0.06)] text-white text-sm">
                     ↑
                   </kbd>
                 </div>
                 <div className="flex gap-1">
-                  <kbd className="px-2 py-1 rounded bg-[#2a2a3d] text-white text-sm">
+                  <kbd className="px-2 py-1 rounded bg-[rgba(255,255,255,0.06)] text-white text-sm">
                     ←
                   </kbd>
-                  <kbd className="px-2 py-1 rounded bg-[#2a2a3d] text-white text-sm">
+                  <kbd className="px-2 py-1 rounded bg-[rgba(255,255,255,0.06)] text-white text-sm">
                     ↓
                   </kbd>
-                  <kbd className="px-2 py-1 rounded bg-[#2a2a3d] text-white text-sm">
+                  <kbd className="px-2 py-1 rounded bg-[rgba(255,255,255,0.06)] text-white text-sm">
                     →
                   </kbd>
                 </div>
                 <span className="text-[10px] text-[#a0a0b0] mt-1">Move</span>
               </div>
 
-              <div className="h-12 w-px bg-[#2a2a3d]" />
+              <div className="h-12 w-px bg-[rgba(255,255,255,0.06)]" />
 
               <div className="flex flex-col items-center gap-1">
-                <kbd className="px-4 py-1 rounded bg-[#2a2a3d] text-white text-sm">
+                <kbd className="px-4 py-1 rounded bg-[rgba(255,255,255,0.06)] text-white text-sm">
                   SPACE
                 </kbd>
                 <span className="text-[10px] text-[#a0a0b0] mt-1">

@@ -295,7 +295,7 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="48x48" href="/icon-48.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#030305" />
+        <meta name="theme-color" content="#0a0c10" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         {/* Structured Data - static, no hydration issues */}

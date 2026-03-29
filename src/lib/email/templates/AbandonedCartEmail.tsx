@@ -117,7 +117,7 @@ export function AbandonedCartEmail({
 
 // Styles
 const main = {
-  backgroundColor: "#030305",
+  backgroundColor: "#0a0c10",
   fontFamily:
     '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif',
 };
@@ -141,14 +141,14 @@ const logo = {
 };
 
 const logoAccent = {
-  color: "#00ff88",
+  color: "#FF6B2C",
 };
 
 const content = {
-  backgroundColor: "#0a0a0f",
+  backgroundColor: "#11151b",
   borderRadius: "16px",
   padding: "32px",
-  border: "1px solid #2a2a3d",
+  border: "1px solid rgba(255,255,255,0.06)",
 };
 
 const cartEmoji = {
@@ -174,16 +174,16 @@ const paragraph = {
 };
 
 const planBox = {
-  background: "linear-gradient(135deg, #c084fc20 0%, #00d4ff20 100%)",
+  background: "linear-gradient(135deg, #8b5cf620 0%, #FF6B2C20 100%)",
   borderRadius: "12px",
   padding: "24px",
   margin: "0 0 24px",
   textAlign: "center" as const,
-  border: "1px solid #c084fc40",
+  border: "1px solid #8b5cf640",
 };
 
 const planLabel = {
-  color: "#c084fc",
+  color: "#8b5cf6",
   fontSize: "12px",
   fontWeight: "bold",
   textTransform: "uppercase" as const,
@@ -203,7 +203,7 @@ const planDetails = {
 };
 
 const planCreditsStyle = {
-  color: "#00ff88",
+  color: "#FF6B2C",
   fontSize: "16px",
   fontWeight: "bold",
   marginRight: "12px",
@@ -219,7 +219,7 @@ const benefitsBox = {
   borderRadius: "12px",
   padding: "20px",
   margin: "0 0 24px",
-  border: "1px solid #2a2a3d",
+  border: "1px solid rgba(255,255,255,0.06)",
 };
 
 const benefitsTitle = {
@@ -242,7 +242,7 @@ const buttonContainer = {
 };
 
 const button = {
-  background: "linear-gradient(135deg, #c084fc 0%, #00d4ff 100%)",
+  background: "linear-gradient(135deg, #8b5cf6 0%, #FF6B2C 100%)",
   borderRadius: "8px",
   color: "#ffffff",
   fontSize: "16px",
@@ -261,14 +261,14 @@ const smallText = {
 };
 
 const noteBox = {
-  backgroundColor: "#ffd93d15",
+  backgroundColor: "#f59e0b15",
   borderRadius: "8px",
   padding: "16px",
-  border: "1px solid #ffd93d30",
+  border: "1px solid #f59e0b30",
 };
 
 const noteText = {
-  color: "#ffd93d",
+  color: "#f59e0b",
   fontSize: "14px",
   margin: "0",
   lineHeight: "20px",
@@ -286,7 +286,7 @@ const footerText = {
 };
 
 const link = {
-  color: "#00d4ff",
+  color: "#FF6B2C",
   textDecoration: "underline",
 };
 

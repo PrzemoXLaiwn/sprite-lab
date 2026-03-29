@@ -217,7 +217,7 @@ export default function ModeratorPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-[#c084fc] animate-spin mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 text-[#8b5cf6] animate-spin mx-auto mb-4" />
           <p className="text-white/60">Checking access...</p>
         </div>
       </div>
@@ -240,13 +240,13 @@ export default function ModeratorPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#030305] p-6 lg:p-8">
+    <div className="min-h-screen bg-[#0a0c10] p-6 lg:p-8">
       {/* Header */}
       <div className="max-w-7xl mx-auto mb-8">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#c084fc] to-[#a855f7] flex items-center justify-center">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#8b5cf6] to-[#a855f7] flex items-center justify-center">
                 <Shield className="w-6 h-6 text-white" />
               </div>
               Moderator Panel
@@ -256,7 +256,7 @@ export default function ModeratorPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Badge className="bg-[#c084fc]/20 text-[#c084fc] border-[#c084fc]/30">
+            <Badge className="bg-[#8b5cf6]/20 text-[#8b5cf6] border-[#8b5cf6]/30">
               {role}
             </Badge>
             <Button
@@ -388,7 +388,7 @@ export default function ModeratorPage() {
                         onClick={() => setStatusFilter(status)}
                         className={
                           statusFilter === status
-                            ? "bg-[#c084fc]/20 border-[#c084fc]/50 text-[#c084fc]"
+                            ? "bg-[#8b5cf6]/20 border-[#8b5cf6]/50 text-[#8b5cf6]"
                             : "border-white/10"
                         }
                       >

@@ -111,9 +111,9 @@ const getPlanBadge = (plan: string) => {
     case "UNLIMITED":
       return { label: "VIP", icon: Crown, color: "bg-gradient-to-r from-yellow-400 to-amber-500 text-black" };
     case "PRO":
-      return { label: "PRO", icon: Zap, color: "bg-gradient-to-r from-[#c084fc] to-[#a855f7] text-white" };
+      return { label: "PRO", icon: Zap, color: "bg-gradient-to-r from-[#8b5cf6] to-[#a855f7] text-white" };
     case "STARTER":
-      return { label: "★", icon: Star, color: "bg-gradient-to-r from-[#00d4ff] to-[#0ea5e9] text-white" };
+      return { label: "★", icon: Star, color: "bg-gradient-to-r from-[#FF6B2C] to-[#0ea5e9] text-white" };
     default:
       return null;
   }
@@ -375,17 +375,17 @@ export default function CommunityPage() {
   const featuredAssets = [...generations].sort((a, b) => b.likes - a.likes).slice(0, 3);
 
   return (
-    <div className="min-h-screen bg-[#030305] relative overflow-hidden">
+    <div className="min-h-screen bg-[#0a0c10] relative overflow-hidden">
       {/* Animated Background */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#c084fc]/10 via-transparent to-transparent" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-[#00d4ff]/10 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#8b5cf6]/10 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-[#FF6B2C]/10 via-transparent to-transparent" />
         <div className="absolute inset-0 grid-pattern opacity-30" />
 
         {/* Floating orbs */}
-        <div className="absolute top-20 left-[10%] w-72 h-72 bg-[#c084fc]/20 rounded-full blur-[100px] animate-pulse" />
-        <div className="absolute bottom-40 right-[20%] w-96 h-96 bg-[#00d4ff]/15 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: "1s" }} />
-        <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-[#00ff88]/10 rounded-full blur-[80px] animate-pulse" style={{ animationDelay: "2s" }} />
+        <div className="absolute top-20 left-[10%] w-72 h-72 bg-[#8b5cf6]/20 rounded-full blur-[100px] animate-pulse" />
+        <div className="absolute bottom-40 right-[20%] w-96 h-96 bg-[#FF6B2C]/15 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: "1s" }} />
+        <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-[#FF6B2C]/10 rounded-full blur-[80px] animate-pulse" style={{ animationDelay: "2s" }} />
       </div>
 
       <div className="relative z-10 flex h-screen">
@@ -394,19 +394,19 @@ export default function CommunityPage() {
           <div className="p-3 sm:p-6 lg:p-8">
             {/* Hero Header */}
             <div className="mb-8">
-              <div className="relative overflow-hidden rounded-xl sm:rounded-3xl bg-gradient-to-br from-[#c084fc]/20 via-[#0a0a0f] to-[#00d4ff]/20 border border-white/10 p-4 sm:p-8 mb-6 sm:mb-8">
+              <div className="relative overflow-hidden rounded-xl sm:rounded-3xl bg-gradient-to-br from-[#8b5cf6]/20 via-[#11151b] to-[#FF6B2C]/20 border border-white/10 p-4 sm:p-8 mb-6 sm:mb-8">
                 <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMtOS45NDEgMC0xOCA4LjA1OS0xOCAxOHM4LjA1OSAxOCAxOCAxOCAxOC04LjA1OSAxOC0xOC04LjA1OS0xOC0xOC0xOHptMCAzMmMtNy43MzIgMC0xNC02LjI2OC0xNC0xNHM2LjI2OC0xNCAxNC0xNCAxNCA2LjI2OCAxNCAxNC02LjI2OCAxNC0xNCAxNHoiIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iLjAyIi8+PC9nPjwvc3ZnPg==')] opacity-50" />
 
                 <div className="relative flex flex-col lg:flex-row items-center justify-between gap-6">
                   <div className="text-center lg:text-left">
                     <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-sm mb-4">
-                      <Users className="w-4 h-4 text-[#00ff88]" />
+                      <Users className="w-4 h-4 text-[#FF6B2C]" />
                       <span className="text-white/80">{total} creations shared</span>
-                      <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse" />
+                      <span className="w-2 h-2 rounded-full bg-[#FF6B2C] animate-pulse" />
                     </div>
 
                     <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black mb-2 sm:mb-3">
-                      <span className="bg-gradient-to-r from-white via-[#c084fc] to-[#00d4ff] bg-clip-text text-transparent">
+                      <span className="bg-gradient-to-r from-white via-[#8b5cf6] to-[#FF6B2C] bg-clip-text text-transparent">
                         Community Gallery
                       </span>
                     </h1>
@@ -417,7 +417,7 @@ export default function CommunityPage() {
 
                   <div className="flex gap-2 sm:gap-3">
                     <Link href="/generate">
-                      <Button className="h-10 sm:h-12 px-4 sm:px-6 text-sm sm:text-base bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-black font-bold hover:opacity-90 transition-all hover:scale-105 shadow-lg shadow-[#00ff88]/25">
+                      <Button className="h-10 sm:h-12 px-4 sm:px-6 text-sm sm:text-base bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] text-black font-bold hover:opacity-90 transition-all hover:scale-105 shadow-lg shadow-[#FF6B2C]/25">
                         <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2" />
                         Create Asset
                       </Button>
@@ -435,9 +435,9 @@ export default function CommunityPage() {
                 {/* Stats Bar */}
                 <div className="relative mt-4 sm:mt-8 grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
                   {[
-                    { label: "Total Assets", value: total, icon: ImageIcon, color: "text-[#00ff88]" },
-                    { label: "2D Sprites", value: total2D, icon: ImageIcon, color: "text-[#00d4ff]" },
-                    { label: "3D Models", value: total3D, icon: Cuboid, color: "text-[#c084fc]" },
+                    { label: "Total Assets", value: total, icon: ImageIcon, color: "text-[#FF6B2C]" },
+                    { label: "2D Sprites", value: total2D, icon: ImageIcon, color: "text-[#FF6B2C]" },
+                    { label: "3D Models", value: total3D, icon: Cuboid, color: "text-[#8b5cf6]" },
                     { label: "Active Now", value: chatMessages.length > 0 ? "Live" : "0", icon: MessageSquare, color: "text-yellow-400" },
                   ].map((stat, i) => (
                     <div key={i} className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg sm:rounded-xl bg-white/5 border border-white/10">
@@ -470,10 +470,10 @@ export default function CommunityPage() {
                           className="group relative overflow-hidden rounded-2xl cursor-pointer transition-all duration-300 hover:scale-[1.02]"
                         >
                           <div className={`absolute inset-0 bg-gradient-to-br ${index === 0 ? 'from-yellow-500/30 to-orange-500/30' : index === 1 ? 'from-gray-400/30 to-gray-500/30' : 'from-amber-600/30 to-amber-700/30'} opacity-0 group-hover:opacity-100 transition-opacity`} />
-                          <div className="aspect-video bg-[#0a0a0f] relative">
+                          <div className="aspect-video bg-[#11151b] relative">
                             {is3D ? (
                               <div className="w-full h-full flex items-center justify-center">
-                                <FileBox className="w-16 h-16 text-[#c084fc]" />
+                                <FileBox className="w-16 h-16 text-[#8b5cf6]" />
                               </div>
                             ) : (
                               <img src={gen.imageUrl} alt={gen.prompt} className="w-full h-full object-contain p-4" />
@@ -511,12 +511,12 @@ export default function CommunityPage() {
                 {/* Search & Sort Row */}
                 <div className="flex flex-col sm:flex-row gap-4">
                   <div className="flex-1 relative group">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40 group-focus-within:text-[#00ff88] transition-colors" />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40 group-focus-within:text-[#FF6B2C] transition-colors" />
                     <Input
                       placeholder="Search assets..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-12 h-12 bg-white/5 border-white/10 rounded-xl focus:border-[#00ff88]/50 focus:ring-[#00ff88]/20 text-white placeholder:text-white/40"
+                      className="pl-12 h-12 bg-white/5 border-white/10 rounded-xl focus:border-[#FF6B2C]/50 focus:ring-[#FF6B2C]/20 text-white placeholder:text-white/40"
                     />
                   </div>
 
@@ -525,7 +525,7 @@ export default function CommunityPage() {
                       onClick={() => setSortBy("newest")}
                       className={`h-12 px-5 rounded-xl font-medium transition-all flex items-center gap-2 ${
                         sortBy === "newest"
-                          ? "bg-gradient-to-r from-[#00ff88]/20 to-[#00d4ff]/20 text-[#00ff88] border border-[#00ff88]/30"
+                          ? "bg-gradient-to-r from-[#FF6B2C]/20 to-[#FF6B2C]/20 text-[#FF6B2C] border border-[#FF6B2C]/30"
                           : "bg-white/5 text-white/60 hover:text-white border border-white/10"
                       }`}
                     >
@@ -536,7 +536,7 @@ export default function CommunityPage() {
                       onClick={() => setSortBy("popular")}
                       className={`h-12 px-5 rounded-xl font-medium transition-all flex items-center gap-2 ${
                         sortBy === "popular"
-                          ? "bg-gradient-to-r from-[#c084fc]/20 to-[#a855f7]/20 text-[#c084fc] border border-[#c084fc]/30"
+                          ? "bg-gradient-to-r from-[#8b5cf6]/20 to-[#a855f7]/20 text-[#8b5cf6] border border-[#8b5cf6]/30"
                           : "bg-white/5 text-white/60 hover:text-white border border-white/10"
                       }`}
                     >
@@ -562,8 +562,8 @@ export default function CommunityPage() {
                     onClick={() => setFilterType("2d")}
                     className={`h-10 px-4 rounded-lg font-medium transition-all flex items-center gap-2 ${
                       filterType === "2d"
-                        ? "bg-[#00ff88]/20 text-[#00ff88] border border-[#00ff88]/30"
-                        : "text-white/50 hover:text-[#00ff88]"
+                        ? "bg-[#FF6B2C]/20 text-[#FF6B2C] border border-[#FF6B2C]/30"
+                        : "text-white/50 hover:text-[#FF6B2C]"
                     }`}
                   >
                     <ImageIcon className="w-4 h-4" />
@@ -573,8 +573,8 @@ export default function CommunityPage() {
                     onClick={() => setFilterType("3d")}
                     className={`h-10 px-4 rounded-lg font-medium transition-all flex items-center gap-2 ${
                       filterType === "3d"
-                        ? "bg-[#c084fc]/20 text-[#c084fc] border border-[#c084fc]/30"
-                        : "text-white/50 hover:text-[#c084fc]"
+                        ? "bg-[#8b5cf6]/20 text-[#8b5cf6] border border-[#8b5cf6]/30"
+                        : "text-white/50 hover:text-[#8b5cf6]"
                     }`}
                   >
                     <Cuboid className="w-4 h-4" />
@@ -615,14 +615,14 @@ export default function CommunityPage() {
             {loading ? (
               <div className="flex flex-col items-center justify-center py-20">
                 <div className="relative">
-                  <div className="w-20 h-20 rounded-full border-4 border-[#c084fc]/20 border-t-[#c084fc] animate-spin" />
-                  <Sparkles className="absolute inset-0 m-auto w-8 h-8 text-[#c084fc]" />
+                  <div className="w-20 h-20 rounded-full border-4 border-[#8b5cf6]/20 border-t-[#8b5cf6] animate-spin" />
+                  <Sparkles className="absolute inset-0 m-auto w-8 h-8 text-[#8b5cf6]" />
                 </div>
                 <p className="text-white/60 mt-4">Loading amazing creations...</p>
               </div>
             ) : filteredGenerations.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20">
-                <div className="w-32 h-32 rounded-3xl bg-gradient-to-br from-[#c084fc]/20 to-[#00d4ff]/20 flex items-center justify-center mb-6 border border-white/10">
+                <div className="w-32 h-32 rounded-3xl bg-gradient-to-br from-[#8b5cf6]/20 to-[#FF6B2C]/20 flex items-center justify-center mb-6 border border-white/10">
                   <Users className="w-16 h-16 text-white/20" />
                 </div>
                 <h3 className="text-2xl font-bold text-white mb-2">No Assets Yet</h3>
@@ -632,7 +632,7 @@ export default function CommunityPage() {
                     : "Be the first to share your creations with the community!"}
                 </p>
                 <Link href="/generate">
-                  <Button className="h-12 px-6 bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-black font-bold">
+                  <Button className="h-12 px-6 bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] text-black font-bold">
                     <Sparkles className="w-5 h-5 mr-2" />
                     Create First Asset
                   </Button>
@@ -659,17 +659,17 @@ export default function CommunityPage() {
                         }`}
                       >
                         {/* Glow effect on hover */}
-                        <div className={`absolute -inset-1 bg-gradient-to-r ${is3D ? 'from-[#c084fc] to-[#a855f7]' : 'from-[#00ff88] to-[#00d4ff]'} rounded-2xl opacity-0 group-hover:opacity-30 blur-lg transition-opacity`} />
+                        <div className={`absolute -inset-1 bg-gradient-to-r ${is3D ? 'from-[#8b5cf6] to-[#a855f7]' : 'from-[#FF6B2C] to-[#FF6B2C]'} rounded-2xl opacity-0 group-hover:opacity-30 blur-lg transition-opacity`} />
 
-                        <div className="relative bg-[#0a0a0f] border border-white/10 rounded-2xl overflow-hidden group-hover:border-white/20 transition-colors">
+                        <div className="relative bg-[#11151b] border border-white/10 rounded-2xl overflow-hidden group-hover:border-white/20 transition-colors">
                           {/* Image */}
                           <div className="aspect-square relative overflow-hidden bg-gradient-to-br from-white/5 to-transparent">
                             {/* Type Badge */}
                             <div className="absolute top-2 left-2 z-10">
                               <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold backdrop-blur-sm ${
                                 is3D
-                                  ? 'bg-[#c084fc]/90 text-white'
-                                  : 'bg-[#00ff88]/90 text-black'
+                                  ? 'bg-[#8b5cf6]/90 text-white'
+                                  : 'bg-[#FF6B2C]/90 text-black'
                               }`}>
                                 {is3D ? <Cuboid className="w-3 h-3" /> : <ImageIcon className="w-3 h-3" />}
                                 {is3D ? format3D : '2D'}
@@ -689,8 +689,8 @@ export default function CommunityPage() {
                             {is3D ? (
                               <div className="w-full h-full flex flex-col items-center justify-center p-4">
                                 <div className="relative">
-                                  <div className="absolute inset-0 bg-[#c084fc]/30 rounded-full blur-xl animate-pulse" />
-                                  <FileBox className="relative w-16 h-16 text-[#c084fc]" />
+                                  <div className="absolute inset-0 bg-[#8b5cf6]/30 rounded-full blur-xl animate-pulse" />
+                                  <FileBox className="relative w-16 h-16 text-[#8b5cf6]" />
                                 </div>
                                 <span className="text-xs text-white/50 mt-3">{getModelName(gen.styleId)}</span>
                               </div>
@@ -711,7 +711,7 @@ export default function CommunityPage() {
                                     e.stopPropagation();
                                     handleDownload(gen);
                                   }}
-                                  className={`${is3D ? 'bg-[#c084fc] hover:bg-[#a855f7]' : 'bg-[#00ff88] hover:bg-[#00d4ff]'} text-black`}
+                                  className={`${is3D ? 'bg-[#8b5cf6] hover:bg-[#a855f7]' : 'bg-[#FF6B2C] hover:bg-[#FF6B2C]'} text-black`}
                                 >
                                   <Download className="w-4 h-4" />
                                 </Button>
@@ -741,7 +741,7 @@ export default function CommunityPage() {
                                 {gen.user?.avatarUrl ? (
                                   <img src={gen.user.avatarUrl} alt="" className="w-5 h-5 rounded-full" />
                                 ) : (
-                                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#c084fc] to-[#00d4ff]" />
+                                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#8b5cf6] to-[#FF6B2C]" />
                                 )}
                                 <span className="text-white/50 text-xs truncate max-w-[80px]">
                                   {gen.user?.name || "Anonymous"}
@@ -766,7 +766,7 @@ export default function CommunityPage() {
         {!chatOpen && (
           <button
             onClick={() => setChatOpen(true)}
-            className="fixed right-0 top-1/2 -translate-y-1/2 z-30 w-12 h-32 rounded-l-2xl bg-gradient-to-b from-[#c084fc] to-[#00d4ff] flex flex-col items-center justify-center gap-2 hover:w-14 transition-all shadow-lg shadow-[#c084fc]/25"
+            className="fixed right-0 top-1/2 -translate-y-1/2 z-30 w-12 h-32 rounded-l-2xl bg-gradient-to-b from-[#8b5cf6] to-[#FF6B2C] flex flex-col items-center justify-center gap-2 hover:w-14 transition-all shadow-lg shadow-[#8b5cf6]/25"
           >
             <MessageSquare className="w-5 h-5 text-white" />
             <ChevronLeft className="w-4 h-4 text-white" />
@@ -780,7 +780,7 @@ export default function CommunityPage() {
 
         {/* Chat Sidebar */}
         <div
-          className={`fixed right-0 top-0 h-full w-80 bg-[#0a0a0f]/95 backdrop-blur-xl border-l border-[#c084fc]/20 flex flex-col z-20 transition-transform duration-300 ${
+          className={`fixed right-0 top-0 h-full w-80 bg-[#11151b]/95 backdrop-blur-xl border-l border-[#8b5cf6]/20 flex flex-col z-20 transition-transform duration-300 ${
             chatOpen ? 'translate-x-0' : 'translate-x-full'
           }`}
         >
@@ -789,10 +789,10 @@ export default function CommunityPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="relative">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#c084fc] to-[#00d4ff] flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#8b5cf6] to-[#FF6B2C] flex items-center justify-center">
                     <MessageSquare className="w-5 h-5 text-white" />
                   </div>
-                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-[#00ff88] border-2 border-[#0a0a0f]" />
+                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-[#FF6B2C] border-2 border-[#11151b]" />
                 </div>
                 <div>
                   <h3 className="font-bold text-white">Live Chat</h3>
@@ -812,11 +812,11 @@ export default function CommunityPage() {
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {loadingChat ? (
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-6 h-6 text-[#c084fc] animate-spin" />
+                <Loader2 className="w-6 h-6 text-[#8b5cf6] animate-spin" />
               </div>
             ) : chatMessages.length === 0 ? (
               <div className="text-center py-8">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#c084fc]/20 to-[#00d4ff]/20 flex items-center justify-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#8b5cf6]/20 to-[#FF6B2C]/20 flex items-center justify-center">
                   <MessageSquare className="w-8 h-8 text-white/30" />
                 </div>
                 <p className="text-white/50 text-sm">No messages yet</p>
@@ -831,7 +831,7 @@ export default function CommunityPage() {
                       {msg.userAvatar ? (
                         <img src={msg.userAvatar} alt="" className="w-8 h-8 rounded-full flex-shrink-0 ring-2 ring-white/10" />
                       ) : (
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#c084fc] to-[#00d4ff] flex-shrink-0 ring-2 ring-white/10" />
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#8b5cf6] to-[#FF6B2C] flex-shrink-0 ring-2 ring-white/10" />
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
@@ -861,20 +861,20 @@ export default function CommunityPage() {
           </div>
 
           {/* Chat Input */}
-          <div className="p-4 border-t border-white/10 bg-[#0a0a0f]/50">
+          <div className="p-4 border-t border-white/10 bg-[#11151b]/50">
             <div className="flex gap-2">
               <Input
                 placeholder="Say something..."
                 value={newChatMessage}
                 onChange={(e) => setNewChatMessage(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendChatMessage()}
-                className="flex-1 h-11 bg-white/5 border-white/10 rounded-xl focus:border-[#c084fc]/50 text-white placeholder:text-white/30"
+                className="flex-1 h-11 bg-white/5 border-white/10 rounded-xl focus:border-[#8b5cf6]/50 text-white placeholder:text-white/30"
                 maxLength={500}
               />
               <Button
                 onClick={handleSendChatMessage}
                 disabled={!newChatMessage.trim() || sendingChat}
-                className="h-11 w-11 bg-gradient-to-r from-[#c084fc] to-[#00d4ff] hover:opacity-90"
+                className="h-11 w-11 bg-gradient-to-r from-[#8b5cf6] to-[#FF6B2C] hover:opacity-90"
               >
                 {sendingChat ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -897,7 +897,7 @@ export default function CommunityPage() {
           onClick={() => setSelectedGen(null)}
         >
           <div
-            className="relative bg-[#0a0a0f] border border-white/10 rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col md:flex-row animate-in zoom-in-95 duration-300"
+            className="relative bg-[#11151b] border border-white/10 rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col md:flex-row animate-in zoom-in-95 duration-300"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Image Side */}
@@ -905,11 +905,11 @@ export default function CommunityPage() {
               {is3DFormat(selectedGen.imageUrl) || is3DStyle(selectedGen.styleId) ? (
                 <div className="w-full h-full flex flex-col items-center justify-center p-4">
                   <div className="relative mb-4">
-                    <div className="absolute inset-0 bg-[#c084fc]/30 rounded-full blur-2xl animate-pulse" />
-                    <FileBox className="relative w-32 h-32 text-[#c084fc]" />
+                    <div className="absolute inset-0 bg-[#8b5cf6]/30 rounded-full blur-2xl animate-pulse" />
+                    <FileBox className="relative w-32 h-32 text-[#8b5cf6]" />
                   </div>
                   <span className="text-xl font-bold text-white">3D Model</span>
-                  <span className="text-[#c084fc] font-mono">{get3DFormat(selectedGen.imageUrl)}</span>
+                  <span className="text-[#8b5cf6] font-mono">{get3DFormat(selectedGen.imageUrl)}</span>
                 </div>
               ) : (
                 <img
@@ -938,7 +938,7 @@ export default function CommunityPage() {
                   <Badge className="bg-white/10 text-white border-white/20">
                     {selectedGen.categoryId}
                   </Badge>
-                  <Badge className="bg-[#c084fc]/20 text-[#c084fc] border-[#c084fc]/30">
+                  <Badge className="bg-[#8b5cf6]/20 text-[#8b5cf6] border-[#8b5cf6]/30">
                     {getModelName(selectedGen.styleId)}
                   </Badge>
                 </div>
@@ -948,7 +948,7 @@ export default function CommunityPage() {
                     {selectedGen.user?.avatarUrl ? (
                       <img src={selectedGen.user.avatarUrl} alt="" className="w-10 h-10 rounded-full ring-2 ring-white/20" />
                     ) : (
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#c084fc] to-[#00d4ff] ring-2 ring-white/20" />
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#8b5cf6] to-[#FF6B2C] ring-2 ring-white/20" />
                     )}
                     <div>
                       <p className="text-white font-medium">{selectedGen.user?.name || "Anonymous"}</p>
@@ -970,7 +970,7 @@ export default function CommunityPage() {
                     <Button
                       size="sm"
                       onClick={() => handleDownload(selectedGen)}
-                      className="h-10 bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-black"
+                      className="h-10 bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] text-black"
                     >
                       <Download className="w-4 h-4 mr-1.5" />
                       Download
@@ -988,7 +988,7 @@ export default function CommunityPage() {
 
                 {loadingComments ? (
                   <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-6 h-6 text-[#c084fc] animate-spin" />
+                    <Loader2 className="w-6 h-6 text-[#8b5cf6] animate-spin" />
                   </div>
                 ) : comments.length === 0 ? (
                   <p className="text-white/50 text-sm text-center py-4">
@@ -1000,7 +1000,7 @@ export default function CommunityPage() {
                       {comment.userAvatar ? (
                         <img src={comment.userAvatar} alt="" className="w-8 h-8 rounded-full" />
                       ) : (
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#c084fc] to-[#00d4ff]" />
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#8b5cf6] to-[#FF6B2C]" />
                       )}
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
@@ -1028,7 +1028,7 @@ export default function CommunityPage() {
                   <Button
                     onClick={handlePostComment}
                     disabled={!newComment.trim() || submittingComment}
-                    className="h-11 bg-gradient-to-r from-[#c084fc] to-[#00d4ff]"
+                    className="h-11 bg-gradient-to-r from-[#8b5cf6] to-[#FF6B2C]"
                   >
                     {submittingComment ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   </Button>

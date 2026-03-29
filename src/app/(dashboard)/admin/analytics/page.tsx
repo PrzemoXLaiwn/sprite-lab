@@ -112,9 +112,9 @@ export default function AnalyticsDashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
+      <div className="min-h-screen bg-[#11151b] flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-[#00ff88] mx-auto mb-4" />
+          <Loader2 className="w-8 h-8 animate-spin text-[#FF6B2C] mx-auto mb-4" />
           <p className="text-[#a0a0b0]">Loading analytics...</p>
         </div>
       </div>
@@ -123,7 +123,7 @@ export default function AnalyticsDashboardPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
+      <div className="min-h-screen bg-[#11151b] flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <p className="text-white font-semibold mb-2">Error loading analytics</p>
@@ -137,13 +137,13 @@ export default function AnalyticsDashboardPage() {
   if (!data) return null;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] p-6">
+    <div className="min-h-screen bg-[#11151b] p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-              <BarChart3 className="w-7 h-7 text-[#00ff88]" />
+              <BarChart3 className="w-7 h-7 text-[#FF6B2C]" />
               Generation Analytics
             </h1>
             <p className="text-[#a0a0b0] mt-1">
@@ -155,7 +155,7 @@ export default function AnalyticsDashboardPage() {
             <select
               value={period}
               onChange={(e) => setPeriod(e.target.value)}
-              className="bg-[#1a1a28] border border-[#2a2a3d] rounded-lg px-3 py-2 text-white"
+              className="bg-[#141821] border border-[rgba(255,255,255,0.06)] rounded-lg px-3 py-2 text-white"
             >
               <option value="7d">Last 7 days</option>
               <option value="30d">Last 30 days</option>
@@ -202,7 +202,7 @@ export default function AnalyticsDashboardPage() {
         {/* Engagement Metrics */}
         <div className="glass-card rounded-2xl p-6">
           <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-[#00ff88]" />
+            <TrendingUp className="w-5 h-5 text-[#FF6B2C]" />
             Engagement Metrics
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -210,19 +210,19 @@ export default function AnalyticsDashboardPage() {
               label="Download Rate"
               value={parseFloat(data.engagement.downloadRate)}
               icon={<Download className="w-4 h-4" />}
-              color="#00ff88"
+              color="#FF6B2C"
             />
             <MetricBar
               label="Share Rate"
               value={parseFloat(data.engagement.shareRate)}
               icon={<Share2 className="w-4 h-4" />}
-              color="#00d4ff"
+              color="#FF6B2C"
             />
             <MetricBar
               label="Regenerate Rate"
               value={parseFloat(data.engagement.regenerateRate)}
               icon={<RefreshCw className="w-4 h-4" />}
-              color="#ffd93d"
+              color="#f59e0b"
               isNegative
             />
           </div>
@@ -242,7 +242,7 @@ export default function AnalyticsDashboardPage() {
                   <span className="flex-1 text-white capitalize">
                     {cat.category.replace(/-/g, " ")}
                   </span>
-                  <span className="text-[#00ff88] font-mono">
+                  <span className="text-[#FF6B2C] font-mono">
                     {cat.count.toLocaleString()}
                   </span>
                 </div>
@@ -262,7 +262,7 @@ export default function AnalyticsDashboardPage() {
                   <span className="flex-1 text-white capitalize">
                     {style.style.replace(/-/g, " ")}
                   </span>
-                  <span className="text-[#00d4ff] font-mono">
+                  <span className="text-[#FF6B2C] font-mono">
                     {style.count.toLocaleString()}
                   </span>
                 </div>
@@ -274,14 +274,14 @@ export default function AnalyticsDashboardPage() {
         {/* Prompt Performance */}
         <div className="glass-card rounded-2xl p-6">
           <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <Star className="w-5 h-5 text-[#ffd93d]" />
+            <Star className="w-5 h-5 text-[#f59e0b]" />
             Prompt Performance Analysis
           </h2>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Best Performing */}
             <div>
-              <h3 className="text-sm font-medium text-[#00ff88] mb-3 flex items-center gap-2">
+              <h3 className="text-sm font-medium text-[#FF6B2C] mb-3 flex items-center gap-2">
                 <TrendingUp className="w-4 h-4" />
                 Best Performing Patterns
               </h3>
@@ -289,7 +289,7 @@ export default function AnalyticsDashboardPage() {
                 {data.promptPerformance.best.slice(0, 5).map((p) => (
                   <div
                     key={p.id}
-                    className="bg-[#1a1a28] rounded-lg p-3 border border-green-500/20"
+                    className="bg-[#141821] rounded-lg p-3 border border-green-500/20"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
@@ -330,7 +330,7 @@ export default function AnalyticsDashboardPage() {
                 {data.promptPerformance.worst.slice(0, 5).map((p) => (
                   <div
                     key={p.id}
-                    className="bg-[#1a1a28] rounded-lg p-3 border border-red-500/20"
+                    className="bg-[#141821] rounded-lg p-3 border border-red-500/20"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
@@ -366,14 +366,14 @@ export default function AnalyticsDashboardPage() {
         {/* Recent Generations with Images */}
         <div className="glass-card rounded-2xl p-6">
           <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <Clock className="w-5 h-5 text-[#00d4ff]" />
+            <Clock className="w-5 h-5 text-[#FF6B2C]" />
             Recent Generations
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {data.recentGenerations.slice(0, 12).map((gen) => (
               <div
                 key={gen.id}
-                className="group relative rounded-lg overflow-hidden border border-[#2a2a3d] hover:border-[#00ff88] transition-colors"
+                className="group relative rounded-lg overflow-hidden border border-[rgba(255,255,255,0.06)] hover:border-[#FF6B2C] transition-colors"
               >
                 <img
                   src={gen.imageUrl}
@@ -394,14 +394,14 @@ export default function AnalyticsDashboardPage() {
         {/* Recent Feedback */}
         <div className="glass-card rounded-2xl p-6">
           <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <ThumbsUp className="w-5 h-5 text-[#00ff88]" />
+            <ThumbsUp className="w-5 h-5 text-[#FF6B2C]" />
             Recent Feedback
           </h2>
           <div className="space-y-3">
             {data.recentFeedback.slice(0, 10).map((fb, i) => (
               <div
                 key={`${fb.generationId}-${i}`}
-                className="flex items-center gap-4 p-3 bg-[#1a1a28] rounded-lg"
+                className="flex items-center gap-4 p-3 bg-[#141821] rounded-lg"
               >
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center ${
@@ -506,7 +506,7 @@ function MetricBar({
   isNegative?: boolean;
 }) {
   return (
-    <div className="bg-[#1a1a28] rounded-lg p-4">
+    <div className="bg-[#141821] rounded-lg p-4">
       <div className="flex items-center gap-2 mb-2">
         <span style={{ color }}>{icon}</span>
         <span className="text-sm text-[#a0a0b0]">{label}</span>
@@ -520,12 +520,12 @@ function MetricBar({
           </span>
         )}
       </div>
-      <div className="mt-2 h-2 bg-[#0a0a0f] rounded-full overflow-hidden">
+      <div className="mt-2 h-2 bg-[#11151b] rounded-full overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-500"
           style={{
             width: `${Math.min(value, 100)}%`,
-            backgroundColor: isNegative && value > 20 ? "#ffd93d" : color,
+            backgroundColor: isNegative && value > 20 ? "#f59e0b" : color,
           }}
         />
       </div>

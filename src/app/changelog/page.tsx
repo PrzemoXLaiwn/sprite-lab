@@ -50,10 +50,10 @@ const CHANGELOG = [
 ];
 
 const typeConfig = {
-  feature: { icon: Sparkles, color: "text-[#00ff88]", bg: "bg-[#00ff88]/10" },
-  improvement: { icon: Zap, color: "text-[#00d4ff]", bg: "bg-[#00d4ff]/10" },
-  fix: { icon: Bug, color: "text-[#ff6b6b]", bg: "bg-[#ff6b6b]/10" },
-  release: { icon: Star, color: "text-[#c084fc]", bg: "bg-[#c084fc]/10" },
+  feature: { icon: Sparkles, color: "text-[#FF6B2C]", bg: "bg-[#FF6B2C]/10" },
+  improvement: { icon: Zap, color: "text-[#FF6B2C]", bg: "bg-[#FF6B2C]/10" },
+  fix: { icon: Bug, color: "text-[#ef4444]", bg: "bg-[#ef4444]/10" },
+  release: { icon: Star, color: "text-[#8b5cf6]", bg: "bg-[#8b5cf6]/10" },
 };
 
 export default function ChangelogPage() {

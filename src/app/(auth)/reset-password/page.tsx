@@ -43,9 +43,9 @@ export default function ResetPasswordPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <div className="w-full max-w-md">
-          <div className="bg-[#0a0a0f]/80 border border-white/10 rounded-2xl p-8 backdrop-blur-xl text-center">
-            <div className="w-16 h-16 rounded-full bg-[#00ff88]/20 flex items-center justify-center mx-auto mb-6">
-              <CheckCircle className="w-8 h-8 text-[#00ff88]" />
+          <div className="bg-[#11151b]/80 border border-white/10 rounded-2xl p-8 backdrop-blur-xl text-center">
+            <div className="w-16 h-16 rounded-full bg-[#FF6B2C]/20 flex items-center justify-center mx-auto mb-6">
+              <CheckCircle className="w-8 h-8 text-[#FF6B2C]" />
             </div>
 
             <h1 className="text-2xl font-bold mb-2">Check your email</h1>
@@ -85,19 +85,19 @@ export default function ResetPasswordPage() {
         {/* Logo */}
         <Link href="/" className="flex items-center justify-center gap-2 mb-8 group">
           <div className="relative">
-            <div className="absolute inset-0 bg-[#00ff88]/30 rounded-lg blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="absolute inset-0 bg-[#FF6B2C]/30 rounded-lg blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
             <Image src="/logo.png" alt="SpriteLab" width={40} height={40} className="relative" />
           </div>
           <span className="font-display font-bold text-2xl tracking-tight">
-            Sprite<span className="text-[#00ff88]">Lab</span>
+            Sprite<span className="text-[#FF6B2C]">Lab</span>
           </span>
         </Link>
 
         {/* Reset Form */}
-        <div className="bg-[#0a0a0f]/80 border border-white/10 rounded-2xl p-8 backdrop-blur-xl">
+        <div className="bg-[#11151b]/80 border border-white/10 rounded-2xl p-8 backdrop-blur-xl">
           <div className="text-center mb-8">
-            <div className="w-12 h-12 rounded-full bg-[#00d4ff]/20 flex items-center justify-center mx-auto mb-4">
-              <Mail className="w-6 h-6 text-[#00d4ff]" />
+            <div className="w-12 h-12 rounded-full bg-[#FF6B2C]/20 flex items-center justify-center mx-auto mb-4">
+              <Mail className="w-6 h-6 text-[#FF6B2C]" />
             </div>
             <h1 className="text-2xl font-bold mb-2">Reset your password</h1>
             <p className="text-white/60">
@@ -122,13 +122,13 @@ export default function ResetPasswordPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="bg-white/5 border-white/10 focus:border-[#00ff88]/50"
+                className="bg-white/5 border-white/10 focus:border-[#FF6B2C]/50"
               />
             </div>
 
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-black font-semibold hover:opacity-90"
+              className="w-full bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] text-black font-semibold hover:opacity-90"
               disabled={isLoading || !email}
             >
               {isLoading ? (
@@ -156,7 +156,7 @@ export default function ResetPasswordPage() {
         {/* Help text */}
         <p className="text-center text-white/40 text-sm mt-6">
           Remember your password?{" "}
-          <Link href="/login" className="text-[#00ff88] hover:underline">
+          <Link href="/login" className="text-[#FF6B2C] hover:underline">
             Sign in
           </Link>
         </p>

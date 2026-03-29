@@ -30,20 +30,20 @@ export default function EmailConfirmedPage() {
   }, []);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#030305]">
+    <div className="min-h-screen flex items-center justify-center bg-[#0a0c10]">
       {/* Background effects */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#00ff88]/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-[#c084fc]/10 rounded-full blur-[100px]" />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#FF6B2C]/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-[#8b5cf6]/10 rounded-full blur-[100px]" />
       </div>
 
       <div className="relative max-w-md w-full mx-4">
-        <div className="glass-card border border-[#2a2a3d] rounded-2xl p-8 text-center">
+        <div className="glass-card border border-[rgba(255,255,255,0.06)] rounded-2xl p-8 text-center">
           {/* Success Icon */}
           <div className="w-24 h-24 mx-auto mb-6 relative">
-            <div className="absolute inset-0 bg-[#00ff88]/30 rounded-full blur-xl animate-pulse" />
-            <div className="relative w-full h-full rounded-full bg-[#00ff88]/10 flex items-center justify-center border-2 border-[#00ff88]">
-              <CheckCircle className="w-12 h-12 text-[#00ff88]" />
+            <div className="absolute inset-0 bg-[#FF6B2C]/30 rounded-full blur-xl animate-pulse" />
+            <div className="relative w-full h-full rounded-full bg-[#FF6B2C]/10 flex items-center justify-center border-2 border-[#FF6B2C]">
+              <CheckCircle className="w-12 h-12 text-[#FF6B2C]" />
             </div>
           </div>
 
@@ -58,15 +58,15 @@ export default function EmailConfirmedPage() {
           </p>
 
           {/* Credits badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#00ff88]/10 border border-[#00ff88]/30 text-[#00ff88] mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FF6B2C]/10 border border-[#FF6B2C]/30 text-[#FF6B2C] mb-6">
             <Sparkles className="w-4 h-4" />
             <span className="font-semibold">5 free credits ready to use!</span>
           </div>
 
           {/* What's next */}
-          <div className="p-4 rounded-xl bg-[#0a0a0f] border border-[#2a2a3d] mb-6 text-left">
+          <div className="p-4 rounded-xl bg-[#11151b] border border-[rgba(255,255,255,0.06)] mb-6 text-left">
             <div className="flex items-center gap-2 text-white font-medium mb-2">
-              <Rocket className="w-4 h-4 text-[#c084fc]" />
+              <Rocket className="w-4 h-4 text-[#8b5cf6]" />
               What's next?
             </div>
             <p className="text-sm text-[#a0a0b0]">
@@ -76,11 +76,11 @@ export default function EmailConfirmedPage() {
 
           {/* Countdown */}
           <p className="text-sm text-[#606070] mb-4">
-            Starting your journey in <span className="text-[#00ff88] font-mono font-bold">{countdown}</span>...
+            Starting your journey in <span className="text-[#FF6B2C] font-mono font-bold">{countdown}</span>...
           </p>
 
           {/* CTA Button */}
-          <Button asChild className="w-full h-12 bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-[#030305] font-bold hover:opacity-90">
+          <Button asChild className="w-full h-12 bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] text-[#0a0c10] font-bold hover:opacity-90">
             <Link href="/dashboard">
               <Sparkles className="w-4 h-4 mr-2" />
               Let's Go!

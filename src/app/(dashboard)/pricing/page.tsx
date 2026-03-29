@@ -209,7 +209,7 @@ function CountdownTimer({ endDate }: { endDate: Date }) {
 function StatCard({ icon: Icon, value, label }: { icon: React.ElementType; value: string; label: string }) {
   return (
     <div className="flex items-center gap-3 px-4 py-2">
-      <Icon className="w-5 h-5 text-[#00ff88]" />
+      <Icon className="w-5 h-5 text-[#FF6B2C]" />
       <div>
         <div className="font-bold text-white">{value}</div>
         <div className="text-xs text-white/60">{label}</div>
@@ -299,13 +299,13 @@ export default function PricingPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-12 h-12 text-[#00ff88] animate-spin" />
+        <Loader2 className="w-12 h-12 text-[#FF6B2C] animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f]">
+    <div className="min-h-screen bg-[#11151b]">
       {/* ============================================ */}
       {/* URGENCY BANNER */}
       {/* ============================================ */}
@@ -344,7 +344,7 @@ export default function PricingPage() {
       {/* HEADER */}
       {/* ============================================ */}
       <div className="pt-12 pb-8 text-center px-4">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#00ff88]/10 border border-[#00ff88]/30 text-[#00ff88] text-sm mb-6">
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FF6B2C]/10 border border-[#FF6B2C]/30 text-[#FF6B2C] text-sm mb-6">
           <Gift className="w-4 h-4" />
           <span>Launch pricing locked forever for early adopters!</span>
         </div>
@@ -372,14 +372,14 @@ export default function PricingPage() {
                 key={plan.id}
                 className={`relative rounded-2xl p-6 transition-all duration-300 ${
                   isPopular
-                    ? "bg-gradient-to-b from-[#00ff88]/20 to-[#00d4ff]/10 border-2 border-[#00ff88] shadow-xl shadow-[#00ff88]/20 scale-105 z-10"
+                    ? "bg-gradient-to-b from-[#FF6B2C]/20 to-[#FF6B2C]/10 border-2 border-[#FF6B2C] shadow-xl shadow-[#FF6B2C]/20 scale-105 z-10"
                     : "bg-[#12121a] border border-white/10 hover:border-white/20"
                 }`}
               >
                 {/* Popular Badge */}
                 {isPopular && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <div className="bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-black px-4 py-1 rounded-full text-sm font-bold flex items-center gap-1">
+                    <div className="bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] text-black px-4 py-1 rounded-full text-sm font-bold flex items-center gap-1">
                       <Crown className="w-4 h-4" />
                       MOST POPULAR
                     </div>
@@ -397,8 +397,8 @@ export default function PricingPage() {
 
                 {/* Plan Header */}
                 <div className="text-center mb-6 pt-2">
-                  <div className={`inline-flex p-3 rounded-xl mb-3 ${isPopular ? "bg-[#00ff88]/20" : "bg-white/5"}`}>
-                    <Icon className={`w-6 h-6 ${isPopular ? "text-[#00ff88]" : "text-white/60"}`} />
+                  <div className={`inline-flex p-3 rounded-xl mb-3 ${isPopular ? "bg-[#FF6B2C]/20" : "bg-white/5"}`}>
+                    <Icon className={`w-6 h-6 ${isPopular ? "text-[#FF6B2C]" : "text-white/60"}`} />
                   </div>
                   <h3 className="text-xl font-bold text-white mb-1">{plan.name}</h3>
                   <p className="text-sm text-white/50">{plan.description}</p>
@@ -419,7 +419,7 @@ export default function PricingPage() {
                     <span className="text-white/50">/mo</span>
                   </div>
                   <div className="mt-2">
-                    <span className="text-sm text-[#00ff88] font-medium">
+                    <span className="text-sm text-[#FF6B2C] font-medium">
                       {plan.credits + plan.bonusCredits} credits/month
                     </span>
                     {plan.bonusCredits > 0 && (
@@ -439,7 +439,7 @@ export default function PricingPage() {
                 <ul className="space-y-3 mb-6">
                   {plan.features.map((feature, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm">
-                      <Check className={`w-4 h-4 shrink-0 mt-0.5 ${isPopular ? "text-[#00ff88]" : "text-white/40"}`} />
+                      <Check className={`w-4 h-4 shrink-0 mt-0.5 ${isPopular ? "text-[#FF6B2C]" : "text-white/40"}`} />
                       <span className="text-white/80">{feature}</span>
                     </li>
                   ))}
@@ -453,7 +453,7 @@ export default function PricingPage() {
                     isCurrent
                       ? "bg-purple-500/20 text-purple-400 border border-purple-500/30 cursor-default"
                       : isPopular
-                      ? "bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-black hover:shadow-lg hover:shadow-[#00ff88]/30 hover:scale-105"
+                      ? "bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] text-black hover:shadow-lg hover:shadow-[#FF6B2C]/30 hover:scale-105"
                       : "bg-white/10 text-white hover:bg-white/20 border border-white/10"
                   }`}
                 >
@@ -515,28 +515,28 @@ export default function PricingPage() {
             </div>
 
             {/* SpriteLab Way */}
-            <div className="bg-[#00ff88]/10 border border-[#00ff88]/30 rounded-2xl p-6">
-              <h3 className="text-xl font-bold text-[#00ff88] mb-4">With SpriteLab Pro</h3>
+            <div className="bg-[#FF6B2C]/10 border border-[#FF6B2C]/30 rounded-2xl p-6">
+              <h3 className="text-xl font-bold text-[#FF6B2C] mb-4">With SpriteLab Pro</h3>
               <ul className="space-y-3">
                 <li className="flex items-center gap-2 text-white/70">
-                  <Check className="w-4 h-4 text-[#00ff88]" />
+                  <Check className="w-4 h-4 text-[#FF6B2C]" />
                   ~2.4¢ per sprite
                 </li>
                 <li className="flex items-center gap-2 text-white/70">
-                  <Check className="w-4 h-4 text-[#00ff88]" />
+                  <Check className="w-4 h-4 text-[#FF6B2C]" />
                   Instant generation (&lt;3 sec)
                 </li>
                 <li className="flex items-center gap-2 text-white/70">
-                  <Check className="w-4 h-4 text-[#00ff88]" />
+                  <Check className="w-4 h-4 text-[#FF6B2C]" />
                   Unlimited regenerations
                 </li>
                 <li className="flex items-center gap-2 text-white/70">
-                  <Check className="w-4 h-4 text-[#00ff88]" />
+                  <Check className="w-4 h-4 text-[#FF6B2C]" />
                   500 sprites = $12
                 </li>
               </ul>
               <div className="mt-6 text-center">
-                <span className="text-3xl font-bold text-[#00ff88]">$12/mo</span>
+                <span className="text-3xl font-bold text-[#FF6B2C]">$12/mo</span>
                 <p className="text-white/50 text-sm">500 credits + Premium AI</p>
               </div>
             </div>
@@ -544,7 +544,7 @@ export default function PricingPage() {
 
           <div className="text-center mt-8">
             <p className="text-2xl font-bold text-white">
-              Save up to <span className="text-[#00ff88]">99.9%</span> on game art
+              Save up to <span className="text-[#FF6B2C]">99.9%</span> on game art
             </p>
           </div>
         </div>
@@ -555,8 +555,8 @@ export default function PricingPage() {
       {/* ============================================ */}
       <div className="py-10 sm:py-16 px-3 sm:px-4">
         <div className="max-w-2xl mx-auto text-center">
-          <div className="inline-flex p-3 sm:p-4 rounded-full bg-[#00ff88]/10 mb-4 sm:mb-6">
-            <Shield className="w-8 h-8 sm:w-12 sm:h-12 text-[#00ff88]" />
+          <div className="inline-flex p-3 sm:p-4 rounded-full bg-[#FF6B2C]/10 mb-4 sm:mb-6">
+            <Shield className="w-8 h-8 sm:w-12 sm:h-12 text-[#FF6B2C]" />
           </div>
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3 sm:mb-4">
             7-Day Money-Back Guarantee
@@ -590,7 +590,7 @@ export default function PricingPage() {
       <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 sm:hidden">
         <Button
           onClick={() => handlePlanClick("PRO")}
-          className="bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-black font-bold px-8 py-6 rounded-full shadow-lg shadow-[#00ff88]/30"
+          className="bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] text-black font-bold px-8 py-6 rounded-full shadow-lg shadow-[#FF6B2C]/30"
         >
           <Zap className="w-5 h-5 mr-2" />
           Get Pro - $12/mo

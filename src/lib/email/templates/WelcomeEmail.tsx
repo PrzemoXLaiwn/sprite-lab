@@ -141,7 +141,7 @@ export function WelcomeEmail({ userName, credits = 10 }: WelcomeEmailProps) {
 
 // Styles
 const main = {
-  backgroundColor: "#030305",
+  backgroundColor: "#0a0c10",
   fontFamily:
     '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif',
 };
@@ -165,14 +165,14 @@ const logo = {
 };
 
 const logoAccent = {
-  color: "#00ff88",
+  color: "#FF6B2C",
 };
 
 const content = {
-  backgroundColor: "#0a0a0f",
+  backgroundColor: "#11151b",
   borderRadius: "16px",
   padding: "32px",
-  border: "1px solid #2a2a3d",
+  border: "1px solid rgba(255,255,255,0.06)",
 };
 
 const heading = {
@@ -198,7 +198,7 @@ const paragraph = {
 };
 
 const creditsBox = {
-  backgroundColor: "#00ff88",
+  backgroundColor: "#FF6B2C",
   borderRadius: "12px",
   padding: "24px",
   margin: "24px 0",
@@ -206,7 +206,7 @@ const creditsBox = {
 };
 
 const creditsNumber = {
-  color: "#030305",
+  color: "#0a0c10",
   fontSize: "48px",
   fontWeight: "bold",
   margin: "0",
@@ -214,7 +214,7 @@ const creditsNumber = {
 };
 
 const creditsLabel = {
-  color: "#030305",
+  color: "#0a0c10",
   fontSize: "14px",
   fontWeight: "600",
   margin: "8px 0 0",
@@ -228,9 +228,9 @@ const buttonContainer = {
 };
 
 const button = {
-  backgroundColor: "#00ff88",
+  backgroundColor: "#FF6B2C",
   borderRadius: "8px",
-  color: "#030305",
+  color: "#0a0c10",
   fontSize: "16px",
   fontWeight: "bold",
   textDecoration: "none",
@@ -242,8 +242,8 @@ const button = {
 const buttonSecondary = {
   backgroundColor: "transparent",
   borderRadius: "8px",
-  border: "2px solid #00d4ff",
-  color: "#00d4ff",
+  border: "2px solid #FF6B2C",
+  color: "#FF6B2C",
   fontSize: "14px",
   fontWeight: "600",
   textDecoration: "none",
@@ -253,7 +253,7 @@ const buttonSecondary = {
 };
 
 const hr = {
-  borderColor: "#2a2a3d",
+  borderColor: "rgba(255,255,255,0.06)",
   margin: "24px 0",
 };
 
@@ -262,11 +262,11 @@ const tipBox = {
   borderRadius: "8px",
   padding: "16px",
   marginBottom: "12px",
-  border: "1px solid #2a2a3d",
+  border: "1px solid rgba(255,255,255,0.06)",
 };
 
 const tipTitle = {
-  color: "#00d4ff",
+  color: "#FF6B2C",
   fontSize: "14px",
   fontWeight: "bold",
   margin: "0 0 4px",
@@ -287,7 +287,7 @@ const examplePrompt = {
   fontSize: "14px",
   fontFamily: "monospace",
   margin: "0 0 8px",
-  border: "1px solid #2a2a3d",
+  border: "1px solid rgba(255,255,255,0.06)",
 };
 
 const footer = {
@@ -308,7 +308,7 @@ const footerLinks = {
 };
 
 const link = {
-  color: "#00d4ff",
+  color: "#FF6B2C",
   textDecoration: "underline",
 };
 

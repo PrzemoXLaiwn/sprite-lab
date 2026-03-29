@@ -101,24 +101,24 @@ export function TryItNow() {
   return (
     <section id="try-it" className="py-16 sm:py-24 relative overflow-hidden">
       {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#00ff88]/5 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#FF6B2C]/5 to-transparent" />
 
       <div className="max-w-4xl mx-auto px-3 sm:px-4 relative z-10">
         <div className="text-center mb-8 sm:mb-12">
-          <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-[#00ff88]/10 border border-[#00ff88]/20 text-[#00ff88] text-xs sm:text-sm font-medium mb-4 sm:mb-6">
+          <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-[#FF6B2C]/10 border border-[#FF6B2C]/20 text-[#FF6B2C] text-xs sm:text-sm font-medium mb-4 sm:mb-6">
             <Wand2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             Try It Free - No Account Required
           </div>
 
           <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold mb-3 sm:mb-4">
-            Create Your First <span className="text-[#00ff88]">Sprite</span>
+            Create Your First <span className="text-[#FF6B2C]">Sprite</span>
           </h2>
           <p className="text-white/60 max-w-xl mx-auto text-sm sm:text-base px-2">
             See the magic in action. Generate {remaining !== null ? remaining : 2} free sprite{remaining !== 1 ? "s" : ""} right now!
           </p>
         </div>
 
-        <div className="bg-[#0a0a0f]/80 border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 backdrop-blur-xl">
+        <div className="bg-[#11151b]/80 border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 backdrop-blur-xl">
           {/* Generator UI */}
           <div className="grid md:grid-cols-2 gap-6 sm:gap-8">
             {/* Left - Input */}
@@ -129,7 +129,7 @@ export function TryItNow() {
                   onClick={() => setStyle("pixel")}
                   className={`flex-1 py-2 px-3 sm:px-4 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                     style === "pixel"
-                      ? "bg-[#00ff88] text-black"
+                      ? "bg-[#FF6B2C] text-black"
                       : "bg-white/5 text-white/60 hover:bg-white/10"
                   }`}
                 >
@@ -139,7 +139,7 @@ export function TryItNow() {
                   onClick={() => setStyle("cartoon")}
                   className={`flex-1 py-2 px-3 sm:px-4 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                     style === "cartoon"
-                      ? "bg-[#00ff88] text-black"
+                      ? "bg-[#FF6B2C] text-black"
                       : "bg-white/5 text-white/60 hover:bg-white/10"
                   }`}
                 >
@@ -153,7 +153,7 @@ export function TryItNow() {
                   <label className="text-xs sm:text-sm text-white/60">Describe your sprite</label>
                   <button
                     onClick={setRandomPrompt}
-                    className="text-[10px] sm:text-xs text-[#00ff88] hover:underline"
+                    className="text-[10px] sm:text-xs text-[#FF6B2C] hover:underline"
                   >
                     Random idea
                   </button>
@@ -164,7 +164,7 @@ export function TryItNow() {
                   placeholder="e.g., a brave knight with golden armor"
                   maxLength={200}
                   rows={3}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base text-white placeholder:text-white/30 focus:outline-none focus:border-[#00ff88]/50 resize-none"
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base text-white placeholder:text-white/30 focus:outline-none focus:border-[#FF6B2C]/50 resize-none"
                   disabled={limitReached || isGenerating}
                 />
                 <p className="text-[10px] sm:text-xs text-white/40 text-right">{prompt.length}/200</p>
@@ -173,14 +173,14 @@ export function TryItNow() {
               {/* Generate Button */}
               {limitReached ? (
                 <div className="space-y-4">
-                  <div className="p-3 sm:p-4 rounded-lg bg-[#00ff88]/10 border border-[#00ff88]/20 text-center">
-                    <Gift className="w-5 h-5 sm:w-6 sm:h-6 text-[#00ff88] mx-auto mb-2" />
+                  <div className="p-3 sm:p-4 rounded-lg bg-[#FF6B2C]/10 border border-[#FF6B2C]/20 text-center">
+                    <Gift className="w-5 h-5 sm:w-6 sm:h-6 text-[#FF6B2C] mx-auto mb-2" />
                     <p className="text-white font-medium mb-1 text-sm sm:text-base">Want more?</p>
                     <p className="text-white/60 text-xs sm:text-sm mb-3">
                       Sign up free and get 5 credits instantly!
                     </p>
                     <Link href="/register">
-                      <Button className="w-full bg-[#00ff88] text-black hover:bg-[#00ff88]/90 text-sm">
+                      <Button className="w-full bg-[#FF6B2C] text-black hover:bg-[#FF6B2C]/90 text-sm">
                         Get 5 Free Credits
                         <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-2" />
                       </Button>
@@ -191,7 +191,7 @@ export function TryItNow() {
                 <Button
                   onClick={handleGenerate}
                   disabled={!prompt.trim() || isGenerating}
-                  className="w-full bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-black font-semibold hover:opacity-90 h-10 sm:h-12 text-sm sm:text-base"
+                  className="w-full bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] text-black font-semibold hover:opacity-90 h-10 sm:h-12 text-sm sm:text-base"
                 >
                   {isGenerating ? (
                     <>
@@ -217,10 +217,10 @@ export function TryItNow() {
 
             {/* Right - Preview */}
             <div className="flex flex-col items-center justify-center order-first md:order-last">
-              <div className="w-full aspect-square max-w-[220px] sm:max-w-[300px] rounded-lg sm:rounded-xl border-2 border-dashed border-white/10 bg-[#0a0a0f]/50 flex items-center justify-center relative overflow-hidden">
+              <div className="w-full aspect-square max-w-[220px] sm:max-w-[300px] rounded-lg sm:rounded-xl border-2 border-dashed border-white/10 bg-[#11151b]/50 flex items-center justify-center relative overflow-hidden">
                 {isGenerating ? (
                   <div className="text-center">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-4 border-[#00ff88]/20 border-t-[#00ff88] animate-spin mx-auto mb-3 sm:mb-4" />
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-4 border-[#FF6B2C]/20 border-t-[#FF6B2C] animate-spin mx-auto mb-3 sm:mb-4" />
                     <p className="text-white/60 text-xs sm:text-sm">Generating your sprite...</p>
                     <p className="text-white/40 text-[10px] sm:text-xs mt-1">This takes ~15-30 seconds</p>
                   </div>
@@ -256,7 +256,7 @@ export function TryItNow() {
                     Download
                   </Button>
                   <Link href="/register">
-                    <Button size="sm" className="bg-[#00ff88] text-black hover:bg-[#00ff88]/90 text-xs sm:text-sm">
+                    <Button size="sm" className="bg-[#FF6B2C] text-black hover:bg-[#FF6B2C]/90 text-xs sm:text-sm">
                       Sign Up for More
                     </Button>
                   </Link>
@@ -271,7 +271,7 @@ export function TryItNow() {
           <p className="text-white/40 text-xs sm:text-sm mb-2">
             Love what you see? Create unlimited sprites with a free account.
           </p>
-          <Link href="/register" className="text-[#00ff88] hover:underline text-xs sm:text-sm font-medium">
+          <Link href="/register" className="text-[#FF6B2C] hover:underline text-xs sm:text-sm font-medium">
             Sign up and get 5 free credits →
           </Link>
         </div>

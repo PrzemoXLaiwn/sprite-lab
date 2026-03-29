@@ -152,7 +152,7 @@ export function PromoEmail({
 
 // Styles
 const main = {
-  backgroundColor: "#030305",
+  backgroundColor: "#0a0c10",
   fontFamily:
     '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif',
 };
@@ -176,14 +176,14 @@ const logo = {
 };
 
 const logoAccent = {
-  color: "#00ff88",
+  color: "#FF6B2C",
 };
 
 const content = {
-  backgroundColor: "#0a0a0f",
+  backgroundColor: "#11151b",
   borderRadius: "16px",
   padding: "32px",
-  border: "1px solid #2a2a3d",
+  border: "1px solid rgba(255,255,255,0.06)",
 };
 
 const saleBanner = {
@@ -242,12 +242,12 @@ const offerBox = {
   backgroundColor: "#0f0f15",
   borderRadius: "12px",
   padding: "24px",
-  border: "2px solid #00ff88",
+  border: "2px solid #FF6B2C",
   marginBottom: "24px",
 };
 
 const offerTitle = {
-  color: "#00ff88",
+  color: "#FF6B2C",
   fontSize: "12px",
   fontWeight: "bold",
   textTransform: "uppercase" as const,
@@ -280,7 +280,7 @@ const offerValue = {
 };
 
 const offerValueHighlight = {
-  color: "#00ff88",
+  color: "#FF6B2C",
   fontSize: "14px",
   fontWeight: "bold",
   margin: "0",
@@ -294,11 +294,11 @@ const offerValueUrgent = {
 };
 
 const promoCodeText = {
-  color: "#ffd93d",
+  color: "#f59e0b",
   fontSize: "16px",
   fontWeight: "bold",
   fontFamily: "monospace",
-  backgroundColor: "#ffd93d20",
+  backgroundColor: "#f59e0b20",
   padding: "4px 12px",
   borderRadius: "4px",
   margin: "0",
@@ -316,7 +316,7 @@ const benefitItem = {
 };
 
 const checkmark = {
-  color: "#00ff88",
+  color: "#FF6B2C",
   marginRight: "8px",
 };
 
@@ -326,9 +326,9 @@ const buttonContainer = {
 };
 
 const button = {
-  backgroundColor: "#00ff88",
+  backgroundColor: "#FF6B2C",
   borderRadius: "8px",
-  color: "#030305",
+  color: "#0a0c10",
   fontSize: "18px",
   fontWeight: "bold",
   textDecoration: "none",
@@ -346,7 +346,7 @@ const urgencyText = {
 };
 
 const hr = {
-  borderColor: "#2a2a3d",
+  borderColor: "rgba(255,255,255,0.06)",
   margin: "24px 0",
 };
 
@@ -379,7 +379,7 @@ const footerText = {
 };
 
 const link = {
-  color: "#00d4ff",
+  color: "#FF6B2C",
   textDecoration: "underline",
 };
 

@@ -117,9 +117,9 @@ function EditPageContent() {
 
   if (!generationId) {
     return (
-      <div className="min-h-screen bg-[#030305] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#0a0c10] flex items-center justify-center p-4">
         <div className="glass-card rounded-2xl p-8 text-center max-w-md">
-          <Flame className="w-16 h-16 text-[#ff4444] mx-auto mb-4" />
+          <Flame className="w-16 h-16 text-[#ef4444] mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-white mb-2">No Image Selected</h2>
           <p className="text-[#a0a0b0] mb-6">Please select an image from your gallery to edit.</p>
           <Link href="/gallery">
@@ -134,17 +134,17 @@ function EditPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#030305] relative overflow-hidden">
+    <div className="min-h-screen bg-[#0a0c10] relative overflow-hidden">
       {/* Background */}
       <div className="fixed inset-0 gradient-mesh pointer-events-none" />
       <div className="fixed inset-0 grid-pattern pointer-events-none opacity-50" />
-      <div className="fixed top-20 left-10 w-96 h-96 bg-[#c084fc]/10 rounded-full blur-[120px] animate-glow-pulse pointer-events-none" />
+      <div className="fixed top-20 left-10 w-96 h-96 bg-[#8b5cf6]/10 rounded-full blur-[120px] animate-glow-pulse pointer-events-none" />
 
       <div className="relative z-10 p-4 lg:p-8 max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <Link href="/gallery">
-            <Button variant="outline" className="mb-4 border-[#2a2a3d]">
+            <Button variant="outline" className="mb-4 border-[rgba(255,255,255,0.06)]">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Gallery
             </Button>
@@ -158,16 +158,16 @@ function EditPageContent() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Original Image */}
           <div className="glass-card rounded-2xl overflow-hidden">
-            <div className="p-4 border-b border-[#2a2a3d]">
+            <div className="p-4 border-b border-[rgba(255,255,255,0.06)]">
               <h3 className="font-semibold text-white flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-[#00ff88]" />
+                <Sparkles className="w-4 h-4 text-[#FF6B2C]" />
                 Original Image
               </h3>
             </div>
-            <div className="aspect-square bg-[#0a0a0f] flex items-center justify-center relative">
+            <div className="aspect-square bg-[#11151b] flex items-center justify-center relative">
               <div className="absolute inset-0 grid-pattern-dense opacity-30" />
               {loadingOriginal ? (
-                <Loader2 className="w-12 h-12 text-[#00ff88] animate-spin" />
+                <Loader2 className="w-12 h-12 text-[#FF6B2C] animate-spin" />
               ) : originalImage ? (
                 <img
                   src={originalImage}
@@ -182,20 +182,20 @@ function EditPageContent() {
 
           {/* Edited Image */}
           <div className="glass-card rounded-2xl overflow-hidden">
-            <div className="p-4 border-b border-[#2a2a3d]">
+            <div className="p-4 border-b border-[rgba(255,255,255,0.06)]">
               <h3 className="font-semibold text-white flex items-center gap-2">
-                <Wand2 className="w-4 h-4 text-[#c084fc]" />
+                <Wand2 className="w-4 h-4 text-[#8b5cf6]" />
                 Edited Result
               </h3>
             </div>
-            <div className="aspect-square bg-[#0a0a0f] flex items-center justify-center relative">
+            <div className="aspect-square bg-[#11151b] flex items-center justify-center relative">
               <div className="absolute inset-0 grid-pattern-dense opacity-30" />
               {loading ? (
                 <div className="text-center p-6 relative z-10">
                   <div className="relative w-24 h-24 mx-auto mb-4">
-                    <div className="absolute inset-0 bg-[#c084fc] rounded-full blur-xl opacity-50 animate-pulse" />
-                    <div className="relative w-full h-full rounded-full border-4 border-[#2a2a3d] border-t-[#c084fc] animate-spin" />
-                    <Wand2 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 text-[#c084fc]" />
+                    <div className="absolute inset-0 bg-[#8b5cf6] rounded-full blur-xl opacity-50 animate-pulse" />
+                    <div className="relative w-full h-full rounded-full border-4 border-[rgba(255,255,255,0.06)] border-t-[#8b5cf6] animate-spin" />
+                    <Wand2 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 text-[#8b5cf6]" />
                   </div>
                   <p className="font-display font-bold text-white">Editing Image...</p>
                   <p className="text-sm text-[#a0a0b0] mt-1">This may take 30-60 seconds</p>
@@ -217,8 +217,8 @@ function EditPageContent() {
                 </>
               ) : (
                 <div className="text-center p-8 relative z-10">
-                  <div className="w-24 h-24 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#c084fc]/20 to-[#00d4ff]/20 flex items-center justify-center border border-[#c084fc]/20">
-                    <Wand2 className="w-12 h-12 text-[#c084fc]/50" />
+                  <div className="w-24 h-24 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#8b5cf6]/20 to-[#FF6B2C]/20 flex items-center justify-center border border-[#8b5cf6]/20">
+                    <Wand2 className="w-12 h-12 text-[#8b5cf6]/50" />
                   </div>
                   <p className="text-[#a0a0b0]">Your edited image will appear here</p>
                 </div>
@@ -230,7 +230,7 @@ function EditPageContent() {
         {/* Edit Controls */}
         <div className="mt-6 glass-card rounded-2xl p-6">
           <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
-            <Zap className="w-5 h-5 text-[#c084fc]" />
+            <Zap className="w-5 h-5 text-[#8b5cf6]" />
             Describe Your Edit
           </h3>
 
@@ -243,7 +243,7 @@ function EditPageContent() {
                 className="h-14 text-base input-gaming pr-12"
                 disabled={loading || !originalImage}
               />
-              <Wand2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#c084fc]" />
+              <Wand2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8b5cf6]" />
             </div>
 
             {/* Quick Edit Suggestions */}
@@ -259,7 +259,7 @@ function EditPageContent() {
                 <button
                   key={suggestion}
                   onClick={() => setEditPrompt(suggestion)}
-                  className="text-xs px-3 py-1.5 rounded-full bg-[#c084fc]/10 text-[#c084fc] hover:bg-[#c084fc]/20 transition-colors border border-[#c084fc]/20"
+                  className="text-xs px-3 py-1.5 rounded-full bg-[#8b5cf6]/10 text-[#8b5cf6] hover:bg-[#8b5cf6]/20 transition-colors border border-[#8b5cf6]/20"
                   disabled={loading}
                 >
                   {suggestion}
@@ -267,9 +267,9 @@ function EditPageContent() {
               ))}
             </div>
 
-            <div className="p-3 rounded-lg bg-[#00d4ff]/10 border border-[#00d4ff]/20 flex items-start gap-2">
-              <Info className="w-4 h-4 text-[#00d4ff] mt-0.5 shrink-0" />
-              <p className="text-xs text-[#00d4ff]">
+            <div className="p-3 rounded-lg bg-[#FF6B2C]/10 border border-[#FF6B2C]/20 flex items-start gap-2">
+              <Info className="w-4 h-4 text-[#FF6B2C] mt-0.5 shrink-0" />
+              <p className="text-xs text-[#FF6B2C]">
                 <strong>Pro tip:</strong> Be specific about what you want to change. The AI will preserve the original image and only apply your requested changes.
               </p>
             </div>
@@ -277,7 +277,7 @@ function EditPageContent() {
             <Button
               onClick={handleEdit}
               disabled={loading || !originalImage || !editPrompt.trim()}
-              className="w-full h-12 bg-gradient-to-r from-[#c084fc] to-[#00d4ff] hover:opacity-90 text-white font-display font-bold text-base disabled:opacity-50"
+              className="w-full h-12 bg-gradient-to-r from-[#8b5cf6] to-[#FF6B2C] hover:opacity-90 text-white font-display font-bold text-base disabled:opacity-50"
             >
               {loading ? (
                 <>
@@ -293,7 +293,7 @@ function EditPageContent() {
             </Button>
 
             {error && (
-              <div className="p-4 rounded-xl bg-[#ff4444]/10 border border-[#ff4444]/30 text-[#ff4444] text-sm flex items-center gap-3">
+              <div className="p-4 rounded-xl bg-[#ef4444]/10 border border-[#ef4444]/30 text-[#ef4444] text-sm flex items-center gap-3">
                 <Flame className="w-5 h-5 shrink-0" />
                 {error}
               </div>
@@ -308,8 +308,8 @@ function EditPageContent() {
 export default function EditPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#030305] flex items-center justify-center">
-        <Loader2 className="w-12 h-12 text-[#00ff88] animate-spin" />
+      <div className="min-h-screen bg-[#0a0c10] flex items-center justify-center">
+        <Loader2 className="w-12 h-12 text-[#FF6B2C] animate-spin" />
       </div>
     }>
       <EditPageContent />

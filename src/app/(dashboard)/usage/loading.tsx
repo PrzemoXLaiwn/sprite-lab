@@ -1,6 +1,6 @@
 export default function DashboardHomeLoading() {
   return (
-    <div className="min-h-screen bg-[#030305] p-6">
+    <div className="min-h-screen bg-[#0a0c10] p-6">
       {/* Welcome header skeleton */}
       <div className="mb-8">
         <div className="h-10 w-72 bg-white/5 rounded-lg animate-pulse mb-2" />

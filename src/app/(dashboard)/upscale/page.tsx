@@ -119,9 +119,9 @@ function UpscalePageContent() {
 
   if (!generationId) {
     return (
-      <div className="min-h-screen bg-[#030305] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#0a0c10] flex items-center justify-center p-4">
         <div className="glass-card rounded-2xl p-8 text-center max-w-md">
-          <Flame className="w-16 h-16 text-[#ff4444] mx-auto mb-4" />
+          <Flame className="w-16 h-16 text-[#ef4444] mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-white mb-2">No Image Selected</h2>
           <p className="text-[#a0a0b0] mb-6">Please select an image from your gallery to upscale.</p>
           <Link href="/gallery">
@@ -136,17 +136,17 @@ function UpscalePageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#030305] relative overflow-hidden">
+    <div className="min-h-screen bg-[#0a0c10] relative overflow-hidden">
       {/* Background */}
       <div className="fixed inset-0 gradient-mesh pointer-events-none" />
       <div className="fixed inset-0 grid-pattern pointer-events-none opacity-50" />
-      <div className="fixed top-20 left-10 w-96 h-96 bg-[#ffd93d]/10 rounded-full blur-[120px] animate-glow-pulse pointer-events-none" />
+      <div className="fixed top-20 left-10 w-96 h-96 bg-[#f59e0b]/10 rounded-full blur-[120px] animate-glow-pulse pointer-events-none" />
 
       <div className="relative z-10 p-4 lg:p-8 max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <Link href="/gallery">
-            <Button variant="outline" className="mb-4 border-[#2a2a3d]">
+            <Button variant="outline" className="mb-4 border-[rgba(255,255,255,0.06)]">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Gallery
             </Button>
@@ -160,16 +160,16 @@ function UpscalePageContent() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Original Image */}
           <div className="glass-card rounded-2xl overflow-hidden">
-            <div className="p-4 border-b border-[#2a2a3d]">
+            <div className="p-4 border-b border-[rgba(255,255,255,0.06)]">
               <h3 className="font-semibold text-white flex items-center gap-2">
-                <Zap className="w-4 h-4 text-[#00ff88]" />
+                <Zap className="w-4 h-4 text-[#FF6B2C]" />
                 Original Image
               </h3>
             </div>
-            <div className="aspect-square bg-[#0a0a0f] flex items-center justify-center relative">
+            <div className="aspect-square bg-[#11151b] flex items-center justify-center relative">
               <div className="absolute inset-0 grid-pattern-dense opacity-30" />
               {loadingOriginal ? (
-                <Loader2 className="w-12 h-12 text-[#00ff88] animate-spin" />
+                <Loader2 className="w-12 h-12 text-[#FF6B2C] animate-spin" />
               ) : originalImage ? (
                 <img
                   src={originalImage}
@@ -184,20 +184,20 @@ function UpscalePageContent() {
 
           {/* Upscaled Image */}
           <div className="glass-card rounded-2xl overflow-hidden">
-            <div className="p-4 border-b border-[#2a2a3d]">
+            <div className="p-4 border-b border-[rgba(255,255,255,0.06)]">
               <h3 className="font-semibold text-white flex items-center gap-2">
-                <Maximize2 className="w-4 h-4 text-[#ffd93d]" />
+                <Maximize2 className="w-4 h-4 text-[#f59e0b]" />
                 Upscaled Result ({scale}x)
               </h3>
             </div>
-            <div className="aspect-square bg-[#0a0a0f] flex items-center justify-center relative">
+            <div className="aspect-square bg-[#11151b] flex items-center justify-center relative">
               <div className="absolute inset-0 grid-pattern-dense opacity-30" />
               {loading ? (
                 <div className="text-center p-6 relative z-10">
                   <div className="relative w-24 h-24 mx-auto mb-4">
-                    <div className="absolute inset-0 bg-[#ffd93d] rounded-full blur-xl opacity-50 animate-pulse" />
-                    <div className="relative w-full h-full rounded-full border-4 border-[#2a2a3d] border-t-[#ffd93d] animate-spin" />
-                    <Maximize2 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 text-[#ffd93d]" />
+                    <div className="absolute inset-0 bg-[#f59e0b] rounded-full blur-xl opacity-50 animate-pulse" />
+                    <div className="relative w-full h-full rounded-full border-4 border-[rgba(255,255,255,0.06)] border-t-[#f59e0b] animate-spin" />
+                    <Maximize2 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 text-[#f59e0b]" />
                   </div>
                   <p className="font-display font-bold text-white">Upscaling {scale}x...</p>
                   <p className="text-sm text-[#a0a0b0] mt-1">This may take 30-90 seconds</p>
@@ -211,7 +211,7 @@ function UpscalePageContent() {
                   />
                   <Button
                     onClick={() => handleDownload(upscaledImage)}
-                    className="absolute bottom-4 right-4 bg-gradient-to-r from-[#ffd93d] to-[#ff8c00] hover:opacity-90 text-black font-bold z-20"
+                    className="absolute bottom-4 right-4 bg-gradient-to-r from-[#f59e0b] to-[#ff8c00] hover:opacity-90 text-black font-bold z-20"
                   >
                     <Download className="w-4 h-4 mr-2" />
                     Download
@@ -219,8 +219,8 @@ function UpscalePageContent() {
                 </>
               ) : (
                 <div className="text-center p-8 relative z-10">
-                  <div className="w-24 h-24 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#ffd93d]/20 to-[#ff8c00]/20 flex items-center justify-center border border-[#ffd93d]/20">
-                    <Maximize2 className="w-12 h-12 text-[#ffd93d]/50" />
+                  <div className="w-24 h-24 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#f59e0b]/20 to-[#ff8c00]/20 flex items-center justify-center border border-[#f59e0b]/20">
+                    <Maximize2 className="w-12 h-12 text-[#f59e0b]/50" />
                   </div>
                   <p className="text-[#a0a0b0]">Your upscaled image will appear here</p>
                 </div>
@@ -232,7 +232,7 @@ function UpscalePageContent() {
         {/* Upscale Controls */}
         <div className="mt-6 glass-card rounded-2xl p-6">
           <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
-            <Maximize2 className="w-5 h-5 text-[#ffd93d]" />
+            <Maximize2 className="w-5 h-5 text-[#f59e0b]" />
             Upscale Settings
           </h3>
 
@@ -248,8 +248,8 @@ function UpscalePageContent() {
                     disabled={loading}
                     className={`p-4 rounded-xl border-2 transition-all ${
                       scale === s
-                        ? "border-[#ffd93d] bg-[#ffd93d]/10"
-                        : "border-[#2a2a3d] hover:border-[#ffd93d]/50"
+                        ? "border-[#f59e0b] bg-[#f59e0b]/10"
+                        : "border-[rgba(255,255,255,0.06)] hover:border-[#f59e0b]/50"
                     }`}
                   >
                     <div className="text-2xl font-bold text-white mb-1">{s}x</div>
@@ -272,13 +272,13 @@ function UpscalePageContent() {
                     disabled={loading}
                     className={`p-4 rounded-xl border-2 transition-all text-left ${
                       modelType === model.id
-                        ? "border-[#ffd93d] bg-[#ffd93d]/10"
-                        : "border-[#2a2a3d] hover:border-[#ffd93d]/50"
+                        ? "border-[#f59e0b] bg-[#f59e0b]/10"
+                        : "border-[rgba(255,255,255,0.06)] hover:border-[#f59e0b]/50"
                     }`}
                   >
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-2xl">{model.emoji}</span>
-                      <span className={`font-bold text-sm ${modelType === model.id ? "text-[#ffd93d]" : "text-white"}`}>
+                      <span className={`font-bold text-sm ${modelType === model.id ? "text-[#f59e0b]" : "text-white"}`}>
                         {model.name}
                       </span>
                     </div>
@@ -288,9 +288,9 @@ function UpscalePageContent() {
               </div>
             </div>
 
-            <div className="p-3 rounded-lg bg-[#00d4ff]/10 border border-[#00d4ff]/20 flex items-start gap-2">
-              <Info className="w-4 h-4 text-[#00d4ff] mt-0.5 shrink-0" />
-              <p className="text-xs text-[#00d4ff]">
+            <div className="p-3 rounded-lg bg-[#FF6B2C]/10 border border-[#FF6B2C]/20 flex items-start gap-2">
+              <Info className="w-4 h-4 text-[#FF6B2C] mt-0.5 shrink-0" />
+              <p className="text-xs text-[#FF6B2C]">
                 <strong>Pro tip:</strong> Use Pixel Art model for retro sprites, Anime for cartoon styles, and Real-ESRGAN for realistic images. Higher scales take longer but produce better results.
               </p>
             </div>
@@ -298,7 +298,7 @@ function UpscalePageContent() {
             <Button
               onClick={handleUpscale}
               disabled={loading || !originalImage}
-              className="w-full h-12 bg-gradient-to-r from-[#ffd93d] to-[#ff8c00] hover:opacity-90 text-black font-display font-bold text-base disabled:opacity-50"
+              className="w-full h-12 bg-gradient-to-r from-[#f59e0b] to-[#ff8c00] hover:opacity-90 text-black font-display font-bold text-base disabled:opacity-50"
             >
               {loading ? (
                 <>
@@ -314,7 +314,7 @@ function UpscalePageContent() {
             </Button>
 
             {error && (
-              <div className="p-4 rounded-xl bg-[#ff4444]/10 border border-[#ff4444]/30 text-[#ff4444] text-sm flex items-center gap-3">
+              <div className="p-4 rounded-xl bg-[#ef4444]/10 border border-[#ef4444]/30 text-[#ef4444] text-sm flex items-center gap-3">
                 <Flame className="w-5 h-5 shrink-0" />
                 {error}
               </div>
@@ -329,8 +329,8 @@ function UpscalePageContent() {
 export default function UpscalePage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#030305] flex items-center justify-center">
-        <Loader2 className="w-12 h-12 text-[#00ff88] animate-spin" />
+      <div className="min-h-screen bg-[#0a0c10] flex items-center justify-center">
+        <Loader2 className="w-12 h-12 text-[#FF6B2C] animate-spin" />
       </div>
     }>
       <UpscalePageContent />

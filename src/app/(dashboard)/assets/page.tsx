@@ -69,37 +69,37 @@ function SuccessToast({
     <div
       className={`animate-in slide-in-from-top-2 fade-in duration-300 pointer-events-auto flex items-start gap-3 p-4 rounded-xl border backdrop-blur-xl shadow-2xl ${
         message.type === "success"
-          ? "bg-[#00ff88]/10 border-[#00ff88]/30"
+          ? "bg-[#FF6B2C]/10 border-[#FF6B2C]/30"
           : message.type === "error"
           ? "bg-red-500/10 border-red-500/30"
-          : "bg-[#00d4ff]/10 border-[#00d4ff]/30"
+          : "bg-[#FF6B2C]/10 border-[#FF6B2C]/30"
       }`}
     >
       <div
         className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
           message.type === "success"
-            ? "bg-[#00ff88]/20"
+            ? "bg-[#FF6B2C]/20"
             : message.type === "error"
             ? "bg-red-500/20"
-            : "bg-[#00d4ff]/20"
+            : "bg-[#FF6B2C]/20"
         }`}
       >
         {message.type === "success" ? (
-          <PartyPopper className="w-5 h-5 text-[#00ff88]" />
+          <PartyPopper className="w-5 h-5 text-[#FF6B2C]" />
         ) : message.type === "error" ? (
           <XCircle className="w-5 h-5 text-red-500" />
         ) : (
-          <CheckCircle2 className="w-5 h-5 text-[#00d4ff]" />
+          <CheckCircle2 className="w-5 h-5 text-[#FF6B2C]" />
         )}
       </div>
       <div className="flex-1 min-w-0">
         <p
           className={`font-semibold ${
             message.type === "success"
-              ? "text-[#00ff88]"
+              ? "text-[#FF6B2C]"
               : message.type === "error"
               ? "text-red-500"
-              : "text-[#00d4ff]"
+              : "text-[#FF6B2C]"
           }`}
         >
           {message.title}
@@ -539,12 +539,12 @@ export default function GalleryPage() {
   const total3D = generations.filter(g => is3DFormat(g.imageUrl) || is3DStyle(g.styleId)).length;
 
   return (
-    <div className="min-h-screen bg-[#030305] relative overflow-hidden">
+    <div className="min-h-screen bg-[#0a0c10] relative overflow-hidden">
       {/* Background */}
       <div className="fixed inset-0 gradient-mesh pointer-events-none" />
       <div className="fixed inset-0 grid-pattern pointer-events-none opacity-50" />
-      <div className="fixed top-20 left-10 w-48 sm:w-96 h-48 sm:h-96 bg-[#00ff88]/10 rounded-full blur-[80px] sm:blur-[120px] animate-glow-pulse pointer-events-none" />
-      <div className="fixed bottom-20 right-10 w-40 sm:w-80 h-40 sm:h-80 bg-[#00d4ff]/10 rounded-full blur-[60px] sm:blur-[100px] animate-glow-pulse pointer-events-none" style={{ animationDelay: "1s" }} />
+      <div className="fixed top-20 left-10 w-48 sm:w-96 h-48 sm:h-96 bg-[#FF6B2C]/10 rounded-full blur-[80px] sm:blur-[120px] animate-glow-pulse pointer-events-none" />
+      <div className="fixed bottom-20 right-10 w-40 sm:w-80 h-40 sm:h-80 bg-[#FF6B2C]/10 rounded-full blur-[60px] sm:blur-[100px] animate-glow-pulse pointer-events-none" style={{ animationDelay: "1s" }} />
 
       <div className="relative z-10 p-3 sm:p-4 lg:p-8 max-w-7xl mx-auto">
         {/* Header */}
@@ -597,8 +597,8 @@ export default function GalleryPage() {
                   onClick={() => setFilterType("2d")}
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1 ${
                     filterType === "2d"
-                      ? "bg-[#00ff88]/20 text-[#00ff88] border border-[#00ff88]/30"
-                      : "text-muted-foreground hover:text-[#00ff88]"
+                      ? "bg-[#FF6B2C]/20 text-[#FF6B2C] border border-[#FF6B2C]/30"
+                      : "text-muted-foreground hover:text-[#FF6B2C]"
                   }`}
                 >
                   <ImageIcon className="w-4 h-4" />
@@ -608,8 +608,8 @@ export default function GalleryPage() {
                   onClick={() => setFilterType("3d")}
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1 ${
                     filterType === "3d"
-                      ? "bg-[#c084fc]/20 text-[#c084fc] border border-[#c084fc]/30"
-                      : "text-muted-foreground hover:text-[#c084fc]"
+                      ? "bg-[#8b5cf6]/20 text-[#8b5cf6] border border-[#8b5cf6]/30"
+                      : "text-muted-foreground hover:text-[#8b5cf6]"
                   }`}
                 >
                   <Cuboid className="w-4 h-4" />
@@ -621,7 +621,7 @@ export default function GalleryPage() {
               <select
                 value={filterCategory}
                 onChange={(e) => setFilterCategory(e.target.value)}
-                className="px-2 sm:px-4 py-2 rounded-lg bg-[#1a1a28] border border-border text-white text-xs sm:text-sm focus:border-[#00ff88] focus:outline-none min-w-0"
+                className="px-2 sm:px-4 py-2 rounded-lg bg-[#141821] border border-border text-white text-xs sm:text-sm focus:border-[#FF6B2C] focus:outline-none min-w-0"
               >
                 <option value="all">All Categories</option>
                 <option value="WEAPONS">Weapons</option>
@@ -647,7 +647,7 @@ export default function GalleryPage() {
                     }
                   }}
                   className={selectMode
-                    ? "border-[#ff6b6b] bg-[#ff6b6b]/10 text-[#ff6b6b]"
+                    ? "border-[#ef4444] bg-[#ef4444]/10 text-[#ef4444]"
                     : "border-border"
                   }
                 >
@@ -668,7 +668,7 @@ export default function GalleryPage() {
                   variant="outline"
                   size="icon"
                   onClick={() => setViewMode("grid")}
-                  className={viewMode === "grid" ? "border-[#00ff88] bg-[#00ff88]/10" : "border-border"}
+                  className={viewMode === "grid" ? "border-[#FF6B2C] bg-[#FF6B2C]/10" : "border-border"}
                 >
                   <Grid3x3 className="w-4 h-4" />
                 </Button>
@@ -676,7 +676,7 @@ export default function GalleryPage() {
                   variant="outline"
                   size="icon"
                   onClick={() => setViewMode("list")}
-                  className={viewMode === "list" ? "border-[#00ff88] bg-[#00ff88]/10" : "border-border"}
+                  className={viewMode === "list" ? "border-[#FF6B2C] bg-[#FF6B2C]/10" : "border-border"}
                 >
                   <List className="w-4 h-4" />
                 </Button>
@@ -697,7 +697,7 @@ export default function GalleryPage() {
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
-              <Loader2 className="w-12 h-12 text-[#00ff88] animate-spin mx-auto mb-4" />
+              <Loader2 className="w-12 h-12 text-[#FF6B2C] animate-spin mx-auto mb-4" />
               <p className="text-muted-foreground">Loading your gallery...</p>
             </div>
           </div>
@@ -705,7 +705,7 @@ export default function GalleryPage() {
           <div className="glass-card rounded-xl sm:rounded-2xl p-6 sm:p-12 text-center">
             {/* Coreling waving for empty state */}
             <div className="w-32 h-32 mx-auto mb-6 relative">
-              <div className="absolute inset-0 bg-[#c084fc]/20 rounded-full blur-2xl" />
+              <div className="absolute inset-0 bg-[#8b5cf6]/20 rounded-full blur-2xl" />
               <Image
                 src="/coreling-wave.png"
                 alt="Coreling Waving"
@@ -738,7 +738,7 @@ export default function GalleryPage() {
             {activePendingJobs.length > 0 && (
               <div className="mb-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse" />
+                  <div className="w-2 h-2 rounded-full bg-[#FF6B2C] animate-pulse" />
                   <h2 className="text-lg font-display font-bold text-white">
                     Generating ({activePendingJobs.length})
                   </h2>
@@ -748,22 +748,22 @@ export default function GalleryPage() {
                     <div
                       key={job.id}
                       className={`glass-card rounded-xl overflow-hidden border-2 ${
-                        job.mode === "3d" ? "border-[#c084fc]/50" : "border-[#00ff88]/50"
+                        job.mode === "3d" ? "border-[#8b5cf6]/50" : "border-[#FF6B2C]/50"
                       } animate-pulse-slow`}
                     >
-                      <div className="aspect-square bg-[#0a0a0f] relative overflow-hidden flex items-center justify-center">
+                      <div className="aspect-square bg-[#11151b] relative overflow-hidden flex items-center justify-center">
                         <div className="absolute inset-0 grid-pattern-dense opacity-30" />
 
                         {/* Status badge */}
                         <div className="absolute top-2 left-2 z-20 flex gap-1">
                           <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-white text-xs font-bold ${
-                            job.status === "processing" ? "bg-[#00ff88]/90" : "bg-[#606080]/90"
+                            job.status === "processing" ? "bg-[#FF6B2C]/90" : "bg-[#606080]/90"
                           }`}>
                             <Loader2 className="w-3 h-3 animate-spin" />
                             {job.status === "processing" ? "Processing" : "Queued"}
                           </div>
                           {job.mode === "3d" && (
-                            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[#c084fc]/90 text-white text-xs font-bold">
+                            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[#8b5cf6]/90 text-white text-xs font-bold">
                               <Cuboid className="w-3 h-3" />
                               3D
                             </div>
@@ -785,7 +785,7 @@ export default function GalleryPage() {
                         <div className="relative z-10 text-center p-4">
                           <div className="w-20 h-20 mx-auto mb-3 relative">
                             <div className={`absolute inset-0 rounded-full blur-xl opacity-40 animate-pulse ${
-                              job.mode === "3d" ? "bg-[#c084fc]" : "bg-[#00ff88]"
+                              job.mode === "3d" ? "bg-[#8b5cf6]" : "bg-[#FF6B2C]"
                             }`} />
                             <Image
                               src="/coreling-working.png"
@@ -802,8 +802,8 @@ export default function GalleryPage() {
                             <div
                               className={`h-full transition-all duration-500 ${
                                 job.mode === "3d"
-                                  ? "bg-gradient-to-r from-[#c084fc] to-[#00d4ff]"
-                                  : "bg-gradient-to-r from-[#00ff88] to-[#00d4ff]"
+                                  ? "bg-gradient-to-r from-[#8b5cf6] to-[#FF6B2C]"
+                                  : "bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C]"
                               }`}
                               style={{ width: `${job.progress}%` }}
                             />
@@ -816,7 +816,7 @@ export default function GalleryPage() {
                       </div>
 
                       {/* Info */}
-                      <div className="p-3 border-t border-[#2a2a3d]">
+                      <div className="p-3 border-t border-[rgba(255,255,255,0.06)]">
                         <p className="text-sm text-white truncate mb-1">
                           {job.prompt}
                         </p>
@@ -846,13 +846,13 @@ export default function GalleryPage() {
               return (
                 <div
                   key={gen.id}
-                  className={`glass-card rounded-xl overflow-hidden group hover:border-${is3D ? '[#c084fc]' : '[#00ff88]'}/50 transition-all ${
-                    selectMode && selectedIds.has(gen.id) ? 'ring-2 ring-[#00ff88] border-[#00ff88]' : ''
+                  className={`glass-card rounded-xl overflow-hidden group hover:border-${is3D ? '[#8b5cf6]' : '[#FF6B2C]'}/50 transition-all ${
+                    selectMode && selectedIds.has(gen.id) ? 'ring-2 ring-[#FF6B2C] border-[#FF6B2C]' : ''
                   }`}
                   onClick={() => selectMode && toggleSelect(gen.id)}
                 >
                   {/* Preview */}
-                  <div className="aspect-square bg-[#0a0a0f] relative overflow-hidden">
+                  <div className="aspect-square bg-[#11151b] relative overflow-hidden">
                     <div className="absolute inset-0 grid-pattern-dense opacity-30" />
 
                     {/* Selection checkbox */}
@@ -865,8 +865,8 @@ export default function GalleryPage() {
                           }}
                           className={`w-6 h-6 rounded-md flex items-center justify-center transition-all ${
                             selectedIds.has(gen.id)
-                              ? 'bg-[#00ff88] text-black'
-                              : 'bg-black/50 border border-white/30 text-white hover:border-[#00ff88]'
+                              ? 'bg-[#FF6B2C] text-black'
+                              : 'bg-black/50 border border-white/30 text-white hover:border-[#FF6B2C]'
                           }`}
                         >
                           {selectedIds.has(gen.id) ? (
@@ -882,14 +882,14 @@ export default function GalleryPage() {
                     <div className="absolute top-2 left-2 z-20 flex gap-1">
                       {/* 3D indicator badge */}
                       {is3D && (
-                        <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[#c084fc]/90 text-white text-xs font-bold">
+                        <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[#8b5cf6]/90 text-white text-xs font-bold">
                           <Cuboid className="w-3 h-3" />
                           {format3D}
                         </div>
                       )}
                       {/* Shared to community badge */}
                       {gen.isPublic && (
-                        <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[#c084fc]/90 text-white text-xs font-bold">
+                        <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[#8b5cf6]/90 text-white text-xs font-bold">
                           <Users className="w-3 h-3" />
                           Shared
                         </div>
@@ -925,7 +925,7 @@ export default function GalleryPage() {
                               size="sm"
                               variant="outline"
                               onClick={() => window.open(`/edit?id=${gen.id}`, "_blank")}
-                              className="border-[#c084fc] bg-[#c084fc]/10 hover:bg-[#c084fc]/20 text-[#c084fc]"
+                              className="border-[#8b5cf6] bg-[#8b5cf6]/10 hover:bg-[#8b5cf6]/20 text-[#8b5cf6]"
                               title="Edit Image"
                             >
                               <Edit className="w-4 h-4 mr-1" />
@@ -935,7 +935,7 @@ export default function GalleryPage() {
                               size="sm"
                               variant="outline"
                               onClick={() => setInpaintGeneration(gen)}
-                              className="border-[#ff6b6b] bg-[#ff6b6b]/10 hover:bg-[#ff6b6b]/20 text-[#ff6b6b]"
+                              className="border-[#ef4444] bg-[#ef4444]/10 hover:bg-[#ef4444]/20 text-[#ef4444]"
                               title="Inpaint - Paint area to regenerate"
                             >
                               <Paintbrush className="w-4 h-4 mr-1" />
@@ -947,7 +947,7 @@ export default function GalleryPage() {
                               size="sm"
                               variant="outline"
                               onClick={() => window.open(`/upscale?id=${gen.id}`, "_blank")}
-                              className="border-[#ffd93d] bg-[#ffd93d]/10 hover:bg-[#ffd93d]/20 text-[#ffd93d]"
+                              className="border-[#f59e0b] bg-[#f59e0b]/10 hover:bg-[#f59e0b]/20 text-[#f59e0b]"
                               title="Upscale Image"
                             >
                               <Maximize2 className="w-4 h-4 mr-1" />
@@ -960,7 +960,7 @@ export default function GalleryPage() {
                               size="sm"
                               variant="outline"
                               onClick={() => window.open(`/variations?id=${gen.id}`, "_blank")}
-                              className="border-[#00d4ff] bg-[#00d4ff]/10 hover:bg-[#00d4ff]/20 text-[#00d4ff]"
+                              className="border-[#FF6B2C] bg-[#FF6B2C]/10 hover:bg-[#FF6B2C]/20 text-[#FF6B2C]"
                               title="Create Variations"
                             >
                               <Shuffle className="w-4 h-4 mr-1" />
@@ -974,7 +974,7 @@ export default function GalleryPage() {
                               size="sm"
                               variant="outline"
                               onClick={() => setPlaygroundGeneration(gen)}
-                              className="border-[#ffd93d] bg-[#ffd93d]/10 hover:bg-[#ffd93d]/20 text-[#ffd93d]"
+                              className="border-[#f59e0b] bg-[#f59e0b]/10 hover:bg-[#f59e0b]/20 text-[#f59e0b]"
                               title="Test sprite in interactive playground"
                             >
                               <Gamepad2 className="w-4 h-4 mr-1" />
@@ -996,7 +996,7 @@ export default function GalleryPage() {
                                 });
                                 window.location.href = `/generate?${params.toString()}`;
                               }}
-                              className="border-[#00ff88] bg-[#00ff88]/10 hover:bg-[#00ff88]/20 text-[#00ff88]"
+                              className="border-[#FF6B2C] bg-[#FF6B2C]/10 hover:bg-[#FF6B2C]/20 text-[#FF6B2C]"
                               title="Re-generate with this prompt"
                             >
                               <Wand2 className="w-4 h-4 mr-1" />
@@ -1016,13 +1016,13 @@ export default function GalleryPage() {
                             handleToggleShare(gen);
                           }}
                           className={gen.isPublic
-                            ? "border-[#c084fc] bg-[#c084fc]/20 hover:bg-[#c084fc]/30"
+                            ? "border-[#8b5cf6] bg-[#8b5cf6]/20 hover:bg-[#8b5cf6]/30"
                             : "border-white/20 bg-white/5 hover:bg-white/10"
                           }
                           title={gen.isPublic ? "Remove from Community" : "Share to Community"}
                         >
                           {gen.isPublic ? (
-                            <Globe className="w-4 h-4 text-[#c084fc]" />
+                            <Globe className="w-4 h-4 text-[#8b5cf6]" />
                           ) : (
                             <Share2 className="w-4 h-4 text-white" />
                           )}
@@ -1032,12 +1032,12 @@ export default function GalleryPage() {
                           variant="outline"
                           onClick={() => handleDownload(gen)}
                           className={is3D
-                            ? "border-[#c084fc] bg-[#c084fc]/10 hover:bg-[#c084fc]/20"
+                            ? "border-[#8b5cf6] bg-[#8b5cf6]/10 hover:bg-[#8b5cf6]/20"
                             : "border-white/20 bg-white/5 hover:bg-white/10"
                           }
                           title="Download"
                         >
-                          <Download className={`w-4 h-4 ${is3D ? 'text-[#c084fc]' : 'text-white'}`} />
+                          <Download className={`w-4 h-4 ${is3D ? 'text-[#8b5cf6]' : 'text-white'}`} />
                         </Button>
                         <Button
                           size="icon"
@@ -1077,15 +1077,15 @@ export default function GalleryPage() {
                     <div className="flex items-center gap-2 mb-3 flex-wrap">
                       <Badge className={`text-xs ${
                         is3D 
-                          ? 'bg-[#c084fc]/10 text-[#c084fc] border-[#c084fc]/30'
-                          : 'bg-[#00ff88]/10 text-[#00ff88] border-[#00ff88]/30'
+                          ? 'bg-[#8b5cf6]/10 text-[#8b5cf6] border-[#8b5cf6]/30'
+                          : 'bg-[#FF6B2C]/10 text-[#FF6B2C] border-[#FF6B2C]/30'
                       }`}>
                         {gen.categoryId}
                       </Badge>
                       <Badge className={`text-xs ${
                         is3D
-                          ? 'bg-[#c084fc]/10 text-[#c084fc] border-[#c084fc]/30'
-                          : 'bg-[#00d4ff]/10 text-[#00d4ff] border-[#00d4ff]/30'
+                          ? 'bg-[#8b5cf6]/10 text-[#8b5cf6] border-[#8b5cf6]/30'
+                          : 'bg-[#FF6B2C]/10 text-[#FF6B2C] border-[#FF6B2C]/30'
                       }`}>
                         {is3D ? `${format3D} • ${getModelName(gen.styleId)}` : getModelName(gen.styleId)}
                       </Badge>
@@ -1099,7 +1099,7 @@ export default function GalleryPage() {
                           className="p-1 hover:bg-white/10 rounded transition-colors"
                         >
                           {copiedId === gen.id ? (
-                            <Check className="w-3 h-3 text-[#00ff88]" />
+                            <Check className="w-3 h-3 text-[#FF6B2C]" />
                           ) : (
                             <Copy className="w-3 h-3" />
                           )}
@@ -1127,7 +1127,7 @@ export default function GalleryPage() {
         {/* Floating Selection Action Bar */}
         {selectMode && selectedIds.size > 0 && (
           <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-1.5rem)] sm:w-auto max-w-lg sm:max-w-none">
-            <div className="glass-card rounded-xl sm:rounded-2xl p-3 sm:p-4 flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-4 border border-[#00ff88]/30 shadow-lg shadow-[#00ff88]/10">
+            <div className="glass-card rounded-xl sm:rounded-2xl p-3 sm:p-4 flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-4 border border-[#FF6B2C]/30 shadow-lg shadow-[#FF6B2C]/10">
               <span className="text-white font-medium text-sm sm:text-base">
                 {selectedIds.size} selected
               </span>
@@ -1138,7 +1138,7 @@ export default function GalleryPage() {
                 size="sm"
                 variant="outline"
                 onClick={selectAll}
-                className="border-[#00d4ff] bg-[#00d4ff]/10 text-[#00d4ff] hover:bg-[#00d4ff]/20 text-xs sm:text-sm"
+                className="border-[#FF6B2C] bg-[#FF6B2C]/10 text-[#FF6B2C] hover:bg-[#FF6B2C]/20 text-xs sm:text-sm"
               >
                 <CheckSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />
                 <span className="hidden sm:inline">Select All ({filteredGenerations.length})</span>
@@ -1160,7 +1160,7 @@ export default function GalleryPage() {
                 size="sm"
                 onClick={handleBatchDownload}
                 disabled={downloading}
-                className="bg-[#00ff88] hover:bg-[#00ff88]/90 text-black text-xs sm:text-sm"
+                className="bg-[#FF6B2C] hover:bg-[#FF6B2C]/90 text-black text-xs sm:text-sm"
               >
                 {downloading ? (
                   <>

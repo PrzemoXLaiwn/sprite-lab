@@ -174,7 +174,7 @@ export function DailyReminderEmail({
 
 // Styles
 const main = {
-  backgroundColor: "#030305",
+  backgroundColor: "#0a0c10",
   fontFamily:
     '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif',
 };
@@ -198,14 +198,14 @@ const logo = {
 };
 
 const logoAccent = {
-  color: "#00ff88",
+  color: "#FF6B2C",
 };
 
 const content = {
-  backgroundColor: "#0a0a0f",
+  backgroundColor: "#11151b",
   borderRadius: "16px",
   padding: "32px",
-  border: "1px solid #2a2a3d",
+  border: "1px solid rgba(255,255,255,0.06)",
 };
 
 const heading = {
@@ -230,14 +230,14 @@ const streakEmoji = {
 };
 
 const streakNumber = {
-  color: "#030305",
+  color: "#0a0c10",
   fontSize: "24px",
   fontWeight: "bold",
   margin: "0",
 };
 
 const streakBonusText = {
-  color: "#030305",
+  color: "#0a0c10",
   fontSize: "14px",
   margin: "8px 0 0",
   fontWeight: "600",
@@ -257,7 +257,7 @@ const creditsLabel = {
 };
 
 const creditsNumber = {
-  color: "#00ff88",
+  color: "#FF6B2C",
   fontSize: "48px",
   fontWeight: "bold",
   margin: "0",
@@ -265,7 +265,7 @@ const creditsNumber = {
 };
 
 const noCreditsHint = {
-  color: "#ff6b6b",
+  color: "#ef4444",
   fontSize: "12px",
   margin: "8px 0 0",
 };
@@ -276,9 +276,9 @@ const buttonContainer = {
 };
 
 const button = {
-  backgroundColor: "#00ff88",
+  backgroundColor: "#FF6B2C",
   borderRadius: "8px",
-  color: "#030305",
+  color: "#0a0c10",
   fontSize: "16px",
   fontWeight: "bold",
   textDecoration: "none",
@@ -290,8 +290,8 @@ const button = {
 const buttonSecondary = {
   backgroundColor: "transparent",
   borderRadius: "8px",
-  border: "2px solid #00d4ff",
-  color: "#00d4ff",
+  border: "2px solid #FF6B2C",
+  color: "#FF6B2C",
   fontSize: "14px",
   fontWeight: "600",
   textDecoration: "none",
@@ -302,14 +302,14 @@ const buttonSecondary = {
 };
 
 const linkButton = {
-  color: "#00d4ff",
+  color: "#FF6B2C",
   fontSize: "14px",
   textDecoration: "none",
   fontWeight: "600",
 };
 
 const hr = {
-  borderColor: "#2a2a3d",
+  borderColor: "rgba(255,255,255,0.06)",
   margin: "24px 0",
 };
 
@@ -338,11 +338,11 @@ const tipBox = {
   backgroundColor: "#0f0f15",
   borderRadius: "8px",
   padding: "16px",
-  border: "1px solid #2a2a3d",
+  border: "1px solid rgba(255,255,255,0.06)",
 };
 
 const tipTitle = {
-  color: "#00d4ff",
+  color: "#FF6B2C",
   fontSize: "14px",
   fontWeight: "bold",
   margin: "0 0 4px",
@@ -383,7 +383,7 @@ const footerLinks = {
 };
 
 const link = {
-  color: "#00d4ff",
+  color: "#FF6B2C",
   textDecoration: "underline",
 };
 

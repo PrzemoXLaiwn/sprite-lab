@@ -17,12 +17,12 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="min-h-screen bg-[#030305] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#0a0c10] flex items-center justify-center p-4">
       {/* Background effects */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#ff4444]/10 via-transparent to-transparent" />
-        <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-[#ff4444]/15 rounded-full blur-[200px] animate-float" style={{ animationDuration: "8s" }} />
-        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-[#ff4444]/10 rounded-full blur-[150px] animate-float" style={{ animationDelay: "2s", animationDuration: "10s" }} />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#ef4444]/10 via-transparent to-transparent" />
+        <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-[#ef4444]/15 rounded-full blur-[200px] animate-float" style={{ animationDuration: "8s" }} />
+        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-[#ef4444]/10 rounded-full blur-[150px] animate-float" style={{ animationDelay: "2s", animationDuration: "10s" }} />
         <div className="absolute inset-0 grid-pattern opacity-20" />
       </div>
 
@@ -33,13 +33,13 @@ export default function Error({
         </div>
 
         {/* Error badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#ff4444]/10 border border-[#ff4444]/30 text-[#ff4444] text-sm mb-6">
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#ef4444]/10 border border-[#ef4444]/30 text-[#ef4444] text-sm mb-6">
           <AlertTriangle className="w-4 h-4" />
           <span>Something went wrong</span>
         </div>
 
         {/* Error Text */}
-        <h1 className="text-6xl md:text-7xl font-display font-black mb-4 text-[#ff4444]">
+        <h1 className="text-6xl md:text-7xl font-display font-black mb-4 text-[#ef4444]">
           Oops!
         </h1>
 
@@ -55,14 +55,14 @@ export default function Error({
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <button
             onClick={() => reset()}
-            className="group flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-black font-bold hover:shadow-xl hover:shadow-[#00ff88]/30 transition-all hover:scale-105"
+            className="group flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] text-black font-bold hover:shadow-xl hover:shadow-[#FF6B2C]/30 transition-all hover:scale-105"
           >
             <RefreshCw className="w-5 h-5 group-hover:rotate-180 transition-transform duration-500" />
             Try Again
           </button>
           <Link
             href="/"
-            className="group flex items-center gap-2 px-8 py-4 rounded-xl bg-white/5 text-white font-medium hover:bg-white/10 transition-all border border-white/10 hover:border-[#00ff88]/30"
+            className="group flex items-center gap-2 px-8 py-4 rounded-xl bg-white/5 text-white font-medium hover:bg-white/10 transition-all border border-white/10 hover:border-[#FF6B2C]/30"
           >
             <Home className="w-5 h-5" />
             Go Home

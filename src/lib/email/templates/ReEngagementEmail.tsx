@@ -146,7 +146,7 @@ export function ReEngagementEmail({
 
 // Styles
 const main = {
-  backgroundColor: "#030305",
+  backgroundColor: "#0a0c10",
   fontFamily:
     '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif',
 };
@@ -170,14 +170,14 @@ const logo = {
 };
 
 const logoAccent = {
-  color: "#00ff88",
+  color: "#FF6B2C",
 };
 
 const content = {
-  backgroundColor: "#0a0a0f",
+  backgroundColor: "#11151b",
   borderRadius: "16px",
   padding: "32px",
-  border: "1px solid #2a2a3d",
+  border: "1px solid rgba(255,255,255,0.06)",
 };
 
 const missYouEmoji = {
@@ -216,7 +216,7 @@ const smallText = {
 };
 
 const creditsAlert = {
-  backgroundColor: "#ffd93d",
+  backgroundColor: "#f59e0b",
   borderRadius: "12px",
   padding: "20px",
   margin: "24px 0",
@@ -224,14 +224,14 @@ const creditsAlert = {
 };
 
 const creditsAlertTitle = {
-  color: "#030305",
+  color: "#0a0c10",
   fontSize: "20px",
   fontWeight: "bold",
   margin: "0 0 4px",
 };
 
 const creditsAlertText = {
-  color: "#030305",
+  color: "#0a0c10",
   fontSize: "14px",
   margin: "0",
   opacity: 0.8,
@@ -242,11 +242,11 @@ const whatsNewBox = {
   borderRadius: "12px",
   padding: "20px",
   margin: "24px 0",
-  border: "1px solid #2a2a3d",
+  border: "1px solid rgba(255,255,255,0.06)",
 };
 
 const whatsNewTitle = {
-  color: "#c084fc",
+  color: "#8b5cf6",
   fontSize: "14px",
   fontWeight: "bold",
   textTransform: "uppercase" as const,
@@ -270,7 +270,7 @@ const inspirationItem = {
   borderRadius: "8px",
   padding: "16px",
   marginBottom: "8px",
-  border: "1px solid #2a2a3d",
+  border: "1px solid rgba(255,255,255,0.06)",
 };
 
 const inspirationEmoji = {
@@ -292,9 +292,9 @@ const buttonContainer = {
 };
 
 const button = {
-  backgroundColor: "#00ff88",
+  backgroundColor: "#FF6B2C",
   borderRadius: "8px",
-  color: "#030305",
+  color: "#0a0c10",
   fontSize: "16px",
   fontWeight: "bold",
   textDecoration: "none",
@@ -315,7 +315,7 @@ const footerText = {
 };
 
 const link = {
-  color: "#00d4ff",
+  color: "#FF6B2C",
   textDecoration: "underline",
 };
 

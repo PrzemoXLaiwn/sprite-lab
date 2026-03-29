@@ -44,11 +44,11 @@ export function CommunityShowcase() {
     return (
       <div className="glass-card rounded-2xl p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Users className="w-5 h-5 text-[#ffd93d]" />
+          <Users className="w-5 h-5 text-[#f59e0b]" />
           <h3 className="font-semibold text-white">Community Creations</h3>
         </div>
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="w-6 h-6 text-[#ffd93d] animate-spin" />
+          <Loader2 className="w-6 h-6 text-[#f59e0b] animate-spin" />
         </div>
       </div>
     );
@@ -58,15 +58,15 @@ export function CommunityShowcase() {
     return (
       <div className="glass-card rounded-2xl p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Users className="w-5 h-5 text-[#ffd93d]" />
+          <Users className="w-5 h-5 text-[#f59e0b]" />
           <h3 className="font-semibold text-white">Community Creations</h3>
         </div>
         <div className="text-center py-6">
-          <Sparkles className="w-10 h-10 text-[#ffd93d]/30 mx-auto mb-3" />
+          <Sparkles className="w-10 h-10 text-[#f59e0b]/30 mx-auto mb-3" />
           <p className="text-sm text-[#a0a0b0] mb-4">
             Be the first to share your creations!
           </p>
-          <Button asChild size="sm" variant="outline" className="border-[#ffd93d]/30 hover:bg-[#ffd93d]/10">
+          <Button asChild size="sm" variant="outline" className="border-[#f59e0b]/30 hover:bg-[#f59e0b]/10">
             <Link href="/community">
               Visit Community
               <ArrowRight className="w-4 h-4 ml-2" />
@@ -81,7 +81,7 @@ export function CommunityShowcase() {
     <div className="glass-card rounded-2xl p-6">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Users className="w-5 h-5 text-[#ffd93d]" />
+          <Users className="w-5 h-5 text-[#f59e0b]" />
           <h3 className="font-semibold text-white">Community Creations</h3>
         </div>
         <Button asChild size="sm" variant="ghost" className="text-[#a0a0b0] hover:text-white">
@@ -96,7 +96,7 @@ export function CommunityShowcase() {
         {generations.slice(0, 6).map((gen) => (
           <div
             key={gen.id}
-            className="relative aspect-square rounded-lg overflow-hidden border border-[#2a2a3d] hover:border-[#ffd93d]/50 transition-all group cursor-pointer"
+            className="relative aspect-square rounded-lg overflow-hidden border border-[rgba(255,255,255,0.06)] hover:border-[#f59e0b]/50 transition-all group cursor-pointer"
           >
             <img
               src={gen.imageUrl}
@@ -106,13 +106,13 @@ export function CommunityShowcase() {
             />
 
             {/* Hover overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#030305] via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0c10] via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
               <div className="absolute bottom-0 left-0 right-0 p-2">
                 <p className="text-[10px] text-white line-clamp-2 leading-tight mb-1">
                   {gen.prompt}
                 </p>
                 {gen.likes > 0 && (
-                  <div className="flex items-center gap-1 text-[#ff4444]">
+                  <div className="flex items-center gap-1 text-[#ef4444]">
                     <Heart className="w-3 h-3 fill-current" />
                     <span className="text-[10px]">{gen.likes}</span>
                   </div>
@@ -122,7 +122,7 @@ export function CommunityShowcase() {
 
             {/* Creator badge */}
             {gen.user?.username && (
-              <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-[#030305]/80 text-[8px] text-[#a0a0b0]">
+              <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-[#0a0c10]/80 text-[8px] text-[#a0a0b0]">
                 @{gen.user.username}
               </div>
             )}

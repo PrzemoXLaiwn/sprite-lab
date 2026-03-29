@@ -146,7 +146,7 @@ export function SpecialOfferEmail({
 
 // Styles
 const main = {
-  backgroundColor: "#030305",
+  backgroundColor: "#0a0c10",
   fontFamily:
     '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif',
 };
@@ -170,14 +170,14 @@ const logo = {
 };
 
 const logoAccent = {
-  color: "#00ff88",
+  color: "#FF6B2C",
 };
 
 const content = {
-  backgroundColor: "#0a0a0f",
+  backgroundColor: "#11151b",
   borderRadius: "16px",
   padding: "32px",
-  border: "1px solid #2a2a3d",
+  border: "1px solid rgba(255,255,255,0.06)",
 };
 
 const offerEmoji = {
@@ -203,16 +203,16 @@ const paragraph = {
 };
 
 const offerBox = {
-  background: "linear-gradient(135deg, #ff6b6b20 0%, #ffd93d20 100%)",
+  background: "linear-gradient(135deg, #ef444420 0%, #f59e0b20 100%)",
   borderRadius: "16px",
   padding: "28px",
   margin: "0 0 24px",
   textAlign: "center" as const,
-  border: "2px solid #ffd93d50",
+  border: "2px solid #f59e0b50",
 };
 
 const discountBadge = {
-  color: "#ffd93d",
+  color: "#f59e0b",
   fontSize: "42px",
   fontWeight: "bold",
   margin: "0 0 4px",
@@ -225,7 +225,7 @@ const offerSubtext = {
 };
 
 const promoCodeBox = {
-  backgroundColor: "#030305",
+  backgroundColor: "#0a0c10",
   borderRadius: "8px",
   padding: "12px 20px",
   margin: "0 auto 12px",
@@ -239,7 +239,7 @@ const promoCodeLabel = {
 };
 
 const promoCodeValue = {
-  color: "#00ff88",
+  color: "#FF6B2C",
   fontSize: "24px",
   fontWeight: "bold",
   fontFamily: "monospace",
@@ -248,7 +248,7 @@ const promoCodeValue = {
 };
 
 const expiryText = {
-  color: "#ff6b6b",
+  color: "#ef4444",
   fontSize: "14px",
   fontWeight: "bold",
   margin: "0",
@@ -259,7 +259,7 @@ const whatsNewBox = {
   borderRadius: "12px",
   padding: "20px",
   margin: "0 0 24px",
-  border: "1px solid #2a2a3d",
+  border: "1px solid rgba(255,255,255,0.06)",
 };
 
 const whatsNewTitle = {
@@ -299,7 +299,7 @@ const popularItem = {
   color: "#a0a0b0",
   fontSize: "14px",
   margin: "0 0 8px",
-  border: "1px solid #2a2a3d",
+  border: "1px solid rgba(255,255,255,0.06)",
 };
 
 const buttonContainer = {
@@ -308,9 +308,9 @@ const buttonContainer = {
 };
 
 const button = {
-  background: "linear-gradient(135deg, #ffd93d 0%, #ff6b6b 100%)",
+  background: "linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)",
   borderRadius: "8px",
-  color: "#030305",
+  color: "#0a0c10",
   fontSize: "16px",
   fontWeight: "bold",
   textDecoration: "none",
@@ -327,14 +327,14 @@ const smallText = {
 };
 
 const valueBox = {
-  backgroundColor: "#00ff8810",
+  backgroundColor: "#FF6B2C10",
   borderRadius: "12px",
   padding: "20px",
-  border: "1px solid #00ff8830",
+  border: "1px solid #FF6B2C30",
 };
 
 const valueTitle = {
-  color: "#00ff88",
+  color: "#FF6B2C",
   fontSize: "14px",
   fontWeight: "bold",
   margin: "0 0 12px",
@@ -359,7 +359,7 @@ const footerText = {
 };
 
 const link = {
-  color: "#00d4ff",
+  color: "#FF6B2C",
   textDecoration: "underline",
 };
 

@@ -100,7 +100,7 @@ export function GenerationFeedback({
           "h-8 px-3",
           rating === 1
             ? "border-green-500 bg-green-500/20 text-green-500"
-            : "border-[#2a2a3d] hover:border-green-500 hover:text-green-500"
+            : "border-[rgba(255,255,255,0.06)] hover:border-green-500 hover:text-green-500"
         )}
       >
         {isLoading && rating === 1 ? (
@@ -118,7 +118,7 @@ export function GenerationFeedback({
           "h-8 px-3",
           rating === -1
             ? "border-red-500 bg-red-500/20 text-red-500"
-            : "border-[#2a2a3d] hover:border-red-500 hover:text-red-500"
+            : "border-[rgba(255,255,255,0.06)] hover:border-red-500 hover:text-red-500"
         )}
       >
         {isLoading && rating === -1 ? (

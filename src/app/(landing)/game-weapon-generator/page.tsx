@@ -65,29 +65,29 @@ const styles = [
 
 export default function GameWeaponGeneratorPage() {
   return (
-    <main className="min-h-screen bg-[#0a0a0f] text-white overflow-x-hidden">
+    <main className="min-h-screen bg-[#11151b] text-white overflow-x-hidden">
       {/* Hero */}
       <section className="relative min-h-[60vh] sm:min-h-[80vh] flex items-center justify-center pt-20 pb-16 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#ff6b6b]/5 via-transparent to-transparent" />
-        <div className="absolute top-1/4 left-1/4 w-48 sm:w-96 h-48 sm:h-96 bg-[#ff6b6b]/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-48 sm:w-96 h-48 sm:h-96 bg-[#00ff88]/10 rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#ef4444]/5 via-transparent to-transparent" />
+        <div className="absolute top-1/4 left-1/4 w-48 sm:w-96 h-48 sm:h-96 bg-[#ef4444]/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-48 sm:w-96 h-48 sm:h-96 bg-[#FF6B2C]/10 rounded-full blur-3xl" />
 
         <div className="max-w-6xl mx-auto px-3 sm:px-4 relative z-10">
           <Link href="/" className="flex items-center justify-center gap-2 mb-5 sm:mb-8">
             <Image src="/logo.png" alt="SpriteLab" width={40} height={40} />
             <span className="font-display font-bold text-2xl">
-              Sprite<span className="text-[#00ff88]">Lab</span>
+              Sprite<span className="text-[#FF6B2C]">Lab</span>
             </span>
           </Link>
 
           <div className="text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#ff6b6b]/10 border border-[#ff6b6b]/20 text-[#ff6b6b] text-xs sm:text-sm font-medium mb-6">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#ef4444]/10 border border-[#ef4444]/20 text-[#ef4444] text-xs sm:text-sm font-medium mb-6">
               <Sword className="w-4 h-4" />
               AI Weapon Generator
             </div>
 
             <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
-              Generate <span className="text-[#ff6b6b]">Epic Weapons</span>
+              Generate <span className="text-[#ef4444]">Epic Weapons</span>
               <br />
               <span className="text-white/80">for Your Game</span>
             </h1>
@@ -100,7 +100,7 @@ export default function GameWeaponGeneratorPage() {
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
               <Link
                 href="/register"
-                className="inline-flex items-center justify-center gap-2 px-5 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-[#ff6b6b] to-[#ffd93d] text-black font-semibold rounded-lg hover:opacity-90 transition-opacity text-base sm:text-lg"
+                className="inline-flex items-center justify-center gap-2 px-5 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-[#ef4444] to-[#f59e0b] text-black font-semibold rounded-lg hover:opacity-90 transition-opacity text-base sm:text-lg"
               >
                 Create Weapons Free
                 <ArrowRight className="w-5 h-5" />
@@ -124,7 +124,7 @@ export default function GameWeaponGeneratorPage() {
       <section className="py-12 sm:py-20 relative">
         <div className="max-w-6xl mx-auto px-3 sm:px-4">
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-4">
-            Every <span className="text-[#ff6b6b]">Weapon Type</span> You Need
+            Every <span className="text-[#ef4444]">Weapon Type</span> You Need
           </h2>
           <p className="text-sm sm:text-base text-white/60 text-center mb-8 sm:mb-12 max-w-xl mx-auto">
             From medieval swords to futuristic laser guns - we&apos;ve got you covered
@@ -134,14 +134,14 @@ export default function GameWeaponGeneratorPage() {
             {weaponTypes.map((type) => (
               <div
                 key={type.name}
-                className="bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6 hover:border-[#ff6b6b]/50 transition-colors"
+                className="bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6 hover:border-[#ef4444]/50 transition-colors"
               >
                 <div className="text-3xl sm:text-4xl mb-4">{type.icon}</div>
                 <h3 className="text-lg sm:text-xl font-bold mb-3">{type.name}</h3>
                 <ul className="space-y-1">
                   {type.items.map((item) => (
                     <li key={item} className="text-white/60 text-xs sm:text-sm flex items-center gap-2">
-                      <span className="w-1 h-1 bg-[#ff6b6b] rounded-full" />
+                      <span className="w-1 h-1 bg-[#ef4444] rounded-full" />
                       {item}
                     </li>
                   ))}
@@ -156,7 +156,7 @@ export default function GameWeaponGeneratorPage() {
       <section className="py-12 sm:py-20 bg-white/[0.02]">
         <div className="max-w-4xl mx-auto px-3 sm:px-4">
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-4">
-            Multiple <span className="text-[#00d4ff]">Art Styles</span>
+            Multiple <span className="text-[#FF6B2C]">Art Styles</span>
           </h2>
           <p className="text-sm sm:text-base text-white/60 text-center mb-8 sm:mb-12">
             Match your game&apos;s aesthetic perfectly
@@ -168,7 +168,7 @@ export default function GameWeaponGeneratorPage() {
                 key={style}
                 className="flex items-center gap-3 p-3 sm:p-4 bg-white/5 rounded-lg"
               >
-                <Check className="w-5 h-5 text-[#00ff88] flex-shrink-0" />
+                <Check className="w-5 h-5 text-[#FF6B2C] flex-shrink-0" />
                 <span className="text-xs sm:text-sm">{style}</span>
               </div>
             ))}
@@ -180,12 +180,12 @@ export default function GameWeaponGeneratorPage() {
       <section className="py-12 sm:py-20">
         <div className="max-w-4xl mx-auto px-3 sm:px-4">
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-8 sm:mb-12">
-            How It <span className="text-[#00ff88]">Works</span>
+            How It <span className="text-[#FF6B2C]">Works</span>
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-8">
             <div className="text-center">
-              <div className="w-12 h-12 rounded-full bg-[#00ff88]/20 flex items-center justify-center mx-auto mb-4 text-[#00ff88] font-bold text-xl">
+              <div className="w-12 h-12 rounded-full bg-[#FF6B2C]/20 flex items-center justify-center mx-auto mb-4 text-[#FF6B2C] font-bold text-xl">
                 1
               </div>
               <h3 className="font-bold mb-2 text-sm sm:text-base">Describe Your Weapon</h3>
@@ -194,7 +194,7 @@ export default function GameWeaponGeneratorPage() {
               </p>
             </div>
             <div className="text-center">
-              <div className="w-12 h-12 rounded-full bg-[#00ff88]/20 flex items-center justify-center mx-auto mb-4 text-[#00ff88] font-bold text-xl">
+              <div className="w-12 h-12 rounded-full bg-[#FF6B2C]/20 flex items-center justify-center mx-auto mb-4 text-[#FF6B2C] font-bold text-xl">
                 2
               </div>
               <h3 className="font-bold mb-2 text-sm sm:text-base">Choose Style</h3>
@@ -203,7 +203,7 @@ export default function GameWeaponGeneratorPage() {
               </p>
             </div>
             <div className="text-center">
-              <div className="w-12 h-12 rounded-full bg-[#00ff88]/20 flex items-center justify-center mx-auto mb-4 text-[#00ff88] font-bold text-xl">
+              <div className="w-12 h-12 rounded-full bg-[#FF6B2C]/20 flex items-center justify-center mx-auto mb-4 text-[#FF6B2C] font-bold text-xl">
                 3
               </div>
               <h3 className="font-bold mb-2 text-sm sm:text-base">Download & Use</h3>
@@ -217,17 +217,17 @@ export default function GameWeaponGeneratorPage() {
 
       {/* CTA */}
       <section className="py-12 sm:py-20 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-[#ff6b6b]/10 via-transparent to-[#ffd93d]/10" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#ef4444]/10 via-transparent to-[#f59e0b]/10" />
         <div className="max-w-4xl mx-auto px-3 sm:px-4 text-center relative z-10">
           <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold mb-6">
-            Forge Your <span className="text-[#ff6b6b]">Arsenal</span> Today
+            Forge Your <span className="text-[#ef4444]">Arsenal</span> Today
           </h2>
           <p className="text-sm sm:text-base text-white/60 mb-8 max-w-xl mx-auto">
             Stop searching for weapon assets. Generate exactly what you need in seconds.
           </p>
           <Link
             href="/register"
-            className="inline-flex items-center justify-center gap-2 px-5 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-[#ff6b6b] to-[#ffd93d] text-black font-semibold rounded-lg hover:opacity-90 transition-opacity text-base sm:text-lg"
+            className="inline-flex items-center justify-center gap-2 px-5 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-[#ef4444] to-[#f59e0b] text-black font-semibold rounded-lg hover:opacity-90 transition-opacity text-base sm:text-lg"
           >
             Get 5 Free Credits
             <ArrowRight className="w-5 h-5" />
@@ -241,7 +241,7 @@ export default function GameWeaponGeneratorPage() {
           <Link href="/" className="flex items-center gap-2">
             <Image src="/logo.png" alt="SpriteLab" width={24} height={24} />
             <span className="font-display font-bold">
-              Sprite<span className="text-[#00ff88]">Lab</span>
+              Sprite<span className="text-[#FF6B2C]">Lab</span>
             </span>
           </Link>
           <div className="flex items-center gap-4 sm:gap-6 text-xs sm:text-sm text-white/40">

@@ -78,31 +78,31 @@ const useCases = [
 
 export default function PixelArtGeneratorPage() {
   return (
-    <main className="min-h-screen bg-[#0a0a0f] text-white overflow-x-hidden">
+    <main className="min-h-screen bg-[#11151b] text-white overflow-x-hidden">
       {/* Hero Section */}
       <section className="relative min-h-[60vh] sm:min-h-[80vh] flex items-center justify-center pt-20 pb-16 overflow-hidden">
         {/* Background Effects */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#00ff88]/5 via-transparent to-transparent" />
-        <div className="absolute top-1/4 left-1/4 w-48 sm:w-96 h-48 sm:h-96 bg-[#00ff88]/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-48 sm:w-96 h-48 sm:h-96 bg-[#00d4ff]/10 rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#FF6B2C]/5 via-transparent to-transparent" />
+        <div className="absolute top-1/4 left-1/4 w-48 sm:w-96 h-48 sm:h-96 bg-[#FF6B2C]/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-48 sm:w-96 h-48 sm:h-96 bg-[#FF6B2C]/10 rounded-full blur-3xl" />
 
         <div className="max-w-6xl mx-auto px-3 sm:px-4 relative z-10">
           {/* Logo */}
           <Link href="/" className="flex items-center justify-center gap-2 mb-5 sm:mb-8">
             <Image src="/logo.png" alt="SpriteLab" width={40} height={40} />
             <span className="font-display font-bold text-2xl">
-              Sprite<span className="text-[#00ff88]">Lab</span>
+              Sprite<span className="text-[#FF6B2C]">Lab</span>
             </span>
           </Link>
 
           <div className="text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#00ff88]/10 border border-[#00ff88]/20 text-[#00ff88] text-xs sm:text-sm font-medium mb-6">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FF6B2C]/10 border border-[#FF6B2C]/20 text-[#FF6B2C] text-xs sm:text-sm font-medium mb-6">
               <Sparkles className="w-4 h-4" />
               AI-Powered Pixel Art Generator
             </div>
 
             <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
-              Create <span className="text-[#00ff88]">Pixel Art</span>
+              Create <span className="text-[#FF6B2C]">Pixel Art</span>
               <br />
               <span className="text-white/80">in Seconds</span>
             </h1>
@@ -115,7 +115,7 @@ export default function PixelArtGeneratorPage() {
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
               <Link
                 href="/register"
-                className="inline-flex items-center justify-center gap-2 px-5 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-black font-semibold rounded-lg hover:opacity-90 transition-opacity text-base sm:text-lg"
+                className="inline-flex items-center justify-center gap-2 px-5 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] text-black font-semibold rounded-lg hover:opacity-90 transition-opacity text-base sm:text-lg"
               >
                 Start Creating Free
                 <ArrowRight className="w-5 h-5" />
@@ -139,7 +139,7 @@ export default function PixelArtGeneratorPage() {
       <section className="py-12 sm:py-20 relative">
         <div className="max-w-6xl mx-auto px-3 sm:px-4">
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-4">
-            Choose Your <span className="text-[#00ff88]">Pixel Style</span>
+            Choose Your <span className="text-[#FF6B2C]">Pixel Style</span>
           </h2>
           <p className="text-sm sm:text-base text-white/60 text-center mb-8 sm:mb-12 max-w-xl mx-auto">
             From classic retro to modern HD pixel art - we support all styles
@@ -149,14 +149,14 @@ export default function PixelArtGeneratorPage() {
             {pixelStyles.map((style) => (
               <div
                 key={style.name}
-                className="bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6 hover:border-[#00ff88]/50 transition-colors"
+                className="bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6 hover:border-[#FF6B2C]/50 transition-colors"
               >
-                <div className="w-full aspect-square bg-gradient-to-br from-[#00ff88]/10 to-transparent rounded-lg mb-4 flex items-center justify-center">
+                <div className="w-full aspect-square bg-gradient-to-br from-[#FF6B2C]/10 to-transparent rounded-lg mb-4 flex items-center justify-center">
                   <div className="text-4xl sm:text-6xl">🎮</div>
                 </div>
                 <h3 className="text-lg sm:text-xl font-bold mb-2">{style.name}</h3>
                 <p className="text-white/60 text-xs sm:text-sm mb-2">{style.description}</p>
-                <span className="text-xs text-[#00ff88]">{style.colors}</span>
+                <span className="text-xs text-[#FF6B2C]">{style.colors}</span>
               </div>
             ))}
           </div>
@@ -169,8 +169,8 @@ export default function PixelArtGeneratorPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-8">
             {features.map((feature) => (
               <div key={feature.title} className="text-center">
-                <div className="w-12 sm:w-16 h-12 sm:h-16 rounded-full bg-[#00ff88]/10 flex items-center justify-center mx-auto mb-4">
-                  <feature.icon className="w-6 sm:w-8 h-6 sm:h-8 text-[#00ff88]" />
+                <div className="w-12 sm:w-16 h-12 sm:h-16 rounded-full bg-[#FF6B2C]/10 flex items-center justify-center mx-auto mb-4">
+                  <feature.icon className="w-6 sm:w-8 h-6 sm:h-8 text-[#FF6B2C]" />
                 </div>
                 <h3 className="text-lg sm:text-xl font-bold mb-2">{feature.title}</h3>
                 <p className="text-sm sm:text-base text-white/60">{feature.description}</p>
@@ -184,7 +184,7 @@ export default function PixelArtGeneratorPage() {
       <section className="py-12 sm:py-20">
         <div className="max-w-4xl mx-auto px-3 sm:px-4">
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-4">
-            Perfect For <span className="text-[#00d4ff]">Any Game</span>
+            Perfect For <span className="text-[#FF6B2C]">Any Game</span>
           </h2>
           <p className="text-sm sm:text-base text-white/60 text-center mb-8 sm:mb-12">
             Generate any type of pixel art asset you need
@@ -196,7 +196,7 @@ export default function PixelArtGeneratorPage() {
                 key={useCase}
                 className="flex items-center gap-3 p-3 sm:p-4 bg-white/5 rounded-lg"
               >
-                <Check className="w-5 h-5 text-[#00ff88] flex-shrink-0" />
+                <Check className="w-5 h-5 text-[#FF6B2C] flex-shrink-0" />
                 <span className="text-sm sm:text-base">{useCase}</span>
               </div>
             ))}
@@ -206,17 +206,17 @@ export default function PixelArtGeneratorPage() {
 
       {/* CTA Section */}
       <section className="py-12 sm:py-20 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-[#00ff88]/10 via-transparent to-[#00d4ff]/10" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#FF6B2C]/10 via-transparent to-[#FF6B2C]/10" />
         <div className="max-w-4xl mx-auto px-3 sm:px-4 text-center relative z-10">
           <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold mb-6">
-            Start Creating <span className="text-[#00ff88]">Pixel Art</span> Today
+            Start Creating <span className="text-[#FF6B2C]">Pixel Art</span> Today
           </h2>
           <p className="text-sm sm:text-base text-white/60 mb-8 max-w-xl mx-auto">
             Join thousands of indie developers using SpriteLab to create amazing game assets
           </p>
           <Link
             href="/register"
-            className="inline-flex items-center justify-center gap-2 px-5 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-black font-semibold rounded-lg hover:opacity-90 transition-opacity text-base sm:text-lg"
+            className="inline-flex items-center justify-center gap-2 px-5 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] text-black font-semibold rounded-lg hover:opacity-90 transition-opacity text-base sm:text-lg"
           >
             Get 5 Free Credits
             <ArrowRight className="w-5 h-5" />
@@ -230,7 +230,7 @@ export default function PixelArtGeneratorPage() {
           <Link href="/" className="flex items-center gap-2">
             <Image src="/logo.png" alt="SpriteLab" width={24} height={24} />
             <span className="font-display font-bold">
-              Sprite<span className="text-[#00ff88]">Lab</span>
+              Sprite<span className="text-[#FF6B2C]">Lab</span>
             </span>
           </Link>
           <div className="flex items-center gap-4 sm:gap-6 text-xs sm:text-sm text-white/40">
