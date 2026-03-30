@@ -319,18 +319,18 @@ function GeneratePageInner() {
       {/* ═══════════════════════════════════════════════════════════
           LEFT PANEL — Controls (fixed width, scrollable)
       ═══════════════════════════════════════════════════════════ */}
-      <div className="w-full lg:w-[300px] xl:w-[320px] lg:h-screen lg:overflow-y-auto lg:border-r border-white/5 bg-[#0d1017] shrink-0">
-        <div className="p-4 pb-6 space-y-5">
+      <div className="w-full lg:w-[320px] xl:w-[340px] lg:h-screen lg:overflow-y-auto lg:border-r border-white/8 bg-[#0e1219] shrink-0">
+        <div className="p-5 pb-8 space-y-6">
 
           {/* Panel header */}
-          <div className="flex items-center justify-between pb-3 border-b border-white/5">
-            <h2 className="text-sm font-semibold text-white/90">New Asset</h2>
-            <span className="text-[10px] text-[#FF6B2C]/60 bg-[#FF6B2C]/8 px-2.5 py-1 rounded-full font-medium">1 credit</span>
+          <div className="flex items-center justify-between pb-4 border-b border-white/8">
+            <h2 className="text-[15px] font-bold text-white/95">New Asset</h2>
+            <span className="text-[11px] text-[#FF6B2C] bg-[#FF6B2C]/10 px-3 py-1 rounded-full font-semibold border border-[#FF6B2C]/20">1 credit</span>
           </div>
 
           {/* ── PROMPT ────────────────────────────────────────── */}
           <div>
-            <label className="block text-[10px] font-medium text-white/25 uppercase tracking-wider mb-1.5">
+            <label className="block text-[10px] font-bold text-white/30 uppercase tracking-widest mb-2">
               Prompt<span className="text-[#FF6B2C] ml-0.5">*</span>
             </label>
             <textarea
@@ -339,7 +339,7 @@ function GeneratePageInner() {
               placeholder={placeholder}
               maxLength={500}
               rows={5}
-              className="w-full px-3.5 py-3 rounded-xl bg-[#141821] border border-white/8 text-[13px] text-white/85 resize-none outline-none focus:border-[#FF6B2C]/25 focus:ring-1 focus:ring-[#FF6B2C]/10 placeholder:text-white/15 leading-relaxed transition-all hover:border-white/12"
+              className="w-full px-4 py-3.5 rounded-xl bg-[#161c26] border-2 border-white/10 text-[14px] text-white/90 resize-none outline-none focus:border-[#FF6B2C]/40 focus:shadow-[0_0_15px_rgba(255,107,44,0.08)] placeholder:text-white/20 leading-relaxed transition-all hover:border-white/20"
             />
             {prompt.length === 0 && (
               <div className="mt-2 flex flex-wrap gap-1">
@@ -352,7 +352,7 @@ function GeneratePageInner() {
                   `${selectedSub.label.toLowerCase()} with detail`,
                 ].map((ex) => (
                   <button key={ex} type="button" onClick={() => setPrompt(ex)}
-                    className="px-2 py-0.5 text-[9px] rounded-md bg-white/4 text-white/25 hover:text-[#FF6B2C]/70 hover:bg-[#FF6B2C]/8 transition-all border border-transparent hover:border-[#FF6B2C]/15">
+                    className="px-2.5 py-1 text-[10px] rounded-lg bg-[#161c26] text-white/35 hover:text-[#FF6B2C] hover:bg-[#FF6B2C]/10 transition-all border border-white/8 hover:border-[#FF6B2C]/30 font-medium">
                     {ex}
                   </button>
                 ))}
@@ -367,7 +367,7 @@ function GeneratePageInner() {
 
           {/* ── STRUCTURE ─────────────────────────────────────── */}
           <div className="pt-1 space-y-3">
-            <p className="text-[9px] font-semibold text-white/15 uppercase tracking-widest">Structure</p>
+            <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest">Structure</p>
 
             <FancySelect label="Style" required value={styleId} onChange={setStyleId}
               columns={2}
@@ -397,7 +397,7 @@ function GeneratePageInner() {
 
           {/* ── OUTPUT ────────────────────────────────────────── */}
           <div className="pt-1 space-y-3">
-            <p className="text-[9px] font-semibold text-white/15 uppercase tracking-widest">Output</p>
+            <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest">Output</p>
 
             <div className="grid grid-cols-2 gap-2.5">
               <FancySelect label="View" required value={view}
@@ -431,23 +431,23 @@ function GeneratePageInner() {
           </div>
 
           {/* ── ADVANCED ──────────────────────────────────────── */}
-          <div className="pt-2 border-t border-white/5">
+          <div className="pt-3 border-t border-white/8">
             <button onClick={() => setShowAdvanced(!showAdvanced)}
-              className="w-full flex items-center justify-between py-1 text-[10px] font-medium text-white/20 hover:text-white/40 transition-colors">
-              <span className="uppercase tracking-wider">Advanced</span>
-              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showAdvanced ? "rotate-180" : ""}`} />
+              className="w-full flex items-center justify-between py-2 text-[10px] font-bold text-white/25 hover:text-white/50 transition-colors uppercase tracking-widest">
+              Advanced
+              <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${showAdvanced ? "rotate-180" : ""}`} />
             </button>
             {showAdvanced && (
-              <div className="mt-3 space-y-2.5">
-                <div className="flex items-center gap-2">
-                  <label className="text-[10px] text-white/20 uppercase tracking-wider shrink-0 w-10">Seed</label>
+              <div className="mt-3 space-y-3">
+                <div className="flex items-center gap-2.5">
+                  <label className="text-[10px] text-white/25 font-bold uppercase tracking-wider shrink-0">Seed</label>
                   <input type="number" min={0} max={2147483647} placeholder="Random" value={seed}
                     onChange={(e) => { setSeed(e.target.value); seedRef.current = e.target.value; setSeedLocked(false); }}
-                    className="flex-1 px-2.5 py-2 rounded-lg bg-[#141821] border border-white/8 text-[11px] text-white/60 outline-none focus:border-[#FF6B2C]/20 placeholder:text-white/15 hover:border-white/12 transition-all" />
+                    className="flex-1 px-3 py-2.5 rounded-xl bg-[#161c26] border-2 border-white/10 text-[12px] text-white/70 outline-none focus:border-[#FF6B2C]/30 placeholder:text-white/20 hover:border-white/20 transition-all" />
                   {activeResult && (
                     <button onClick={handleLockSeed}
-                      className={`px-2.5 py-2 rounded-lg text-[10px] transition-all ${seedLocked ? "bg-[#FF6B2C]/10 text-[#FF6B2C] border border-[#FF6B2C]/20" : "text-white/20 hover:text-white/40 bg-[#141821] border border-white/8 hover:border-white/12"}`}>
-                      {seedLocked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+                      className={`px-3 py-2.5 rounded-xl text-[11px] font-medium transition-all ${seedLocked ? "bg-[#FF6B2C]/15 text-[#FF6B2C] border-2 border-[#FF6B2C]/25" : "text-white/25 hover:text-white/50 bg-[#161c26] border-2 border-white/10 hover:border-white/20"}`}>
+                      {seedLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
                     </button>
                   )}
                 </div>
@@ -456,12 +456,12 @@ function GeneratePageInner() {
           </div>
 
           {/* ── GENERATE ──────────────────────────────────────── */}
-          <div className="pt-2">
+          <div className="pt-3">
             <Button onClick={handleGenerate} disabled={!isFormValid || isGenerating}
-              className="w-full h-12 text-[13px] font-bold rounded-xl bg-[#FF6B2C] hover:bg-[#e55a1f] text-white border-0 transition-all shadow-lg shadow-[#FF6B2C]/15 hover:shadow-[#FF6B2C]/25 disabled:opacity-40 disabled:shadow-none"
+              className="w-full h-14 text-[15px] font-bold rounded-xl bg-[#FF6B2C] hover:bg-[#e55a1f] text-white border-0 transition-all shadow-xl shadow-[#FF6B2C]/20 hover:shadow-[#FF6B2C]/35 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-30 disabled:shadow-none disabled:hover:scale-100"
               size="lg">
               {isGenerating
-                ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Generating…</>
+                ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" />Generating…</>
                 : <>✦ Generate</>}
             </Button>
             {status === "error" && errorMessage && (
