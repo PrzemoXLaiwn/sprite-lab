@@ -72,6 +72,7 @@ export async function sendWelcomeEmail(
   try {
     const html = await render(<WelcomeEmail userName={userName} credits={credits} />);
 
+    if (!resend) return { success: false, error: "RESEND_API_KEY not configured" };
     const { data, error } = await resend.emails.send({
       from: EMAIL_FROM,
       to: email,
@@ -141,6 +142,7 @@ export async function sendReEngagementEmail(
       />
     );
 
+    if (!resend) return { success: false, error: "RESEND_API_KEY not configured" };
     const { data, error } = await resend.emails.send({
       from: EMAIL_FROM,
       to: email,
@@ -218,6 +220,7 @@ export async function sendPromoEmail(
   try {
     const html = await render(<PromoEmail userName={userName} {...options} />);
 
+    if (!resend) return { success: false, error: "RESEND_API_KEY not configured" };
     const { data, error } = await resend.emails.send({
       from: EMAIL_FROM,
       to: email,
@@ -294,6 +297,7 @@ export async function sendAbandonedCartEmail(
       />
     );
 
+    if (!resend) return { success: false, error: "RESEND_API_KEY not configured" };
     const { data, error } = await resend.emails.send({
       from: EMAIL_FROM,
       to: email,
@@ -374,6 +378,7 @@ export async function sendSpecialOfferEmail(
       />
     );
 
+    if (!resend) return { success: false, error: "RESEND_API_KEY not configured" };
     const { data, error } = await resend.emails.send({
       from: EMAIL_FROM,
       to: email,
@@ -454,6 +459,7 @@ export async function sendDailyReminderEmail(
       />
     );
 
+    if (!resend) return { success: false, error: "RESEND_API_KEY not configured" };
     const { data, error } = await resend.emails.send({
       from: EMAIL_FROM,
       to: email,
@@ -539,6 +545,7 @@ export async function sendWeeklyDigestEmail(
       />
     );
 
+    if (!resend) return { success: false, error: "RESEND_API_KEY not configured" };
     const { data, error } = await resend.emails.send({
       from: EMAIL_FROM,
       to: email,
@@ -618,6 +625,7 @@ export async function sendNewFeaturesEmail(
       />
     );
 
+    if (!resend) return { success: false, error: "RESEND_API_KEY not configured" };
     const { data, error } = await resend.emails.send({
       from: EMAIL_FROM,
       to: email,
