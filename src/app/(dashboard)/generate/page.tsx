@@ -18,7 +18,8 @@ import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
 import { triggerUpgradeModal } from "@/components/dashboard/UpgradeModal";
 import { GENERATE_CATEGORIES, SUBTYPE_PLACEHOLDERS, type GenerateCategory, type GenerateSubcategory } from "@/data/generate-categories";
 import { GENERATE_STYLES, ALL_GENERATE_STYLE_IDS } from "@/data/generate-styles";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Eye, Zap as ZapIcon, Palette as PaletteIcon } from "lucide-react";
+import { FancySelect, type FancyOption } from "@/components/generate/FancySelect";
 
 // =============================================================================
 // GENERATOR DATA (imported from src/data/)
@@ -368,16 +369,29 @@ function GeneratePageInner() {
           <div className="pt-1 space-y-3">
             <p className="text-[9px] font-semibold text-white/15 uppercase tracking-widest">Structure</p>
 
-            <Sel label="Style" req value={styleId} onChange={setStyleId}
-              options={GENERATE_STYLES.map((s) => ({ id: s.id, label: s.name }))} />
+            <FancySelect label="Style" required value={styleId} onChange={setStyleId}
+              columns={2}
+              options={GENERATE_STYLES.map((s) => ({
+                id: s.id,
+                label: s.name,
+                description: s.description,
+                icon: PaletteIcon,
+              }))} />
 
             <div className="grid grid-cols-2 gap-2.5">
-              <Sel label="Category" req value={selectedCategory.id}
+              <FancySelect label="Category" required value={selectedCategory.id}
                 onChange={(v) => { const c = GENERATE_CATEGORIES.find((x) => x.id === v); if (c) handleCategoryChange(c); }}
-                options={GENERATE_CATEGORIES.map((c) => ({ id: c.id, label: c.label }))} />
-              <Sel label="Type" req value={selectedSubcategoryId}
+                options={GENERATE_CATEGORIES.map((c) => ({
+                  id: c.id,
+                  label: c.label,
+                  icon: c.icon,
+                } as FancyOption))} />
+              <FancySelect label="Type" required value={selectedSubcategoryId}
                 onChange={(v) => { const s = selectedCategory.subcategories.find((x) => x.subcategoryId === v); if (s) handleSubcategoryChange(s); }}
-                options={selectedCategory.subcategories.map((s) => ({ id: s.subcategoryId, label: s.label }))} />
+                options={selectedCategory.subcategories.map((s) => ({
+                  id: s.subcategoryId,
+                  label: s.label,
+                }))} />
             </div>
           </div>
 
@@ -386,14 +400,31 @@ function GeneratePageInner() {
             <p className="text-[9px] font-semibold text-white/15 uppercase tracking-widest">Output</p>
 
             <div className="grid grid-cols-2 gap-2.5">
-              <Sel label="View" req value={view} onChange={(v) => setView(v as ViewId)}
-                options={VIEW_OPTIONS.map((v) => ({ id: v.id, label: v.label }))} />
-              <Sel label="Quality" req value={detail} onChange={(v) => setDetail(v as DetailId)}
-                options={DETAIL_OPTIONS.map((d) => ({ id: d.id, label: d.label }))} />
+              <FancySelect label="View" required value={view}
+                onChange={(v) => setView(v as ViewId)}
+                options={VIEW_OPTIONS.map((v) => ({
+                  id: v.id,
+                  label: v.label,
+                  description: v.desc,
+                  icon: Eye,
+                }))} />
+              <FancySelect label="Quality" required value={detail}
+                onChange={(v) => setDetail(v as DetailId)}
+                options={DETAIL_OPTIONS.map((d) => ({
+                  id: d.id,
+                  label: d.label,
+                  description: d.description,
+                  icon: ZapIcon,
+                }))} />
             </div>
             <div className="grid grid-cols-2 gap-2.5">
-              <Sel label="Palette" value={palette} onChange={(v) => setPalette(v as PaletteId)}
-                options={PALETTE_OPTIONS.map((p) => ({ id: p.id, label: p.label }))} />
+              <FancySelect label="Palette" value={palette}
+                onChange={(v) => setPalette(v as PaletteId)}
+                options={PALETTE_OPTIONS.map((p) => ({
+                  id: p.id,
+                  label: p.label,
+                  color: p.id === "warm" ? "#f97316" : p.id === "cold" ? "#3b82f6" : p.id === "dark" ? "#374151" : p.id === "vibrant" ? "#ec4899" : p.id === "earthy" ? "#92400e" : p.id === "neon" ? "#a855f7" : undefined,
+                }))} />
               <Sel label="Background" value={bgOutput} onChange={(v) => setBgOutput(v as BgOutputId)}
                 options={BG_OUTPUT_OPTIONS.map((b) => ({ id: b.id, label: b.label }))} />
             </div>
