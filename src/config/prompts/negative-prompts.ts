@@ -1,15 +1,16 @@
 // ===========================================
-// SPRITELAB CONFIG - NEGATIVE PROMPTS (v2.0)
+// SPRITELAB CONFIG - NEGATIVE PROMPTS (v3.0)
 // ===========================================
 // Enhanced negative prompts for game asset generation
 // Prevents common issues: backgrounds, multiple objects, body parts, etc.
+// v3.0: Strengthened hallucination prevention and single-object enforcement
 
 // ===========================================
 // ISOMETRIC BOOST (positive prompts for isometric)
 // ===========================================
 export const ISOMETRIC_BOOST = {
-  core: "strict 26.57-degree isometric projection, 2:1 pixel ratio dimetric view, mathematically correct isometric angle",
-  composition: "single isolated isometric object, centered on transparent background, proper isometric grid alignment, consistent angle throughout",
+  core: "((strict 26.57-degree isometric projection)), ((2:1 pixel ratio dimetric view)), ((mathematically correct isometric angle))",
+  composition: "((single isolated isometric object)), ((centered on transparent background)), ((proper isometric grid alignment)), ((consistent angle throughout))",
   lighting: "consistent top-left lighting at 45 degrees, soft ambient light, clear material definition, subtle shadows underneath",
   quality: "clean professional isometric render, mobile game quality, strategy game asset standard",
   references: "like Clash of Clans, Age of Empires, Stardew Valley, Hay Day isometric style",
