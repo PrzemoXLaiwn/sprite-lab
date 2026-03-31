@@ -314,24 +314,24 @@ function GeneratePageInner() {
   );
 
   return (
-    <div className="min-h-screen sl-atmo-bg flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-[#0B0F19] flex flex-col lg:flex-row">
 
       {/* ═══════════════════════════════════════════════════════════
           LEFT PANEL — Controls (fixed width, scrollable)
       ═══════════════════════════════════════════════════════════ */}
-      <div className="w-full lg:w-[320px] xl:w-[340px] lg:h-screen lg:overflow-y-auto lg:border-r border-white/[0.08] sl-panel-vivid sl-sidebar-sheen shrink-0">
+      <div className="w-full lg:w-[320px] xl:w-[340px] lg:h-screen lg:overflow-y-auto lg:border-r border-[#263046] bg-[#121826] shrink-0">
         <div className="p-5 pb-8 space-y-6 relative z-10">
 
           {/* Panel header */}
-          <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
-            <h2 className="text-[16px] font-bold text-white tracking-tight drop-shadow-[0_1px_8px_rgba(255,255,255,0.08)]">New Asset</h2>
-            <span className="text-[11px] text-[#ffd8c7] bg-gradient-to-r from-[#FF6B2C]/35 to-[#ff8e5f]/25 px-3.5 py-1 rounded-full font-semibold border border-[#FF6B2C]/45 shadow-[0_0_14px_rgba(255,107,44,0.2)]">1 credit</span>
+          <div className="flex items-center justify-between pb-4 border-b border-[#263046]">
+            <h2 className="text-[16px] font-bold text-slate-100 tracking-tight">New Asset</h2>
+            <span className="text-[11px] text-[#ffd8c7] bg-[#F97316]/15 px-3.5 py-1 rounded-md font-semibold border border-[#F97316]/30 shadow-[0_0_12px_rgba(249,115,22,0.15)]">1 credit</span>
           </div>
 
           {/* ── PROMPT ────────────────────────────────────────── */}
           <div>
-            <label className="block text-[10px] font-bold text-white/30 uppercase tracking-widest mb-2">
-              Prompt<span className="text-[#FF6B2C] ml-0.5">*</span>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">
+              Prompt<span className="text-[#F97316] ml-0.5">*</span>
             </label>
             <textarea
               value={prompt}
@@ -339,7 +339,7 @@ function GeneratePageInner() {
               placeholder={placeholder}
               maxLength={500}
               rows={5}
-              className="w-full px-4 py-3.5 rounded-xl bg-gradient-to-b from-[#171d28] to-[#141821] border-2 border-white/[0.08] text-[14px] text-white/90 resize-none outline-none focus:border-[#FF6B2C]/40 focus:shadow-[0_0_20px_rgba(255,107,44,0.1),inset_0_1px_0_rgba(0,0,0,0.2)] focus:from-[#1a2030] focus:to-[#161c26] placeholder:text-white/25 leading-relaxed transition-all duration-200 hover:border-white/15 shadow-[inset_0_2px_4px_rgba(0,0,0,0.15),inset_0_-1px_0_rgba(255,255,255,0.02)]"
+              className="w-full px-4 py-3.5 rounded-lg bg-[#182033] border border-[#263046] text-[14px] text-slate-100 resize-none outline-none focus:border-[#F97316]/40 focus:shadow-[0_0_12px_rgba(249,115,22,0.1)] placeholder:text-slate-600 leading-relaxed transition-all duration-200 hover:border-[#263046]/80"
             />
             {prompt.length === 0 && (
               <div className="mt-2 flex flex-wrap gap-1">
@@ -352,7 +352,7 @@ function GeneratePageInner() {
                   `${selectedSub.label.toLowerCase()} with detail`,
                 ].map((ex) => (
                   <button key={ex} type="button" onClick={() => setPrompt(ex)}
-                    className="px-2.5 py-1.5 text-[10px] rounded-lg bg-gradient-to-b from-[#171d28] to-[#141821] text-white/40 hover:text-[#FF6B2C] hover:from-[#FF6B2C]/10 hover:to-[#FF6B2C]/5 transition-all duration-200 border border-white/[0.06] hover:border-[#FF6B2C]/25 font-medium shadow-[0_1px_2px_rgba(0,0,0,0.15)] hover:shadow-[0_2px_8px_rgba(255,107,44,0.08)] active:scale-[0.97] cursor-pointer">
+                    className="px-2.5 py-1.5 text-[10px] rounded-md bg-[#1A2235] text-slate-500 hover:text-[#F97316] hover:bg-[#F97316]/10 transition-all duration-200 border border-[#263046] hover:border-[#F97316]/30 font-medium cursor-pointer">
                     {ex}
                   </button>
                 ))}
@@ -360,14 +360,14 @@ function GeneratePageInner() {
             )}
             {prompt.length > 0 && (
               <div className="mt-1 text-right">
-                <span className="text-[9px] text-white/15">{prompt.length}/500</span>
+                <span className="text-[9px] text-slate-600">{prompt.length}/500</span>
               </div>
             )}
           </div>
 
           {/* ── STRUCTURE ─────────────────────────────────────── */}
           <div className="pt-1 space-y-3">
-            <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest">Structure</p>
+            <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Structure</p>
 
             <FancySelect label="Style" required value={styleId} onChange={setStyleId}
               columns={2}
@@ -397,7 +397,7 @@ function GeneratePageInner() {
 
           {/* ── OUTPUT ────────────────────────────────────────── */}
           <div className="pt-1 space-y-3">
-            <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest">Output</p>
+            <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Output</p>
 
             <div className="grid grid-cols-2 gap-2.5">
               <FancySelect label="View" required value={view}
@@ -431,22 +431,22 @@ function GeneratePageInner() {
           </div>
 
           {/* ── ADVANCED ──────────────────────────────────────── */}
-          <div className="pt-3 border-t border-white/[0.06]">
+          <div className="pt-3 border-t border-[#263046]">
             <button onClick={() => setShowAdvanced(!showAdvanced)}
-              className="w-full flex items-center justify-between py-2 text-[10px] font-bold text-white/25 hover:text-white/50 transition-all duration-200 uppercase tracking-widest cursor-pointer">
+              className="w-full flex items-center justify-between py-2 text-[10px] font-bold text-slate-600 hover:text-slate-400 transition-all duration-200 uppercase tracking-widest cursor-pointer">
               Advanced
-              <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${showAdvanced ? "rotate-180 text-[#FF6B2C]" : ""}`} />
+              <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${showAdvanced ? "rotate-180 text-[#F97316]" : ""}`} />
             </button>
             {showAdvanced && (
               <div className="mt-3 space-y-3 animate-scale-in">
                 <div className="flex items-center gap-2.5">
-                  <label className="text-[10px] text-white/25 font-bold uppercase tracking-wider shrink-0">Seed</label>
+                  <label className="text-[10px] text-slate-600 font-bold uppercase tracking-wider shrink-0">Seed</label>
                   <input type="number" min={0} max={2147483647} placeholder="Random" value={seed}
                     onChange={(e) => { setSeed(e.target.value); seedRef.current = e.target.value; setSeedLocked(false); }}
-                    className="flex-1 px-3.5 py-3 rounded-xl bg-gradient-to-b from-[#171d28] to-[#141821] border-2 border-white/[0.08] text-[12px] text-white/70 outline-none focus:border-[#FF6B2C]/40 focus:shadow-[0_0_20px_rgba(255,107,44,0.1)] placeholder:text-white/20 hover:border-white/15 transition-all duration-200 shadow-[inset_0_1px_0_rgba(0,0,0,0.15)]" />
+                    className="flex-1 px-3.5 py-3 rounded-lg bg-[#182033] border border-[#263046] text-[12px] text-slate-300 outline-none focus:border-[#F97316]/40 focus:shadow-[0_0_12px_rgba(249,115,22,0.1)] placeholder:text-slate-600 hover:border-[#263046]/80 transition-all duration-200" />
                   {activeResult && (
                     <button onClick={handleLockSeed}
-                      className={`px-3 py-3 rounded-xl text-[11px] font-medium transition-all duration-200 cursor-pointer ${seedLocked ? "bg-gradient-to-r from-[#FF6B2C]/15 to-[#FF6B2C]/5 text-[#FF6B2C] border-2 border-[#FF6B2C]/25 shadow-[0_0_10px_rgba(255,107,44,0.08)]" : "text-white/25 hover:text-white/50 bg-gradient-to-b from-[#171d28] to-[#141821] border-2 border-white/[0.08] hover:border-white/15"}`}>
+                      className={`px-3 py-3 rounded-lg text-[11px] font-medium transition-all duration-200 cursor-pointer ${seedLocked ? "bg-[#F97316]/15 text-[#F97316] border border-[#F97316]/30 shadow-[0_0_8px_rgba(249,115,22,0.1)]" : "text-slate-600 hover:text-slate-400 bg-[#182033] border border-[#263046] hover:border-[#263046]/80"}`}>
                       {seedLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
                     </button>
                   )}
@@ -458,14 +458,14 @@ function GeneratePageInner() {
           {/* ── GENERATE ──────────────────────────────────────── */}
           <div className="pt-3">
             <Button onClick={handleGenerate} disabled={!isFormValid || isGenerating}
-              className="w-full h-14 text-[15px] font-bold rounded-xl sl-cta border border-[#ff9c75]/60 transition-all duration-200 shadow-[0_6px_20px_rgba(255,107,44,0.32),0_0_24px_rgba(255,107,44,0.18),inset_0_1px_0_rgba(255,255,255,0.24)] hover:shadow-[0_10px_30px_rgba(255,107,44,0.4),0_0_30px_rgba(255,107,44,0.22),inset_0_1px_0_rgba(255,255,255,0.24)] disabled:opacity-35 disabled:shadow-none disabled:hover:translate-y-0"
+              className="w-full h-14 text-[15px] font-bold rounded-md bg-[#F97316] hover:bg-[#FB923C] text-white border border-[#F97316]/40 transition-all duration-200 shadow-[0_4px_12px_rgba(249,115,22,0.25)] hover:shadow-[0_6px_16px_rgba(249,115,22,0.35)] disabled:opacity-35 disabled:shadow-none disabled:hover:translate-y-0"
               size="lg">
               {isGenerating
                 ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" />Generating…</>
                 : <>✦ Generate</>}
             </Button>
             {status === "error" && errorMessage && (
-              <div className="mt-3 p-3 rounded-xl border border-red-500/20 bg-gradient-to-r from-red-500/10 to-red-500/5 shadow-[0_0_15px_rgba(239,68,68,0.05)]">
+              <div className="mt-3 p-3 rounded-md border border-red-500/20 bg-red-500/5 shadow-[0_0_12px_rgba(239,68,68,0.05)]">
                 <p className="text-red-400 text-[11px] font-medium">{errorMessage}</p>
               </div>
             )}
@@ -479,7 +479,7 @@ function GeneratePageInner() {
       <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh] lg:min-h-screen p-4 lg:p-10">
 
         {/* Preview canvas */}
-        <div className="w-full max-w-[560px] aspect-square rounded-3xl border border-white/[0.1] bg-[#11151b] overflow-hidden relative shadow-[0_14px_46px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.04),0_0_42px_rgba(255,107,44,0.08)]"
+        <div className="w-full max-w-[560px] aspect-square rounded-lg border border-[#263046] bg-[#182033] overflow-hidden relative shadow-[0_8px_24px_rgba(0,0,0,0.3)]"
           style={activeBg.style as React.CSSProperties}>
 
           {activeResult && (
@@ -489,14 +489,14 @@ function GeneratePageInner() {
           )}
           {isGenerating && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
-              <div className="w-12 h-12 rounded-full border-2 border-[#FF6B2C]/10 border-t-[#FF6B2C] animate-spin" />
-              <p className="text-xs text-white/25 font-medium">Creating your asset…</p>
+              <div className="w-12 h-12 rounded-full border-2 border-[#F97316]/10 border-t-[#F97316] animate-spin" />
+              <p className="text-xs text-slate-500 font-medium">Creating your asset…</p>
             </div>
           )}
           {!activeResult && !isGenerating && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-5">
-              <div className="w-18 h-18 rounded-2xl bg-gradient-to-b from-white/[0.04] to-white/[0.01] border border-white/[0.06] flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.2)] animate-float">
-                <Sparkles className="w-7 h-7 text-[#FF6B2C]/20" />
+              <div className="w-18 h-18 rounded-lg bg-[#1A2235] border border-[#263046] flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.2)] animate-float">
+                <Sparkles className="w-7 h-7 text-[#F97316]/20" />
               </div>
               <div className="text-center">
                 <p className="text-sm font-semibold text-white/25">What will you create today?</p>

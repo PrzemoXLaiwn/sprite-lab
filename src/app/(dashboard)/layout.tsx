@@ -30,18 +30,18 @@ export default async function DashboardLayout({
   });
 
   return (
-    <div className="min-h-screen bg-[#0a0c10]">
+    <div className="min-h-screen bg-[#0B0F19]">
 
       {/* ═══ SIDEBAR — Desktop ═══════════════════════════════ */}
-      <aside className="hidden md:flex md:w-[220px] md:flex-col md:fixed md:inset-y-0 glass-sidebar">
+      <aside className="hidden md:flex md:w-[220px] md:flex-col md:fixed md:inset-y-0 sidebar-panel">
         <div className="flex flex-col flex-1 min-h-0">
 
           {/* Logo */}
-          <div className="flex items-center h-12 px-4 border-b border-white/5">
+          <div className="flex items-center h-12 px-4 border-b border-[#263046]">
             <Link href="/" className="flex items-center gap-2">
               <Image src="/logo.png" alt="SpriteLab" width={22} height={22} className="shrink-0" />
-              <span className="font-display font-bold text-[13px] tracking-tight text-white/80 whitespace-nowrap">
-                Sprite<span className="text-[#FF6B2C]">Lab</span>
+              <span className="font-display font-bold text-[13px] tracking-tight text-slate-200 whitespace-nowrap">
+                Sprite<span className="text-[#F97316]">Lab</span>
               </span>
             </Link>
           </div>
@@ -53,7 +53,7 @@ export default async function DashboardLayout({
           <div className="flex-1" />
 
           {/* Bottom — Credits + User */}
-          <div className="border-t border-white/5 p-3 space-y-2">
+          <div className="border-t border-[#263046] p-3 space-y-2">
             <CreditsDisplay />
             <UserPlanBadge email={user.email!} />
           </div>
@@ -64,7 +64,7 @@ export default async function DashboardLayout({
               <Button
                 variant="ghost"
                 size="sm"
-                className="w-full justify-start text-white/25 hover:text-white/60 hover:bg-white/4 rounded-lg h-8 text-[11px]"
+                className="w-full justify-start text-slate-500 hover:text-slate-300 hover:bg-slate-800/50 rounded-md h-8 text-[11px]"
                 type="submit"
               >
                 <LogOut className="w-3 h-3 mr-2" />
@@ -76,12 +76,12 @@ export default async function DashboardLayout({
       </aside>
 
       {/* ═══ MOBILE HEADER ═══════════════════════════════════ */}
-      <div className="md:hidden fixed top-0 left-0 right-0 h-12 border-b border-white/5 bg-[#0a0c10]/95 backdrop-blur-xl z-40">
+      <div className="md:hidden fixed top-0 left-0 right-0 h-12 border-b border-[#263046] bg-[#0B0F19]/95 backdrop-blur-sm z-40">
         <div className="flex items-center justify-between h-full px-4">
           <Link href="/" className="flex items-center gap-2">
             <Image src="/logo.png" alt="SpriteLab" width={22} height={22} />
             <span className="font-display font-bold text-[13px] tracking-tight">
-              Sprite<span className="text-[#FF6B2C]">Lab</span>
+              Sprite<span className="text-[#F97316]">Lab</span>
             </span>
           </Link>
           <MobileMenu
@@ -93,7 +93,7 @@ export default async function DashboardLayout({
       </div>
 
       {/* ═══ MOBILE BOTTOM NAV ═══════════════════════════════ */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 border-t border-white/5 bg-[#0d1017]/95 backdrop-blur-xl z-40 pb-[env(safe-area-inset-bottom)]">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 border-t border-[#263046] bg-[#121826]/95 backdrop-blur-sm z-40 pb-[env(safe-area-inset-bottom)]">
         <nav className="flex items-center justify-around h-12">
           {[
             { href: "/generate", label: "Create" },
@@ -102,7 +102,7 @@ export default async function DashboardLayout({
             { href: "/settings", label: "Settings" },
           ].map((item) => (
             <Link key={item.href} href={item.href}
-              className="flex flex-col items-center gap-0.5 py-1.5 px-3 text-white/30 hover:text-white/60 transition-colors">
+              className="flex flex-col items-center gap-0.5 py-1.5 px-3 text-slate-500 hover:text-slate-300 transition-colors">
               <span className="text-[10px] font-medium">{item.label}</span>
             </Link>
           ))}
@@ -111,7 +111,7 @@ export default async function DashboardLayout({
 
       {/* ═══ MAIN CONTENT ═══════════════════════════════════ */}
       <main className="md:pl-[220px] min-h-screen">
-        <div className="pt-12 md:pt-0 pb-16 md:pb-0">
+        <div className="pt-12 md:pt-0 pb-16 md:pb-0 bg-[#0B0F19]">
           {children}
         </div>
       </main>

@@ -1,29 +1,44 @@
-/* SpriteLab Global Styles — Rebrand v3.0 */
-/* Color system: #FF6B2C accent, #0a0c10 bg, #11151b surfaces */
+/* SpriteLab Global Styles — Premium Pixel-Art Indie Game Tool */
+/* Color system: #F97316 primary orange, #0B0F19 main bg, #182033 panel bg */
 @import "tailwindcss";
 
 @theme inline {
-  --color-background: #0a0c10;
-  --color-foreground: #e8e8ec;
-  --color-card: #11151b;
-  --color-card-foreground: #e8e8ec;
-  --color-popover: #11151b;
-  --color-popover-foreground: #e8e8ec;
-  --color-primary: #FF6B2C;
+  /* Main color system */
+  --color-background: #0B0F19;
+  --color-foreground: #F8FAFC;
+  --color-card: #182033;
+  --color-card-foreground: #F8FAFC;
+  --color-popover: #182033;
+  --color-popover-foreground: #F8FAFC;
+  --color-primary: #F97316;
   --color-primary-foreground: #ffffff;
-  --color-secondary: #1c2030;
-  --color-secondary-foreground: #e8e8ec;
-  --color-muted: #141821;
-  --color-muted-foreground: #7a7f8e;
-  --color-accent: #FF6B2C;
+  --color-secondary: #121826;
+  --color-secondary-foreground: #F8FAFC;
+  --color-muted: #1A2235;
+  --color-muted-foreground: #64748B;
+  --color-accent: #F97316;
   --color-accent-foreground: #ffffff;
   --color-destructive: #ef4444;
   --color-destructive-foreground: #ffffff;
-  --color-border: rgba(255, 255, 255, 0.06);
-  --color-input: #141821;
-  --color-ring: #FF6B2C;
-  --radius: 0.5rem;
-  --color-chart-1: #FF6B2C;
+  --color-border: #263046;
+  --color-input: #182033;
+  --color-ring: rgba(249, 115, 22, 0.45);
+  
+  /* Custom colors */
+  --sl-bg-main: #0B0F19;
+  --sl-bg-secondary: #121826;
+  --sl-bg-panel: #182033;
+  --sl-border: #263046;
+  --sl-orange-primary: #F97316;
+  --sl-orange-hover: #FB923C;
+  --sl-orange-glow: rgba(249, 115, 22, 0.18);
+  --sl-orange-border: rgba(249, 115, 22, 0.45);
+  --sl-text-primary: #F8FAFC;
+  --sl-text-secondary: #94A3B8;
+  --sl-text-muted: #64748B;
+  
+  --radius: 0.375rem;
+  --color-chart-1: #F97316;
   --color-chart-2: #3b82f6;
   --color-chart-3: #ef4444;
   --color-chart-4: #eab308;
@@ -260,24 +275,35 @@ select:-webkit-autofill {
   image-rendering: crisp-edges;
 }
 
-/* ── Premium glow & glass effects ────────────────────── */
+/* ── Premium Pixel-Art Tool Effects ────────────────────── */
 .glow-sm {
-  box-shadow: 0 0 10px rgba(255, 107, 44, 0.15),
-              0 0 20px rgba(255, 107, 44, 0.05);
+  box-shadow: 0 0 8px rgba(249, 115, 22, 0.12),
+              0 0 16px rgba(249, 115, 22, 0.04);
 }
 .glow-md {
-  box-shadow: 0 0 15px rgba(255, 107, 44, 0.2),
-              0 0 40px rgba(255, 107, 44, 0.08);
+  box-shadow: 0 0 12px rgba(249, 115, 22, 0.16),
+              0 0 32px rgba(249, 115, 22, 0.06);
 }
 .glow-lg {
-  box-shadow: 0 0 20px rgba(255, 107, 44, 0.3),
-              0 0 60px rgba(255, 107, 44, 0.1);
+  box-shadow: 0 0 16px rgba(249, 115, 22, 0.2),
+              0 0 48px rgba(249, 115, 22, 0.08);
 }
-.glass-surface {
-  background: linear-gradient(135deg, rgba(17, 21, 27, 0.9), rgba(20, 24, 33, 0.8));
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+.panel-surface {
+  background: var(--sl-bg-panel);
+  border: 1px solid var(--sl-border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+.panel-header {
+  background: var(--sl-bg-secondary);
+  border-bottom: 1px solid var(--sl-border);
+  padding: 0.75rem 1rem;
+}
+.panel-section {
+  padding: 1rem;
+  border-bottom: 1px solid var(--sl-border);
+}
+.panel-section:last-child {
+  border-bottom: none;
 }
 .shimmer-border {
   position: relative;
@@ -289,7 +315,7 @@ select:-webkit-autofill {
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(135deg, rgba(255, 107, 44, 0.3), transparent 40%, transparent 60%, rgba(139, 92, 246, 0.3));
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.3), transparent 40%, transparent 60%, rgba(139, 92, 246, 0.3));
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: exclude;
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -369,30 +395,31 @@ select:-webkit-autofill {
   background-size: 50px 50px;
 }
 
-/* ── Glassmorphism Sidebar ─────────────────────────── */
-.glass-sidebar {
-  background: linear-gradient(135deg, rgba(17, 21, 27, 0.85), rgba(20, 24, 33, 0.75));
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+/* ── Premium Pixel-Art Sidebar ─────────────────────────── */
+.sidebar-panel {
+  background: var(--sl-bg-secondary);
+  border-right: 1px solid var(--sl-border);
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
 }
-.glass-sidebar-item {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+.sidebar-nav-item {
+  background: transparent;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+  position: relative;
 }
-.glass-sidebar-item:hover {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
-  border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+.sidebar-nav-item:hover {
+  background: rgba(249, 115, 22, 0.06);
+  border-color: rgba(249, 115, 22, 0.12);
 }
-.glass-sidebar-item.active {
-  background: linear-gradient(135deg, rgba(255, 107, 44, 0.15), rgba(255, 107, 44, 0.08));
-  border-color: rgba(255, 107, 44, 0.3);
-  box-shadow: 0 4px 16px rgba(255, 107, 44, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+.sidebar-nav-item.active {
+  background: rgba(249, 115, 22, 0.1);
+  border-color: var(--sl-orange-border);
+  box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.08), inset 0 0 8px rgba(249, 115, 22, 0.04);
+}
+.sidebar-divider {
+  height: 1px;
+  background: var(--sl-border);
+  margin: 0.5rem 0;
 }
 
 /* ── Reduced motion ───────────────────────────────────── */
