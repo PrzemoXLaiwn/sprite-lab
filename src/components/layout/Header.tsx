@@ -21,6 +21,7 @@ export function Header() {
               width={32}
               height={32}
               className="group-hover:scale-110 transition-transform"
+              unoptimized
             />
             <span className="font-display font-bold text-lg tracking-tight hidden sm:block">
               Sprite<span className="text-primary">Lab</span>

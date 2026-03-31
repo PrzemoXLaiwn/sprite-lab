@@ -98,7 +98,7 @@ export function MobileMenu({ userEmail, userPlan = "FREE", userRole = "USER" }: 
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-white/10">
           <Link href="/" className="flex items-center gap-2" onClick={() => setIsOpen(false)}>
-            <Image src="/logo.png" alt="SpriteLab" width={28} height={28} />
+            <Image src="/logo.png" alt="SpriteLab" width={28} height={28} unoptimized />
             <span className="font-display font-bold">
               Sprite<span className="text-[#FF6B2C]">Lab</span>
             </span>

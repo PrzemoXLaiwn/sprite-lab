@@ -62,7 +62,7 @@ export default async function Home({
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0B0F19]/85 backdrop-blur-xl border-b border-white/[0.06]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
-            <Image src="/logo.png" alt="SpriteLab" width={28} height={28} priority />
+            <Image src="/logo.png" alt="SpriteLab" width={28} height={28} priority unoptimized />
             <span className="font-bold text-[16px] tracking-tight text-white/90">
               Sprite<span className="text-[#F97316]">Lab</span>
             </span>
@@ -455,7 +455,7 @@ export default async function Home({
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="flex flex-col items-center gap-8 md:flex-row md:justify-between">
             <div className="flex items-center gap-2.5">
-              <Image src="/logo.png" alt="SpriteLab" width={22} height={22} loading="lazy" />
+              <Image src="/logo.png" alt="SpriteLab" width={22} height={22} loading="lazy" unoptimized />
               <span className="font-bold text-sm tracking-tight">
                 Sprite<span className="text-[#F97316]">Lab</span>
               </span>

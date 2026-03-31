@@ -118,7 +118,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
           <Link href="/" className="flex items-center gap-2 group">
             <div className="relative">
               <div className="absolute inset-0 bg-[#FF6B2C]/30 rounded-lg blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
-              <Image src="/logo.png" alt="SpriteLab" width={32} height={32} className="relative" />
+              <Image src="/logo.png" alt="SpriteLab" width={32} height={32} className="relative" unoptimized />
             </div>
             <span className="font-display font-bold text-lg tracking-tight">
               Sprite<span className="text-[#FF6B2C]">Lab</span>

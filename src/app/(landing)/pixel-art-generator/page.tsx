@@ -89,7 +89,7 @@ export default function PixelArtGeneratorPage() {
         <div className="max-w-6xl mx-auto px-3 sm:px-4 relative z-10">
           {/* Logo */}
           <Link href="/" className="flex items-center justify-center gap-2 mb-5 sm:mb-8">
-            <Image src="/logo.png" alt="SpriteLab" width={40} height={40} />
+            <Image src="/logo.png" alt="SpriteLab" width={40} height={40} unoptimized />
             <span className="font-display font-bold text-2xl">
               Sprite<span className="text-[#FF6B2C]">Lab</span>
             </span>
@@ -228,7 +228,7 @@ export default function PixelArtGeneratorPage() {
       <footer className="py-8 border-t border-white/5">
         <div className="max-w-6xl mx-auto px-3 sm:px-4 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
           <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo.png" alt="SpriteLab" width={24} height={24} />
+            <Image src="/logo.png" alt="SpriteLab" width={24} height={24} unoptimized />
             <span className="font-display font-bold">
               Sprite<span className="text-[#FF6B2C]">Lab</span>
             </span>

@@ -39,7 +39,7 @@ export default async function DashboardLayout({
           {/* Logo */}
           <div className="flex items-center h-12 px-4 border-b border-[#263046]">
             <Link href="/" className="flex items-center gap-2">
-              <Image src="/logo.png" alt="SpriteLab" width={22} height={22} className="shrink-0" />
+              <Image src="/logo.png" alt="SpriteLab" width={22} height={22} className="shrink-0" unoptimized />
               <span className="font-display font-bold text-[13px] tracking-tight text-slate-200 whitespace-nowrap">
                 Sprite<span className="text-[#F97316]">Lab</span>
               </span>
@@ -79,7 +79,7 @@ export default async function DashboardLayout({
       <div className="md:hidden fixed top-0 left-0 right-0 h-12 border-b border-[#263046] bg-[#0B0F19]/95 backdrop-blur-sm z-40">
         <div className="flex items-center justify-between h-full px-4">
           <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo.png" alt="SpriteLab" width={22} height={22} />
+            <Image src="/logo.png" alt="SpriteLab" width={22} height={22} unoptimized />
             <span className="font-display font-bold text-[13px] tracking-tight">
               Sprite<span className="text-[#F97316]">Lab</span>
             </span>

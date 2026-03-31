@@ -86,7 +86,7 @@ export default function ResetPasswordPage() {
         <Link href="/" className="flex items-center justify-center gap-2 mb-8 group">
           <div className="relative">
             <div className="absolute inset-0 bg-[#FF6B2C]/30 rounded-lg blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
-            <Image src="/logo.png" alt="SpriteLab" width={40} height={40} className="relative" />
+            <Image src="/logo.png" alt="SpriteLab" width={40} height={40} className="relative" unoptimized />
           </div>
           <span className="font-display font-bold text-2xl tracking-tight">
             Sprite<span className="text-[#FF6B2C]">Lab</span>

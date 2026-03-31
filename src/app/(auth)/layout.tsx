@@ -46,6 +46,7 @@ export default function AuthLayout({
                 width={48}
                 height={48}
                 className="relative"
+                unoptimized
               />
             </div>
             <span className="font-display text-2xl font-bold tracking-tight">
@@ -114,6 +115,7 @@ export default function AuthLayout({
                   width={40}
                   height={40}
                   className="relative"
+                  unoptimized
                 />
               </div>
               <span className="font-display text-xl font-bold tracking-tight">

@@ -15,6 +15,7 @@ export function Footer() {
                 alt="SpriteLab"
                 width={32}
                 height={32}
+                unoptimized
               />
               <span className="font-display font-bold text-lg tracking-tight">
                 Sprite<span className="text-primary">Lab</span>

@@ -479,7 +479,7 @@ function GeneratePageInner() {
       <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh] lg:min-h-screen p-4 lg:p-10 relative overflow-hidden">
         {/* Animated logo background watermark */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <img src="/logo-animated.gif" alt="" aria-hidden="true" className="w-[600px] h-[600px] object-contain opacity-[0.04] select-none" />
+          <img src="/logo-animated.gif" alt="" aria-hidden="true" className="w-[700px] h-[700px] object-contain opacity-[0.08] select-none" />
         </div>
 
         {/* Preview canvas */}
