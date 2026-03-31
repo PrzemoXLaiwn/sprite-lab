@@ -33,7 +33,7 @@ export default async function DashboardLayout({
     <div className="min-h-screen bg-[#0a0c10]">
 
       {/* ═══ SIDEBAR — Desktop ═══════════════════════════════ */}
-      <aside className="hidden md:flex md:w-[220px] md:flex-col md:fixed md:inset-y-0 border-r border-white/5 bg-[#0d1017]">
+      <aside className="hidden md:flex md:w-[220px] md:flex-col md:fixed md:inset-y-0 glass-sidebar">
         <div className="flex flex-col flex-1 min-h-0">
 
           {/* Logo */}
