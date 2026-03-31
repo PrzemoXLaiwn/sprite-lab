@@ -20,46 +20,46 @@ export const ISOMETRIC_BOOST = {
 // UNIVERSAL NEGATIVES (for all game assets)
 // ===========================================
 export const UNIVERSAL_NEGATIVES = {
-  // Background and context issues
-  background: "complex background, detailed background, scenery, landscape, environment scene, room interior, outdoor setting, contextual background, sky, ground, floor, walls, furniture in background, decorative background elements",
+  // Background and context issues - STRENGTHENED
+  background: "((complex background)), ((detailed background)), ((scenery)), ((landscape)), ((environment scene)), ((room interior)), ((outdoor setting)), ((contextual background)), ((sky)), ((ground)), ((floor)), ((walls)), ((furniture in background)), ((decorative background elements))",
 
   // Multiple objects issues - CRITICAL for preventing sprite sheets
   multiObject: "multiple objects, many items, collection set, group of items, pile of items, stack of objects, scattered objects, several pieces, duplicate items, repeated objects, array of items, sprite sheet, spritesheet, sprite grid, animation frames, animation sheet, frame sequence, multiple frames, item collection, weapon collection, weapon set, armor set, item set, grid of items, items grid, multiple weapons, multiple swords, multiple axes, many swords, sword collection, variety of weapons, assortment, asset pack, icon pack, icon set, tileset of items",
   
-  // Context of use issues
-  context: "character holding, hand holding, person using, worn by character, equipped on body, in use, action scene, combat scene, character interaction, being wielded, mounted on character",
+  // Context of use issues - STRENGTHENED
+  context: "((character holding)), ((hand holding)), ((person using)), ((worn by character)), ((equipped on body)), ((in use)), ((action scene)), ((combat scene)), ((character interaction)), ((being wielded)), ((mounted on character))",
   
-  // UI and frame issues
-  ui: "UI frame, interface border, game HUD overlay, health bar, menu overlay, button element, text overlay, watermark, logo, copyright mark, game interface elements",
+  // UI and frame issues - STRENGTHENED
+  ui: "((UI frame)), ((interface border)), ((game HUD overlay)), ((health bar)), ((menu overlay)), ((button element)), ((text overlay)), ((watermark)), ((logo)), ((copyright mark)), ((game interface elements))",
   
-  // Quality issues
-  quality: "low resolution, blurry, noisy, jpeg artifacts, compression artifacts, grainy, poor quality, low detail, pixelated (for non-pixel styles), fuzzy, out of focus",
+  // Quality issues - STRENGTHENED
+  quality: "((low resolution)), ((blurry)), ((noisy)), ((jpeg artifacts)), ((compression artifacts)), ((grainy)), ((poor quality)), ((low detail)), ((pixelated (for non-pixel styles))), ((fuzzy)), ((out of focus))",
   
-  // Composition issues
-  composition: "cropped, cut off, partial view, incomplete object, edge of frame, zoomed too close, zoomed too far, off-center badly, awkward framing, poor composition",
+  // Composition issues - STRENGTHENED
+  composition: "((cropped)), ((cut off)), ((partial view)), ((incomplete object)), ((edge of frame)), ((zoomed too close)), ((zoomed too far)), ((off-center badly)), ((awkward framing)), ((poor composition))",
   
-  // Technical issues
-  technical: "wrong aspect ratio, distorted proportions, stretched, squashed, warped, deformed, malformed, broken geometry, glitched",
+  // Technical issues - STRENGTHENED
+  technical: "((wrong aspect ratio)), ((distorted proportions)), ((stretched)), ((squashed)), ((warped)), ((deformed)), ((malformed)), ((broken geometry)), ((glitched))",
   
-  // Unwanted content
-  wrongContent: "text, letters, numbers, words, labels, signs, writing, typography, captions, subtitles, watermark text",
+  // Unwanted content - STRENGTHENED
+  wrongContent: "((text)), ((letters)), ((numbers)), ((words)), ((labels)), ((signs)), ((writing)), ((typography)), ((captions)), ((subtitles)), ((watermark text))",
   
-  // Body parts (critical for equipment/armor)
-  bodyParts: "human body, person, face, head, hands, arms, legs, torso, skin, body parts visible, mannequin, human figure, character body, neck, shoulders with body, fingers, eyes, mouth, nose",
+  // Body parts (critical for equipment/armor) - STRENGTHENED
+  bodyParts: "((human body)), ((person)), ((face)), ((head)), ((hands)), ((arms)), ((legs)), ((torso)), ((skin)), ((body parts visible)), ((mannequin)), ((human figure)), ((character body)), ((neck)), ((shoulders with body)), ((fingers)), ((eyes)), ((mouth)), ((nose))",
 };
 
 // ===========================================
 // PIXEL ART SPECIFIC NEGATIVES
 // ===========================================
 export const PIXEL_ART_NEGATIVES = {
-  // Anti-smooth enforcement
-  antiSmooth: "smooth rendering, soft edges, gradient shading, anti-aliased, anti-aliasing, blurred edges, soft focus, smooth gradients, airbrush effect, soft brush strokes, feathered edges, smooth transitions",
+  // Anti-smooth enforcement - STRENGTHENED
+  antiSmooth: "((smooth rendering)), ((soft edges)), ((gradient shading)), ((anti-aliased)), ((anti-aliasing)), ((blurred edges)), ((soft focus)), ((smooth gradients)), ((airbrush effect)), ((soft brush strokes)), ((feathered edges)), ((smooth transitions))",
   
-  // Wrong style prevention
-  wrongStyle: "photorealistic, realistic rendering, oil painting, watercolor, digital painting, 3D render, high detail photo, modern digital art, vector art, illustration, concept art, hand-painted",
+  // Wrong style prevention - STRENGTHENED
+  wrongStyle: "((photorealistic)), ((realistic rendering)), ((oil painting)), ((watercolor)), ((digital painting)), ((3D render)), ((high detail photo)), ((modern digital art)), ((vector art)), ((illustration)), ((concept art)), ((hand-painted))",
   
-  // Wrong technique prevention
-  wrongTechnique: "smooth shading, realistic lighting, complex shadows, soft lighting, ambient occlusion, ray tracing, subsurface scattering, global illumination, realistic materials",
+  // Wrong technique prevention - STRENGTHENED
+  wrongTechnique: "((smooth shading)), ((realistic lighting)), ((complex shadows)), ((soft lighting)), ((ambient occlusion)), ((ray tracing)), ((subsurface scattering)), ((global illumination)), ((realistic materials))",
 };
 
 // ===========================================
