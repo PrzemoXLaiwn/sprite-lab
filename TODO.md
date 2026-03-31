@@ -5,6 +5,12 @@
 - [x] Upgrade shared UI primitives (`src/components/ui/button.tsx`, `src/components/ui/input.tsx`)
 - [x] Polish generator select UX in `src/components/generate/FancySelect.tsx`
 - [ ] Refine generator page UI + robustness guards in `src/app/(dashboard)/generate/page.tsx`
-- [ ] (If needed for consistency) align `ResultPanel` / `SessionHistory` visual language
+  - [ ] Stronger layered page background
+  - [ ] More vivid/professional sidebar visuals
+  - [ ] Stronger Generate CTA prominence
+  - [ ] Better preview card showcase styling
+- [ ] Boost FancySelect active/hover typography polish
+- [ ] Add generator atmosphere utility classes in `src/app/globals.css`
+- [ ] Tune generator-oriented button variants for stronger contrast
 - [ ] Run lint/type validation
 - [ ] Final sanity summary

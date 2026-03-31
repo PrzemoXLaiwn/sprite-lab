@@ -314,18 +314,18 @@ function GeneratePageInner() {
   );
 
   return (
-    <div className="min-h-screen bg-[#0a0c10] flex flex-col lg:flex-row">
+    <div className="min-h-screen sl-atmo-bg flex flex-col lg:flex-row">
 
       {/* ═══════════════════════════════════════════════════════════
           LEFT PANEL — Controls (fixed width, scrollable)
       ═══════════════════════════════════════════════════════════ */}
-      <div className="w-full lg:w-[320px] xl:w-[340px] lg:h-screen lg:overflow-y-auto lg:border-r border-white/[0.06] bg-gradient-to-b from-[#0f1318] to-[#0a0c10] shrink-0">
-        <div className="p-5 pb-8 space-y-6">
+      <div className="w-full lg:w-[320px] xl:w-[340px] lg:h-screen lg:overflow-y-auto lg:border-r border-white/[0.08] sl-panel-vivid sl-sidebar-sheen shrink-0">
+        <div className="p-5 pb-8 space-y-6 relative z-10">
 
           {/* Panel header */}
-          <div className="flex items-center justify-between pb-4 border-b border-white/[0.06]">
-            <h2 className="text-[15px] font-bold text-white/95 tracking-tight">New Asset</h2>
-            <span className="text-[11px] text-[#FF6B2C] bg-gradient-to-r from-[#FF6B2C]/15 to-[#FF6B2C]/5 px-3.5 py-1 rounded-full font-semibold border border-[#FF6B2C]/20 shadow-[0_0_8px_rgba(255,107,44,0.08)]">1 credit</span>
+          <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
+            <h2 className="text-[16px] font-bold text-white tracking-tight drop-shadow-[0_1px_8px_rgba(255,255,255,0.08)]">New Asset</h2>
+            <span className="text-[11px] text-[#ffd8c7] bg-gradient-to-r from-[#FF6B2C]/35 to-[#ff8e5f]/25 px-3.5 py-1 rounded-full font-semibold border border-[#FF6B2C]/45 shadow-[0_0_14px_rgba(255,107,44,0.2)]">1 credit</span>
           </div>
 
           {/* ── PROMPT ────────────────────────────────────────── */}
@@ -458,7 +458,7 @@ function GeneratePageInner() {
           {/* ── GENERATE ──────────────────────────────────────── */}
           <div className="pt-3">
             <Button onClick={handleGenerate} disabled={!isFormValid || isGenerating}
-              className="w-full h-14 text-[15px] font-bold rounded-xl bg-gradient-to-b from-[#FF6B2C] to-[#e55a1f] text-white border-0 transition-all duration-200 shadow-[0_4px_16px_rgba(255,107,44,0.25),inset_0_1px_0_rgba(255,255,255,0.2)] hover:shadow-[0_6px_24px_rgba(255,107,44,0.35),inset_0_1px_0_rgba(255,255,255,0.2)] hover:from-[#ff7a42] hover:to-[#FF6B2C] hover:-translate-y-0.5 active:translate-y-0 active:shadow-[0_2px_8px_rgba(255,107,44,0.2)] disabled:opacity-30 disabled:shadow-none disabled:hover:translate-y-0 disabled:from-[#FF6B2C] disabled:to-[#e55a1f]"
+              className="w-full h-14 text-[15px] font-bold rounded-xl sl-cta border border-[#ff9c75]/60 transition-all duration-200 shadow-[0_6px_20px_rgba(255,107,44,0.32),0_0_24px_rgba(255,107,44,0.18),inset_0_1px_0_rgba(255,255,255,0.24)] hover:shadow-[0_10px_30px_rgba(255,107,44,0.4),0_0_30px_rgba(255,107,44,0.22),inset_0_1px_0_rgba(255,255,255,0.24)] disabled:opacity-35 disabled:shadow-none disabled:hover:translate-y-0"
               size="lg">
               {isGenerating
                 ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" />Generating…</>
@@ -479,7 +479,7 @@ function GeneratePageInner() {
       <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh] lg:min-h-screen p-4 lg:p-10">
 
         {/* Preview canvas */}
-        <div className="w-full max-w-[540px] aspect-square rounded-2xl border border-white/[0.06] bg-[#11151b] overflow-hidden relative shadow-[0_8px_32px_rgba(0,0,0,0.4),0_0_0_1px_rgba(255,255,255,0.03)]"
+        <div className="w-full max-w-[560px] aspect-square rounded-3xl border border-white/[0.1] bg-[#11151b] overflow-hidden relative shadow-[0_14px_46px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.04),0_0_42px_rgba(255,107,44,0.08)]"
           style={activeBg.style as React.CSSProperties}>
 
           {activeResult && (

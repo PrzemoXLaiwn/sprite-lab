@@ -178,6 +178,58 @@
   transform: translateY(0);
 }
 
+.sl-atmo-bg {
+  position: relative;
+  isolation: isolate;
+}
+.sl-atmo-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(90% 65% at 8% 10%, rgba(255, 107, 44, 0.13) 0%, rgba(255, 107, 44, 0) 65%),
+    radial-gradient(75% 55% at 90% 12%, rgba(14, 165, 233, 0.1) 0%, rgba(14, 165, 233, 0) 66%),
+    linear-gradient(180deg, #0e1118 0%, #090b10 100%);
+}
+.sl-atmo-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(55% 70% at 48% 50%, transparent 50%, rgba(0,0,0,0.35) 100%);
+}
+
+.sl-panel-vivid {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 28%),
+    linear-gradient(180deg, #111722 0%, #0c1018 100%);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    0 16px 40px rgba(0,0,0,0.42),
+    0 0 35px rgba(255,107,44,0.08);
+}
+
+.sl-sidebar-sheen {
+  position: relative;
+  overflow: hidden;
+}
+.sl-sidebar-sheen::before {
+  content: "";
+  position: absolute;
+  top: -80px;
+  left: -120px;
+  width: 260px;
+  height: 260px;
+  border-radius: 9999px;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(255,107,44,0.16) 0%, rgba(255,107,44,0) 72%);
+}
+
 /* Inputs + Textareas */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
