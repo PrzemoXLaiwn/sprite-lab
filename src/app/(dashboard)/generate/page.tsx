@@ -476,7 +476,11 @@ function GeneratePageInner() {
       {/* ═══════════════════════════════════════════════════════════
           CENTER — Preview area (flexible)
       ═══════════════════════════════════════════════════════════ */}
-      <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh] lg:min-h-screen p-4 lg:p-10">
+      <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh] lg:min-h-screen p-4 lg:p-10 relative overflow-hidden">
+        {/* Animated logo background watermark */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <img src="/logo-animated.gif" alt="" aria-hidden="true" className="w-[600px] h-[600px] object-contain opacity-[0.04] select-none" />
+        </div>
 
         {/* Preview canvas */}
         <div className="w-full max-w-[560px] aspect-square rounded-lg border border-[#263046] bg-[#182033] overflow-hidden relative shadow-[0_8px_24px_rgba(0,0,0,0.3)]"
