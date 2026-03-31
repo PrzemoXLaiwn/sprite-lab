@@ -109,6 +109,86 @@
 .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
 
 /* ── Utility classes ──────────────────────────────────── */
+
+/* Premium generator tokens */
+:root {
+  --sl-panel: #11151b;
+  --sl-panel-2: #141821;
+  --sl-stroke: rgba(255, 255, 255, 0.08);
+  --sl-stroke-strong: rgba(255, 255, 255, 0.14);
+  --sl-soft-text: rgba(255, 255, 255, 0.62);
+  --sl-dim-text: rgba(255, 255, 255, 0.32);
+  --sl-focus: rgba(255, 107, 44, 0.38);
+  --sl-focus-ring: 0 0 0 3px rgba(255, 107, 44, 0.14), 0 0 24px rgba(255, 107, 44, 0.1);
+  --sl-panel-shadow: 0 10px 35px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.sl-surface {
+  background: linear-gradient(180deg, var(--sl-panel) 0%, var(--sl-panel-2) 100%);
+  border: 1px solid var(--sl-stroke);
+  box-shadow: var(--sl-panel-shadow);
+}
+
+.sl-interactive {
+  border: 1px solid var(--sl-stroke);
+  transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+.sl-interactive:hover {
+  border-color: var(--sl-stroke-strong);
+}
+.sl-interactive:focus-visible {
+  outline: none;
+  border-color: var(--sl-focus);
+  box-shadow: var(--sl-focus-ring);
+}
+
+.sl-noise::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: radial-gradient(circle at 20% 20%, #fff 0.5px, transparent 0.5px);
+  background-size: 4px 4px;
+}
+
+.sl-premium-ring {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 8px 24px rgba(0, 0, 0, 0.38),
+    0 0 28px rgba(255, 107, 44, 0.07);
+}
+
+.sl-cta {
+  background: linear-gradient(180deg, #ff7a42 0%, #ff6b2c 40%, #e55a1f 100%);
+  color: #fff;
+  border: 1px solid rgba(255, 137, 88, 0.55);
+  box-shadow:
+    0 4px 18px rgba(255, 107, 44, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+.sl-cta:hover {
+  filter: brightness(1.04);
+  transform: translateY(-1px);
+  box-shadow:
+    0 8px 24px rgba(255, 107, 44, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+.sl-cta:active {
+  transform: translateY(0);
+}
+
+/* Inputs + Textareas */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: #e8e8ec;
+  -webkit-box-shadow: 0 0 0px 1000px #141821 inset;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
 .skeleton {
   background: linear-gradient(90deg, #141821 0%, #1c2030 50%, #141821 100%);
   background-size: 200% 100%;

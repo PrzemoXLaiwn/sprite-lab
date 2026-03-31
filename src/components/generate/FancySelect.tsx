@@ -54,6 +54,7 @@ export function FancySelect({
               rounded-xl text-left text-[13px] font-medium
               transition-all duration-200 cursor-pointer
               shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B2C]/40
               ${open
                 ? "bg-[#1a2030] border-2 border-[#FF6B2C]/40 shadow-[0_0_20px_rgba(255,107,44,0.1),inset_0_1px_0_rgba(255,255,255,0.05)]"
                 : "bg-gradient-to-b from-[#171d28] to-[#141821] border-2 border-white/[0.08] hover:border-white/15 hover:from-[#1a2030] hover:to-[#161c26] hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)]"
@@ -82,7 +83,7 @@ export function FancySelect({
         </PopoverTrigger>
 
         <PopoverContent
-          className="p-1.5 bg-gradient-to-b from-[#1a2030] to-[#141821] border-2 border-white/[0.08] rounded-xl shadow-[0_16px_48px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.03)] backdrop-blur-xl w-(--radix-popover-trigger-width)"
+          className="p-1.5 bg-gradient-to-b from-[#1a2030] to-[#141821] border-2 border-white/[0.08] rounded-xl shadow-[0_16px_48px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.03)] backdrop-blur-xl w-(--radix-popover-trigger-width) sl-premium-ring"
           align="start"
           sideOffset={6}
         >
@@ -103,6 +104,7 @@ export function FancySelect({
                   className={`
                     w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left
                     transition-all duration-150 cursor-pointer
+                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B2C]/40
                     ${isActive
                       ? "bg-gradient-to-r from-[#FF6B2C]/15 to-[#FF6B2C]/5 border border-[#FF6B2C]/25 shadow-[inset_0_1px_0_rgba(255,107,44,0.1)]"
                       : "border border-transparent hover:bg-white/[0.06] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"

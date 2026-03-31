@@ -22,6 +22,12 @@ const buttonVariants = cva(
           "text-primary underline-offset-4 hover:underline hover:text-[#ff7a42]",
         premium:
           "bg-gradient-to-r from-primary via-[#ff7a42] to-[#f59e0b] text-white shadow-[0_2px_12px_rgba(255,107,44,0.3),inset_0_1px_0_rgba(255,255,255,0.2)] hover:shadow-[0_4px_20px_rgba(255,107,44,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] hover:-translate-y-0.5 hover:brightness-110",
+        neo:
+          "sl-cta rounded-xl text-white",
+        subtle:
+          "bg-gradient-to-b from-[#171d28] to-[#141821] border border-white/[0.08] text-white/80 hover:text-white hover:border-white/[0.14] hover:shadow-[0_6px_16px_rgba(0,0,0,0.25)]",
+        glass:
+          "backdrop-blur-md bg-white/[0.03] border border-white/[0.1] text-white/80 hover:text-white hover:bg-white/[0.07] hover:border-white/[0.16]",
       },
       size: {
         default: "h-10 px-5 py-2",
