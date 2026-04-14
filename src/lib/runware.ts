@@ -133,7 +133,36 @@ export interface GeneratedImage {
   cost: number;
 }
 
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 1500;
+
 export async function generateImage(
+  options: GenerateImageOptions,
+  userTier: UserTier = "free"
+): Promise<{ success: boolean; images?: GeneratedImage[]; error?: string }> {
+  let lastError = "";
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    if (attempt > 0) {
+      console.log(`[Runware] Retry ${attempt}/${MAX_RETRIES} after ${RETRY_DELAY_MS}ms...`);
+      resetRunwareConnection(); // Fresh connection for retry
+      await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+    }
+
+    const result = await generateImageOnce(options, userTier);
+    if (result.success) return result;
+
+    lastError = result.error || "Unknown error";
+    // Only retry on network/connection errors, not validation errors
+    if (lastError.includes("validation") || lastError.includes("Invalid") || lastError.includes("not allowed")) {
+      return result; // Don't retry validation errors
+    }
+  }
+
+  return { success: false, error: `Failed after ${MAX_RETRIES + 1} attempts: ${lastError}` };
+}
+
+async function generateImageOnce(
   options: GenerateImageOptions,
   userTier: UserTier = "free"
 ): Promise<{ success: boolean; images?: GeneratedImage[]; error?: string }> {
@@ -178,8 +207,8 @@ export async function generateImage(
     console.log(`[Runware] Preview: ${safePrompt.substring(0, 80)}...`);
 
     // FLUX-optimized defaults: guidance 2-4, steps 20-28
-    // Note: Runware API does not support negativePrompt parameter
-    const result = await runware.imageInference({
+    // Runware SDK supports negativePrompt for FLUX models
+    const inferenceParams: Record<string, unknown> = {
       positivePrompt: safePrompt,
       model: modelAIR,
       width: options.width || 1024,
@@ -190,7 +219,21 @@ export async function generateImage(
       numberResults: options.numberOfImages || 1,
       outputType: "URL",
       outputFormat: "PNG",
-    });
+    };
+
+    // Add negative prompt if provided - helps FLUX avoid unwanted elements
+    if (options.negativePrompt) {
+      // Limit negative prompt to 150 words (FLUX handles long negatives)
+      let safeNegative = options.negativePrompt;
+      const negWords = safeNegative.split(/\s+/);
+      if (negWords.length > 150) {
+        safeNegative = negWords.slice(0, 150).join(" ");
+      }
+      inferenceParams.negativePrompt = safeNegative;
+      console.log(`[Runware] Negative: ${negWords.length} words`);
+    }
+
+    const result = await runware.imageInference(inferenceParams as Parameters<typeof runware.imageInference>[0]);
 
     if (!result || result.length === 0) {
       return { success: false, error: "No images generated" };

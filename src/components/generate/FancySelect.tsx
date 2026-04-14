@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import {
   Popover,
@@ -34,21 +34,104 @@ export function FancySelect({
   onChange,
   options,
   columns = 1,
-  placeholder = "Select…",
+  placeholder = "Select\u2026",
 }: FancySelectProps) {
   const [open, setOpen] = useState(false);
+  const [focusIndex, setFocusIndex] = useState(-1);
+  const listRef = useRef<HTMLDivElement>(null);
   const selected = options.find((o) => o.id === value);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (!open) {
+      if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        setOpen(true);
+        setFocusIndex(options.findIndex(o => o.id === value));
+      }
+      return;
+    }
+
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        setFocusIndex(prev => {
+          const next = prev < options.length - 1 ? prev + 1 : 0;
+          scrollToIndex(next);
+          return next;
+        });
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        setFocusIndex(prev => {
+          const next = prev > 0 ? prev - 1 : options.length - 1;
+          scrollToIndex(next);
+          return next;
+        });
+        break;
+      case "Enter":
+      case " ":
+        e.preventDefault();
+        if (focusIndex >= 0 && focusIndex < options.length) {
+          onChange(options[focusIndex].id);
+          setOpen(false);
+        }
+        break;
+      case "Escape":
+        e.preventDefault();
+        setOpen(false);
+        break;
+      case "Home":
+        e.preventDefault();
+        setFocusIndex(0);
+        scrollToIndex(0);
+        break;
+      case "End":
+        e.preventDefault();
+        setFocusIndex(options.length - 1);
+        scrollToIndex(options.length - 1);
+        break;
+      default: {
+        // Type-ahead: jump to first option starting with typed character
+        const char = e.key.toLowerCase();
+        if (char.length === 1) {
+          const idx = options.findIndex(o => o.label.toLowerCase().startsWith(char));
+          if (idx >= 0) {
+            setFocusIndex(idx);
+            scrollToIndex(idx);
+          }
+        }
+      }
+    }
+  }, [open, focusIndex, options, value, onChange]);
+
+  const scrollToIndex = (index: number) => {
+    if (!listRef.current) return;
+    const items = listRef.current.querySelectorAll("[data-option]");
+    items[index]?.scrollIntoView({ block: "nearest" });
+  };
+
+  const selectId = `fancy-select-${label.toLowerCase().replace(/\s+/g, "-")}`;
+  const listboxId = `${selectId}-listbox`;
 
   return (
     <div>
-      <label className="block text-[10px] font-bold text-white/30 uppercase tracking-widest mb-2">
+      <label id={`${selectId}-label`} className="block text-[10px] font-bold text-white/30 uppercase tracking-widest mb-2">
         {label}
         {required && <span className="text-[#FF6B2C] ml-0.5">*</span>}
       </label>
 
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover open={open} onOpenChange={(isOpen) => {
+        setOpen(isOpen);
+        if (isOpen) setFocusIndex(options.findIndex(o => o.id === value));
+      }}>
         <PopoverTrigger asChild>
           <button
+            role="combobox"
+            aria-expanded={open}
+            aria-haspopup="listbox"
+            aria-controls={listboxId}
+            aria-labelledby={`${selectId}-label`}
+            onKeyDown={handleKeyDown}
             className={`
               w-full flex items-center justify-between gap-2 px-3.5 py-3
               rounded-xl text-left text-[13px] font-medium
@@ -83,31 +166,45 @@ export function FancySelect({
         </PopoverTrigger>
 
         <PopoverContent
-          className="p-1.5 bg-gradient-to-b from-[#1a2030] to-[#141821] border-2 border-white/[0.08] rounded-xl shadow-[0_16px_48px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.03)] backdrop-blur-xl w-(--radix-popover-trigger-width) sl-premium-ring"
+          className="p-1.5 bg-gradient-to-b from-[#1a2030] to-[#141821] border-2 border-white/[0.08] rounded-xl shadow-[0_16px_48px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.03)] backdrop-blur-xl w-(--radix-popover-trigger-width)"
           align="start"
           sideOffset={6}
+          onKeyDown={handleKeyDown}
         >
-          <div className={`
-            ${columns === 2 ? "grid grid-cols-2 gap-1" : ""}
-            ${columns === 3 ? "grid grid-cols-3 gap-1" : ""}
-            ${columns === 1 ? "space-y-0.5" : ""}
-            max-h-[300px] overflow-y-auto overscroll-contain
-          `}>
-            {options.map((option) => {
+          <div
+            ref={listRef}
+            role="listbox"
+            id={listboxId}
+            aria-labelledby={`${selectId}-label`}
+            className={`
+              ${columns === 2 ? "grid grid-cols-2 gap-1" : ""}
+              ${columns === 3 ? "grid grid-cols-3 gap-1" : ""}
+              ${columns === 1 ? "space-y-0.5" : ""}
+              max-h-[320px] overflow-y-auto overscroll-contain scrollbar-thin
+            `}
+          >
+            {options.map((option, index) => {
               const isActive = option.id === value;
+              const isFocused = index === focusIndex;
               const Icon = option.icon;
 
               return (
                 <button
                   key={option.id}
+                  role="option"
+                  aria-selected={isActive}
+                  data-option
                   onClick={() => { onChange(option.id); setOpen(false); }}
+                  onMouseEnter={() => setFocusIndex(index)}
                   className={`
                     w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left
                     transition-all duration-150 cursor-pointer
                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B2C]/40
                     ${isActive
                       ? "bg-gradient-to-r from-[#FF6B2C]/15 to-[#FF6B2C]/5 border border-[#FF6B2C]/25 shadow-[inset_0_1px_0_rgba(255,107,44,0.1)]"
-                      : "border border-transparent hover:bg-white/[0.06] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+                      : isFocused
+                        ? "bg-white/[0.08] border border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+                        : "border border-transparent hover:bg-white/[0.06] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
                     }
                   `}
                 >

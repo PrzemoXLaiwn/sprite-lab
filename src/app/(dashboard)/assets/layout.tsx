@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { GalleryErrorBoundary } from "@/components/ErrorBoundary";
 
 export const metadata: Metadata = {
   title: "My Assets - SpriteLab | Your Generated Game Assets",
@@ -20,5 +21,5 @@ export default function AssetsLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return <GalleryErrorBoundary>{children}</GalleryErrorBoundary>;
 }

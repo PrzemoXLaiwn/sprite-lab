@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { LogOut } from "lucide-react";
+import { LogOut, Sparkles, Image as ImageIcon, FolderOpen, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreditsDisplay } from "@/components/dashboard/CreditsDisplay";
 import { UserPlanBadge } from "@/components/dashboard/UserPlanBadge";
@@ -94,16 +94,17 @@ export default async function DashboardLayout({
 
       {/* ═══ MOBILE BOTTOM NAV ═══════════════════════════════ */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 border-t border-[#263046] bg-[#121826]/95 backdrop-blur-sm z-40 pb-[env(safe-area-inset-bottom)]">
-        <nav className="flex items-center justify-around h-12">
+        <nav className="flex items-center justify-around h-14">
           {[
-            { href: "/generate", label: "Create" },
-            { href: "/assets", label: "Assets" },
-            { href: "/projects", label: "Projects" },
-            { href: "/settings", label: "Settings" },
+            { href: "/generate", label: "Create", icon: Sparkles },
+            { href: "/assets", label: "Assets", icon: ImageIcon },
+            { href: "/projects", label: "Projects", icon: FolderOpen },
+            { href: "/settings", label: "Settings", icon: Settings },
           ].map((item) => (
             <Link key={item.href} href={item.href}
-              className="flex flex-col items-center gap-0.5 py-1.5 px-3 text-slate-500 hover:text-slate-300 transition-colors">
-              <span className="text-[10px] font-medium">{item.label}</span>
+              className="flex flex-col items-center gap-1 py-2 px-4 text-slate-500 hover:text-[#F97316] transition-colors group">
+              <item.icon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              <span className="text-[9px] font-semibold uppercase tracking-wider">{item.label}</span>
             </Link>
           ))}
         </nav>
@@ -111,7 +112,7 @@ export default async function DashboardLayout({
 
       {/* ═══ MAIN CONTENT ═══════════════════════════════════ */}
       <main className="md:pl-[220px] min-h-screen">
-        <div className="pt-12 md:pt-0 pb-16 md:pb-0 bg-[#0B0F19]">
+        <div className="pt-12 md:pt-0 pb-20 md:pb-0 bg-[#0B0F19]">
           {children}
         </div>
       </main>

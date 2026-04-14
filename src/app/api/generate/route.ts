@@ -43,6 +43,7 @@ const GenerateBodySchema = z
     modelId: z.string().optional(),
     projectId: z.string().optional(),
     folderId: z.string().optional(),
+    backgroundType: z.enum(["transparent", "dark", "light"]).optional().default("transparent"),
   })
   .passthrough();
 
@@ -112,6 +113,7 @@ export async function POST(request: Request) {
       modelId,
       projectId,
       folderId,
+      backgroundType,
     } = parsed.data;
 
     // ── 3. Semantic validation ────────────────────────────────────────────────
@@ -143,15 +145,17 @@ export async function POST(request: Request) {
     // ── 4. Ensure user record exists ──────────────────────────────────────────
     const dbUser = await getOrCreateUser(user.id, user.email!);
 
-    // ── 4b. AI Prompt Enhancement (Pro/Studio only) ─────────────────────────
-    // Expands short prompts like "iron sword magic" into detailed visual
-    // descriptions while preserving the user's exact intent.
+    // ── 4b. AI Prompt Enhancement ──────────────────────────────────────────
+    // Expands short prompts into detailed visual descriptions.
+    // Available for ALL users to improve generation quality.
+    // Paid users see the enhanced prompt in the UI.
     let finalUserPrompt = prompt;
     let promptWasEnhanced = false;
     const userPlan = dbUser?.user?.plan ?? "FREE";
     const isPaidPlan = ["PRO", "UNLIMITED", "STARTER"].includes(userPlan);
 
-    if (isPaidPlan && prompt.split(/\s+/).length < 7) {
+    // Enhance prompts under 10 words for all users (critical for quality)
+    if (prompt.split(/\s+/).length < 10) {
       try {
         const { enhanced, wasEnhanced } = await enhanceUserPrompt(
           prompt,
@@ -195,6 +199,7 @@ export async function POST(request: Request) {
         ? { style2Id, style1Weight: style1Weight ?? 70 }
         : undefined,
       colorPaletteId,
+      backgroundType,
     };
 
     // ── 7. Delegate to service ────────────────────────────────────────────────

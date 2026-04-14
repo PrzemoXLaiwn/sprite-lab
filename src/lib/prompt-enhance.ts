@@ -18,7 +18,7 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const SYSTEM_PROMPT = `You are a game asset prompt enhancer for an AI image generator (FLUX.1).
 
-Your job: take a short user prompt and expand it into a vivid visual description.
+Your job: take a short user prompt and expand it into a vivid visual description optimized for FLUX.1 image generation.
 
 RULES:
 1. KEEP every element the user mentioned. Never remove or change anything.
@@ -27,10 +27,12 @@ RULES:
    - "fire" → describe flames, ember glow, heat distortion
    - "ancient" → describe wear, patina, moss, cracks
    - "dark" → describe shadow tones, ominous presence
-3. ADD texture, material, lighting details that make the image specific
-4. Stay under 40 words. Be concise and visual.
+3. ADD texture, material, lighting details that make the image specific and game-ready.
+4. Keep it between 20-40 words. Concise but rich in visual detail.
 5. Write as a descriptive phrase, not a sentence. No "A" at the start, no period at the end.
 6. Output ONLY the enhanced prompt. No explanation, no quotes, no prefix.
+7. NEVER add style instructions (pixel art, anime, cartoon etc.) — the system handles style separately.
+8. Focus on WHAT the object looks like: shape, material, color, texture, lighting, effects.
 
 EXAMPLES:
 User: "fire sword"
@@ -43,7 +45,13 @@ User: "skeleton warrior"
 Enhanced: "undead skeleton warrior in rusted iron armor, glowing green eye sockets, wielding chipped bone sword, tattered dark cape, menacing combat stance"
 
 User: "iron chestplate magic"
-Enhanced: "iron chestplate with glowing blue arcane runes etched into the surface, faint magical aura emanating from the metal, ornate silver trim edges"`;
+Enhanced: "iron chestplate with glowing blue arcane runes etched into the surface, faint magical aura emanating from the metal, ornate silver trim edges"
+
+User: "crystal dragon"
+Enhanced: "majestic crystal dragon with translucent gemstone scales refracting light, sharp faceted wings, glowing inner core visible through crystalline body, prismatic light effects"
+
+User: "dark knight"
+Enhanced: "ominous dark knight in blackened full plate armor, tattered crimson cape, glowing red visor slit, battle-worn scratches, menacing imposing stance, shadows clinging to form"`;
 
 interface EnhanceResult {
   enhanced: string;
@@ -58,8 +66,8 @@ export async function enhanceUserPrompt(
 ): Promise<EnhanceResult> {
   const original = userPrompt.trim();
 
-  // Don't enhance already detailed prompts (7+ words is detailed enough)
-  if (original.split(/\s+/).length >= 7) {
+  // Don't enhance already very detailed prompts (10+ words is detailed enough)
+  if (original.split(/\s+/).length >= 10) {
     return { enhanced: original, original, wasEnhanced: false };
   }
 

@@ -84,10 +84,13 @@ export interface StyleMixOptions {
 
 export type QualityPreset = "draft" | "normal" | "hd";
 
-const QUALITY_SETTINGS: Record<QualityPreset, { steps: number; guidance: number }> = {
-  draft:  { steps: 15, guidance: 2.5 },
-  normal: { steps: 25, guidance: 3.0 },
-  hd:     { steps: 35, guidance: 3.5 },
+// Quality presets use MULTIPLIERS relative to style-specific base values.
+// This preserves each style's carefully tuned steps/guidance while still
+// letting users pick fast/normal/hd quality tiers.
+const QUALITY_MULTIPLIERS: Record<QualityPreset, { stepsMult: number; guidanceMult: number }> = {
+  draft:  { stepsMult: 0.6, guidanceMult: 0.85 },  // ~60% steps, slightly lower guidance
+  normal: { stepsMult: 1.0, guidanceMult: 1.0 },    // Use style defaults exactly
+  hd:     { stepsMult: 1.35, guidanceMult: 1.1 },   // ~135% steps, slightly higher guidance
 };
 
 // ---------------------------------------------------------------------------
@@ -115,6 +118,9 @@ export interface GenerationRequest {
   enableStyleMix?: boolean;
   styleMix?: StyleMixOptions;
   colorPaletteId?: string;
+
+  /** Background type: transparent (default), dark, or light */
+  backgroundType?: "transparent" | "dark" | "light";
 
   // Pack / batch specifics
   /** For pack/batch: list of prompts. If absent, uses prompt for all items. */
@@ -731,33 +737,42 @@ async function generateSingle2D(request: GenerationRequest): Promise<GeneratedAs
     }
   );
 
-  const quality = QUALITY_SETTINGS[request.qualityPreset ?? "normal"];
+  // Apply quality multipliers to style-specific base values
+  const qualityMult = QUALITY_MULTIPLIERS[request.qualityPreset ?? "normal"];
+  const finalSteps = Math.round(styleSteps * qualityMult.stepsMult);
+  const finalGuidance = Math.round(styleGuidance * qualityMult.guidanceMult * 10) / 10;
 
   log("generation:prompt", {
     userId: request.userId,
     promptPreview: finalPrompt.substring(0, 120),
     optimizations: appliedOptimizations.length,
+    steps: finalSteps,
+    guidance: finalGuidance,
+    quality: request.qualityPreset ?? "normal",
   });
 
-  // Full prompt debug — remove after debugging views/colors
-  console.log("\n" + "═".repeat(80));
-  console.log("🔍 FULL PROMPT SENT TO FLUX:");
-  console.log("═".repeat(80));
-  console.log("VIEW:", request.view || "DEFAULT");
-  console.log("POSITIVE:", finalPrompt);
-  console.log("─".repeat(80));
-  console.log("NEGATIVE:", negativePrompt);
-  console.log("WORDS:", finalPrompt.split(/\s+/).length, "positive /", negativePrompt.split(/\s+/).length, "negative");
-  console.log("═".repeat(80) + "\n");
+  // ── 3. Enhance prompt with background type ─────────────────────────────────
+  let bgPromptSuffix = "";
+  let bgNegativeSuffix = "";
+  if (request.backgroundType === "dark") {
+    bgPromptSuffix = ", dark solid background, dark grey backdrop";
+    bgNegativeSuffix = ", transparent background, white background";
+  } else if (request.backgroundType === "light") {
+    bgPromptSuffix = ", light solid background, white backdrop";
+    bgNegativeSuffix = ", transparent background, dark background";
+  }
 
-  // ── 3. Generate via Runware ────────────────────────────────────────────────
+  const finalPromptWithBg = bgPromptSuffix ? finalPrompt + bgPromptSuffix : finalPrompt;
+  const finalNegativeWithBg = bgNegativeSuffix ? negativePrompt + bgNegativeSuffix : negativePrompt;
+
+  // ── 4. Generate via Runware ────────────────────────────────────────────────
   const generationOptions: GenerateImageOptions = {
-    prompt: finalPrompt,
-    negativePrompt,
+    prompt: finalPromptWithBg,
+    negativePrompt: finalNegativeWithBg,
     model: modelId,
     seed: request.seed,
-    steps: quality.steps ?? styleSteps,
-    guidance: quality.guidance ?? styleGuidance,
+    steps: finalSteps,
+    guidance: finalGuidance,
     width: 1024,
     height: 1024,
   };
@@ -775,30 +790,32 @@ async function generateSingle2D(request: GenerationRequest): Promise<GeneratedAs
 
   const generatedImage: GeneratedImage = result.images[0];
 
-  // ── 4. Remove background ───────────────────────────────────────────────────
+  // ── 5. Remove background (only for transparent mode) ────────────────────────
   let imageUrlForUpload = generatedImage.imageURL;
-  try {
-    const bgResult = await removeBackground(generatedImage.imageURL);
-    if (bgResult.success && bgResult.imageUrl) {
-      imageUrlForUpload = bgResult.imageUrl;
-    } else {
-      // Non-fatal: log and continue with original
+  const wantsTransparent = !request.backgroundType || request.backgroundType === "transparent";
+
+  if (wantsTransparent) {
+    try {
+      const bgResult = await removeBackground(generatedImage.imageURL);
+      if (bgResult.success && bgResult.imageUrl) {
+        imageUrlForUpload = bgResult.imageUrl;
+      } else {
+        log("generation:error", {
+          stage: "bg_removal",
+          userId: request.userId,
+          error: bgResult.error,
+        });
+      }
+    } catch (bgErr) {
       log("generation:error", {
         stage: "bg_removal",
         userId: request.userId,
-        error: bgResult.error,
+        error: bgErr instanceof Error ? bgErr.message : String(bgErr),
       });
     }
-  } catch (bgErr) {
-    // Non-fatal: log and continue with original
-    log("generation:error", {
-      stage: "bg_removal",
-      userId: request.userId,
-      error: bgErr instanceof Error ? bgErr.message : String(bgErr),
-    });
   }
 
-  // ── 5. Upload to storage ───────────────────────────────────────────────────
+  // ── 6. Upload to storage ───────────────────────────────────────────────────
   const finalUrl = await uploadGeneratedAsset(
     imageUrlForUpload,
     request.userId,
