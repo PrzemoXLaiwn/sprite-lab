@@ -19,6 +19,7 @@ import type { BuildPromptResult, StyleConfig } from "../types";
 import { STYLES_2D_FULL } from "../styles";
 import {
   buildAssetPrompt,
+  CATEGORY_PROMPT_CONFIGS,
   type PromptBuildResult,
 } from "../categories/prompt-configs";
 
@@ -78,13 +79,25 @@ function getModelParams(styleId: string): Pick<BuildPromptResult, "model" | "gui
 }
 
 // ===========================================
+// QUALITY PRESET → qualityDetails key mapping
+// ===========================================
+type QualityPresetKey = "draft" | "normal" | "hd";
+
+function getStyleQualityPolish(styleId: string, preset?: QualityPresetKey): string {
+  if (!preset) return "";
+  const style: StyleConfig | undefined = STYLES_2D_FULL[styleId];
+  return style?.qualityDetails?.[preset] || "";
+}
+
+// ===========================================
 // BRIDGE: convert prompt-configs result to BuildPromptResult
 // ===========================================
 function bridgeResult(
   configResult: PromptBuildResult,
   styleId: string,
   extraPositive?: string,
-  extraNegative?: string
+  extraNegative?: string,
+  qualityPreset?: QualityPresetKey
 ): BuildPromptResult {
   const styleNegs = getStyleNegatives(styleId);
 
@@ -93,8 +106,9 @@ function bridgeResult(
   // This keeps style in FLUX's high-weight zone (first 40 words).
   const style: StyleConfig | undefined = STYLES_2D_FULL[styleId];
   const enforcement = style?.styleMandatory || "";
+  const qualityPolish = getStyleQualityPolish(styleId, qualityPreset);
 
-  const fullPrompt = [configResult.fullPrompt, enforcement, extraPositive]
+  const fullPrompt = [configResult.fullPrompt, enforcement, qualityPolish, extraPositive]
     .filter(Boolean)
     .join(", ");
 
@@ -137,7 +151,8 @@ export function buildUltimatePrompt(
   categoryId: string,
   subcategoryId: string,
   styleId: string,
-  view?: string
+  view?: string,
+  qualityPreset?: QualityPresetKey
 ): BuildPromptResult {
   try {
     // Delegate to prompt-configs.ts single source of truth
@@ -149,10 +164,10 @@ export function buildUltimatePrompt(
       userPrompt: userPrompt.trim(),
     });
 
-    const result = bridgeResult(configResult, styleId);
+    const result = bridgeResult(configResult, styleId, undefined, undefined, qualityPreset);
 
     if (process.env.NODE_ENV !== "production") {
-      console.log(`[PromptBuilder] ${categoryId}/${subcategoryId} style=${styleId}`);
+      console.log(`[PromptBuilder] ${categoryId}/${subcategoryId} style=${styleId}${qualityPreset ? ` quality=${qualityPreset}` : ""}`);
     }
 
     return result;
@@ -160,7 +175,7 @@ export function buildUltimatePrompt(
     // Fallback for categories not yet in prompt-configs.ts
     // (ISOMETRIC, TILESETS, EFFECTS, PROJECTILES)
     console.warn(`[PromptBuilder] Fallback for ${categoryId}/${subcategoryId}`);
-    return buildFallbackPrompt(userPrompt.trim(), categoryId, subcategoryId, styleId);
+    return buildFallbackPrompt(userPrompt.trim(), categoryId, subcategoryId, styleId, qualityPreset);
   }
 }
 
@@ -169,30 +184,31 @@ function buildFallbackPrompt(
   userPrompt: string,
   categoryId: string,
   subcategoryId: string,
-  styleId: string
+  styleId: string,
+  qualityPreset?: QualityPresetKey
 ): BuildPromptResult {
   const styleAnchor = getStyleAnchor(styleId);
   const styleNegs = getStyleNegatives(styleId);
+  const qualityPolish = getStyleQualityPolish(styleId, qualityPreset);
 
   // Use CATEGORY_PROMPT_CONFIGS from the old system if available
   let objectType = "";
   let composition = "";
   let avoid = "";
-  try {
-    const { CATEGORY_PROMPT_CONFIGS } = require("../categories/prompt-configs");
-    const config = CATEGORY_PROMPT_CONFIGS[categoryId]?.[subcategoryId];
-    if (config) {
-      objectType = config.objectType || "";
-      composition = config.composition || "";
-      avoid = config.avoid || "";
-    }
-  } catch { /* ignore */ }
+  const categoryMap = (CATEGORY_PROMPT_CONFIGS as Record<string, Record<string, { objectType?: string; composition?: string; avoid?: string }>>)[categoryId];
+  const config = categoryMap?.[subcategoryId];
+  if (config) {
+    objectType = config.objectType || "";
+    composition = config.composition || "";
+    avoid = config.avoid || "";
+  }
 
   const prompt = dedupeJoin([
     "single isolated game asset, transparent background, centered",
     objectType,
     userPrompt,
     styleAnchor,
+    qualityPolish,
     composition,
   ].filter(Boolean).join(", "));
 
@@ -224,9 +240,10 @@ export function buildEnhancedPrompt(
     style1Weight?: number;
     colorPaletteId?: string;
     view?: string;
+    qualityPreset?: QualityPresetKey;
   } = {}
 ): BuildPromptResult {
-  const { enableStyleMix, style2Id, style1Weight = 50, colorPaletteId, view } = options;
+  const { enableStyleMix, style2Id, style1Weight = 50, colorPaletteId, view, qualityPreset } = options;
 
   // Base prompt from config (with fallback for unsupported categories)
   let configResult: PromptBuildResult;
@@ -243,7 +260,7 @@ export function buildEnhancedPrompt(
     });
   } catch {
     // Fallback — wrap the simple builder result
-    const fallback = buildFallbackPrompt(userPrompt.trim(), categoryId, subcategoryId, styleId);
+    const fallback = buildFallbackPrompt(userPrompt.trim(), categoryId, subcategoryId, styleId, qualityPreset);
     configResult = {
       fullPrompt: fallback.prompt,
       negativePrompt: fallback.negativePrompt,
@@ -277,12 +294,13 @@ export function buildEnhancedPrompt(
     }
   }
 
-  const result = bridgeResult(configResult, styleId, extraPositive, extraNegative);
+  const result = bridgeResult(configResult, styleId, extraPositive, extraNegative, qualityPreset);
 
   if (process.env.NODE_ENV !== "production") {
     console.log(`[PromptBuilder Enhanced] ${categoryId}/${subcategoryId} style=${styleId}` +
       (enableStyleMix ? ` +mix=${style2Id} (${style1Weight}%)` : "") +
-      (colorPaletteId ? ` palette=${colorPaletteId}` : ""));
+      (colorPaletteId ? ` palette=${colorPaletteId}` : "") +
+      (qualityPreset ? ` quality=${qualityPreset}` : ""));
   }
 
   return result;

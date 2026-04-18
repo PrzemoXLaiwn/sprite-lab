@@ -58,11 +58,11 @@ export async function POST(request: Request) {
     // Validate batch size
     const actualBatchSize = Math.min(Math.max(1, batchSize), MAX_BATCH_SIZE);
 
-    // Quality preset settings
+    // Quality preset settings — kept in sync with generation.ts QUALITY_SETTINGS
     const QUALITY_SETTINGS: Record<string, { steps: number; guidance: number }> = {
       draft: { steps: 15, guidance: 2.5 },
-      normal: { steps: 25, guidance: 3.0 },
-      hd: { steps: 35, guidance: 3.5 },
+      normal: { steps: 28, guidance: 3.2 },
+      hd: { steps: 40, guidance: 3.8 },
     };
     const qualityConfig = QUALITY_SETTINGS[qualityPreset] || QUALITY_SETTINGS.normal;
 
@@ -145,13 +145,16 @@ export async function POST(request: Request) {
             style2Id,
             style1Weight,
             colorPaletteId,
+            qualityPreset,
           }
         )
       : buildUltimatePrompt(
           prompt.trim(),
           categoryId,
           subcategoryId,
-          styleId
+          styleId,
+          undefined,
+          qualityPreset
         );
 
     // Use quality preset settings

@@ -86,8 +86,8 @@ export type QualityPreset = "draft" | "normal" | "hd";
 
 const QUALITY_SETTINGS: Record<QualityPreset, { steps: number; guidance: number }> = {
   draft:  { steps: 15, guidance: 2.5 },
-  normal: { steps: 25, guidance: 3.0 },
-  hd:     { steps: 35, guidance: 3.5 },
+  normal: { steps: 28, guidance: 3.2 },
+  hd:     { steps: 40, guidance: 3.8 },
 };
 
 // ---------------------------------------------------------------------------
@@ -262,6 +262,7 @@ export async function buildPromptForGeneration(
     styleMix?: StyleMixOptions;
     colorPaletteId?: string;
     view?: string;
+    qualityPreset?: QualityPreset;
   }
 ): Promise<{
   finalPrompt: string;
@@ -287,8 +288,9 @@ export async function buildPromptForGeneration(
         style1Weight: options?.styleMix?.style1Weight ?? 70,
         colorPaletteId: options?.colorPaletteId,
         view: options?.view,
+        qualityPreset: options?.qualityPreset,
       })
-    : buildUltimatePrompt(prompt, categoryId, subcategoryId, styleId, options?.view);
+    : buildUltimatePrompt(prompt, categoryId, subcategoryId, styleId, options?.view, options?.qualityPreset);
 
   // Apply learned optimizations from analytics layer
   const { enhancedPrompt, enhancedNegative, appliedFixes, warnings } =
@@ -728,6 +730,7 @@ async function generateSingle2D(request: GenerationRequest): Promise<GeneratedAs
       styleMix: request.styleMix,
       colorPaletteId: request.colorPaletteId,
       view: request.view,
+      qualityPreset: request.qualityPreset,
     }
   );
 

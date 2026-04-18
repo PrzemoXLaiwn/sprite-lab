@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, Suspense } from "react";
+import { useState, useCallback, useRef, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,8 @@ import {
   Check,
   Lock,
   Unlock,
+  Info,
+  Lightbulb,
 } from "lucide-react";
 import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
 import { triggerUpgradeModal } from "@/components/dashboard/UpgradeModal";
@@ -37,6 +39,26 @@ const VIEW_OPTIONS = [
 ] as const;
 
 type ViewId = (typeof VIEW_OPTIONS)[number]["id"];
+
+// =============================================================================
+// CLIENT-SIDE VIEW DETECTOR
+// Mirrors src/config/categories/prompt-configs.ts detectViewFromPrompt so the
+// UI can warn users about view conflicts live — before they hit Generate.
+// =============================================================================
+
+const CLIENT_VIEW_PATTERNS: Array<{ view: Exclude<ViewId, "none">; pattern: RegExp }> = [
+  { view: "topdown", pattern: /\b(top[\s-]?down(?:\s+view)?|bird'?s?[\s-]?eye(?:\s+view)?|from\s+above|overhead(?:\s+view)?|aerial\s+view|flat\s+lay|z\s+g[oó]ry|widok\s+z\s+g[oó]ry|z\s+lotu\s+ptaka|od\s+g[oó]ry|odg[oó]ry|perspektywa\s+z\s+g[oó]ry)\b/i },
+  { view: "side",    pattern: /\b(side[\s-]?view|side\s+profile|from\s+the\s+side|platformer\s+view|widok\s+z\s+boku|z\s+boku|z\s+profilu|profilu|profil\s+boczny)\b/i },
+  { view: "front",   pattern: /\b(front[\s-]?view|front[\s-]?facing|facing\s+(?:forward|viewer)|frontal\s+view|head[\s-]?on|straight[\s-]?on|widok\s+z\s+przodu|z\s+przodu|od\s+przodu|na\s+wprost|frontalnie|frontalny)\b/i },
+];
+
+function detectViewInText(text: string): Exclude<ViewId, "none"> | null {
+  if (!text) return null;
+  for (const { view, pattern } of CLIENT_VIEW_PATTERNS) {
+    if (pattern.test(text)) return view;
+  }
+  return null;
+}
 
 const DETAIL_OPTIONS = [
   { id: "draft",  label: "Fast",   description: "Quick, icon-safe" },
@@ -159,6 +181,28 @@ function GeneratePageInner() {
   const placeholder  = SUBTYPE_PLACEHOLDERS[selectedSubcategoryId] ?? "Describe your asset...";
   const isFormValid  = prompt.trim().length >= 3;
   const activeBg = BG_MODES.find((b) => b.id === bgMode)!;
+
+  // Live view detection — warns user when prompt contains a view keyword that
+  // differs from the UI selector. Backend honors the prompt (user text wins),
+  // but we surface it here so the state of the selector isn't confusing.
+  const detectedView = useMemo(() => detectViewInText(prompt), [prompt]);
+  const viewConflict = detectedView !== null && detectedView !== view;
+  const detectedViewLabel = detectedView
+    ? VIEW_OPTIONS.find((v) => v.id === detectedView)?.label ?? detectedView
+    : null;
+
+  // Prompt quality signal — nudges users toward richer descriptions so they
+  // don't submit 1-word prompts and churn on bad results.
+  const promptQuality = useMemo(() => {
+    const trimmed = prompt.trim();
+    if (trimmed.length === 0) return null;
+    const words = trimmed.split(/\s+/).filter(w => w.length > 1);
+    const vagueWords = /\b(cool|epic|awesome|nice|great|good|amazing|best)\b/i.test(trimmed);
+    if (words.length < 3) return { level: "weak" as const, hint: "Too short — add material, color or mood." };
+    if (vagueWords) return { level: "weak" as const, hint: "Avoid vague words — describe the actual look." };
+    if (words.length < 5) return { level: "ok" as const, hint: "OK — add one more detail for richer output." };
+    return { level: "good" as const, hint: "Looks solid." };
+  }, [prompt]);
 
   const handleCategoryChange = (cat: GenerateCategory) => {
     setSelectedCategory(cat);
@@ -293,6 +337,7 @@ function GeneratePageInner() {
   // RENDER — Meshy-style 3-panel layout
   // ==========================================================================
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showPromptTips, setShowPromptTips] = useState(false);
 
   // Polished select component
   const Sel = ({ label, req, value, onChange, options }: {
@@ -330,9 +375,32 @@ function GeneratePageInner() {
 
           {/* ── PROMPT ────────────────────────────────────────── */}
           <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">
-              Prompt<span className="text-[#F97316] ml-0.5">*</span>
-            </label>
+            <div className="flex items-baseline justify-between mb-2">
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                Prompt<span className="text-[#F97316] ml-0.5">*</span>
+              </label>
+              <button type="button" onClick={() => setShowPromptTips((v) => !v)}
+                className="flex items-center gap-1 text-[9px] font-medium uppercase tracking-wider text-slate-600 hover:text-[#F97316] transition-colors cursor-pointer">
+                <Lightbulb className="w-3 h-3" />
+                {showPromptTips ? "Hide tips" : "How to prompt"}
+              </button>
+            </div>
+
+            {/* How-to-prompt helper — collapsible */}
+            {showPromptTips && (
+              <div className="mb-2.5 p-3 rounded-lg bg-[#F97316]/[0.04] border border-[#F97316]/15 space-y-1.5 animate-scale-in">
+                <p className="text-[10px] font-bold text-[#F97316] uppercase tracking-wider flex items-center gap-1.5">
+                  <Info className="w-3 h-3" /> Write for best results
+                </p>
+                <ul className="space-y-1 text-[11px] text-slate-300/80 leading-relaxed">
+                  <li><span className="text-emerald-400">✓</span> Describe <b>only the object</b>: material, color, mood, detail.</li>
+                  <li><span className="text-emerald-400">✓</span> Example: <i className="text-slate-100">&ldquo;golden viking helmet, battle-worn, rune engravings&rdquo;</i></li>
+                  <li><span className="text-rose-400">✗</span> Don&apos;t repeat style / category / view — they&apos;re in the selectors below.</li>
+                  <li><span className="text-rose-400">✗</span> Avoid vague words: &ldquo;cool&rdquo;, &ldquo;epic&rdquo;, &ldquo;awesome&rdquo;.</li>
+                </ul>
+              </div>
+            )}
+
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
@@ -341,6 +409,29 @@ function GeneratePageInner() {
               rows={5}
               className="w-full px-4 py-3.5 rounded-lg bg-[#182033] border border-[#263046] text-[14px] text-slate-100 resize-none outline-none focus:border-[#F97316]/40 focus:shadow-[0_0_12px_rgba(249,115,22,0.1)] placeholder:text-slate-600 leading-relaxed transition-all duration-200 hover:border-[#263046]/80"
             />
+
+            {/* Live view-conflict banner — most common prompt mistake */}
+            {viewConflict && detectedView && detectedViewLabel && (
+              <div className="mt-2 p-2.5 rounded-lg bg-amber-500/[0.06] border border-amber-500/25 flex items-start gap-2 animate-scale-in">
+                <Eye className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] text-amber-100 leading-snug">
+                    You typed a view in your prompt — we&apos;ll use <b>{detectedViewLabel}</b>.
+                  </p>
+                  <div className="mt-1.5 flex items-center gap-2">
+                    <button type="button" onClick={() => setView(detectedView)}
+                      className="text-[10px] font-semibold text-amber-200 hover:text-amber-100 underline underline-offset-2 cursor-pointer">
+                      Sync View selector
+                    </button>
+                    <span className="text-[10px] text-amber-200/40">·</span>
+                    <span className="text-[10px] text-amber-200/60">
+                      Or select <b>{detectedViewLabel}</b> in View below and remove it from the prompt.
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {prompt.length === 0 && (
               <div className="mt-2 flex flex-wrap gap-1">
                 {[
@@ -359,15 +450,32 @@ function GeneratePageInner() {
               </div>
             )}
             {prompt.length > 0 && (
-              <div className="mt-1 text-right">
-                <span className="text-[9px] text-slate-600">{prompt.length}/500</span>
+              <div className="mt-1 flex items-center justify-between gap-2">
+                {promptQuality && (
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${
+                      promptQuality.level === "good" ? "bg-emerald-400" :
+                      promptQuality.level === "ok"   ? "bg-amber-400"   :
+                                                      "bg-rose-400"
+                    }`} />
+                    <span className={`text-[9px] truncate ${
+                      promptQuality.level === "good" ? "text-emerald-400/70" :
+                      promptQuality.level === "ok"   ? "text-amber-400/70"   :
+                                                      "text-rose-400/70"
+                    }`}>{promptQuality.hint}</span>
+                  </div>
+                )}
+                <span className="text-[9px] text-slate-600 shrink-0">{prompt.length}/500</span>
               </div>
             )}
           </div>
 
           {/* ── STRUCTURE ─────────────────────────────────────── */}
           <div className="pt-1 space-y-3">
-            <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Structure</p>
+            <div>
+              <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Structure</p>
+              <p className="text-[10px] text-slate-600/80 mt-0.5 leading-snug">What to generate — art style + object type.</p>
+            </div>
 
             <FancySelect label="Style" required value={styleId} onChange={setStyleId}
               columns={2}
@@ -397,7 +505,10 @@ function GeneratePageInner() {
 
           {/* ── OUTPUT ────────────────────────────────────────── */}
           <div className="pt-1 space-y-3">
-            <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Output</p>
+            <div>
+              <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Output</p>
+              <p className="text-[10px] text-slate-600/80 mt-0.5 leading-snug">How it&apos;s framed — camera angle, detail level, colors.</p>
+            </div>
 
             <div className="grid grid-cols-2 gap-2.5">
               <FancySelect label="View" required value={view}

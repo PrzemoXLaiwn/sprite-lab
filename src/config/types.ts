@@ -118,6 +118,14 @@ export interface StyleConfig {
   styleEnforcement?: string;
   styleMandatory?: string;
 
+  // Per-quality polish descriptors — keep style intact while scaling detail.
+  // Injected into the positive prompt based on the user's quality preset.
+  qualityDetails?: {
+    draft: string;
+    normal: string;
+    hd: string;
+  };
+
   model: ModelType;
   guidance: number;
   steps: number;

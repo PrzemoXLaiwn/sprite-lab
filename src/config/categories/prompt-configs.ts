@@ -157,6 +157,59 @@ function normalizeKey(input?: string): string {
 }
 
 // --------------------------------------------------
+// USER-PROMPT VIEW DETECTOR
+// Scans the user's free-text for explicit view/camera keywords
+// (English + Polish) so that "sword, top-down" in the prompt
+// forces TOP_DOWN even when the UI selector is DEFAULT.
+// User-typed intent always wins.
+// --------------------------------------------------
+const VIEW_KEYWORD_PATTERNS: Array<{ view: AssetView; pattern: RegExp }> = [
+  {
+    view: "TOP_DOWN",
+    pattern: /\b(top[\s-]?down(?:\s+view)?|bird'?s?[\s-]?eye(?:\s+view)?|from\s+above|overhead(?:\s+view)?|aerial\s+view|flat\s+lay|z\s+g[oó]ry|widok\s+z\s+g[oó]ry|z\s+lotu\s+ptaka|od\s+g[oó]ry|odg[oó]ry|perspektywa\s+z\s+g[oó]ry)\b/gi,
+  },
+  {
+    view: "SIDE_VIEW",
+    pattern: /\b(side[\s-]?view|side\s+profile|from\s+the\s+side|platformer\s+view|widok\s+z\s+boku|z\s+boku|z\s+profilu|profilu|profil\s+boczny)\b/gi,
+  },
+  {
+    view: "FRONT",
+    pattern: /\b(front[\s-]?view|front[\s-]?facing|facing\s+(?:forward|viewer)|frontal\s+view|head[\s-]?on|straight[\s-]?on|widok\s+z\s+przodu|z\s+przodu|od\s+przodu|na\s+wprost|frontalnie|frontalny)\b/gi,
+  },
+];
+
+export function detectViewFromPrompt(userText: string): {
+  view: AssetView | null;
+  stripped: string;
+} {
+  if (!userText) return { view: null, stripped: "" };
+  let stripped = userText;
+  let detected: AssetView | null = null;
+
+  // Priority order: TOP_DOWN > SIDE_VIEW > FRONT (most specific to least).
+  // If multiple match, first wins — but we still strip ALL matches (global
+  // flag) to avoid conflicting phrases polluting the final prompt.
+  // Note: regex patterns are declared with /g so `.replace` removes every
+  // occurrence; we use `.search() >= 0` instead of `.test()` since /g on
+  // test() is stateful across calls.
+  for (const { view, pattern } of VIEW_KEYWORD_PATTERNS) {
+    if (stripped.search(pattern) >= 0) {
+      if (!detected) detected = view;
+      stripped = stripped.replace(pattern, " ");
+    }
+  }
+
+  // Clean up whitespace and dangling punctuation left after stripping.
+  stripped = stripped
+    .replace(/\s*,\s*,/g, ",")
+    .replace(/^[\s,]+|[\s,]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return { view: detected, stripped };
+}
+
+// --------------------------------------------------
 // GLOBAL RENDER RULES
 // --------------------------------------------------
 // Compact — the inline base in buildAssetPrompt() handles essentials.
@@ -210,16 +263,47 @@ export const VIEW_PROMPT_CONFIGS: Record<AssetView, ViewPromptConfig> = {
       CHARACTERS: "character facing right in strict side profile, full body visible, platformer sprite, like Mario or Mega Man side-scrolling pose",
       CREATURES: "creature facing right in strict side profile, full body nose to tail, platformer enemy",
       CONSUMABLES: "item side profile, bottle silhouette facing right",
+      RESOURCES: "resource chunk in strict side profile, full outline readable from the side",
+      QUEST_ITEMS: "quest item in strict side profile, full outline readable from the side",
+      UI_ELEMENTS: "UI element in strict side profile, cross-section style, flat side readout",
+      ENVIRONMENT: "prop in strict side profile, full height silhouette visible from the side",
       EFFECTS: "effect side profile, energy spread visible from the side",
       PROJECTILES: "projectile flying right, strict horizontal side profile, full length visible",
     },
     subcategoryOverrides: {
+      // Characters
       HEROES: "hero facing right strict side profile, full body, platformer sprite like Mario or Mega Man, walking or standing",
       ENEMIES: "enemy facing right strict side profile, full body, combat pose, platformer enemy sprite",
       NPCS: "NPC facing right strict side profile, full body, idle pose",
       BOSSES: "boss facing right strict side profile, full imposing form visible",
+      // Creatures
       ANIMALS: "animal facing right strict side profile, full body nose to tail, like a safari field guide illustration",
       MYTHICAL: "mythical creature facing right strict side profile, wings and limbs visible",
+      COMPANIONS: "companion pet facing right strict side profile, full body, friendly idle pose",
+      ELEMENTALS: "elemental creature facing right strict side profile, flowing form visible from the side",
+      // Weapons (extend category default with specifics)
+      POLEARMS: "polearm horizontal side profile, full shaft and head visible left to right, blueprint framing",
+      FIREARMS: "firearm horizontal side profile, full barrel and stock visible, blueprint framing",
+      THROWING: "throwing weapon horizontal side profile, full outline visible edge-on",
+      STAFFS_WANDS: "staff or wand horizontal side profile, full length visible left to right",
+      // Armor
+      GLOVES: "gauntlet or glove side profile, fingers pointing right, empty armor piece",
+      BOOTS: "boot side profile, toe pointing right, empty footwear",
+      ACCESSORIES: "accessory side profile, clasp or chain visible from the side",
+      // Consumables
+      POTIONS: "potion bottle side profile, label facing right, cork at top",
+      FOOD: "food item side profile, layers or cross-section readable from the side",
+      SCROLLS: "scroll side profile, rolled cylinder with end-cap facing right",
+      // Resources
+      GEMS: "gem crystal side profile, facets visible edge-on",
+      ORES: "ore chunk side profile, rocky silhouette facing right",
+      // Quest items
+      KEYS: "key side profile, teeth pointing right, bow at left",
+      CONTAINERS: "chest or container side profile, hinges and lid readable from the side",
+      ARTIFACTS: "artifact side profile, full outline visible from the side",
+      // Environment
+      BUILDINGS: "building side profile elevation, facade visible from the side, no perspective",
+      TREES_PLANTS: "tree or plant side profile, full height from root to canopy visible",
     },
   },
 
@@ -235,19 +319,60 @@ export const VIEW_PROMPT_CONFIGS: Record<AssetView, ViewPromptConfig> = {
       CHARACTERS: "full body character facing directly forward at viewer, symmetrical standing pose, character select screen style",
       CREATURES: "full body creature facing directly forward, symmetrical when possible, menacing or neutral frontal pose",
       CONSUMABLES: "item viewed from the front, label or contents visible, bottle or container facing viewer",
+      RESOURCES: "resource shown front-on, flat face toward viewer, symmetrical presentation",
+      QUEST_ITEMS: "quest item shown front-on, key face or container face toward viewer, symmetrical",
+      UI_ELEMENTS: "UI element shown front-on, flat symmetrical presentation, icon facing viewer",
+      ENVIRONMENT: "prop shown front-on, facade or front face toward viewer, symmetrical presentation",
       EFFECTS: "effect viewed from the front, energy radiating toward the viewer",
       PROJECTILES: "projectile coming directly toward viewer, foreshortened circular front of projectile visible",
     },
     subcategoryOverrides: {
+      // Characters
       HEROES: "hero facing directly forward, full body visible, symmetrical heroic standing pose, character select presentation",
       ENEMIES: "enemy facing directly forward, full body visible, threatening frontal pose",
       NPCS: "NPC facing directly forward, full body visible, neutral welcoming pose",
       BOSSES: "boss facing directly forward, full imposing form, intimidating frontal presentation",
+      // Creatures
       ANIMALS: "animal facing directly forward, head and body symmetrically visible",
       MYTHICAL: "mythical creature facing directly forward, full wingspan or form symmetrically displayed",
+      COMPANIONS: "companion pet facing directly forward, full body visible, friendly frontal pose",
+      ELEMENTALS: "elemental creature facing directly forward, core and aura symmetrically visible",
+      // Weapons
+      SWORDS: "sword shown front-on blade tip up, handle down, perfectly symmetrical vertical presentation",
+      AXES_HAMMERS: "axe or hammer shown front-on, head facing viewer, handle pointing down, symmetrical",
+      POLEARMS: "polearm shown front-on, head or spearpoint facing viewer, shaft pointing down, symmetrical",
+      BOWS: "bow shown front-on, string side toward viewer, limbs symmetrical left-right",
+      STAFFS_WANDS: "staff or wand shown front-on, ornament at top, shaft pointing down, symmetrical",
+      FIREARMS: "firearm shown front-on, muzzle facing viewer, stock pointing down, symmetrical",
+      THROWING: "throwing weapon shown front-on, point or edge facing viewer, symmetrical",
+      // Armor
       HELMETS: "helmet front-on, visor or face opening directly toward viewer, symmetrical",
       CHEST_ARMOR: "chest armor front-on, as if worn by invisible figure facing viewer",
       SHIELDS: "shield front face shown directly, full emblem and rim visible, flat frontal view",
+      GLOVES: "gauntlet or glove pair front-on, palms or knuckles facing viewer, empty armor",
+      BOOTS: "boot pair front-on, toes facing viewer, symmetrical empty footwear",
+      ACCESSORIES: "accessory front-on, charm or face of the item toward viewer, symmetrical",
+      // Consumables
+      POTIONS: "potion bottle front-on, label facing viewer, cork visible at top, symmetrical silhouette",
+      FOOD: "food item front-on, main face toward viewer, symmetrical plating",
+      SCROLLS: "scroll unrolled with content facing viewer, or rolled cylinder front-on with end-cap toward viewer",
+      // Resources
+      GEMS: "gem crystal front-on, primary facet toward viewer, symmetrical faceted silhouette",
+      ORES: "ore chunk front-on, largest rocky face toward viewer",
+      WOOD_STONE: "wood or stone material front-on, main face toward viewer",
+      PLANTS: "plant front-on, stem vertical, leaves symmetrical left-right",
+      MONSTER_PARTS: "monster part front-on, main surface toward viewer",
+      MAGIC_MATERIALS: "magical material front-on, glowing core facing viewer",
+      // Quest items
+      KEYS: "key front-on, bow or handle at top, teeth pointing down, flat frontal presentation",
+      ARTIFACTS: "artifact front-on, main face or emblem toward viewer, symmetrical",
+      CONTAINERS: "chest or container front-on, lock or face panel toward viewer, closed lid",
+      COLLECTIBLES: "collectible front-on, primary face toward viewer, symmetrical presentation",
+      // Environment
+      BUILDINGS: "building front-on facade, main entrance centered, no perspective, symmetrical elevation",
+      TREES_PLANTS: "tree or plant front-on, trunk vertical centered, foliage symmetrical around axis",
+      PROPS: "prop front-on, main face toward viewer, symmetrical",
+      DUNGEON: "dungeon object front-on, carved face or mechanism toward viewer",
     },
   },
 
@@ -272,20 +397,63 @@ export const VIEW_PROMPT_CONFIGS: Record<AssetView, ViewPromptConfig> = {
       PROJECTILES: "projectile seen from directly above, top-down flight path visible",
     },
     subcategoryOverrides: {
+      // Characters
       HEROES: "hero character seen from directly above, top of head visible, body below, top-down RPG sprite like Zelda SNES or Stardew Valley overhead",
       ENEMIES: "enemy seen from directly above, top of head and back visible, top-down RPG enemy overhead sprite",
       NPCS: "NPC seen from directly above, head and shoulders, top-down RPG villager overhead sprite",
       BOSSES: "boss seen from directly above, large top-down silhouette, overhead RPG boss sprite",
+      // Creatures
       ANIMALS: "animal seen from directly above, back and head visible, top-down overhead game sprite",
       MYTHICAL: "mythical creature from directly above, wingspan visible, overhead top-down sprite",
-      TREES_PLANTS: "tree canopy seen from directly above filling frame, round organic shape, trunk hidden below",
-      BUILDINGS: "building roof seen from directly above, NO walls visible, floor plan style, top-down RPG building",
+      COMPANIONS: "companion pet seen from directly above, back and head visible, top-down overhead sprite",
+      ELEMENTALS: "elemental seen from directly above, radial aura or flowing form, top-down overhead sprite",
+      // Weapons
       SWORDS: "((sword laying flat horizontally on table)), photographed from directly above, bird's eye flat lay, blade pointing left handle pointing right, NO vertical sword",
-      AXES_HAMMERS: "axe laying flat photographed from directly above, bird's eye flat lay",
+      AXES_HAMMERS: "axe or hammer laying flat photographed from directly above, bird's eye flat lay",
+      POLEARMS: "polearm laying flat photographed from directly above, full shaft and head visible horizontal, bird's eye flat lay",
       BOWS: "bow laying flat photographed from directly above, curved shape visible, bird's eye flat lay",
       STAFFS_WANDS: "staff laying flat photographed from directly above, full length visible, bird's eye",
-      POTIONS: "potion bottle from directly above showing round cork cap, circular top-down shape, bird's eye",
+      FIREARMS: "firearm laying flat photographed from directly above, full barrel and stock visible, bird's eye flat lay",
+      THROWING: "throwing weapon laying flat photographed from directly above, full outline visible, bird's eye",
+      // Armor
+      HELMETS: "helmet photographed from directly above showing crown of the head, round silhouette, bird's eye",
+      CHEST_ARMOR: "chest armor laid flat photographed from directly above, breastplate laying on back showing front side, bird's eye",
       SHIELDS: "shield laying flat from directly above, full emblem visible as circle or kite, bird's eye flat lay",
+      GLOVES: "gauntlet or glove pair laid flat from directly above, palms facing up, bird's eye",
+      BOOTS: "boot pair laid flat from directly above, soles facing down, bird's eye flat lay",
+      ACCESSORIES: "accessory laid flat photographed from directly above, chain or band visible, bird's eye",
+      // Consumables
+      POTIONS: "potion bottle from directly above showing round cork cap, circular top-down shape, bird's eye",
+      FOOD: "food item on plate photographed from directly above, bird's eye top-down food photography",
+      SCROLLS: "scroll laid flat from directly above, rolled cylinder or unrolled parchment, bird's eye",
+      // Resources
+      GEMS: "gem photographed from directly above showing primary facet flat, top-down gem silhouette",
+      ORES: "ore chunk photographed from directly above showing rocky top face, bird's eye",
+      WOOD_STONE: "wood log or stone block from directly above showing top face, bird's eye",
+      PLANTS: "plant seen from directly above as rosette pattern, leaves radiating from center, top-down",
+      MONSTER_PARTS: "monster part laid flat photographed from directly above, bird's eye flat lay",
+      MAGIC_MATERIALS: "magical material laid flat from directly above, glowing core visible, bird's eye",
+      // Quest items
+      KEYS: "key laying flat photographed from directly above, bow and teeth visible horizontal, bird's eye flat lay",
+      ARTIFACTS: "artifact laid flat photographed from directly above, bird's eye top-down presentation",
+      CONTAINERS: "chest or container photographed from directly above showing top of lid, bird's eye overhead view, closed chest",
+      COLLECTIBLES: "collectible laid flat from directly above, bird's eye flat lay",
+      // UI
+      ITEM_ICONS: "flat top-down item icon, no perspective depth, overhead presentation",
+      SKILL_ICONS: "flat top-down skill icon, radial composition, overhead presentation",
+      STATUS_ICONS: "flat top-down status icon, symmetrical composition",
+      UI_ICONS: "flat top-down UI icon, no perspective depth",
+      BUTTONS: "flat button seen from directly above, no depth, overhead presentation",
+      BARS: "flat bar seen from directly above, no depth",
+      FRAMES: "flat frame seen from directly above, no depth",
+      PANELS: "flat panel seen from directly above, no depth",
+      SLOTS_GRID: "flat slot grid seen from directly above, no depth",
+      // Environment
+      TREES_PLANTS: "tree canopy seen from directly above filling frame, round organic shape, trunk hidden below",
+      BUILDINGS: "building roof seen from directly above, NO walls visible, floor plan style, top-down RPG building",
+      ROCKS_TERRAIN: "rock or terrain chunk seen from directly above showing top face, bird's eye overhead",
+      PROPS: "prop seen from directly above showing top surface, bird's eye top-down tilemap asset",
+      DUNGEON: "dungeon object seen from directly above showing top surface, bird's eye top-down tilemap asset",
     },
   },
 };
@@ -1324,7 +1492,21 @@ export function buildAssetPrompt(input: PromptBuildInput): PromptBuildResult {
   }
 
   const resolvedStyle = resolveStyleKey(input.style);
-  const resolvedView = resolveViewKey(input.view);
+
+  // ── VIEW RESOLUTION ───────────────────────────────────────
+  // User-typed view in free text ALWAYS wins over UI selector.
+  // Rationale: if the user types "top down" they expect top-down
+  // regardless of what was clicked. Also strip the phrase so it
+  // doesn't duplicate with the enforced camera clause below.
+  const uiView = resolveViewKey(input.view);
+  const { view: promptView, stripped: promptWithoutView } =
+    detectViewFromPrompt(input.userPrompt || "");
+  const viewCameFromPrompt = promptView !== null;
+  const resolvedView: AssetView = promptView ?? uiView;
+  const userDescCleaned = viewCameFromPrompt
+    ? promptWithoutView
+    : (input.userPrompt || "").trim();
+
   const resolvedQuality = resolveQualityKey(input.quality);
 
   // categoryBase, styleConfig, qualityConfig intentionally not used in prompt assembly.
@@ -1361,9 +1543,20 @@ export function buildAssetPrompt(input: PromptBuildInput): PromptBuildResult {
   // For DEFAULT view, object identity comes first (standard behavior).
   const isExplicitView = resolvedView !== "DEFAULT";
 
+  // When the view came from the user's free text, double down on the camera
+  // clause so FLUX cannot ignore it. Wrap the camera phrase in (()) emphasis
+  // and prepend a hard-statement sentence. Strip any existing (()) from the
+  // view override first to avoid (((((nested))))) paren explosions that dilute
+  // FLUX's weight signal.
+  const viewPositiveFlat = viewPositive.replace(/\(+|\)+/g, "").trim();
+  const humanView = resolvedView.toLowerCase().replace("_", "-");
+  const cameraPhrase = viewCameFromPrompt
+    ? `((${viewPositiveFlat})). The camera angle is strictly ${humanView} with no deviation — do not rotate or angle the subject.`
+    : `${viewPositive}.`;
+
   // ── Color detection ───────────────────────────────────────────────
   const ACTUAL_COLORS = new Set(["red", "blue", "green", "purple", "gold", "golden", "black", "white", "orange", "yellow", "pink", "silver", "crimson"]);
-  const userLower = (input.userPrompt || "").toLowerCase();
+  const userLower = userDescCleaned.toLowerCase();
   const detectedColors = userLower.split(/\s+/).filter(w => ACTUAL_COLORS.has(w));
   const colorClause = detectedColors.length > 0
     ? `The color is distinctly ${detectedColors.join(" and ")}.`
@@ -1373,16 +1566,28 @@ export function buildAssetPrompt(input: PromptBuildInput): PromptBuildResult {
   // FLUX gives highest weight to FIRST ~40 words.
   // Style MUST appear in first 20 words or FLUX ignores it.
   // Order: [style] [subject] [user desc] [view] [composition] [base]
-  const userDesc = (input.userPrompt || "").trim();
+  const userDesc = userDescCleaned;
   const tags = [elementPrompt, materialPrompt, colorPrompt].filter(Boolean).join(", ");
 
   // Short style tag — injected at position #1 so FLUX renders correct style
   const styleTag = STYLE_PROMPT_CONFIGS[resolvedStyle]?.positive || "";
 
   let fullPrompt: string;
-  if (isExplicitView) {
+  if (viewCameFromPrompt) {
+    // User typed the view in free text — camera is the PRIMARY intent.
+    // Put it first (higher FLUX weight than style) so a "top-down sword"
+    // actually lands top-down even when the model's priors want 3/4.
     fullPrompt = [
-      `${styleTag} ${viewPositive}.`,                              // 1. STYLE + CAMERA (first thing FLUX sees)
+      `${cameraPhrase}`,                                           // 1. CAMERA FIRST (absolute priority)
+      `${styleTag} ${config.objectType}: ${userDesc}.`,            // 2. STYLE + WHAT + USER
+      colorClause,                                                  // 3. Color
+      tags ? `${tags}.` : "",                                       // 4. Tags
+      `Isolated on transparent background, centered, game sprite.`, // 5. Base
+    ].filter(Boolean).join(" ");
+  } else if (isExplicitView) {
+    // View picked via UI selector — strong but not primary.
+    fullPrompt = [
+      `${styleTag} ${cameraPhrase}`,                               // 1. STYLE + CAMERA
       `${config.objectType}: ${userDesc}.`,                        // 2. WHAT + USER INTENT
       colorClause,                                                  // 3. Color reinforcement
       tags ? `${tags}.` : "",                                       // 4. Tags
@@ -1393,7 +1598,7 @@ export function buildAssetPrompt(input: PromptBuildInput): PromptBuildResult {
       `${styleTag} ${config.objectType}: ${userDesc}.`,            // 1. STYLE + WHAT + USER (first 15 words!)
       config.visualDesc ? `${config.visualDesc}.` : "",             // 2. Visual details
       colorClause,                                                  // 3. Color
-      `${viewPositive}.`,                                           // 4. Camera
+      cameraPhrase,                                                 // 4. Camera
       config.composition ? `${config.composition}.` : "",           // 5. Framing
       tags ? `${tags}.` : "",                                       // 6. Tags
       `Transparent background, centered, single game sprite.`,      // 7. Base
@@ -1403,11 +1608,17 @@ export function buildAssetPrompt(input: PromptBuildInput): PromptBuildResult {
   // ═══════════════════════════════════════════════════════
   // NEGATIVE PROMPT — blocks hallucinations
   // styleConfig.negative excluded — STYLES_2D_FULL.negatives handles it
+  // When the view was user-typed, add a hard-block on common rotations
+  // that FLUX's priors default to (esp. 3/4 angle for weapons/characters).
   // ═══════════════════════════════════════════════════════
+  const extraViewNegative = viewCameFromPrompt
+    ? "3/4 angle, three-quarter view, angled perspective, rotated subject, tilted subject, diagonal composition, dutch angle, any camera angle other than " + humanView
+    : "";
   const negativePrompt = dedupeCsv([
     GLOBAL_NEGATIVE_BASE,
     config.avoid,
     viewNegative,
+    extraViewNegative,
   ]);
 
   return {

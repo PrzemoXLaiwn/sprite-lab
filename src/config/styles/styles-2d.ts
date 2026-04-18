@@ -47,6 +47,11 @@ export const STYLES_2D_FULL: Record<string, StyleConfig> = {
     edges: "hard aliased pixel edges, blocky jagged edges, stair-step diagonals, no smoothing",
     styleEnforcement: "MUST look like actual pixel art with visible individual pixels, like SNES or GBA games, NOT smooth digital art",
     styleMandatory: "pixel art sprite with visible pixels, pixelated, 16 bit, no anti-aliasing, blocky",
+    qualityDetails: {
+      draft: "simple readable pixel silhouette, flat base colors, one shadow tone",
+      normal: "clean pixel clusters, two-tone shading per material, subtle ordered dithering on curves",
+      hd: "rich pixel shading, 4-5 tone color ramps per material, deliberate dithering, single highlight pixel and shadow pixel, polished SNES-era craftsmanship, still zero anti-aliasing",
+    },
     // 🔥 AGGRESSIVE negatives - block ALL smooth/realistic rendering!
     negatives: "smooth, anti-aliasing, realistic, 3D render, photograph, photorealistic, soft edges, blended colors, smooth shading, airbrushed, painted, high resolution, 4K, 8K, HD, hyperrealistic, smooth textures, soft gradients, detailed, ultra detailed, fine details, smooth lines, vector art, clean edges, polished, soft, gradient",
     // Model settings - optimized for pixel art
@@ -67,6 +72,11 @@ export const STYLES_2D_FULL: Record<string, StyleConfig> = {
     edges: "clean hard pixel edges, pixelated curves with visible steps, no smoothing",
     styleEnforcement: "MUST look like modern indie pixel art with visible pixels, like Celeste or Shovel Knight",
     styleMandatory: "pixel art sprite with visible pixels, pixelated, 32 bit, no anti-aliasing",
+    qualityDetails: {
+      draft: "clean 32-bit silhouette, flat base palette with one shade tone",
+      normal: "modern indie pixel polish, 3-tone ramps per material, selective dithering, soft rim pixel",
+      hd: "high-detail indie pixel rendering, 5-6 tone ramps per material, controlled dithering on curves, anti-aliased-looking-but-still-pixel rim lights, sub-pixel detail in eyes and metals, Dead Cells production polish",
+    },
     negatives: "smooth, anti-aliasing, realistic, 3D render, photorealistic, soft edges, blended colors, smooth shading, airbrushed, painted, high resolution, 4K, HD, soft gradients, vector art, clean smooth edges, polished, gradient",
     model: "flux-dev",
     guidance: 3.0,
@@ -87,6 +97,11 @@ export const STYLES_2D_FULL: Record<string, StyleConfig> = {
     edges: "soft painted edges, organic brush boundaries, lost and found edges technique, artistic edge variety for visual interest",
     styleEnforcement: "Hand-painted illustration quality with visible artistic brushwork throughout. Like concept art or illustrated game backgrounds. Painterly and atmospheric.",
     styleMandatory: "MUST have painterly texture, visible brush strokes, artistic rendering - NOT flat digital, NOT pixel art, NOT 3D render, NOT vector",
+    qualityDetails: {
+      draft: "simple painterly wash, single light pass, readable form",
+      normal: "confident brushwork, two-pass shading, atmospheric color blending, clean focal subject",
+      hd: "richly layered brushwork with visible paint texture, lost-and-found edges, rim light and bounced fill, subtle color temperature shifts in mid-tones, concept-art level polish like Ori or Hollow Knight promo art",
+    },
     negatives: "pixel art, pixelated, vector art, flat design, sharp digital edges, 3D render, cel shaded, anime style, clean lines, smooth digital, photorealistic, crisp edges, flat colors",
     // Model settings - FLUX OPTIMIZED
     model: "flux-dev",
@@ -108,6 +123,11 @@ export const STYLES_2D_FULL: Record<string, StyleConfig> = {
     edges: "perfectly smooth edges, clean sharp outlines, precise geometric boundaries, consistent line weight",
     styleEnforcement: "Clean vector-style art with flat colors and smooth shapes. Polished mobile game or modern indie game quality. Professional and marketable.",
     styleMandatory: "MUST be clean flat design, smooth edges, minimal texture - NOT painterly, NOT pixel art, NOT realistic shading, NOT sketchy",
+    qualityDetails: {
+      draft: "flat shapes with single cel-shade tone, minimal detail",
+      normal: "clean flat with two-tone cel shading, one crisp highlight, polished geometric forms",
+      hd: "premium vector polish with subtle gradient accents, rim highlight, soft inner shadow, glossy specular dot on metals, marketing-quality mobile icon finish",
+    },
     negatives: "textured, painterly, pixel art, realistic, complex shading, rough edges, noise, grain, hand-drawn, sketchy, brushy, organic shapes, irregular lines",
     model: "flux-dev",
     guidance: 3.5,
@@ -128,6 +148,11 @@ export const STYLES_2D_FULL: Record<string, StyleConfig> = {
     edges: "clean black outlines, variable line weight for depth, crisp anime lineart, confident strokes",
     styleEnforcement: "Japanese anime/manga style art as seen in JRPGs, gacha games, or visual novels. Clean, polished, colorful with expressive design.",
     styleMandatory: "MUST have anime aesthetic with clean lines, cel shading, vibrant colors - NOT western cartoon, NOT realistic, NOT pixel art, NOT painterly",
+    qualityDetails: {
+      draft: "clean lineart, single cel shade tone, flat base fills",
+      normal: "crisp anime lineart with variable weight, two-tone cel shading, subtle gradient on hair",
+      hd: "polished gacha key-art quality, sharp variable-weight lineart, layered cel shading with rim light and gradient overlays, glossy metallic highlights, subtle subsurface on skin, sparkle and glint accents like Genshin Impact splash art",
+    },
     negatives: "western cartoon, realistic, pixel art, rough sketch, 3D render, chibi, painterly, oil painting, watercolor, thick outlines, american animation style",
     // Model settings - FLUX OPTIMIZED
     model: "flux-dev",
@@ -146,6 +171,11 @@ export const STYLES_2D_FULL: Record<string, StyleConfig> = {
     edges: "soft rounded edges, gentle thin outlines, no sharp corners anywhere, bubbly organic shapes",
     styleEnforcement: "Super cute chibi/kawaii style with big heads, small bodies, maximum adorableness. Like mobile pet games, cute mascots, or chibi character goods.",
     styleMandatory: "MUST be cute chibi with exaggerated head-to-body ratio 2:1 or 3:1 - NOT realistic proportions, NOT scary, NOT detailed anatomy",
+    qualityDetails: {
+      draft: "rounded flat colors with a single soft shadow, basic cute silhouette",
+      normal: "soft cel shading, gentle gradient on hair, tiny cheek blush, one sparkle",
+      hd: "polished kawaii rendering with multiple sparkles and glow accents, glossy eye highlights, rim light, soft gradient fills, candy-gloss surface detail, premium merchandise polish",
+    },
     negatives: "realistic proportions, dark themes, horror, gritty, scary, detailed realistic anatomy, sharp edges, serious expression, mature content, violent, muscular",
     model: "flux-dev",
     guidance: 3.5,
@@ -166,6 +196,11 @@ export const STYLES_2D_FULL: Record<string, StyleConfig> = {
     edges: "thick black outlines, consistent stroke weight, bold expressive lineart, clean confident strokes",
     styleEnforcement: "Western cartoon/animation style like Cuphead, classic Fleischer/Disney, or modern Cartoon Network. Bold, expressive, animated energy.",
     styleMandatory: "MUST have thick outlines, bold colors, exaggerated cartoon proportions - NOT anime, NOT realistic, NOT pixel art, NOT subtle",
+    qualityDetails: {
+      draft: "thick outline with flat bold colors, single cel tone",
+      normal: "confident varied-weight outline, punchy two-tone cel shading, one highlight shape",
+      hd: "premium Cuphead-era polish, inked varied-weight outline, rich cel shading with highlight and rim, subtle paper-grain overlay, animation-cel gloss, chromatic lighting accents",
+    },
     negatives: "anime, realistic, pixel art, thin lines, muted colors, subtle shading, 3D render, photorealistic, painterly, detailed textures, soft edges",
     // Model settings - FLUX OPTIMIZED
     model: "flux-dev",
@@ -187,6 +222,11 @@ export const STYLES_2D_FULL: Record<string, StyleConfig> = {
     edges: "gritty detailed edges, worn and battle-damaged surfaces, rough weathered textures, organic imperfect shapes",
     styleEnforcement: "Dark gritty atmospheric fantasy art. Weathered dangerous beautiful in darkness. Professional AAA dark fantasy game quality.",
     styleMandatory: "MUST be dark and gritty with muted desaturated colors, weathered worn details - NOT bright, NOT cute, NOT clean pristine, NOT cheerful",
+    qualityDetails: {
+      draft: "dark moody silhouette, base weathering and grime, limited palette",
+      normal: "layered wear with rust streaks, scratches, atmospheric dust, subtle rim light",
+      hd: "heavy battle-damage detail, chipped edges and deep pitting, crusted rust, dried-blood ichor and patina, dramatic low-key rim light, micro-scratches, volumetric dust motes, FromSoftware splash-art moodiness",
+    },
     negatives: "bright colors, cartoon, cute, chibi, clean pristine, pixel art, anime, cheerful, colorful, happy, vibrant, saturated, pastel, new and shiny, smooth surfaces",
     // Model settings - FLUX OPTIMIZED
     model: "flux-dev",
@@ -208,6 +248,11 @@ export const STYLES_2D_FULL: Record<string, StyleConfig> = {
     edges: "clean geometric edges at proper iso angles, precise isometric construction, subtle outlines, smooth edges for clarity",
     styleEnforcement: "Proper 26.57-degree isometric projection as seen in mobile strategy games. STRICT angle maintained throughout entire object. Game-ready asset. NO perspective distortion.",
     styleMandatory: "MUST be true 26.57-degree isometric angle not perspective, consistent top-left lighting, single isolated object - NOT perspective 3D, NOT top-down flat, NOT 30-45 degree angles",
+    qualityDetails: {
+      draft: "clean iso geometry with flat color per plane, base drop shadow",
+      normal: "cel-shaded iso with clear top/side plane separation, soft ambient occlusion, crisp outline",
+      hd: "premium iso polish with per-plane material detail, ambient occlusion in crevices, rim highlight, subtle specular glints on metals, emissive accents on magical parts, Clash-Royale-quality marketing finish",
+    },
     negatives: "perspective view with vanishing point, flat top-down orthographic, side view profile, inconsistent angles, photorealistic 3D render, tilted wrong, fisheye lens, dutch angle, blurry, realistic textures, wrong isometric angle, 30 degree angle, 45 degree angle",
     // Model settings - FLUX OPTIMIZED (higher guidance for strict angle)
     model: "flux-dev",
@@ -227,6 +272,11 @@ export const STYLES_2D_FULL: Record<string, StyleConfig> = {
     edges: "hard pixel edges, no anti-aliasing, stair-step isometric lines, blocky pixel boundaries",
     styleEnforcement: "MUST be pixel art with VISIBLE PIXELS in isometric view, like classic RTS games, NOT smooth 3D",
     styleMandatory: "pixel art sprite with visible pixels, isometric angle, no anti-aliasing, blocky pixels",
+    qualityDetails: {
+      draft: "simple iso pixel silhouette, flat color per plane, one shadow tone",
+      normal: "clean iso pixel clusters, 2-3 tone ramps per plane, stair-step pixel edges, ordered dither shadow",
+      hd: "detailed iso pixel rendering with 4+ tone ramps per plane, careful dithering in shadow transitions, highlight pixels on corners, sub-pixel detail on emissive accents, RTS-classic polish",
+    },
     negatives: "smooth, anti-aliasing, 3D render, perspective view, realistic, painterly, soft edges, blurry, smooth curves, modern HD, gradient, polished, clean edges",
     model: "flux-dev",
     guidance: 3.5,
@@ -244,6 +294,11 @@ export const STYLES_2D_FULL: Record<string, StyleConfig> = {
     edges: "smooth rounded edges, thick friendly outlines, cartoon proportions, bouncy appealing shapes",
     styleEnforcement: "Cute cartoon style in proper isometric view. Friendly inviting casual mobile game quality. Fun and approachable.",
     styleMandatory: "MUST be cartoon style AND proper isometric angle - cheerful colors, rounded shapes, game-ready asset",
+    qualityDetails: {
+      draft: "rounded iso with flat cheerful colors and single cel shade",
+      normal: "cel-shaded iso with bold outline, soft drop shadow, clear plane separation",
+      hd: "polished iso cartoon with soft gradient fills, rim highlight, sparkle accents, glossy candy surfaces, ambient occlusion in joints, Hay-Day-style premium mobile polish",
+    },
     negatives: "realistic, dark, gritty, pixel art, complex details, scary, horror, muted colors, serious, perspective view, flat top-down",
     // Model settings - FLUX OPTIMIZED
     model: "flux-dev",
@@ -265,6 +320,11 @@ export const STYLES_2D_FULL: Record<string, StyleConfig> = {
     edges: "refined natural edges, lost and found edge technique, realistic edge treatment with artistic consideration",
     styleEnforcement: "High quality realistic digital art at AAA game concept art level. Professional polished industry standard. Impressive and marketable.",
     styleMandatory: "MUST be realistic and high quality professional standard - NOT cartoon, NOT pixel art, NOT flat design, NOT amateur",
+    qualityDetails: {
+      draft: "realistic base rendering with single key light, readable materials",
+      normal: "realistic rendering with fill and rim light, material differentiation, subtle subsurface on organic parts",
+      hd: "AAA splash-art polish, physically plausible PBR materials, cinematic three-point lighting with rim and bounce, specular highlights with proper falloff, micro-surface detail, subtle atmospheric haze and color grading, League-of-Legends-quality concept finish",
+    },
     negatives: "cartoon, pixel art, flat design, anime, chibi, overly stylized, low detail, rough, sketchy, amateur, simple shapes, flat colors, cel shaded",
     // Model settings - FLUX OPTIMIZED (higher for realistic detail)
     model: "flux-dev",
