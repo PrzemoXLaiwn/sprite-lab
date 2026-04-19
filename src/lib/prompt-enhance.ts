@@ -51,6 +51,85 @@ interface EnhanceResult {
   wasEnhanced: boolean;
 }
 
+interface TranslateResult {
+  translated: string;
+  original: string;
+  wasTranslated: boolean;
+}
+
+const TRANSLATE_SYSTEM_PROMPT = `You translate game asset descriptions to English for an AI image generator (FLUX.1).
+
+RULES:
+1. Output ONLY the English translation. No explanation, no quotes, no prefix.
+2. If the input is already English, output it unchanged.
+3. Preserve every noun, adjective, and specific detail exactly (colors, materials, poses, tech terms like "UI button", "outline", "shader").
+4. Keep it concise — same length or shorter than the original.
+5. Do not add "A" or "The" at the start. Do not add a period at the end.
+6. Technical game-dev terms (Unity, sprite, outline, shader, UI, HUD) stay as-is.
+
+EXAMPLES:
+Input: "Сделай обводку (outline) для UI кнопки в Unity"
+Output: outline for Unity UI button
+
+Input: "miecz ognisty z czerwoną rękojeścią"
+Output: fiery sword with red hilt
+
+Input: "warhammer, boarder"
+Output: warhammer, border`;
+
+/**
+ * Translate a non-English user prompt to English before sending to FLUX.
+ * FLUX is English-trained, so raw Cyrillic/Polish/etc. produces garbage.
+ * Runs for ALL users — translation is the foundation, not a paid feature.
+ */
+export async function translatePromptIfNeeded(
+  userPrompt: string
+): Promise<TranslateResult> {
+  const original = userPrompt.trim();
+
+  // Fast path: pure ASCII = English (or close enough), skip the API call.
+  if (!/[^\x00-\x7F]/.test(original)) {
+    return { translated: original, original, wasTranslated: false };
+  }
+
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    console.warn("[Translate] No ANTHROPIC_API_KEY, sending original prompt");
+    return { translated: original, original, wasTranslated: false };
+  }
+
+  try {
+    const anthropic = new Anthropic({ apiKey });
+
+    const response = await anthropic.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 200,
+      system: TRANSLATE_SYSTEM_PROMPT,
+      messages: [{ role: "user", content: original }],
+    });
+
+    const text = response.content[0];
+    if (text.type !== "text" || !text.text.trim()) {
+      return { translated: original, original, wasTranslated: false };
+    }
+
+    let translated = text.text.trim().replace(/^["']|["']$/g, "").trim();
+
+    // Safety: if translator returned something with no Latin letters at all,
+    // assume it failed and fall back.
+    if (!/[a-zA-Z]/.test(translated)) {
+      console.warn(`[Translate] Output had no Latin letters, using original`);
+      return { translated: original, original, wasTranslated: false };
+    }
+
+    console.log(`[Translate] "${original}" → "${translated}"`);
+    return { translated, original, wasTranslated: true };
+  } catch (error) {
+    console.error("[Translate] Error:", error);
+    return { translated: original, original, wasTranslated: false };
+  }
+}
+
 export async function enhanceUserPrompt(
   userPrompt: string,
   categoryId: string,
@@ -99,14 +178,38 @@ export async function enhanceUserPrompt(
     // Safety: remove quotes if Claude wrapped it
     enhanced = enhanced.replace(/^["']|["']$/g, "").trim();
 
-    // Safety: if Claude returned something completely different, use original
-    // Check that at least 50% of user words appear in enhanced
-    const userWords = original.toLowerCase().split(/\s+/);
-    const enhancedLower = enhanced.toLowerCase();
-    const matchCount = userWords.filter((w) => enhancedLower.includes(w)).length;
-    if (matchCount < userWords.length * 0.5) {
-      console.warn(`[PromptEnhance] Safety: enhanced prompt lost user intent, using original`);
-      return { enhanced: original, original, wasEnhanced: false };
+    // Safety: if Claude returned something completely different, use original.
+    // Normalize via stem (strip trailing s/es/ed/ing) so "sword" matches "swords"
+    // and "glow" matches "glowing". Skip filler words that Claude routinely
+    // drops/replaces (articles, prepositions). Threshold 30% — low enough to
+    // allow synonym substitutions ("red" → "crimson"), high enough to catch
+    // total derailment.
+    const FILLER = new Set([
+      "a", "an", "the", "and", "or", "of", "with", "for", "to", "in", "on", "at",
+    ]);
+    const stem = (w: string): string =>
+      w.toLowerCase()
+        .replace(/[^a-z0-9]/g, "")
+        .replace(/(ing|ed|es|s)$/u, "");
+
+    const userStems = original
+      .split(/\s+/)
+      .map(stem)
+      .filter((w) => w.length >= 3 && !FILLER.has(w));
+    const enhancedStems = enhanced.split(/\s+/).map(stem);
+    const enhancedSet = new Set(enhancedStems);
+
+    if (userStems.length > 0) {
+      const matchCount = userStems.filter(
+        (w) => enhancedSet.has(w) || enhancedStems.some((e) => e.includes(w))
+      ).length;
+      const ratio = matchCount / userStems.length;
+      if (ratio < 0.3) {
+        console.warn(
+          `[PromptEnhance] Safety: enhanced lost intent (${matchCount}/${userStems.length} = ${Math.round(ratio * 100)}%), using original`
+        );
+        return { enhanced: original, original, wasEnhanced: false };
+      }
     }
 
     // Safety: cap at 50 words

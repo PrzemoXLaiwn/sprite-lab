@@ -55,6 +55,7 @@ model User {
 
   projects              Project[]
   generations           Generation[]
+  assets                Asset[]
   // pendingGenerations removed - no FK constraint to avoid Supabase timeout
   creditTransactions    CreditTransaction[]
   notifications         Notification[]
@@ -110,21 +111,37 @@ model Project {
   id          String   @id @default(cuid())
   userId      String   @map("user_id")
   name        String
+  isInbox     Boolean  @default(false) @map("is_inbox") // Auto-created default project per user.
   gameType    String?  @map("game_type")     // dungeon crawler, platformer, RPG, etc.
   perspective String?                         // top-down, side-scroll, isometric
   artStyle    String?  @map("art_style")     // pixel art, hand-painted, dark fantasy
   mood        String?                         // dark, colorful, gritty, whimsical
   systems     String?                         // combat, inventory, crafting (comma-separated)
   notes       String?
+
+  // Style lock — enforces per-project visual consistency across new generations.
+  styleLockEnabled        Boolean @default(false) @map("style_lock_enabled")
+  styleAnchorAssetId      String? @unique      @map("style_anchor_asset_id")
+  styleLockedPalette      Json?                @map("style_locked_palette")    // array of hex strings
+  styleLockedSeed         Int?                 @map("style_locked_seed")
+  styleLockedLoraId       String?              @map("style_locked_lora_id")
+  styleLockedLoraWeight   Float?               @map("style_locked_lora_weight")
+  styleLockedPromptPrefix String?              @map("style_locked_prompt_prefix")
+  styleLockedRefImageKey  String?              @map("style_locked_ref_image_key")  // R2 key for IP-Adapter input
+  styleLockedRefImageHash String?              @map("style_locked_ref_image_hash") // dedup key
+
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   folders     ProjectFolder[]
   generations Generation[]
+  assets      Asset[]
+  styleAnchor Asset?          @relation("ProjectStyleAnchor", fields: [styleAnchorAssetId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([createdAt])
+  @@index([userId, isInbox])
   @@map("projects")
 }
 
@@ -143,6 +160,7 @@ model ProjectFolder {
 
   project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   generations Generation[]
+  assets      Asset[]
 
   @@index([projectId])
   @@index([category])
@@ -675,4 +693,98 @@ model OptimizedPrompt {
   @@index([avgQualityScore])
   @@index([isActive])
   @@map("optimized_prompts")
+}
+
+// ===========================================
+// ASSET SYSTEM (new — system of record going forward)
+// ===========================================
+// Legacy rows migrated from `generations` are tagged legacy=true and store
+// their original URL in `legacy_image_url` (new rows use `image_key`).
+//
+// Exactly one of (image_key, legacy_image_url) must be non-null — enforced by
+// a raw SQL CHECK constraint applied post-push (see scripts/migrate-generations-to-assets.ts).
+model Asset {
+  id               String   @id @default(cuid())
+  userId           String   @map("user_id")
+  projectId        String?  @map("project_id")
+  folderId         String?  @map("folder_id")
+
+  // Category / style use new-spec IDs (e.g. "character", "pixel_16bit_snes").
+  // Legacy rows may store pre-redirect IDs when the redirect target is LEGACY_ONLY.
+  categoryId       String   @map("category_id")
+  subcategoryId    String?  @map("subcategory_id")
+  styleId          String   @map("style_id")
+
+  // Prompt journey — every step preserved for debugging and reproducibility.
+  rawPrompt        String   @map("raw_prompt")           // user input verbatim
+  translatedPrompt String?  @map("translated_prompt")    // auto-translated to English
+  enhancedPrompt   String?  @map("enhanced_prompt")      // Pro enhancer output
+  composedPrompt   String   @map("composed_prompt")      // final FLUX-bound prompt
+  negativePrompt   String?  @map("negative_prompt")
+
+  // Generation params
+  model            String                                // "flux-schnell" | "flux-dev"
+  qualityTier      String   @default("standard") @map("quality_tier") // "standard" | "hq"
+  seed             Int
+  loraId           String?  @map("lora_id")              // Civitai hash / Runware model id
+  loraWeight       Float?   @map("lora_weight")
+
+  // Output image
+  width            Int
+  height           Int
+  imageKey         String?  @map("image_key")            // R2 key for new assets
+  displayKey       String?  @map("display_key")          // R2 key for 1024 NN upscale
+  normalMapKey     String?  @map("normal_map_key")       // R2 key for normal map
+  legacyImageUrl   String?  @map("legacy_image_url")     // full URL, migrated rows only
+  transparentBg    Boolean  @default(true) @map("transparent_bg")
+
+  // Palette
+  palette          Json?                                 // array of hex strings
+  paletteSource    String?  @map("palette_source")       // "derived" | "forced" | "user"
+
+  // Pivot — DB defaults to center (0.5, 0.5). Category-appropriate pivots are
+  // applied at insert time by the pipeline; see pivotForCategory() in
+  // src/config/categories/category-configs.ts.
+  pivotX           Float    @default(0.5) @map("pivot_x")
+  pivotY           Float    @default(0.5) @map("pivot_y")
+
+  // Tile-specific — null for non-tile; boolean for tile assets after edge validation.
+  tileable         Boolean?
+
+  hasNormalMap     Boolean  @default(false) @map("has_normal_map")
+
+  // Lineage + grouping
+  sourceAssetId    String?  @map("source_asset_id")      // regen/variation parent
+  setId            String?  @map("set_id")               // groups sheet/pack members
+  setKind          String?  @map("set_kind")             // "character_sheet" | "animation_pack" | "tile_pack"
+  setRole          String?  @map("set_role")             // "member" | "combined_sheet"
+
+  creditsUsed      Int      @map("credits_used")
+  isPublic         Boolean  @default(false) @map("is_public")
+  likes            Int      @default(0)
+
+  legacy             Boolean @default(false)              // TRUE for rows migrated from generations
+  legacyGenerationId String? @unique @map("legacy_generation_id") // source generations.id for migrated rows
+
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt      @map("updated_at")
+
+  user                   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project                Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  folder                 ProjectFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  sourceAsset            Asset?         @relation("AssetLineage", fields: [sourceAssetId], references: [id], onDelete: SetNull)
+  derivedAssets          Asset[]        @relation("AssetLineage")
+  styleAnchorForProjects Project[]      @relation("ProjectStyleAnchor")
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([projectId, createdAt(sort: Desc)])
+  @@index([folderId, createdAt(sort: Desc)])
+  @@index([userId, categoryId, createdAt(sort: Desc)])
+  @@index([userId, styleId, createdAt(sort: Desc)])
+  @@index([isPublic, createdAt(sort: Desc)])
+  @@index([sourceAssetId])
+  @@index([setId])
+  @@index([legacy])
+  @@index([legacyGenerationId])
+  @@map("assets")
 }

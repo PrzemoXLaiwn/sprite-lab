@@ -245,6 +245,51 @@ export async function deleteFromR2(
 }
 
 /**
+ * Upload a Buffer to R2 at a CALLER-SPECIFIED key.
+ *
+ * Unlike uploadToR2 / uploadBase64ToR2 above (which auto-generate paths
+ * via the private generateFilePath helper), this function puts the
+ * object at exactly the key the caller supplies. Intended for the
+ * module-2 pipeline, which builds keys via src/lib/r2/keys.ts per the
+ * `gen/{userId}/{projectId}/{assetId}[_display|_n].png` convention.
+ *
+ * Returns {success, error?} rather than throwing — the orchestrator
+ * wraps failures into StorageError itself so the pipeline's typed-error
+ * discipline stays clean.
+ */
+export async function uploadBufferToR2(
+  buffer: Buffer,
+  key: string,
+  contentType: string = "image/png"
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const client = getR2Client();
+    const bucketName = process.env.R2_BUCKET_NAME;
+
+    if (!client || !bucketName) {
+      return { success: false, error: "R2 not configured" };
+    }
+
+    const command = new PutObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+      Body: buffer,
+      ContentType: contentType,
+      CacheControl: "public, max-age=31536000",
+    });
+
+    await client.send(command);
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "R2 upload failed",
+    };
+  }
+}
+
+/**
  * Check if a URL is an R2 URL
  */
 export function isR2Url(url: string): boolean {

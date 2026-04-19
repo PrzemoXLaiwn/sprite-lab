@@ -116,6 +116,7 @@ interface GeneratedResult {
   subcategoryId: string;
   styleId: string;
   prompt: string;
+  translatedPrompt?: string;
   enhancedPrompt?: string;
 }
 
@@ -268,6 +269,7 @@ function GeneratePageInner() {
         subcategoryId: selectedSubcategoryId,
         styleId:       styleId,
         prompt:        prompt.trim(),
+        translatedPrompt: data.translatedPrompt,
         enhancedPrompt: data.enhancedPrompt,
       };
 
@@ -653,11 +655,22 @@ function GeneratePageInner() {
           </div>
         )}
 
-        {/* Enhanced prompt */}
-        {activeResult?.enhancedPrompt && (
-          <p className="max-w-[520px] mt-3 text-[10px] text-white/15 text-center italic leading-relaxed">
-            &ldquo;{activeResult.enhancedPrompt}&rdquo;
-          </p>
+        {/* Prompt transformation trail — shows translation/enhancement so user
+            understands what was sent to FLUX. */}
+        {(activeResult?.translatedPrompt || activeResult?.enhancedPrompt) && (
+          <div className="max-w-[520px] mt-3 space-y-1 text-[10px] text-center leading-relaxed">
+            {activeResult?.translatedPrompt && (
+              <p className="text-white/30">
+                <span className="text-white/15 uppercase tracking-widest text-[8px] mr-1.5">EN</span>
+                {activeResult.translatedPrompt}
+              </p>
+            )}
+            {activeResult?.enhancedPrompt && (
+              <p className="text-white/20 italic">
+                &ldquo;{activeResult.enhancedPrompt}&rdquo;
+              </p>
+            )}
+          </div>
         )}
 
         {/* Session history thumbnails */}

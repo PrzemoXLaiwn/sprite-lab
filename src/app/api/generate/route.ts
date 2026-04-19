@@ -15,7 +15,7 @@ import {
   GenerationError,
   type GenerationRequest,
 } from "@/lib/services/generation";
-import { enhanceUserPrompt } from "@/lib/prompt-enhance";
+import { enhanceUserPrompt, translatePromptIfNeeded } from "@/lib/prompt-enhance";
 
 // ─── Input validation schema ──────────────────────────────────────────────────
 // Identical to Phase 2 schema — no breaking changes to accepted input.
@@ -143,18 +143,34 @@ export async function POST(request: Request) {
     // ── 4. Ensure user record exists ──────────────────────────────────────────
     const dbUser = await getOrCreateUser(user.id, user.email!);
 
-    // ── 4b. AI Prompt Enhancement (Pro/Studio only) ─────────────────────────
-    // Expands short prompts like "iron sword magic" into detailed visual
-    // descriptions while preserving the user's exact intent.
+    // ── 4b. Translate non-English prompts (all users) ───────────────────────
+    // FLUX is English-trained; Cyrillic/Polish/etc. pass through as garbage
+    // and produce unrelated images. Translate first, then optionally enhance.
     let finalUserPrompt = prompt;
     let promptWasEnhanced = false;
+    let promptWasTranslated = false;
+
+    try {
+      const { translated, wasTranslated } = await translatePromptIfNeeded(prompt);
+      if (wasTranslated) {
+        finalUserPrompt = translated;
+        promptWasTranslated = true;
+      }
+    } catch {
+      // Translation failed — fall through with original prompt
+    }
+
+    // ── 4c. AI Prompt Enhancement (Pro/Studio only) ─────────────────────────
+    // Expands short prompts like "iron sword magic" into detailed visual
+    // descriptions while preserving the user's exact intent. Operates on the
+    // (already-translated) English prompt so the safety check works correctly.
     const userPlan = dbUser?.user?.plan ?? "FREE";
     const isPaidPlan = ["PRO", "UNLIMITED", "STARTER"].includes(userPlan);
 
-    if (isPaidPlan && prompt.split(/\s+/).length < 7) {
+    if (isPaidPlan && finalUserPrompt.split(/\s+/).length < 7) {
       try {
         const { enhanced, wasEnhanced } = await enhanceUserPrompt(
-          prompt,
+          finalUserPrompt,
           categoryId,
           subcategoryId
         );
@@ -163,7 +179,7 @@ export async function POST(request: Request) {
           promptWasEnhanced = true;
         }
       } catch {
-        // Enhancement failed — use original prompt, don't block generation
+        // Enhancement failed — use translated prompt, don't block generation
       }
     }
 
@@ -218,6 +234,7 @@ export async function POST(request: Request) {
       is2DSprite: true,
       transparentBackground: true,
       prompt: prompt.trim(),
+      translatedPrompt: promptWasTranslated ? finalUserPrompt : undefined,
       enhancedPrompt: promptWasEnhanced ? finalUserPrompt : undefined,
       fullPrompt: asset.finalPrompt,
       seed: asset.seed,
