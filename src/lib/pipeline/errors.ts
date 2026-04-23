@@ -192,8 +192,21 @@ export function toLogContext(err: PipelineError): Record<string, unknown> {
       message: err.cause.message,
       stack: err.cause.stack,
     };
-  } else if (err.cause !== undefined) {
-    out.cause = String(err.cause);
+  } else if (err.cause !== undefined && err.cause !== null) {
+    // Runware SDK (and some other third-party libs) throw plain objects
+    // rather than Error instances. `String(plainObject)` yields the
+    // useless "[object Object]" — JSON round-trip preserves the full
+    // shape so `{ error, errorMessage, taskUUID, ... }` lands in logs.
+    if (typeof err.cause === "object") {
+      try {
+        out.cause = JSON.parse(JSON.stringify(err.cause));
+      } catch {
+        // Circular refs, BigInt, or anything else JSON can't walk.
+        out.cause = String(err.cause);
+      }
+    } else {
+      out.cause = String(err.cause);
+    }
   }
 
   return out;
