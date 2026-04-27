@@ -977,6 +977,18 @@ export const RESOURCES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptCo
 // --------------------------------------------------
 // PROMPT CONFIGS - CHARACTERS
 // --------------------------------------------------
+// FLUX has very strong priors for "warrior / hero / enemy / NPC = standing
+// figure at 3/4 angle". When the user picks TOP_DOWN we have to negate that
+// prior explicitly — generic VIEW_PROMPT_CONFIGS.TOP_DOWN.negative says
+// "standing upright" once, which gets buried. Each character subcategory
+// adds its own per-view negative to reinforce the camera intent.
+const CHARACTER_TOP_DOWN_NEG =
+  "standing pose, standing upright, vertical figure, full body upright, frontal view, three-quarter view, 3/4 angle, hero portrait, warrior pose, character select screen, 3D render of standing person, action pose facing camera, perspective view";
+const CHARACTER_SIDE_NEG =
+  "front view, three-quarter view, 3/4 angle, character select screen, top-down camera, overhead view, isometric, facing camera";
+const CHARACTER_FRONT_NEG =
+  "side profile, top-down camera, overhead view, isometric, three-quarter view, 3/4 angle, back view, away from camera";
+
 export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
   HEROES: makeConfig(
     "single game character, full body sprite",
@@ -986,8 +998,13 @@ export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptC
     {
       viewOverrides: {
         FRONT: "hero facing directly at camera, full body visible, symmetrical character select screen pose",
-        TOP_DOWN: "hero seen from directly above, top of head and shoulders visible, Zelda SNES overhead RPG sprite",
+        TOP_DOWN: "((hero figure seen from directly above)), bird's-eye view of the top of the head and shoulders, body lying along the vertical axis of the frame, like a Zelda SNES or Stardew Valley overhead RPG sprite, NOT a standing portrait",
         SIDE_VIEW: "hero facing right in strict side profile, full body, platformer walking sprite like Mario or Mega Man",
+      },
+      additionalNegativeByView: {
+        TOP_DOWN: CHARACTER_TOP_DOWN_NEG,
+        SIDE_VIEW: CHARACTER_SIDE_NEG,
+        FRONT: CHARACTER_FRONT_NEG,
       },
     }
   ),
@@ -1000,8 +1017,13 @@ export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptC
     {
       viewOverrides: {
         FRONT: "enemy facing directly at camera, full body visible, threatening frontal pose",
-        TOP_DOWN: "enemy seen from directly above, back and head visible, top-down RPG enemy sprite",
+        TOP_DOWN: "((enemy seen from directly above)), bird's-eye view of back and head, body lying along the vertical axis of the frame, top-down RPG enemy sprite, NOT a standing combat pose",
         SIDE_VIEW: "enemy facing right in strict side profile, full body, platformer enemy sprite",
+      },
+      additionalNegativeByView: {
+        TOP_DOWN: CHARACTER_TOP_DOWN_NEG,
+        SIDE_VIEW: CHARACTER_SIDE_NEG,
+        FRONT: CHARACTER_FRONT_NEG,
       },
     }
   ),
@@ -1014,8 +1036,13 @@ export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptC
     {
       viewOverrides: {
         FRONT: "NPC facing directly at camera, full body visible, neutral welcoming pose",
-        TOP_DOWN: "NPC seen from directly above, head and shoulders visible, top-down RPG villager sprite",
+        TOP_DOWN: "((NPC seen from directly above)), bird's-eye view of head and shoulders, body lying along the vertical axis of the frame, top-down RPG villager sprite, NOT a standing portrait",
         SIDE_VIEW: "NPC facing right in strict side profile, full body, idle standing pose",
+      },
+      additionalNegativeByView: {
+        TOP_DOWN: CHARACTER_TOP_DOWN_NEG,
+        SIDE_VIEW: CHARACTER_SIDE_NEG,
+        FRONT: CHARACTER_FRONT_NEG,
       },
     }
   ),
@@ -1028,8 +1055,13 @@ export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptC
     {
       viewOverrides: {
         FRONT: "boss facing directly at camera, full imposing form visible, intimidating frontal pose",
-        TOP_DOWN: "boss seen from directly above, large imposing top-down silhouette, overhead RPG boss",
+        TOP_DOWN: "((boss seen from directly above)), bird's-eye view, large imposing top-down silhouette filling the frame from above, overhead RPG boss sprite, NOT a standing intimidation pose",
         SIDE_VIEW: "boss facing right in strict side profile, full imposing form visible",
+      },
+      additionalNegativeByView: {
+        TOP_DOWN: CHARACTER_TOP_DOWN_NEG,
+        SIDE_VIEW: CHARACTER_SIDE_NEG,
+        FRONT: CHARACTER_FRONT_NEG,
       },
     }
   ),
@@ -1038,33 +1070,65 @@ export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptC
 // --------------------------------------------------
 // PROMPT CONFIGS - CREATURES
 // --------------------------------------------------
+// Creatures share the same anti-3/4 prior issue as humanoid characters.
+const CREATURE_TOP_DOWN_NEG =
+  "side profile, three-quarter view, 3/4 angle, frontal view, standing creature, creature on legs, perspective angle, action pose facing camera";
+
 export const CREATURES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
   ANIMALS: makeConfig(
     "((exactly one animal)), isolated game creature sprite, single animal only",
     "one complete animal with all limbs visible, stylized game creature design, clear readable silhouette",
     "((ONLY ONE ANIMAL)), single full body animal on transparent background, complete body from nose to tail, NO other animals nearby, NO background, centered game sprite",
-    "animal herd, multiple animals, two animals, pack, flock, group, rider on mount, person with animal, landscape scene, dead animal, cropped body, forest background, grass ground, sky, nature scene, hunter, pet owner, leash collar unless requested, saddle unless requested, cage, zoo enclosure, barn interior, trees, rocks, water"
+    "animal herd, multiple animals, two animals, pack, flock, group, rider on mount, person with animal, landscape scene, dead animal, cropped body, forest background, grass ground, sky, nature scene, hunter, pet owner, leash collar unless requested, saddle unless requested, cage, zoo enclosure, barn interior, trees, rocks, water",
+    {
+      additionalNegativeByView: {
+        TOP_DOWN: CREATURE_TOP_DOWN_NEG,
+        SIDE_VIEW: "front view, three-quarter view, 3/4 angle, top-down view, isometric, facing camera",
+        FRONT: "side profile, top-down view, three-quarter view, 3/4 angle, isometric, back view",
+      },
+    }
   ),
 
   MYTHICAL: makeConfig(
     "single mythical creature",
     "legendary creature such as dragon, griffin, phoenix, unicorn, hydra or other mythic beast depending on request",
     "single full body mythical creature, isolated, readable shape and defining anatomy visible",
-    "multiple creatures, rider on creature, battle scene, hatchling only unless requested, dead version"
+    "multiple creatures, rider on creature, battle scene, hatchling only unless requested, dead version",
+    {
+      additionalNegativeByView: {
+        TOP_DOWN: CREATURE_TOP_DOWN_NEG,
+        SIDE_VIEW: "front view, three-quarter view, 3/4 angle, top-down view, isometric, facing camera",
+        FRONT: "side profile, top-down view, three-quarter view, 3/4 angle, isometric, back view",
+      },
+    }
   ),
 
   COMPANIONS: makeConfig(
     "single companion creature",
     "friendly pet or companion creature suitable for game sidekick or summon role",
     "single full body companion, isolated, readable cute or loyal silhouette",
-    "multiple pets, owner with companion, pet shop scene, sad injured animal, crowded scene"
+    "multiple pets, owner with companion, pet shop scene, sad injured animal, crowded scene",
+    {
+      additionalNegativeByView: {
+        TOP_DOWN: CREATURE_TOP_DOWN_NEG,
+        SIDE_VIEW: "front view, three-quarter view, 3/4 angle, top-down view, isometric, facing camera",
+        FRONT: "side profile, top-down view, three-quarter view, 3/4 angle, isometric, back view",
+      },
+    }
   ),
 
   ELEMENTALS: makeConfig(
     "single elemental creature",
     "creature made from a dominant element such as fire, ice, water, stone, lightning, shadow or nature depending on request",
     "single full form elemental, isolated, clearly readable as one element-based being",
-    "wizard summoning it, mixed elements without request, environment scene, multiple elementals"
+    "wizard summoning it, mixed elements without request, environment scene, multiple elementals",
+    {
+      additionalNegativeByView: {
+        TOP_DOWN: CREATURE_TOP_DOWN_NEG,
+        SIDE_VIEW: "front view, three-quarter view, 3/4 angle, top-down view, isometric, facing camera",
+        FRONT: "side profile, top-down view, three-quarter view, 3/4 angle, isometric, back view",
+      },
+    }
   ),
 };
 
@@ -1550,9 +1614,15 @@ export function buildAssetPrompt(input: PromptBuildInput): PromptBuildResult {
   // FLUX's weight signal.
   const viewPositiveFlat = viewPositive.replace(/\(+|\)+/g, "").trim();
   const humanView = resolvedView.toLowerCase().replace("_", "-");
-  const cameraPhrase = viewCameFromPrompt
-    ? `((${viewPositiveFlat})). The camera angle is strictly ${humanView} with no deviation — do not rotate or angle the subject.`
-    : `${viewPositive}.`;
+  const cameraPhrase = !isExplicitView
+    ? `${viewPositive}.`
+    : viewCameFromPrompt
+      ? `((${viewPositiveFlat})). The camera angle is strictly ${humanView} with no deviation — do not rotate or angle the subject.`
+      // Selector-picked view: wrap in (()) emphasis too. Without this FLUX
+      // routinely ignores TOP_DOWN/SIDE_VIEW for character categories
+      // because its priors for "warrior holding axe" overpower a flat
+      // single-clause camera mention buried mid-prompt.
+      : `((${viewPositiveFlat})). Camera angle is strictly ${humanView} — do not rotate the subject to any other angle.`;
 
   // ── Color detection ───────────────────────────────────────────────
   const ACTUAL_COLORS = new Set(["red", "blue", "green", "purple", "gold", "golden", "black", "white", "orange", "yellow", "pink", "silver", "crimson"]);
