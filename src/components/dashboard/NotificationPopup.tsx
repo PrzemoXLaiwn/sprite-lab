@@ -22,6 +22,9 @@ export function NotificationPopup() {
   const fetchNotifications = useCallback(async () => {
     try {
       const response = await fetch("/api/notifications");
+      // 401 = signed-out user. Stop polling — no point hammering the
+      // endpoint until the session is restored.
+      if (response.status === 401) return;
       const data = await response.json();
       if (data.success && data.notifications?.length > 0) {
         setNotifications(data.notifications);
@@ -40,8 +43,10 @@ export function NotificationPopup() {
     // Initial fetch
     fetchNotifications();
 
-    // Poll every 30 seconds for new notifications
-    const interval = setInterval(fetchNotifications, 30000);
+    // Poll every 60 seconds. The previous 30s cadence doubled request volume
+    // for no perceptible UX gain — notifications appear after server-side
+    // events (purchases, admin grants) that don't need real-time polling.
+    const interval = setInterval(fetchNotifications, 60_000);
 
     return () => clearInterval(interval);
   }, [fetchNotifications]);

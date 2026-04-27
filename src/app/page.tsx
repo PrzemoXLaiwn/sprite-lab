@@ -62,21 +62,21 @@ export default async function Home({
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0B0F19]/85 backdrop-blur-xl border-b border-white/[0.06]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
-            <Image src="/logo.png" alt="SpriteLab" width={28} height={28} priority unoptimized />
+            <Image src="/logo.png" alt="SpriteLab" width={28} height={28} priority />
             <span className="font-bold text-[16px] tracking-tight text-white/90">
               Sprite<span className="text-[#F97316]">Lab</span>
             </span>
           </Link>
 
           <div className="hidden md:flex items-center gap-8">
-            <a href="#features" className="text-[13px] text-white/40 hover:text-white/70 transition-colors">Features</a>
-            <a href="#gallery" className="text-[13px] text-white/40 hover:text-white/70 transition-colors">Gallery</a>
-            <a href="#pricing" className="text-[13px] text-white/40 hover:text-white/70 transition-colors">Pricing</a>
-            <a href="#faq" className="text-[13px] text-white/40 hover:text-white/70 transition-colors">FAQ</a>
+            <a href="#features" className="text-[13px] text-white/70 hover:text-white transition-colors">Features</a>
+            <a href="#gallery" className="text-[13px] text-white/70 hover:text-white transition-colors">Gallery</a>
+            <a href="#pricing" className="text-[13px] text-white/70 hover:text-white transition-colors">Pricing</a>
+            <a href="#faq" className="text-[13px] text-white/70 hover:text-white transition-colors">FAQ</a>
           </div>
 
           <div className="flex items-center gap-3">
-            <Link href="/login" className="text-[13px] text-white/50 hover:text-white/80 transition-colors px-3 py-2">
+            <Link href="/login" className="text-[13px] text-white/75 hover:text-white transition-colors px-3 py-2">
               Log in
             </Link>
             <Link href={registerUrl}
@@ -455,7 +455,7 @@ export default async function Home({
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="flex flex-col items-center gap-8 md:flex-row md:justify-between">
             <div className="flex items-center gap-2.5">
-              <Image src="/logo.png" alt="SpriteLab" width={22} height={22} loading="lazy" unoptimized />
+              <Image src="/logo.png" alt="SpriteLab" width={22} height={22} loading="lazy" />
               <span className="font-bold text-sm tracking-tight">
                 Sprite<span className="text-[#F97316]">Lab</span>
               </span>

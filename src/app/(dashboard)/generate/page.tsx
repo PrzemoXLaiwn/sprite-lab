@@ -81,14 +81,6 @@ const PALETTE_OPTIONS = [
 
 type PaletteId = (typeof PALETTE_OPTIONS)[number]["id"];
 
-const BG_OUTPUT_OPTIONS = [
-  { id: "transparent", label: "Transparent" },
-  { id: "dark", label: "Solid dark" },
-  { id: "light", label: "Solid light" },
-] as const;
-
-type BgOutputId = (typeof BG_OUTPUT_OPTIONS)[number]["id"];
-
 // Background preview modes
 const BG_MODES = [
   { id: "checker", label: "Transparent", style: { backgroundImage: "repeating-conic-gradient(#80808015 0% 25%, transparent 0% 50%)", backgroundSize: "24px 24px" } },
@@ -163,7 +155,6 @@ function GeneratePageInner() {
   const [prompt, setPrompt]               = useState(urlPrompt);
   const [seed, setSeed]                   = useState("");
   const [palette, setPalette]              = useState<PaletteId>("auto");
-  const [bgOutput, setBgOutput]           = useState<BgOutputId>("transparent");
   const [bgMode, setBgMode]               = useState<BgModeId>("checker");
   const [seedLocked, setSeedLocked]       = useState(false);
 
@@ -415,14 +406,12 @@ function GeneratePageInner() {
     if (seen) return;
     setShowPromptTips(true);
     if (!urlPrompt && !prompt) {
-      const example =
-        selectedSub.subcategoryId === "SWORDS"     ? "fire sword with glowing runes" :
-        selectedSub.subcategoryId === "POTIONS"    ? "red health potion, glowing" :
-        selectedSub.subcategoryId === "HEROES"     ? "dark wizard with staff" :
-        selectedSub.subcategoryId === "ENEMIES"    ? "skeleton warrior" :
-        selectedSub.subcategoryId === "HELMETS"    ? "golden viking helmet" :
-        "fire sword with glowing runes";
-      setPrompt(example);
+      // Pull the example from SUBTYPE_PLACEHOLDERS so it tracks the user's
+      // selected subcategory rather than falling back to "fire sword" for
+      // every subtype outside a hardcoded 5-item allowlist.
+      const placeholderExample = SUBTYPE_PLACEHOLDERS[selectedSub.subcategoryId];
+      const fallback = `${selectedSub.label.toLowerCase()} with detail`;
+      setPrompt(placeholderExample || fallback);
     }
     window.localStorage.setItem("spritelab_seen_first_run", "1");
     // Run once on mount.
@@ -644,8 +633,13 @@ function GeneratePageInner() {
                   label: p.label,
                   color: p.id === "warm" ? "#f97316" : p.id === "cold" ? "#3b82f6" : p.id === "dark" ? "#374151" : p.id === "vibrant" ? "#ec4899" : p.id === "earthy" ? "#92400e" : p.id === "neon" ? "#a855f7" : undefined,
                 }))} />
-              <Sel label="Background" value={bgOutput} onChange={(v) => setBgOutput(v as BgOutputId)}
-                options={BG_OUTPUT_OPTIONS.map((b) => ({ id: b.id, label: b.label }))} />
+              {/* Removed: hard-coded "Background" selector (Transparent / Solid
+                  dark / Solid light). It was UI theatre — selecting "Solid
+                  dark" did not change the API request, so the user got a
+                  transparent PNG either way. The output is always transparent
+                  via background removal; the canvas preview toggle below the
+                  result lets the user check how the sprite looks on dark/light
+                  backdrops. */}
             </div>
           </div>
 

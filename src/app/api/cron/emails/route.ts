@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendReEngagementEmail, sendAbandonedCartEmail, sendSpecialOfferEmail } from "@/lib/email/send";
-import { stripe, PLANS } from "@/lib/stripe";
+import { stripe, PLANS, CREDIT_PACKS } from "@/lib/stripe";
 import { Prisma } from "@prisma/client";
 
 // Vercel Cron Job - Automated email campaigns
@@ -22,17 +22,20 @@ function getPlanFromPriceId(priceId: string): { name: string; credits: string; p
   if (priceId === process.env.STRIPE_UNLIMITED_PRICE_ID) {
     return { name: PLANS.UNLIMITED.name, credits: `${PLANS.UNLIMITED.credits} credits/month`, price: `£${PLANS.UNLIMITED.price}` };
   }
-  if (priceId === process.env.STRIPE_CREDITS_25_PRICE_ID) {
-    return { name: "Spark Pack", credits: "30 credits", price: "£0.99" };
-  }
-  if (priceId === process.env.STRIPE_CREDITS_75_PRICE_ID) {
-    return { name: "Blaze Pack", credits: "90 credits", price: "£2.99" };
-  }
-  if (priceId === process.env.STRIPE_CREDITS_200_PRICE_ID) {
-    return { name: "Inferno Pack", credits: "250 credits", price: "£6.99" };
-  }
-  if (priceId === process.env.STRIPE_CREDITS_500_PRICE_ID) {
-    return { name: "Supernova Pack", credits: "650 credits", price: "£19.99" };
+  // Credit packs — pulled from CREDIT_PACKS so the email copy stays in sync
+  // with what the user actually paid for. Previously this had three different
+  // names + prices hardcoded ("Spark Pack/30/£0.99" vs the real "Ember/30/£1.19")
+  // which drifted away from src/lib/stripe.ts and the success-page receipts.
+  for (const pack of Object.values(CREDIT_PACKS)) {
+    if (pack.priceId && priceId === pack.priceId) {
+      const totalCredits = pack.credits + pack.bonus;
+      const priceGbp = (pack.price / 100).toFixed(2);
+      return {
+        name: `${pack.name} Pack`,
+        credits: `${totalCredits} credits`,
+        price: `£${priceGbp}`,
+      };
+    }
   }
   return null;
 }

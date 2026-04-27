@@ -679,10 +679,9 @@ export default function SettingsPage() {
                 <Button variant="outline" className="w-full justify-start" asChild>
                   <Link href="/reset-password">Change Password</Link>
                 </Button>
-                <Button variant="outline" className="w-full justify-start" disabled title="Two-factor authentication is coming soon">
-                  Enable Two-Factor Authentication
-                  <span className="ml-auto text-[10px] uppercase tracking-wider text-muted-foreground/70">Soon</span>
-                </Button>
+                {/* Two-factor authentication intentionally not surfaced.
+                    Add the button here once Supabase MFA is wired up — until
+                    then a "Coming Soon" placeholder reads as broken. */}
                 <Button
                   variant="outline"
                   className="w-full justify-start text-destructive hover:text-destructive"

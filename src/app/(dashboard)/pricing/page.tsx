@@ -140,7 +140,7 @@ const faqs = [
   },
   {
     q: "What does the discounted pricing mean?",
-    a: "Our launch pricing is significantly lower than regular prices (shown with strikethrough). If you subscribe now, you lock in this low price FOREVER - even when we raise prices for new users later. The prices you see today are the prices you'll always pay!",
+    a: "Launch pricing is what you pay for as long as your subscription is active and we keep that plan available. If you cancel and resubscribe later, the current price applies. For a guaranteed price-for-life, pick a Lifetime deal instead.",
   },
   {
     q: "Can I use assets commercially?",
@@ -353,7 +353,7 @@ export default function PricingPage() {
       <div className="pt-12 pb-8 text-center px-4">
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FF6B2C]/10 border border-[#FF6B2C]/30 text-[#FF6B2C] text-sm mb-6">
           <Gift className="w-4 h-4" />
-          <span>Launch pricing locked forever for early adopters!</span>
+          <span>Early-adopter pricing — see Lifetime deals below for price-for-life.</span>
         </div>
         <h1 className="text-2xl sm:text-4xl md:text-5xl font-bold text-white mb-3 sm:mb-4">
           Simple, Transparent Pricing
