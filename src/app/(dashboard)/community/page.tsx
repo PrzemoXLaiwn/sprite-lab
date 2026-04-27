@@ -109,11 +109,11 @@ const getModelName = (styleId: string): string => {
 const getPlanBadge = (plan: string) => {
   switch (plan) {
     case "UNLIMITED":
-      return { label: "VIP", icon: Crown, color: "bg-gradient-to-r from-yellow-400 to-amber-500 text-black" };
+      return { label: "STUDIO", icon: Crown, color: "bg-gradient-to-r from-yellow-400 to-amber-500 text-black" };
     case "PRO":
       return { label: "PRO", icon: Zap, color: "bg-gradient-to-r from-[#8b5cf6] to-[#a855f7] text-white" };
     case "STARTER":
-      return { label: "★", icon: Star, color: "bg-gradient-to-r from-[#FF6B2C] to-[#0ea5e9] text-white" };
+      return { label: "STARTER", icon: Star, color: "bg-gradient-to-r from-[#FF6B2C] to-[#0ea5e9] text-white" };
     default:
       return null;
   }

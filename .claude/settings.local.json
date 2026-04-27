@@ -63,7 +63,10 @@
       "Bash(ls -la \"c:\\\\Users\\\\Montech.DESKTOP-HFD37TP\\\\Desktop\\\\spritelab\\\\src\\\\app\\\\\\(dashboard\\)\")",
       "Bash(ls src/app/\\\\\\(dashboard\\\\\\)/generate/)",
       "Bash(tail -20 src/app/\\\\\\(dashboard\\\\\\)/generate/page.tsx)",
-      "Bash(npx shadcn@latest add popover -y)"
+      "Bash(npx shadcn@latest add popover -y)",
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(npx eslint *)",
+      "Bash(git stash *)"
     ],
     "deny": [],
     "ask": []

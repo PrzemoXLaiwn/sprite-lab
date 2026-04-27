@@ -55,6 +55,14 @@ interface TranslateResult {
   translated: string;
   original: string;
   wasTranslated: boolean;
+  /**
+   * Set when the input contained non-ASCII characters (i.e. translation was
+   * required) but the translation step could not complete — either the API
+   * key is missing or the call/output failed validation. Callers should
+   * treat this as a hard error and refuse the generation, otherwise FLUX
+   * gets the raw non-English text and produces unrelated images.
+   */
+  translationFailed?: boolean;
 }
 
 const TRANSLATE_SYSTEM_PROMPT = `You translate game asset descriptions to English for an AI image generator (FLUX.1).
@@ -94,8 +102,8 @@ export async function translatePromptIfNeeded(
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    console.warn("[Translate] No ANTHROPIC_API_KEY, sending original prompt");
-    return { translated: original, original, wasTranslated: false };
+    console.warn("[Translate] No ANTHROPIC_API_KEY, refusing non-English prompt");
+    return { translated: original, original, wasTranslated: false, translationFailed: true };
   }
 
   try {
@@ -110,23 +118,23 @@ export async function translatePromptIfNeeded(
 
     const text = response.content[0];
     if (text.type !== "text" || !text.text.trim()) {
-      return { translated: original, original, wasTranslated: false };
+      return { translated: original, original, wasTranslated: false, translationFailed: true };
     }
 
-    let translated = text.text.trim().replace(/^["']|["']$/g, "").trim();
+    const translated = text.text.trim().replace(/^["']|["']$/g, "").trim();
 
     // Safety: if translator returned something with no Latin letters at all,
     // assume it failed and fall back.
     if (!/[a-zA-Z]/.test(translated)) {
       console.warn(`[Translate] Output had no Latin letters, using original`);
-      return { translated: original, original, wasTranslated: false };
+      return { translated: original, original, wasTranslated: false, translationFailed: true };
     }
 
     console.log(`[Translate] "${original}" → "${translated}"`);
     return { translated, original, wasTranslated: true };
   } catch (error) {
     console.error("[Translate] Error:", error);
-    return { translated: original, original, wasTranslated: false };
+    return { translated: original, original, wasTranslated: false, translationFailed: true };
   }
 }
 

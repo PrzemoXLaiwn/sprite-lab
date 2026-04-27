@@ -141,7 +141,20 @@ export async function POST(request: Request) {
     }
 
     // ── 4. Ensure user record exists ──────────────────────────────────────────
+    // First-generate-after-signup race: Supabase auth completes before the
+    // Prisma User row is created. Bail out with an actionable error rather
+    // than letting checkAndDeductCredits throw "User not found" downstream.
     const dbUser = await getOrCreateUser(user.id, user.email!);
+    if (!dbUser?.success || !dbUser.user) {
+      console.error("[Generate] getOrCreateUser failed for", user.id, dbUser?.error);
+      return NextResponse.json(
+        {
+          error: "We couldn't load your account. Please refresh the page and try again.",
+          code: "USER_BOOTSTRAP_FAILED",
+        },
+        { status: 503 }
+      );
+    }
 
     // ── 4b. Translate non-English prompts (all users) ───────────────────────
     // FLUX is English-trained; Cyrillic/Polish/etc. pass through as garbage
@@ -151,13 +164,25 @@ export async function POST(request: Request) {
     let promptWasTranslated = false;
 
     try {
-      const { translated, wasTranslated } = await translatePromptIfNeeded(prompt);
+      const { translated, wasTranslated, translationFailed } = await translatePromptIfNeeded(prompt);
+      if (translationFailed) {
+        // Non-English prompt that we couldn't translate. FLUX would produce
+        // garbage — refuse with an actionable message instead of charging
+        // the user a credit for an unrelated image.
+        return NextResponse.json(
+          {
+            error: "We couldn't translate your prompt right now. Please type the description in English and try again.",
+            code: "TRANSLATION_UNAVAILABLE",
+          },
+          { status: 503 }
+        );
+      }
       if (wasTranslated) {
         finalUserPrompt = translated;
         promptWasTranslated = true;
       }
     } catch {
-      // Translation failed — fall through with original prompt
+      // Should not happen — translatePromptIfNeeded swallows its errors.
     }
 
     // ── 4c. AI Prompt Enhancement (Pro/Studio only) ─────────────────────────

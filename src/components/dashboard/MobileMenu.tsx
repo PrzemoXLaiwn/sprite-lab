@@ -136,9 +136,9 @@ export function MobileMenu({ userEmail, userPlan = "FREE", userRole = "USER" }: 
                   userPlan === "STARTER" ? "text-[#FF6B2C]" :
                   "text-white/40"
                 }`}>
-                  {userPlan === "UNLIMITED" ? "Titan" :
-                   userPlan === "PRO" ? "Apex" :
-                   userPlan === "STARTER" ? "Forge" : "Spark"}
+                  {userPlan === "UNLIMITED" ? "Studio" :
+                   userPlan === "PRO" ? "Pro" :
+                   userPlan === "STARTER" ? "Starter" : "Free"}
                 </span>
               </div>
             </div>

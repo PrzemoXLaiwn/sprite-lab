@@ -16,9 +16,9 @@ declare global {
 }
 
 const planNames: Record<string, string> = {
-  STARTER: "Forge",
-  PRO: "Apex",
-  UNLIMITED: "Titan",
+  STARTER: "Starter",
+  PRO: "Pro",
+  UNLIMITED: "Studio",
 };
 
 const planCredits: Record<string, number> = {
@@ -131,8 +131,8 @@ function SuccessContent() {
 
           {/* Secondary Links */}
           <div className="flex gap-4 justify-center text-sm">
-            <Link href="/dashboard" className="text-muted-foreground hover:text-foreground">
-              Go to Dashboard
+            <Link href="/assets" className="text-muted-foreground hover:text-foreground">
+              My Assets
             </Link>
             <Link href="/pricing" className="text-muted-foreground hover:text-foreground">
               View Plans

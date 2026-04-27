@@ -22,16 +22,22 @@ import {
   Gift
 } from "lucide-react";
 import { fetchUserPlan } from "./page.actions";
+import { track, FUNNEL } from "@/lib/analytics";
 
 // ===========================================
 // CONFIGURATION
 // ===========================================
 
+// Disabled by default. Re-enable only when there is a real promo with a
+// fixed end date and accurate slot counts — a permanently-renewing 2-day
+// timer + hardcoded "23 of 100 claimed" reads as fake to savvy users and
+// erodes trust. To enable, set `enabled: true`, replace `endDate` with a
+// real ISO date, and wire `claimedSlots` to /api/lifetime-slots.
 const PROMO_CONFIG = {
-  enabled: true,
-  endDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
+  enabled: false,
+  endDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
   totalSlots: 100,
-  claimedSlots: 23,
+  claimedSlots: 0,
 };
 
 const plans = [
@@ -42,16 +48,16 @@ const plans = [
     icon: Sparkles,
     price: 0,
     oldPrice: null,
-    credits: 5,
+    credits: 10,
     bonusCredits: 0,
     description: "Try it free",
     features: [
-      "5 generation credits",
+      "10 generation credits",
       "All asset categories",
       "Fast AI model",
       "PNG downloads",
     ],
-    cta: "Current Plan",
+    cta: "Get Started Free",
     featured: false,
   },
   {
@@ -264,6 +270,7 @@ export default function PricingPage() {
     };
 
     loadUserPlan();
+    track(FUNNEL.pricingView);
     // Fetch real stats from database
     fetch("/api/stats")
       .then((res) => res.json())
@@ -290,11 +297,10 @@ export default function PricingPage() {
   const handlePlanClick = (stripePlan: string) => {
     if (stripePlan === "FREE" || currentPlan === stripePlan) return;
     setLoadingPlan(stripePlan);
+    track(FUNNEL.checkoutStart, { plan: stripePlan });
     const urlName = PLAN_URL_MAP[stripePlan] || stripePlan.toLowerCase();
     router.push(`/checkout/${urlName}`);
   };
-
-  const slotsRemaining = PROMO_CONFIG.totalSlots - PROMO_CONFIG.claimedSlots;
 
   if (isLoading) {
     return (
@@ -408,14 +414,14 @@ export default function PricingPage() {
                 <div className="text-center mb-6">
                   {plan.oldPrice && (
                     <div className="flex items-center justify-center gap-2 mb-1">
-                      <span className="text-white/40 line-through text-lg">${plan.oldPrice}</span>
+                      <span className="text-white/40 line-through text-lg">£{plan.oldPrice}</span>
                       <span className="bg-red-500/20 text-red-400 px-2 py-0.5 rounded text-xs font-bold">
                         -{discount}%
                       </span>
                     </div>
                   )}
                   <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-4xl font-bold text-white">${plan.price}</span>
+                    <span className="text-4xl font-bold text-white">£{plan.price}</span>
                     <span className="text-white/50">/mo</span>
                   </div>
                   <div className="mt-2">
@@ -430,7 +436,7 @@ export default function PricingPage() {
                   </div>
                   {plan.price > 0 && (
                     <div className="mt-1 text-xs text-white/40">
-                      ${(plan.price / (plan.credits + plan.bonusCredits) * 100).toFixed(1)}¢ per credit
+                      {(plan.price / (plan.credits + plan.bonusCredits) * 100).toFixed(1)}p per credit
                     </div>
                   )}
                 </div>
@@ -493,7 +499,7 @@ export default function PricingPage() {
               <ul className="space-y-3">
                 <li className="flex items-center gap-2 text-white/70">
                   <span className="text-red-400">✕</span>
-                  $50-200 per sprite
+                  £50-200 per sprite
                 </li>
                 <li className="flex items-center gap-2 text-white/70">
                   <span className="text-red-400">✕</span>
@@ -505,11 +511,11 @@ export default function PricingPage() {
                 </li>
                 <li className="flex items-center gap-2 text-white/70">
                   <span className="text-red-400">✕</span>
-                  800 sprites = $40,000+
+                  800 sprites = £40,000+
                 </li>
               </ul>
               <div className="mt-6 text-center">
-                <span className="text-3xl font-bold text-red-400">$40,000+</span>
+                <span className="text-3xl font-bold text-red-400">£40,000+</span>
                 <p className="text-white/50 text-sm">for 800 game assets</p>
               </div>
             </div>
@@ -520,7 +526,7 @@ export default function PricingPage() {
               <ul className="space-y-3">
                 <li className="flex items-center gap-2 text-white/70">
                   <Check className="w-4 h-4 text-[#FF6B2C]" />
-                  ~2.4¢ per sprite
+                  ~2.4p per sprite
                 </li>
                 <li className="flex items-center gap-2 text-white/70">
                   <Check className="w-4 h-4 text-[#FF6B2C]" />
@@ -532,11 +538,11 @@ export default function PricingPage() {
                 </li>
                 <li className="flex items-center gap-2 text-white/70">
                   <Check className="w-4 h-4 text-[#FF6B2C]" />
-                  500 sprites = $12
+                  500 sprites = £12
                 </li>
               </ul>
               <div className="mt-6 text-center">
-                <span className="text-3xl font-bold text-[#FF6B2C]">$12/mo</span>
+                <span className="text-3xl font-bold text-[#FF6B2C]">£12/mo</span>
                 <p className="text-white/50 text-sm">500 credits + Premium AI</p>
               </div>
             </div>
@@ -593,7 +599,7 @@ export default function PricingPage() {
           className="bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] text-black font-bold px-8 py-6 rounded-full shadow-lg shadow-[#FF6B2C]/30"
         >
           <Zap className="w-5 h-5 mr-2" />
-          Get Pro - $12/mo
+          Get Pro - £12/mo
         </Button>
       </div>
 

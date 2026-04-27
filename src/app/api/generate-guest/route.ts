@@ -141,10 +141,14 @@ export async function POST(request: Request) {
 
 // ─── GET — Check remaining generations ───────────────────────────────────────
 export async function GET() {
-  // Rate limiting is now handled entirely by Upstash Redis.
-  // This endpoint returns static info for the frontend.
+  // Rate limiting is enforced server-side by Upstash on POST. This endpoint
+  // is static informational data the landing page uses to render copy.
+  // `remaining` defaults to `max` — the live count is updated client-side
+  // after each successful POST returns its remaining count.
+  const max = 3;
   return NextResponse.json({
-    max: 3,
+    max,
+    remaining: max,
     signupBonus: 10,
   });
 }

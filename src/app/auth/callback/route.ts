@@ -18,13 +18,15 @@ export async function GET(request: Request) {
       // Get the authenticated user
       const { data: { user } } = await supabase.auth.getUser();
 
+      let isNewUser = false;
+
       if (user) {
         // Check if this is a new user (for referral tracking)
         const existingUser = await prisma.user.findUnique({
           where: { id: user.id },
           select: { id: true, referredBy: true },
         });
-        const isNewUser = !existingUser;
+        isNewUser = !existingUser;
 
         // Ensure user exists in database (auto-sync from Supabase Auth)
         try {
@@ -79,22 +81,24 @@ export async function GET(request: Request) {
         }
       }
 
-      // If this is email confirmation (signup), send welcome email and redirect
-      if (type === "signup") {
-        // Send welcome email in background (don't block redirect)
+      // Password reset - redirect to update-password page
+      if (type === "recovery" || next === "/update-password") {
+        return NextResponse.redirect(`${origin}/update-password`);
+      }
+      // Email confirmation OR fresh signup that just landed here for the
+      // first time. Supabase PKCE does not consistently carry `type=signup`
+      // through the redirect, so fall back to the `isNewUser` flag we
+      // already computed above to detect first-time users.
+      if (type === "signup" || isNewUser) {
         if (user) {
           sendWelcomeEmail(
             user.email!,
             user.user_metadata?.full_name || user.user_metadata?.name,
-            5,
+            10,
             user.id
           ).catch((err) => console.error("[Auth Callback] Welcome email failed:", err));
         }
         return NextResponse.redirect(`${origin}/auth/confirm`);
-      }
-      // Password reset - redirect to update-password page
-      if (type === "recovery" || next === "/update-password") {
-        return NextResponse.redirect(`${origin}/update-password`);
       }
       // Otherwise redirect to the next page
       return NextResponse.redirect(`${origin}${next}`);

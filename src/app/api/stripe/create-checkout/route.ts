@@ -50,7 +50,7 @@ export async function POST(request: Request) {
         user.email!,
         creditPack.priceId,
         creditPack.credits,
-        `${origin}/dashboard?success=true&credits=${credits}`,
+        `${origin}/checkout/credits/success?credits=${credits}&session_id={CHECKOUT_SESSION_ID}`,
         `${origin}/pricing?canceled=true`
       );
 
@@ -94,7 +94,7 @@ export async function POST(request: Request) {
       user.id,
       user.email!,
       selectedPlan.priceId,
-      `${origin}/dashboard?success=true&plan=${plan}`,
+      `${origin}/checkout/success?plan=${plan}&session_id={CHECKOUT_SESSION_ID}`,
       `${origin}/pricing?canceled=true`
     );
 

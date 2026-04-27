@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { Home, Sparkles } from "lucide-react";
 
 export default function NotFound() {
@@ -14,11 +13,6 @@ export default function NotFound() {
       </div>
 
       <div className="relative z-10 text-center max-w-lg">
-        {/* Sad Coreling */}
-        <div className="w-16 h-16 mx-auto mb-8 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
-          <span className="text-3xl text-white/20">404</span>
-        </div>
-
         {/* 404 Text */}
         <h1 className="text-8xl md:text-9xl font-display font-black mb-4 text-gradient-animated">
           404

@@ -672,15 +672,23 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                <Button variant="outline" className="w-full justify-start">
-                  Change Password
+                <Button variant="outline" className="w-full justify-start" asChild>
+                  <Link href="/reset-password">Change Password</Link>
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
+                <Button variant="outline" className="w-full justify-start" disabled title="Two-factor authentication is coming soon">
                   Enable Two-Factor Authentication
+                  <span className="ml-auto text-[10px] uppercase tracking-wider text-muted-foreground/70">Soon</span>
                 </Button>
                 <Button
                   variant="outline"
                   className="w-full justify-start text-destructive hover:text-destructive"
+                  onClick={() => {
+                    const ok = window.confirm(
+                      "Delete your account?\n\nThis cannot be undone. All your generations and projects will be removed.\n\nIf you'd like a refund or have feedback, email support@sprite-lab.com first."
+                    );
+                    if (!ok) return;
+                    window.location.href = "mailto:support@sprite-lab.com?subject=Delete%20my%20SpriteLab%20account&body=Please%20delete%20my%20account.";
+                  }}
                 >
                   Delete Account
                 </Button>
@@ -700,7 +708,16 @@ export default function SettingsPage() {
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Current Plan</p>
                 <div className="flex items-center gap-2">
-                  <span className="text-2xl font-bold">{user?.plan || "FREE"}</span>
+                  <span className="text-2xl font-bold">
+                    {(() => {
+                      const p = (user?.plan || "FREE").toUpperCase();
+                      if (p === "UNLIMITED") return "Studio";
+                      if (p === "PRO") return "Pro";
+                      if (p === "STARTER") return "Starter";
+                      if (p === "LIFETIME") return "Lifetime";
+                      return "Free";
+                    })()}
+                  </span>
                   <Button variant="outline" size="sm" asChild>
                     <Link href="/pricing">Upgrade</Link>
                   </Button>
@@ -731,15 +748,25 @@ export default function SettingsPage() {
           <Card className="bg-gradient-to-br from-primary/10 to-purple-500/10 border-primary/20">
             <CardContent className="pt-6">
               <div className="text-center">
-                <p className="text-sm text-muted-foreground mb-2">
-                  You're doing great!
-                </p>
-                <p className="text-lg font-semibold">
-                  {user?._count?.generations || 0} assets created
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Keep creating amazing game assets
-                </p>
+                {(user?._count?.generations || 0) === 0 ? (
+                  <>
+                    <p className="text-sm text-muted-foreground mb-2">Welcome to SpriteLab!</p>
+                    <p className="text-lg font-semibold">No assets yet</p>
+                    <Button size="sm" className="mt-3" asChild>
+                      <Link href="/generate">Generate your first asset</Link>
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-muted-foreground mb-2">You&apos;re doing great!</p>
+                    <p className="text-lg font-semibold">
+                      {user?._count?.generations || 0} assets created
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Keep creating amazing game assets
+                    </p>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>

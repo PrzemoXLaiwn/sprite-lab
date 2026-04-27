@@ -14,29 +14,32 @@ interface UpgradeModalProps {
 const PLANS = [
   {
     name: "Starter",
-    price: 9,
-    credits: 100,
+    slug: "starter",
+    price: 5,
+    credits: 250,
     icon: Zap,
     color: "#FF6B2C",
-    features: ["100 credits/month", "All generation types", "Basic support"],
+    features: ["250 credits/month", "All art styles", "Background removal", "Commercial license"],
     popular: false,
   },
   {
     name: "Pro",
-    price: 19,
-    credits: 300,
+    slug: "pro",
+    price: 12,
+    credits: 500,
     icon: Crown,
     color: "#8b5cf6",
-    features: ["300 credits/month", "Priority generation", "No watermarks", "Email support"],
+    features: ["500 credits/month", "Premium AI model", "Sprite sheets", "Image editing"],
     popular: true,
   },
   {
-    name: "Unlimited",
-    price: 49,
-    credits: 1000,
+    name: "Studio",
+    slug: "unlimited",
+    price: 25,
+    credits: 1200,
     icon: Infinity,
     color: "#f59e0b",
-    features: ["1000 credits/month", "Fastest generation", "API access", "Priority support"],
+    features: ["1200 credits/month", "Everything in Pro", "Priority support", "Early access"],
     popular: false,
   },
 ];
@@ -78,8 +81,18 @@ export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
       setTimeout(checkCredits, 500);
     };
 
+    // Manual trigger from anywhere via triggerUpgradeModal(). The generate
+    // page dispatches this when /api/generate returns 402. Without the
+    // matching listener the modal stayed closed even when the user ran
+    // out of credits — silent dead-end at the moment of upgrade intent.
+    const handleManualOpen = () => setIsVisible(true);
+
     window.addEventListener("credits-updated", handleCreditsUpdate);
-    return () => window.removeEventListener("credits-updated", handleCreditsUpdate);
+    window.addEventListener("show-upgrade-modal", handleManualOpen);
+    return () => {
+      window.removeEventListener("credits-updated", handleCreditsUpdate);
+      window.removeEventListener("show-upgrade-modal", handleManualOpen);
+    };
   }, [checkCredits]);
 
   const handleClose = () => {
@@ -163,7 +176,7 @@ export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
 
                     {/* Price */}
                     <div className="flex items-baseline gap-1 mb-4">
-                      <span className="text-3xl font-bold text-white">${plan.price}</span>
+                      <span className="text-3xl font-bold text-white">£{plan.price}</span>
                       <span className="text-white/40">/mo</span>
                     </div>
 

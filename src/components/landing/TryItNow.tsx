@@ -114,7 +114,7 @@ export function TryItNow() {
             Create Your First <span className="text-[#FF6B2C]">Sprite</span>
           </h2>
           <p className="text-white/60 max-w-xl mx-auto text-sm sm:text-base px-2">
-            See the magic in action. Generate {remaining !== null ? remaining : 2} free sprite{remaining !== 1 ? "s" : ""} right now!
+            See the magic in action. Generate {remaining ?? 3} free sprite{(remaining ?? 3) === 1 ? "" : "s"} right now!
           </p>
         </div>
 
@@ -177,11 +177,11 @@ export function TryItNow() {
                     <Gift className="w-5 h-5 sm:w-6 sm:h-6 text-[#FF6B2C] mx-auto mb-2" />
                     <p className="text-white font-medium mb-1 text-sm sm:text-base">Want more?</p>
                     <p className="text-white/60 text-xs sm:text-sm mb-3">
-                      Sign up free and get 5 credits instantly!
+                      Sign up free and get 10 credits instantly!
                     </p>
                     <Link href="/register">
                       <Button className="w-full bg-[#FF6B2C] text-black hover:bg-[#FF6B2C]/90 text-sm">
-                        Get 5 Free Credits
+                        Get 10 Free Credits
                         <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-2" />
                       </Button>
                     </Link>
@@ -272,7 +272,7 @@ export function TryItNow() {
             Love what you see? Create unlimited sprites with a free account.
           </p>
           <Link href="/register" className="text-[#FF6B2C] hover:underline text-xs sm:text-sm font-medium">
-            Sign up and get 5 free credits →
+            Sign up and get 10 free credits →
           </Link>
         </div>
       </div>

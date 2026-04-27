@@ -44,7 +44,7 @@ const CHANGELOG = [
       "Stripe payments integration",
       "User dashboard with personal gallery",
       "Credit-based pricing system",
-      "Free tier with 5 credits",
+      "Free tier with 10 credits",
     ],
   },
 ];

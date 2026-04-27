@@ -162,31 +162,31 @@ const jsonLd = {
           "@type": "Offer",
           price: "0",
           priceCurrency: "GBP",
-          name: "Spark - Free Plan",
-          description: "5 free credits to start creating game-ready sprites and assets",
+          name: "Free Plan",
+          description: "10 free credits to start creating game-ready sprites and assets",
         },
         {
           "@type": "Offer",
-          price: "2.49",
+          price: "5.00",
           priceCurrency: "GBP",
-          name: "Forge Plan",
-          description: "50 credits per month for indie developers",
+          name: "Starter Plan",
+          description: "250 credits per month for indie developers",
           priceValidUntil: "2027-12-31",
         },
         {
           "@type": "Offer",
-          price: "5.99",
+          price: "12.00",
           priceCurrency: "GBP",
-          name: "Apex Plan",
-          description: "150 credits per month for game studios",
+          name: "Pro Plan",
+          description: "500 credits per month for game studios",
           priceValidUntil: "2027-12-31",
         },
         {
           "@type": "Offer",
-          price: "16.99",
+          price: "25.00",
           priceCurrency: "GBP",
-          name: "Titan Plan",
-          description: "500 credits per month for power users",
+          name: "Studio Plan",
+          description: "1200 credits per month for power users",
           priceValidUntil: "2027-12-31",
         },
       ],
@@ -194,13 +194,9 @@ const jsonLd = {
         "AI-powered game asset generator for indie developers. Create sprites, icons, and 3D models in seconds with multiple art styles.",
       url: baseUrl,
       screenshot: `${baseUrl}/og-image.png`,
-      aggregateRating: {
-        "@type": "AggregateRating",
-        ratingValue: "4.8",
-        ratingCount: "127",
-        bestRating: "5",
-        worstRating: "1",
-      },
+      // aggregateRating intentionally omitted until we have real verifiable
+      // reviews. Google penalises fabricated rich-result data and savvy
+      // visitors notice; once real reviews exist, restore an honest rating.
       featureList: [
         "AI-powered sprite generation",
         "Multiple art styles (pixel art, anime, realistic)",
@@ -260,15 +256,11 @@ const jsonLd = {
       offers: {
         "@type": "AggregateOffer",
         lowPrice: "0",
-        highPrice: "299",
-        priceCurrency: "USD",
+        highPrice: "25",
+        priceCurrency: "GBP",
         offerCount: "3",
       },
-      aggregateRating: {
-        "@type": "AggregateRating",
-        ratingValue: "4.8",
-        reviewCount: "127",
-      },
+      // aggregateRating omitted — see comment above. Avoid fake reviews.
     },
   ],
 };

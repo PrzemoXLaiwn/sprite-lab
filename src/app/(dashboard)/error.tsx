@@ -37,9 +37,9 @@ export default function DashboardError({
             Try Again
           </Button>
           <Button variant="outline" asChild>
-            <Link href="/dashboard" className="gap-2">
+            <Link href="/generate" className="gap-2">
               <LayoutDashboard className="w-4 h-4" />
-              Dashboard
+              Back to Generator
             </Link>
           </Button>
         </div>

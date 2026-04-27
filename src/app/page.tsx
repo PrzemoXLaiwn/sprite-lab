@@ -153,7 +153,7 @@ export default async function Home({
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
             {[
-              { value: "~5s", label: "Generation time", icon: Zap },
+              { value: "Seconds", label: "Generation time", icon: Zap },
               { value: "8+", label: "Art styles", icon: Palette },
               { value: "PNG", label: "Transparent export", icon: Download },
               { value: "100%", label: "Commercial rights", icon: Shield },
@@ -196,7 +196,7 @@ export default async function Home({
             {[
               {
                 icon: Zap,
-                title: "5-Second Generation",
+                title: "Generated in Seconds",
                 desc: "Describe your asset, get a production-ready sprite in seconds. No design skills needed.",
                 accent: "from-[#F97316]/20 to-[#F97316]/0",
               },
@@ -394,7 +394,7 @@ export default async function Home({
               },
               {
                 q: "How fast is generation?",
-                a: "2D sprites generate in approximately 5 seconds. 3D models take 30-60 seconds depending on complexity.",
+                a: "2D sprites typically generate in 10-20 seconds. 3D models take 30-60 seconds depending on complexity.",
               },
               {
                 q: "Do my credits expire?",
@@ -466,7 +466,7 @@ export default async function Home({
               <Link href="/changelog" className="hover:text-white/50 transition-colors">Changelog</Link>
               <a href="mailto:support@sprite-lab.com" className="hover:text-white/50 transition-colors">Contact</a>
             </div>
-            <p className="text-[11px] text-white/15">&copy; 2026 SpriteLab. All rights reserved.</p>
+            <p className="text-[11px] text-white/15">&copy; {new Date().getFullYear()} SpriteLab. All rights reserved.</p>
           </div>
         </div>
       </footer>

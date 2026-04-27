@@ -103,8 +103,8 @@ export default function ProjectsPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-lg font-semibold text-white/90">Projects</h1>
-            <p className="text-xs text-white/30 mt-0.5">Organize assets by game project</p>
+            <h1 className="text-3xl font-display font-black gradient-text mb-1">Projects</h1>
+            <p className="text-xs text-white/40">Organize assets by game project</p>
           </div>
           <Button onClick={() => setShowForm(!showForm)}
             className="h-9 text-xs bg-[#FF6B2C] hover:bg-[#e55a1f] text-white border-0">

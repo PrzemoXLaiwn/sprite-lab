@@ -124,7 +124,7 @@ export default function RPGCharacterCreatorPage() {
             </div>
 
             <p className="text-white/40 text-xs sm:text-sm mt-6">
-              5 free credits • No credit card required
+              10 free credits • No credit card required
             </p>
           </div>
         </div>
@@ -220,7 +220,7 @@ export default function RPGCharacterCreatorPage() {
             href="/register"
             className="inline-flex items-center justify-center gap-2 px-5 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-[#8b5cf6] to-[#FF6B2C] text-black font-semibold rounded-lg hover:opacity-90 transition-opacity text-base sm:text-lg"
           >
-            Get 5 Free Credits
+            Get 10 Free Credits
             <ArrowRight className="w-5 h-5" />
           </Link>
         </div>

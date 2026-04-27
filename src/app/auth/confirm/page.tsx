@@ -18,8 +18,7 @@ export default function EmailConfirmedPage() {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          // Redirect to dashboard where onboarding wizard will show
-          window.location.href = "/dashboard";
+          window.location.href = "/generate?welcome=1";
           return 0;
         }
         return prev - 1;
@@ -60,7 +59,7 @@ export default function EmailConfirmedPage() {
           {/* Credits badge */}
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FF6B2C]/10 border border-[#FF6B2C]/30 text-[#FF6B2C] mb-6">
             <Sparkles className="w-4 h-4" />
-            <span className="font-semibold">5 free credits ready to use!</span>
+            <span className="font-semibold">10 free credits ready to use!</span>
           </div>
 
           {/* What's next */}
@@ -81,7 +80,7 @@ export default function EmailConfirmedPage() {
 
           {/* CTA Button */}
           <Button asChild className="w-full h-12 bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] text-[#0a0c10] font-bold hover:opacity-90">
-            <Link href="/dashboard">
+            <Link href="/generate?welcome=1">
               <Sparkles className="w-4 h-4 mr-2" />
               Let's Go!
             </Link>

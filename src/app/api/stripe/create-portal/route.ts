@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     // Create portal session
     const session = await createPortalSession(
       dbUser.stripeCustomerId,
-      `${origin}/dashboard`
+      `${origin}/settings`
     );
 
     console.log("Portal session created:", session.id);

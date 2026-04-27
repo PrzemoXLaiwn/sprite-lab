@@ -18,7 +18,7 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 // - Stripe fee: 2.9% + £0.20 per transaction
 //
 // PRICING STRATEGY:
-// - Free: 5 credits (schnell) - marketing cost ~$0.015
+// - Free: 10 credits (schnell) - marketing cost ~$0.030
 // - Starter: 250 credits (schnell) @ £5 - cost ~$0.75, margin 85%
 // - Pro: 500 credits (dev) @ £12 - cost ~$5, margin 58%
 // - Studio: 1200 credits (dev) @ £25 - cost ~$12, margin 52%

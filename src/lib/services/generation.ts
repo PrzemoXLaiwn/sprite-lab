@@ -779,13 +779,17 @@ async function generateSingle2D(request: GenerationRequest): Promise<GeneratedAs
   const generatedImage: GeneratedImage = result.images[0];
 
   // ── 4. Remove background ───────────────────────────────────────────────────
+  // Non-fatal: if bg removal fails we still upload the original. Surface a
+  // warning so the UI can flag the image as having a baked-in background
+  // rather than the transparent PNG the user expects.
   let imageUrlForUpload = generatedImage.imageURL;
+  let bgRemovalFailed = false;
   try {
     const bgResult = await removeBackground(generatedImage.imageURL);
     if (bgResult.success && bgResult.imageUrl) {
       imageUrlForUpload = bgResult.imageUrl;
     } else {
-      // Non-fatal: log and continue with original
+      bgRemovalFailed = true;
       log("generation:error", {
         stage: "bg_removal",
         userId: request.userId,
@@ -793,12 +797,15 @@ async function generateSingle2D(request: GenerationRequest): Promise<GeneratedAs
       });
     }
   } catch (bgErr) {
-    // Non-fatal: log and continue with original
+    bgRemovalFailed = true;
     log("generation:error", {
       stage: "bg_removal",
       userId: request.userId,
       error: bgErr instanceof Error ? bgErr.message : String(bgErr),
     });
+  }
+  if (bgRemovalFailed) {
+    warnings.push("Background removal was unavailable — your image keeps its original background. Try again to get a transparent PNG.");
   }
 
   // ── 5. Upload to storage ───────────────────────────────────────────────────
@@ -849,10 +856,12 @@ function resolveModel(
 
 /**
  * Uploads a generated image to the best available storage provider.
- * Order: R2 (primary, zero-egress) → Supabase Storage (fallback) → original URL.
+ * Order: R2 (primary, zero-egress) → Supabase Storage (fallback).
  *
- * Never throws — falls back through providers and logs failures.
- * Returns the best available URL.
+ * Throws PROVIDER_ERROR if both providers fail. Persisting the ephemeral
+ * Runware URL silently gives the user a broken asset hours later — better
+ * to fail loudly here so the caller refunds the credit (case B) and the
+ * user knows to retry.
  */
 async function uploadGeneratedAsset(
   imageUrl: string,
@@ -887,16 +896,19 @@ async function uploadGeneratedAsset(
     error: supabaseResult.error,
   });
 
-  // Both failed — return the temporary Runware URL as last resort.
-  // This URL expires; the generation record will have a broken image link
-  // eventually. Logged for manual recovery.
   log("generation:error", {
     stage: "upload_all_failed",
     userId,
-    message: "Both R2 and Supabase upload failed. Using temporary provider URL.",
+    message: "Both R2 and Supabase upload failed. Refusing to persist temp provider URL.",
   });
 
-  return imageUrl;
+  throw new GenerationError({
+    code: "PROVIDER_ERROR",
+    userMessage:
+      "We couldn't save your image right now. Your credit has been refunded — please try again in a moment.",
+    isExpected: false,
+    message: "Image hosting unavailable: both R2 and Supabase upload failed",
+  });
 }
 
 // ---------------------------------------------------------------------------

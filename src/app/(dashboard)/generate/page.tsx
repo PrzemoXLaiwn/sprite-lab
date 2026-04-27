@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useMemo, Suspense } from "react";
+import { useState, useCallback, useRef, useMemo, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
 import { triggerUpgradeModal } from "@/components/dashboard/UpgradeModal";
+import { track, FUNNEL } from "@/lib/analytics";
 import { GENERATE_CATEGORIES, SUBTYPE_PLACEHOLDERS, type GenerateCategory, type GenerateSubcategory } from "@/data/generate-categories";
 import { GENERATE_STYLES, ALL_GENERATE_STYLE_IDS } from "@/data/generate-styles";
 import { ChevronDown, Eye, Zap as ZapIcon, Palette as PaletteIcon } from "lucide-react";
@@ -221,6 +222,10 @@ function GeneratePageInner() {
     setErrorMessage(null);
     setNoCredits(false);
 
+    const isFirstAttempt = history.length === 0;
+    track(FUNNEL.generationAttempt, { styleId, categoryId: selectedSub.categoryId, qualityPreset: detail });
+    if (isFirstAttempt) track(FUNNEL.firstGenerationAttempt, { styleId });
+
     // Map frontend view IDs to backend view keys
     const viewMap: Record<string, string> = {
       none: "DEFAULT",
@@ -229,10 +234,17 @@ function GeneratePageInner() {
       topdown: "TOP_DOWN",
     };
 
+    // Hard cap on a single generation attempt. Without this, a hung Runware
+    // websocket leaves users staring at the spinner indefinitely — a top
+    // reason new users churn after one try.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 90_000);
+
     try {
       const response = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           prompt:        prompt.trim(),
           categoryId:    selectedSub.categoryId,
@@ -246,7 +258,7 @@ function GeneratePageInner() {
         }),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
         if (response.status === 402 || data.noCredits) {
@@ -256,10 +268,27 @@ function GeneratePageInner() {
           triggerUpgradeModal();
           return;
         }
-        throw new Error(data.error ?? "Generation failed. Please try again.");
+        const code: string | undefined = data?.code;
+        const fallback =
+          code === "USER_BOOTSTRAP_FAILED"
+            ? "We couldn't load your account. Please refresh the page and try again."
+            : code === "TRANSLATION_UNAVAILABLE"
+            ? "We couldn't translate your prompt right now. Please type the description in English and try again."
+            : code === "PROVIDER_TIMEOUT"
+            ? "The image service took too long. Please try again."
+            : code === "PROVIDER_ERROR"
+            ? "The image service rejected this request. Try a slightly different prompt — avoid graphic violence, gore, or copyrighted character names."
+            : code === "VALIDATION_ERROR"
+            ? "Some of the inputs are invalid. Please check the prompt and selectors."
+            : response.status === 429
+            ? "You're going a bit fast — please wait a moment and try again."
+            : response.status >= 500
+            ? "Our generator is having a hiccup. Please try again in a few seconds."
+            : "Generation failed. Please try again.";
+        throw new Error(data.error || fallback);
       }
 
-      if (!data.imageUrl) throw new Error("Generation failed. Please try again.");
+      if (!data.imageUrl) throw new Error("Generation completed but no image was returned. Please try again.");
 
       const newResult: GeneratedResult = {
         id:            `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -277,13 +306,23 @@ function GeneratePageInner() {
       setSelectedIndex(0);
       setStatus("idle");
 
+      track(FUNNEL.generationSuccess, { styleId, categoryId: selectedSub.categoryId });
+      if (isFirstAttempt) track(FUNNEL.firstGenerationSuccess, { styleId });
+
       if (!styleLocked) setStyleLocked(true);
       triggerCreditsRefresh();
     } catch (err) {
       setStatus("error");
-      setErrorMessage(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      const isAbort = err instanceof DOMException && err.name === "AbortError";
+      const msg = isAbort
+        ? "Generation timed out after 90 seconds. The service may be busy — please try again."
+        : err instanceof Error ? err.message : "Something went wrong. Please try again.";
+      setErrorMessage(msg);
+      track(FUNNEL.generationError, { reason: isAbort ? "timeout" : "api_error", styleId });
+    } finally {
+      clearTimeout(timeoutId);
     }
-  }, [isFormValid, isGenerating, view, prompt, selectedSub, selectedSubcategoryId, styleId, detail, styleLocked]);
+  }, [isFormValid, isGenerating, view, prompt, selectedSub, selectedSubcategoryId, styleId, detail, styleLocked, projectId, folderId]);
 
   const handleRegenerate = () => {
     if (seedLocked && activeResult) {
@@ -340,6 +379,33 @@ function GeneratePageInner() {
   // ==========================================================================
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showPromptTips, setShowPromptTips] = useState(false);
+  const isWelcome = searchParams.get("welcome") === "1";
+  const checkoutSuccess = searchParams.get("success") === "true";
+  const checkoutPlan = searchParams.get("plan");
+  const [showWelcomeBanner, setShowWelcomeBanner] = useState(isWelcome || checkoutSuccess);
+
+  // First-run onboarding: open the prompt-tips drawer and pre-fill an example
+  // prompt so the user can hit Generate immediately. Without this nudge new
+  // signups stare at an empty form and bounce.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const seen = window.localStorage.getItem("spritelab_seen_first_run");
+    if (seen) return;
+    setShowPromptTips(true);
+    if (!urlPrompt && !prompt) {
+      const example =
+        selectedSub.subcategoryId === "SWORDS"     ? "fire sword with glowing runes" :
+        selectedSub.subcategoryId === "POTIONS"    ? "red health potion, glowing" :
+        selectedSub.subcategoryId === "HEROES"     ? "dark wizard with staff" :
+        selectedSub.subcategoryId === "ENEMIES"    ? "skeleton warrior" :
+        selectedSub.subcategoryId === "HELMETS"    ? "golden viking helmet" :
+        "fire sword with glowing runes";
+      setPrompt(example);
+    }
+    window.localStorage.setItem("spritelab_seen_first_run", "1");
+    // Run once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Polished select component
   const Sel = ({ label, req, value, onChange, options }: {
@@ -363,10 +429,28 @@ function GeneratePageInner() {
   return (
     <div className="min-h-screen bg-[#0B0F19] flex flex-col lg:flex-row">
 
+      {showWelcomeBanner && (
+        <div className="fixed top-0 left-0 right-0 z-[60] bg-gradient-to-r from-[#F97316] to-[#FF8B4D] text-black px-4 py-2.5 flex items-center justify-center gap-3 text-sm font-semibold shadow-lg">
+          {checkoutSuccess ? (
+            <span>🎉 Payment confirmed{checkoutPlan ? ` — ${checkoutPlan} plan active` : ""}. Your credits are loaded — start creating!</span>
+          ) : (
+            <span>👋 Welcome to SpriteLab! 10 free credits ready. We&apos;ve filled in an example prompt — click <b>Generate</b> to see what you can make.</span>
+          )}
+          <button
+            type="button"
+            aria-label="Dismiss"
+            onClick={() => setShowWelcomeBanner(false)}
+            className="ml-2 px-2 py-0.5 rounded bg-black/15 hover:bg-black/25 text-xs font-bold transition-colors"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* ═══════════════════════════════════════════════════════════
           LEFT PANEL — Controls (fixed width, scrollable)
       ═══════════════════════════════════════════════════════════ */}
-      <div className="w-full lg:w-[320px] xl:w-[340px] lg:h-screen lg:overflow-y-auto lg:border-r border-[#263046] bg-[#121826] shrink-0">
+      <div className={`w-full lg:w-[320px] xl:w-[340px] lg:h-screen lg:overflow-y-auto lg:border-r border-[#263046] bg-[#121826] shrink-0 ${showWelcomeBanner ? "lg:pt-10" : ""}`}>
         <div className="p-5 pb-8 space-y-6 relative z-10">
 
           {/* Panel header */}
