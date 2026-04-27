@@ -1000,7 +1000,11 @@ export const RESOURCES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptCo
 // thing it has thousands of training examples for.
 const CHARACTER_VIEW_NEG_COMMON =
   "tall hero portrait, character select screen artwork, splash art, dramatic close-up, bust shot, key art, marketing render, magazine cover composition";
-const CHARACTER_TOP_DOWN_NEG = `${CHARACTER_VIEW_NEG_COMMON}, isometric perspective, side profile, front-facing pose, low camera angle, ground-level shot`;
+// Top-down sprites describe the CAMERA, not the SCENE. Without this list FLUX
+// interprets "top-down game" / "RPG grid" literally and renders a floor tile,
+// drop shadow, or ground under the character — the user wants a clean
+// isolated sprite on transparent background.
+const CHARACTER_TOP_DOWN_NEG = `${CHARACTER_VIEW_NEG_COMMON}, isometric perspective, side profile, front-facing pose, low camera angle, ground-level shot, floor tile under feet, ground tile, dirt patch, drop shadow on ground, scenery, terrain, environment background, grass, stone floor, rendered floor`;
 const CHARACTER_SIDE_NEG = `${CHARACTER_VIEW_NEG_COMMON}, front-facing pose, top-down camera, isometric, three-quarter angle, facing camera, character select pose`;
 const CHARACTER_FRONT_NEG = `${CHARACTER_VIEW_NEG_COMMON}, side profile, top-down camera, isometric, three-quarter angle, back view, turned away`;
 
@@ -1020,7 +1024,7 @@ export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptC
     {
       viewOverrides: {
         FRONT: "hero facing directly at camera, full body visible, symmetrical character select screen pose",
-        TOP_DOWN: "((top-down RPG sprite)), Zelda / Pokemon / Stardew Valley style overhead character, small pixel figure rendered for a top-down game grid, camera high above looking down at a steep 3/4 angle, character standing on a tile with feet visible, idle walking-pose silhouette",
+        TOP_DOWN: "((top-down RPG hero sprite)), Zelda / Pokemon / Stardew Valley style overhead character, small pixel figure for a top-down game, camera high above looking down at a steep 3/4 angle, idle walking-pose silhouette, isolated on transparent background, NO floor, NO shadow, NO ground, NO tile, NO scenery",
         SIDE_VIEW: "hero facing right in strict side profile, full body, platformer walking sprite like Mario or Mega Man",
       },
       additionalNegativeByView: {
@@ -1042,7 +1046,7 @@ export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptC
     {
       viewOverrides: {
         FRONT: "enemy facing directly at camera, full body visible, threatening frontal pose",
-        TOP_DOWN: "((top-down RPG enemy sprite)), Zelda / Pokemon style overhead enemy, small pixel figure rendered for a top-down game grid, high 3/4 camera looking down, enemy standing on a tile, combat-ready silhouette",
+        TOP_DOWN: "((top-down RPG enemy sprite)), Zelda / Pokemon style overhead enemy, small pixel figure for a top-down game, high 3/4 camera looking down, combat-ready silhouette, isolated on transparent background, NO floor, NO shadow, NO ground, NO tile, NO scenery",
         SIDE_VIEW: "enemy facing right in strict side profile, full body, platformer enemy sprite",
       },
       additionalNegativeByView: {
@@ -1064,7 +1068,7 @@ export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptC
     {
       viewOverrides: {
         FRONT: "NPC facing directly at camera, full body visible, neutral welcoming pose",
-        TOP_DOWN: "((top-down RPG villager sprite)), Stardew Valley / Pokemon / Harvest Moon style overhead NPC, small pixel figure on a top-down game grid, high 3/4 camera, NPC standing idle on a tile",
+        TOP_DOWN: "((top-down RPG villager sprite)), Stardew Valley / Pokemon / Harvest Moon style overhead NPC, small pixel figure for a top-down game, high 3/4 camera, idle standing silhouette, isolated on transparent background, NO floor, NO shadow, NO ground, NO tile, NO scenery",
         SIDE_VIEW: "NPC facing right in strict side profile, full body, idle standing pose",
       },
       additionalNegativeByView: {
@@ -1086,7 +1090,7 @@ export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptC
     {
       viewOverrides: {
         FRONT: "boss facing directly at camera, full imposing form visible, intimidating frontal pose",
-        TOP_DOWN: "((top-down RPG boss sprite)), Zelda / Secret of Mana style overhead boss, larger pixel figure occupying multiple tiles, high 3/4 camera looking down, boss in idle combat stance",
+        TOP_DOWN: "((top-down RPG boss sprite)), Zelda / Secret of Mana style overhead boss, larger pixel figure for a top-down game, high 3/4 camera looking down, boss in idle combat stance, isolated on transparent background, NO floor, NO shadow, NO ground, NO tile, NO scenery",
         SIDE_VIEW: "boss facing right in strict side profile, full imposing form visible",
       },
       additionalNegativeByView: {
@@ -1108,7 +1112,7 @@ export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptC
 // overhead sprite, NOT a literal bird's-eye photograph of an animal's back.
 const CREATURE_VIEW_NEG_COMMON =
   "key art splash render, dramatic close-up, magazine cover composition, photorealistic wildlife photograph, hero portrait";
-const CREATURE_TOP_DOWN_NEG = `${CREATURE_VIEW_NEG_COMMON}, isometric perspective, side profile, ground-level shot, low camera angle`;
+const CREATURE_TOP_DOWN_NEG = `${CREATURE_VIEW_NEG_COMMON}, isometric perspective, side profile, ground-level shot, low camera angle, floor tile under feet, ground tile, dirt patch, drop shadow on ground, scenery, terrain, environment background, grass, stone floor`;
 
 export const CREATURES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
   ANIMALS: makeConfig(
@@ -1118,7 +1122,7 @@ export const CREATURES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptCo
     "animal herd, multiple animals, two animals, pack, flock, group, rider on mount, person with animal, landscape scene, dead animal, cropped body, forest background, grass ground, sky, nature scene, hunter, pet owner, leash collar unless requested, saddle unless requested, cage, zoo enclosure, barn interior, trees, rocks, water",
     {
       viewOverrides: {
-        TOP_DOWN: "((top-down RPG creature sprite)), Zelda / Stardew Valley style overhead animal, small pixel figure on a top-down game grid, high 3/4 camera looking down at the creature standing on a tile",
+        TOP_DOWN: "((top-down RPG creature sprite)), Zelda / Stardew Valley style overhead animal, small pixel figure for a top-down game, high 3/4 camera looking down, isolated on transparent background, NO floor, NO shadow, NO ground, NO tile, NO scenery",
       },
       additionalNegativeByView: {
         TOP_DOWN: CREATURE_TOP_DOWN_NEG,
@@ -1138,7 +1142,7 @@ export const CREATURES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptCo
     "multiple creatures, rider on creature, battle scene, hatchling only unless requested, dead version",
     {
       viewOverrides: {
-        TOP_DOWN: "((top-down RPG mythical creature sprite)), overhead game sprite of a legendary beast on a top-down tile, high 3/4 camera, full silhouette visible",
+        TOP_DOWN: "((top-down RPG mythical creature sprite)), overhead game sprite of a legendary beast, high 3/4 camera, full silhouette visible, isolated on transparent background, NO floor, NO shadow, NO ground, NO tile, NO scenery",
       },
       additionalNegativeByView: {
         TOP_DOWN: CREATURE_TOP_DOWN_NEG,
@@ -1158,7 +1162,7 @@ export const CREATURES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptCo
     "multiple pets, owner with companion, pet shop scene, sad injured animal, crowded scene",
     {
       viewOverrides: {
-        TOP_DOWN: "((top-down RPG companion sprite)), Pokemon / Stardew Valley style overhead pet, small pixel figure on a top-down game grid, high 3/4 camera, companion standing idle on a tile",
+        TOP_DOWN: "((top-down RPG companion sprite)), Pokemon / Stardew Valley style overhead pet, small pixel figure for a top-down game, high 3/4 camera, idle companion silhouette, isolated on transparent background, NO floor, NO shadow, NO ground, NO tile, NO scenery",
       },
       additionalNegativeByView: {
         TOP_DOWN: CREATURE_TOP_DOWN_NEG,
@@ -1178,7 +1182,7 @@ export const CREATURES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptCo
     "wizard summoning it, mixed elements without request, environment scene, multiple elementals",
     {
       viewOverrides: {
-        TOP_DOWN: "((top-down RPG elemental sprite)), overhead game sprite of an elemental creature on a top-down tile, high 3/4 camera, swirling element silhouette visible from above",
+        TOP_DOWN: "((top-down RPG elemental sprite)), overhead game sprite of an elemental creature, high 3/4 camera, swirling element silhouette from above, isolated on transparent background, NO floor, NO shadow, NO ground, NO tile, NO scenery",
       },
       additionalNegativeByView: {
         TOP_DOWN: CREATURE_TOP_DOWN_NEG,
