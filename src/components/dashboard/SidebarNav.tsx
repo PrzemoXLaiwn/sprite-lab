@@ -5,18 +5,18 @@ import { usePathname } from "next/navigation";
 import {
   Zap,
   Images,
-  Palette,
   BarChart3,
   Settings,
   FolderOpen,
+  Users,
 } from "lucide-react";
 import { AdminNavLink } from "./AdminNavLink";
 
 const navItems = [
   { href: "/generate", label: "Generate", icon: Zap },
   { href: "/assets", label: "My Assets", icon: Images },
-  { href: "/presets", label: "Style Presets", icon: Palette },
   { href: "/projects", label: "Projects", icon: FolderOpen },
+  { href: "/community", label: "Community", icon: Users },
   { href: "/usage", label: "Usage", icon: BarChart3 },
   { href: "/settings", label: "Settings", icon: Settings },
 ];

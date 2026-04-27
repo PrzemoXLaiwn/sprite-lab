@@ -15,6 +15,10 @@ declare global {
   }
 }
 
+// Single source of truth for plan-name + credits + price metadata. Mirrors
+// `PLANS` in `src/lib/stripe.ts` exactly — kept in sync because this page is
+// the receipt the user reads after paying. Drift here means showing the
+// wrong credit count or price after a successful charge ⇒ refunds.
 const planNames: Record<string, string> = {
   STARTER: "Starter",
   PRO: "Pro",
@@ -22,16 +26,17 @@ const planNames: Record<string, string> = {
 };
 
 const planCredits: Record<string, number> = {
-  STARTER: 50,
-  PRO: 150,
-  UNLIMITED: 500,
+  STARTER: 250,
+  PRO: 500,
+  UNLIMITED: 1200,
 };
 
-// Plan prices in GBP for conversion tracking
+// Plan prices in GBP — used for Google Ads conversion value, must match
+// the actual Stripe charge.
 const planPrices: Record<string, number> = {
-  STARTER: 2.49,
-  PRO: 5.99,
-  UNLIMITED: 16.99,
+  STARTER: 5.0,
+  PRO: 12.0,
+  UNLIMITED: 25.0,
 };
 
 function SuccessContent() {
@@ -45,7 +50,7 @@ function SuccessContent() {
   useEffect(() => {
     if (conversionTracked) return;
 
-    const value = planPrices[plan] || 2.49;
+    const value = planPrices[plan] || 5.0;
 
     const trackConversion = () => {
       if (typeof window !== "undefined" && window.gtag) {
@@ -113,7 +118,7 @@ function SuccessContent() {
             Your subscription is now active.
           </p>
           <p className="text-primary font-semibold mb-6">
-            +{planCredits[plan] || 75} credits added to your account
+            +{planCredits[plan] ?? 250} credits added to your account
           </p>
 
           {/* Countdown */}

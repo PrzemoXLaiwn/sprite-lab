@@ -72,14 +72,9 @@ export const metadata: Metadata = {
       "Generate game-ready sprites in seconds. 10+ art styles, transparent backgrounds, commercial license included.",
     url: baseUrl,
     siteName: "SpriteLab",
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "SpriteLab - Create game sprites with AI",
-      },
-    ],
+    // Image is generated dynamically by `src/app/opengraph-image.tsx` —
+    // do NOT set `images:` here, the explicit array overrides the
+    // file-based convention and would re-introduce the missing-PNG bug.
     locale: "en_US",
     type: "website",
   },
@@ -88,7 +83,8 @@ export const metadata: Metadata = {
     title: "SpriteLab - Free AI Sprite Generator",
     description:
       "Create game-ready sprites in seconds. No art skills needed. Free to start.",
-    images: ["/og-image.png"],
+    // Same deal — `src/app/twitter-image.tsx` (or the opengraph-image
+    // fallback) renders this. Don't hardcode a static path.
     creator: "@spritelab",
   },
   robots: {
@@ -194,7 +190,7 @@ const jsonLd = {
       description:
         "AI-powered game asset generator for indie developers. Create sprites, icons, and 3D models in seconds with multiple art styles.",
       url: baseUrl,
-      screenshot: `${baseUrl}/og-image.png`,
+      screenshot: `${baseUrl}/opengraph-image`,
       // aggregateRating intentionally omitted until we have real verifiable
       // reviews. Google penalises fabricated rich-result data and savvy
       // visitors notice; once real reviews exist, restore an honest rating.

@@ -19,7 +19,8 @@ import {
   Flame,
   Image as ImageIcon,
   Cpu,
-  Gift
+  Gift,
+  Infinity as InfinityIcon,
 } from "lucide-react";
 import { fetchUserPlan } from "./page.actions";
 import { track, FUNNEL } from "@/lib/analytics";
@@ -477,6 +478,79 @@ export default function PricingPage() {
               </div>
             );
           })}
+        </div>
+      </div>
+
+      {/* ============================================ */}
+      {/* LIFETIME DEALS                                                     */}
+      {/* ============================================ */}
+      {/* Surfaces the /checkout/lifetime/[deal] flow that previously had no
+          entry point on this page — users could not actually buy a Lifetime
+          unless they typed the URL by hand. Slot counts come from
+          src/lib/stripe.ts → LIFETIME_DEALS.maxSlots. */}
+      <div className="py-10 sm:py-16 px-3 sm:px-4 border-t border-white/[0.04]">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-8 sm:mb-10">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-400/10 border border-yellow-400/30 text-yellow-300 text-xs font-semibold mb-3">
+              <InfinityIcon className="w-3.5 h-3.5" />
+              Lifetime — pay once, use forever
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+              Skip the subscription
+            </h2>
+            <p className="text-white/50 text-sm sm:text-base max-w-xl mx-auto">
+              50 lifetime slots ever. One payment, monthly credits forever.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[
+              { key: "starter",   slug: "starter",   name: "Starter Lifetime", credits: 250,  price: 49,  was: 60,  slots: 30, accent: "from-[#FF6B2C]/30 to-[#FF6B2C]/0", border: "border-[#FF6B2C]/30" },
+              { key: "pro",       slug: "pro",       name: "Pro Lifetime",     credits: 500,  price: 99,  was: 144, slots: 15, accent: "from-[#8b5cf6]/30 to-[#8b5cf6]/0", border: "border-[#8b5cf6]/40", featured: true },
+              { key: "unlimited", slug: "unlimited", name: "Studio Lifetime",  credits: 1200, price: 249, was: 300, slots: 5,  accent: "from-yellow-400/30 to-yellow-400/0", border: "border-yellow-400/40" },
+            ].map((deal) => (
+              <div
+                key={deal.key}
+                className={`relative p-6 rounded-2xl border bg-gradient-to-br ${deal.accent} bg-[#11151b] ${deal.border}`}
+              >
+                {deal.featured && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-[#8b5cf6] to-[#FF6B2C] text-black text-[10px] font-bold tracking-wide">
+                    BEST VALUE
+                  </div>
+                )}
+                <div className="flex items-center gap-2 mb-3">
+                  <Crown className="w-5 h-5 text-yellow-400" />
+                  <h3 className="text-lg font-bold text-white">{deal.name}</h3>
+                </div>
+                <div className="flex items-baseline gap-2 mb-1">
+                  <span className="text-3xl font-bold text-white">£{deal.price}</span>
+                  <span className="text-sm text-white/40 line-through">£{deal.was}</span>
+                </div>
+                <p className="text-xs text-white/50 mb-4">one-time payment</p>
+                <p className="text-sm text-[#FF6B2C] font-semibold mb-4">
+                  {deal.credits} credits / month, forever
+                </p>
+                <p className="text-[11px] text-yellow-400/70 mb-4">
+                  Only {deal.slots} slot{deal.slots === 1 ? "" : "s"} ever
+                </p>
+                <Button
+                  onClick={() => {
+                    track(FUNNEL.checkoutStart, { plan: deal.key, type: "lifetime" });
+                    router.push(`/checkout/lifetime/${deal.slug}`);
+                  }}
+                  className={`w-full font-semibold ${
+                    deal.featured
+                      ? "bg-gradient-to-r from-[#8b5cf6] to-[#FF6B2C] text-black hover:opacity-90"
+                      : "bg-white/5 text-white border border-white/10 hover:bg-white/10"
+                  }`}
+                >
+                  Claim Lifetime
+                </Button>
+              </div>
+            ))}
+          </div>
+          <p className="text-center text-[11px] text-white/30 mt-6">
+            Lifetime deals are loss-leader pricing for early adopters — not available forever.
+          </p>
         </div>
       </div>
 

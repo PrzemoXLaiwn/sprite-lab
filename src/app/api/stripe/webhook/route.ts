@@ -415,7 +415,10 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
 
   console.log("Subscription deleted for user:", userId);
 
-  // Downgrade to free plan
+  // Downgrade to free plan WITHOUT touching the credit balance. The credits
+  // they have were already paid for; resetting to 10 wipes purchased credits
+  // and is legally sketchy. Future monthly grants stop because they're tied
+  // to invoice.payment_succeeded which won't fire after cancellation.
   await prisma.user.update({
     where: { id: userId },
     data: {
@@ -423,17 +426,17 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
       stripeSubscriptionId: null,
       stripePriceId: null,
       stripeCurrentPeriodEnd: null,
-      credits: 10, // Reset to free tier credits
     },
   });
 
-  // Log transaction
+  // Audit-only transaction. Use 0 amount so this is purely a status marker
+  // and doesn't show up as a debit in user-facing credit history.
   await prisma.creditTransaction.create({
     data: {
       userId,
-      amount: -(subscription.items.data[0]?.quantity || 0),
+      amount: 0,
       type: "REFUND",
-      description: "Subscription cancelled - downgraded to FREE",
+      description: "Subscription cancelled — downgraded to FREE (existing credits preserved)",
     },
   });
 }

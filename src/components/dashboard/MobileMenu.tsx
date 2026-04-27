@@ -9,7 +9,6 @@ import {
   X,
   Zap,
   Images,
-  Palette,
   BarChart3,
   Settings,
   LogOut,
@@ -18,14 +17,15 @@ import {
   Sparkles,
   Crown,
   Shield,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const navItems = [
   { href: "/generate", label: "Generate", icon: Zap, color: "text-[#FF6B2C]" },
   { href: "/assets", label: "My Assets", icon: Images, color: "text-white/60" },
-  { href: "/presets", label: "Style Presets", icon: Palette, color: "text-white/60" },
   { href: "/projects", label: "Projects", icon: FolderOpen, color: "text-white/60" },
+  { href: "/community", label: "Community", icon: Users, color: "text-white/60" },
   { href: "/usage", label: "Usage", icon: BarChart3, color: "text-white/60" },
   { href: "/settings", label: "Settings", icon: Settings, color: "text-white/60" },
 ];

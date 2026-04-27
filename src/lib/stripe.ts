@@ -128,46 +128,42 @@ export const CREDIT_PACKS = {
 
 // ===========================================
 // LIFETIME DEALS CONFIGURATION (GBP - British Pounds)
-// ⚠️ LIMITED SLOTS - Creates urgency and limits risk!
 // ===========================================
-// ⚠️ TOTAL 50 LIFETIME SLOTS EVER - Creates massive urgency!
+// 50 lifetime slots total. Loss-leader pricing — these exist to build a
+// community of paying power users and create FOMO around limited supply.
 //
-// RISK CALCULATION (assuming 5-year lifetime at £0.024/gen flux-dev):
-// - Forge: 50 credits/month * 60 months = 3000 credits * £0.024 = £72 cost
-//   Price £49 = LOSS but drives upgrades and word-of-mouth
-// - Apex: 150 credits/month * 60 months = 9000 credits * £0.024 = £216 cost
-//   Price £99 = LOSS but very limited slots
-// - Titan: 500 credits/month * 60 months = 30000 credits * £0.024 = £720 cost
-//   Price £249 = LOSS but only 5 slots, drives FOMO
-//
-// Strategy: Lifetime deals are LOSS LEADERS to build community and word-of-mouth
+// CREDIT MATH (5-year horizon, ~£0.024/credit at flux-dev):
+//   Starter Lifetime  —  250 credits/mo × 60 = 15,000 credits ≈ £360 cost  →  £49 price
+//   Pro Lifetime      —  500 credits/mo × 60 = 30,000 credits ≈ £720 cost  →  £99 price
+//   Studio Lifetime   — 1200 credits/mo × 60 = 72,000 credits ≈ £1,728 cost → £249 price
+// Yes, these are aggressive loss-leaders. That's the whole point.
 export const LIFETIME_DEALS = {
   STARTER_LIFETIME: {
-    name: "Forge Lifetime",
+    name: "Starter Lifetime",
     basePlan: "STARTER",
-    credits: 50, // Monthly credits forever (matching new STARTER plan)
-    price: 4900, // £49 (~19.7 months of £2.49)
-    originalPrice: 5976, // £59.76 (2 years of monthly)
+    credits: 250, // Matches monthly STARTER plan
+    price: 4900, // £49 (≈ 10 months of £5)
+    originalPrice: 6000, // £60 — 12 months of £5
     priceId: process.env.STRIPE_FORGE_LIFETIME_PRICE_ID,
-    maxSlots: 30, // 30 of 50 total slots
+    maxSlots: 30,
   },
   PRO_LIFETIME: {
-    name: "Apex Lifetime",
+    name: "Pro Lifetime",
     basePlan: "PRO",
-    credits: 150, // Monthly credits forever (matching new PRO plan)
-    price: 9900, // £99 (~16.5 months of £5.99)
-    originalPrice: 14376, // £143.76 (2 years of monthly)
+    credits: 500, // Matches monthly PRO plan
+    price: 9900, // £99 (≈ 8 months of £12)
+    originalPrice: 14400, // £144 — 12 months of £12
     priceId: process.env.STRIPE_APEX_LIFETIME_PRICE_ID,
-    maxSlots: 15, // 15 of 50 total slots
+    maxSlots: 15,
   },
   UNLIMITED_LIFETIME: {
-    name: "Titan Lifetime",
+    name: "Studio Lifetime",
     basePlan: "UNLIMITED",
-    credits: 500, // Monthly credits forever (matching new UNLIMITED plan)
-    price: 24900, // £249 (~14.7 months of £16.99)
-    originalPrice: 40776, // £407.76 (2 years of monthly)
+    credits: 1200, // Matches monthly STUDIO plan
+    price: 24900, // £249 (≈ 10 months of £25)
+    originalPrice: 30000, // £300 — 12 months of £25
     priceId: process.env.STRIPE_TITAN_LIFETIME_PRICE_ID,
-    maxSlots: 5, // 5 of 50 total slots - ULTRA RARE!
+    maxSlots: 5,
   },
 } as const;
 

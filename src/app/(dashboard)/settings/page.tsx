@@ -30,6 +30,7 @@ import {
 import { fetchUserProfile, updateProfile, fetchCreditHistory, checkUsername, uploadAvatar, fetchEmailPreferences, updateEmailPreferences, EmailPreferences } from "./page.actions";
 import Link from "next/link";
 import { Mail, Megaphone, Package, Coins, Sun, CalendarDays } from "lucide-react";
+import { ReferralCard } from "@/components/dashboard/ReferralCard";
 
 interface UserData {
   id: string;
@@ -660,6 +661,9 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Referrals */}
+          <ReferralCard />
 
           {/* Security */}
           <Card>
