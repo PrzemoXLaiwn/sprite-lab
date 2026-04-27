@@ -177,10 +177,23 @@ export async function generateImage(
     console.log(`[Runware] Prompt: ${finalWordCount} words, ${safePrompt.length} chars`);
     console.log(`[Runware] Preview: ${safePrompt.substring(0, 80)}...`);
 
+    // Runware SDK and FLUX both support negativePrompt — earlier code dropped
+    // it because of a stale comment claiming the API did not. Without it the
+    // style-specific negatives ("no anti-aliasing", "no 3/4 angle") and view
+    // negatives are computed all the way through the pipeline and thrown
+    // away. Passing it through is the single biggest leverage on FLUX
+    // following the user's intent.
+    let safeNegative = options.negativePrompt;
+    if (safeNegative && safeNegative.length > 1900) {
+      const trimmed = safeNegative.substring(0, 1900);
+      const lastSpace = trimmed.lastIndexOf(" ");
+      safeNegative = lastSpace > 1700 ? trimmed.substring(0, lastSpace) : trimmed;
+    }
+
     // FLUX-optimized defaults: guidance 2-4, steps 20-28
-    // Note: Runware API does not support negativePrompt parameter
     const result = await runware.imageInference({
       positivePrompt: safePrompt,
+      negativePrompt: safeNegative || undefined,
       model: modelAIR,
       width: options.width || 1024,
       height: options.height || 1024,

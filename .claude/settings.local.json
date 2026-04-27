@@ -69,7 +69,11 @@
       "Bash(git stash *)",
       "Bash(git fetch *)",
       "Bash(git rm *)",
-      "Bash(git mv *)"
+      "Bash(git mv *)",
+      "Bash(grep -n \"^async function generateMultiPipeline\\\\|^async function generateSpritesheetPipeline\\\\|^async function generateTilePipeline\\\\|^// ---------------------------------------------------------------------------$\" \"src/lib/services/generation.ts\")",
+      "Bash(awk 'NR==558,NR==708' \"src/app/api/generate/route.ts\")",
+      "Bash(sed -i '558,708d' \"src/lib/services/generation.ts\")",
+      "Bash(sed -n '555,565p' \"src/lib/services/generation.ts\")"
     ],
     "deny": [],
     "ask": []

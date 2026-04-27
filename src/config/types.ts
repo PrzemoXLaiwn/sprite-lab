@@ -261,6 +261,14 @@ export interface BuildPromptResult {
   model: ModelType;
   guidance: number;
   steps: number;
+  /**
+   * Final view after server-side conflict resolution. If the user typed a
+   * view keyword in their prompt (e.g. "side view") it overrides the form
+   * selector — the field tells the caller what was actually applied so the
+   * UI can echo it back to the user instead of pretending the selector won.
+   * Optional because legacy callers / fallback paths may not set it.
+   */
+  resolvedView?: string;
 }
 
 /**

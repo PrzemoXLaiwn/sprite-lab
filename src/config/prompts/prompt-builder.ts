@@ -120,6 +120,7 @@ function bridgeResult(
     prompt: dedupeJoin(fullPrompt),
     negativePrompt: dedupeJoin(fullNegative),
     ...getModelParams(styleId),
+    resolvedView: configResult.debug.resolvedView,
   };
 }
 

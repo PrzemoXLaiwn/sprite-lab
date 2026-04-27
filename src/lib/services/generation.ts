@@ -50,6 +50,7 @@ import { getUserTier } from "@/lib/db/users";
 import {
   buildUltimatePrompt,
   buildEnhancedPrompt,
+  STYLES_2D_FULL,
 } from "@/config";
 import { enhancePromptWithLearnedFixes } from "@/lib/analytics/prompt-enhancer";
 
@@ -63,20 +64,7 @@ import { enhancePromptWithLearnedFixes } from "@/lib/analytics/prompt-enhancer";
 
 export type GenerationMode =
   | "single"
-  | "pack"
-  | "batch"
-  | "spritesheet"
-  | "tile"
   | "3d"; // Dispatches to existing generate-3d route — not handled here
-
-// ---------------------------------------------------------------------------
-// Style mix options (optional, pro feature)
-// ---------------------------------------------------------------------------
-
-export interface StyleMixOptions {
-  style2Id: string;
-  style1Weight: number; // 0–100
-}
 
 // ---------------------------------------------------------------------------
 // Quality preset
@@ -89,6 +77,20 @@ const QUALITY_SETTINGS: Record<QualityPreset, { steps: number; guidance: number 
   normal: { steps: 28, guidance: 3.2 },
   hd:     { steps: 40, guidance: 3.8 },
 };
+
+// Credit cost per preset. Draft + Normal = 1 credit (entry-level). HD costs
+// 2 credits because it uses ~40 steps vs ~25 for normal — provider cost is
+// roughly proportional. Surfacing the cost in the UI is the caller's job
+// (see CREDIT_COSTS export below).
+export const CREDIT_COSTS: Record<QualityPreset, number> = {
+  draft: 1,
+  normal: 1,
+  hd: 2,
+};
+
+export function creditsForPreset(preset?: QualityPreset): number {
+  return CREDIT_COSTS[preset ?? "normal"];
+}
 
 // ---------------------------------------------------------------------------
 // Authenticated generation request
@@ -109,27 +111,20 @@ export interface GenerationRequest {
   // Optional overrides
   seed?: number;
   qualityPreset?: QualityPreset;
-  modelId?: RunwareModelId;
 
-  // Style mixing (pro feature)
-  enableStyleMix?: boolean;
-  styleMix?: StyleMixOptions;
+  /**
+   * Optional palette ID. When set, the prompt builder injects a colour-
+   * palette token (e.g. NEON_CYBER → "neon pink, electric cyan, purple
+   * glow color palette"). When unset, the style decides.
+   */
   colorPaletteId?: string;
 
-  // Pack / batch specifics
-  /** For pack/batch: list of prompts. If absent, uses prompt for all items. */
-  prompts?: string[];
-  /** For pack: number of assets. Defaults to 6. */
-  packSize?: number;
-
-  // Spritesheet specifics
-  /** Number of frames in a spritesheet row (e.g. 4 = 4-frame walk cycle) */
-  sheetColumns?: number;
-  sheetRows?: number;
-
-  // Tile specifics
-  /** Whether the tile should seamlessly tile */
-  seamless?: boolean;
+  // The style-mix / model-override / pack-batch fields used to live here
+  // but were never wired to a real UI surface. Removed to make the
+  // contract honest — re-add per-feature when there's a flow asking for it.
+  enableStyleMix?: never;
+  styleMix?: never;
+  modelId?: never;
 }
 
 // ---------------------------------------------------------------------------
@@ -160,8 +155,18 @@ export interface GeneratedAsset {
   finalPrompt: string;
   /** Prompt enhancements applied (for debugging / UI display) */
   appliedOptimizations: string[];
-  /** Non-blocking warnings from prompt enhancer */
+  /**
+   * Non-blocking warnings the UI should surface to the user.
+   * Sources: bg-removal failure, model downgrade, prompt enhancer hints.
+   */
   warnings: string[];
+  /**
+   * View that was actually applied after server-side resolution. May
+   * differ from the user's selector when the prompt itself contained a
+   * view keyword ("side view") that overrode the dropdown. Surfaced so
+   * the UI can echo what really shipped.
+   */
+  resolvedView?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -258,8 +263,6 @@ export async function buildPromptForGeneration(
   subcategoryId: string,
   styleId: string,
   options?: {
-    enableStyleMix?: boolean;
-    styleMix?: StyleMixOptions;
     colorPaletteId?: string;
     view?: string;
     qualityPreset?: QualityPreset;
@@ -271,24 +274,21 @@ export async function buildPromptForGeneration(
   steps: number;
   appliedOptimizations: string[];
   warnings: string[];
+  resolvedView?: string;
 }> {
-  const hasPremiumFeatures =
-    options?.enableStyleMix || options?.colorPaletteId;
-
-  // Build base prompt via config
+  // Build base prompt — buildEnhancedPrompt only fires when a palette ID
+  // is set (otherwise the cheaper buildUltimatePrompt is sufficient).
   const {
     prompt: builtPrompt,
     negativePrompt: builtNegative,
     guidance: styleGuidance,
     steps: styleSteps,
-  } = hasPremiumFeatures
+    resolvedView,
+  } = options?.colorPaletteId
     ? buildEnhancedPrompt(prompt, categoryId, subcategoryId, styleId, {
-        enableStyleMix: options?.enableStyleMix,
-        style2Id: options?.styleMix?.style2Id,
-        style1Weight: options?.styleMix?.style1Weight ?? 70,
-        colorPaletteId: options?.colorPaletteId,
-        view: options?.view,
-        qualityPreset: options?.qualityPreset,
+        colorPaletteId: options.colorPaletteId,
+        view: options.view,
+        qualityPreset: options.qualityPreset,
       })
     : buildUltimatePrompt(prompt, categoryId, subcategoryId, styleId, options?.view, options?.qualityPreset);
 
@@ -309,6 +309,7 @@ export async function buildPromptForGeneration(
     steps: styleSteps,
     appliedOptimizations: appliedFixes,
     warnings,
+    resolvedView,
   };
 }
 
@@ -350,24 +351,15 @@ export async function generateAssets(
     case "single":
       return generateSinglePipeline(request, startMs);
 
-    case "pack":
-    case "batch":
-      return generateMultiPipeline(request, startMs);
-
-    case "spritesheet":
-      return generateSpritesheetPipeline(request, startMs);
-
-    case "tile":
-      return generateTilePipeline(request, startMs);
-
     default: {
-      // TypeScript exhaustiveness guard
-      const exhaustive: never = request.mode;
+      // Pack / batch / spritesheet / tile pipelines were removed because
+      // no UI route ever invoked them. Re-introduce as focused tools when
+      // there's a real product surface for them.
       throw new GenerationError({
         code: "UNEXPECTED_ERROR",
         userMessage: "Unknown generation mode.",
         isExpected: false,
-        message: `Unhandled mode: ${exhaustive}`,
+        message: `Unhandled mode: ${request.mode}`,
       });
     }
   }
@@ -484,7 +476,10 @@ async function generateSinglePipeline(
   request: GenerationRequest,
   startMs: number
 ): Promise<GenerationResult> {
-  const creditsRequired = 1;
+  // Credit cost scales with quality preset because HD uses ~3× the steps
+  // (and therefore ~3× the provider cost). Without this, an HD generation
+  // looked free to the user while costing us multiples per image.
+  const creditsRequired = creditsForPreset(request.qualityPreset);
 
   // ── Credit deduction (case A boundary) ────────────────────────────────────
   const creditResult = await checkAndDeductCredits(request.userId, creditsRequired);
@@ -492,7 +487,7 @@ async function generateSinglePipeline(
     if (creditResult.error === "Not enough credits") {
       throw new GenerationError({
         code: "INSUFFICIENT_CREDITS",
-        userMessage: `Not enough credits. You need ${creditsRequired} credit.`,
+        userMessage: `Not enough credits. You need ${creditsRequired} credit${creditsRequired === 1 ? "" : "s"}.`,
         isExpected: true,
       });
     }
@@ -537,157 +532,6 @@ async function generateSinglePipeline(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Pack / batch pipeline (multiple assets, one deduction)
-// ---------------------------------------------------------------------------
-
-async function generateMultiPipeline(
-  request: GenerationRequest,
-  startMs: number
-): Promise<GenerationResult> {
-  const count = request.mode === "pack"
-    ? (request.packSize ?? 6)
-    : (request.prompts?.length ?? 1);
-
-  const creditsRequired = count; // 1 credit per asset
-
-  // ── Credit deduction ───────────────────────────────────────────────────────
-  const creditResult = await checkAndDeductCredits(request.userId, creditsRequired);
-  if (!creditResult.success) {
-    if (creditResult.error === "Not enough credits") {
-      throw new GenerationError({
-        code: "INSUFFICIENT_CREDITS",
-        userMessage: `Not enough credits. You need ${creditsRequired} credits.`,
-        isExpected: true,
-      });
-    }
-    throw new GenerationError({
-      code: "UNEXPECTED_ERROR",
-      userMessage: "Something went wrong. Please try again.",
-      isExpected: false,
-      message: `Credit deduction failed: ${creditResult.error}`,
-    });
-  }
-  // ── CREDITS DEDUCTED ──────────────────────────────────────────────────────
-
-  // Build per-asset prompt list
-  const prompts: string[] =
-    request.prompts && request.prompts.length === count
-      ? request.prompts
-      : Array.from({ length: count }, (_, i) =>
-          `${request.prompt} (variation ${i + 1})`
-        );
-
-  // Generate assets sequentially — avoids overwhelming the Runware WS connection
-  // and gives the user incremental progress in the queue flow.
-  const assets: GeneratedAsset[] = [];
-  let successCount = 0;
-
-  for (let i = 0; i < count; i++) {
-    try {
-      const asset = await generateSingle2D({ ...request, prompt: prompts[i] });
-      assets.push(asset);
-      successCount++;
-    } catch (err) {
-      // Partial failure: refund only the credits for items NOT yet generated.
-      // Items already generated consumed real provider cost.
-      const remaining = count - successCount;
-      if (remaining > 0) {
-        await refundCreditsSafely(
-          request.userId,
-          remaining,
-          `multi:partial_failure:${i}/${count}`
-        );
-      }
-      log("generation:error", {
-        mode: request.mode,
-        userId: request.userId,
-        item: i,
-        total: count,
-        error: err instanceof Error ? err.message : String(err),
-      });
-      throw new GenerationError({
-        code: "PROVIDER_ERROR",
-        userMessage: `Generation partially failed (${successCount}/${count} completed). ${remaining} credits refunded.`,
-        isExpected: false,
-        cause: err,
-      });
-    }
-  }
-  // ── ALL PROVIDERS SUCCEEDED ───────────────────────────────────────────────
-
-  await saveGeneratedAssets(request.userId, request, assets);
-
-  log("generation:result", {
-    mode: request.mode,
-    userId: request.userId,
-    count: assets.length,
-    durationMs: Date.now() - startMs,
-  });
-
-  return {
-    success: true,
-    assets,
-    creditsUsed: creditsRequired,
-    durationMs: Date.now() - startMs,
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Spritesheet pipeline
-// ---------------------------------------------------------------------------
-
-async function generateSpritesheetPipeline(
-  request: GenerationRequest,
-  startMs: number
-): Promise<GenerationResult> {
-  // Spritesheet = pack of N frames at the same prompt, assembled by the client.
-  // Cost: 1 credit per frame.
-  const cols = request.sheetColumns ?? 4;
-  const rows = request.sheetRows ?? 1;
-  const frameCount = cols * rows;
-
-  // Build per-frame prompts with animation direction hints
-  const FRAME_HINTS = ["idle", "step left", "mid-stride", "step right"];
-  const framePrompts = Array.from({ length: frameCount }, (_, i) => {
-    const hint = FRAME_HINTS[i % FRAME_HINTS.length];
-    return `${request.prompt}, ${hint} frame`;
-  });
-
-  return generateMultiPipeline(
-    {
-      ...request,
-      mode: "batch", // reuse multi pipeline
-      prompts: framePrompts,
-      packSize: frameCount,
-    },
-    startMs
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Tile pipeline
-// ---------------------------------------------------------------------------
-
-async function generateTilePipeline(
-  request: GenerationRequest,
-  startMs: number
-): Promise<GenerationResult> {
-  // Tile generation appends seamless tiling prompt terms.
-  // Seamless tiling requires a specific prompt structure.
-  const tilePromptSuffix = request.seamless
-    ? ", seamless tile pattern, tileable texture, no borders, repeating pattern"
-    : ", flat tile, simple pattern";
-
-  return generateSinglePipeline(
-    {
-      ...request,
-      mode: "single", // single asset
-      prompt: `${request.prompt}${tilePromptSuffix}`,
-    },
-    startMs
-  );
-}
 
 // =============================================================================
 // SECTION 4 — CORE 2D GENERATOR
@@ -702,14 +546,34 @@ async function generateTilePipeline(
  */
 async function generateSingle2D(request: GenerationRequest): Promise<GeneratedAsset> {
   // ── 1. Resolve model ───────────────────────────────────────────────────────
+  // Honour the style's intended model when the user's tier allows it.
+  // Each entry in STYLES_2D_FULL declares whether it was tuned for
+  // flux-schnell (fast & cheap) or flux-dev (better fidelity). If the
+  // user's tier doesn't permit the intended model, downgrade and surface
+  // a warning so the user knows the result will not match the style preview.
   const tier = await getUserTier(request.userId);
-  const modelId = resolveModel(tier, request.modelId);
+  const styleConfig = STYLES_2D_FULL[request.styleId];
+  const intendedModel = styleConfig?.model as RunwareModelId | undefined;
+  const allowed = TIER_MODELS[tier];
+  const tierDefault = DEFAULT_MODEL[tier];
+
+  let modelId: RunwareModelId;
+  let modelDowngraded = false;
+  if (intendedModel && allowed.includes(intendedModel)) {
+    modelId = intendedModel;
+  } else if (intendedModel && !allowed.includes(intendedModel)) {
+    modelId = tierDefault;
+    modelDowngraded = true;
+  } else {
+    modelId = tierDefault;
+  }
 
   log("generation:model", {
     userId: request.userId,
     tier,
     modelId,
-    requestedModel: request.modelId ?? null,
+    intendedModel: intendedModel ?? null,
+    downgraded: modelDowngraded,
   });
 
   // ── 2. Build prompt ────────────────────────────────────────────────────────
@@ -720,21 +584,42 @@ async function generateSingle2D(request: GenerationRequest): Promise<GeneratedAs
     steps: styleSteps,
     appliedOptimizations,
     warnings,
+    resolvedView,
   } = await buildPromptForGeneration(
     request.prompt,
     request.categoryId,
     request.subcategoryId,
     request.styleId,
     {
-      enableStyleMix: request.enableStyleMix,
-      styleMix: request.styleMix,
       colorPaletteId: request.colorPaletteId,
       view: request.view,
       qualityPreset: request.qualityPreset,
     }
   );
 
-  const quality = QUALITY_SETTINGS[request.qualityPreset ?? "normal"];
+  // Surface a view-conflict warning when the prompt redirected the view
+  // away from what the user picked in the selector. The UI shows a live
+  // hint pre-submit (form's detectViewInText), but if the user ignored
+  // it and clicked Generate anyway they should still know what happened.
+  const requestedView = request.view ?? "DEFAULT";
+  if (resolvedView && resolvedView !== requestedView && requestedView !== "DEFAULT") {
+    warnings.push(
+      `Your prompt referenced "${resolvedView.toLowerCase().replace("_", " ")}" — we used that instead of the "${requestedView.toLowerCase().replace("_", " ")}" you selected.`
+    );
+  }
+
+  // Quality preset:
+  //  - "normal" (default) honours the style's tuned steps + guidance from
+  //    STYLES_2D_FULL — every style was hand-calibrated for these defaults.
+  //  - "draft" forces the cheap-and-fast preset (icon-safe, low fidelity).
+  //  - "hd" forces the high-step / high-guidance preset for max detail.
+  // Earlier code always pulled QUALITY_SETTINGS[preset] which buried the
+  // style's own steps under the medium-preset constants.
+  const preset = request.qualityPreset ?? "normal";
+  const quality =
+    preset === "normal"
+      ? { steps: styleSteps, guidance: styleGuidance }
+      : QUALITY_SETTINGS[preset];
 
   log("generation:prompt", {
     userId: request.userId,
@@ -759,8 +644,8 @@ async function generateSingle2D(request: GenerationRequest): Promise<GeneratedAs
     negativePrompt,
     model: modelId,
     seed: request.seed,
-    steps: quality.steps ?? styleSteps,
-    guidance: quality.guidance ?? styleGuidance,
+    steps: quality.steps,
+    guidance: quality.guidance,
     width: 1024,
     height: 1024,
   };
@@ -807,6 +692,11 @@ async function generateSingle2D(request: GenerationRequest): Promise<GeneratedAs
   if (bgRemovalFailed) {
     warnings.push("Background removal was unavailable — your image keeps its original background. Try again to get a transparent PNG.");
   }
+  if (modelDowngraded && intendedModel) {
+    warnings.push(
+      `This style is tuned for ${intendedModel}; your plan ran it on ${modelId}. Output may look softer than the preview — upgrade for full fidelity.`
+    );
+  }
 
   // ── 5. Upload to storage ───────────────────────────────────────────────────
   const finalUrl = await uploadGeneratedAsset(
@@ -826,6 +716,7 @@ async function generateSingle2D(request: GenerationRequest): Promise<GeneratedAs
     finalPrompt,
     appliedOptimizations,
     warnings,
+    resolvedView,
   };
 }
 

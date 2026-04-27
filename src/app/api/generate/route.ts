@@ -19,33 +19,27 @@ import { enhanceUserPrompt, translatePromptIfNeeded } from "@/lib/prompt-enhance
 import { rateLimitUserGeneration } from "@/lib/rate-limit";
 
 // ─── Input validation schema ──────────────────────────────────────────────────
-// Identical to Phase 2 schema — no breaking changes to accepted input.
-const GenerateBodySchema = z
-  .object({
-    prompt: z
-      .string()
-      .min(1, "Please enter a description for your sprite.")
-      .max(500, "Description too long. Maximum 500 characters.")
-      .transform((v) => v.trim()),
-    categoryId: z
-      .string()
-      .min(1, "Please select a category."),
-    subcategoryId: z
-      .string()
-      .min(1, "Please select a type."),
-    styleId: z.string().optional().default("PIXEL_ART_16"),
-    view: z.string().optional().default("DEFAULT"),
-    seed: z.union([z.number(), z.string(), z.null()]).optional(),
-    qualityPreset: z.enum(["draft", "normal", "hd"]).optional().default("normal"),
-    enableStyleMix: z.boolean().optional().default(false),
-    style2Id: z.string().optional(),
-    style1Weight: z.number().min(0).max(100).optional().default(70),
-    colorPaletteId: z.string().optional(),
-    modelId: z.string().optional(),
-    projectId: z.string().optional(),
-    folderId: z.string().optional(),
-  })
-  .passthrough();
+// Schema mirrors what the form actually sends. enableStyleMix / style2Id /
+// style1Weight / modelId were accepted before but never wired to UI — the
+// pipeline branched on them anyway and the dead branches misled readers.
+// Strip-mode (no .passthrough()) so unknown fields are silently dropped
+// instead of leaking into the service request.
+const GenerateBodySchema = z.object({
+  prompt: z
+    .string()
+    .min(1, "Please enter a description for your sprite.")
+    .max(500, "Description too long. Maximum 500 characters.")
+    .transform((v) => v.trim()),
+  categoryId: z.string().min(1, "Please select a category."),
+  subcategoryId: z.string().min(1, "Please select a type."),
+  styleId: z.string().optional().default("PIXEL_ART_16"),
+  view: z.string().optional().default("DEFAULT"),
+  seed: z.union([z.number(), z.string(), z.null()]).optional(),
+  qualityPreset: z.enum(["draft", "normal", "hd"]).optional().default("normal"),
+  colorPaletteId: z.string().optional(),
+  projectId: z.string().optional(),
+  folderId: z.string().optional(),
+});
 
 // ─── Error code → HTTP status mapping ────────────────────────────────────────
 function statusForCode(code: string): number {
@@ -114,11 +108,7 @@ export async function POST(request: Request) {
       view,
       seed,
       qualityPreset,
-      enableStyleMix,
-      style2Id,
-      style1Weight,
       colorPaletteId,
-      modelId,
       projectId,
       folderId,
     } = parsed.data;
@@ -239,11 +229,6 @@ export async function POST(request: Request) {
       folderId,
       seed: resolvedSeed,
       qualityPreset,
-      modelId: modelId as RunwareModelId | undefined,
-      enableStyleMix,
-      styleMix: enableStyleMix && style2Id
-        ? { style2Id, style1Weight: style1Weight ?? 70 }
-        : undefined,
       colorPaletteId,
     };
 
@@ -275,6 +260,7 @@ export async function POST(request: Request) {
       modelUsed: asset.model,
       appliedOptimizations: asset.appliedOptimizations,
       warnings: asset.warnings,
+      resolvedView: asset.resolvedView ?? view,
       style: {
         id: styleId,
         name: styleConfig?.name ?? styleId,

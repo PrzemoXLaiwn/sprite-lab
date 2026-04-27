@@ -69,14 +69,24 @@ const DETAIL_OPTIONS = [
 
 type DetailId = (typeof DETAIL_OPTIONS)[number]["id"];
 
+// IDs match the backend keys in src/config/prompts/prompt-builder.ts
+// (COLOR_PALETTE_PROMPTS). Earlier the form used UI-only labels like
+// "warm" / "neon" / "cold" that the prompt builder had no map for, so
+// every palette pick was silently dropped at the prompt-build step.
 const PALETTE_OPTIONS = [
-  { id: "auto", label: "Auto" },
-  { id: "warm", label: "Warm fantasy" },
-  { id: "cold", label: "Cold / ice" },
-  { id: "dark", label: "Dark & muted" },
-  { id: "vibrant", label: "Vibrant" },
-  { id: "earthy", label: "Earthy natural" },
-  { id: "neon", label: "Neon / cyber" },
+  { id: "auto",           label: "Auto" },
+  { id: "FANTASY_GOLD",   label: "Fantasy gold" },
+  { id: "ICE_BLUE",       label: "Ice / cool" },
+  { id: "DARK_SOULS",     label: "Dark & muted" },
+  { id: "FIRE_RED",       label: "Fire / vibrant" },
+  { id: "FOREST_GREEN",   label: "Earthy / forest" },
+  { id: "NEON_CYBER",     label: "Neon / cyber" },
+  { id: "PASTEL_DREAM",   label: "Pastel" },
+  { id: "OCEAN_DEEP",     label: "Ocean deep" },
+  { id: "AUTUMN_HARVEST", label: "Autumn" },
+  { id: "MONO_BW",        label: "Black & white" },
+  { id: "RETRO_GAMEBOY",  label: "Game Boy green" },
+  { id: "SUNSET_WARM",    label: "Sunset" },
 ] as const;
 
 type PaletteId = (typeof PALETTE_OPTIONS)[number]["id"];
@@ -108,9 +118,23 @@ interface GeneratedResult {
   categoryId: string;
   subcategoryId: string;
   styleId: string;
+  /** Form view at the moment of generation (used for seed-lock validity). */
+  view: string;
+  /** Palette ID at the moment of generation. */
+  palette: string;
   prompt: string;
   translatedPrompt?: string;
   enhancedPrompt?: string;
+  /** Service-side warnings (bg-removal failure, view conflict, model downgrade). */
+  warnings?: string[];
+  /** Runware model that actually generated the image. */
+  modelUsed?: string;
+  /** Prompt enhancements applied by the analytics layer. */
+  appliedOptimizations?: string[];
+  /** Final view after server-side conflict resolution. */
+  resolvedView?: string;
+  /** Quality preset that was actually used (for credit cost display). */
+  qualityPreset?: "draft" | "normal" | "hd";
 }
 
 // =============================================================================
@@ -219,6 +243,23 @@ function GeneratePageInner() {
     return { level: "good" as const, hint: "Looks solid." };
   }, [prompt]);
 
+  // Seed-lock validity: a locked seed only reproduces the previous render
+  // when the inputs that shaped it are also unchanged. If the user locked
+  // the seed and then changed style / view / quality / palette / category,
+  // the next regeneration uses the same seed against a different prompt,
+  // which is NOT reproduction. Surfaces a warning so they're not surprised.
+  const seedDriftWarning = useMemo(() => {
+    if (!seedLocked || !activeResult) return null;
+    const drift: string[] = [];
+    if (activeResult.styleId !== styleId) drift.push("style");
+    if (activeResult.view !== view) drift.push("view");
+    if (activeResult.qualityPreset && activeResult.qualityPreset !== detail) drift.push("quality");
+    if (activeResult.palette !== palette) drift.push("palette");
+    if (activeResult.subcategoryId !== selectedSubcategoryId) drift.push("type");
+    if (activeResult.prompt !== prompt.trim()) drift.push("prompt");
+    return drift.length > 0 ? drift : null;
+  }, [seedLocked, activeResult, styleId, view, detail, palette, selectedSubcategoryId, prompt]);
+
   const handleCategoryChange = (cat: GenerateCategory) => {
     setSelectedCategory(cat);
     setSelectedSubcategoryId(cat.subcategories[0].subcategoryId);
@@ -259,15 +300,20 @@ function GeneratePageInner() {
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
         body: JSON.stringify({
-          prompt:        prompt.trim(),
-          categoryId:    selectedSub.categoryId,
-          subcategoryId: selectedSubcategoryId,
-          styleId:       styleId,
-          view:          viewMap[view] || "DEFAULT",
-          qualityPreset: detail,
-          seed:          seedRef.current.trim() || undefined,
-          projectId:     projectId || undefined,
-          folderId:      folderId || undefined,
+          prompt:         prompt.trim(),
+          categoryId:     selectedSub.categoryId,
+          subcategoryId:  selectedSubcategoryId,
+          styleId:        styleId,
+          view:           viewMap[view] || "DEFAULT",
+          qualityPreset:  detail,
+          // Palette: "auto" means "let the style decide" — leaving the field
+          // unset on the server side. Any other value is a backend palette
+          // ID (FANTASY_GOLD, NEON_CYBER, …) that the prompt builder maps
+          // to actual colour tokens.
+          colorPaletteId: palette === "auto" ? undefined : palette,
+          seed:           seedRef.current.trim() || undefined,
+          projectId:      projectId || undefined,
+          folderId:       folderId || undefined,
         }),
       });
 
@@ -304,15 +350,22 @@ function GeneratePageInner() {
       if (!data.imageUrl) throw new Error("Generation completed but no image was returned. Please try again.");
 
       const newResult: GeneratedResult = {
-        id:            `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        imageUrl:      data.imageUrl,
-        seed:          data.seed ?? 0,
-        categoryId:    selectedSub.categoryId,
-        subcategoryId: selectedSubcategoryId,
-        styleId:       styleId,
-        prompt:        prompt.trim(),
+        id:               `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        imageUrl:         data.imageUrl,
+        seed:             data.seed ?? 0,
+        categoryId:       selectedSub.categoryId,
+        subcategoryId:    selectedSubcategoryId,
+        styleId:          styleId,
+        view:             view,
+        palette:          palette,
+        prompt:           prompt.trim(),
         translatedPrompt: data.translatedPrompt,
-        enhancedPrompt: data.enhancedPrompt,
+        enhancedPrompt:   data.enhancedPrompt,
+        warnings:         Array.isArray(data.warnings) ? data.warnings : undefined,
+        modelUsed:        typeof data.modelUsed === "string" ? data.modelUsed : undefined,
+        appliedOptimizations: Array.isArray(data.appliedOptimizations) ? data.appliedOptimizations : undefined,
+        resolvedView:     typeof data.resolvedView === "string" ? data.resolvedView : undefined,
+        qualityPreset:    detail,
       };
 
       setHistory((prev) => [newResult, ...prev].slice(0, 12));
@@ -335,7 +388,7 @@ function GeneratePageInner() {
     } finally {
       clearTimeout(timeoutId);
     }
-  }, [isFormValid, isGenerating, view, prompt, selectedSub, selectedSubcategoryId, styleId, detail, styleLocked, projectId, folderId]);
+  }, [isFormValid, isGenerating, view, prompt, selectedSub, selectedSubcategoryId, styleId, detail, palette, styleLocked, projectId, folderId, history.length]);
 
   const handleRegenerate = () => {
     if (seedLocked && activeResult) {
@@ -467,7 +520,9 @@ function GeneratePageInner() {
           {/* Panel header */}
           <div className="flex items-center justify-between pb-4 border-b border-[#263046]">
             <h2 className="text-[16px] font-bold text-slate-100 tracking-tight">New Asset</h2>
-            <span className="text-[11px] text-[#ffd8c7] bg-[#F97316]/15 px-3.5 py-1 rounded-md font-semibold border border-[#F97316]/30 shadow-[0_0_12px_rgba(249,115,22,0.15)]">1 credit</span>
+            <span className="text-[11px] text-[#ffd8c7] bg-[#F97316]/15 px-3.5 py-1 rounded-md font-semibold border border-[#F97316]/30 shadow-[0_0_12px_rgba(249,115,22,0.15)]">
+              {detail === "hd" ? "2 credits" : "1 credit"}
+            </span>
           </div>
 
           {/* ── PROMPT ────────────────────────────────────────── */}
@@ -631,7 +686,20 @@ function GeneratePageInner() {
                 options={PALETTE_OPTIONS.map((p) => ({
                   id: p.id,
                   label: p.label,
-                  color: p.id === "warm" ? "#f97316" : p.id === "cold" ? "#3b82f6" : p.id === "dark" ? "#374151" : p.id === "vibrant" ? "#ec4899" : p.id === "earthy" ? "#92400e" : p.id === "neon" ? "#a855f7" : undefined,
+                  color:
+                    p.id === "FANTASY_GOLD"   ? "#eab308" :
+                    p.id === "ICE_BLUE"       ? "#3b82f6" :
+                    p.id === "DARK_SOULS"     ? "#374151" :
+                    p.id === "FIRE_RED"       ? "#ef4444" :
+                    p.id === "FOREST_GREEN"   ? "#16a34a" :
+                    p.id === "NEON_CYBER"     ? "#a855f7" :
+                    p.id === "PASTEL_DREAM"   ? "#f9a8d4" :
+                    p.id === "OCEAN_DEEP"     ? "#0e7490" :
+                    p.id === "AUTUMN_HARVEST" ? "#92400e" :
+                    p.id === "MONO_BW"        ? "#9ca3af" :
+                    p.id === "RETRO_GAMEBOY"  ? "#86efac" :
+                    p.id === "SUNSET_WARM"    ? "#f97316" :
+                    undefined,
                 }))} />
               {/* Removed: hard-coded "Background" selector (Transparent / Solid
                   dark / Solid light). It was UI theatre — selecting "Solid
@@ -664,6 +732,15 @@ function GeneratePageInner() {
                     </button>
                   )}
                 </div>
+                {seedDriftWarning && (
+                  <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-500/[0.06] border border-amber-500/25">
+                    <Info className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
+                    <p className="text-[10px] text-amber-100/80 leading-snug">
+                      Seed locked, but you changed <b>{seedDriftWarning.join(", ")}</b>.
+                      The same seed will produce a different image — that&apos;s not reproduction.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -764,21 +841,74 @@ function GeneratePageInner() {
           </div>
         )}
 
-        {/* Prompt transformation trail — shows translation/enhancement so user
-            understands what was sent to FLUX. */}
-        {(activeResult?.translatedPrompt || activeResult?.enhancedPrompt) && (
-          <div className="max-w-[520px] mt-3 space-y-1 text-[10px] text-center leading-relaxed">
-            {activeResult?.translatedPrompt && (
-              <p className="text-white/30">
-                <span className="text-white/15 uppercase tracking-widest text-[8px] mr-1.5">EN</span>
+        {/* Service warnings — non-blocking issues the pipeline wants the
+            user to know about (background-removal failure, model downgrade
+            on free tier, view conflict between prompt and selector, etc.). */}
+        {activeResult?.warnings && activeResult.warnings.length > 0 && (
+          <div className="max-w-[520px] w-full mt-3 space-y-1.5">
+            {activeResult.warnings.map((w, i) => (
+              <div
+                key={i}
+                className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-500/[0.06] border border-amber-500/25 text-[11px] text-amber-100/90 leading-snug"
+              >
+                <Info className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
+                <span>{w}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Translated prompt — offer to replace the textarea so the user
+            doesn't pay for translation again on every regenerate. */}
+        {activeResult?.translatedPrompt && (
+          <div className="max-w-[520px] w-full mt-3 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.06]">
+            <div className="flex items-start gap-2">
+              <span className="text-white/20 uppercase tracking-widest text-[9px] mt-1 shrink-0">EN</span>
+              <p className="text-[11px] text-white/55 leading-relaxed flex-1">
                 {activeResult.translatedPrompt}
               </p>
+              <button
+                type="button"
+                onClick={() => {
+                  if (activeResult?.translatedPrompt) {
+                    setPrompt(activeResult.translatedPrompt);
+                  }
+                }}
+                className="text-[10px] font-semibold text-[#F97316] hover:text-[#FFA866] transition-colors shrink-0 mt-0.5"
+                title="Replace your prompt with the English translation"
+              >
+                Use this →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Prompt enhancement trail — preview of what FLUX actually saw. */}
+        {activeResult?.enhancedPrompt && (
+          <div className="max-w-[520px] w-full mt-2 px-3 py-1.5 text-[10px] text-white/25 italic text-center">
+            &ldquo;{activeResult.enhancedPrompt}&rdquo;
+          </div>
+        )}
+
+        {/* Model + applied optimizations metadata — small footer line so
+            users know what produced the image and what was tweaked. */}
+        {activeResult && (activeResult.modelUsed || (activeResult.appliedOptimizations?.length ?? 0) > 0) && (
+          <div className="max-w-[520px] w-full mt-2 flex flex-wrap items-center gap-1.5 justify-center text-[9px] text-white/25">
+            {activeResult.modelUsed && (
+              <span className="px-2 py-0.5 rounded bg-white/[0.04] border border-white/[0.04] uppercase tracking-wider">
+                {activeResult.modelUsed}
+              </span>
             )}
-            {activeResult?.enhancedPrompt && (
-              <p className="text-white/20 italic">
-                &ldquo;{activeResult.enhancedPrompt}&rdquo;
-              </p>
+            {activeResult.resolvedView && activeResult.resolvedView !== "DEFAULT" && (
+              <span className="px-2 py-0.5 rounded bg-white/[0.04] border border-white/[0.04]">
+                view: {activeResult.resolvedView.toLowerCase().replace("_", " ")}
+              </span>
             )}
+            {activeResult.appliedOptimizations?.map((opt) => (
+              <span key={opt} className="px-2 py-0.5 rounded bg-white/[0.04] border border-white/[0.04]">
+                {opt}
+              </span>
+            ))}
           </div>
         )}
 
