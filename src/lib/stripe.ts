@@ -1,13 +1,50 @@
 import Stripe from "stripe";
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error("STRIPE_SECRET_KEY is not set in environment variables");
+// =============================================================================
+// Stripe client — lazy-initialised
+// =============================================================================
+// We used to throw at module load when STRIPE_SECRET_KEY was missing. That
+// kept the codebase honest about its requirements but it broke `next build`
+// in any environment without a real key (CI without secrets, local builds,
+// preview deploys before vars are wired). Worse, every consumer of this
+// module — including pure data files (PLANS, CREDIT_PACKS, LIFETIME_DEALS)
+// — paid the throw at import time, even when the caller didn't need a
+// Stripe client.
+//
+// Now: the client is constructed on first use via `getStripe()`. Constants
+// are exported as plain values that work without any key. The error only
+// fires if a route actually tries to talk to Stripe without one configured.
+// =============================================================================
+
+let _stripe: Stripe | null = null;
+
+export function getStripe(): Stripe {
+  if (_stripe) return _stripe;
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) {
+    throw new Error(
+      "STRIPE_SECRET_KEY is not set — server cannot talk to Stripe. Configure it in your environment."
+    );
+  }
+  _stripe = new Stripe(key, {
+    apiVersion: "2025-11-17.clover",
+    typescript: true,
+  });
+  return _stripe;
 }
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2025-11-17.clover",
-  typescript: true,
-});
+// Backwards-compatible Proxy: existing `import { stripe } from "@/lib/stripe"`
+// callers keep working. Each property access lazily resolves the real client.
+// Direct property access on import (rare) won't trigger init until the
+// property is actually used.
+export const stripe = new Proxy({} as Stripe, {
+  get(_target, prop) {
+    const client = getStripe() as unknown as Record<string | symbol, unknown>;
+    const value = client[prop];
+    if (typeof value === "function") return (value as (...args: unknown[]) => unknown).bind(client);
+    return value;
+  },
+}) as Stripe;
 
 // ===========================================
 // PLAN CONFIGURATION (GBP - British Pounds)

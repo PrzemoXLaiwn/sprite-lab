@@ -1,4 +1,3 @@
-// @ts-nocheck - Remove after running: npx prisma generate
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
