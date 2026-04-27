@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono, Orbitron } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import Script from "next/script";
+import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
 // Optimized font loading with next/font (no render-blocking!)
@@ -301,6 +302,7 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         {children}
+        <Toaster />
         <Analytics />
         <SpeedInsights />
 

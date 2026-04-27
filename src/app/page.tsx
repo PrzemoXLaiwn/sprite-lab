@@ -438,7 +438,7 @@ export default async function Home({
               <span className="text-[#F97316]">better assets.</span>
             </h2>
             <p className="text-[#94A3B8] mb-10 text-base max-w-md mx-auto">
-              Join thousands of indie developers using SpriteLab to build their games faster. 10 free credits, no credit card, start generating in 30 seconds.
+              Stop waiting on artists or fighting Photoshop. Describe what you need and ship your game faster. 10 free credits, no credit card.
             </p>
             <Link href={registerUrl}
               className="group sl-cta inline-flex items-center gap-2.5 px-10 py-4.5 rounded-xl font-bold text-[16px] transition-all">

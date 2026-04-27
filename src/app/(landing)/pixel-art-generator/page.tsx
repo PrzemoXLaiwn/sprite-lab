@@ -212,7 +212,7 @@ export default function PixelArtGeneratorPage() {
             Start Creating <span className="text-[#FF6B2C]">Pixel Art</span> Today
           </h2>
           <p className="text-sm sm:text-base text-white/60 mb-8 max-w-xl mx-auto">
-            Join thousands of indie developers using SpriteLab to create amazing game assets
+            Build your game faster with AI-generated pixel art — no artists needed
           </p>
           <Link
             href="/register"

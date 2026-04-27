@@ -222,7 +222,7 @@ export function TryItNow() {
                   <div className="text-center">
                     <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-4 border-[#FF6B2C]/20 border-t-[#FF6B2C] animate-spin mx-auto mb-3 sm:mb-4" />
                     <p className="text-white/60 text-xs sm:text-sm">Generating your sprite...</p>
-                    <p className="text-white/40 text-[10px] sm:text-xs mt-1">This takes ~15-30 seconds</p>
+                    <p className="text-white/40 text-[10px] sm:text-xs mt-1">This usually takes ~10 seconds</p>
                   </div>
                 ) : generatedImage ? (
                   <Image

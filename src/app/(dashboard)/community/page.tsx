@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "@/components/ui/use-toast";
 import Link from "next/link";
 import {
   Download,
@@ -239,7 +240,11 @@ export default function CommunityPage() {
         setNewChatMessage("");
       } else {
         const error = await response.json();
-        alert(error.error || "Failed to send message");
+        toast({
+          variant: "destructive",
+          title: "Couldn't send message",
+          description: error.error || "Please try again.",
+        });
       }
     } catch (error) {
       console.error("Failed to send chat:", error);
@@ -312,7 +317,11 @@ export default function CommunityPage() {
         setNewComment("");
       } else {
         const error = await response.json();
-        alert(error.error || "Failed to post comment");
+        toast({
+          variant: "destructive",
+          title: "Couldn't post comment",
+          description: error.error || "Please try again.",
+        });
       }
     } catch (error) {
       console.error("Failed to post comment:", error);

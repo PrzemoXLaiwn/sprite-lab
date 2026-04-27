@@ -1,17 +1,22 @@
 import { NextResponse } from "next/server";
-import Replicate from "replicate";
 import { z } from "zod";
 import { rateLimitGuestGeneration } from "@/lib/rate-limit";
 import { parseJsonBody, validateBody } from "@/lib/validation/common";
+import {
+  generateGuestAsset,
+  GenerationError,
+} from "@/lib/services/generation";
 
-// ===========================================
+// =============================================================================
 // GUEST GENERATION API
-// Allows 2 free generations without login
-// ===========================================
-
-const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_TOKEN,
-});
+// =============================================================================
+// Allows N free generations without login (rate-limited per IP via Upstash).
+//
+// Uses the same Runware FLUX Schnell model as the authenticated free tier so
+// the homepage TryItNow demo finishes in ~5–10 seconds instead of the
+// 15–30 seconds we used to get from Replicate SDXL — matching the "Seconds"
+// claim on the landing page and removing a slow first impression.
+// =============================================================================
 
 // ─── Validation schema ────────────────────────────────────────────────────────
 const GuestGenerateSchema = z.object({
@@ -23,21 +28,10 @@ const GuestGenerateSchema = z.object({
   style: z.enum(["pixel", "cartoon"]).default("pixel"),
 });
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-const GUEST_STYLES = {
-  pixel: {
-    name: "Pixel Art",
-    model: "stability-ai/sdxl:7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c929f9bdc",
-    prompt: "pixel art style, 16-bit, retro game sprite, clean edges, limited color palette",
-    negative: "blurry, realistic, 3D render, photograph, noisy, gradient, anti-aliased",
-  },
-  cartoon: {
-    name: "Cartoon",
-    model: "stability-ai/sdxl:7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c929f9bdc",
-    prompt: "cartoon style, bold outlines, vibrant colors, game asset, clean design",
-    negative: "realistic, photograph, blurry, noisy, complex background",
-  },
-} as const;
+const STYLE_LABELS: Record<"pixel" | "cartoon", string> = {
+  pixel: "Pixel Art",
+  cartoon: "Cartoon",
+};
 
 // ─── POST ─────────────────────────────────────────────────────────────────────
 export async function POST(request: Request) {
@@ -48,7 +42,7 @@ export async function POST(request: Request) {
     const { blocked } = await rateLimitGuestGeneration(request);
     if (blocked) return blocked;
 
-    // 2. Parse body safely — handles empty body, non-JSON, wrong Content-Type
+    // 2. Parse body
     const rawBody = await parseJsonBody(request);
     if (rawBody === null) {
       return NextResponse.json(
@@ -57,7 +51,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // 5. Validate with Zod
+    // 3. Validate
     const parsed = validateBody(GuestGenerateSchema, rawBody);
     if (!parsed.success) {
       return NextResponse.json(
@@ -67,51 +61,22 @@ export async function POST(request: Request) {
     }
 
     const { prompt, style } = parsed.data;
-    const styleConfig = GUEST_STYLES[style];
 
-    // 6. Build prompt
-    const finalPrompt = `${styleConfig.prompt}, ${prompt}, game sprite, single object, centered, transparent background, high quality`;
+    // 4. Resolve client IP for the service (used for rate-limit identifier).
+    const ipAddress =
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      request.headers.get("x-real-ip") ||
+      "0.0.0.0";
 
-    console.log("===========================================");
-    console.log("GUEST GENERATION");
-    console.log("===========================================");
-    console.log("Prompt:", prompt);
+    // 5. Generate via the canonical service (Runware FLUX Schnell, free tier)
+    const result = await generateGuestAsset({
+      ipAddress,
+      prompt,
+      style,
+    });
 
-    // 7. Generate
-    const output = await replicate.run(
-      styleConfig.model as `${string}/${string}:${string}`,
-      {
-        input: {
-          prompt: finalPrompt,
-          negative_prompt: styleConfig.negative,
-          width: 1024,
-          height: 1024,
-          num_outputs: 1,
-          scheduler: "K_EULER",
-          num_inference_steps: 25,
-          guidance_scale: 7.5,
-          seed: Math.floor(Math.random() * 2147483647),
-        },
-      }
-    );
-
-    // 8. Extract image URL
-    let imageUrl: string | null = null;
-    if (Array.isArray(output) && output.length > 0) {
-      const firstOutput = output[0];
-      if (typeof firstOutput === "string") {
-        imageUrl = firstOutput;
-      } else if (
-        firstOutput &&
-        typeof firstOutput === "object" &&
-        "url" in firstOutput
-      ) {
-        imageUrl = (firstOutput as { url: string }).url;
-      }
-    }
-
-    if (!imageUrl) {
-      console.error("No image URL from generation");
+    const asset = result.assets[0];
+    if (!asset) {
       return NextResponse.json(
         { success: false, error: "Generation failed. Please try again." },
         { status: 500 }
@@ -120,17 +85,24 @@ export async function POST(request: Request) {
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
 
-    console.log("===========================================");
-    console.log("GUEST GENERATION COMPLETE! Duration:", duration + "s");
-    console.log("===========================================");
-
     return NextResponse.json({
       success: true,
-      imageUrl,
-      style: styleConfig.name,
+      imageUrl: asset.imageUrl,
+      seed: asset.seed,
+      style: STYLE_LABELS[style],
       duration: `${duration}s`,
     });
   } catch (error) {
+    if (error instanceof GenerationError) {
+      const status =
+        error.code === "PROVIDER_TIMEOUT" ? 504 :
+        error.code === "PROVIDER_ERROR" ? 502 :
+        500;
+      return NextResponse.json(
+        { success: false, error: error.userMessage, code: error.code },
+        { status }
+      );
+    }
     console.error("[Guest Generate] Error:", error);
     return NextResponse.json(
       { success: false, error: "Something went wrong. Please try again." },
@@ -139,12 +111,12 @@ export async function POST(request: Request) {
   }
 }
 
-// ─── GET — Check remaining generations ───────────────────────────────────────
+// ─── GET — Static info for the landing UI ────────────────────────────────────
 export async function GET() {
   // Rate limiting is enforced server-side by Upstash on POST. This endpoint
-  // is static informational data the landing page uses to render copy.
+  // returns static informational data the landing page uses to render copy.
   // `remaining` defaults to `max` — the live count is updated client-side
-  // after each successful POST returns its remaining count.
+  // after each successful POST.
   const max = 3;
   return NextResponse.json({
     max,

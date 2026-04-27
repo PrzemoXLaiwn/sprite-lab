@@ -178,6 +178,28 @@ function GeneratePageInner() {
   const seedRef                           = useRef("");
 
   const isGenerating = status === "generating";
+
+  // Live progress timer — without it the user has no signal how long the
+  // request has been running, and a 30s wait feels like a 2-minute hang.
+  const [elapsedMs, setElapsedMs] = useState(0);
+  useEffect(() => {
+    if (!isGenerating) {
+      setElapsedMs(0);
+      return;
+    }
+    const start = Date.now();
+    const id = setInterval(() => setElapsedMs(Date.now() - start), 200);
+    return () => clearInterval(id);
+  }, [isGenerating]);
+
+  const elapsedSeconds = Math.floor(elapsedMs / 1000);
+  const progressStage =
+    elapsedSeconds < 3 ? "Preparing the prompt…" :
+    elapsedSeconds < 8 ? "Sending to the model…" :
+    elapsedSeconds < 18 ? "Generating pixels…" :
+    elapsedSeconds < 30 ? "Removing background…" :
+    elapsedSeconds < 60 ? "Almost there — model is busy…" :
+    "Hang tight, this one is taking a while…";
   const activeResult = history[selectedIndex] ?? null;
   const selectedSub  = selectedCategory.subcategories.find((s) => s.subcategoryId === selectedSubcategoryId) ?? selectedCategory.subcategories[0];
   const placeholder  = SUBTYPE_PLACEHOLDERS[selectedSubcategoryId] ?? "Describe your asset...";
@@ -691,9 +713,18 @@ function GeneratePageInner() {
               unoptimized />
           )}
           {isGenerating && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6">
               <div className="w-12 h-12 rounded-full border-2 border-[#F97316]/10 border-t-[#F97316] animate-spin" />
-              <p className="text-xs text-slate-500 font-medium">Creating your asset…</p>
+              <div className="text-center">
+                <p className="text-sm text-slate-200/80 font-medium">{progressStage}</p>
+                <p className="text-[11px] text-slate-500 mt-1.5 tabular-nums">{elapsedSeconds}s elapsed · usually ~10s</p>
+              </div>
+              <div className="w-40 h-1 rounded-full bg-white/[0.06] overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-[#F97316] to-[#FF8B4D] transition-[width] duration-300 ease-linear"
+                  style={{ width: `${Math.min(95, (elapsedMs / 200))}%` }}
+                />
+              </div>
             </div>
           )}
           {!activeResult && !isGenerating && (
