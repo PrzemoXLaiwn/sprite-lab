@@ -100,7 +100,19 @@ export interface SubcategoryMeta {
 export interface ExtendedSubcategoryPromptConfig extends SubcategoryPromptConfig {
   // Optional stronger overrides
   viewOverrides?: Partial<Record<AssetView, string>>;
+  /**
+   * Negatives appended to the global VIEW_PROMPT_CONFIGS[view].negative.
+   * Use when the subcategory has additional things to forbid for a view.
+   */
   additionalNegativeByView?: Partial<Record<AssetView, string>>;
+  /**
+   * Negatives that REPLACE the global VIEW_PROMPT_CONFIGS[view].negative.
+   * Use when the global negative actively contradicts the subcategory —
+   * e.g. character TOP_DOWN: globally "no standing upright" is correct for
+   * weapons (flat-lay) but wrong for characters (top-down sprites are
+   * standing on a tile).
+   */
+  replaceViewNegative?: Partial<Record<AssetView, string>>;
 }
 
 // --------------------------------------------------
@@ -977,17 +989,27 @@ export const RESOURCES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptCo
 // --------------------------------------------------
 // PROMPT CONFIGS - CHARACTERS
 // --------------------------------------------------
-// FLUX has very strong priors for "warrior / hero / enemy / NPC = standing
-// figure at 3/4 angle". When the user picks TOP_DOWN we have to negate that
-// prior explicitly — generic VIEW_PROMPT_CONFIGS.TOP_DOWN.negative says
-// "standing upright" once, which gets buried. Each character subcategory
-// adds its own per-view negative to reinforce the camera intent.
-const CHARACTER_TOP_DOWN_NEG =
-  "standing pose, standing upright, vertical figure, full body upright, frontal view, three-quarter view, 3/4 angle, hero portrait, warrior pose, character select screen, 3D render of standing person, action pose facing camera, perspective view";
-const CHARACTER_SIDE_NEG =
-  "front view, three-quarter view, 3/4 angle, character select screen, top-down camera, overhead view, isometric, facing camera";
-const CHARACTER_FRONT_NEG =
-  "side profile, top-down camera, overhead view, isometric, three-quarter view, 3/4 angle, back view, away from camera";
+// "Top-down" for living subjects in pixel-art games means the established
+// gaming convention — a small Zelda / Pokemon / RPG-Maker style sprite
+// rendered at a high 3/4 angle (camera tilted ~70° from horizontal) — NOT
+// a literal 90° bird's-eye view of the character's skull. An earlier
+// version told FLUX "body lying along the vertical axis of the frame, NOT
+// a standing portrait" and FLUX correctly refused, because that's not
+// what a top-down character sprite is. We now describe the actual
+// reference (Zelda / Pokemon / Stardew sprite) and let the model do the
+// thing it has thousands of training examples for.
+const CHARACTER_VIEW_NEG_COMMON =
+  "tall hero portrait, character select screen artwork, splash art, dramatic close-up, bust shot, key art, marketing render, magazine cover composition";
+const CHARACTER_TOP_DOWN_NEG = `${CHARACTER_VIEW_NEG_COMMON}, isometric perspective, side profile, front-facing pose, low camera angle, ground-level shot`;
+const CHARACTER_SIDE_NEG = `${CHARACTER_VIEW_NEG_COMMON}, front-facing pose, top-down camera, isometric, three-quarter angle, facing camera, character select pose`;
+const CHARACTER_FRONT_NEG = `${CHARACTER_VIEW_NEG_COMMON}, side profile, top-down camera, isometric, three-quarter angle, back view, turned away`;
+
+// REPLACES the global TOP_DOWN negative for character/creature subcategories.
+// The global is tuned for inanimate flat-lay (weapons on a table) and forbids
+// "standing upright" — which is exactly what a Zelda-style top-down sprite IS,
+// so the global was actively fighting the subcategory's intent.
+const CHARACTER_TOP_DOWN_NEG_REPLACEMENT =
+  "front view, side view, profile, isometric, eye-level horizon line, walls from side, vanishing point, low camera angle, photorealistic render";
 
 export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
   HEROES: makeConfig(
@@ -998,13 +1020,16 @@ export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptC
     {
       viewOverrides: {
         FRONT: "hero facing directly at camera, full body visible, symmetrical character select screen pose",
-        TOP_DOWN: "((hero figure seen from directly above)), bird's-eye view of the top of the head and shoulders, body lying along the vertical axis of the frame, like a Zelda SNES or Stardew Valley overhead RPG sprite, NOT a standing portrait",
+        TOP_DOWN: "((top-down RPG sprite)), Zelda / Pokemon / Stardew Valley style overhead character, small pixel figure rendered for a top-down game grid, camera high above looking down at a steep 3/4 angle, character standing on a tile with feet visible, idle walking-pose silhouette",
         SIDE_VIEW: "hero facing right in strict side profile, full body, platformer walking sprite like Mario or Mega Man",
       },
       additionalNegativeByView: {
         TOP_DOWN: CHARACTER_TOP_DOWN_NEG,
         SIDE_VIEW: CHARACTER_SIDE_NEG,
         FRONT: CHARACTER_FRONT_NEG,
+      },
+      replaceViewNegative: {
+        TOP_DOWN: CHARACTER_TOP_DOWN_NEG_REPLACEMENT,
       },
     }
   ),
@@ -1017,13 +1042,16 @@ export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptC
     {
       viewOverrides: {
         FRONT: "enemy facing directly at camera, full body visible, threatening frontal pose",
-        TOP_DOWN: "((enemy seen from directly above)), bird's-eye view of back and head, body lying along the vertical axis of the frame, top-down RPG enemy sprite, NOT a standing combat pose",
+        TOP_DOWN: "((top-down RPG enemy sprite)), Zelda / Pokemon style overhead enemy, small pixel figure rendered for a top-down game grid, high 3/4 camera looking down, enemy standing on a tile, combat-ready silhouette",
         SIDE_VIEW: "enemy facing right in strict side profile, full body, platformer enemy sprite",
       },
       additionalNegativeByView: {
         TOP_DOWN: CHARACTER_TOP_DOWN_NEG,
         SIDE_VIEW: CHARACTER_SIDE_NEG,
         FRONT: CHARACTER_FRONT_NEG,
+      },
+      replaceViewNegative: {
+        TOP_DOWN: CHARACTER_TOP_DOWN_NEG_REPLACEMENT,
       },
     }
   ),
@@ -1036,13 +1064,16 @@ export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptC
     {
       viewOverrides: {
         FRONT: "NPC facing directly at camera, full body visible, neutral welcoming pose",
-        TOP_DOWN: "((NPC seen from directly above)), bird's-eye view of head and shoulders, body lying along the vertical axis of the frame, top-down RPG villager sprite, NOT a standing portrait",
+        TOP_DOWN: "((top-down RPG villager sprite)), Stardew Valley / Pokemon / Harvest Moon style overhead NPC, small pixel figure on a top-down game grid, high 3/4 camera, NPC standing idle on a tile",
         SIDE_VIEW: "NPC facing right in strict side profile, full body, idle standing pose",
       },
       additionalNegativeByView: {
         TOP_DOWN: CHARACTER_TOP_DOWN_NEG,
         SIDE_VIEW: CHARACTER_SIDE_NEG,
         FRONT: CHARACTER_FRONT_NEG,
+      },
+      replaceViewNegative: {
+        TOP_DOWN: CHARACTER_TOP_DOWN_NEG_REPLACEMENT,
       },
     }
   ),
@@ -1055,13 +1086,16 @@ export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptC
     {
       viewOverrides: {
         FRONT: "boss facing directly at camera, full imposing form visible, intimidating frontal pose",
-        TOP_DOWN: "((boss seen from directly above)), bird's-eye view, large imposing top-down silhouette filling the frame from above, overhead RPG boss sprite, NOT a standing intimidation pose",
+        TOP_DOWN: "((top-down RPG boss sprite)), Zelda / Secret of Mana style overhead boss, larger pixel figure occupying multiple tiles, high 3/4 camera looking down, boss in idle combat stance",
         SIDE_VIEW: "boss facing right in strict side profile, full imposing form visible",
       },
       additionalNegativeByView: {
         TOP_DOWN: CHARACTER_TOP_DOWN_NEG,
         SIDE_VIEW: CHARACTER_SIDE_NEG,
         FRONT: CHARACTER_FRONT_NEG,
+      },
+      replaceViewNegative: {
+        TOP_DOWN: CHARACTER_TOP_DOWN_NEG_REPLACEMENT,
       },
     }
   ),
@@ -1070,9 +1104,11 @@ export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptC
 // --------------------------------------------------
 // PROMPT CONFIGS - CREATURES
 // --------------------------------------------------
-// Creatures share the same anti-3/4 prior issue as humanoid characters.
-const CREATURE_TOP_DOWN_NEG =
-  "side profile, three-quarter view, 3/4 angle, frontal view, standing creature, creature on legs, perspective angle, action pose facing camera";
+// Creatures follow the same gaming convention — top-down means a Zelda-style
+// overhead sprite, NOT a literal bird's-eye photograph of an animal's back.
+const CREATURE_VIEW_NEG_COMMON =
+  "key art splash render, dramatic close-up, magazine cover composition, photorealistic wildlife photograph, hero portrait";
+const CREATURE_TOP_DOWN_NEG = `${CREATURE_VIEW_NEG_COMMON}, isometric perspective, side profile, ground-level shot, low camera angle`;
 
 export const CREATURES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
   ANIMALS: makeConfig(
@@ -1081,10 +1117,16 @@ export const CREATURES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptCo
     "((ONLY ONE ANIMAL)), single full body animal on transparent background, complete body from nose to tail, NO other animals nearby, NO background, centered game sprite",
     "animal herd, multiple animals, two animals, pack, flock, group, rider on mount, person with animal, landscape scene, dead animal, cropped body, forest background, grass ground, sky, nature scene, hunter, pet owner, leash collar unless requested, saddle unless requested, cage, zoo enclosure, barn interior, trees, rocks, water",
     {
+      viewOverrides: {
+        TOP_DOWN: "((top-down RPG creature sprite)), Zelda / Stardew Valley style overhead animal, small pixel figure on a top-down game grid, high 3/4 camera looking down at the creature standing on a tile",
+      },
       additionalNegativeByView: {
         TOP_DOWN: CREATURE_TOP_DOWN_NEG,
-        SIDE_VIEW: "front view, three-quarter view, 3/4 angle, top-down view, isometric, facing camera",
-        FRONT: "side profile, top-down view, three-quarter view, 3/4 angle, isometric, back view",
+        SIDE_VIEW: `${CREATURE_VIEW_NEG_COMMON}, front-facing pose, top-down view, isometric, three-quarter angle, facing camera`,
+        FRONT: `${CREATURE_VIEW_NEG_COMMON}, side profile, top-down view, isometric, three-quarter angle, back view`,
+      },
+      replaceViewNegative: {
+        TOP_DOWN: CHARACTER_TOP_DOWN_NEG_REPLACEMENT,
       },
     }
   ),
@@ -1095,10 +1137,16 @@ export const CREATURES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptCo
     "single full body mythical creature, isolated, readable shape and defining anatomy visible",
     "multiple creatures, rider on creature, battle scene, hatchling only unless requested, dead version",
     {
+      viewOverrides: {
+        TOP_DOWN: "((top-down RPG mythical creature sprite)), overhead game sprite of a legendary beast on a top-down tile, high 3/4 camera, full silhouette visible",
+      },
       additionalNegativeByView: {
         TOP_DOWN: CREATURE_TOP_DOWN_NEG,
-        SIDE_VIEW: "front view, three-quarter view, 3/4 angle, top-down view, isometric, facing camera",
-        FRONT: "side profile, top-down view, three-quarter view, 3/4 angle, isometric, back view",
+        SIDE_VIEW: `${CREATURE_VIEW_NEG_COMMON}, front-facing pose, top-down view, isometric, three-quarter angle, facing camera`,
+        FRONT: `${CREATURE_VIEW_NEG_COMMON}, side profile, top-down view, isometric, three-quarter angle, back view`,
+      },
+      replaceViewNegative: {
+        TOP_DOWN: CHARACTER_TOP_DOWN_NEG_REPLACEMENT,
       },
     }
   ),
@@ -1109,10 +1157,16 @@ export const CREATURES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptCo
     "single full body companion, isolated, readable cute or loyal silhouette",
     "multiple pets, owner with companion, pet shop scene, sad injured animal, crowded scene",
     {
+      viewOverrides: {
+        TOP_DOWN: "((top-down RPG companion sprite)), Pokemon / Stardew Valley style overhead pet, small pixel figure on a top-down game grid, high 3/4 camera, companion standing idle on a tile",
+      },
       additionalNegativeByView: {
         TOP_DOWN: CREATURE_TOP_DOWN_NEG,
-        SIDE_VIEW: "front view, three-quarter view, 3/4 angle, top-down view, isometric, facing camera",
-        FRONT: "side profile, top-down view, three-quarter view, 3/4 angle, isometric, back view",
+        SIDE_VIEW: `${CREATURE_VIEW_NEG_COMMON}, front-facing pose, top-down view, isometric, three-quarter angle, facing camera`,
+        FRONT: `${CREATURE_VIEW_NEG_COMMON}, side profile, top-down view, isometric, three-quarter angle, back view`,
+      },
+      replaceViewNegative: {
+        TOP_DOWN: CHARACTER_TOP_DOWN_NEG_REPLACEMENT,
       },
     }
   ),
@@ -1123,10 +1177,16 @@ export const CREATURES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptCo
     "single full form elemental, isolated, clearly readable as one element-based being",
     "wizard summoning it, mixed elements without request, environment scene, multiple elementals",
     {
+      viewOverrides: {
+        TOP_DOWN: "((top-down RPG elemental sprite)), overhead game sprite of an elemental creature on a top-down tile, high 3/4 camera, swirling element silhouette visible from above",
+      },
       additionalNegativeByView: {
         TOP_DOWN: CREATURE_TOP_DOWN_NEG,
-        SIDE_VIEW: "front view, three-quarter view, 3/4 angle, top-down view, isometric, facing camera",
-        FRONT: "side profile, top-down view, three-quarter view, 3/4 angle, isometric, back view",
+        SIDE_VIEW: `${CREATURE_VIEW_NEG_COMMON}, front-facing pose, top-down view, isometric, three-quarter angle, facing camera`,
+        FRONT: `${CREATURE_VIEW_NEG_COMMON}, side profile, top-down view, isometric, three-quarter angle, back view`,
+      },
+      replaceViewNegative: {
+        TOP_DOWN: CHARACTER_TOP_DOWN_NEG_REPLACEMENT,
       },
     }
   ),
@@ -1531,8 +1591,13 @@ export function getViewNegative(
   config: ExtendedSubcategoryPromptConfig,
   view: AssetView
 ): string {
+  // If the subcategory provides a full replacement, use it instead of the
+  // global negative — needed when the global directly contradicts the
+  // subcategory's intent (e.g. character TOP_DOWN must allow standing).
+  const replacement = config.replaceViewNegative?.[view];
+  const baseNegative = replacement ?? VIEW_PROMPT_CONFIGS[view].negative;
   return dedupeCsv([
-    VIEW_PROMPT_CONFIGS[view].negative,
+    baseNegative,
     config.additionalNegativeByView?.[view],
   ]);
 }
