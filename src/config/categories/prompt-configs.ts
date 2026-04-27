@@ -1015,17 +1015,46 @@ const CHARACTER_FRONT_NEG = `${CHARACTER_VIEW_NEG_COMMON}, side profile, top-dow
 const CHARACTER_TOP_DOWN_NEG_REPLACEMENT =
   "front view, side view, profile, isometric, eye-level horizon line, walls from side, vanishing point, low camera angle, photorealistic render";
 
+// =============================================================================
+// CHARACTER POSE DOCTRINE — A-pose, animation-rig friendly, no exceptions.
+// =============================================================================
+// SpriteLab characters are intended to be imported into a game engine and
+// rigged for animation. That requires a NEUTRAL idle pose:
+//   - Limbs clearly separated from torso (no arm-against-side overlap)
+//   - Symmetric, balanced weight distribution
+//   - No mid-action freeze-frame (running, jumping, swinging)
+//   - Weapon held at side, blade pointing down (not raised over head)
+//
+// We pick A-pose (arms angled ~30° away from body, legs slightly apart) over
+// strict T-pose because A-pose:
+//   - Reads more natural to FLUX (more training samples for "standing idle")
+//   - Avoids the "store mannequin" feel T-pose sometimes triggers
+//   - Still rigs cleanly in Spine, DragonBones, Unity Mecanim, etc.
+//
+// Applied to every character/creature subcategory's `composition` field so
+// every selector view (DEFAULT / TOP_DOWN / SIDE_VIEW / FRONT) inherits it.
+const ANIMATION_READY_POSE =
+  "A-pose game-rigging stance, arms angled slightly away from the body for clean rigging, legs slightly apart, neutral balanced idle pose, symmetric weight, weapon held at the side with the blade pointing down, ready for skeletal animation, NOT a dynamic action shot";
+
+const CREATURE_ANIMATION_READY_POSE =
+  "neutral idle stance for game animation, four legs evenly planted (or wings spread evenly for flying creatures), symmetric balanced silhouette, head facing forward, NOT a mid-leap or attack pose";
+
+// Negatives that block dynamic / mid-action poses. Same list across every
+// character & creature subcategory so the doctrine is consistent.
+const ANIMATION_POSE_NEG =
+  "dynamic action pose, mid-swing motion, mid-attack frame, combat lunge, jumping pose, running pose, crouching, leaping, charging forward, weapon raised overhead, weapon held high, two-handed combat stance, arms crossed in front of chest, hands hidden behind back, legs crossed, frozen mid-motion, action shot, fighting stance, defensive stance";
+
 export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
   HEROES: makeConfig(
-    "single game character, full body sprite",
-    "heroic adventurer with equipment matching the description exactly",
-    "one character centered, head to feet visible, standing pose",
-    "multiple characters, party, crowd, companion, portrait only, background scene, wrong class gear, extra armor unless requested",
+    "single A-pose game character sprite, animation-rig ready",
+    "heroic adventurer with equipment matching the description exactly, weapon held calmly at the side",
+    `one character centered, head to feet visible, ${ANIMATION_READY_POSE}`,
+    `multiple characters, party, crowd, companion, portrait only, background scene, wrong class gear, extra armor unless requested, ${ANIMATION_POSE_NEG}`,
     {
       viewOverrides: {
-        FRONT: "hero facing directly at camera, full body visible, symmetrical character select screen pose",
-        TOP_DOWN: "((top-down RPG hero sprite)), Zelda / Pokemon / Stardew Valley style overhead character, small pixel figure for a top-down game, camera high above looking down at a steep 3/4 angle, idle walking-pose silhouette, isolated on transparent background, NO floor, NO shadow, NO ground, NO tile, NO scenery",
-        SIDE_VIEW: "hero facing right in strict side profile, full body, platformer walking sprite like Mario or Mega Man",
+        FRONT: `hero facing directly at camera, full body visible, ${ANIMATION_READY_POSE}, symmetrical character-select-screen framing`,
+        TOP_DOWN: `((top-down RPG hero sprite)), Zelda / Pokemon / Stardew Valley style overhead character, small pixel figure for a top-down game, camera high above looking down at a steep 3/4 angle, ${ANIMATION_READY_POSE}, isolated on transparent background, NO floor, NO shadow, NO ground, NO tile, NO scenery`,
+        SIDE_VIEW: `hero in strict side profile facing right, full body visible, ${ANIMATION_READY_POSE}, platformer rigging sprite reference like Mario or Mega Man idle pose`,
       },
       additionalNegativeByView: {
         TOP_DOWN: CHARACTER_TOP_DOWN_NEG,
@@ -1039,15 +1068,15 @@ export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptC
   ),
 
   ENEMIES: makeConfig(
-    "single enemy character, game sprite",
-    "threatening hostile creature, menacing combat pose, full body visible",
-    "one enemy centered, full body head to feet, combat-ready pose",
-    "enemy group, multiple enemies, two enemies, swarm, horde, hero fighting it, background scene, dungeon, cave, forest, corpse, defeated pose, dead body, cropped figure, companion, duplicate, landscape",
+    "single A-pose enemy character sprite, animation-rig ready",
+    "threatening hostile creature with equipment matching the description, weapon held calmly at the side",
+    `one enemy centered, full body head to feet, ${ANIMATION_READY_POSE}`,
+    `enemy group, multiple enemies, two enemies, swarm, horde, hero fighting it, background scene, dungeon, cave, forest, corpse, defeated pose, dead body, cropped figure, companion, duplicate, landscape, ${ANIMATION_POSE_NEG}`,
     {
       viewOverrides: {
-        FRONT: "enemy facing directly at camera, full body visible, threatening frontal pose",
-        TOP_DOWN: "((top-down RPG enemy sprite)), Zelda / Pokemon style overhead enemy, small pixel figure for a top-down game, high 3/4 camera looking down, combat-ready silhouette, isolated on transparent background, NO floor, NO shadow, NO ground, NO tile, NO scenery",
-        SIDE_VIEW: "enemy facing right in strict side profile, full body, platformer enemy sprite",
+        FRONT: `enemy facing directly at camera, full body visible, ${ANIMATION_READY_POSE}`,
+        TOP_DOWN: `((top-down RPG enemy sprite)), Zelda / Pokemon style overhead enemy, small pixel figure for a top-down game, high 3/4 camera looking down, ${ANIMATION_READY_POSE}, isolated on transparent background, NO floor, NO shadow, NO ground, NO tile, NO scenery`,
+        SIDE_VIEW: `enemy in strict side profile facing right, full body visible, ${ANIMATION_READY_POSE}, platformer enemy idle sprite`,
       },
       additionalNegativeByView: {
         TOP_DOWN: CHARACTER_TOP_DOWN_NEG,
@@ -1061,15 +1090,15 @@ export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptC
   ),
 
   NPCS: makeConfig(
-    "single NPC character",
+    "single A-pose NPC character sprite, animation-rig ready",
     "non-playable character such as merchant, villager, guard, blacksmith, priest, scholar or quest giver based on request",
-    "single full body NPC, isolated, neutral readable pose, no scene clutter",
-    "multiple NPCs, town crowd, shop background, dialogue window, portrait only",
+    `single full body NPC, isolated, ${ANIMATION_READY_POSE}, no scene clutter`,
+    `multiple NPCs, town crowd, shop background, dialogue window, portrait only, ${ANIMATION_POSE_NEG}`,
     {
       viewOverrides: {
-        FRONT: "NPC facing directly at camera, full body visible, neutral welcoming pose",
-        TOP_DOWN: "((top-down RPG villager sprite)), Stardew Valley / Pokemon / Harvest Moon style overhead NPC, small pixel figure for a top-down game, high 3/4 camera, idle standing silhouette, isolated on transparent background, NO floor, NO shadow, NO ground, NO tile, NO scenery",
-        SIDE_VIEW: "NPC facing right in strict side profile, full body, idle standing pose",
+        FRONT: `NPC facing directly at camera, full body visible, ${ANIMATION_READY_POSE}, neutral welcoming framing`,
+        TOP_DOWN: `((top-down RPG villager sprite)), Stardew Valley / Pokemon / Harvest Moon style overhead NPC, small pixel figure for a top-down game, high 3/4 camera, ${ANIMATION_READY_POSE}, isolated on transparent background, NO floor, NO shadow, NO ground, NO tile, NO scenery`,
+        SIDE_VIEW: `NPC in strict side profile facing right, full body visible, ${ANIMATION_READY_POSE}`,
       },
       additionalNegativeByView: {
         TOP_DOWN: CHARACTER_TOP_DOWN_NEG,
@@ -1083,15 +1112,15 @@ export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptC
   ),
 
   BOSSES: makeConfig(
-    "single boss character",
+    "single A-pose boss character sprite, animation-rig ready",
     "large unique boss enemy with strong silhouette and memorable presence",
-    "single full body boss, isolated, complete form visible, dominant readable design",
-    "minions, arena scene, boss UI, health bars, defeated boss, multiple bosses",
+    `single full body boss, isolated, complete form visible, ${ANIMATION_READY_POSE}, dominant readable design`,
+    `minions, arena scene, boss UI, health bars, defeated boss, multiple bosses, ${ANIMATION_POSE_NEG}`,
     {
       viewOverrides: {
-        FRONT: "boss facing directly at camera, full imposing form visible, intimidating frontal pose",
-        TOP_DOWN: "((top-down RPG boss sprite)), Zelda / Secret of Mana style overhead boss, larger pixel figure for a top-down game, high 3/4 camera looking down, boss in idle combat stance, isolated on transparent background, NO floor, NO shadow, NO ground, NO tile, NO scenery",
-        SIDE_VIEW: "boss facing right in strict side profile, full imposing form visible",
+        FRONT: `boss facing directly at camera, full imposing form visible, ${ANIMATION_READY_POSE}`,
+        TOP_DOWN: `((top-down RPG boss sprite)), Zelda / Secret of Mana style overhead boss, larger pixel figure for a top-down game, high 3/4 camera looking down, ${ANIMATION_READY_POSE}, isolated on transparent background, NO floor, NO shadow, NO ground, NO tile, NO scenery`,
+        SIDE_VIEW: `boss in strict side profile facing right, full imposing form visible, ${ANIMATION_READY_POSE}`,
       },
       additionalNegativeByView: {
         TOP_DOWN: CHARACTER_TOP_DOWN_NEG,
@@ -1116,10 +1145,10 @@ const CREATURE_TOP_DOWN_NEG = `${CREATURE_VIEW_NEG_COMMON}, isometric perspectiv
 
 export const CREATURES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
   ANIMALS: makeConfig(
-    "((exactly one animal)), isolated game creature sprite, single animal only",
+    "((exactly one animal)), isolated A-pose game creature sprite, single animal only, animation-rig ready",
     "one complete animal with all limbs visible, stylized game creature design, clear readable silhouette",
-    "((ONLY ONE ANIMAL)), single full body animal on transparent background, complete body from nose to tail, NO other animals nearby, NO background, centered game sprite",
-    "animal herd, multiple animals, two animals, pack, flock, group, rider on mount, person with animal, landscape scene, dead animal, cropped body, forest background, grass ground, sky, nature scene, hunter, pet owner, leash collar unless requested, saddle unless requested, cage, zoo enclosure, barn interior, trees, rocks, water",
+    `((ONLY ONE ANIMAL)), single full body animal on transparent background, complete body from nose to tail, ${CREATURE_ANIMATION_READY_POSE}, NO other animals nearby, NO background, centered game sprite`,
+    `animal herd, multiple animals, two animals, pack, flock, group, rider on mount, person with animal, landscape scene, dead animal, cropped body, forest background, grass ground, sky, nature scene, hunter, pet owner, leash collar unless requested, saddle unless requested, cage, zoo enclosure, barn interior, trees, rocks, water, ${ANIMATION_POSE_NEG}`,
     {
       viewOverrides: {
         TOP_DOWN: "((top-down RPG creature sprite)), Zelda / Stardew Valley style overhead animal, small pixel figure for a top-down game, high 3/4 camera looking down, isolated on transparent background, NO floor, NO shadow, NO ground, NO tile, NO scenery",
@@ -1136,10 +1165,10 @@ export const CREATURES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptCo
   ),
 
   MYTHICAL: makeConfig(
-    "single mythical creature",
+    "single A-pose mythical creature sprite, animation-rig ready",
     "legendary creature such as dragon, griffin, phoenix, unicorn, hydra or other mythic beast depending on request",
-    "single full body mythical creature, isolated, readable shape and defining anatomy visible",
-    "multiple creatures, rider on creature, battle scene, hatchling only unless requested, dead version",
+    `single full body mythical creature, isolated, ${CREATURE_ANIMATION_READY_POSE}, readable shape and defining anatomy visible`,
+    `multiple creatures, rider on creature, battle scene, hatchling only unless requested, dead version, ${ANIMATION_POSE_NEG}`,
     {
       viewOverrides: {
         TOP_DOWN: "((top-down RPG mythical creature sprite)), overhead game sprite of a legendary beast, high 3/4 camera, full silhouette visible, isolated on transparent background, NO floor, NO shadow, NO ground, NO tile, NO scenery",
@@ -1156,10 +1185,10 @@ export const CREATURES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptCo
   ),
 
   COMPANIONS: makeConfig(
-    "single companion creature",
+    "single A-pose companion creature sprite, animation-rig ready",
     "friendly pet or companion creature suitable for game sidekick or summon role",
-    "single full body companion, isolated, readable cute or loyal silhouette",
-    "multiple pets, owner with companion, pet shop scene, sad injured animal, crowded scene",
+    `single full body companion, isolated, ${CREATURE_ANIMATION_READY_POSE}, readable cute or loyal silhouette`,
+    `multiple pets, owner with companion, pet shop scene, sad injured animal, crowded scene, ${ANIMATION_POSE_NEG}`,
     {
       viewOverrides: {
         TOP_DOWN: "((top-down RPG companion sprite)), Pokemon / Stardew Valley style overhead pet, small pixel figure for a top-down game, high 3/4 camera, idle companion silhouette, isolated on transparent background, NO floor, NO shadow, NO ground, NO tile, NO scenery",
@@ -1176,10 +1205,10 @@ export const CREATURES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptCo
   ),
 
   ELEMENTALS: makeConfig(
-    "single elemental creature",
+    "single A-pose elemental creature sprite, animation-rig ready",
     "creature made from a dominant element such as fire, ice, water, stone, lightning, shadow or nature depending on request",
-    "single full form elemental, isolated, clearly readable as one element-based being",
-    "wizard summoning it, mixed elements without request, environment scene, multiple elementals",
+    `single full form elemental, isolated, ${CREATURE_ANIMATION_READY_POSE}, clearly readable as one element-based being`,
+    `wizard summoning it, mixed elements without request, environment scene, multiple elementals, ${ANIMATION_POSE_NEG}`,
     {
       viewOverrides: {
         TOP_DOWN: "((top-down RPG elemental sprite)), overhead game sprite of an elemental creature, high 3/4 camera, swirling element silhouette from above, isolated on transparent background, NO floor, NO shadow, NO ground, NO tile, NO scenery",
