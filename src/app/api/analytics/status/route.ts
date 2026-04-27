@@ -1,9 +1,20 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { createClient } from "@/lib/supabase/server";
+import { isAdmin } from "@/lib/admin";
 
-// GET - Publiczny status systemu analitycznego (bez autoryzacji)
+// GET — Internal analytics status. Admin-only because the response leaks
+// pending-job counts, hallucination rate, average quality scores, and a
+// sample of the most recent analyses — none of which is appropriate for
+// anonymous public consumption. Was wide-open before; now requires ADMIN.
 export async function GET() {
   try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || !(await isAdmin(user.id))) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     // Pobierz statystyki z bazy
     const [
       pendingJobs,
@@ -78,10 +89,13 @@ export async function GET() {
     });
   } catch (error) {
     console.error("Status check error:", error);
-    return NextResponse.json({
-      status: "error",
-      error: error instanceof Error ? error.message : "Unknown error",
-      timestamp: new Date().toISOString(),
-    });
+    return NextResponse.json(
+      {
+        status: "error",
+        error: "Status check failed",
+        timestamp: new Date().toISOString(),
+      },
+      { status: 500 }
+    );
   }
 }

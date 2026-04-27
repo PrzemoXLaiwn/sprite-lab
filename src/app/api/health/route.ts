@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { createClient } from "@/lib/supabase/server";
+import { isAdmin } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +13,20 @@ function envGroup(name: string, vars: string[]): Check {
   if (missing.length === 0) return { status: "OK" };
   if (missing.length === vars.length) return { status: "MISSING", detail: `${name} not configured`, missing };
   return { status: "PARTIAL", detail: `${name} partially configured`, missing };
+}
+
+// Anonymous callers (load balancers, uptime monitors) get a tiny shape that
+// reveals nothing about the configuration. Admins authenticated via session
+// see the detailed breakdown.
+async function callerCanSeeDetails(): Promise<boolean> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+    return await isAdmin(user.id);
+  } catch {
+    return false;
+  }
 }
 
 export async function GET() {
@@ -35,10 +51,10 @@ export async function GET() {
     await prisma.$queryRaw`SELECT 1`;
     checks.database = { status: "OK" };
   } catch (error) {
-    checks.database = {
-      status: "ERROR",
-      detail: error instanceof Error ? error.message : String(error),
-    };
+    console.error("[Health] DB check failed:", error);
+    // Do not leak the Prisma error message — it can include hostnames and
+    // SQL fragments. Admins can inspect server logs.
+    checks.database = { status: "ERROR", detail: "database unreachable" };
   }
 
   // ── Image hosting (R2 → Supabase) ────────────────────────────────────────
@@ -106,6 +122,15 @@ export async function GET() {
   const hasFailure = statuses.includes("MISSING") || statuses.includes("ERROR");
   const hasDegraded = statuses.includes("PARTIAL");
   const overall = hasFailure ? "unhealthy" : hasDegraded ? "degraded" : "healthy";
+
+  // Public callers get a single status word — no env-var inventory, no
+  // missing-list, no DB error strings. Admins see the full breakdown.
+  if (!(await callerCanSeeDetails())) {
+    return NextResponse.json(
+      { status: overall, timestamp: new Date().toISOString() },
+      { status: hasFailure ? 503 : 200 }
+    );
+  }
 
   return NextResponse.json(
     {

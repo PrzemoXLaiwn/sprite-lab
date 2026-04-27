@@ -16,6 +16,7 @@ import {
   type GenerationRequest,
 } from "@/lib/services/generation";
 import { enhanceUserPrompt, translatePromptIfNeeded } from "@/lib/prompt-enhance";
+import { rateLimitUserGeneration } from "@/lib/rate-limit";
 
 // ─── Input validation schema ──────────────────────────────────────────────────
 // Identical to Phase 2 schema — no breaking changes to accepted input.
@@ -79,6 +80,14 @@ export async function POST(request: Request) {
         { status: 401 }
       );
     }
+
+    // ── 1b. Rate limit ────────────────────────────────────────────────────────
+    // 30 generations per hour per user. The credit system already caps how
+    // many requests a user can run before they pay; this layer protects us
+    // from abuse by users who DO have credits (mass-batch, scraping, etc.).
+    // Fail-open if Upstash is not configured.
+    const { blocked: rateLimitBlocked } = await rateLimitUserGeneration(user.id);
+    if (rateLimitBlocked) return rateLimitBlocked;
 
     // ── 2. Parse + validate body ──────────────────────────────────────────────
     const rawBody = await parseJsonBody(request);

@@ -91,7 +91,7 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("[Community] Error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to fetch community gallery" },
+      { error: "Failed to fetch community gallery" },
       { status: 500 }
     );
   }

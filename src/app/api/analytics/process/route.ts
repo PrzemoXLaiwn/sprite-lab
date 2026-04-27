@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Analysis processing error:", error);
     return NextResponse.json(
-      { error: "Processing failed", details: String(error) },
+      { error: "Processing failed" },
       { status: 500 }
     );
   }

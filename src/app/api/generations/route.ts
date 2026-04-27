@@ -70,8 +70,10 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("[Generations] Error:", error);
+    // Never echo error.message — Prisma errors leak schema details and
+    // raw constraint violations are not user-actionable.
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to fetch generations" },
+      { error: "Failed to fetch generations" },
       { status: 500 }
     );
   }
