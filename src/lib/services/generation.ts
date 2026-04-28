@@ -52,7 +52,7 @@ import {
   buildEnhancedPrompt,
   STYLES_2D_FULL,
 } from "@/config";
-import { resolveLorasForGeneration } from "@/config/loras";
+import { resolveLorasForGeneration, composeLoraTriggerPhrase } from "@/config/loras";
 import { enhancePromptWithLearnedFixes } from "@/lib/analytics/prompt-enhancer";
 import { pixelateImage } from "@/lib/image/pixelate";
 
@@ -638,17 +638,6 @@ async function generateSingle2D(request: GenerationRequest): Promise<GeneratedAs
     optimizations: appliedOptimizations.length,
   });
 
-  // Full prompt debug — remove after debugging views/colors
-  console.log("\n" + "═".repeat(80));
-  console.log("🔍 FULL PROMPT SENT TO FLUX:");
-  console.log("═".repeat(80));
-  console.log("VIEW:", request.view || "DEFAULT");
-  console.log("POSITIVE:", finalPrompt);
-  console.log("─".repeat(80));
-  console.log("NEGATIVE:", negativePrompt);
-  console.log("WORDS:", finalPrompt.split(/\s+/).length, "positive /", negativePrompt.split(/\s+/).length, "negative");
-  console.log("═".repeat(80) + "\n");
-
   // ── 3. Generate via Runware ────────────────────────────────────────────────
   // LoRA stack — style + category specific adapters layered on top of
   // the base FLUX model. Lives in src/config/loras.ts so we can swap
@@ -656,8 +645,34 @@ async function generateSingle2D(request: GenerationRequest): Promise<GeneratedAs
   // without touching the pipeline.
   const loras = resolveLorasForGeneration(request.styleId, request.categoryId);
 
+  // Many Civitai LoRAs only "switch on" when their activator token is
+  // present in the prompt (e.g. `dvr-pixel-flux` for the Dever
+  // pixel-game-assets LoRA). Prepend so the trigger gets early-token
+  // weighting — burying it 200 tokens deep makes the LoRA barely engage.
+  // The composed prompt becomes both what FLUX sees AND what we record on
+  // the Generation row, so the DB is faithful to what was sent.
+  const triggerPhrase = composeLoraTriggerPhrase(loras);
+  const promptWithTriggers = triggerPhrase
+    ? `${triggerPhrase}, ${finalPrompt}`
+    : finalPrompt;
+
+  // Full prompt debug — remove after debugging views/colors
+  console.log("\n" + "═".repeat(80));
+  console.log("🔍 FULL PROMPT SENT TO FLUX:");
+  console.log("═".repeat(80));
+  console.log("VIEW:", request.view || "DEFAULT");
+  console.log("POSITIVE:", promptWithTriggers);
+  console.log("─".repeat(80));
+  console.log("NEGATIVE:", negativePrompt);
+  if (loras.length > 0) {
+    console.log("LORAS:", loras.map((l) => `${l.model}@${l.weight}`).join(", "));
+    if (triggerPhrase) console.log("LORA TRIGGERS:", triggerPhrase);
+  }
+  console.log("WORDS:", promptWithTriggers.split(/\s+/).length, "positive /", negativePrompt.split(/\s+/).length, "negative");
+  console.log("═".repeat(80) + "\n");
+
   const generationOptions: GenerateImageOptions = {
-    prompt: finalPrompt,
+    prompt: promptWithTriggers,
     negativePrompt,
     model: modelId,
     seed: request.seed,
@@ -772,7 +787,11 @@ async function generateSingle2D(request: GenerationRequest): Promise<GeneratedAs
     seed: generatedImage.seed,
     model: generatedImage.model,
     providerCost: generatedImage.cost,
-    finalPrompt,
+    // Persist the prompt FLUX actually saw (with LoRA triggers folded in)
+    // — otherwise the Generation.fullPrompt column lies and the training
+    // export script would caption images with a string that doesn't
+    // match the input that produced them.
+    finalPrompt: promptWithTriggers,
     appliedOptimizations,
     warnings,
     resolvedView,

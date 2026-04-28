@@ -32,6 +32,16 @@ export interface SpriteLabLora {
   /** Influence strength. 0.7-1.0 is typical; >1 over-fits, <0.5 barely shows. */
   weight: number;
   /**
+   * Activator words this LoRA was trained against. Many Civitai LoRAs only
+   * "switch on" when a specific token appears in the prompt (e.g. the
+   * Dever pixel-game-assets LoRA needs `dvr-pixel-flux`). When set, these
+   * tokens are PREPENDED to every generation prompt that uses this LoRA
+   * — early-token weighting matters in transformer attention.
+   *
+   * Leave undefined for LoRAs that activate without a trigger.
+   */
+  triggerWords?: string[];
+  /**
    * Human-readable note for the maintainer — what this LoRA does, where it
    * came from, and any prompt-token tricks ("activator words") it expects.
    * Never sent to the model.
@@ -51,14 +61,44 @@ export interface SpriteLabLora {
  * To plug in a custom-trained SpriteLab LoRA, train it via Runware
  * (see docs/CUSTOM_MODEL.md) and paste the resulting AIR here.
  */
+// Curated public LoRAs for FLUX.1 D from Civitai. Each entry has been
+// vetted on download/like count, base-model compatibility, and trigger
+// requirements. Update or replace as we ship our own custom-trained
+// SpriteLab LoRAs (see docs/CUSTOM_MODEL.md).
 export const STYLE_LORA_MAP: Record<string, SpriteLabLora[]> = {
   // ─── Pixel art family ────────────────────────────────────────────────
-  // TODO: train spritelab-pixel-art-16bit-v1 on ~150 SNES/GBA sprites.
-  // For now the post-process pixel-snap (sharp downsample + nearest-
-  // neighbor upsample) is doing most of the heavy lifting.
-  PIXEL_ART_16: [],
-  PIXEL_ART_32: [],
-  ISOMETRIC_PIXEL: [],
+  // Dever's "Pixel Game Assets [FLUX]" — explicitly trained on game
+  // asset reference images (weapons, characters, items). 9.2K likes,
+  // 3.7K downloads on Civitai. Trigger word `dvr-pixel-flux` is
+  // mandatory — without it the LoRA barely engages.
+  // https://civitai.com/models/945266/pixel-game-assets-flux-by-dever
+  PIXEL_ART_16: [
+    {
+      model: "civitai:945266@1058316",
+      weight: 0.85,
+      triggerWords: ["dvr-pixel-flux"],
+      note: "Dever Pixel Game Assets — 9.2K likes; sprite-first training set",
+    },
+  ],
+  PIXEL_ART_32: [
+    {
+      model: "civitai:945266@1058316",
+      weight: 0.8,
+      triggerWords: ["dvr-pixel-flux"],
+      note: "Dever Pixel Game Assets — slightly lower weight for 32-bit (more detail headroom)",
+    },
+  ],
+  // 64BIT LoRA is purpose-built for isometric / overhead retro graphics.
+  // Strong activation phrase is required — see triggerWords. 3.4K downloads.
+  // https://civitai.com/models/816360/pixel-art-and-video-game-graphics-lora
+  ISOMETRIC_PIXEL: [
+    {
+      model: "civitai:816360@1406637",
+      weight: 0.75,
+      triggerWords: ["64-bit screenshot from 64BITGAME"],
+      note: "64Bit Pixel Art — N64-era isometric sprite training set",
+    },
+  ],
 
   // ─── Hand-painted / artistic ─────────────────────────────────────────
   HAND_PAINTED: [],
@@ -114,4 +154,29 @@ export function resolveLorasForGeneration(
   const styleLoras = STYLE_LORA_MAP[styleId] ?? [];
   const categoryLoras = CATEGORY_LORA_MAP[categoryId] ?? [];
   return [...styleLoras, ...categoryLoras].slice(0, 5);
+}
+
+/**
+ * Extracts a deduplicated, comma-separated phrase of every trigger word
+ * across the resolved LoRA stack. The caller PREPENDS this to the prompt
+ * so the LoRAs activate properly — early-token weighting in transformer
+ * attention means a trigger at position 0 lands harder than at position
+ * 200.
+ *
+ * Returns an empty string when no LoRA in the stack uses triggers; the
+ * caller should treat that as "no prefix needed" and pass the prompt
+ * through unmodified.
+ */
+export function composeLoraTriggerPhrase(loras: SpriteLabLora[]): string {
+  const seen = new Set<string>();
+  const ordered: string[] = [];
+  for (const l of loras) {
+    for (const t of l.triggerWords ?? []) {
+      const key = t.toLowerCase().trim();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      ordered.push(t.trim());
+    }
+  }
+  return ordered.join(", ");
 }
