@@ -52,6 +52,7 @@ import {
   buildEnhancedPrompt,
   STYLES_2D_FULL,
 } from "@/config";
+import { resolveLorasForGeneration } from "@/config/loras";
 import { enhancePromptWithLearnedFixes } from "@/lib/analytics/prompt-enhancer";
 import { pixelateImage } from "@/lib/image/pixelate";
 
@@ -649,6 +650,12 @@ async function generateSingle2D(request: GenerationRequest): Promise<GeneratedAs
   console.log("═".repeat(80) + "\n");
 
   // ── 3. Generate via Runware ────────────────────────────────────────────────
+  // LoRA stack — style + category specific adapters layered on top of
+  // the base FLUX model. Lives in src/config/loras.ts so we can swap
+  // public Civitai LoRAs for our own custom-trained SpriteLab LoRAs
+  // without touching the pipeline.
+  const loras = resolveLorasForGeneration(request.styleId, request.categoryId);
+
   const generationOptions: GenerateImageOptions = {
     prompt: finalPrompt,
     negativePrompt,
@@ -658,6 +665,7 @@ async function generateSingle2D(request: GenerationRequest): Promise<GeneratedAs
     guidance: quality.guidance,
     width: 1024,
     height: 1024,
+    loras: loras.length > 0 ? loras.map((l) => ({ model: l.model, weight: l.weight })) : undefined,
   };
 
   const result = await generateImage(generationOptions, tier);

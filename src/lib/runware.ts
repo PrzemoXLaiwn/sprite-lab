@@ -124,6 +124,19 @@ export interface GenerateImageOptions {
   steps?: number;
   guidance?: number;
   numberOfImages?: number;
+  /**
+   * Optional LoRA stack to apply at inference. Each entry has an AIR
+   * identifier (Runware Asset ID) and a weight 0-2.
+   *
+   * Examples of AIR formats Runware accepts:
+   *   - Civitai: "civitai:12345@67890"  (model id @ version id)
+   *   - Runware-hosted user LoRA: "runware:USER_ID/lora-name@v1"
+   *
+   * Used by SpriteLab to (a) apply public Civitai LoRAs that match a
+   * given style picker entry, and (b) apply our own custom-trained
+   * LoRAs once they exist (see docs/CUSTOM_MODEL.md).
+   */
+  loras?: Array<{ model: string; weight: number }>;
 }
 
 export interface GeneratedImage {
@@ -190,6 +203,20 @@ export async function generateImage(
       safeNegative = lastSpace > 1700 ? trimmed.substring(0, lastSpace) : trimmed;
     }
 
+    // Sanitize LoRA stack — drop entries without a model id and clamp
+    // weights into the safe 0-2 range. Without this a typo in a style
+    // config could send `weight: NaN` and Runware would 400 the call.
+    const safeLoras = (options.loras ?? [])
+      .filter((l) => typeof l.model === "string" && l.model.length > 0)
+      .map((l) => ({
+        model: l.model,
+        weight: Math.max(0, Math.min(2, Number.isFinite(l.weight) ? l.weight : 1)),
+      }));
+
+    if (safeLoras.length > 0) {
+      console.log(`[Runware] 🎨 Applying ${safeLoras.length} LoRA(s):`, safeLoras.map((l) => `${l.model}@${l.weight}`).join(", "));
+    }
+
     // FLUX-optimized defaults: guidance 2-4, steps 20-28
     const result = await runware.imageInference({
       positivePrompt: safePrompt,
@@ -203,6 +230,7 @@ export async function generateImage(
       numberResults: options.numberOfImages || 1,
       outputType: "URL",
       outputFormat: "PNG",
+      lora: safeLoras.length > 0 ? safeLoras : undefined,
     });
 
     if (!result || result.length === 0) {
