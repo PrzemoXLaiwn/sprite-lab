@@ -1095,19 +1095,19 @@ function GeneratePageInner() {
         {/* Model + applied optimizations metadata — small footer line so
             users know what produced the image and what was tweaked. */}
         {activeResult && (activeResult.modelUsed || (activeResult.appliedOptimizations?.length ?? 0) > 0) && (
-          <div className="max-w-[520px] w-full mt-3 flex flex-wrap items-center gap-1.5 justify-center text-[10px] text-white/65">
+          <div className="max-w-[520px] w-full mt-3 flex flex-wrap items-center gap-1.5 justify-center text-[11px] text-white/85">
             {activeResult.modelUsed && (
-              <span className="px-2 py-0.5 rounded bg-white/[0.06] border border-white/10 uppercase tracking-wider font-semibold">
+              <span className="px-2.5 py-1 rounded bg-white/[0.08] border border-white/15 uppercase tracking-wider font-bold">
                 {activeResult.modelUsed}
               </span>
             )}
             {activeResult.resolvedView && activeResult.resolvedView !== "DEFAULT" && (
-              <span className="px-2 py-0.5 rounded bg-white/[0.06] border border-white/10">
+              <span className="px-2.5 py-1 rounded bg-white/[0.08] border border-white/15 font-medium">
                 view: {activeResult.resolvedView.toLowerCase().replace("_", " ")}
               </span>
             )}
             {activeResult.appliedOptimizations?.map((opt) => (
-              <span key={opt} className="px-2 py-0.5 rounded bg-white/[0.06] border border-white/10">
+              <span key={opt} className="px-2.5 py-1 rounded bg-white/[0.08] border border-white/15 font-medium">
                 {opt}
               </span>
             ))}

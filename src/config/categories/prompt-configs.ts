@@ -1043,24 +1043,35 @@ const CHARACTER_TOP_DOWN_NEG_REPLACEMENT =
 
 export type AssetPose = "auto" | "a-pose" | "t-pose" | "dynamic";
 
+// IMPORTANT: pose fragments must describe the POSE only — never mention
+// "skeleton", "skeletal rigging", "mannequin", "rig reference", "Spine",
+// "Unity", "DragonBones" or "wireframe". FLUX takes those words literally
+// and starts producing actual skeletons or featureless plastic mannequins
+// stripped of the user's wizard / knight / wizard / costume description.
+// Tester reported: "dark wizard with staff" + T-pose → bare bone skeleton.
+//
+// We keep pose language pictorial: arm angle, leg stance, weight
+// distribution. The character's identity (clothing, gear, hair, beard,
+// armor) is preserved by the user's prompt, which sits earlier in the
+// final string with (()) emphasis.
 const POSE_FRAGMENTS_HUMAN: Record<AssetPose, { positive: string; negative: string }> = {
   auto: {
     positive:
-      "A-pose game-rigging stance, arms angled slightly away from the body for clean rigging, legs slightly apart, neutral balanced idle pose, symmetric weight, weapon held at the side with the blade pointing down, ready for skeletal animation, NOT a dynamic action shot",
+      "A-pose stance, arms angled slightly away from the body, legs slightly apart, neutral balanced idle pose, symmetric weight, weapon held at the side with the blade pointing down, idle reference frame, NOT a dynamic action shot",
     negative:
       "dynamic action pose, mid-swing motion, mid-attack frame, combat lunge, jumping pose, running pose, crouching, leaping, charging forward, weapon raised overhead, weapon held high, two-handed combat stance, arms crossed in front of chest, hands hidden behind back, legs crossed, frozen mid-motion, action shot, fighting stance, defensive stance",
   },
   "a-pose": {
     positive:
-      "((A-pose game-rigging stance)), arms angled ~30° away from the body, legs slightly apart, neutral balanced idle pose, symmetric weight, weapon held at the side with the blade pointing down, ready for skeletal animation",
+      "((A-pose stance)), arms angled ~30° away from the body, legs slightly apart, neutral balanced idle pose, symmetric weight, weapon held at the side with the blade pointing down, idle reference frame",
     negative:
-      "dynamic action pose, mid-swing motion, combat stance, weapon raised overhead, fighting stance, T-pose with arms perpendicular, running, jumping, crouching",
+      "dynamic action pose, mid-swing motion, combat stance, weapon raised overhead, fighting stance, arms perpendicular to body, running, jumping, crouching",
   },
   "t-pose": {
     positive:
-      "((T-pose for skeletal rigging)), arms straight out horizontally to the sides at exactly 90° from the torso, legs together pointing straight down, mannequin reference pose, palms facing down, neutral expression, ready for Spine / DragonBones / Unity Mecanim import, NOT an action pose",
+      "((T-pose stance: arms held out horizontally straight to the sides at exactly 90° from the torso, palms facing down, legs together upright)), the character must keep all clothing, robes, armor, hat, hair, beard, equipment and identity from the description, full body visible, idle reference frame, neutral facial expression",
     negative:
-      "A-pose, arms angled down, arms at side, dynamic action pose, mid-swing motion, combat stance, weapon raised, running, jumping, crouching, asymmetric pose",
+      "A-pose, arms angled down, arms at side, dynamic action pose, mid-swing motion, combat stance, weapon raised, running, jumping, crouching, asymmetric pose, bare skeleton, bones visible, plastic mannequin, featureless figure, undressed character, naked figure, skeleton without skin, wireframe, anatomy reference, ((skeleton))",
   },
   dynamic: {
     positive:
@@ -1072,21 +1083,21 @@ const POSE_FRAGMENTS_HUMAN: Record<AssetPose, { positive: string; negative: stri
 const POSE_FRAGMENTS_CREATURE: Record<AssetPose, { positive: string; negative: string }> = {
   auto: {
     positive:
-      "neutral idle stance for game animation, four legs evenly planted (or wings spread evenly for flying creatures), symmetric balanced silhouette, head facing forward, NOT a mid-leap or attack pose",
+      "neutral idle stance, four legs evenly planted (or wings spread evenly for flying creatures), symmetric balanced silhouette, head facing forward, NOT a mid-leap or attack pose",
     negative:
       "dynamic action pose, mid-leap, mid-pounce, attack pose, lunging forward, running pose, jumping pose, frozen mid-motion, action shot",
   },
   "a-pose": {
     positive:
-      "neutral idle creature stance, four legs evenly planted, symmetric balanced silhouette, head facing forward, ready for skeletal rigging",
+      "neutral idle creature stance, four legs evenly planted, symmetric balanced silhouette, head facing forward, idle reference frame",
     negative:
       "dynamic action pose, mid-leap, attack pose, lunging forward, running, jumping, mid-motion",
   },
   "t-pose": {
     positive:
-      "((T-pose creature rigging reference)), limbs spread symmetrically and straight outward, wings extended fully horizontal if winged, tail straight, head facing forward, neutral mannequin reference, ready for Spine / Unity rig import",
+      "((T-pose stance: limbs spread symmetrically straight outward, wings extended fully horizontal if winged, tail straight, head facing forward)), the creature must keep all fur, scales, feathers, coloration and identity from the description, full body visible, idle reference frame",
     negative:
-      "dynamic action pose, mid-leap, attack pose, asymmetric stance, curled body, running",
+      "dynamic action pose, mid-leap, attack pose, asymmetric stance, curled body, running, bare skeleton, bones visible, plastic mannequin, featureless figure, wireframe, anatomy reference, skinless creature",
   },
   dynamic: {
     positive:
