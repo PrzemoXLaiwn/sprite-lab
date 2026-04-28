@@ -129,6 +129,22 @@ export interface StyleConfig {
   model: ModelType;
   guidance: number;
   steps: number;
+
+  /**
+   * If set, the asset is post-processed onto a real pixel grid AFTER
+   * generation (nearest-neighbor downsample to gridSize, then nearest-
+   * neighbor upsample back to 1024). Without this, FLUX produces
+   * "looks pixelated" output that still has anti-aliased gradients —
+   * not good enough to import as actual game pixel art.
+   *
+   * Pick per style:
+   *   32  → NES / Game Boy era
+   *   48  → SNES sprite chunk
+   *   64  → "16-bit" detail level
+   *   96  → late-SNES / GBA
+   *   128 → modern indie pixel art
+   */
+  pixelGrid?: 32 | 48 | 64 | 96 | 128 | 192 | 256;
 }
 
 

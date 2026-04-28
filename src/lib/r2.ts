@@ -257,6 +257,25 @@ export async function deleteFromR2(
  * wraps failures into StorageError itself so the pipeline's typed-error
  * discipline stays clean.
  */
+/**
+ * Upload an in-memory PNG buffer as a generation asset for `userId`.
+ * Auto-generates a unique key under `generations/{userId}/...` and returns
+ * the public URL. Used by the pixelate post-processing step where the
+ * source bytes are already in memory and we don't want to re-upload via
+ * a fetch round-trip.
+ */
+export async function uploadGenerationBufferToR2(
+  buffer: Buffer,
+  userId: string,
+  extension: string = "png"
+): Promise<{ success: boolean; url?: string; error?: string }> {
+  const filePath = generateFilePath(userId, extension);
+  const contentType = extension === "png" ? "image/png" : `image/${extension}`;
+  const result = await uploadBufferToR2(buffer, filePath, contentType);
+  if (!result.success) return result;
+  return { success: true, url: getPublicUrl(filePath) };
+}
+
 export async function uploadBufferToR2(
   buffer: Buffer,
   key: string,

@@ -42,7 +42,7 @@ import {
   type RunwareModelId,
   type UserTier,
 } from "@/lib/runware";
-import { uploadToR2, isR2Configured } from "@/lib/r2";
+import { uploadToR2, isR2Configured, uploadGenerationBufferToR2 } from "@/lib/r2";
 import { uploadImageToStorage } from "@/lib/storage";
 import { checkAndDeductCredits, refundCredits } from "@/lib/db/credits";
 import { saveGeneration, type SaveGenerationParams } from "@/lib/db/generations";
@@ -53,6 +53,7 @@ import {
   STYLES_2D_FULL,
 } from "@/config";
 import { enhancePromptWithLearnedFixes } from "@/lib/analytics/prompt-enhancer";
+import { pixelateImage } from "@/lib/image/pixelate";
 
 // =============================================================================
 // SECTION 1 — TYPES
@@ -698,8 +699,49 @@ async function generateSingle2D(request: GenerationRequest): Promise<GeneratedAs
     );
   }
 
+  // ── 4b. Pixel-snap post-processing ────────────────────────────────────────
+  // Pixel-art styles declare a `pixelGrid` (e.g. 64 for SNES-era, 128 for
+  // modern indie). Without this step FLUX produces images that LOOK
+  // pixelated but aren't on a real grid — sub-pixel anti-aliasing, fractional
+  // pixel sizes, gradients masquerading as dithering. After this step the
+  // asset is genuine pixel art ready for nearest-neighbor scaling in any
+  // game engine.
+  let pixelatedUrl: string | null = null;
+  if (styleConfig?.pixelGrid) {
+    try {
+      const pixelBuffer = await pixelateImage(imageUrlForUpload, {
+        gridSize: styleConfig.pixelGrid,
+        outputSize: 1024,
+      });
+      const pxUpload = await uploadGenerationBufferToR2(pixelBuffer, request.userId);
+      if (pxUpload.success && pxUpload.url) {
+        pixelatedUrl = pxUpload.url;
+      } else {
+        log("generation:error", {
+          stage: "pixelate_upload",
+          userId: request.userId,
+          error: pxUpload.error,
+        });
+        warnings.push(
+          "Pixel-grid post-processing was skipped this run — your sprite may show sub-pixel smoothing. Try regenerating."
+        );
+      }
+    } catch (err) {
+      log("generation:error", {
+        stage: "pixelate",
+        userId: request.userId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      warnings.push(
+        "Pixel-grid post-processing was skipped this run — your sprite may show sub-pixel smoothing. Try regenerating."
+      );
+    }
+  }
+
   // ── 5. Upload to storage ───────────────────────────────────────────────────
-  const finalUrl = await uploadGeneratedAsset(
+  // If pixelate succeeded, the asset is already on R2; skip the second
+  // upload pass and use the pixel URL directly.
+  const finalUrl = pixelatedUrl ?? await uploadGeneratedAsset(
     imageUrlForUpload,
     request.userId,
     request.categoryId,

@@ -58,6 +58,10 @@ export const STYLES_2D_FULL: Record<string, StyleConfig> = {
     model: "flux-dev",
     guidance: 3.0,   // Slightly higher for style enforcement
     steps: 25,       // More steps for cleaner pixels
+    // 16-bit / SNES-era detail: 64x64 native grid. Post-processed with
+    // nearest-neighbor downsample then upsample so the output is genuine
+    // pixel art on a fixed grid, not pseudo-pixel-art with sub-pixel AA.
+    pixelGrid: 64,
   },
 
   PIXEL_ART_32: {
@@ -81,6 +85,9 @@ export const STYLES_2D_FULL: Record<string, StyleConfig> = {
     model: "flux-dev",
     guidance: 3.0,
     steps: 25,
+    // Modern indie pixel art (Celeste / Dead Cells / Shovel Knight): 128x128
+    // native grid lets fine details survive while still being honest pixel art.
+    pixelGrid: 128,
   },
 
   // ===========================================
@@ -281,6 +288,9 @@ export const STYLES_2D_FULL: Record<string, StyleConfig> = {
     model: "flux-dev",
     guidance: 3.5,
     steps: 28,
+    // Iso pixel art: 96x96 — enough to read the diagonal isometric edges
+    // cleanly while still feeling like pixel art at typical RTS sprite scale.
+    pixelGrid: 96,
   },
 
   ISOMETRIC_CARTOON: {

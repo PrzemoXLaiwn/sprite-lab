@@ -415,15 +415,75 @@ function GeneratePageInner() {
     }
   };
 
-  const handleDownload = async () => {
+  // Slugify a string into a filename-safe token. Preserves ASCII letters,
+  // digits and hyphens; collapses everything else.
+  const slugify = (s: string) =>
+    s
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 40) || "asset";
+
+  const buildBaseFilename = (size: number) => {
+    if (!activeResult) return `spritelab-asset-${size}`;
+    const promptSlug = slugify(activeResult.prompt);
+    const styleSlug = slugify(activeResult.styleId.replace(/_/g, "-"));
+    const subSlug = slugify(activeResult.subcategoryId.replace(/_/g, "-"));
+    return `spritelab-${subSlug}-${promptSlug}-${styleSlug}-${size}-${activeResult.seed}`;
+  };
+
+  // Whether to use nearest-neighbor scaling — pixel-art styles must, otherwise
+  // the downscaled output looks blurry and defeats the pixel-snap pipeline.
+  const isPixelStyle = (styleId: string) =>
+    /^PIXEL_/.test(styleId) || styleId === "ISOMETRIC_PIXEL";
+
+  /**
+   * Resize a fetched image blob in the browser via a canvas, then
+   * trigger a download. Uses nearest-neighbor for pixel-art styles
+   * (image-smoothing disabled) so resized sprites stay crisp; uses
+   * the browser's default scaler for other styles.
+   */
+  const downloadAtSize = async (size: number) => {
     if (!activeResult) return;
     try {
       const response = await fetch(activeResult.imageUrl);
-      const blob     = await response.blob();
-      const url      = URL.createObjectURL(blob);
-      const a        = document.createElement("a");
-      a.href         = url;
-      a.download     = `spritelab-${activeResult.subcategoryId.toLowerCase()}-${activeResult.seed}.png`;
+      const blob = await response.blob();
+      const filename = `${buildBaseFilename(size)}.png`;
+
+      // Native size (1024) — skip the resize round-trip.
+      if (size === 1024) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        return;
+      }
+
+      const bitmap = await createImageBitmap(blob);
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("canvas-2d-unavailable");
+      ctx.imageSmoothingEnabled = !isPixelStyle(activeResult.styleId);
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(bitmap, 0, 0, size, size);
+
+      const resizedBlob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(
+          (b) => (b ? resolve(b) : reject(new Error("canvas-toblob-failed"))),
+          "image/png"
+        );
+      });
+      const url = URL.createObjectURL(resizedBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -431,6 +491,49 @@ function GeneratePageInner() {
     } catch {
       window.open(activeResult.imageUrl, "_blank");
     }
+  };
+
+  const handleDownload = () => downloadAtSize(1024);
+
+  /**
+   * Download a JSON sidecar with everything a game-engine importer cares
+   * about: prompt, seed, style, model, dimensions, generation parameters.
+   * Drop the sidecar next to the PNG in your project and you can
+   * regenerate the same asset deterministically.
+   */
+  const handleDownloadMetadata = () => {
+    if (!activeResult) return;
+    const sidecar = {
+      generator: "SpriteLab",
+      version: 1,
+      generatedAt: new Date().toISOString(),
+      prompt: activeResult.prompt,
+      translatedPrompt: activeResult.translatedPrompt,
+      enhancedPrompt: activeResult.enhancedPrompt,
+      seed: activeResult.seed,
+      style: activeResult.styleId,
+      category: activeResult.categoryId,
+      subcategory: activeResult.subcategoryId,
+      view: activeResult.view,
+      resolvedView: activeResult.resolvedView,
+      palette: activeResult.palette,
+      qualityPreset: activeResult.qualityPreset,
+      model: activeResult.modelUsed,
+      appliedOptimizations: activeResult.appliedOptimizations,
+      warnings: activeResult.warnings,
+      sourceUrl: activeResult.imageUrl,
+    };
+    const blob = new Blob([JSON.stringify(sidecar, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${buildBaseFilename(1024)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const handleCopySeed = () => {
@@ -815,7 +918,7 @@ function GeneratePageInner() {
         {activeResult && (
           <div className="w-full max-w-[520px] mt-3 flex items-center gap-2">
             <Button onClick={handleDownload} className="flex-1 h-10 text-[11px] font-semibold bg-white/[0.04] hover:bg-white/[0.08] text-white/60 hover:text-white/80 border border-white/[0.06] hover:border-white/[0.1] rounded-xl transition-all duration-200 shadow-[0_2px_4px_rgba(0,0,0,0.15)]">
-              <Download className="w-3.5 h-3.5 mr-1.5" />Download PNG
+              <Download className="w-3.5 h-3.5 mr-1.5" />Download PNG · 1024
             </Button>
             <Button variant="outline" onClick={handleRegenerate} disabled={isGenerating}
               className="h-10 px-3.5 border-white/[0.06] hover:border-white/[0.1] hover:bg-white/[0.06] text-white/30 hover:text-white/60 rounded-xl transition-all duration-200">
@@ -824,6 +927,45 @@ function GeneratePageInner() {
             <button onClick={handleCopySeed} className="h-10 px-3 text-[10px] text-white/15 hover:text-white/40 transition-all duration-200 cursor-pointer">
               {seedCopied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
             </button>
+          </div>
+        )}
+
+        {/* Game-engine size variants — power-of-2 PNGs at common sprite
+            resolutions. Pixel-art styles use nearest-neighbor; everything
+            else uses high-quality bilinear. Plus a JSON metadata sidecar
+            for deterministic re-generation. */}
+        {activeResult && (
+          <div className="w-full max-w-[520px] mt-2">
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <p className="text-[9px] uppercase tracking-widest text-white/30 font-bold">
+                Export size
+              </p>
+              <button
+                onClick={handleDownloadMetadata}
+                className="text-[9px] uppercase tracking-widest text-white/30 hover:text-[#FF6B2C] font-semibold transition-colors cursor-pointer"
+                title="Download generation metadata (prompt, seed, style) as JSON"
+              >
+                + JSON metadata
+              </button>
+            </div>
+            <div className="flex gap-1 flex-wrap">
+              {[32, 64, 128, 256, 512, 1024].map((size) => (
+                <button
+                  key={size}
+                  onClick={() => downloadAtSize(size)}
+                  className={`px-2.5 py-1.5 rounded-md text-[10px] font-semibold transition-all duration-200 cursor-pointer border ${
+                    size === 1024
+                      ? "bg-[#FF6B2C]/10 border-[#FF6B2C]/30 text-[#FF6B2C] hover:bg-[#FF6B2C]/15"
+                      : "bg-white/[0.03] border-white/[0.06] text-white/45 hover:text-white/80 hover:bg-white/[0.06] hover:border-white/[0.1]"
+                  }`}
+                  title={`Download PNG at ${size}×${size}px${
+                    isPixelStyle(activeResult.styleId) ? " (nearest-neighbor)" : ""
+                  }`}
+                >
+                  {size}px
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
