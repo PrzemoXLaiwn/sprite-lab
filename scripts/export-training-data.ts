@@ -7,11 +7,18 @@
 // LoRA / fine-tuning endpoint that accepts {image_url, caption} pairs).
 //
 // USAGE
-//   npx tsx scripts/export-training-data.ts \
-//     --style PIXEL_ART_16 \
-//     --category CHARACTERS \
-//     --limit 200 \
+//   npx tsx scripts/export-training-data.ts ^
+//     --style PIXEL_ART_16 ^
+//     --category CHARACTERS ^
+//     --limit 200 ^
 //     --output ./training-data/spritelab-pixel-character.jsonl
+//
+//   (use `\` line continuations on bash, `^` on Windows cmd, or one line.)
+//
+// ENV
+//   The script auto-loads `.env.local` first, then `.env` if present, so
+//   DATABASE_URL / DIRECT_URL come from the same files Next dev uses.
+//   Ensure both are set or the Prisma client can't connect.
 //
 // DEFAULTS
 //   --limit       200    (Runware LoRA training works well with 50-500 images)
@@ -25,6 +32,17 @@
 // AFTER EXPORT
 //   See docs/CUSTOM_MODEL.md for the actual training-on-Runware steps.
 // =============================================================================
+
+// Load env BEFORE PrismaClient. Prisma reads DATABASE_URL at construction
+// time; if the env file isn't loaded yet, the client throws. Try
+// `.env.local` first (Next dev convention) then fall back to `.env`.
+import { config as loadEnv } from "dotenv";
+import { existsSync } from "node:fs";
+if (existsSync(".env.local")) {
+  loadEnv({ path: ".env.local" });
+} else if (existsSync(".env")) {
+  loadEnv({ path: ".env" });
+}
 
 import { PrismaClient } from "@prisma/client";
 import { writeFile, mkdir } from "node:fs/promises";
