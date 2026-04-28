@@ -153,7 +153,8 @@ export function buildUltimatePrompt(
   subcategoryId: string,
   styleId: string,
   view?: string,
-  qualityPreset?: QualityPresetKey
+  qualityPreset?: QualityPresetKey,
+  pose?: import("../categories/prompt-configs").AssetPose
 ): BuildPromptResult {
   try {
     // Delegate to prompt-configs.ts single source of truth
@@ -163,6 +164,7 @@ export function buildUltimatePrompt(
       style: styleId,
       view: view,
       userPrompt: userPrompt.trim(),
+      pose,
     });
 
     const result = bridgeResult(configResult, styleId, undefined, undefined, qualityPreset);
@@ -242,9 +244,10 @@ export function buildEnhancedPrompt(
     colorPaletteId?: string;
     view?: string;
     qualityPreset?: QualityPresetKey;
+    pose?: import("../categories/prompt-configs").AssetPose;
   } = {}
 ): BuildPromptResult {
-  const { enableStyleMix, style2Id, style1Weight = 50, colorPaletteId, view, qualityPreset } = options;
+  const { enableStyleMix, style2Id, style1Weight = 50, colorPaletteId, view, qualityPreset, pose } = options;
 
   // Base prompt from config (with fallback for unsupported categories)
   let configResult: PromptBuildResult;
@@ -255,6 +258,7 @@ export function buildEnhancedPrompt(
       style: styleId,
       view: view,
       userPrompt: userPrompt.trim(),
+      pose,
       color: colorPaletteId && COLOR_PALETTE_PROMPTS[colorPaletteId]
         ? [COLOR_PALETTE_PROMPTS[colorPaletteId]]
         : undefined,

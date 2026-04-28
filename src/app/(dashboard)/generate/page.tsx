@@ -21,7 +21,7 @@ import { triggerUpgradeModal } from "@/components/dashboard/UpgradeModal";
 import { track, FUNNEL } from "@/lib/analytics";
 import { GENERATE_CATEGORIES, SUBTYPE_PLACEHOLDERS, type GenerateCategory, type GenerateSubcategory } from "@/data/generate-categories";
 import { GENERATE_STYLES, ALL_GENERATE_STYLE_IDS } from "@/data/generate-styles";
-import { ChevronDown, Eye, Zap as ZapIcon, Palette as PaletteIcon } from "lucide-react";
+import { ChevronDown, Eye, Zap as ZapIcon, Palette as PaletteIcon, PersonStanding } from "lucide-react";
 import { FancySelect, type FancyOption } from "@/components/generate/FancySelect";
 
 // =============================================================================
@@ -73,6 +73,18 @@ type DetailId = (typeof DETAIL_OPTIONS)[number]["id"];
 // (COLOR_PALETTE_PROMPTS). Earlier the form used UI-only labels like
 // "warm" / "neon" / "cold" that the prompt builder had no map for, so
 // every palette pick was silently dropped at the prompt-build step.
+// Pose picker — only meaningful for character / creature subcategories.
+// "auto" defaults to A-pose (game-rigging friendly). Maps to AssetPose
+// in src/config/categories/prompt-configs.ts.
+const POSE_OPTIONS = [
+  { id: "auto",    label: "Auto",    desc: "Default A-pose" },
+  { id: "a-pose",  label: "A-pose",  desc: "Rigging stance" },
+  { id: "t-pose",  label: "T-pose",  desc: "Spine / Unity rig" },
+  { id: "dynamic", label: "Dynamic", desc: "Action / key art" },
+] as const;
+
+type PoseId = (typeof POSE_OPTIONS)[number]["id"];
+
 const PALETTE_OPTIONS = [
   { id: "auto",           label: "Auto" },
   { id: "FANTASY_GOLD",   label: "Fantasy gold" },
@@ -182,6 +194,8 @@ function GeneratePageInner() {
   const [prompt, setPrompt]               = useState(urlPrompt);
   const [seed, setSeed]                   = useState("");
   const [palette, setPalette]              = useState<PaletteId>("auto");
+  const [pose, setPose]                    = useState<PoseId>("auto");
+  const [batchSize, setBatchSize]          = useState<1 | 2 | 4>(1);
   const [bgMode, setBgMode]               = useState<BgModeId>("checker");
   const [seedLocked, setSeedLocked]       = useState(false);
 
@@ -314,6 +328,7 @@ function GeneratePageInner() {
           // ID (FANTASY_GOLD, NEON_CYBER, …) that the prompt builder maps
           // to actual colour tokens.
           colorPaletteId: palette === "auto" ? undefined : palette,
+          pose,
           seed:           seedRef.current.trim() || undefined,
           projectId:      projectId || undefined,
           folderId:       folderId || undefined,
@@ -816,6 +831,24 @@ function GeneratePageInner() {
                   result lets the user check how the sprite looks on dark/light
                   backdrops. */}
             </div>
+
+            {/* Pose picker — only shown for character / creature subcategories.
+                Inanimate categories (weapons, items, environment) ignore the
+                pose field server-side, so we hide the picker too to keep the
+                form clean. The default "Auto" preserves the A-pose game-rigging
+                stance we already enforce; explicit choices let the user pick
+                T-pose for skeletal export or Dynamic for marketing shots. */}
+            {(selectedCategory.id === "CHARACTERS" || selectedCategory.id === "CREATURES") && (
+              <FancySelect label="Pose" value={pose}
+                onChange={(v) => setPose(v as PoseId)}
+                columns={2}
+                options={POSE_OPTIONS.map((p) => ({
+                  id: p.id,
+                  label: p.label,
+                  description: p.desc,
+                  icon: PersonStanding,
+                }))} />
+            )}
           </div>
 
           {/* ── ADVANCED ──────────────────────────────────────── */}
@@ -854,6 +887,20 @@ function GeneratePageInner() {
 
           {/* ── GENERATE ──────────────────────────────────────── */}
           <div className="pt-3">
+            {/* Estimate strip — sets expectations before the user clicks.
+                Cost mirrors the badge in the panel header (1 credit / 2 for HD).
+                Time is the realistic per-quality average we measured against
+                Runware (~5s / ~10s / ~20s). Without this users assume
+                "Generate" is instant and rage-click the button. */}
+            <div className="flex items-center justify-between mb-2 px-1 text-[10px] text-white/35">
+              <span className="flex items-center gap-1.5">
+                <ZapIcon className="w-3 h-3" />
+                {detail === "draft" ? "~5s" : detail === "hd" ? "~20s" : "~10s"}
+              </span>
+              <span className="tabular-nums">
+                {detail === "hd" ? "2 credits" : "1 credit"}
+              </span>
+            </div>
             <Button onClick={handleGenerate} disabled={!isFormValid || isGenerating}
               className="w-full h-14 text-[15px] font-bold rounded-md bg-[#F97316] hover:bg-[#FB923C] text-white border border-[#F97316]/40 transition-all duration-200 shadow-[0_4px_12px_rgba(249,115,22,0.25)] hover:shadow-[0_6px_16px_rgba(249,115,22,0.35)] disabled:opacity-35 disabled:shadow-none disabled:hover:translate-y-0"
               size="lg">

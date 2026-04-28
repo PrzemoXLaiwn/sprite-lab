@@ -37,6 +37,7 @@ const GenerateBodySchema = z.object({
   seed: z.union([z.number(), z.string(), z.null()]).optional(),
   qualityPreset: z.enum(["draft", "normal", "hd"]).optional().default("normal"),
   colorPaletteId: z.string().optional(),
+  pose: z.enum(["auto", "a-pose", "t-pose", "dynamic"]).optional().default("auto"),
   projectId: z.string().optional(),
   folderId: z.string().optional(),
 });
@@ -109,6 +110,7 @@ export async function POST(request: Request) {
       seed,
       qualityPreset,
       colorPaletteId,
+      pose,
       projectId,
       folderId,
     } = parsed.data;
@@ -230,6 +232,7 @@ export async function POST(request: Request) {
       seed: resolvedSeed,
       qualityPreset,
       colorPaletteId,
+      pose,
     };
 
     // ── 7. Delegate to service ────────────────────────────────────────────────

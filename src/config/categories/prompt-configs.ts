@@ -57,6 +57,15 @@ export interface PromptBuildInput {
   material?: string[];
   color?: string[];
   extraTags?: string[];
+  /**
+   * Override the default A-pose for character / creature subcategories.
+   * - "auto" / undefined → default A-pose for game rigging (recommended)
+   * - "a-pose"           → A-pose explicit
+   * - "t-pose"           → strict T-pose for Spine / Unity skeletal export
+   * - "dynamic"          → no pose constraint (key art / marketing shot)
+   * Only applied when the resolved category is CHARACTERS or CREATURES.
+   */
+  pose?: AssetPose;
 }
 
 export interface PromptBuildResult {
@@ -1016,33 +1025,94 @@ const CHARACTER_TOP_DOWN_NEG_REPLACEMENT =
   "front view, side view, profile, isometric, eye-level horizon line, walls from side, vanishing point, low camera angle, photorealistic render";
 
 // =============================================================================
-// CHARACTER POSE DOCTRINE — A-pose, animation-rig friendly, no exceptions.
+// CHARACTER POSE DOCTRINE — picker-driven, animation-rig friendly default
 // =============================================================================
 // SpriteLab characters are intended to be imported into a game engine and
-// rigged for animation. That requires a NEUTRAL idle pose:
+// rigged for animation. The default ("auto"/A-pose) requires a neutral idle:
 //   - Limbs clearly separated from torso (no arm-against-side overlap)
 //   - Symmetric, balanced weight distribution
 //   - No mid-action freeze-frame (running, jumping, swinging)
-//   - Weapon held at side, blade pointing down (not raised over head)
 //
-// We pick A-pose (arms angled ~30° away from body, legs slightly apart) over
-// strict T-pose because A-pose:
-//   - Reads more natural to FLUX (more training samples for "standing idle")
-//   - Avoids the "store mannequin" feel T-pose sometimes triggers
-//   - Still rigs cleanly in Spine, DragonBones, Unity Mecanim, etc.
+// Users can override via the Pose picker (form value → AssetPose):
+//   "auto" / "a-pose" → A-pose (default for game rigging)
+//   "t-pose"          → strict T-pose (for skeletal rig export to Spine etc.)
+//   "dynamic"         → no pose constraint (marketing shot, action key art)
 //
-// Applied to every character/creature subcategory's `composition` field so
-// every selector view (DEFAULT / TOP_DOWN / SIDE_VIEW / FRONT) inherits it.
-const ANIMATION_READY_POSE =
-  "A-pose game-rigging stance, arms angled slightly away from the body for clean rigging, legs slightly apart, neutral balanced idle pose, symmetric weight, weapon held at the side with the blade pointing down, ready for skeletal animation, NOT a dynamic action shot";
+// The strings below are the prompt fragments that get injected into the
+// composition slot of each character/creature subcategory.
 
-const CREATURE_ANIMATION_READY_POSE =
-  "neutral idle stance for game animation, four legs evenly planted (or wings spread evenly for flying creatures), symmetric balanced silhouette, head facing forward, NOT a mid-leap or attack pose";
+export type AssetPose = "auto" | "a-pose" | "t-pose" | "dynamic";
 
-// Negatives that block dynamic / mid-action poses. Same list across every
-// character & creature subcategory so the doctrine is consistent.
-const ANIMATION_POSE_NEG =
-  "dynamic action pose, mid-swing motion, mid-attack frame, combat lunge, jumping pose, running pose, crouching, leaping, charging forward, weapon raised overhead, weapon held high, two-handed combat stance, arms crossed in front of chest, hands hidden behind back, legs crossed, frozen mid-motion, action shot, fighting stance, defensive stance";
+const POSE_FRAGMENTS_HUMAN: Record<AssetPose, { positive: string; negative: string }> = {
+  auto: {
+    positive:
+      "A-pose game-rigging stance, arms angled slightly away from the body for clean rigging, legs slightly apart, neutral balanced idle pose, symmetric weight, weapon held at the side with the blade pointing down, ready for skeletal animation, NOT a dynamic action shot",
+    negative:
+      "dynamic action pose, mid-swing motion, mid-attack frame, combat lunge, jumping pose, running pose, crouching, leaping, charging forward, weapon raised overhead, weapon held high, two-handed combat stance, arms crossed in front of chest, hands hidden behind back, legs crossed, frozen mid-motion, action shot, fighting stance, defensive stance",
+  },
+  "a-pose": {
+    positive:
+      "((A-pose game-rigging stance)), arms angled ~30° away from the body, legs slightly apart, neutral balanced idle pose, symmetric weight, weapon held at the side with the blade pointing down, ready for skeletal animation",
+    negative:
+      "dynamic action pose, mid-swing motion, combat stance, weapon raised overhead, fighting stance, T-pose with arms perpendicular, running, jumping, crouching",
+  },
+  "t-pose": {
+    positive:
+      "((T-pose for skeletal rigging)), arms straight out horizontally to the sides at exactly 90° from the torso, legs together pointing straight down, mannequin reference pose, palms facing down, neutral expression, ready for Spine / DragonBones / Unity Mecanim import, NOT an action pose",
+    negative:
+      "A-pose, arms angled down, arms at side, dynamic action pose, mid-swing motion, combat stance, weapon raised, running, jumping, crouching, asymmetric pose",
+  },
+  dynamic: {
+    positive:
+      "dynamic dramatic pose, expressive action stance, character key art composition, full body visible",
+    negative: "",
+  },
+};
+
+const POSE_FRAGMENTS_CREATURE: Record<AssetPose, { positive: string; negative: string }> = {
+  auto: {
+    positive:
+      "neutral idle stance for game animation, four legs evenly planted (or wings spread evenly for flying creatures), symmetric balanced silhouette, head facing forward, NOT a mid-leap or attack pose",
+    negative:
+      "dynamic action pose, mid-leap, mid-pounce, attack pose, lunging forward, running pose, jumping pose, frozen mid-motion, action shot",
+  },
+  "a-pose": {
+    positive:
+      "neutral idle creature stance, four legs evenly planted, symmetric balanced silhouette, head facing forward, ready for skeletal rigging",
+    negative:
+      "dynamic action pose, mid-leap, attack pose, lunging forward, running, jumping, mid-motion",
+  },
+  "t-pose": {
+    positive:
+      "((T-pose creature rigging reference)), limbs spread symmetrically and straight outward, wings extended fully horizontal if winged, tail straight, head facing forward, neutral mannequin reference, ready for Spine / Unity rig import",
+    negative:
+      "dynamic action pose, mid-leap, attack pose, asymmetric stance, curled body, running",
+  },
+  dynamic: {
+    positive:
+      "dynamic dramatic creature pose, expressive action stance, mid-motion key art composition",
+    negative: "",
+  },
+};
+
+/** Default pose used when the form omits the field (older clients, URL params). */
+const DEFAULT_POSE: AssetPose = "auto";
+
+export function poseFragmentsForHuman(pose: AssetPose) {
+  return POSE_FRAGMENTS_HUMAN[pose] ?? POSE_FRAGMENTS_HUMAN[DEFAULT_POSE];
+}
+
+export function poseFragmentsForCreature(pose: AssetPose) {
+  return POSE_FRAGMENTS_CREATURE[pose] ?? POSE_FRAGMENTS_CREATURE[DEFAULT_POSE];
+}
+
+// Backward-compatible aliases — the existing CHARACTERS_PROMPT_CONFIG and
+// CREATURES_PROMPT_CONFIG entries embed these strings directly into their
+// composition / avoid fields. The auto pose (A-pose) is the default; other
+// poses are layered on top by `buildAssetPrompt` via the `pose` input.
+const ANIMATION_READY_POSE = POSE_FRAGMENTS_HUMAN.auto.positive;
+const CREATURE_ANIMATION_READY_POSE = POSE_FRAGMENTS_CREATURE.auto.positive;
+const ANIMATION_POSE_NEG = POSE_FRAGMENTS_HUMAN.auto.negative;
 
 export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
   HEROES: makeConfig(
@@ -1791,15 +1861,42 @@ export function buildAssetPrompt(input: PromptBuildInput): PromptBuildResult {
   const extraViewNegative = viewCameFromPrompt
     ? "3/4 angle, three-quarter view, angled perspective, rotated subject, tilted subject, diagonal composition, dutch angle, any camera angle other than " + humanView
     : "";
+
+  // Pose override — only applies to character / creature subcategories.
+  // The category configs bake the auto/A-pose strings inline; when the
+  // user picks t-pose / dynamic / explicit a-pose, we append the new
+  // fragment to the positive prompt and merge negatives. The new fragment
+  // wins because it appears LATER in the prompt and uses (()) emphasis,
+  // and the explicit negative cancels the previous "no T-pose" or
+  // "no dynamic action shot" clause from the auto baseline.
+  const isLivingSubject =
+    resolvedCategory === "CHARACTERS" || resolvedCategory === "CREATURES";
+  const requestedPose: AssetPose = input.pose ?? "auto";
+  let poseExtraPositive = "";
+  let poseExtraNegative = "";
+  if (isLivingSubject && requestedPose !== "auto") {
+    const fragments =
+      resolvedCategory === "CREATURES"
+        ? poseFragmentsForCreature(requestedPose)
+        : poseFragmentsForHuman(requestedPose);
+    poseExtraPositive = fragments.positive;
+    poseExtraNegative = fragments.negative;
+  }
+
+  const fullPromptWithPose = poseExtraPositive
+    ? `${fullPrompt} ${poseExtraPositive}.`
+    : fullPrompt;
+
   const negativePrompt = dedupeCsv([
     GLOBAL_NEGATIVE_BASE,
     config.avoid,
     viewNegative,
     extraViewNegative,
+    poseExtraNegative,
   ]);
 
   return {
-    fullPrompt,
+    fullPrompt: fullPromptWithPose,
     negativePrompt,
     debug: {
       resolvedCategory,

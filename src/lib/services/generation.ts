@@ -119,6 +119,12 @@ export interface GenerationRequest {
    * glow color palette"). When unset, the style decides.
    */
   colorPaletteId?: string;
+  /**
+   * Pose override for character / creature subcategories. Defaults to
+   * "auto" (A-pose for game rigging) when unset. Inanimate categories
+   * (weapons, items, environment) ignore this field.
+   */
+  pose?: "auto" | "a-pose" | "t-pose" | "dynamic";
 
   // The style-mix / model-override / pack-batch fields used to live here
   // but were never wired to a real UI surface. Removed to make the
@@ -267,6 +273,7 @@ export async function buildPromptForGeneration(
     colorPaletteId?: string;
     view?: string;
     qualityPreset?: QualityPreset;
+    pose?: "auto" | "a-pose" | "t-pose" | "dynamic";
   }
 ): Promise<{
   finalPrompt: string;
@@ -290,8 +297,9 @@ export async function buildPromptForGeneration(
         colorPaletteId: options.colorPaletteId,
         view: options.view,
         qualityPreset: options.qualityPreset,
+        pose: options.pose,
       })
-    : buildUltimatePrompt(prompt, categoryId, subcategoryId, styleId, options?.view, options?.qualityPreset);
+    : buildUltimatePrompt(prompt, categoryId, subcategoryId, styleId, options?.view, options?.qualityPreset, options?.pose);
 
   // Apply learned optimizations from analytics layer
   const { enhancedPrompt, enhancedNegative, appliedFixes, warnings } =
@@ -595,6 +603,7 @@ async function generateSingle2D(request: GenerationRequest): Promise<GeneratedAs
       colorPaletteId: request.colorPaletteId,
       view: request.view,
       qualityPreset: request.qualityPreset,
+      pose: request.pose,
     }
   );
 
