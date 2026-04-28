@@ -1863,29 +1863,73 @@ export function buildAssetPrompt(input: PromptBuildInput): PromptBuildResult {
     : "";
 
   // Pose override — only applies to character / creature subcategories.
-  // The category configs bake the auto/A-pose strings inline; when the
-  // user picks t-pose / dynamic / explicit a-pose, we append the new
-  // fragment to the positive prompt and merge negatives. The new fragment
-  // wins because it appears LATER in the prompt and uses (()) emphasis,
-  // and the explicit negative cancels the previous "no T-pose" or
-  // "no dynamic action shot" clause from the auto baseline.
+  //
+  // Earlier code APPENDED the override fragment at the end of the prompt
+  // and FLUX (correctly) weighted the auto/A-pose words baked into the
+  // category config more heavily. Result: tester picked T-pose, got a
+  // standing wizard holding a staff at his side.
+  //
+  // Two fixes layered:
+  //   1. Strip the auto A-pose / animation-rig phrasing out of the
+  //      assembled prompt so it doesn't compete with the user's pick.
+  //   2. PREPEND the new pose fragment with (()) emphasis at position #1
+  //      so it lands in FLUX's high-weight first-tokens zone.
+  // For pose === "auto", do nothing — the auto baseline is already what
+  // the configs bake in.
   const isLivingSubject =
     resolvedCategory === "CHARACTERS" || resolvedCategory === "CREATURES";
   const requestedPose: AssetPose = input.pose ?? "auto";
-  let poseExtraPositive = "";
+
+  let fullPromptWithPose = fullPrompt;
   let poseExtraNegative = "";
   if (isLivingSubject && requestedPose !== "auto") {
     const fragments =
       resolvedCategory === "CREATURES"
         ? poseFragmentsForCreature(requestedPose)
         : poseFragmentsForHuman(requestedPose);
-    poseExtraPositive = fragments.positive;
     poseExtraNegative = fragments.negative;
-  }
 
-  const fullPromptWithPose = poseExtraPositive
-    ? `${fullPrompt} ${poseExtraPositive}.`
-    : fullPrompt;
+    // 1. Strip the auto-pose phrases that contradict the user's choice.
+    //    These come from the static ANIMATION_READY_POSE / CREATURE_ANIMATION_READY_POSE
+    //    constants baked into config.composition / config.objectType.
+    const autoFragments =
+      resolvedCategory === "CREATURES"
+        ? poseFragmentsForCreature("auto")
+        : poseFragmentsForHuman("auto");
+    const autoPhrasesToStrip = [
+      autoFragments.positive,
+      "A-pose game character sprite, animation-rig ready",
+      "A-pose enemy character sprite, animation-rig ready",
+      "A-pose NPC character sprite, animation-rig ready",
+      "A-pose boss character sprite, animation-rig ready",
+      "A-pose game-rigging stance",
+      "animation-rig ready",
+      "A-pose",
+    ];
+    for (const phrase of autoPhrasesToStrip) {
+      // Case-insensitive removal, then collapse double spaces / commas.
+      fullPromptWithPose = fullPromptWithPose.replace(
+        new RegExp(escapeRegex(phrase), "gi"),
+        ""
+      );
+    }
+    fullPromptWithPose = fullPromptWithPose
+      .replace(/,\s*,+/g, ",")
+      .replace(/\s{2,}/g, " ")
+      .replace(/\s+([,.])/g, "$1")
+      .trim();
+
+    // 2. Prepend the requested pose fragment so it leads the prompt.
+    //    The hard "must be / do not deviate" sentence after closes the
+    //    door on FLUX silently reverting to its standing-figure prior.
+    const enforcement =
+      requestedPose === "t-pose"
+        ? "Arms must be perpendicular to the torso. Do NOT hold any object at the side; weapons or staffs (if any) must be held by hands that are extended straight out to the sides."
+        : requestedPose === "dynamic"
+        ? "The pose must read as motion or expression."
+        : "Arms must be visibly angled away from the body for clean rigging.";
+    fullPromptWithPose = `((${fragments.positive})). ${enforcement} ${fullPromptWithPose}`;
+  }
 
   const negativePrompt = dedupeCsv([
     GLOBAL_NEGATIVE_BASE,
@@ -1906,6 +1950,11 @@ export function buildAssetPrompt(input: PromptBuildInput): PromptBuildResult {
       resolvedQuality,
     },
   };
+}
+
+// Local helper — escape a string for use inside a RegExp constructor.
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 // --------------------------------------------------

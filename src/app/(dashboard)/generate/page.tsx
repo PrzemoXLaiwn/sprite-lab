@@ -968,14 +968,16 @@ function GeneratePageInner() {
         {/* Actions below preview */}
         {activeResult && (
           <div className="w-full max-w-[520px] mt-3 flex items-center gap-2">
-            <Button onClick={handleDownload} className="flex-1 h-10 text-[11px] font-semibold bg-white/[0.04] hover:bg-white/[0.08] text-white/60 hover:text-white/80 border border-white/[0.06] hover:border-white/[0.1] rounded-xl transition-all duration-200 shadow-[0_2px_4px_rgba(0,0,0,0.15)]">
+            <Button onClick={handleDownload} className="flex-1 h-10 text-[12px] font-semibold bg-[#FF6B2C]/15 hover:bg-[#FF6B2C]/25 text-[#FF6B2C] hover:text-[#FFA866] border border-[#FF6B2C]/30 hover:border-[#FF6B2C]/50 rounded-xl transition-all duration-200 shadow-[0_2px_8px_rgba(255,107,44,0.12)]">
               <Download className="w-3.5 h-3.5 mr-1.5" />Download PNG · 1024
             </Button>
             <Button variant="outline" onClick={handleRegenerate} disabled={isGenerating}
-              className="h-10 px-3.5 border-white/[0.06] hover:border-white/[0.1] hover:bg-white/[0.06] text-white/30 hover:text-white/60 rounded-xl transition-all duration-200">
+              className="h-10 px-3.5 border-white/15 hover:border-white/30 hover:bg-white/[0.06] text-white/70 hover:text-white rounded-xl transition-all duration-200"
+              title="Regenerate with the same settings">
               <RefreshCw className={`w-3.5 h-3.5 ${isGenerating ? "animate-spin" : ""}`} />
             </Button>
-            <button onClick={handleCopySeed} className="h-10 px-3 text-[10px] text-white/15 hover:text-white/40 transition-all duration-200 cursor-pointer">
+            <button onClick={handleCopySeed} className="h-10 px-3 text-[11px] text-white/55 hover:text-white transition-all duration-200 cursor-pointer"
+              title="Copy seed">
               {seedCopied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
             </button>
           </div>
@@ -986,28 +988,28 @@ function GeneratePageInner() {
             else uses high-quality bilinear. Plus a JSON metadata sidecar
             for deterministic re-generation. */}
         {activeResult && (
-          <div className="w-full max-w-[520px] mt-2">
-            <div className="flex items-center justify-between gap-2 mb-1.5">
-              <p className="text-[9px] uppercase tracking-widest text-white/30 font-bold">
+          <div className="w-full max-w-[520px] mt-3">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <p className="text-[10px] uppercase tracking-widest text-white/65 font-bold">
                 Export size
               </p>
               <button
                 onClick={handleDownloadMetadata}
-                className="text-[9px] uppercase tracking-widest text-white/30 hover:text-[#FF6B2C] font-semibold transition-colors cursor-pointer"
+                className="text-[10px] uppercase tracking-widest text-white/65 hover:text-[#FF6B2C] font-bold transition-colors cursor-pointer"
                 title="Download generation metadata (prompt, seed, style) as JSON"
               >
                 + JSON metadata
               </button>
             </div>
-            <div className="flex gap-1 flex-wrap">
+            <div className="flex gap-1.5 flex-wrap">
               {[32, 64, 128, 256, 512, 1024].map((size) => (
                 <button
                   key={size}
                   onClick={() => downloadAtSize(size)}
-                  className={`px-2.5 py-1.5 rounded-md text-[10px] font-semibold transition-all duration-200 cursor-pointer border ${
+                  className={`px-3 py-1.5 rounded-md text-[11px] font-semibold transition-all duration-200 cursor-pointer border ${
                     size === 1024
-                      ? "bg-[#FF6B2C]/10 border-[#FF6B2C]/30 text-[#FF6B2C] hover:bg-[#FF6B2C]/15"
-                      : "bg-white/[0.03] border-white/[0.06] text-white/45 hover:text-white/80 hover:bg-white/[0.06] hover:border-white/[0.1]"
+                      ? "bg-[#FF6B2C]/15 border-[#FF6B2C]/40 text-[#FF6B2C] hover:bg-[#FF6B2C]/25"
+                      : "bg-white/[0.05] border-white/10 text-white/75 hover:text-white hover:bg-white/[0.1] hover:border-white/20"
                   }`}
                   title={`Download PNG at ${size}×${size}px${
                     isPixelStyle(activeResult.styleId) ? " (nearest-neighbor)" : ""
@@ -1022,15 +1024,22 @@ function GeneratePageInner() {
 
         {/* BG toggle */}
         {activeResult && (
-          <div className="flex gap-1 mt-2">
-            {BG_MODES.map((mode) => (
-              <button key={mode.id} onClick={() => setBgMode(mode.id)}
-                className={`px-2.5 py-1 rounded-md text-[9px] font-medium transition-all duration-200 cursor-pointer ${
-                  bgMode === mode.id ? "text-[#FF6B2C] bg-[#FF6B2C]/10 shadow-[0_0_8px_rgba(255,107,44,0.08)]" : "text-white/20 hover:text-white/40 hover:bg-white/[0.04]"
-                }`}>
-                {mode.label}
-              </button>
-            ))}
+          <div className="w-full max-w-[520px] mt-3">
+            <p className="text-[10px] uppercase tracking-widest text-white/65 font-bold mb-1.5">
+              Preview backdrop
+            </p>
+            <div className="flex gap-1">
+              {BG_MODES.map((mode) => (
+                <button key={mode.id} onClick={() => setBgMode(mode.id)}
+                  className={`px-3 py-1.5 rounded-md text-[10px] font-semibold transition-all duration-200 cursor-pointer border ${
+                    bgMode === mode.id
+                      ? "text-[#FF6B2C] bg-[#FF6B2C]/15 border-[#FF6B2C]/40 shadow-[0_0_8px_rgba(255,107,44,0.15)]"
+                      : "text-white/65 border-white/10 bg-white/[0.04] hover:text-white hover:bg-white/[0.08] hover:border-white/20"
+                  }`}>
+                  {mode.label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -1054,9 +1063,9 @@ function GeneratePageInner() {
         {/* Translated prompt — offer to replace the textarea so the user
             doesn't pay for translation again on every regenerate. */}
         {activeResult?.translatedPrompt && (
-          <div className="max-w-[520px] w-full mt-3 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.06]">
+          <div className="max-w-[520px] w-full mt-3 px-3 py-2 rounded-lg bg-white/[0.05] border border-white/10">
             <div className="flex items-start gap-2">
-              <span className="text-white/20 uppercase tracking-widest text-[9px] mt-1 shrink-0">EN</span>
+              <span className="text-white/55 uppercase tracking-widest text-[10px] mt-1 shrink-0 font-bold">EN</span>
               <p className="text-[11px] text-white/55 leading-relaxed flex-1">
                 {activeResult.translatedPrompt}
               </p>
@@ -1078,7 +1087,7 @@ function GeneratePageInner() {
 
         {/* Prompt enhancement trail — preview of what FLUX actually saw. */}
         {activeResult?.enhancedPrompt && (
-          <div className="max-w-[520px] w-full mt-2 px-3 py-1.5 text-[10px] text-white/25 italic text-center">
+          <div className="max-w-[520px] w-full mt-2 px-3 py-1.5 text-[11px] text-white/55 italic text-center leading-relaxed">
             &ldquo;{activeResult.enhancedPrompt}&rdquo;
           </div>
         )}
@@ -1086,19 +1095,19 @@ function GeneratePageInner() {
         {/* Model + applied optimizations metadata — small footer line so
             users know what produced the image and what was tweaked. */}
         {activeResult && (activeResult.modelUsed || (activeResult.appliedOptimizations?.length ?? 0) > 0) && (
-          <div className="max-w-[520px] w-full mt-2 flex flex-wrap items-center gap-1.5 justify-center text-[9px] text-white/25">
+          <div className="max-w-[520px] w-full mt-3 flex flex-wrap items-center gap-1.5 justify-center text-[10px] text-white/65">
             {activeResult.modelUsed && (
-              <span className="px-2 py-0.5 rounded bg-white/[0.04] border border-white/[0.04] uppercase tracking-wider">
+              <span className="px-2 py-0.5 rounded bg-white/[0.06] border border-white/10 uppercase tracking-wider font-semibold">
                 {activeResult.modelUsed}
               </span>
             )}
             {activeResult.resolvedView && activeResult.resolvedView !== "DEFAULT" && (
-              <span className="px-2 py-0.5 rounded bg-white/[0.04] border border-white/[0.04]">
+              <span className="px-2 py-0.5 rounded bg-white/[0.06] border border-white/10">
                 view: {activeResult.resolvedView.toLowerCase().replace("_", " ")}
               </span>
             )}
             {activeResult.appliedOptimizations?.map((opt) => (
-              <span key={opt} className="px-2 py-0.5 rounded bg-white/[0.04] border border-white/[0.04]">
+              <span key={opt} className="px-2 py-0.5 rounded bg-white/[0.06] border border-white/10">
                 {opt}
               </span>
             ))}
@@ -1109,12 +1118,12 @@ function GeneratePageInner() {
             string that hit FLUX, plus the negative prompt snippet, so users
             can debug "why did the model produce X" instead of guessing. */}
         {activeResult?.fullPrompt && (
-          <details className="max-w-[520px] w-full mt-2 group">
-            <summary className="cursor-pointer text-[9px] uppercase tracking-widest text-white/30 hover:text-[#FF6B2C] font-bold transition-colors list-none flex items-center justify-center gap-1.5 select-none">
+          <details className="max-w-[520px] w-full mt-3 group">
+            <summary className="cursor-pointer text-[10px] uppercase tracking-widest text-white/65 hover:text-[#FF6B2C] font-bold transition-colors list-none flex items-center justify-center gap-1.5 select-none">
               <span className="group-open:rotate-90 transition-transform inline-block">▸</span>
               View full prompt sent to FLUX
             </summary>
-            <pre className="mt-2 px-3 py-2.5 rounded-lg bg-white/[0.02] border border-white/[0.04] text-[10px] leading-relaxed text-white/55 whitespace-pre-wrap break-words font-mono max-h-48 overflow-y-auto">
+            <pre className="mt-2 px-3 py-2.5 rounded-lg bg-white/[0.05] border border-white/10 text-[10px] leading-relaxed text-white/80 whitespace-pre-wrap break-words font-mono max-h-48 overflow-y-auto">
               {activeResult.fullPrompt}
             </pre>
           </details>
@@ -1123,7 +1132,7 @@ function GeneratePageInner() {
         {/* Session history thumbnails */}
         {history.length > 1 && (
           <div className="max-w-[520px] w-full mt-6">
-            <p className="text-[9px] text-white/20 uppercase tracking-widest mb-2 font-bold">Session · {history.length}</p>
+            <p className="text-[10px] text-white/65 uppercase tracking-widest mb-2 font-bold">Session · {history.length}</p>
             <div className="flex gap-2 overflow-x-auto pb-1">
               {history.map((item, index) => (
                 <button key={item.id} onClick={() => setSelectedIndex(index)}
