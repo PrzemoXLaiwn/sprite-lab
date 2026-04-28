@@ -1734,7 +1734,16 @@ export function buildAssetPrompt(input: PromptBuildInput): PromptBuildResult {
   // FLUX gives highest weight to FIRST ~40 words.
   // Style MUST appear in first 20 words or FLUX ignores it.
   // Order: [style] [subject] [user desc] [view] [composition] [base]
-  const userDesc = userDescCleaned;
+  //
+  // The user's own description gets wrapped in (()) emphasis so FLUX
+  // weights it above the framing scaffolding. Without this, prompts
+  // like "ranger with longbow, green hood" produced characters with
+  // axes and red shirts because the surrounding A-pose / view /
+  // composition tokens drowned out the few user words. The strip-then-
+  // wrap dance prevents nested-paren weight inflation if a user types
+  // their own (()) — FLUX's parser loses signal past two layers.
+  const userDescStripped = userDescCleaned.replace(/\(+|\)+/g, "").trim();
+  const userDesc = userDescStripped.length > 0 ? `((${userDescStripped}))` : userDescCleaned;
   const tags = [elementPrompt, materialPrompt, colorPrompt].filter(Boolean).join(", ");
 
   // Short style tag — injected at position #1 so FLUX renders correct style

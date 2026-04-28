@@ -58,10 +58,13 @@ export const STYLES_2D_FULL: Record<string, StyleConfig> = {
     model: "flux-dev",
     guidance: 3.0,   // Slightly higher for style enforcement
     steps: 25,       // More steps for cleaner pixels
-    // 16-bit / SNES-era detail: 64x64 native grid. Post-processed with
-    // nearest-neighbor downsample then upsample so the output is genuine
-    // pixel art on a fixed grid, not pseudo-pixel-art with sub-pixel AA.
-    pixelGrid: 64,
+    // 16-bit / SNES-era detail: 96x96 native grid. Earlier 64x64 was too
+    // aggressive for full-body character sprites — features like sword
+    // grips, helmet plumes and facial detail collapsed into a single
+    // pixel and the result read as low-res mush rather than crisp pixel
+    // art. 96 keeps the SNES feel (visible square pixels, hard edges)
+    // while preserving silhouette legibility on character / boss assets.
+    pixelGrid: 96,
   },
 
   PIXEL_ART_32: {

@@ -125,6 +125,9 @@ interface GeneratedResult {
   prompt: string;
   translatedPrompt?: string;
   enhancedPrompt?: string;
+  /** The complete prompt string that was actually sent to FLUX — useful
+      for debugging "why did the model produce X". */
+  fullPrompt?: string;
   /** Service-side warnings (bg-removal failure, view conflict, model downgrade). */
   warnings?: string[];
   /** Runware model that actually generated the image. */
@@ -361,6 +364,7 @@ function GeneratePageInner() {
         prompt:           prompt.trim(),
         translatedPrompt: data.translatedPrompt,
         enhancedPrompt:   data.enhancedPrompt,
+        fullPrompt:       typeof data.fullPrompt === "string" ? data.fullPrompt : undefined,
         warnings:         Array.isArray(data.warnings) ? data.warnings : undefined,
         modelUsed:        typeof data.modelUsed === "string" ? data.modelUsed : undefined,
         appliedOptimizations: Array.isArray(data.appliedOptimizations) ? data.appliedOptimizations : undefined,
@@ -1052,6 +1056,21 @@ function GeneratePageInner() {
               </span>
             ))}
           </div>
+        )}
+
+        {/* Full prompt details — collapsed by default. Surfaces the actual
+            string that hit FLUX, plus the negative prompt snippet, so users
+            can debug "why did the model produce X" instead of guessing. */}
+        {activeResult?.fullPrompt && (
+          <details className="max-w-[520px] w-full mt-2 group">
+            <summary className="cursor-pointer text-[9px] uppercase tracking-widest text-white/30 hover:text-[#FF6B2C] font-bold transition-colors list-none flex items-center justify-center gap-1.5 select-none">
+              <span className="group-open:rotate-90 transition-transform inline-block">▸</span>
+              View full prompt sent to FLUX
+            </summary>
+            <pre className="mt-2 px-3 py-2.5 rounded-lg bg-white/[0.02] border border-white/[0.04] text-[10px] leading-relaxed text-white/55 whitespace-pre-wrap break-words font-mono max-h-48 overflow-y-auto">
+              {activeResult.fullPrompt}
+            </pre>
+          </details>
         )}
 
         {/* Session history thumbnails */}
