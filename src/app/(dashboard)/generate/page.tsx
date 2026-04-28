@@ -892,12 +892,12 @@ function GeneratePageInner() {
                 Time is the realistic per-quality average we measured against
                 Runware (~5s / ~10s / ~20s). Without this users assume
                 "Generate" is instant and rage-click the button. */}
-            <div className="flex items-center justify-between mb-2 px-1 text-[10px] text-white/35">
-              <span className="flex items-center gap-1.5">
-                <ZapIcon className="w-3 h-3" />
-                {detail === "draft" ? "~5s" : detail === "hd" ? "~20s" : "~10s"}
+            <div className="flex items-center justify-between mb-2 px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.05] text-[11px] text-white/65">
+              <span className="flex items-center gap-1.5 font-medium">
+                <ZapIcon className="w-3.5 h-3.5 text-[#F97316]/80" />
+                {detail === "draft" ? "~5 seconds" : detail === "hd" ? "~20 seconds" : "~10 seconds"}
               </span>
-              <span className="tabular-nums">
+              <span className="tabular-nums font-semibold text-[#F97316]">
                 {detail === "hd" ? "2 credits" : "1 credit"}
               </span>
             </div>
