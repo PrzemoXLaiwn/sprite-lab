@@ -44,6 +44,24 @@ if (existsSync(".env.local")) {
   loadEnv({ path: ".env" });
 }
 
+// Vercel projects using Prisma Accelerate set DATABASE_URL to a
+// `prisma://accelerate.prisma-data.net/...` proxy URL — perfect for the
+// Next runtime, but the standalone PrismaClient in this script doesn't
+// know how to talk to it (Accelerate needs the @prisma/extension-accelerate
+// package). Fall back to DIRECT_URL, which is always a real
+// `postgres://` connection string used for migrations / one-off scripts.
+const dbUrl = process.env.DATABASE_URL ?? "";
+const directUrl = process.env.DIRECT_URL ?? "";
+const looksLikePostgres = (s: string) =>
+  s.startsWith("postgres://") || s.startsWith("postgresql://");
+if (!looksLikePostgres(dbUrl) && looksLikePostgres(directUrl)) {
+  console.log(
+    "[ExportTrainingData] DATABASE_URL is not a postgres:// URL " +
+      "(probably Prisma Accelerate); using DIRECT_URL instead."
+  );
+  process.env.DATABASE_URL = directUrl;
+}
+
 import { PrismaClient } from "@prisma/client";
 import { writeFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
