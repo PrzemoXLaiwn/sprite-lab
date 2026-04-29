@@ -61,44 +61,17 @@ export interface SpriteLabLora {
  * To plug in a custom-trained SpriteLab LoRA, train it via Runware
  * (see docs/CUSTOM_MODEL.md) and paste the resulting AIR here.
  */
-// Curated public LoRAs for FLUX.1 D from Civitai. Each entry has been
-// vetted on download/like count, base-model compatibility, and trigger
-// requirements. Update or replace as we ship our own custom-trained
-// SpriteLab LoRAs (see docs/CUSTOM_MODEL.md).
 export const STYLE_LORA_MAP: Record<string, SpriteLabLora[]> = {
   // ─── Pixel art family ────────────────────────────────────────────────
-  // Dever's "Pixel Game Assets [FLUX]" — explicitly trained on game
-  // asset reference images (weapons, characters, items). 9.2K likes,
-  // 3.7K downloads on Civitai. Trigger word `dvr-pixel-flux` is
-  // mandatory — without it the LoRA barely engages.
-  // https://civitai.com/models/945266/pixel-game-assets-flux-by-dever
-  PIXEL_ART_16: [
-    {
-      model: "civitai:945266@1058316",
-      weight: 0.85,
-      triggerWords: ["dvr-pixel-flux"],
-      note: "Dever Pixel Game Assets — 9.2K likes; sprite-first training set",
-    },
-  ],
-  PIXEL_ART_32: [
-    {
-      model: "civitai:945266@1058316",
-      weight: 0.8,
-      triggerWords: ["dvr-pixel-flux"],
-      note: "Dever Pixel Game Assets — slightly lower weight for 32-bit (more detail headroom)",
-    },
-  ],
-  // 64BIT LoRA is purpose-built for isometric / overhead retro graphics.
-  // Strong activation phrase is required — see triggerWords. 3.4K downloads.
-  // https://civitai.com/models/816360/pixel-art-and-video-game-graphics-lora
-  ISOMETRIC_PIXEL: [
-    {
-      model: "civitai:816360@1406637",
-      weight: 0.75,
-      triggerWords: ["64-bit screenshot from 64BITGAME"],
-      note: "64Bit Pixel Art — N64-era isometric sprite training set",
-    },
-  ],
+  // ROLLED BACK 2026-04-29: civitai:945266@1058316 (Dever Pixel Game
+  // Assets) and civitai:816360@1406637 (64Bit) caused /api/generate to
+  // 500 in production — Runware doesn't auto-resolve every Civitai AIR.
+  // Need to either upload the LoRA file to a Runware-hosted bucket and
+  // reference it as `runware:USER_ID/...` OR find FLUX LoRAs that are
+  // already mirrored to Runware's CDN. Tracking in todos.
+  PIXEL_ART_16: [],
+  PIXEL_ART_32: [],
+  ISOMETRIC_PIXEL: [],
 
   // ─── Hand-painted / artistic ─────────────────────────────────────────
   HAND_PAINTED: [],
