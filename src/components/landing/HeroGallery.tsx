@@ -1,61 +1,12 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import Image from "next/image";
+import type { FeaturedGeneration } from "@/lib/featured-generations";
 
-interface FeaturedImage {
-  id: string;
-  imageUrl: string;
-  prompt: string;
-  style: string;
-  category: string;
-}
-
-const PlaceholderImage = ({ index }: { index: number }) => {
-  return (
-    <div className="w-full h-full animate-pulse flex items-center justify-center bg-[#F97316]/[0.03]">
-      <div
-        className="w-6 h-6 rounded-lg animate-spin"
-        style={{
-          borderWidth: 2,
-          borderStyle: "solid",
-          borderColor: "rgba(249,115,22,0.15)",
-          borderTopColor: "#F97316",
-        }}
-      />
-    </div>
-  );
-};
-
-export function HeroGallery() {
-  const [images, setImages] = useState<FeaturedImage[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-
-  useEffect(() => {
-    async function fetchImages() {
-      try {
-        const res = await fetch("/api/featured-generations?limit=6");
-        const data = await res.json();
-
-        if (data.success && data.generations.length > 0) {
-          setImages(data.generations);
-        } else {
-          setError(true);
-        }
-      } catch {
-        setError(true);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchImages();
-  }, []);
-
-  if (error || (!loading && images.length === 0)) {
-    return null;
-  }
+/**
+ * Server component: images ship in the initial HTML so the hero LCP does not
+ * wait on hydration + a client fetch.
+ */
+export function HeroGallery({ images }: { images: FeaturedGeneration[] }) {
+  if (images.length === 0) return null;
 
   return (
     <div className="animate-slide-up" style={{ animationDelay: "400ms" }}>
@@ -76,41 +27,30 @@ export function HeroGallery() {
 
           {/* Image grid */}
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-2.5 sm:gap-3">
-            {loading ? (
-              [...Array(6)].map((_, i) => (
-                <div
-                  key={i}
-                  className="relative aspect-square rounded-xl bg-[#182033]/60 border border-white/[0.04] overflow-hidden"
-                >
-                  <PlaceholderImage index={i} />
-                </div>
-              ))
-            ) : (
-              images.slice(0, 6).map((item, i) => (
-                <div
-                  key={item.id}
-                  className="group relative aspect-square rounded-xl bg-[#182033]/40 border border-white/[0.06] hover:border-[#F97316]/30 transition-all duration-300 hover:scale-[1.04] overflow-hidden"
-                >
-                  {/* Subtle inner shadow for depth */}
-                  <div className="absolute inset-0 rounded-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] pointer-events-none z-10" />
+            {images.slice(0, 6).map((item, i) => (
+              <div
+                key={item.id}
+                className="group relative aspect-square rounded-xl bg-[#182033]/40 border border-white/[0.06] hover:border-[#F97316]/30 transition-all duration-300 hover:scale-[1.04] overflow-hidden"
+              >
+                {/* Subtle inner shadow for depth */}
+                <div className="absolute inset-0 rounded-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] pointer-events-none z-10" />
 
-                  <Image
-                    src={item.imageUrl}
-                    alt={item.prompt.slice(0, 50)}
-                    fill
-                    className="object-contain p-2.5 sm:p-3 transition-transform duration-300 group-hover:scale-105"
-                    loading={i < 3 ? "eager" : "lazy"}
-                    unoptimized
-                  />
+                <Image
+                  src={item.imageUrl}
+                  alt={item.prompt.slice(0, 50)}
+                  fill
+                  sizes="(max-width: 640px) 33vw, 128px"
+                  className="object-contain p-2.5 sm:p-3 transition-transform duration-300 group-hover:scale-105"
+                  priority={i < 3}
+                />
 
-                  {/* Hover overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-xl flex flex-col justify-end p-2.5 z-20">
-                    <p className="text-[10px] sm:text-[11px] text-white/90 font-medium truncate leading-tight">{item.prompt.slice(0, 30)}</p>
-                    <p className="text-[9px] sm:text-[10px] text-[#F97316]/80 mt-0.5">{item.style}</p>
-                  </div>
+                {/* Hover overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-xl flex flex-col justify-end p-2.5 z-20">
+                  <p className="text-[10px] sm:text-[11px] text-white/90 font-medium truncate leading-tight">{item.prompt.slice(0, 30)}</p>
+                  <p className="text-[9px] sm:text-[10px] text-[#F97316]/80 mt-0.5">{item.style}</p>
                 </div>
-              ))
-            )}
+              </div>
+            ))}
           </div>
         </div>
       </div>

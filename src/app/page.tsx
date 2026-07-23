@@ -23,6 +23,7 @@ import { PricingSection } from "@/components/landing/PricingSection";
 import { TryItNow } from "@/components/landing/TryItNow";
 import { ExamplesGallery } from "@/components/landing/ExamplesGallery";
 import { HeroGallery } from "@/components/landing/HeroGallery";
+import { getFeaturedGenerationsSafe } from "@/lib/featured-generations";
 
 export const metadata: Metadata = {
   title: "SpriteLab — Game Asset Generator for Indie Developers",
@@ -54,6 +55,9 @@ export default async function Home({
   const params = await searchParams;
   const refCode = params.ref;
   const registerUrl = refCode ? `/register?ref=${refCode}` : "/register";
+
+  // One cached query feeds both galleries — the hero uses the first 6.
+  const featured = await getFeaturedGenerationsSafe(12);
 
   return (
     <main className="min-h-screen bg-[#0B0F19] text-white">
@@ -144,7 +148,7 @@ export default async function Home({
           </div>
 
           {/* Hero Gallery */}
-          <HeroGallery />
+          <HeroGallery images={featured} />
         </div>
       </section>
 
@@ -282,7 +286,7 @@ export default async function Home({
               {
                 step: "03",
                 title: "Download and ship",
-                desc: "Your asset generates in ~5 seconds. Transparent PNG, ready for Unity, Godot, or any game engine.",
+                desc: "Your asset generates in seconds. Transparent PNG, ready for Unity, Godot, or any game engine.",
                 icon: Download,
               },
             ].map((item, i) => (
@@ -360,7 +364,7 @@ export default async function Home({
       </section>
 
       {/* ═══ EXAMPLES ════════════════════════════════════════ */}
-      <ExamplesGallery />
+      <ExamplesGallery initialSprites={featured} />
 
       {/* ═══ TRY IT ══════════════════════════════════════════ */}
       <TryItNow />

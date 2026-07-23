@@ -103,14 +103,9 @@ export function Footer() {
 
         {/* Bottom */}
         <div className="mt-12 pt-8 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex flex-col sm:flex-row items-center gap-3">
-            <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} SpriteLab. All rights reserved.
-            </p>
-            <span className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-              🎨 Made for indie game devs
-            </span>
-          </div>
+          <p className="text-sm text-muted-foreground">
+            © {new Date().getFullYear()} SpriteLab. All rights reserved.
+          </p>
           <div className="flex items-center gap-4">
             <a
               href="https://twitter.com"

@@ -4,15 +4,9 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Sparkles, Heart, Wand2, Copy, Check, ArrowRight } from "lucide-react";
+import type { FeaturedGeneration } from "@/lib/featured-generations";
 
-interface FeaturedSprite {
-  id: string;
-  imageUrl: string;
-  prompt: string;
-  style: string;
-  category: string;
-  likes: number;
-}
+type FeaturedSprite = FeaturedGeneration;
 
 function SpriteCard({ sprite }: { sprite: FeaturedSprite }) {
   const [copied, setCopied] = useState(false);
@@ -41,8 +35,9 @@ function SpriteCard({ sprite }: { sprite: FeaturedSprite }) {
           src={sprite.imageUrl}
           alt={sprite.prompt.slice(0, 50)}
           fill
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 280px"
+          loading="lazy"
           className="object-contain p-5 transition-transform duration-300 group-hover:scale-[1.03]"
-          unoptimized
         />
 
         {/* Hover overlay */}
@@ -86,20 +81,36 @@ function SpriteCard({ sprite }: { sprite: FeaturedSprite }) {
   );
 }
 
-export function ExamplesGallery() {
+export function ExamplesGallery({
+  initialSprites = [],
+}: {
+  initialSprites?: FeaturedSprite[];
+}) {
   const [activeCategory, setActiveCategory] = useState<string>("All");
-  const [sprites, setSprites] = useState<FeaturedSprite[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [sprites, setSprites] = useState<FeaturedSprite[]>(initialSprites);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
 
   const categories = ["All", "Characters", "Creatures", "Weapons", "Items", "Equipment"];
 
   useEffect(() => {
+    // "All" is already server-rendered — only fetch when the user filters.
+    if (activeCategory === "All") {
+      setSprites(initialSprites);
+      setError(false);
+      setLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+
     async function fetchSprites() {
       setLoading(true);
       try {
-        const categoryParam = activeCategory !== "All" ? `&category=${activeCategory}` : "";
-        const res = await fetch(`/api/featured-generations?limit=12${categoryParam}`);
+        const res = await fetch(
+          `/api/featured-generations?limit=12&category=${activeCategory}`,
+          { signal: controller.signal }
+        );
         const data = await res.json();
 
         if (data.success && data.generations.length > 0) {
@@ -109,7 +120,8 @@ export function ExamplesGallery() {
           setSprites([]);
           setError(data.generations?.length === 0);
         }
-      } catch {
+      } catch (err) {
+        if ((err as Error)?.name === "AbortError") return;
         setError(true);
         setSprites([]);
       } finally {
@@ -118,7 +130,8 @@ export function ExamplesGallery() {
     }
 
     fetchSprites();
-  }, [activeCategory]);
+    return () => controller.abort();
+  }, [activeCategory, initialSprites]);
 
   if (error && sprites.length === 0 && !loading) {
     return null;
