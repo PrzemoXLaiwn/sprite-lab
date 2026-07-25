@@ -683,7 +683,33 @@ async function generateSingle2D(request: GenerationRequest): Promise<GeneratedAs
     loras: loras.length > 0 ? loras.map((l) => ({ model: l.model, weight: l.weight })) : undefined,
   };
 
-  const result = await generateImage(generationOptions, tier);
+  let result = await generateImage(generationOptions, tier);
+
+  // Defensive LoRA fallback: an unresolvable or broken adapter AIR fails the
+  // whole call — this is exactly how the Civitai AIRs took down every
+  // pixel-art generation in e8cb99e. Retry once WITHOUT the LoRA stack; a
+  // sprite from the base model beats a 500 and a refunded credit. Drop the
+  // trigger phrase too — it's meaningless with no adapter to activate.
+  let loraFallbackUsed = false;
+  if ((!result.success || !result.images?.length) && loras.length > 0) {
+    log("generation:error", {
+      stage: "lora_fallback",
+      userId: request.userId,
+      styleId: request.styleId,
+      loras: loras.map((l) => l.model),
+      error: result.error,
+    });
+    result = await generateImage(
+      { ...generationOptions, prompt: finalPrompt, loras: undefined },
+      tier
+    );
+    if (result.success && result.images?.length) {
+      loraFallbackUsed = true;
+      warnings.push(
+        "The style adapter was unavailable, so this was generated with the base model. Try again for the adapter-enhanced look."
+      );
+    }
+  }
 
   if (!result.success || !result.images?.length) {
     throw new GenerationError({
@@ -787,11 +813,11 @@ async function generateSingle2D(request: GenerationRequest): Promise<GeneratedAs
     seed: generatedImage.seed,
     model: generatedImage.model,
     providerCost: generatedImage.cost,
-    // Persist the prompt FLUX actually saw (with LoRA triggers folded in)
-    // — otherwise the Generation.fullPrompt column lies and the training
-    // export script would caption images with a string that doesn't
-    // match the input that produced them.
-    finalPrompt: promptWithTriggers,
+    // Persist the prompt FLUX actually saw. Normally that's promptWithTriggers,
+    // but when the LoRA fallback fired we re-sent the plain finalPrompt (no
+    // adapter, no trigger) — record THAT, or the fullPrompt column lies and the
+    // training export captions the image with input that didn't produce it.
+    finalPrompt: loraFallbackUsed ? finalPrompt : promptWithTriggers,
     appliedOptimizations,
     warnings,
     resolvedView,
