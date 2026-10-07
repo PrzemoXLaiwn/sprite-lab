@@ -32,9 +32,11 @@ if ($LASTEXITCODE -ge 8) { throw "robocopy failed ($LASTEXITCODE)" }
 
 & $git -C $clone add -A
 $changes = & $git -C $clone status --porcelain
-if (-not $changes) { Write-Host "Nothing to publish - GitHub is up to date."; exit 0 }
-
-& $git -C $clone -c user.name="PrzemoXLaiwn" -c user.email="itslocotv@gmail.com" commit --quiet -m $Message
+if ($changes) {
+  & $git -C $clone -c user.name="PrzemoXLaiwn" -c user.email="itslocotv@gmail.com" commit --quiet -m $Message
+}
+$pending = [int](& $git -C $clone rev-list --count origin/main..HEAD)
+if ($pending -eq 0) { Write-Host "Nothing to publish - GitHub is up to date."; exit 0 }
 Write-Host "Pushing to GitHub (a browser sign-in may open the first time) ..."
 & $git -C $clone push origin main
 if ($LASTEXITCODE -ne 0) { throw "git push failed" }
