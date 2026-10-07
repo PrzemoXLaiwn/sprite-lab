@@ -2,47 +2,62 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import Image from "next/image";
-import Link from "next/link";
-import {
-  Download,
-  Loader2,
-  ArrowLeft,
-  Maximize2,
-  Flame,
-  Check,
-  Info,
-  Zap,
-} from "lucide-react";
+import { Maximize2, Info, Grid3x3, Sparkles, Check, Scissors } from "lucide-react";
 import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
+import {
+  ToolShell, ToolPanel, ToolTabs, Field, CanvasColumn, CanvasFrame, CanvasImage, BeforeAfter,
+  BackdropToggle, Chip, PrimaryButton, DownloadButton, SecondaryButton, ErrorNote, InfoNote,
+  SourceCard, RecentAssetPicker, ProcessingOverlay, CanvasEmptyHint, Segmented, PageFallback,
+  isPixelStyleId, useElapsedSeconds, type ToolBgModeId, type ToolGeneration,
+} from "@/components/tools/ToolWorkspace";
 
-function UpscalePageContent() {
-  const searchParams = useSearchParams();
-  const generationId = searchParams.get("id");
+// Must match /api/upscale: "pixel" = free nearest-neighbour (any plan),
+// "runware" = AI upscale (Pro+), 1 credit at 2×, 2 credits at 4×.
+type UpscaleMode = "pixel" | "runware";
 
+const MODES: { id: UpscaleMode; name: string; desc: string; icon: typeof Grid3x3 }[] = [
+  { id: "pixel", name: "Pixel-perfect", desc: "Duplicates pixels — razor sharp. Free.", icon: Grid3x3 },
+  { id: "runware", name: "AI upscale", desc: "Adds detail to painted / cartoon art. Pro+.", icon: Sparkles },
+];
+
+const SCALES: Record<UpscaleMode, { value: 2 | 3 | 4; desc: string }[]> = {
+  pixel: [
+    { value: 2, desc: "2× size" },
+    { value: 3, desc: "3× size" },
+    { value: 4, desc: "4× size" },
+  ],
+  runware: [
+    { value: 2, desc: "1 credit" },
+    { value: 4, desc: "2 credits" },
+  ],
+};
+
+function costFor(mode: UpscaleMode, scale: number): number {
+  if (mode === "pixel") return 0;
+  return scale >= 4 ? 2 : 1;
+}
+
+function UpscalePageContent({ generationId }: { generationId: string | null }) {
   const [loading, setLoading] = useState(false);
   const [loadingOriginal, setLoadingOriginal] = useState(true);
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [upscaledImage, setUpscaledImage] = useState<string | null>(null);
   const [scale, setScale] = useState<2 | 3 | 4>(2);
-  const [modelType, setModelType] = useState("real-esrgan");
+  const [modeOverride, setModeOverride] = useState<UpscaleMode | null>(null);
   const [error, setError] = useState("");
-  const [originalData, setOriginalData] = useState<any>(null);
-
-  const models = [
-    { id: "real-esrgan", name: "Real-ESRGAN", desc: "Best for realistic images", emoji: "📷" },
-    { id: "real-esrgan-anime", name: "Anime", desc: "Optimized for anime/cartoon", emoji: "🌸" },
-    { id: "pixel-art", name: "Pixel Art", desc: "Preserves pixel art style", emoji: "🎮" },
-    { id: "gfpgan", name: "Face Enhance", desc: "Best for character faces", emoji: "👤" },
-  ];
+  const [originalData, setOriginalData] = useState<ToolGeneration | null>(null);
+  const [bgMode, setBgMode] = useState<ToolBgModeId>("checker");
+  const [view, setView] = useState<"compare" | "result">("compare");
+  // Scale the result was produced with (the selector may change afterwards).
+  const [resultScale, setResultScale] = useState<number>(2);
+  const seconds = useElapsedSeconds(loading);
 
   // Load original generation
   useEffect(() => {
     if (generationId) {
       loadOriginalGeneration();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [generationId]);
 
   const loadOriginalGeneration = async () => {
@@ -55,7 +70,7 @@ function UpscalePageContent() {
       } else {
         setError("Failed to load original image");
       }
-    } catch (err) {
+    } catch {
       setError("Error loading image");
     } finally {
       setLoadingOriginal(false);
@@ -79,7 +94,7 @@ function UpscalePageContent() {
         body: JSON.stringify({
           imageUrl: originalImage,
           scale,
-          modelType,
+          modelType: mode,
           originalGeneration: originalData,
         }),
       });
@@ -91,6 +106,8 @@ function UpscalePageContent() {
       }
 
       setUpscaledImage(data.imageUrl);
+      setResultScale(scale);
+      setView("compare");
       triggerCreditsRefresh();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Something went wrong";
@@ -117,223 +134,158 @@ function UpscalePageContent() {
     }
   };
 
-  if (!generationId) {
-    return (
-      <div className="min-h-screen bg-[#0a0c10] flex items-center justify-center p-4">
-        <div className="glass-card rounded-2xl p-8 text-center max-w-md">
-          <Flame className="w-16 h-16 text-[#ef4444] mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-white mb-2">No Image Selected</h2>
-          <p className="text-[#a0a0b0] mb-6">Please select an image from your gallery to upscale.</p>
-          <Link href="/gallery">
-            <Button className="btn-primary">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Gallery
-            </Button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  // Default: pixel-perfect for pixel-art sprites, AI for everything else.
+  const sourceIsPixel = isPixelStyleId(originalData?.styleId);
+  const mode: UpscaleMode = modeOverride ?? (sourceIsPixel ? "pixel" : "runware");
+  const selectMode = (m: UpscaleMode) => {
+    setModeOverride(m);
+    if (m === "runware" && scale === 3) setScale(4);
+  };
+  const cost = costFor(mode, scale);
+  const pixel = sourceIsPixel || mode === "pixel";
+  const isLoadingSource = !!generationId && loadingOriginal;
+  const modelName = MODES.find((m) => m.id === mode)?.name ?? mode;
 
   return (
-    <div className="min-h-screen bg-[#0a0c10] relative overflow-hidden">
-      {/* Background */}
-      <div className="fixed inset-0 gradient-mesh pointer-events-none" />
-      <div className="fixed inset-0 grid-pattern pointer-events-none opacity-50" />
-      <div className="fixed top-20 left-10 w-96 h-96 bg-[#f59e0b]/10 rounded-full blur-[120px] animate-glow-pulse pointer-events-none" />
+    <ToolShell>
+      <ToolPanel
+        title="Upscale"
+        cost={cost}
+        tabs={<ToolTabs active="upscale" generationId={generationId} />}
+        footer={
+          <>
+            <PrimaryButton onClick={handleUpscale} disabled={loading || !originalImage} loading={loading}
+              loadingLabel={<>Upscaling {scale}×… <span className="font-mono">{seconds}s</span></>}
+              icon={<Maximize2 className="h-4 w-4" />} label={`Upscale ${scale}×`} cost={cost} />
+            <p className="mt-2 text-center font-mono text-[11px] text-[#7A8294]">
+              {mode === "pixel" ? "instant · free" : "~30–90s"} · {modelName}
+            </p>
+            {error && <ErrorNote>{error}</ErrorNote>}
+          </>
+        }
+      >
+        <Field label="Source">
+          <SourceCard imageUrl={originalImage} loading={isLoadingSource} prompt={originalData?.prompt} pixel={pixel} />
+        </Field>
 
-      <div className="relative z-10 p-4 lg:p-8 max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <Link href="/gallery">
-            <Button variant="outline" className="mb-4 border-[rgba(255,255,255,0.06)]">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Gallery
-            </Button>
-          </Link>
-          <h1 className="text-3xl font-display font-black gradient-text neon-text mb-2">
-            UPSCALE IMAGE
-          </h1>
-          <p className="text-[#a0a0b0]">Enhance your image resolution with AI</p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Original Image */}
-          <div className="glass-card rounded-2xl overflow-hidden">
-            <div className="p-4 border-b border-[rgba(255,255,255,0.06)]">
-              <h3 className="font-semibold text-white flex items-center gap-2">
-                <Zap className="w-4 h-4 text-[#FF6B2C]" />
-                Original Image
-              </h3>
-            </div>
-            <div className="aspect-square bg-[#11151b] flex items-center justify-center relative">
-              <div className="absolute inset-0 grid-pattern-dense opacity-30" />
-              {loadingOriginal ? (
-                <Loader2 className="w-12 h-12 text-[#FF6B2C] animate-spin" />
-              ) : originalImage ? (
-                <img
-                  src={originalImage}
-                  alt="Original"
-                  className="w-full h-full object-contain p-4 relative z-10"
-                />
-              ) : (
-                <p className="text-[#a0a0b0]">Failed to load image</p>
-              )}
-            </div>
-          </div>
-
-          {/* Upscaled Image */}
-          <div className="glass-card rounded-2xl overflow-hidden">
-            <div className="p-4 border-b border-[rgba(255,255,255,0.06)]">
-              <h3 className="font-semibold text-white flex items-center gap-2">
-                <Maximize2 className="w-4 h-4 text-[#f59e0b]" />
-                Upscaled Result ({scale}x)
-              </h3>
-            </div>
-            <div className="aspect-square bg-[#11151b] flex items-center justify-center relative">
-              <div className="absolute inset-0 grid-pattern-dense opacity-30" />
-              {loading ? (
-                <div className="text-center p-6 relative z-10">
-                  <div className="relative w-24 h-24 mx-auto mb-4">
-                    <div className="absolute inset-0 bg-[#f59e0b] rounded-full blur-xl opacity-50 animate-pulse" />
-                    <div className="relative w-full h-full rounded-full border-4 border-[rgba(255,255,255,0.06)] border-t-[#f59e0b] animate-spin" />
-                    <Maximize2 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 text-[#f59e0b]" />
+        <Field label="Mode">
+          <div className="grid grid-cols-2 gap-2">
+            {MODES.map((m) => {
+              const active = mode === m.id;
+              const Icon = m.icon;
+              return (
+                <button key={m.id} type="button" onClick={() => selectMode(m.id)} disabled={loading} aria-pressed={active}
+                  className={`rounded-xl border p-3 text-left transition-colors disabled:cursor-not-allowed ${
+                    active ? "border-[#FF8A3D] bg-[#FF8A3D]/[0.06] ring-2 ring-[#FF8A3D]/25" : "border-white/[0.08] bg-[#151922] hover:border-white/20"
+                  }`}>
+                  <div className="flex items-center gap-2">
+                    <Icon className={`h-4 w-4 ${active ? "text-[#FF8A3D]" : "text-[#8B93A5]"}`} />
+                    <span className="text-[13px] font-semibold text-white">{m.name}</span>
                   </div>
-                  <p className="font-display font-bold text-white">Upscaling {scale}x...</p>
-                  <p className="text-sm text-[#a0a0b0] mt-1">This may take 30-90 seconds</p>
-                </div>
-              ) : upscaledImage ? (
-                <>
-                  <img
-                    src={upscaledImage}
-                    alt="Upscaled"
-                    className="w-full h-full object-contain p-4 relative z-10"
-                  />
-                  <Button
-                    onClick={() => handleDownload(upscaledImage)}
-                    className="absolute bottom-4 right-4 bg-gradient-to-r from-[#f59e0b] to-[#ff8c00] hover:opacity-90 text-black font-bold z-20"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Download
-                  </Button>
-                </>
-              ) : (
-                <div className="text-center p-8 relative z-10">
-                  <div className="w-24 h-24 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#f59e0b]/20 to-[#ff8c00]/20 flex items-center justify-center border border-[#f59e0b]/20">
-                    <Maximize2 className="w-12 h-12 text-[#f59e0b]/50" />
-                  </div>
-                  <p className="text-[#a0a0b0]">Your upscaled image will appear here</p>
-                </div>
-              )}
-            </div>
+                  <p className="mt-1 text-[11px] leading-snug text-[#8B93A5]">{m.desc}</p>
+                </button>
+              );
+            })}
           </div>
-        </div>
+        </Field>
 
-        {/* Upscale Controls */}
-        <div className="mt-6 glass-card rounded-2xl p-6">
-          <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
-            <Maximize2 className="w-5 h-5 text-[#f59e0b]" />
-            Upscale Settings
-          </h3>
+        <Field label="Scale">
+          <div className={`grid gap-1 rounded-xl bg-white/[0.04] p-1 ${SCALES[mode].length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
+            {SCALES[mode].map((s) => (
+              <button key={s.value} type="button" onClick={() => setScale(s.value)} disabled={loading}
+                className={`rounded-lg py-2 transition-colors disabled:cursor-not-allowed ${
+                  scale === s.value ? "bg-white/[0.1] text-white shadow-sm" : "text-[#8B93A5] hover:text-white"
+                }`}>
+                <span className="block font-mono text-[14px] font-semibold">{s.value}×</span>
+                <span className="block text-[10.5px] opacity-80">{s.desc}</span>
+              </button>
+            ))}
+          </div>
+        </Field>
 
-          <div className="space-y-6">
-            {/* Scale Selection */}
-            <div>
-              <label className="text-sm font-medium text-white mb-3 block">Scale Factor</label>
-              <div className="grid grid-cols-3 gap-3">
-                {[2, 3, 4].map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setScale(s as 2 | 3 | 4)}
-                    disabled={loading}
-                    className={`p-4 rounded-xl border-2 transition-all ${
-                      scale === s
-                        ? "border-[#f59e0b] bg-[#f59e0b]/10"
-                        : "border-[rgba(255,255,255,0.06)] hover:border-[#f59e0b]/50"
-                    }`}
-                  >
-                    <div className="text-2xl font-bold text-white mb-1">{s}x</div>
-                    <div className="text-xs text-[#a0a0b0]">
-                      {s === 2 ? "Fast" : s === 3 ? "Balanced" : "Best Quality"}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
+        <InfoNote icon={<Info className="h-3.5 w-3.5 text-[#8B93A5]" />}>
+          Use <span className="text-[#C9CFDB]">Pixel-perfect</span> for pixel art — AI upscalers blur hard pixel edges.
+          Use <span className="text-[#C9CFDB]">AI upscale</span> for painted, anime or cartoon sprites.
+        </InfoNote>
 
-            {/* Model Selection */}
-            <div>
-              <label className="text-sm font-medium text-white mb-3 block">Upscale Model</label>
-              <div className="grid grid-cols-2 gap-3">
-                {models.map((model) => (
-                  <button
-                    key={model.id}
-                    onClick={() => setModelType(model.id)}
-                    disabled={loading}
-                    className={`p-4 rounded-xl border-2 transition-all text-left ${
-                      modelType === model.id
-                        ? "border-[#f59e0b] bg-[#f59e0b]/10"
-                        : "border-[rgba(255,255,255,0.06)] hover:border-[#f59e0b]/50"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-2xl">{model.emoji}</span>
-                      <span className={`font-bold text-sm ${modelType === model.id ? "text-[#f59e0b]" : "text-white"}`}>
-                        {model.name}
-                      </span>
-                    </div>
-                    <p className="text-xs text-[#a0a0b0]">{model.desc}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
+        {upscaledImage && (
+          <InfoNote tone="success" icon={<Check className="h-3.5 w-3.5 text-emerald-300" />}>
+            Upscaled {resultScale}× — drag the slider on the canvas to compare.
+          </InfoNote>
+        )}
+      </ToolPanel>
 
-            <div className="p-3 rounded-lg bg-[#FF6B2C]/10 border border-[#FF6B2C]/20 flex items-start gap-2">
-              <Info className="w-4 h-4 text-[#FF6B2C] mt-0.5 shrink-0" />
-              <p className="text-xs text-[#FF6B2C]">
-                <strong>Pro tip:</strong> Use Pixel Art model for retro sprites, Anime for cartoon styles, and Real-ESRGAN for realistic images. Higher scales take longer but produce better results.
-              </p>
-            </div>
-
-            <Button
-              onClick={handleUpscale}
-              disabled={loading || !originalImage}
-              className="w-full h-12 bg-gradient-to-r from-[#f59e0b] to-[#ff8c00] hover:opacity-90 text-black font-display font-bold text-base disabled:opacity-50"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Upscaling...
-                </>
-              ) : (
-                <>
-                  <Maximize2 className="w-5 h-5 mr-2" />
-                  UPSCALE {scale}X (2 credits)
-                </>
-              )}
-            </Button>
-
-            {error && (
-              <div className="p-4 rounded-xl bg-[#ef4444]/10 border border-[#ef4444]/30 text-[#ef4444] text-sm flex items-center gap-3">
-                <Flame className="w-5 h-5 shrink-0" />
-                {error}
-              </div>
+      <CanvasColumn
+        topLeft={
+          originalImage ? (
+            <>
+              <Chip>{upscaledImage ? `${resultScale}× upscaled` : "original"}</Chip>
+              {upscaledImage && <Chip>{modelName}</Chip>}
+              {pixel && <Chip>pixel art</Chip>}
+            </>
+          ) : (
+            <span className="text-[12px] text-[#7A8294]">Your upscaled sprite will appear here</span>
+          )
+        }
+        topRight={
+          <div className="flex items-center gap-2">
+            {upscaledImage && (
+              <Segmented value={view} onChange={setView}
+                options={[{ id: "compare", label: "Compare" }, { id: "result", label: "Result" }]} />
             )}
+            <BackdropToggle value={bgMode} onChange={setBgMode} />
           </div>
-        </div>
-      </div>
-    </div>
+        }
+        actions={
+          upscaledImage ? (
+            <>
+              <DownloadButton onClick={() => handleDownload(upscaledImage)} />
+              {generationId && (
+                <SecondaryButton href={`/remove-bg?id=${encodeURIComponent(generationId)}`} title="Remove the background of the original sprite">
+                  <Scissors className="h-4 w-4" /> Remove BG
+                </SecondaryButton>
+              )}
+            </>
+          ) : undefined
+        }
+      >
+        <CanvasFrame bg={bgMode}>
+          {!generationId ? (
+            <RecentAssetPicker toolPath="/upscale" title="Upscale a sprite" />
+          ) : isLoadingSource ? (
+            <ProcessingOverlay icon={<Maximize2 className="h-5 w-5" />} title="Loading sprite…" seconds={0} hint="fetching" />
+          ) : upscaledImage && originalImage ? (
+            view === "compare" ? (
+              <BeforeAfter before={originalImage} after={upscaledImage} pixel={pixel} beforeLabel="Original" afterLabel={`${resultScale}×`} />
+            ) : (
+              <CanvasImage src={upscaledImage} alt="Upscaled" pixel={pixel} />
+            )
+          ) : originalImage ? (
+            <>
+              <CanvasImage src={originalImage} alt="Original" pixel={pixel} dim={loading} />
+              {loading && (
+                <ProcessingOverlay icon={<Maximize2 className="h-5 w-5" />} title={`Upscaling ${scale}×…`} seconds={seconds} hint="usually 30–90s" />
+              )}
+            </>
+          ) : (
+            <CanvasEmptyHint icon={<Maximize2 className="h-5 w-5" />} title="Couldn't load this sprite" subtitle="Pick another one from your assets." />
+          )}
+        </CanvasFrame>
+      </CanvasColumn>
+    </ToolShell>
   );
+}
+
+function UpscalePageKeyed() {
+  const generationId = useSearchParams().get("id");
+  // Keyed so picking another sprite resets the tool state.
+  return <UpscalePageContent key={generationId ?? "none"} generationId={generationId} />;
 }
 
 export default function UpscalePage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-[#0a0c10] flex items-center justify-center">
-        <Loader2 className="w-12 h-12 text-[#FF6B2C] animate-spin" />
-      </div>
-    }>
-      <UpscalePageContent />
+    <Suspense fallback={<PageFallback />}>
+      <UpscalePageKeyed />
     </Suspense>
   );
 }

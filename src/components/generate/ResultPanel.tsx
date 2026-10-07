@@ -34,7 +34,7 @@ export function ResultPanel({ result, isGenerating, bgStyle, onRemix, onRemoveBg
       <div className="aspect-square rounded-2xl border border-white/10 bg-white/[0.02] flex items-center justify-center">
         <div className="text-center space-y-3">
           <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-white/30">Generating...</p>
+          <p className="text-sm text-[#7A8294]">Generating...</p>
         </div>
       </div>
     );
@@ -43,7 +43,7 @@ export function ResultPanel({ result, isGenerating, bgStyle, onRemix, onRemoveBg
   if (!result) {
     return (
       <div className="aspect-square rounded-2xl border border-dashed border-white/10 bg-white/[0.01] flex items-center justify-center">
-        <p className="text-sm text-white/15">Your asset will appear here</p>
+        <p className="text-sm text-[#7A8294]">Your asset will appear here</p>
       </div>
     );
   }
@@ -80,8 +80,8 @@ export function ResultPanel({ result, isGenerating, bgStyle, onRemix, onRemoveBg
       </div>
 
       {/* Metadata */}
-      <div className="text-xs text-white/30 space-y-0.5 px-1">
-        <p className="text-white/50 truncate">{result.prompt}</p>
+      <div className="text-xs text-[#7A8294] space-y-0.5 px-1">
+        <p className="text-[#8B93A5] truncate">{result.prompt}</p>
         <p>
           Seed: {result.seed}
           {result.duration && <span> &middot; {result.duration}</span>}

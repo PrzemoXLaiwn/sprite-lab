@@ -101,32 +101,32 @@ export async function DELETE(request: Request) {
       );
     }
 
-    const { jobId } = await request.json();
+    let rawJobId: unknown;
+    try {
+      ({ jobId: rawJobId } = await request.json());
+    } catch {
+      return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+    }
 
-    if (!jobId) {
+    if (!rawJobId || typeof rawJobId !== "string" || rawJobId.length > 100) {
       return NextResponse.json(
         { error: "Job ID required." },
         { status: 400 }
       );
     }
+    const jobId: string = rawJobId;
 
-    // Find the job
-    const job = await prisma.pendingGeneration.findUnique({
-      where: { id: jobId }
+    // Find the job (for a precise error message only — the authoritative
+    // check is the conditional delete below)
+    const job = await prisma.pendingGeneration.findFirst({
+      where: { id: jobId, userId: user.id },
+      select: { id: true, status: true, creditsUsed: true, prompt: true },
     });
 
     if (!job) {
       return NextResponse.json(
         { error: "Job not found." },
         { status: 404 }
-      );
-    }
-
-    // Verify ownership
-    if (job.userId !== user.id) {
-      return NextResponse.json(
-        { error: "Not authorized." },
-        { status: 403 }
       );
     }
 
@@ -138,28 +138,37 @@ export async function DELETE(request: Request) {
       );
     }
 
-    // Refund credits
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        credits: { increment: job.creditsUsed }
-      }
+    // Atomic cancel + refund: the delete only matches while the job is still
+    // pending and owned by this user. Concurrent cancels (or the worker
+    // claiming the job) make count 0 → no refund. Delete and refund commit
+    // together or not at all.
+    const refunded = await prisma.$transaction(async (tx) => {
+      const { count } = await tx.pendingGeneration.deleteMany({
+        where: { id: jobId, userId: user.id, status: "pending" },
+      });
+      if (count !== 1) return false;
+
+      await tx.user.update({
+        where: { id: user.id },
+        data: { credits: { increment: job.creditsUsed } },
+      });
+      await tx.creditTransaction.create({
+        data: {
+          userId: user.id,
+          amount: job.creditsUsed,
+          type: "REFUND",
+          description: `Queue job cancelled: ${job.prompt.substring(0, 50)}...`,
+        },
+      });
+      return true;
     });
 
-    // Log the refund
-    await prisma.creditTransaction.create({
-      data: {
-        userId: user.id,
-        amount: job.creditsUsed,
-        type: "REFUND",
-        description: `Queue job cancelled: ${job.prompt.substring(0, 50)}...`
-      }
-    });
-
-    // Delete the job
-    await prisma.pendingGeneration.delete({
-      where: { id: jobId }
-    });
+    if (!refunded) {
+      return NextResponse.json(
+        { error: "Can only cancel pending jobs." },
+        { status: 409 }
+      );
+    }
 
     console.log(`[Queue] Job ${jobId} cancelled, ${job.creditsUsed} credits refunded`);
 

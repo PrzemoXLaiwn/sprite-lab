@@ -9,10 +9,21 @@ import {
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, Shield, CheckCircle, ArrowLeft, CreditCard, Coins } from "lucide-react";
-import Link from "next/link";
+import { Loader2, Coins } from "lucide-react";
+import {
+  BTN_PRIMARY,
+  stripeAppearance,
+  PageSpinner,
+  CheckoutError,
+  CheckoutShell,
+  SummaryCard,
+  SummaryRow,
+  FeatureList,
+  FormError,
+  SecureNote,
+  InlineSuccess,
+  CreditChip,
+} from "../../_components/checkout-ui";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -99,60 +110,43 @@ function CreditCheckoutForm({ pack, packDetails }: { pack: string; packDetails: 
 
   if (success) {
     return (
-      <div className="text-center py-8">
-        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-500/10 flex items-center justify-center">
-          <CheckCircle className="w-8 h-8 text-green-500" />
-        </div>
-        <h3 className="text-xl font-bold mb-2">Payment Successful!</h3>
-        <p className="text-muted-foreground">
-          +{packDetails.total} credits added to your account!
-          {packDetails.bonus > 0 && (
-            <span className="block text-green-500 text-sm mt-1">
-              (includes {packDetails.bonus} bonus credits!)
-            </span>
-          )}
-        </p>
-      </div>
+      <InlineSuccess title="Payment successful">
+        <span className="font-mono text-[#FFB27A]">+{packDetails.total} credits</span> added to your account
+        {packDetails.bonus > 0 && (
+          <span className="mt-1 block text-[12px] text-emerald-200">Includes {packDetails.bonus} bonus credits</span>
+        )}
+      </InlineSuccess>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-5">
       <PaymentElement
         options={{
           layout: "tabs",
         }}
       />
 
-      {error && (
-        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
-          {error}
-        </div>
-      )}
+      {error && <FormError message={error} />}
 
-      <Button
+      <button
         type="submit"
         disabled={!stripe || isLoading}
-        className="w-full bg-gradient-to-r from-primary to-purple-500 hover:opacity-90"
-        size="lg"
+        className={`flex h-12 w-full items-center justify-center gap-2 text-[14px] ${BTN_PRIMARY}`}
       >
         {isLoading ? (
           <>
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Processing...
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Processing…
           </>
         ) : (
           <>
-            <CreditCard className="w-4 h-4 mr-2" />
-            Buy {packDetails.total} Credits - £{(packDetails.price / 100).toFixed(2)}
+            Buy {packDetails.total} credits · <span className="font-mono">£{(packDetails.price / 100).toFixed(2)}</span>
           </>
         )}
-      </Button>
+      </button>
 
-      <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-        <Shield className="w-3 h-3" />
-        <span>Secured by Stripe. One-time payment.</span>
-      </div>
+      <SecureNote>Payments processed securely by Stripe. One-time payment.</SecureNote>
     </form>
   );
 }
@@ -197,126 +191,64 @@ export default function CreditPackCheckoutPage() {
   }, [pack, router]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+    return <PageSpinner />;
   }
 
   if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="max-w-md w-full">
-          <CardContent className="pt-6 text-center">
-            <p className="text-red-500 mb-4">{error}</p>
-            <Button asChild variant="outline">
-              <Link href="/pricing">Back to Pricing</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <CheckoutError message={error} />;
   }
 
   if (!clientSecret || !packDetails) {
     return null;
   }
 
-  const appearance = {
-    theme: "night" as const,
-    variables: {
-      colorPrimary: "#8B5CF6",
-      colorBackground: "#0f0f0f",
-      colorText: "#ffffff",
-      colorDanger: "#ef4444",
-      fontFamily: "system-ui, sans-serif",
-      borderRadius: "8px",
-      spacingUnit: "4px",
-    },
-    rules: {
-      ".Input": {
-        backgroundColor: "#1a1a1a",
-        border: "1px solid #333",
-      },
-      ".Input:focus": {
-        border: "1px solid #8B5CF6",
-        boxShadow: "0 0 0 1px #8B5CF6",
-      },
-      ".Label": {
-        color: "#a1a1aa",
-      },
-      ".Tab": {
-        backgroundColor: "#1a1a1a",
-        border: "1px solid #333",
-      },
-      ".Tab--selected": {
-        backgroundColor: "#8B5CF6",
-        borderColor: "#8B5CF6",
-      },
-    },
-  };
+  const priceLabel = `£${(packDetails.price / 100).toFixed(2)}`;
 
   return (
-    <div className="min-h-screen bg-background py-12 px-4">
-      <div className="max-w-lg mx-auto">
-        <Link
-          href="/pricing"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-8"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to pricing
-        </Link>
-
-        {/* Pack Summary */}
-        <Card className="mb-6 bg-gradient-to-br from-orange-500/10 to-yellow-500/10 border-orange-500/20">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <Coins className="w-5 h-5 text-orange-500" />
-                {packDetails.name} Pack
-              </span>
-              <span className="text-2xl">£{(packDetails.price / 100).toFixed(2)}</span>
-            </CardTitle>
-            <CardDescription>
-              <span className="block">{packDetails.credits} credits</span>
+    <CheckoutShell
+      title={`${packDetails.name} credit pack`}
+      subtitle="One-time purchase. No subscription."
+      summary={
+        <>
+          <SummaryCard highlight>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Coins className="h-4 w-4 text-[#FF8A3D]" />
+                <h2 className="font-display text-[18px] font-semibold text-white">{packDetails.name} pack</h2>
+              </div>
+              <CreditChip>{packDetails.total} credits</CreditChip>
+            </div>
+            <div className="mt-5 flex items-baseline gap-1.5">
+              <span className="font-sans tracking-tight tabular-nums text-[32px] font-semibold leading-none text-white">{priceLabel}</span>
+              <span className="font-mono text-[12px] text-[#8B93A5]">one-time</span>
+            </div>
+            <div className="mt-5 border-t border-white/[0.06] pt-2">
+              <SummaryRow label="Credits" value={packDetails.credits} />
               {packDetails.bonus > 0 && (
-                <span className="block text-green-500 font-medium">
-                  +{packDetails.bonus} FREE bonus credits!
-                </span>
+                <SummaryRow
+                  label={<span className="text-emerald-200">Bonus credits</span>}
+                  value={<span className="text-emerald-200">+{packDetails.bonus}</span>}
+                />
               )}
-              <span className="block text-primary font-semibold mt-1">
-                = {packDetails.total} total credits
-              </span>
-            </CardDescription>
-          </CardHeader>
-        </Card>
+              <SummaryRow label="Total credits" value={packDetails.total} strong />
+            </div>
+          </SummaryCard>
 
-        {/* Payment Form */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Payment Details</CardTitle>
-            <CardDescription>
-              Enter your card information to purchase credits
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Elements
-              stripe={stripePromise}
-              options={{
-                clientSecret,
-                appearance,
-              }}
-            >
-              <CreditCheckoutForm pack={pack} packDetails={packDetails} />
-            </Elements>
-          </CardContent>
-        </Card>
-
-        <div className="mt-6 text-center text-sm text-muted-foreground">
-          <p>Credits never expire and can be used anytime.</p>
-        </div>
-      </div>
-    </div>
+          <SummaryCard>
+            <FeatureList items={["Credits never expire", "Use them anytime", "One-time payment — no renewals"]} />
+          </SummaryCard>
+        </>
+      }
+    >
+      <Elements
+        stripe={stripePromise}
+        options={{
+          clientSecret,
+          appearance: stripeAppearance,
+        }}
+      >
+        <CreditCheckoutForm pack={pack} packDetails={packDetails} />
+      </Elements>
+    </CheckoutShell>
   );
 }

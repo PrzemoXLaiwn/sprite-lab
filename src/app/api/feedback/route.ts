@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getClientIp, rateLimitFeedback } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   try {
@@ -7,10 +8,16 @@ export async function POST(request: Request) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    const body = await request.json();
-    const { type, message, email, context } = body;
+    // Rate limit: per user when logged in, otherwise per IP
+    const { blocked } = await rateLimitFeedback(
+      user ? `user:${user.id}` : `ip:${getClientIp(request)}`
+    );
+    if (blocked) return blocked;
 
-    if (!message || message.trim().length === 0) {
+    const body = await request.json().catch(() => null);
+    const { type, message, email, context } = body || {};
+
+    if (typeof message !== "string" || message.trim().length === 0) {
       return NextResponse.json(
         { error: "Please provide a message" },
         { status: 400 }
@@ -50,7 +57,7 @@ export async function POST(request: Request) {
 
     // Parse context if available
     let contextInfo = "";
-    if (context) {
+    if (typeof context === "string" && context.length <= 5000) {
       try {
         const ctx = JSON.parse(context);
         if (ctx.page) contextInfo += `**Page:** ${ctx.page}\n`;
@@ -62,7 +69,11 @@ export async function POST(request: Request) {
     }
 
     const feedbackId = `FB-${Date.now().toString(36).toUpperCase()}`;
-    const userEmail = email?.trim() || user?.email || null;
+    const providedEmail =
+      typeof email === "string" && email.trim().length <= 254 ? email.trim() : "";
+    const userEmail = providedEmail || user?.email || null;
+    // Discord embed field values are capped at 1024 chars
+    contextInfo = contextInfo.slice(0, 1024);
 
     const embed = {
       title: `${typeEmoji} ${typeLabel}`,

@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import {
   Paintbrush,
@@ -11,12 +9,10 @@ import {
   Undo2,
   Redo2,
   Trash2,
-  Download,
   Loader2,
   Wand2,
   Eye,
   EyeOff,
-  Zap,
   RotateCcw,
   Check,
   X,
@@ -492,167 +488,129 @@ export function SpriteEditor({
   // RENDER
   // ===========================================
 
+  const toolBtn = (active: boolean) =>
+    `flex aspect-square w-full items-center justify-center rounded-xl border transition-all ${
+      active
+        ? "border-[#FF8A3D] bg-[#FF8A3D]/10 text-[#FFB27A] ring-2 ring-[#FF8A3D]/25"
+        : "border-white/[0.06] bg-[#151922] text-[#8B93A5] hover:border-white/20 hover:bg-[#1A1F2A] hover:text-white"
+    }`;
+  const actionBtn =
+    "flex aspect-square w-full items-center justify-center rounded-xl border border-white/[0.06] bg-[#151922] text-[#8B93A5] transition-all hover:border-white/20 hover:bg-[#1A1F2A] hover:text-white disabled:cursor-not-allowed disabled:opacity-30";
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex flex-col">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[#0B0D12] text-[#ECEEF3]">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-[rgba(255,255,255,0.06)]">
+      <div className="flex items-center justify-between border-b border-white/[0.06] bg-[#0E1016] px-4 py-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-[#8b5cf6] to-[#FF6B2C] flex items-center justify-center">
-            <Paintbrush className="w-5 h-5 text-white" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/[0.08] bg-[#151922]">
+            <Paintbrush className="h-4 w-4 text-[#FF8A3D]" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-white">Inpainting Editor</h2>
-            <p className="text-xs text-[#a0a0b0]">Paint the area you want to change</p>
+            <h2 className="font-display text-[18px] font-semibold leading-tight text-white">Inpainting editor</h2>
+            <p className="text-[12px] text-[#8B93A5]">Paint the area you want to change</p>
           </div>
         </div>
 
-        <Button
-          variant="ghost"
-          size="icon"
+        <button
+          type="button"
           onClick={onClose}
-          className="text-[#a0a0b0] hover:text-white"
+          aria-label="Close editor"
+          className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/[0.1] bg-white/[0.04] text-[#C9CFDB] transition hover:bg-white/[0.08] hover:text-white"
         >
-          <X className="w-5 h-5" />
-        </Button>
+          <X className="h-4 w-4" />
+        </button>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex flex-1 overflow-hidden">
         {/* Toolbar */}
-        <div className="w-16 border-r border-[rgba(255,255,255,0.06)] p-2 flex flex-col gap-2">
+        <div className="flex w-[68px] flex-col gap-1.5 border-r border-white/[0.06] bg-[#0E1016] p-2.5">
           {/* Tools */}
-          <div className="space-y-1">
-            <button
-              onClick={() => setTool("brush")}
-              className={`w-full aspect-square rounded-lg flex items-center justify-center transition-all ${
-                tool === "brush"
-                  ? "bg-[#8b5cf6] text-white"
-                  : "bg-[#141821] text-[#a0a0b0] hover:text-white hover:bg-[rgba(255,255,255,0.06)]"
-              }`}
-              title="Brush (B)"
-            >
-              <Paintbrush className="w-5 h-5" />
-            </button>
+          <button type="button" onClick={() => setTool("brush")} className={toolBtn(tool === "brush")} title="Brush (B)">
+            <Paintbrush className="h-[18px] w-[18px]" />
+          </button>
+          <button type="button" onClick={() => setTool("eraser")} className={toolBtn(tool === "eraser")} title="Eraser (E)">
+            <Eraser className="h-[18px] w-[18px]" />
+          </button>
+          <button type="button" onClick={() => setTool("rectangle")} className={toolBtn(tool === "rectangle")} title="Rectangle Select (R)">
+            <Square className="h-[18px] w-[18px]" />
+          </button>
 
-            <button
-              onClick={() => setTool("eraser")}
-              className={`w-full aspect-square rounded-lg flex items-center justify-center transition-all ${
-                tool === "eraser"
-                  ? "bg-[#8b5cf6] text-white"
-                  : "bg-[#141821] text-[#a0a0b0] hover:text-white hover:bg-[rgba(255,255,255,0.06)]"
-              }`}
-              title="Eraser (E)"
-            >
-              <Eraser className="w-5 h-5" />
-            </button>
-
-            <button
-              onClick={() => setTool("rectangle")}
-              className={`w-full aspect-square rounded-lg flex items-center justify-center transition-all ${
-                tool === "rectangle"
-                  ? "bg-[#8b5cf6] text-white"
-                  : "bg-[#141821] text-[#a0a0b0] hover:text-white hover:bg-[rgba(255,255,255,0.06)]"
-              }`}
-              title="Rectangle Select (R)"
-            >
-              <Square className="w-5 h-5" />
-            </button>
-          </div>
-
-          <div className="h-px bg-[rgba(255,255,255,0.06)] my-2" />
+          <div className="my-1.5 h-px bg-white/[0.06]" />
 
           {/* Actions */}
-          <button
-            onClick={undo}
-            disabled={historyIndex <= 0}
-            className="w-full aspect-square rounded-lg flex items-center justify-center bg-[#141821] text-[#a0a0b0] hover:text-white hover:bg-[rgba(255,255,255,0.06)] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-            title="Undo (Ctrl+Z)"
-          >
-            <Undo2 className="w-5 h-5" />
+          <button type="button" onClick={undo} disabled={historyIndex <= 0} className={actionBtn} title="Undo (Ctrl+Z)">
+            <Undo2 className="h-[18px] w-[18px]" />
+          </button>
+          <button type="button" onClick={redo} disabled={historyIndex >= history.length - 1} className={actionBtn} title="Redo (Ctrl+Y)">
+            <Redo2 className="h-[18px] w-[18px]" />
+          </button>
+          <button type="button" onClick={clearMask} className={actionBtn} title="Clear Mask">
+            <Trash2 className="h-[18px] w-[18px]" />
           </button>
 
-          <button
-            onClick={redo}
-            disabled={historyIndex >= history.length - 1}
-            className="w-full aspect-square rounded-lg flex items-center justify-center bg-[#141821] text-[#a0a0b0] hover:text-white hover:bg-[rgba(255,255,255,0.06)] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-            title="Redo (Ctrl+Y)"
-          >
-            <Redo2 className="w-5 h-5" />
-          </button>
-
-          <button
-            onClick={clearMask}
-            className="w-full aspect-square rounded-lg flex items-center justify-center bg-[#141821] text-[#a0a0b0] hover:text-white hover:bg-[rgba(255,255,255,0.06)] transition-all"
-            title="Clear Mask"
-          >
-            <Trash2 className="w-5 h-5" />
-          </button>
-
-          <div className="h-px bg-[rgba(255,255,255,0.06)] my-2" />
+          <div className="my-1.5 h-px bg-white/[0.06]" />
 
           {/* Toggle Mask Visibility */}
-          <button
-            onClick={() => setShowMask(!showMask)}
-            className={`w-full aspect-square rounded-lg flex items-center justify-center transition-all ${
-              showMask
-                ? "bg-[#FF6B2C]/20 text-[#FF6B2C]"
-                : "bg-[#141821] text-[#a0a0b0] hover:text-white hover:bg-[rgba(255,255,255,0.06)]"
-            }`}
-            title="Toggle Mask Visibility"
-          >
-            {showMask ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+          <button type="button" onClick={() => setShowMask(!showMask)} className={toolBtn(showMask)} title="Toggle Mask Visibility">
+            {showMask ? <Eye className="h-[18px] w-[18px]" /> : <EyeOff className="h-[18px] w-[18px]" />}
           </button>
         </div>
 
         {/* Canvas Area */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex flex-1 flex-col">
           {/* Brush Size Slider */}
-          <div className="p-3 border-b border-[rgba(255,255,255,0.06)] flex items-center gap-4">
-            <span className="text-xs text-[#a0a0b0] w-20">Brush Size</span>
+          <div className="flex items-center gap-4 border-b border-white/[0.06] px-4 py-3">
+            <span className="w-24 font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">Brush size</span>
             <Slider
               value={[brushSize]}
               onValueChange={([value]) => setBrushSize(value)}
               min={5}
               max={100}
               step={1}
-              className="flex-1 max-w-xs"
+              className="max-w-xs flex-1"
             />
-            <span className="text-xs text-white font-mono w-8">{brushSize}px</span>
+            <span className="w-12 font-mono text-[12px] text-[#C9CFDB]">{brushSize}px</span>
           </div>
 
           {/* Canvas Container */}
           <div
             ref={containerRef}
-            className="flex-1 overflow-auto p-4 flex items-center justify-center bg-[#11151b]"
+            className="flex flex-1 items-center justify-center overflow-auto bg-[#0B0D12] p-6"
+            style={{ backgroundImage: "repeating-conic-gradient(#ffffff06 0% 25%, transparent 0% 50%)", backgroundSize: "24px 24px" }}
           >
             {loadingImage ? (
               <div className="text-center">
-                <Loader2 className="w-12 h-12 text-[#8b5cf6] animate-spin mx-auto mb-4" />
-                <p className="text-[#a0a0b0]">Loading image...</p>
+                <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-[#FF8A3D]" />
+                <p className="text-[13px] text-[#8B93A5]">Loading image…</p>
               </div>
             ) : showResult && result ? (
               /* Result Preview */
-              <div className="relative">
+              <div className="flex flex-col items-center gap-4">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={result}
                   alt="Result"
-                  className="max-w-full max-h-[calc(100vh-300px)] rounded-lg shadow-2xl"
+                  className={`max-h-[calc(100vh-300px)] max-w-full rounded-2xl border border-white/[0.06] shadow-[0_30px_80px_-40px_rgba(0,0,0,0.8)] ${
+                    originalData?.styleId?.toUpperCase().includes("PIXEL") ? "pixel-perfect" : ""
+                  }`}
                 />
-                <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 flex gap-3">
-                  <Button
+                <div className="flex gap-2">
+                  <button
+                    type="button"
                     onClick={handleAcceptResult}
-                    className="bg-[#FF6B2C] hover:bg-[#FF6B2C]/80 text-[#0a0c10]"
+                    className="flex h-10 items-center gap-2 rounded-xl bg-white px-4 text-[13px] font-semibold text-black transition hover:bg-white/90"
                   >
-                    <Check className="w-4 h-4 mr-2" />
+                    <Check className="h-4 w-4" />
                     Accept
-                  </Button>
-                  <Button
+                  </button>
+                  <button
+                    type="button"
                     onClick={handleRejectResult}
-                    variant="outline"
-                    className="border-[#ef4444] text-[#ef4444] hover:bg-[#ef4444]/10"
+                    className="flex h-10 items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 text-[13px] text-[#C9CFDB] transition hover:bg-white/[0.08] hover:text-white"
                   >
-                    <RotateCcw className="w-4 h-4 mr-2" />
-                    Try Again
-                  </Button>
+                    <RotateCcw className="h-4 w-4" />
+                    Try again
+                  </button>
                 </div>
               </div>
             ) : (
@@ -661,7 +619,7 @@ export function SpriteEditor({
                 {/* Background canvas (original image) */}
                 <canvas
                   ref={imageCanvasRef}
-                  className="absolute inset-0 rounded-lg shadow-2xl"
+                  className="absolute inset-0 rounded-2xl border border-white/[0.06] shadow-[0_30px_80px_-40px_rgba(0,0,0,0.8)]"
                   style={{ imageRendering: "pixelated" }}
                 />
 
@@ -672,7 +630,7 @@ export function SpriteEditor({
                   onMouseMove={handleMouseMove}
                   onMouseUp={handleMouseUp}
                   onMouseLeave={() => setIsDrawing(false)}
-                  className={`absolute inset-0 rounded-lg cursor-crosshair ${
+                  className={`absolute inset-0 cursor-crosshair rounded-2xl ${
                     showMask ? "opacity-100" : "opacity-0"
                   }`}
                   style={{
@@ -682,14 +640,16 @@ export function SpriteEditor({
 
                 {/* Loading Overlay */}
                 {loading && (
-                  <div className="absolute inset-0 rounded-lg bg-black/70 flex flex-col items-center justify-center">
-                    <div className="relative w-20 h-20 mb-4">
-                      <div className="absolute inset-0 rounded-full bg-[#8b5cf6]/30 blur-xl animate-pulse" />
-                      <div className="relative w-full h-full rounded-full border-4 border-[rgba(255,255,255,0.06)] border-t-[#8b5cf6] animate-spin" />
-                      <Wand2 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 text-[#8b5cf6]" />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 rounded-2xl bg-[#0B0D12]/70 backdrop-blur-[2px]">
+                    <div className="relative h-14 w-14">
+                      <div className="absolute inset-0 rounded-full border-2 border-white/10" />
+                      <div className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-[#FF8A3D]" />
+                      <Wand2 className="absolute inset-0 m-auto h-5 w-5 text-[#FF8A3D]" />
                     </div>
-                    <p className="text-white font-medium">Regenerating area...</p>
-                    <p className="text-sm text-[#a0a0b0]">This may take 15-30 seconds</p>
+                    <div className="text-center">
+                      <p className="text-[14px] font-medium text-white">Regenerating area…</p>
+                      <p className="mt-1 font-mono text-[12px] text-[#8B93A5]">usually 15–30s</p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -698,47 +658,47 @@ export function SpriteEditor({
         </div>
 
         {/* Right Panel - Prompt Input */}
-        <div className="w-80 border-l border-[rgba(255,255,255,0.06)] p-4 flex flex-col">
-          <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
-            <Zap className="w-4 h-4 text-[#8b5cf6]" />
-            What should appear here?
-          </h3>
-
-          <div className="space-y-4 flex-1">
-            {/* Prompt Input */}
-            <div className="relative">
-              <Input
-                placeholder="Describe what you want in the selected area..."
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                className="h-24 text-sm input-gaming pr-4 resize-none"
-                disabled={loading}
-              />
+        <div className="flex w-80 flex-col border-l border-white/[0.06] bg-[#0E1016]">
+          <div className="flex-1 space-y-5 overflow-y-auto p-5">
+            <div>
+              <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">What should appear here?</p>
+              <div className="rounded-2xl border border-white/[0.08] bg-[#151922] transition-colors focus-within:border-[#FF8A3D]/50">
+                <textarea
+                  placeholder="Describe what you want in the selected area…"
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  rows={4}
+                  className="w-full resize-none bg-transparent px-4 py-3 text-[14px] leading-relaxed text-white outline-none placeholder:text-[#7A8294] disabled:opacity-60"
+                  disabled={loading}
+                />
+              </div>
             </div>
 
             {/* Quick Actions */}
             <div className="relative">
               <button
+                type="button"
                 onClick={() => setShowQuickActions(!showQuickActions)}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-[#141821] text-[#a0a0b0] hover:text-white hover:bg-[rgba(255,255,255,0.06)] transition-all text-sm"
+                className="flex w-full items-center justify-between rounded-xl border border-white/[0.08] bg-[#151922] px-3 py-2.5 text-[13px] text-[#C9CFDB] transition-colors hover:border-white/20 hover:text-white"
               >
                 <span className="flex items-center gap-2">
-                  <Palette className="w-4 h-4" />
-                  Quick Actions
+                  <Palette className="h-4 w-4 text-[#8B93A5]" />
+                  Quick actions
                 </span>
-                <ChevronDown className={`w-4 h-4 transition-transform ${showQuickActions ? "rotate-180" : ""}`} />
+                <ChevronDown className={`h-4 w-4 transition-transform ${showQuickActions ? "rotate-180" : ""}`} />
               </button>
 
               {showQuickActions && (
-                <div className="absolute top-full left-0 right-0 mt-1 p-2 rounded-lg bg-[#141821] border border-[rgba(255,255,255,0.06)] z-10 space-y-1">
+                <div className="absolute left-0 right-0 top-full z-10 mt-1 space-y-0.5 rounded-xl border border-white/[0.08] bg-[#151922] p-1.5 shadow-2xl">
                   {quickActions.map((action) => (
                     <button
+                      type="button"
                       key={action.label}
                       onClick={() => {
                         setPrompt(action.prompt);
                         setShowQuickActions(false);
                       }}
-                      className="w-full text-left px-3 py-2 rounded-md text-sm text-[#a0a0b0] hover:text-white hover:bg-[rgba(255,255,255,0.06)] transition-all"
+                      className="w-full rounded-lg px-3 py-2 text-left text-[13px] text-[#C9CFDB] transition-colors hover:bg-[#1A1F2A] hover:text-white"
                     >
                       {action.label}
                     </button>
@@ -748,40 +708,43 @@ export function SpriteEditor({
             </div>
 
             {/* Instructions */}
-            <div className="p-3 rounded-lg bg-[#8b5cf6]/10 border border-[#8b5cf6]/20 text-xs text-[#8b5cf6]">
-              <p className="font-medium mb-1">How to use:</p>
-              <ol className="space-y-1 text-[#a0a0b0]">
-                <li>1. Paint the area you want to change (red overlay)</li>
-                <li>2. Describe what should appear there</li>
-                <li>3. Click "Regenerate Area"</li>
+            <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2.5 text-[11.5px] leading-relaxed text-[#8B93A5]">
+              <p className="mb-1 font-medium text-[#C9CFDB]">How to use</p>
+              <ol className="space-y-1">
+                <li><span className="font-mono text-[#FFB27A]">1</span> Paint the area you want to change (red overlay)</li>
+                <li><span className="font-mono text-[#FFB27A]">2</span> Describe what should appear there</li>
+                <li><span className="font-mono text-[#FFB27A]">3</span> Click &ldquo;Regenerate area&rdquo;</li>
               </ol>
             </div>
 
             {error && (
-              <div className="p-3 rounded-lg bg-[#ef4444]/10 border border-[#ef4444]/30 text-sm text-[#ef4444]">
+              <p className="rounded-xl border border-red-500/20 bg-red-500/[0.06] px-3 py-2 text-[12px] text-red-300">
                 {error}
-              </div>
+              </p>
             )}
           </div>
 
           {/* Generate Button */}
-          <Button
-            onClick={handleInpaint}
-            disabled={loading || !prompt.trim()}
-            className="w-full h-12 bg-gradient-to-r from-[#8b5cf6] to-[#FF6B2C] hover:opacity-90 text-white font-semibold disabled:opacity-50"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <Wand2 className="w-5 h-5 mr-2" />
-                Regenerate Area (2 credits)
-              </>
-            )}
-          </Button>
+          <div className="border-t border-white/[0.06] p-4">
+            <button
+              type="button"
+              onClick={handleInpaint}
+              disabled={loading || !prompt.trim()}
+              className="px-corners flex h-12 w-full items-center justify-center gap-2 bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] text-[15px] font-semibold text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Processing…
+                </>
+              ) : (
+                <>
+                  <Wand2 className="h-4 w-4" />
+                  Regenerate area <span className="font-mono text-[13px] font-normal opacity-80">· 2 credits</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>

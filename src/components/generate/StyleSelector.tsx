@@ -19,7 +19,7 @@ export function StyleSelector({ selectedStyleId, onSelect }: Props) {
             className={`px-3 py-2.5 text-xs rounded-xl border text-left transition-all duration-150 ${
               isActive
                 ? "border-primary bg-primary/10 text-white shadow-sm shadow-primary/20"
-                : "border-white/10 bg-white/[0.03] text-white/40 hover:border-white/20 hover:text-white/60"
+                : "border-white/10 bg-white/[0.03] text-[#8B93A5] hover:border-white/20 hover:text-white/60"
             }`}
           >
             <div className="font-medium">{style.name}</div>

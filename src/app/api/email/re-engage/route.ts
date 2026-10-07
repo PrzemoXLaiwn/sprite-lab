@@ -3,6 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { sendReEngagementEmail } from "@/lib/email/send";
 import { Prisma } from "@prisma/client";
+import { isAdmin } from "@/lib/admin";
+
+const MAX_BATCH_SIZE = 200;
 
 // Admin endpoint to send re-engagement emails to inactive users
 export async function POST(request: Request) {
@@ -17,12 +20,7 @@ export async function POST(request: Request) {
     }
 
     // Check if admin
-    const adminUser = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: { role: true },
-    });
-
-    if (adminUser?.role !== "ADMIN" && adminUser?.role !== "OWNER") {
+    if (!(await isAdmin(user.id))) {
       return NextResponse.json({ error: "Admin access required" }, { status: 403 });
     }
 
@@ -30,9 +28,17 @@ export async function POST(request: Request) {
     const {
       inactiveDays = 7,  // Default: users inactive for 7+ days
       minCredits = 1,     // Only users with credits left
-      limit = 50,         // Max emails per batch
+      limit: requestedLimit = 50, // Max emails per batch
       dryRun = false      // Set to true to preview without sending
     } = body;
+
+    const limit = Number.isInteger(requestedLimit)
+      ? Math.min(Math.max(requestedLimit, 1), MAX_BATCH_SIZE)
+      : 50;
+
+    if (!Number.isFinite(inactiveDays) || inactiveDays < 0 || !Number.isFinite(minCredits)) {
+      return NextResponse.json({ error: "Invalid inactiveDays or minCredits" }, { status: 400 });
+    }
 
     // Find inactive users
     const cutoffDate = new Date();

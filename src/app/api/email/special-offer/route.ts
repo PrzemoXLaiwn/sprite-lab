@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAuthorizedCronRequest } from "@/lib/cron-auth";
 import { prisma } from "@/lib/prisma";
 import { sendSpecialOfferEmail } from "@/lib/email/send";
 import { Prisma } from "@prisma/client";
@@ -12,15 +13,8 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
-    // Verify authorization
-    const authHeader = request.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET;
-    const isVercelCron = request.headers.get("x-vercel-cron") === "true";
-
-    const isAuthorized =
-      isVercelCron || (cronSecret && authHeader === `Bearer ${cronSecret}`);
-
-    if (!isAuthorized && process.env.NODE_ENV === "production") {
+    // Verify CRON_SECRET
+    if (!isAuthorizedCronRequest(request)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -177,7 +171,7 @@ export async function GET(request: NextRequest) {
         });
       } else {
         results.failed++;
-        results.errors.push(`${user.email}: ${result.error}`);
+        results.errors.push(`${user.id}: ${result.error}`);
       }
 
       // Small delay to avoid rate limits

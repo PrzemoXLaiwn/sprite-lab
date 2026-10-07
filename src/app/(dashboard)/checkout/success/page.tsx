@@ -1,12 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle, Sparkles, Rocket } from "lucide-react";
-import Link from "next/link";
 import { Suspense } from "react";
+import { CheckoutError, CreditChip, PageSpinner, SuccessShell } from "../_components/checkout-ui";
 
 // Declare gtag for TypeScript
 declare global {
@@ -43,8 +40,37 @@ function SuccessContent() {
   const searchParams = useSearchParams();
   const plan = searchParams.get("plan")?.toUpperCase() || "STARTER";
   const sessionId = searchParams.get("session_id") || "";
+  const setupIntentId = searchParams.get("setup_intent");
+  const redirectStatus = searchParams.get("redirect_status");
   const [countdown, setCountdown] = useState(5);
   const [conversionTracked, setConversionTracked] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+  const confirmStarted = useRef(false);
+  const confirmErrorRef = useRef<string | null>(null);
+  useEffect(() => {
+    confirmErrorRef.current = confirmError;
+  }, [confirmError]);
+
+  // Returning from a Stripe redirect (e.g. 3DS) during subscription checkout:
+  // the in-page confirm never ran, so create the subscription now. The API is
+  // idempotent per SetupIntent, so a reload can't create a second one.
+  useEffect(() => {
+    if (!setupIntentId || redirectStatus !== "succeeded" || confirmStarted.current) return;
+    confirmStarted.current = true;
+
+    fetch("/api/stripe/confirm-subscription", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ setupIntentId, plan }),
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          setConfirmError(data.error || "Failed to activate subscription. Please contact support.");
+        }
+      })
+      .catch(() => setConfirmError("Failed to activate subscription. Please contact support."));
+  }, [setupIntentId, redirectStatus, plan]);
 
   // Google Ads Conversion Tracking with retry
   useEffect(() => {
@@ -91,7 +117,7 @@ function SuccessContent() {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          window.location.href = "/generate";
+          if (!confirmErrorRef.current) window.location.href = "/generate";
           return 0;
         }
         return prev - 1;
@@ -101,61 +127,31 @@ function SuccessContent() {
     return () => clearInterval(timer);
   }, []);
 
+  if (confirmError) {
+    return <CheckoutError message={confirmError} />;
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="max-w-md w-full">
-        <CardContent className="pt-8 pb-8 text-center">
-          {/* Success Icon */}
-          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-green-500/10 flex items-center justify-center">
-            <CheckCircle className="w-10 h-10 text-green-500" />
-          </div>
-
-          {/* Title */}
-          <h1 className="text-2xl font-bold mb-2">Welcome to {planNames[plan] || "Your Plan"}!</h1>
-
-          {/* Description */}
-          <p className="text-muted-foreground mb-2">
-            Your subscription is now active.
-          </p>
-          <p className="text-primary font-semibold mb-6">
-            +{planCredits[plan] ?? 250} credits added to your account
-          </p>
-
-          {/* Countdown */}
-          <p className="text-sm text-muted-foreground mb-6">
-            Redirecting to generator in <span className="text-primary font-medium">{countdown}</span> seconds...
-          </p>
-
-          {/* CTA Button */}
-          <Button asChild className="w-full bg-gradient-to-r from-primary to-purple-500 hover:opacity-90 mb-4">
-            <Link href="/generate">
-              <Sparkles className="w-4 h-4 mr-2" />
-              Start Creating
-            </Link>
-          </Button>
-
-          {/* Secondary Links */}
-          <div className="flex gap-4 justify-center text-sm">
-            <Link href="/assets" className="text-muted-foreground hover:text-foreground">
-              My Assets
-            </Link>
-            <Link href="/pricing" className="text-muted-foreground hover:text-foreground">
-              View Plans
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    <SuccessShell
+      title={`Welcome to ${planNames[plan] || "your plan"}`}
+      countdown={countdown}
+      secondaryLinks={[
+        { href: "/assets", label: "My assets" },
+        { href: "/pricing", label: "View plans" },
+      ]}
+    >
+      <p>Your subscription is now active.</p>
+      <p>
+        <CreditChip>+{planCredits[plan] ?? 250} credits</CreditChip>
+        <span className="ml-2 text-[#8B93A5]">added to your account</span>
+      </p>
+    </SuccessShell>
   );
 }
 
 export default function CheckoutSuccessPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <Rocket className="w-8 h-8 animate-pulse text-primary" />
-      </div>
-    }>
+    <Suspense fallback={<PageSpinner />}>
       <SuccessContent />
     </Suspense>
   );

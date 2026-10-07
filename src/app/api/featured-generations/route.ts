@@ -8,7 +8,10 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const limit = Math.min(parseInt(searchParams.get("limit") || "12"), 24);
+    const parsedLimit = parseInt(searchParams.get("limit") || "12", 10);
+    const limit = Number.isFinite(parsedLimit)
+      ? Math.min(Math.max(parsedLimit, 1), 24)
+      : 12;
     const category = searchParams.get("category");
 
     const generations = await getFeaturedGenerations(limit, category);

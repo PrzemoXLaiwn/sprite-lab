@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw, Zap, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { fetchUserData } from "@/app/(dashboard)/layout.actions";
@@ -23,7 +22,8 @@ export function CreditsDisplay() {
   }, []);
 
   useEffect(() => {
-    loadData();
+    // Defer the initial load out of the effect body (no sync setState).
+    const initial = setTimeout(loadData, 0);
 
     // Auto-refresh every 10 seconds
     const interval = setInterval(loadData, 10000);
@@ -33,6 +33,7 @@ export function CreditsDisplay() {
     window.addEventListener("credits-updated", handleRefresh);
 
     return () => {
+      clearTimeout(initial);
       clearInterval(interval);
       window.removeEventListener("credits-updated", handleRefresh);
     };
@@ -48,80 +49,69 @@ export function CreditsDisplay() {
 
   if (loading && !data) {
     return (
-      <div className="p-4 rounded-xl bg-gradient-to-br from-[#FF6B2C]/10 to-[#FF6B2C]/10 border border-[#FF6B2C]/20">
+      <div className="rounded-2xl border border-white/[0.06] bg-[#0E1016] p-4">
         <div className="flex items-center justify-center py-4">
-          <Loader2 className="w-5 h-5 animate-spin text-[#FF6B2C]" />
+          <Loader2 className="h-5 w-5 animate-spin text-[#FF8A3D]" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className={`relative p-4 rounded-xl overflow-hidden border transition-all duration-300 ${
-      isLow
-        ? "bg-gradient-to-br from-[#ef4444]/10 to-[#ef4444]/5 border-[#ef4444]/30"
-        : "bg-gradient-to-br from-[#FF6B2C]/10 to-[#FF6B2C]/10 border-[#FF6B2C]/20 hover:border-[#FF6B2C]/40"
-    }`}>
-      {/* Animated glow */}
-      <div className={`absolute inset-0 rounded-xl opacity-50 blur-xl ${
-        isLow ? "bg-[#ef4444]/10" : "bg-[#FF6B2C]/10"
-      }`} />
-
-      <div className="relative">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
-              isLow ? "bg-[#ef4444]/20" : "bg-[#FF6B2C]/20"
-            }`}>
-              <Zap className={`w-3.5 h-3.5 ${isLow ? "text-[#ef4444]" : "text-[#FF6B2C]"}`} />
-            </div>
-            <span className="text-xs font-medium text-white/60">Credits</span>
-          </div>
-          <button
-            onClick={handleManualRefresh}
-            className="text-white/40 hover:text-white/80 transition-colors p-1 hover:bg-white/5 rounded-lg"
-            title="Refresh credits"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          </button>
+    <div
+      className={`rounded-2xl border p-4 transition-colors ${
+        isLow
+          ? "border-red-400/20 bg-red-500/[0.06]"
+          : "border-white/[0.06] bg-[#0E1016] hover:border-white/20"
+      }`}
+    >
+      {/* Header */}
+      <div className="mb-2 flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <Zap className={`h-3.5 w-3.5 ${isLow ? "text-red-300" : "text-[#FF8A3D]"}`} />
+          <span className="text-[12px] text-[#8B93A5]">Credits</span>
         </div>
-
-        {/* Credits count */}
-        <div className="flex items-baseline gap-1 mb-1">
-          <p className={`text-3xl font-bold ${isLow ? "text-[#ef4444]" : "text-white"}`}>
-            {credits}
-          </p>
-          <span className="text-xs text-white/40">remaining</span>
-        </div>
-
-        {/* Plan badge */}
-        <div className="flex items-center gap-2 mb-4">
-          <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${
-            data?.plan === "PRO"
-              ? "bg-[#8b5cf6]/20 text-[#8b5cf6] border border-[#8b5cf6]/30"
-              : data?.plan === "UNLIMITED"
-              ? "bg-[#f59e0b]/20 text-[#f59e0b] border border-[#f59e0b]/30"
-              : data?.plan === "STARTER"
-              ? "bg-[#FF6B2C]/20 text-[#FF6B2C] border border-[#FF6B2C]/30"
-              : "bg-white/10 text-white/60 border border-white/10"
-          }`}>
-            {data?.planName || "Spark"}
-          </span>
-          {isLow && (
-            <span className="text-[10px] text-[#ef4444] animate-pulse">Low balance!</span>
-          )}
-        </div>
-
-        {/* Upgrade button */}
-        <Link
-          href="/pricing"
-          className="group flex items-center justify-center gap-2 w-full py-2.5 rounded-lg bg-gradient-to-r from-[#FF6B2C]/20 to-[#FF6B2C]/20 border border-[#FF6B2C]/30 text-[#FF6B2C] text-sm font-medium hover:from-[#FF6B2C]/30 hover:to-[#FF6B2C]/30 transition-all"
+        <button
+          type="button"
+          onClick={handleManualRefresh}
+          className="rounded-lg p-1 text-[#7A8294] transition-colors hover:bg-white/[0.05] hover:text-white"
+          title="Refresh credits"
+          aria-label="Refresh credits"
         >
-          <Sparkles className="w-4 h-4 group-hover:animate-pulse" />
-          Get More Credits
-        </Link>
+          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+        </button>
       </div>
+
+      {/* Credits count */}
+      <div className="mb-2 flex items-baseline gap-1.5">
+        <p className={`font-sans tracking-tight text-[28px] font-semibold leading-none tabular-nums ${isLow ? "text-red-200" : "text-white"}`}>
+          {credits}
+        </p>
+        <span className="font-mono text-[11px] text-[#7A8294]">remaining</span>
+      </div>
+
+      {/* Plan badge */}
+      <div className="mb-4 flex items-center gap-2">
+        <span
+          className={`px-corners px-2 py-0.5 font-mono text-[11px] font-medium ${
+            data?.plan && data.plan !== "FREE"
+              ? "bg-[#FF8A3D]/15 text-[#FFB27A]"
+              : "bg-white/[0.06] text-[#C9CFDB]"
+          }`}
+        >
+          {data?.planName || "Spark"}
+        </span>
+        {isLow && <span className="font-mono text-[11px] text-red-200">low balance</span>}
+      </div>
+
+      {/* Upgrade button */}
+      <Link
+        href="/pricing"
+        className="px-corners flex w-full items-center justify-center gap-2 bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] py-2.5 text-[13px] font-semibold text-white transition hover:brightness-110"
+      >
+        <Sparkles className="h-4 w-4" />
+        Get more credits
+      </Link>
     </div>
   );
 }

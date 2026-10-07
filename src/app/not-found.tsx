@@ -1,60 +1,47 @@
 import Link from "next/link";
-import { Home, Sparkles } from "lucide-react";
+import Image from "next/image";
+import { ArrowRight, Home } from "lucide-react";
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen bg-[#0a0c10] flex items-center justify-center p-4">
-      {/* Background effects */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#8b5cf6]/10 via-transparent to-transparent" />
-        <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-[#8b5cf6]/15 rounded-full blur-[200px] animate-float" style={{ animationDuration: "8s" }} />
-        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-[#FF6B2C]/10 rounded-full blur-[150px] animate-float" style={{ animationDelay: "2s", animationDuration: "10s" }} />
-        <div className="absolute inset-0 grid-pattern opacity-20" />
-      </div>
+    <div className="relative flex min-h-screen items-center justify-center bg-[#0B0D12] px-4 py-10 text-[#ECEEF3]">
+      <div className="pixel-grid pointer-events-none absolute inset-0" />
 
-      <div className="relative z-10 text-center max-w-lg">
-        {/* 404 Text */}
-        <h1 className="text-8xl md:text-9xl font-display font-black mb-4 text-gradient-animated">
-          404
-        </h1>
+      <div className="relative w-full max-w-[440px] text-center">
+        <Link href="/" className="mb-10 inline-flex items-center gap-2.5">
+          <Image src="/logo.png" alt="SpriteLab" width={28} height={28} />
+          <span className="font-display text-[17px] font-semibold text-white">
+            Sprite<span className="text-[#FF8A3D]">Lab</span>
+          </span>
+        </Link>
 
-        <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
-          Oops! Page Not Found
-        </h2>
-
-        <p className="text-white/50 mb-10 text-lg leading-relaxed">
-          Looks like Coreling got lost in the void. The page you&apos;re looking for doesn&apos;t exist or has been moved.
+        <p className="font-display text-[96px] font-semibold leading-none text-white sm:text-[120px]">
+          404<span className="caret" />
         </p>
 
-        {/* Action buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Link
-            href="/"
-            className="group flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] text-black font-bold hover:shadow-xl hover:shadow-[#FF6B2C]/30 transition-all hover:scale-105"
-          >
-            <Home className="w-5 h-5" />
-            Go Home
-          </Link>
+        <h1 className="mt-6 font-display text-[24px] font-semibold text-white">Page not found</h1>
+        <p className="mt-2 text-[14px] leading-relaxed text-[#8B93A5]">
+          The page you&apos;re looking for doesn&apos;t exist or has been moved.
+        </p>
+        <p className="mt-4 font-mono text-[11px] text-[#7A8294]">
+          <span className="text-[#FF8A3D]">&gt;</span> error: route not found
+        </p>
+
+        <div className="mt-8 flex flex-col gap-2.5 sm:flex-row sm:justify-center">
           <Link
             href="/generate"
-            className="group flex items-center gap-2 px-8 py-4 rounded-xl bg-white/5 text-white font-medium hover:bg-white/10 transition-all border border-white/10 hover:border-[#FF6B2C]/30"
+            className="px-corners inline-flex h-11 items-center justify-center gap-2 bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] px-5 text-[14px] font-semibold text-white transition-[filter] hover:brightness-110"
           >
-            <Sparkles className="w-5 h-5 text-[#FF6B2C]" />
-            Start Creating
+            Start creating
+            <ArrowRight className="h-4 w-4" />
           </Link>
-        </div>
-
-        {/* Decorative elements */}
-        <div className="mt-16 flex items-center justify-center gap-3">
-          {["🎮", "🎨", "✨"].map((emoji, i) => (
-            <div
-              key={i}
-              className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-lg animate-float"
-              style={{ animationDelay: `${i * 0.2}s` }}
-            >
-              {emoji}
-            </div>
-          ))}
+          <Link
+            href="/"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-5 text-[14px] font-medium text-[#ECEEF3] transition-colors hover:bg-white/[0.08]"
+          >
+            <Home className="h-4 w-4" />
+            Go home
+          </Link>
         </div>
       </div>
     </div>

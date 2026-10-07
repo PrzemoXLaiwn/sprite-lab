@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono, Orbitron } from "next/font/google";
+import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import Script from "next/script";
@@ -21,41 +21,40 @@ const jetbrainsMono = JetBrains_Mono({
   weight: ["400", "500", "600"],
 });
 
-const orbitron = Orbitron({
+// Display face for headings / logo — technical but highly legible (digits
+// included). JetBrains Mono supplies the "dev" accents.
+const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-orbitron",
-  weight: ["400", "500", "600", "700", "800", "900"],
+  variable: "--font-grotesk",
+  weight: ["500", "600", "700"],
 });
 
 const baseUrl = "https://www.sprite-lab.com";
 
 export const metadata: Metadata = {
   title: {
-    default: "SpriteLab - Free AI Sprite Generator | Pixel Art in Seconds",
-    template: "%s | SpriteLab", // podstrony będą miały "Pricing | SpriteLab"
+    default: "SpriteLab — AI Game Asset Generator for Indie Developers",
+    template: "%s | SpriteLab",
   },
   description:
-    "Create game-ready sprites, weapons, characters & items in seconds. No art skills needed. Free credits to start. Trusted by indie developers worldwide.",
+    "Generate game-ready sprites, pixel art, sprite-sheet animations and seamless tiles with AI. Transparent PNG for Unity, Godot and GameMaker. Free credits to start.",
   keywords: [
+    "AI game asset generator",
     "AI sprite generator",
-    "free sprite generator",
-    "pixel art generator",
+    "AI pixel art generator",
+    "sprite sheet generator",
+    "AI sprite animation",
     "game asset generator",
-    "AI game art",
     "indie game sprites",
     "2D game assets",
-    "3D model generator",
     "Unity sprites",
-    "Godot assets",
+    "Godot sprites",
     "RPG sprites",
-    "game icons generator",
-    "sprite maker online",
+    "game icon generator",
+    "AI tileset generator",
     "game weapon generator",
     "RPG character creator",
-    "AI pixel art maker",
-    "free game art generator",
-    "game item sprites",
     "transparent PNG sprites",
     "commercial game assets",
   ],
@@ -63,13 +62,13 @@ export const metadata: Metadata = {
   creator: "SpriteLab",
   publisher: "SpriteLab",
   metadataBase: new URL(baseUrl),
-  alternates: {
-    canonical: "/",
-  },
+  // No site-wide canonical: a root `canonical: "/"` is inherited by every page
+  // that doesn't set its own, telling Google they're all copies of the
+  // homepage. Each indexable page sets its own canonical instead.
   openGraph: {
-    title: "SpriteLab - Free AI Sprite Generator for Games",
+    title: "SpriteLab — AI Game Asset Generator for Indie Developers",
     description:
-      "Generate game-ready sprites in seconds. 10+ art styles, transparent backgrounds, commercial license included.",
+      "Game-ready sprites, pixel art, sprite-sheet animations and seamless tiles from a text prompt. Transparent PNG, commercial license included.",
     url: baseUrl,
     siteName: "SpriteLab",
     // Image is generated dynamically by `src/app/opengraph-image.tsx` —
@@ -80,9 +79,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "SpriteLab - Free AI Sprite Generator",
+    title: "SpriteLab — AI Game Asset Generator",
     description:
-      "Create game-ready sprites in seconds. No art skills needed. Free to start.",
+      "Game-ready sprites, pixel art and sprite-sheet animations from a text prompt. Free to start.",
     // Same deal — `src/app/twitter-image.tsx` (or the opengraph-image
     // fallback) renders this. Don't hardcode a static path.
     creator: "@spritelab",
@@ -98,12 +97,12 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
-  // verification: {
-  //   google: "twój-kod-weryfikacji",
-  // },
 };
 
-// Enhanced structured data for better SEO
+// Site-wide structured data: who we are and what the product is. Page-specific
+// data (FAQPage, per-tool SoftwareApplication) lives on the pages themselves,
+// next to the visible content it describes. Keep every claim here true —
+// it is read by search engines and AI assistants as a description of us.
 const jsonLd = {
   "@context": "https://schema.org",
   "@graph": [
@@ -112,16 +111,8 @@ const jsonLd = {
       "@id": `${baseUrl}/#website`,
       url: baseUrl,
       name: "SpriteLab",
-      description: "AI-powered game asset generator for indie developers",
+      description: "AI game asset generator for indie game developers",
       publisher: { "@id": `${baseUrl}/#organization` },
-      potentialAction: {
-        "@type": "SearchAction",
-        target: {
-          "@type": "EntryPoint",
-          urlTemplate: `${baseUrl}/search?q={search_term_string}`,
-        },
-        "query-input": "required name=search_term_string",
-      },
     },
     {
       "@type": "Organization",
@@ -134,7 +125,7 @@ const jsonLd = {
         width: 512,
         height: 512,
       },
-      description: "AI-powered game asset generator trusted by indie developers worldwide",
+      description: "SpriteLab makes an AI game asset generator for indie game developers.",
       foundingDate: "2024",
       sameAs: [
         "https://twitter.com/spritelab",
@@ -150,114 +141,62 @@ const jsonLd = {
       "@type": "SoftwareApplication",
       "@id": `${baseUrl}/#software`,
       name: "SpriteLab",
-      applicationCategory: "GameApplication",
-      applicationSubCategory: "Game Development Tool",
+      applicationCategory: "DesignApplication",
+      applicationSubCategory: "Game asset generator",
       operatingSystem: "Web Browser",
       browserRequirements: "Requires JavaScript. Requires HTML5.",
+      publisher: { "@id": `${baseUrl}/#organization` },
       offers: [
         {
           "@type": "Offer",
           price: "0",
           priceCurrency: "GBP",
-          name: "Free Plan",
-          description: "10 free credits to start creating game-ready sprites and assets",
+          name: "Free",
+          description: "10 free credits on signup, plus 3 tries without an account",
         },
         {
           "@type": "Offer",
           price: "5.00",
           priceCurrency: "GBP",
-          name: "Starter Plan",
-          description: "250 credits per month for indie developers",
+          name: "Starter",
+          description: "250 credits per month",
           priceValidUntil: "2027-12-31",
         },
         {
           "@type": "Offer",
           price: "12.00",
           priceCurrency: "GBP",
-          name: "Pro Plan",
-          description: "500 credits per month for game studios",
+          name: "Pro",
+          description: "500 credits per month",
           priceValidUntil: "2027-12-31",
         },
         {
           "@type": "Offer",
           price: "25.00",
           priceCurrency: "GBP",
-          name: "Studio Plan",
-          description: "1200 credits per month for power users",
+          name: "Studio",
+          description: "1,200 credits per month",
           priceValidUntil: "2027-12-31",
         },
       ],
       description:
-        "AI-powered game asset generator for indie developers. Create sprites, icons, and 3D models in seconds with multiple art styles.",
+        "SpriteLab is an AI game asset generator for indie game developers. It turns a text prompt into game-ready 2D sprites — characters, creatures, weapons, armor, items, icons, props and seamless tiles — as transparent PNGs, and animates them into sprite sheets and GIFs.",
       url: baseUrl,
       screenshot: `${baseUrl}/opengraph-image`,
       // aggregateRating intentionally omitted until we have real verifiable
-      // reviews. Google penalises fabricated rich-result data and savvy
-      // visitors notice; once real reviews exist, restore an honest rating.
+      // reviews. Google penalises fabricated rich-result data.
       featureList: [
-        "AI-powered sprite generation",
-        "Multiple art styles (pixel art, anime, realistic)",
-        "2D and 3D asset creation",
-        "Transparent backgrounds",
-        "Commercial license included",
-        "Fast generation (5-10 seconds)",
+        "Text-to-sprite generation for 2D games",
+        "Transparent PNG output",
+        "Pixel art on a real pixel grid with a limited palette",
+        "12 art styles including 16-bit pixel art, HD pixel art, anime, dark fantasy, cartoon and hand-painted",
+        "Sprite animation: idle, walk, run, attack, jump, cast and custom motions",
+        "Horizontal sprite sheet + GIF export, 4 to 18 frames",
+        "Seamless floor and wall tiles",
+        "Projects with automatic folder sorting and ZIP pack export",
+        "Free pixel-perfect upscaling",
+        "Commercial use of generated assets",
       ],
-    },
-    {
-      "@type": "FAQPage",
-      "@id": `${baseUrl}/#faq`,
-      mainEntity: [
-        {
-          "@type": "Question",
-          name: "Can I use generated assets commercially?",
-          acceptedAnswer: {
-            "@type": "Answer",
-            text: "Yes! All assets you generate are yours to use in commercial projects with no attribution required. You have full ownership rights.",
-          },
-        },
-        {
-          "@type": "Question",
-          name: "What formats are supported?",
-          acceptedAnswer: {
-            "@type": "Answer",
-            text: "2D assets export as PNG with transparent backgrounds. 3D models export as GLB, PLY, and OBJ formats compatible with all major game engines.",
-          },
-        },
-        {
-          "@type": "Question",
-          name: "How long does generation take?",
-          acceptedAnswer: {
-            "@type": "Answer",
-            text: "2D sprites generate in about 5 seconds. 3D models take 30-60 seconds depending on complexity. Our AI is optimized for speed.",
-          },
-        },
-        {
-          "@type": "Question",
-          name: "Do credits expire?",
-          acceptedAnswer: {
-            "@type": "Answer",
-            text: "Credits on paid plans refresh monthly. Free tier credits never expire - use them whenever you're ready!",
-          },
-        },
-      ],
-    },
-    {
-      "@type": "Product",
-      "@id": `${baseUrl}/#product`,
-      name: "SpriteLab AI Game Asset Generator",
-      description: "Create game-ready sprites, icons, and 3D assets in seconds with AI",
-      brand: {
-        "@type": "Brand",
-        name: "SpriteLab",
-      },
-      offers: {
-        "@type": "AggregateOffer",
-        lowPrice: "0",
-        highPrice: "25",
-        priceCurrency: "GBP",
-        offerCount: "3",
-      },
-      // aggregateRating omitted — see comment above. Avoid fake reviews.
     },
   ],
 };
@@ -268,7 +207,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`dark ${inter.variable} ${jetbrainsMono.variable} ${orbitron.variable}`}>
+    <html lang="en" className={`dark ${inter.variable} ${jetbrainsMono.variable} ${spaceGrotesk.variable}`}>
       <head>
         {/* Resource Hints - Performance Optimization */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />

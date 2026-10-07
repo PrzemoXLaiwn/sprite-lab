@@ -23,6 +23,17 @@ export interface UpdateProfileData {
   isProfilePublic?: boolean;
 }
 
+const PROFILE_FIELDS = [
+  "name",
+  "avatarUrl",
+  "username",
+  "bio",
+  "website",
+  "socialTwitter",
+  "socialGithub",
+  "isProfilePublic",
+] as const satisfies readonly (keyof UpdateProfileData)[];
+
 export type UserTier = "free" | "starter" | "pro" | "lifetime";
 
 // -----------------------------------------------------------------------------
@@ -147,8 +158,18 @@ export async function updateUserProfile(
   userId: string,
   data: UpdateProfileData
 ) {
+  // Copy only whitelisted profile fields. `data` may originate from a server
+  // action (a public POST endpoint), so the TS type alone guarantees nothing —
+  // passing it through would allow setting role, credits, plan, etc.
+  const safeData: UpdateProfileData = {};
+  for (const key of PROFILE_FIELDS) {
+    if (data[key] !== undefined) {
+      (safeData as Record<string, unknown>)[key] = data[key];
+    }
+  }
+
   try {
-    const user = await prisma.user.update({ where: { id: userId }, data });
+    const user = await prisma.user.update({ where: { id: userId }, data: safeData });
     return { success: true, user };
   } catch (error) {
     console.error("Failed to update user:", error);

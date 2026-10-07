@@ -2,12 +2,23 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Loader2, Mail, Lock, Eye, EyeOff, Check, Gift } from "lucide-react";
+import { Gift, MailCheck } from "lucide-react";
+import {
+  AuthHeading,
+  DiscordButton,
+  Field,
+  GoogleButton,
+  OrDivider,
+  PasswordInput,
+  PrimaryButton,
+  RuleItem,
+  StatusMessage,
+  TextInput,
+  linkCls,
+  secondaryBtnCls,
+} from "../_components/auth-ui";
 
 // Declare gtag for TypeScript
 declare global {
@@ -17,7 +28,6 @@ declare global {
 }
 
 export default function RegisterPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,7 +37,6 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [referralCode, setReferralCode] = useState<string | null>(null);
-  const [referralApplied, setReferralApplied] = useState(false);
 
   // Check for referral code in URL
   useEffect(() => {
@@ -65,10 +74,6 @@ export default function RegisterPage() {
   const isCommonPassword = commonPasswords.some(p =>
     password.toLowerCase().includes(p)
   );
-
-  const isPasswordStrong = passwordChecks.length && passwordChecks.number &&
-    passwordChecks.uppercase && passwordChecks.lowercase &&
-    passwordChecks.noSpaces && !isCommonPassword;
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,232 +185,142 @@ export default function RegisterPage() {
 
   if (success) {
     return (
-      <div className="text-center">
-        <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-4">
-          <Check className="w-8 h-8 text-green-500" />
-        </div>
-        <h2 className="text-2xl font-bold mb-2">Check your email</h2>
-        <p className="text-muted-foreground mb-6">
-          We&apos;ve sent a confirmation link to <strong>{email}</strong>. 
-          Click the link to activate your account.
-        </p>
-        <p className="text-sm text-muted-foreground">
-          Didn&apos;t receive the email?{" "}
+      <div>
+        <AuthHeading
+          icon={<MailCheck className="h-5 w-5" />}
+          title="Check your email"
+          subtitle={
+            <>
+              We&apos;ve sent a confirmation link to <span className="font-medium text-[#ECEEF3]">{email}</span>.
+              Click the link to activate your account.
+            </>
+          }
+        />
+        <p className="text-[13px] text-[#8B93A5]">
+          Didn&apos;t receive the email? Check your spam folder or{" "}
           <button
+            type="button"
             onClick={() => {
               setSuccess(false);
               setEmail("");
               setPassword("");
               setConfirmPassword("");
             }}
-            className="text-primary hover:underline"
+            className={linkCls}
           >
-            Try again
+            try again
           </button>
+          .
         </p>
+        <Link href="/login" className={`${secondaryBtnCls} mt-6`}>
+          Back to sign in
+        </Link>
       </div>
     );
   }
 
   return (
     <div>
-      <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold mb-2">Create your account</h2>
-        <p className="text-muted-foreground">
-          Start creating game assets in seconds
-        </p>
-      </div>
+      <AuthHeading title="Create your account" subtitle="Start with 10 free credits. No card required." />
 
       {/* Referral Code Banner */}
       {referralCode && (
-        <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-[#8b5cf6]/20 to-[#FF6B2C]/20 border border-[#8b5cf6]/40">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#8b5cf6] to-[#FF6B2C] flex items-center justify-center flex-shrink-0">
-              <Gift className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-white">You&apos;ve been invited!</p>
-              <p className="text-xs text-white/60">
-                Referral code <span className="font-mono text-[#FF6B2C]">{referralCode}</span> will be applied after signup
-              </p>
-            </div>
+        <div className="mb-6 flex items-center gap-3 rounded-xl border border-[#FF8A3D]/20 bg-[#FF8A3D]/[0.06] px-3.5 py-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#FF8A3D]/[0.12] text-[#FF8A3D]">
+            <Gift className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[13px] font-medium text-white">You&apos;ve been invited</p>
+            <p className="text-[12px] text-[#8B93A5]">
+              Code <span className="font-mono text-[#FFB27A]">{referralCode}</span> will be applied after signup
+            </p>
           </div>
         </div>
       )}
 
-      {/* OAuth Buttons */}
-      <div className="space-y-3 mb-6">
-        <Button
-          variant="outline"
-          className="w-full h-11"
-          onClick={handleGoogleLogin}
-        >
-          <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
-            <path
-              fill="currentColor"
-              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-            />
-            <path
-              fill="currentColor"
-              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-            />
-            <path
-              fill="currentColor"
-              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-            />
-            <path
-              fill="currentColor"
-              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-            />
-          </svg>
-          Continue with Google
-        </Button>
-
-        <Button
-          variant="outline"
-          className="w-full h-11"
-          onClick={handleDiscordLogin}
-        >
-          <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z" />
-          </svg>
-          Continue with Discord
-        </Button>
+      <div className="space-y-2.5">
+        <GoogleButton onClick={handleGoogleLogin} />
+        <DiscordButton onClick={handleDiscordLogin} />
       </div>
 
-      <div className="relative mb-6">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-border" />
-        </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background px-2 text-muted-foreground">
-            Or continue with email
-          </span>
-        </div>
-      </div>
+      <OrDivider />
 
-      {/* Email Form */}
       <form onSubmit={handleRegister} className="space-y-4">
-        {error && (
-          <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-            {error}
-          </div>
-        )}
+        {error && <StatusMessage>{error}</StatusMessage>}
 
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              id="email"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="pl-10 h-11"
-              required
-            />
-          </div>
-        </div>
+        <Field id="email" label="Email">
+          <TextInput
+            id="email"
+            type="email"
+            autoComplete="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </Field>
 
-        <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              id="password"
-              type={showPassword ? "text" : "password"}
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="pl-10 pr-10 h-11"
-              required
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              {showPassword ? (
-                <EyeOff className="w-4 h-4" />
-              ) : (
-                <Eye className="w-4 h-4" />
-              )}
-            </button>
-          </div>
-          
+        <Field id="password" label="Password">
+          <PasswordInput
+            id="password"
+            autoComplete="new-password"
+            placeholder="At least 8 characters"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            visible={showPassword}
+            onToggle={() => setShowPassword(!showPassword)}
+            required
+          />
           {/* Password requirements */}
-          <div className="space-y-1 text-xs">
-            <div className={`flex items-center gap-2 ${passwordChecks.length ? "text-green-500" : "text-muted-foreground"}`}>
-              <div className={`w-3 h-3 rounded-full border ${passwordChecks.length ? "bg-green-500 border-green-500" : "border-muted-foreground"}`} />
-              At least 8 characters
-            </div>
-            <div className={`flex items-center gap-2 ${passwordChecks.number ? "text-green-500" : "text-muted-foreground"}`}>
-              <div className={`w-3 h-3 rounded-full border ${passwordChecks.number ? "bg-green-500 border-green-500" : "border-muted-foreground"}`} />
-              Contains a number
-            </div>
-            <div className={`flex items-center gap-2 ${passwordChecks.uppercase && passwordChecks.lowercase ? "text-green-500" : "text-muted-foreground"}`}>
-              <div className={`w-3 h-3 rounded-full border ${passwordChecks.uppercase && passwordChecks.lowercase ? "bg-green-500 border-green-500" : "border-muted-foreground"}`} />
-              Uppercase and lowercase letters
-            </div>
+          <div className="grid grid-cols-1 gap-1.5 pt-1.5 sm:grid-cols-2">
+            <RuleItem passed={passwordChecks.length}>At least 8 characters</RuleItem>
+            <RuleItem passed={passwordChecks.number}>Contains a number</RuleItem>
+            <RuleItem passed={passwordChecks.uppercase && passwordChecks.lowercase}>Upper &amp; lowercase</RuleItem>
             {password && isCommonPassword && (
-              <div className="flex items-center gap-2 text-destructive">
-                <div className="w-3 h-3 rounded-full border border-destructive" />
-                Password is too common
-              </div>
+              <RuleItem passed={false} tone="error">Password is too common</RuleItem>
             )}
           </div>
-        </div>
+        </Field>
 
-        <div className="space-y-2">
-          <Label htmlFor="confirmPassword">Confirm Password</Label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              id="confirmPassword"
-              type={showPassword ? "text" : "password"}
-              placeholder="••••••••"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="pl-10 h-11"
-              required
-            />
-          </div>
+        <Field id="confirmPassword" label="Confirm password">
+          <PasswordInput
+            id="confirmPassword"
+            autoComplete="new-password"
+            placeholder="Repeat your password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            visible={showPassword}
+            onToggle={() => setShowPassword(!showPassword)}
+            required
+          />
           {confirmPassword && (
-            <div className={`flex items-center gap-2 text-xs ${passwordChecks.match ? "text-green-500" : "text-destructive"}`}>
-              <div className={`w-3 h-3 rounded-full border ${passwordChecks.match ? "bg-green-500 border-green-500" : "border-destructive"}`} />
-              {passwordChecks.match ? "Passwords match" : "Passwords do not match"}
+            <div className="pt-1.5">
+              <RuleItem passed={passwordChecks.match} tone={passwordChecks.match ? undefined : "error"}>
+                {passwordChecks.match ? "Passwords match" : "Passwords do not match"}
+              </RuleItem>
             </div>
           )}
-        </div>
+        </Field>
 
-        <Button
-          type="submit"
-          className="w-full h-11 bg-gradient-to-r from-primary to-purple-500 hover:opacity-90"
-          disabled={loading}
-        >
-          {loading ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            "Create account"
-          )}
-        </Button>
+        <PrimaryButton type="submit" disabled={loading} loading={loading} loadingText="Creating account..." className="mt-2">
+          Create account
+        </PrimaryButton>
       </form>
 
-      <p className="text-center text-xs text-muted-foreground mt-6">
+      <p className="mt-5 text-center font-mono text-[11px] leading-relaxed text-[#7A8294]">
         By creating an account, you agree to our{" "}
-        <Link href="/terms" className="text-primary hover:underline">
+        <Link href="/terms" className="text-[#C9CFDB] underline underline-offset-2 hover:text-white">
           Terms of Service
         </Link>{" "}
         and{" "}
-        <Link href="/privacy" className="text-primary hover:underline">
+        <Link href="/privacy" className="text-[#C9CFDB] underline underline-offset-2 hover:text-white">
           Privacy Policy
         </Link>
       </p>
 
-      <p className="text-center text-sm text-muted-foreground mt-4">
+      <p className="mt-4 text-center text-[13px] text-[#8B93A5]">
         Already have an account?{" "}
-        <Link href="/login" className="text-primary hover:underline font-medium">
+        <Link href="/login" className={linkCls}>
           Sign in
         </Link>
       </p>

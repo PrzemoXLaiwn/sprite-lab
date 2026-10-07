@@ -103,7 +103,9 @@ export async function uploadToR2(
 
     // Download the image
     console.log("[R2] 📥 Downloading image from source...");
-    const response = await fetch(imageUrl);
+    // Source is a server-produced provider URL; bound it so a stalled CDN
+    // can't consume the calling route's whole maxDuration.
+    const response = await fetch(imageUrl, { signal: AbortSignal.timeout(30_000) });
     if (!response.ok) {
       throw new Error(`Failed to fetch image: ${response.statusText}`);
     }

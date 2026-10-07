@@ -1,8 +1,27 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getUserCredits, checkAndDeductCredits, refundCredits, saveGeneration } from "@/lib/database";
-import { uploadImageToStorage } from "@/lib/storage";
+import { persistImage } from "@/lib/storage";
 import { upscaleImage } from "@/lib/runware";
+import { safeFetchImage, safeFetchErrorResponse } from "@/lib/safe-fetch";
+import { rateLimitUserGeneration } from "@/lib/rate-limit";
+import { parseJsonBody, validateBody } from "@/lib/validation/common";
+import { upscaleSchema } from "@/lib/validations";
+import { uploadGenerationBufferToR2 } from "@/lib/r2";
+import sharp from "sharp";
+
+// Runware upscale is capped at 90s (RUNWARE_UPSCALE_TIMEOUT_MS) so the
+// refund path always has time to run.
+export const maxDuration = 150;
+
+const MAX_INPUT_IMAGE_MB = 5;
+/** Longest side allowed for pixel-perfect output. */
+const MAX_PIXEL_OUTPUT = 4096;
+
+/** Credits by effective output scale (4x costs the runware-4x price). */
+function creditsForScale(scale: number): number {
+  return scale >= 4 ? 2 : 1;
+}
 
 // Plans that have access to Upscale (Free and Starter are excluded)
 // PRO = Pro plan, UNLIMITED = Studio plan, LIFETIME = any lifetime deal
@@ -79,65 +98,90 @@ export async function POST(request: Request) {
 
     userId = user.id;
 
-    // Check user plan - only Pro, Studio, and Lifetime can use Upscale
-    const { credits, plan, role } = await getUserCredits(user.id);
-    const hasPremiumAccess = ALLOWED_PLANS.includes(plan) || role === "OWNER" || role === "ADMIN";
+    const { blocked: rateLimitBlocked } = await rateLimitUserGeneration(user.id);
+    if (rateLimitBlocked) return rateLimitBlocked;
 
-    if (!hasPremiumAccess) {
-      return NextResponse.json(
-        { error: "Image upscaling is available for Pro, Studio, and Lifetime plans. Upgrade to unlock this feature!" },
-        { status: 403 }
-      );
+    // Parse + validate request
+    const rawBody = await parseJsonBody(request);
+    if (rawBody === null) {
+      return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
     }
-
-    // Parse request
-    const body = await request.json();
-    const {
-      imageUrl,
-      scale = 2,
-      modelType = DEFAULT_UPSCALE_MODEL,
-      originalGeneration,
-    } = body;
-
-    // Validation
-    if (!imageUrl) {
-      return NextResponse.json(
-        { error: "Image URL is required." },
-        { status: 400 }
-      );
+    const parsed = validateBody(upscaleSchema, rawBody);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
+    const { imageUrl, scale, modelType, originalGeneration } = parsed.data;
 
-    if (scale < 2 || scale > 4) {
-      return NextResponse.json(
-        { error: "Scale must be between 2 and 4." },
-        { status: 400 }
-      );
-    }
-
-    // Image size validation
+    // Image validation (SSRF-safe, size capped while streaming)
+    let sourceBuffer: Buffer;
     try {
-      const imageResponse = await fetch(imageUrl);
-      const imageBuffer = await imageResponse.arrayBuffer();
-      const imageSizeMB = imageBuffer.byteLength / (1024 * 1024);
+      const { buffer } = await safeFetchImage(imageUrl, { maxBytes: MAX_INPUT_IMAGE_MB * 1024 * 1024 });
+      sourceBuffer = buffer;
+      console.log(`[Upscale] Image size: ${(buffer.byteLength / (1024 * 1024)).toFixed(2)}MB`);
+    } catch (fetchError) {
+      console.warn("[Upscale] Input image rejected:", fetchError instanceof Error ? fetchError.message : fetchError);
+      const { error, status } = safeFetchErrorResponse(fetchError, MAX_INPUT_IMAGE_MB);
+      return NextResponse.json(
+        { error, imageTooLarge: status === 413 || undefined },
+        { status }
+      );
+    }
 
-      console.log(`[Upscale] Image size: ${imageSizeMB.toFixed(2)}MB`);
-
-      if (imageSizeMB > 5) {
+    // ── Pixel-perfect: integer nearest-neighbour scaling. Free, any plan.
+    // AI upscalers smear pixel art; duplicating pixels is the correct way to
+    // enlarge it and costs us nothing.
+    if (modelType === "pixel") {
+      const meta = await sharp(sourceBuffer).metadata();
+      const w = meta.width ?? 0;
+      const h = meta.height ?? 0;
+      if (!w || !h || w * scale > MAX_PIXEL_OUTPUT || h * scale > MAX_PIXEL_OUTPUT) {
         return NextResponse.json(
-          {
-            error: "Image too large for upscaling (max 5MB). Please use a smaller image.",
-            imageTooLarge: true
-          },
+          { error: `Result would exceed ${MAX_PIXEL_OUTPUT}px. Try a smaller scale.` },
           { status: 400 }
         );
       }
-    } catch (sizeError) {
-      console.warn("[Upscale] Could not validate image size:", sizeError);
+      const png = await sharp(sourceBuffer)
+        .resize(w * scale, h * scale, { kernel: "nearest" })
+        .png({ compressionLevel: 9 })
+        .toBuffer();
+      const upload = await uploadGenerationBufferToR2(png, user.id);
+      if (!upload.success || !upload.url) {
+        return NextResponse.json({ error: "Couldn't save the upscaled sprite. Please try again." }, { status: 500 });
+      }
+      const saved = await saveGeneration({
+        userId: user.id,
+        prompt: `[Upscaled ${scale}x] ${originalGeneration?.prompt || "Image"}`,
+        fullPrompt: `Pixel-perfect ${scale}x (nearest neighbour)`,
+        categoryId: originalGeneration?.categoryId || "TOOLS",
+        subcategoryId: originalGeneration?.subcategoryId || "UPSCALED",
+        styleId: originalGeneration?.styleId || "PIXEL_ART_16",
+        imageUrl: upload.url,
+        seed: originalGeneration?.seed ?? undefined,
+      });
+      return NextResponse.json({
+        success: true,
+        imageUrl: upload.url,
+        scale,
+        modelInfo: { name: "Pixel-perfect", creditsUsed: 0, duration: `${((Date.now() - startTime) / 1000).toFixed(1)}s` },
+        savedToGallery: saved.success,
+      });
+    }
+
+    // ── AI upscale (Runware): paid plans only, 2× or 4×
+    const { credits, plan, role } = await getUserCredits(user.id);
+    const hasPremiumAccess = ALLOWED_PLANS.includes(plan) || role === "OWNER" || role === "ADMIN";
+    if (!hasPremiumAccess) {
+      return NextResponse.json(
+        { error: "AI upscaling is available on Pro, Studio and Lifetime plans. Pixel-perfect upscaling is free for everyone." },
+        { status: 403 }
+      );
+    }
+    if (scale === 3) {
+      return NextResponse.json({ error: "AI upscaling supports 2× or 4×." }, { status: 400 });
     }
 
     // Get model config
     const modelConfig = UPSCALE_MODELS[modelType] || UPSCALE_MODELS[DEFAULT_UPSCALE_MODEL];
-    creditCost = modelConfig.credits;
 
     if (scale > modelConfig.maxScale) {
       return NextResponse.json(
@@ -146,50 +190,59 @@ export async function POST(request: Request) {
       );
     }
 
+    // Price from the EFFECTIVE scale, not the model label — otherwise
+    // modelType "runware" (1 credit) with scale 4 bypasses the 4x price.
+    creditCost = Math.max(modelConfig.credits, creditsForScale(scale));
+
     // Atomically check and deduct credits BEFORE processing
     const creditResult = await checkAndDeductCredits(user.id, creditCost);
     if (!creditResult.success) {
-      const errorMsg = creditResult.error === "INSUFFICIENT_CREDITS"
+      const insufficient = creditResult.error === "Not enough credits";
+      if (!insufficient) console.error("[Upscale] Credit deduction failed:", creditResult.error);
+      const errorMsg = insufficient
         ? `Not enough credits. Need ${creditCost}, you have ${credits}.`
         : "Failed to process credits. Please try again.";
       return NextResponse.json(
-        { error: errorMsg, noCredits: creditResult.error === "INSUFFICIENT_CREDITS" },
-        { status: 402 }
+        { error: errorMsg, noCredits: insufficient },
+        { status: insufficient ? 402 : 500 }
       );
     }
     creditsDeducted = true;
 
-    console.log("===========================================");
-    console.log("IMAGE UPSCALING (Runware)");
-    console.log("===========================================");
-    console.log("User:", user.id);
-    console.log("Model:", modelConfig.name);
-    console.log("Scale:", `${scale}x`);
-    console.log("Input URL:", imageUrl);
+    console.log("[Upscale] Runware upscaling", {
+      user: user.id,
+      model: modelConfig.name,
+      scale: `${scale}x`,
+      credits: creditCost,
+    });
 
     // Run upscaling with Runware
-    const result = await upscaleImage(imageUrl, scale as 2 | 4);
+    const result = await upscaleImage(imageUrl, scale);
 
     if (!result.success || !result.imageUrl) {
       console.error("[Upscale] Failed:", result.error);
       // Refund credits on failure
       if (creditsDeducted && userId) {
-        await refundCredits(userId, creditCost);
         creditsDeducted = false;
+        await refundCredits(userId, creditCost);
       }
       return NextResponse.json(
-        { error: result.error || "Upscaling failed. Credit refunded." },
+        { error: "Upscaling failed. Credit refunded." },
         { status: 500 }
       );
     }
+    // Provider delivered — no refund past this point.
+    creditsDeducted = false;
 
     console.log("[Upscale] Uploading to storage...");
 
     // Upload to permanent storage
     const fileName = `upscaled-${scale}x-${Date.now()}`;
-    const uploadResult = await uploadImageToStorage(result.imageUrl, user.id, fileName);
-
-    const finalUrl = uploadResult.success && uploadResult.url ? uploadResult.url : result.imageUrl;
+    const persistedUrl = await persistImage(result.imageUrl, user.id, fileName);
+    if (!persistedUrl) {
+      console.error("[Upscale] Re-host failed — saving TEMPORARY provider URL (will expire)");
+    }
+    const finalUrl = persistedUrl ?? result.imageUrl;
 
     // Save to database
     const saveResult = await saveGeneration({
@@ -200,7 +253,7 @@ export async function POST(request: Request) {
       subcategoryId: originalGeneration?.subcategoryId || "UPSCALED",
       styleId: originalGeneration?.styleId || "UPSCALED",
       imageUrl: finalUrl,
-      seed: originalGeneration?.seed,
+      seed: originalGeneration?.seed ?? undefined,
     });
 
     if (!saveResult.success) {
@@ -230,12 +283,13 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("[Upscale] Unexpected error:", error);
-    // Refund credits on unexpected error
+    // Refund credits on unexpected error (only if provider had not delivered)
     if (creditsDeducted && userId) {
+      creditsDeducted = false;
       await refundCredits(userId, creditCost);
     }
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Upscaling failed. Credit refunded." },
+      { error: "Upscaling failed. Please try again." },
       { status: 500 }
     );
   }

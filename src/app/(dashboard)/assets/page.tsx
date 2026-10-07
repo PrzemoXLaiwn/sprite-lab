@@ -1,50 +1,43 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
-  Download,
   Trash2,
   Search,
-  Grid3x3,
+  LayoutGrid,
   List,
-  Sparkles,
+  Plus,
   Loader2,
   ImageIcon,
   Cuboid,
   RefreshCw,
-  ExternalLink,
-  Copy,
-  Check,
-  Edit,
-  Maximize2,
-  Shuffle,
   CheckSquare,
-  Square,
   X,
-  Share2,
-  Globe,
-  Users,
   CheckCircle2,
   XCircle,
-  PartyPopper,
-  Paintbrush,
-  Gamepad2,
+  Info,
   Archive,
-  Wand2,
+  Images,
+  SearchX,
+  ArrowDownUp,
 } from "lucide-react";
-import Image from "next/image";
 import JSZip from "jszip";
 import { SpriteEditor } from "@/components/editor/SpriteEditor";
 import { SpritePlayground } from "@/components/playground/SpritePlayground";
-import { GenerationFeedback } from "@/components/analytics/GenerationFeedback";
-import { Model3DViewer } from "@/components/Model3DViewer";
+import { AssetCard, AssetRow, PendingJobCard } from "@/components/assets/AssetCard";
+import { AssetPreviewModal } from "@/components/assets/AssetPreviewModal";
+import {
+  is3DFormat,
+  is3DStyle,
+  get3DFormat,
+  type AssetActions,
+  type Generation,
+  type PendingJob,
+} from "@/components/assets/asset-utils";
 
 // ===========================================
-// SUCCESS TOAST COMPONENT
+// TOAST
 // ===========================================
 interface ToastMessage {
   id: string;
@@ -60,132 +53,56 @@ function SuccessToast({
   message: ToastMessage;
   onClose: () => void;
 }) {
+  // Keep the latest onClose in a ref so parent re-renders (the 3s queue poll)
+  // don't restart the auto-dismiss timer — previously toasts could stick forever.
+  const closeRef = useRef(onClose);
   useEffect(() => {
-    const timer = setTimeout(onClose, 4000);
+    closeRef.current = onClose;
+  });
+  useEffect(() => {
+    const timer = setTimeout(() => closeRef.current(), 4000);
     return () => clearTimeout(timer);
-  }, [onClose]);
+  }, []);
+
+  const tone =
+    message.type === "success"
+      ? { box: "border-emerald-400/20 bg-emerald-500/[0.06]", icon: "text-emerald-300", title: "text-emerald-200", Icon: CheckCircle2 }
+      : message.type === "error"
+      ? { box: "border-red-400/20 bg-red-500/[0.06]", icon: "text-red-300", title: "text-red-200", Icon: XCircle }
+      : { box: "border-white/[0.08] bg-white/[0.03]", icon: "text-[#FF8A3D]", title: "text-white", Icon: Info };
 
   return (
-    <div
-      className={`animate-in slide-in-from-top-2 fade-in duration-300 pointer-events-auto flex items-start gap-3 p-4 rounded-xl border backdrop-blur-xl shadow-2xl ${
-        message.type === "success"
-          ? "bg-[#FF6B2C]/10 border-[#FF6B2C]/30"
-          : message.type === "error"
-          ? "bg-red-500/10 border-red-500/30"
-          : "bg-[#FF6B2C]/10 border-[#FF6B2C]/30"
-      }`}
-    >
-      <div
-        className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-          message.type === "success"
-            ? "bg-[#FF6B2C]/20"
-            : message.type === "error"
-            ? "bg-red-500/20"
-            : "bg-[#FF6B2C]/20"
-        }`}
-      >
-        {message.type === "success" ? (
-          <PartyPopper className="w-5 h-5 text-[#FF6B2C]" />
-        ) : message.type === "error" ? (
-          <XCircle className="w-5 h-5 text-red-500" />
-        ) : (
-          <CheckCircle2 className="w-5 h-5 text-[#FF6B2C]" />
-        )}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p
-          className={`font-semibold ${
-            message.type === "success"
-              ? "text-[#FF6B2C]"
-              : message.type === "error"
-              ? "text-red-500"
-              : "text-[#FF6B2C]"
-          }`}
+    <div className="pointer-events-auto overflow-hidden rounded-2xl border border-white/[0.08] bg-[#151922] shadow-2xl animate-in slide-in-from-top-2 fade-in duration-300">
+      <div className={`flex items-start gap-3 border p-3.5 ${tone.box} rounded-2xl`}>
+        <tone.Icon className={`mt-0.5 h-4 w-4 shrink-0 ${tone.icon}`} />
+        <div className="min-w-0 flex-1">
+          <p className={`text-[13px] font-semibold ${tone.title}`}>{message.title}</p>
+          {message.description && <p className="mt-0.5 text-[12px] text-[#8B93A5]">{message.description}</p>}
+        </div>
+        <button
+          onClick={onClose}
+          aria-label="Dismiss"
+          className="rounded-md p-0.5 text-[#7A8294] transition-colors hover:text-white"
         >
-          {message.title}
-        </p>
-        {message.description && (
-          <p className="text-white/60 text-sm mt-0.5">{message.description}</p>
-        )}
+          <X className="h-3.5 w-3.5" />
+        </button>
       </div>
-      <button
-        onClick={onClose}
-        className="text-white/40 hover:text-white/80 transition-colors p-1"
-      >
-        <X className="w-4 h-4" />
-      </button>
     </div>
   );
 }
 
-// ===========================================
-// TYPES
-// ===========================================
-interface Generation {
-  id: string;
-  prompt: string;
-  imageUrl: string;
-  categoryId: string;
-  subcategoryId: string;
-  styleId: string;
-  seed?: number;
-  isPublic?: boolean;
-  createdAt: string;
-}
+const CATEGORIES = [
+  { id: "all", label: "All" },
+  { id: "WEAPONS", label: "Weapons" },
+  { id: "ARMOR", label: "Armor" },
+  { id: "CONSUMABLES", label: "Consumables" },
+  { id: "RESOURCES", label: "Resources" },
+  { id: "CHARACTERS", label: "Characters" },
+  { id: "CREATURES", label: "Creatures" },
+  { id: "ENVIRONMENT", label: "Environment" },
+];
 
-interface PendingJob {
-  id: string;
-  prompt: string;
-  categoryId: string;
-  subcategoryId: string;
-  styleId: string;
-  mode: string;
-  status: "pending" | "processing" | "completed" | "failed";
-  progress: number;
-  progressMessage: string | null;
-  errorMessage: string | null;
-  creditsUsed: number;
-  resultUrl: string | null;
-  resultSeed: number | null;
-  generationId: string | null;
-  model3DId: string | null;
-  quality3D: string | null;
-  createdAt: string;
-  startedAt: string | null;
-  completedAt: string | null;
-}
-
-// ===========================================
-// HELPERS
-// ===========================================
-const is3DFormat = (url: string): boolean => {
-  if (!url) return false;
-  const lower = url.toLowerCase();
-  return [".ply", ".glb", ".gltf", ".obj", ".fbx", ".usdz"].some(ext => lower.includes(ext));
-};
-
-const is3DStyle = (styleId: string): boolean => {
-  return styleId?.startsWith("3D_") || styleId === "3D_MODEL";
-};
-
-const get3DFormat = (url: string): string => {
-  if (!url) return "GLB";
-  const lower = url.toLowerCase();
-  if (lower.includes(".ply")) return "PLY";
-  if (lower.includes(".glb") || lower.includes(".gltf")) return "GLB";
-  if (lower.includes(".obj")) return "OBJ";
-  if (lower.includes(".fbx")) return "FBX";
-  if (lower.includes(".usdz")) return "USDZ";
-  return "GLB";
-};
-
-const getModelName = (styleId: string): string => {
-  if (styleId === "3D_TRELLIS") return "TRELLIS";
-  if (styleId === "3D_HUNYUAN3D") return "Hunyuan3D";
-  if (styleId === "3D_WONDER3D") return "Wonder3D";
-  if (styleId?.startsWith("3D_")) return styleId.replace("3D_", "");
-  return styleId?.replace(/_/g, " ") || "Unknown";
-};
+const PAGE_SIZE = 60;
 
 // ===========================================
 // MAIN COMPONENT
@@ -194,11 +111,15 @@ export default function GalleryPage() {
   const [generations, setGenerations] = useState<Generation[]>([]);
   const [pendingJobs, setPendingJobs] = useState<PendingJob[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterType, setFilterType] = useState<"all" | "2d" | "3d">("all");
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [previewId, setPreviewId] = useState<string | null>(null);
 
   // Multi-select state
   const [selectMode, setSelectMode] = useState(false);
@@ -215,6 +136,12 @@ export default function GalleryPage() {
   // Playground state
   const [playgroundGeneration, setPlaygroundGeneration] = useState<Generation | null>(null);
 
+  // Completed queue jobs we've already announced. `null` until the first poll,
+  // which only records what's there (no toast for jobs finished earlier).
+  // A ref is required: the polling interval keeps the first render's closure,
+  // so reading `pendingJobs` state there always saw an empty list.
+  const seenCompletedRef = useRef<Set<string> | null>(null);
+
   const showToast = (type: ToastMessage["type"], title: string, description?: string) => {
     const id = Math.random().toString(36).substr(2, 9);
     setToasts((prev) => [...prev, { id, type, title, description }]);
@@ -230,10 +157,13 @@ export default function GalleryPage() {
     // Poll for pending jobs every 3 seconds
     const interval = setInterval(loadPendingJobs, 3000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadGenerations = async () => {
-    setLoading(true);
+  /** `silent` refreshes in place instead of swapping the grid for skeletons. */
+  const loadGenerations = async (silent = false) => {
+    if (silent) setRefreshing(true);
+    else setLoading(true);
     try {
       const response = await fetch("/api/generations");
       if (response.ok) {
@@ -244,6 +174,7 @@ export default function GalleryPage() {
       console.error("Failed to load generations:", error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -252,20 +183,12 @@ export default function GalleryPage() {
       const response = await fetch("/api/queue/status");
       if (response.ok) {
         const data = await response.json();
-        const jobs = data.jobs || [];
-        
-        // Check if any jobs just completed (compare with previous state)
-        const previousCompletedIds = new Set(
-          pendingJobs
-            .filter(job => job.status === "completed")
-            .map(job => job.id)
-        );
+        const jobs: PendingJob[] = data.jobs || [];
 
-        const newlyCompleted = jobs.filter(
-          (job: PendingJob) =>
-            job.status === "completed" &&
-            !previousCompletedIds.has(job.id)
-        );
+        const completedIds = jobs.filter((job) => job.status === "completed").map((job) => job.id);
+        const seen = seenCompletedRef.current;
+        const newlyCompleted = seen ? completedIds.filter((id) => !seen.has(id)) : [];
+        seenCompletedRef.current = new Set([...(seen ?? []), ...completedIds]);
 
         setPendingJobs(jobs);
 
@@ -273,11 +196,10 @@ export default function GalleryPage() {
         if (newlyCompleted.length > 0) {
           showToast(
             "success",
-            `${newlyCompleted.length} generation${newlyCompleted.length > 1 ? 's' : ''} completed!`,
+            `${newlyCompleted.length} generation${newlyCompleted.length > 1 ? "s" : ""} completed!`,
             "Your new assets have been added to the gallery."
           );
-          // Auto-refresh gallery to show new assets
-          loadGenerations();
+          loadGenerations(true);
         }
       }
     } catch (error) {
@@ -309,7 +231,7 @@ export default function GalleryPage() {
 
   // Filter active pending jobs (not completed/failed recently)
   const activePendingJobs = pendingJobs.filter(
-    job => job.status === "pending" || job.status === "processing"
+    (job) => job.status === "pending" || job.status === "processing"
   );
 
   const handleDelete = async (id: string) => {
@@ -347,10 +269,10 @@ export default function GalleryPage() {
       const blobUrl = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = blobUrl;
-      
+
       const is3D = is3DFormat(gen.imageUrl) || is3DStyle(gen.styleId);
       const ext = is3D ? get3DFormat(gen.imageUrl).toLowerCase() : "png";
-      
+
       a.download = `spritelab-${gen.categoryId}-${gen.seed || gen.id}.${ext}`;
       document.body.appendChild(a);
       a.click();
@@ -370,7 +292,7 @@ export default function GalleryPage() {
 
   // Toggle selection for an item
   const toggleSelect = (id: string) => {
-    setSelectedIds(prev => {
+    setSelectedIds((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(id)) {
         newSet.delete(id);
@@ -383,7 +305,7 @@ export default function GalleryPage() {
 
   // Select all filtered items
   const selectAll = () => {
-    const allIds = new Set(filteredGenerations.map(g => g.id));
+    const allIds = new Set(filteredGenerations.map((g) => g.id));
     setSelectedIds(allIds);
   };
 
@@ -497,9 +419,9 @@ export default function GalleryPage() {
       });
 
       if (response.ok) {
-        setGenerations(prev => prev.map(g =>
-          g.id === gen.id ? { ...g, isPublic: newIsPublic } : g
-        ));
+        setGenerations((prev) =>
+          prev.map((g) => (g.id === gen.id ? { ...g, isPublic: newIsPublic } : g))
+        );
         if (newIsPublic) {
           showToast(
             "success",
@@ -507,11 +429,7 @@ export default function GalleryPage() {
             "Your creation is now visible to everyone in the community gallery."
           );
         } else {
-          showToast(
-            "info",
-            "Removed from Community",
-            "Your creation is now private."
-          );
+          showToast("info", "Removed from Community", "Your creation is now private.");
         }
       } else {
         const error = await response.json();
@@ -523,696 +441,398 @@ export default function GalleryPage() {
     }
   };
 
-  const filteredGenerations = generations.filter((gen) => {
-    const matchesSearch = gen.prompt.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = filterCategory === "all" || gen.categoryId === filterCategory;
-    
-    const is3D = is3DFormat(gen.imageUrl) || is3DStyle(gen.styleId);
-    const matchesType = filterType === "all" || 
-      (filterType === "3d" && is3D) || 
-      (filterType === "2d" && !is3D);
-    
-    return matchesSearch && matchesCategory && matchesType;
-  });
+  const filteredGenerations = generations
+    .filter((gen) => {
+      const matchesSearch = gen.prompt.toLowerCase().includes(searchQuery.toLowerCase());
+      // Older rows stored lowercase ids ("characters") — compare case-insensitively
+      const matchesCategory = filterCategory === "all" || gen.categoryId?.toUpperCase() === filterCategory;
 
-  const total2D = generations.filter(g => !is3DFormat(g.imageUrl) && !is3DStyle(g.styleId)).length;
-  const total3D = generations.filter(g => is3DFormat(g.imageUrl) || is3DStyle(g.styleId)).length;
+      const is3D = is3DFormat(gen.imageUrl) || is3DStyle(gen.styleId);
+      const matchesType =
+        filterType === "all" || (filterType === "3d" && is3D) || (filterType === "2d" && !is3D);
+
+      return matchesSearch && matchesCategory && matchesType;
+    })
+    .sort((a, b) => {
+      const diff = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      return sortOrder === "newest" ? diff : -diff;
+    });
+
+  const total2D = generations.filter((g) => !is3DFormat(g.imageUrl) && !is3DStyle(g.styleId)).length;
+  const total3D = generations.filter((g) => is3DFormat(g.imageUrl) || is3DStyle(g.styleId)).length;
+  const hasFilters = searchQuery !== "" || filterCategory !== "all" || filterType !== "all";
+  const visibleGenerations = filteredGenerations.slice(0, visibleCount);
+
+  // Filters reset the "load more" window so results start from the top.
+  const withReset = <T,>(setter: (v: T) => void) => (v: T) => {
+    setter(v);
+    setVisibleCount(PAGE_SIZE);
+  };
+  const changeSearch = withReset(setSearchQuery);
+  const changeCategory = withReset(setFilterCategory);
+  const changeType = withReset(setFilterType);
+  const clearFilters = () => {
+    setSearchQuery("");
+    setFilterCategory("all");
+    setFilterType("all");
+    setVisibleCount(PAGE_SIZE);
+  };
+
+  // Preview modal
+  const previewIndex = previewId ? filteredGenerations.findIndex((g) => g.id === previewId) : -1;
+  const previewGen = previewIndex >= 0 ? filteredGenerations[previewIndex] : null;
+
+  const actions: AssetActions = {
+    onDownload: handleDownload,
+    onDelete: handleDelete,
+    onToggleShare: handleToggleShare,
+    // Close the preview first so the editor / playground modal isn't layered under it.
+    onInpaint: (gen) => {
+      setPreviewId(null);
+      setInpaintGeneration(gen);
+    },
+    onPlayground: (gen) => {
+      setPreviewId(null);
+      setPlaygroundGeneration(gen);
+    },
+  };
+
+  const typeOptions = [
+    { id: "all" as const, label: "All", count: generations.length, icon: null },
+    { id: "2d" as const, label: "2D", count: total2D, icon: ImageIcon },
+    { id: "3d" as const, label: "3D", count: total3D, icon: Cuboid },
+  ];
 
   return (
-    <div className="min-h-screen bg-[#0a0c10] relative overflow-hidden">
-      {/* Background */}
-      <div className="fixed inset-0 gradient-mesh pointer-events-none" />
-      <div className="fixed inset-0 grid-pattern pointer-events-none opacity-50" />
-      <div className="fixed top-20 left-10 w-48 sm:w-96 h-48 sm:h-96 bg-[#FF6B2C]/10 rounded-full blur-[80px] sm:blur-[120px] animate-glow-pulse pointer-events-none" />
-      <div className="fixed bottom-20 right-10 w-40 sm:w-80 h-40 sm:h-80 bg-[#FF6B2C]/10 rounded-full blur-[60px] sm:blur-[100px] animate-glow-pulse pointer-events-none" style={{ animationDelay: "1s" }} />
-
-      <div className="relative z-10 p-3 sm:p-4 lg:p-8 max-w-7xl mx-auto">
+    <div className="min-h-screen bg-[#0B0D12] text-[#ECEEF3]">
+      <div className="mx-auto max-w-[1400px] px-5 py-6 lg:px-8">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-display font-black gradient-text neon-text mb-1 sm:mb-2">
-                YOUR GALLERY
-              </h1>
-              <p className="text-xs sm:text-sm text-muted-foreground">
-                {filteredGenerations.length} assets • {total2D} sprites • {total3D} 3D models
-              </p>
+        <div className="mb-6 flex items-end justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="font-display text-[26px] font-semibold leading-tight tracking-normal text-white">My Assets</h1>
+            <p className="mt-1 text-[13px] text-[#8B93A5]">
+              <span className="font-mono text-[#C9CFDB]">{generations.length}</span> assets
+              <span className="mx-1.5 text-[#7A8294]">·</span>
+              <span className="font-mono text-[#C9CFDB]">{total2D}</span> sprites
+              {total3D > 0 && (
+                <>
+                  <span className="mx-1.5 text-[#7A8294]">·</span>
+                  <span className="font-mono text-[#C9CFDB]">{total3D}</span> 3D models
+                </>
+              )}
+            </p>
+          </div>
+          <Link
+            href="/generate"
+            className="px-corners inline-flex h-10 shrink-0 items-center gap-2 bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] px-4 text-[13px] font-semibold text-white transition hover:brightness-110"
+          >
+            <Plus className="h-4 w-4" />
+            Create
+          </Link>
+        </div>
+
+        {/* Toolbar */}
+        <div className="mb-5 space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-[200px] flex-1">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7A8294]" />
+              <input
+                type="search"
+                placeholder="Search by prompt..."
+                value={searchQuery}
+                onChange={(e) => changeSearch(e.target.value)}
+                className="h-10 w-full rounded-xl border border-white/[0.08] bg-[#151922] pl-10 pr-3 text-[13px] text-white outline-none transition-colors placeholder:text-[#7A8294] focus:border-[#FF8A3D]/50"
+              />
             </div>
-            <Link href="/generate">
-              <Button className="btn-primary text-xs sm:text-sm">
-                <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-                <span className="hidden sm:inline">Generate New</span>
-                <span className="sm:hidden">New</span>
-              </Button>
-            </Link>
+
+            <div className="relative">
+              <ArrowDownUp className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#8B93A5]" />
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as "newest" | "oldest")}
+                aria-label="Sort"
+                className="h-10 appearance-none rounded-xl border border-white/[0.08] bg-[#151922] pl-8 pr-4 text-[13px] text-[#C9CFDB] outline-none transition-colors hover:border-white/20 focus:border-[#FF8A3D]/50"
+              >
+                <option value="newest">Newest</option>
+                <option value="oldest">Oldest</option>
+              </select>
+            </div>
+
+            <div className="flex h-10 items-center gap-1 rounded-xl bg-white/[0.04] p-1">
+              {([
+                { id: "grid" as const, icon: LayoutGrid, label: "Grid view" },
+                { id: "list" as const, icon: List, label: "List view" },
+              ]).map((v) => (
+                <button
+                  key={v.id}
+                  type="button"
+                  onClick={() => setViewMode(v.id)}
+                  title={v.label}
+                  aria-label={v.label}
+                  aria-pressed={viewMode === v.id}
+                  className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
+                    viewMode === v.id ? "bg-white/[0.1] text-white" : "text-[#8B93A5] hover:text-white"
+                  }`}
+                >
+                  <v.icon className="h-4 w-4" />
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => (selectMode ? clearSelection() : setSelectMode(true))}
+              className={`flex h-10 items-center gap-1.5 rounded-xl border px-3.5 text-[13px] font-medium transition-colors ${
+                selectMode
+                  ? "border-[#FF8A3D] bg-[#FF8A3D]/10 text-[#FFB27A] ring-2 ring-[#FF8A3D]/25"
+                  : "border-white/[0.1] bg-white/[0.04] text-[#C9CFDB] hover:bg-white/[0.08]"
+              }`}
+            >
+              {selectMode ? <X className="h-4 w-4" /> : <CheckSquare className="h-4 w-4" />}
+              {selectMode ? "Cancel" : "Select"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => loadGenerations(true)}
+              disabled={refreshing}
+              title="Refresh"
+              aria-label="Refresh"
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.1] bg-white/[0.04] text-[#C9CFDB] transition-colors hover:bg-white/[0.08] disabled:opacity-60"
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+            </button>
           </div>
 
-          {/* Controls */}
-          <div className="glass-card rounded-xl sm:rounded-2xl p-3 sm:p-4">
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
-              {/* Search */}
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by prompt..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 input-gaming"
-                />
+          <div className="flex items-center gap-3">
+            {total3D > 0 && (
+              <div className="flex shrink-0 items-center gap-1 rounded-xl bg-white/[0.04] p-1">
+                {typeOptions.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => changeType(t.id)}
+                    className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12px] font-medium transition-colors ${
+                      filterType === t.id ? "bg-white/[0.1] text-white" : "text-[#8B93A5] hover:text-white"
+                    }`}
+                  >
+                    {t.icon && <t.icon className="h-3.5 w-3.5" />}
+                    {t.label}
+                    <span className="font-mono text-[10.5px] text-[#7A8294]">{t.count}</span>
+                  </button>
+                ))}
               </div>
-
-              {/* Type Filter */}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setFilterType("all")}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                    filterType === "all"
-                      ? "bg-white/10 text-white"
-                      : "text-muted-foreground hover:text-white"
-                  }`}
-                >
-                  All
-                </button>
-                <button
-                  onClick={() => setFilterType("2d")}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1 ${
-                    filterType === "2d"
-                      ? "bg-[#FF6B2C]/20 text-[#FF6B2C] border border-[#FF6B2C]/30"
-                      : "text-muted-foreground hover:text-[#FF6B2C]"
-                  }`}
-                >
-                  <ImageIcon className="w-4 h-4" />
-                  2D ({total2D})
-                </button>
-                <button
-                  onClick={() => setFilterType("3d")}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1 ${
-                    filterType === "3d"
-                      ? "bg-[#8b5cf6]/20 text-[#8b5cf6] border border-[#8b5cf6]/30"
-                      : "text-muted-foreground hover:text-[#8b5cf6]"
-                  }`}
-                >
-                  <Cuboid className="w-4 h-4" />
-                  3D ({total3D})
-                </button>
-              </div>
-
-              {/* Category Filter */}
-              <select
-                value={filterCategory}
-                onChange={(e) => setFilterCategory(e.target.value)}
-                className="px-2 sm:px-4 py-2 rounded-lg bg-[#141821] border border-border text-white text-xs sm:text-sm focus:border-[#FF6B2C] focus:outline-none min-w-0"
-              >
-                <option value="all">All Categories</option>
-                <option value="WEAPONS">Weapons</option>
-                <option value="ARMOR">Armor</option>
-                <option value="CONSUMABLES">Consumables</option>
-                <option value="RESOURCES">Resources</option>
-                <option value="CHARACTERS">Characters</option>
-                <option value="CREATURES">Creatures</option>
-                <option value="ENVIRONMENT">Environment</option>
-              </select>
-
-              {/* View Mode & Actions */}
-              <div className="flex gap-2">
-                {/* Select Mode Toggle */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    if (selectMode) {
-                      clearSelection();
-                    } else {
-                      setSelectMode(true);
-                    }
-                  }}
-                  className={selectMode
-                    ? "border-[#ef4444] bg-[#ef4444]/10 text-[#ef4444]"
-                    : "border-border"
-                  }
-                >
-                  {selectMode ? (
-                    <>
-                      <X className="w-4 h-4 mr-1" />
-                      Cancel
-                    </>
-                  ) : (
-                    <>
-                      <CheckSquare className="w-4 h-4 mr-1" />
-                      Select
-                    </>
-                  )}
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setViewMode("grid")}
-                  className={viewMode === "grid" ? "border-[#FF6B2C] bg-[#FF6B2C]/10" : "border-border"}
-                >
-                  <Grid3x3 className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setViewMode("list")}
-                  className={viewMode === "list" ? "border-[#FF6B2C] bg-[#FF6B2C]/10" : "border-border"}
-                >
-                  <List className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={loadGenerations}
-                  className="border-border"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                </Button>
-              </div>
+            )}
+            <div className="-mx-1 flex min-w-0 flex-1 gap-1.5 overflow-x-auto px-1 py-0.5 [scrollbar-width:none]">
+              {CATEGORIES.map((c) => {
+                const active = filterCategory === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => changeCategory(c.id)}
+                    className={`shrink-0 rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors ${
+                      active
+                        ? "border-[#FF8A3D]/60 bg-[#FF8A3D]/[0.12] text-white"
+                        : "border-white/[0.08] text-[#8B93A5] hover:border-white/20 hover:text-white"
+                    }`}
+                  >
+                    {c.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
 
+        {/* Pending jobs */}
+        {!loading && activePendingJobs.length > 0 && (
+          <section className="mb-8">
+            <div className="mb-3 flex items-center gap-2">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#FF8A3D]" />
+              <h2 className="font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">
+                Generating · {activePendingJobs.length}
+              </h2>
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 2xl:grid-cols-5">
+              {activePendingJobs.map((job) => (
+                <PendingJobCard key={job.id} job={job} onCancel={cancelPendingJob} />
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Content */}
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="text-center">
-              <Loader2 className="w-12 h-12 text-[#FF6B2C] animate-spin mx-auto mb-4" />
-              <p className="text-muted-foreground">Loading your gallery...</p>
-            </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 2xl:grid-cols-5">
+            {Array.from({ length: 15 }).map((_, i) => (
+              <div key={i} className="aspect-[4/5] animate-pulse rounded-2xl bg-white/[0.04]" style={{ animationDelay: `${i * 40}ms` }} />
+            ))}
           </div>
         ) : filteredGenerations.length === 0 ? (
-          <div className="glass-card rounded-xl sm:rounded-2xl p-6 sm:p-12 text-center">
-            {/* Coreling waving for empty state */}
-            <div className="w-32 h-32 mx-auto mb-6 relative">
-              <div className="absolute inset-0 bg-[#8b5cf6]/20 rounded-full blur-2xl" />
-              <Image
-                src="/coreling-wave.png"
-                alt="Coreling Waving"
-                width={128}
-                height={128}
-                className="relative w-full h-full object-contain animate-float drop-shadow-xl"
-                priority
-              />
-            </div>
-            <h3 className="text-xl font-bold text-white mb-2">
-              {searchQuery || filterCategory !== "all" || filterType !== "all"
-                ? "No Matches Found"
-                : "Your Gallery is Empty!"}
-            </h3>
-            <p className="text-muted-foreground mb-6">
-              {searchQuery || filterCategory !== "all" || filterType !== "all"
-                ? "No assets match your filters. Try adjusting your search."
-                : "Coreling is waiting for you to create some amazing assets!"}
-            </p>
-            <Link href="/generate">
-              <Button className="btn-primary">
-                <Sparkles className="w-4 h-4 mr-2" />
-                Generate Your First Asset
-              </Button>
-            </Link>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {/* Pending Jobs Section */}
-            {activePendingJobs.length > 0 && (
-              <div className="mb-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-2 h-2 rounded-full bg-[#FF6B2C] animate-pulse" />
-                  <h2 className="text-lg font-display font-bold text-white">
-                    Generating ({activePendingJobs.length})
-                  </h2>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {activePendingJobs.map((job) => (
-                    <div
-                      key={job.id}
-                      className={`glass-card rounded-xl overflow-hidden border-2 ${
-                        job.mode === "3d" ? "border-[#8b5cf6]/50" : "border-[#FF6B2C]/50"
-                      } animate-pulse-slow`}
-                    >
-                      <div className="aspect-square bg-[#11151b] relative overflow-hidden flex items-center justify-center">
-                        <div className="absolute inset-0 grid-pattern-dense opacity-30" />
-
-                        {/* Status badge */}
-                        <div className="absolute top-2 left-2 z-20 flex gap-1">
-                          <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-white text-xs font-bold ${
-                            job.status === "processing" ? "bg-[#FF6B2C]/90" : "bg-[#606080]/90"
-                          }`}>
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                            {job.status === "processing" ? "Processing" : "Queued"}
-                          </div>
-                          {job.mode === "3d" && (
-                            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[#8b5cf6]/90 text-white text-xs font-bold">
-                              <Cuboid className="w-3 h-3" />
-                              3D
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Cancel button */}
-                        {job.status === "pending" && (
-                          <button
-                            onClick={() => cancelPendingJob(job.id)}
-                            className="absolute top-2 right-2 z-20 p-1.5 rounded-full bg-red-500/20 hover:bg-red-500/40 text-red-400 hover:text-red-300 transition-colors"
-                            title="Cancel and refund credits"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        )}
-
-                        {/* Loading animation */}
-                        <div className="relative z-10 text-center p-4">
-                          <div className="w-20 h-20 mx-auto mb-3 relative">
-                            <div className={`absolute inset-0 rounded-full blur-xl opacity-40 animate-pulse ${
-                              job.mode === "3d" ? "bg-[#8b5cf6]" : "bg-[#FF6B2C]"
-                            }`} />
-                            <Image
-                              src="/coreling-working.png"
-                              alt="Generating"
-                              width={80}
-                              height={80}
-                              className="relative w-full h-full object-contain animate-bounce"
-                              style={{ animationDuration: "1.5s" }}
-                            />
-                          </div>
-
-                          {/* Progress bar */}
-                          <div className="w-full h-1.5 bg-[#1a1a2e] rounded-full overflow-hidden mb-2">
-                            <div
-                              className={`h-full transition-all duration-500 ${
-                                job.mode === "3d"
-                                  ? "bg-gradient-to-r from-[#8b5cf6] to-[#FF6B2C]"
-                                  : "bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C]"
-                              }`}
-                              style={{ width: `${job.progress}%` }}
-                            />
-                          </div>
-
-                          <p className="text-xs text-[#a0a0b0]">
-                            {job.progressMessage || "Waiting..."}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Info */}
-                      <div className="p-3 border-t border-[rgba(255,255,255,0.06)]">
-                        <p className="text-sm text-white truncate mb-1">
-                          {job.prompt}
-                        </p>
-                        <div className="flex items-center justify-between text-xs text-[#606080]">
-                          <span>{job.mode === "3d" ? "3D Model" : "2D Sprite"}</span>
-                          <span>{job.creditsUsed} credits</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+          hasFilters ? (
+            <div className="flex flex-col items-center justify-center rounded-3xl border border-white/[0.06] px-6 py-20 text-center">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.04]">
+                <SearchX className="h-5 w-5 text-[#FF8A3D]" />
               </div>
+              <h3 className="text-[15px] font-semibold text-white">No matches found</h3>
+              <p className="mt-1 max-w-sm text-[13px] text-[#8B93A5]">No assets match your filters. Try adjusting your search.</p>
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="mt-5 inline-flex h-10 items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 text-[13px] font-medium text-[#C9CFDB] transition-colors hover:bg-white/[0.08]"
+              >
+                <X className="h-4 w-4" /> Clear filters
+              </button>
+            </div>
+          ) : activePendingJobs.length > 0 ? null : (
+            <div className="pixel-grid flex flex-col items-center justify-center rounded-3xl border border-white/[0.06] px-6 py-24 text-center">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.04]">
+                <Images className="h-5 w-5 text-[#FF8A3D]" />
+              </div>
+              <h3 className="text-[15px] font-semibold text-white">
+                No assets yet<span className="caret" />
+              </h3>
+              <p className="mt-1 max-w-sm text-[13px] text-[#8B93A5]">
+                Everything you generate is saved here — ready to download, edit and share.
+              </p>
+              <Link
+                href="/generate"
+                className="px-corners mt-5 inline-flex h-10 items-center gap-2 bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] px-4 text-[13px] font-semibold text-white transition hover:brightness-110"
+              >
+                <Plus className="h-4 w-4" /> Create your first asset
+              </Link>
+            </div>
+          )
+        ) : (
+          <>
+            {hasFilters && (
+              <p className="mb-3 text-[12px] text-[#8B93A5]">
+                Showing <span className="font-mono text-[#C9CFDB]">{filteredGenerations.length}</span> of{" "}
+                <span className="font-mono text-[#C9CFDB]">{generations.length}</span>
+              </p>
             )}
-
-            {/* Completed Generations */}
             <div
               className={
                 viewMode === "grid"
-                  ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-                  : "space-y-4"
+                  ? "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 2xl:grid-cols-5"
+                  : "flex flex-col gap-2"
               }
             >
-            {filteredGenerations.map((gen) => {
-              const is3D = is3DFormat(gen.imageUrl) || is3DStyle(gen.styleId);
-              const format3D = is3D ? get3DFormat(gen.imageUrl) : null;
-              
-              return (
-                <div
-                  key={gen.id}
-                  className={`glass-card rounded-xl overflow-hidden group hover:border-${is3D ? '[#8b5cf6]' : '[#FF6B2C]'}/50 transition-all ${
-                    selectMode && selectedIds.has(gen.id) ? 'ring-2 ring-[#FF6B2C] border-[#FF6B2C]' : ''
-                  }`}
-                  onClick={() => selectMode && toggleSelect(gen.id)}
-                >
-                  {/* Preview */}
-                  <div className="aspect-square bg-[#11151b] relative overflow-hidden">
-                    <div className="absolute inset-0 grid-pattern-dense opacity-30" />
-
-                    {/* Selection checkbox */}
-                    {selectMode && (
-                      <div className="absolute top-2 right-2 z-30">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleSelect(gen.id);
-                          }}
-                          className={`w-6 h-6 rounded-md flex items-center justify-center transition-all ${
-                            selectedIds.has(gen.id)
-                              ? 'bg-[#FF6B2C] text-black'
-                              : 'bg-black/50 border border-white/30 text-white hover:border-[#FF6B2C]'
-                          }`}
-                        >
-                          {selectedIds.has(gen.id) ? (
-                            <Check className="w-4 h-4" />
-                          ) : (
-                            <Square className="w-4 h-4" />
-                          )}
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Badges row */}
-                    <div className="absolute top-2 left-2 z-20 flex gap-1">
-                      {/* 3D indicator badge */}
-                      {is3D && (
-                        <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[#8b5cf6]/90 text-white text-xs font-bold">
-                          <Cuboid className="w-3 h-3" />
-                          {format3D}
-                        </div>
-                      )}
-                      {/* Shared to community badge */}
-                      {gen.isPublic && (
-                        <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[#8b5cf6]/90 text-white text-xs font-bold">
-                          <Users className="w-3 h-3" />
-                          Shared
-                        </div>
-                      )}
-                    </div>
-                    
-                    {is3D ? (
-                      // 3D Model viewer with interactive preview
-                      <Model3DViewer
-                        modelUrl={gen.imageUrl}
-                        format={format3D || "GLB"}
-                        compact={true}
-                      />
-                    ) : (
-                      // 2D Image - optimized with next/image
-                      <Image
-                        src={gen.imageUrl}
-                        alt={gen.prompt}
-                        fill
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                        className="object-contain p-4 relative z-10"
-                        loading="lazy"
-                      />
-                    )}
-                    
-                    {/* Hover Actions */}
-                    <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3 z-20 p-4">
-                      {/* Only show edit options for 2D */}
-                      {!is3D && (
-                        <>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => window.open(`/edit?id=${gen.id}`, "_blank")}
-                              className="border-[#8b5cf6] bg-[#8b5cf6]/10 hover:bg-[#8b5cf6]/20 text-[#8b5cf6]"
-                              title="Edit Image"
-                            >
-                              <Edit className="w-4 h-4 mr-1" />
-                              Edit
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setInpaintGeneration(gen)}
-                              className="border-[#ef4444] bg-[#ef4444]/10 hover:bg-[#ef4444]/20 text-[#ef4444]"
-                              title="Inpaint - Paint area to regenerate"
-                            >
-                              <Paintbrush className="w-4 h-4 mr-1" />
-                              Inpaint
-                            </Button>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => window.open(`/upscale?id=${gen.id}`, "_blank")}
-                              className="border-[#f59e0b] bg-[#f59e0b]/10 hover:bg-[#f59e0b]/20 text-[#f59e0b]"
-                              title="Upscale Image"
-                            >
-                              <Maximize2 className="w-4 h-4 mr-1" />
-                              Upscale
-                            </Button>
-                          </div>
-                          
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => window.open(`/variations?id=${gen.id}`, "_blank")}
-                              className="border-[#FF6B2C] bg-[#FF6B2C]/10 hover:bg-[#FF6B2C]/20 text-[#FF6B2C]"
-                              title="Create Variations"
-                            >
-                              <Shuffle className="w-4 h-4 mr-1" />
-                              Variations
-                            </Button>
-                          </div>
-
-                          {/* Test in Playground */}
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setPlaygroundGeneration(gen)}
-                              className="border-[#f59e0b] bg-[#f59e0b]/10 hover:bg-[#f59e0b]/20 text-[#f59e0b]"
-                              title="Test sprite in interactive playground"
-                            >
-                              <Gamepad2 className="w-4 h-4 mr-1" />
-                              Test Sprite
-                            </Button>
-                          </div>
-
-                          {/* Remix prompt in generator */}
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                const params = new URLSearchParams({
-                                  prompt: gen.prompt.replace(/^\[3D\]\s*/, ""),
-                                  categoryId: gen.categoryId ?? "",
-                                  subcategoryId: gen.subcategoryId ?? "",
-                                  styleId: gen.styleId ?? "",
-                                });
-                                window.location.href = `/generate?${params.toString()}`;
-                              }}
-                              className="border-[#FF6B2C] bg-[#FF6B2C]/10 hover:bg-[#FF6B2C]/20 text-[#FF6B2C]"
-                              title="Re-generate with this prompt"
-                            >
-                              <Wand2 className="w-4 h-4 mr-1" />
-                              Remix
-                            </Button>
-                          </div>
-                        </>
-                      )}
-
-                      {/* Utility Actions - Always show */}
-                      <div className={`flex gap-2 ${!is3D ? 'mt-2 pt-2 border-t border-white/10' : ''}`}>
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleToggleShare(gen);
-                          }}
-                          className={gen.isPublic
-                            ? "border-[#8b5cf6] bg-[#8b5cf6]/20 hover:bg-[#8b5cf6]/30"
-                            : "border-white/20 bg-white/5 hover:bg-white/10"
-                          }
-                          title={gen.isPublic ? "Remove from Community" : "Share to Community"}
-                        >
-                          {gen.isPublic ? (
-                            <Globe className="w-4 h-4 text-[#8b5cf6]" />
-                          ) : (
-                            <Share2 className="w-4 h-4 text-white" />
-                          )}
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          onClick={() => handleDownload(gen)}
-                          className={is3D
-                            ? "border-[#8b5cf6] bg-[#8b5cf6]/10 hover:bg-[#8b5cf6]/20"
-                            : "border-white/20 bg-white/5 hover:bg-white/10"
-                          }
-                          title="Download"
-                        >
-                          <Download className={`w-4 h-4 ${is3D ? 'text-[#8b5cf6]' : 'text-white'}`} />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          onClick={() => window.open(gen.imageUrl, "_blank")}
-                          className="border-white/20 bg-white/5 hover:bg-white/10"
-                          title="Open in New Tab"
-                        >
-                          <ExternalLink className="w-4 h-4 text-white" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          onClick={() => handleDelete(gen.id)}
-                          className="border-destructive bg-destructive/10 hover:bg-destructive/20"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      </div>
-                      
-                      {/* 3D specific info */}
-                      {is3D && (
-                        <p className="text-xs text-muted-foreground mt-2 text-center">
-                          Download {format3D} for Unity, Unreal, Blender, Godot
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Info */}
-                  <div className="p-4 border-t border-border">
-                    <p className="text-sm text-white font-medium mb-2 line-clamp-2">
-                      {gen.prompt.replace(/^\[3D\]\s*/, '')}
-                    </p>
-                    
-                    <div className="flex items-center gap-2 mb-3 flex-wrap">
-                      <Badge className={`text-xs ${
-                        is3D 
-                          ? 'bg-[#8b5cf6]/10 text-[#8b5cf6] border-[#8b5cf6]/30'
-                          : 'bg-[#FF6B2C]/10 text-[#FF6B2C] border-[#FF6B2C]/30'
-                      }`}>
-                        {gen.categoryId}
-                      </Badge>
-                      <Badge className={`text-xs ${
-                        is3D
-                          ? 'bg-[#8b5cf6]/10 text-[#8b5cf6] border-[#8b5cf6]/30'
-                          : 'bg-[#FF6B2C]/10 text-[#FF6B2C] border-[#FF6B2C]/30'
-                      }`}>
-                        {is3D ? `${format3D} • ${getModelName(gen.styleId)}` : getModelName(gen.styleId)}
-                      </Badge>
-                    </div>
-
-                    {gen.seed && (
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span className="font-mono">Seed: {gen.seed}</span>
-                        <button
-                          onClick={() => copySeed(gen.seed!, gen.id)}
-                          className="p-1 hover:bg-white/10 rounded transition-colors"
-                        >
-                          {copiedId === gen.id ? (
-                            <Check className="w-3 h-3 text-[#FF6B2C]" />
-                          ) : (
-                            <Copy className="w-3 h-3" />
-                          )}
-                        </button>
-                      </div>
-                    )}
-
-                    <div className="flex items-center justify-between mt-2">
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(gen.createdAt).toLocaleDateString()}
-                      </p>
-                      <GenerationFeedback
-                        generationId={gen.id}
-                        compact
-                      />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+              {visibleGenerations.map((gen) => {
+                const Item = viewMode === "grid" ? AssetCard : AssetRow;
+                return (
+                  <Item
+                    key={gen.id}
+                    gen={gen}
+                    actions={actions}
+                    selectMode={selectMode}
+                    selected={selectMode && selectedIds.has(gen.id)}
+                    onToggleSelect={toggleSelect}
+                    onOpen={(g) => setPreviewId(g.id)}
+                    copied={copiedId === gen.id}
+                    onCopySeed={copySeed}
+                  />
+                );
+              })}
             </div>
-          </div>
+
+            {filteredGenerations.length > visibleCount && (
+              <div className="mt-8 flex flex-col items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
+                  className="inline-flex h-10 items-center rounded-xl border border-white/[0.1] bg-white/[0.04] px-5 text-[13px] font-medium text-[#C9CFDB] transition-colors hover:bg-white/[0.08]"
+                >
+                  Load more
+                </button>
+                <span className="font-mono text-[11px] text-[#7A8294]">
+                  {visibleGenerations.length} / {filteredGenerations.length}
+                </span>
+              </div>
+            )}
+          </>
         )}
 
-        {/* Floating Selection Action Bar */}
-        {selectMode && selectedIds.size > 0 && (
-          <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-1.5rem)] sm:w-auto max-w-lg sm:max-w-none">
-            <div className="glass-card rounded-xl sm:rounded-2xl p-3 sm:p-4 flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-4 border border-[#FF6B2C]/30 shadow-lg shadow-[#FF6B2C]/10">
-              <span className="text-white font-medium text-sm sm:text-base">
-                {selectedIds.size} selected
+        {/* Floating selection action bar */}
+        {selectMode && (
+          <div className="fixed bottom-20 left-1/2 z-50 w-[calc(100%-1.5rem)] max-w-xl -translate-x-1/2 md:bottom-6 md:ml-[38px] md:w-auto md:max-w-none">
+            <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/[0.08] bg-[#151922]/95 p-2 pl-4 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.8)] backdrop-blur-xl sm:flex-nowrap">
+              <span className="mr-1 text-[13px] font-medium text-white">
+                <span className="font-mono">{selectedIds.size}</span> selected
               </span>
 
-              <div className="hidden sm:block h-6 w-px bg-border" />
+              <span className="hidden h-5 w-px bg-white/[0.08] sm:block" />
 
-              <Button
-                size="sm"
-                variant="outline"
+              <button
+                type="button"
                 onClick={selectAll}
-                className="border-[#FF6B2C] bg-[#FF6B2C]/10 text-[#FF6B2C] hover:bg-[#FF6B2C]/20 text-xs sm:text-sm"
+                className="inline-flex h-9 items-center gap-1.5 rounded-xl px-3 text-[12.5px] font-medium text-[#C9CFDB] transition-colors hover:bg-white/[0.06] hover:text-white"
               >
-                <CheckSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />
-                <span className="hidden sm:inline">Select All ({filteredGenerations.length})</span>
+                <CheckSquare className="h-4 w-4" />
+                <span className="hidden sm:inline">Select all</span>
                 <span className="sm:hidden">All</span>
-              </Button>
+                <span className="font-mono text-[11px] text-[#7A8294]">{filteredGenerations.length}</span>
+              </button>
 
-              <Button
-                size="sm"
-                variant="outline"
+              <button
+                type="button"
                 onClick={() => setSelectedIds(new Set())}
-                className="border-border text-xs sm:text-sm"
+                disabled={selectedIds.size === 0}
+                className="inline-flex h-9 items-center rounded-xl px-3 text-[12.5px] font-medium text-[#C9CFDB] transition-colors hover:bg-white/[0.06] hover:text-white disabled:opacity-40"
               >
                 Clear
-              </Button>
+              </button>
 
-              <div className="hidden sm:block h-6 w-px bg-border" />
+              <div className="ml-auto flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleBatchDownload}
+                  disabled={downloading || selectedIds.size === 0}
+                  className="px-corners inline-flex h-9 items-center gap-1.5 bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] px-3.5 text-[12.5px] font-semibold text-white transition hover:brightness-110 disabled:opacity-50 disabled:hover:brightness-100"
+                >
+                  {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Archive className="h-4 w-4" />}
+                  {downloading ? "Packaging..." : "Download ZIP"}
+                </button>
 
-              <Button
-                size="sm"
-                onClick={handleBatchDownload}
-                disabled={downloading}
-                className="bg-[#FF6B2C] hover:bg-[#FF6B2C]/90 text-black text-xs sm:text-sm"
-              >
-                {downloading ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 animate-spin" />
-                    <span className="hidden sm:inline">Packaging...</span>
-                    <span className="sm:hidden">...</span>
-                  </>
-                ) : (
-                  <>
-                    <Archive className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />
-                    <span className="hidden sm:inline">Download ZIP</span>
-                    <span className="sm:hidden">ZIP</span>
-                  </>
-                )}
-              </Button>
-
-              <Button
-                size="sm"
-                onClick={handleBulkDelete}
-                disabled={deleting}
-                className="bg-destructive hover:bg-destructive/90 text-white text-xs sm:text-sm"
-              >
-                {deleting ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 animate-spin" />
-                    <span className="hidden sm:inline">Deleting...</span>
-                    <span className="sm:hidden">...</span>
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />
-                    Delete
-                  </>
-                )}
-              </Button>
+                <button
+                  type="button"
+                  onClick={handleBulkDelete}
+                  disabled={deleting || selectedIds.size === 0}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-red-400/20 bg-red-500/[0.06] px-3.5 text-[12.5px] font-semibold text-red-200 transition-colors hover:bg-red-500/[0.12] disabled:opacity-50"
+                >
+                  {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  {deleting ? "Deleting..." : "Delete"}
+                </button>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Toast Container */}
+        {/* Toast container */}
         {toasts.length > 0 && (
-          <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none">
+          <div className="pointer-events-none fixed right-4 top-4 z-[80] flex w-[calc(100%-2rem)] max-w-sm flex-col gap-2">
             {toasts.map((toast) => (
-              <SuccessToast
-                key={toast.id}
-                message={toast}
-                onClose={() => removeToast(toast.id)}
-              />
+              <SuccessToast key={toast.id} message={toast} onClose={() => removeToast(toast.id)} />
             ))}
           </div>
         )}
       </div>
+
+      {/* Preview modal */}
+      {previewGen && (
+        <AssetPreviewModal
+          gen={previewGen}
+          actions={actions}
+          onClose={() => setPreviewId(null)}
+          onPrev={previewIndex > 0 ? () => setPreviewId(filteredGenerations[previewIndex - 1].id) : undefined}
+          onNext={
+            previewIndex < filteredGenerations.length - 1
+              ? () => setPreviewId(filteredGenerations[previewIndex + 1].id)
+              : undefined
+          }
+        />
+      )}
 
       {/* Inpaint Editor Modal */}
       {inpaintGeneration && (
@@ -1225,7 +845,7 @@ export default function GalleryPage() {
             styleId: inpaintGeneration.styleId,
           }}
           onClose={() => setInpaintGeneration(null)}
-          onSave={(newUrl) => {
+          onSave={() => {
             // Refresh gallery after saving
             loadGenerations();
             setInpaintGeneration(null);

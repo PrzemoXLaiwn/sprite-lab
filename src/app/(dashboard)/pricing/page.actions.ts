@@ -2,7 +2,16 @@
 
 import { createClient } from "@/lib/supabase/server";
 import prisma from "@/lib/prisma";
-import { PLANS } from "@/lib/stripe";
+import { PLANS, isLaunchPromoActive } from "@/lib/stripe";
+
+/**
+ * Whether credit-pack launch bonuses are currently granted. Mirrors the check
+ * in /api/stripe/create-credit-intent so the UI never advertises a bonus the
+ * server won't give. Read-only; no auth needed.
+ */
+export async function fetchLaunchPromoStatus(): Promise<{ active: boolean }> {
+  return { active: isLaunchPromoActive() };
+}
 
 // Map plan keys to friendly names
 const PLAN_NAMES: Record<string, string> = {

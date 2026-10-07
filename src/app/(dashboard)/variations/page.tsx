@@ -2,48 +2,44 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import Image from "next/image";
-import Link from "next/link";
-import {
-  Download,
-  Loader2,
-  ArrowLeft,
-  Shuffle,
-  Flame,
-  Info,
-  Zap,
-  Sparkles,
-} from "lucide-react";
+import { Shuffle, Info, Download } from "lucide-react";
 import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
+import {
+  ToolShell, ToolPanel, Field, CanvasColumn, CanvasFrame, CanvasImage,
+  BackdropToggle, Chip, PrimaryButton, DownloadButton, SecondaryButton, ErrorNote, InfoNote,
+  SourceCard, RecentAssetPicker, ProcessingOverlay, CanvasEmptyHint, PageFallback,
+  isPixelStyleId, useElapsedSeconds, type ToolBgModeId, type ToolGeneration,
+} from "@/components/tools/ToolWorkspace";
 
-function VariationsPageContent() {
-  const searchParams = useSearchParams();
-  const generationId = searchParams.get("id");
+type Similarity = "low" | "medium" | "high";
 
+const SIMILARITY_LEVELS: { id: Similarity; name: string; desc: string }[] = [
+  { id: "high", name: "High", desc: "Very similar, minor changes" },
+  { id: "medium", name: "Medium", desc: "Balanced variations" },
+  { id: "low", name: "Low", desc: "More creative changes" },
+];
+
+function VariationsPageContent({ generationId }: { generationId: string | null }) {
   const [loading, setLoading] = useState(false);
   const [loadingOriginal, setLoadingOriginal] = useState(true);
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [variationImages, setVariationImages] = useState<string[]>([]);
   const [numVariations, setNumVariations] = useState<1 | 2 | 3 | 4>(2);
-  const [similarity, setSimilarity] = useState<"low" | "medium" | "high">("medium");
+  const [similarity, setSimilarity] = useState<Similarity>("medium");
   const [prompt, setPrompt] = useState("");
   const [error, setError] = useState("");
-  const [originalData, setOriginalData] = useState<any>(null);
-
-  const similarityLevels = [
-    { id: "high", name: "High Similarity", desc: "Very similar, minor changes", emoji: "🎯" },
-    { id: "medium", name: "Medium", desc: "Balanced variations", emoji: "⚖️" },
-    { id: "low", name: "Low Similarity", desc: "More creative changes", emoji: "🎲" },
-  ];
+  const [originalData, setOriginalData] = useState<ToolGeneration | null>(null);
+  const [bgMode, setBgMode] = useState<ToolBgModeId>("checker");
+  // -1 = original, otherwise index into variationImages
+  const [selected, setSelected] = useState(-1);
+  const seconds = useElapsedSeconds(loading);
 
   // Load original generation
   useEffect(() => {
     if (generationId) {
       loadOriginalGeneration();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [generationId]);
 
   const loadOriginalGeneration = async () => {
@@ -57,7 +53,7 @@ function VariationsPageContent() {
       } else {
         setError("Failed to load original image");
       }
-    } catch (err) {
+    } catch {
       setError("Error loading image");
     } finally {
       setLoadingOriginal(false);
@@ -73,6 +69,7 @@ function VariationsPageContent() {
     setLoading(true);
     setError("");
     setVariationImages([]);
+    setSelected(-1);
 
     try {
       const response = await fetch("/api/variations", {
@@ -94,6 +91,7 @@ function VariationsPageContent() {
       }
 
       setVariationImages(data.imageUrls);
+      if (Array.isArray(data.imageUrls) && data.imageUrls.length > 0) setSelected(0);
       triggerCreditsRefresh();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Something went wrong";
@@ -128,250 +126,156 @@ function VariationsPageContent() {
     }
   };
 
-  if (!generationId) {
-    return (
-      <div className="min-h-screen bg-[#0a0c10] flex items-center justify-center p-4">
-        <div className="glass-card rounded-2xl p-8 text-center max-w-md">
-          <Flame className="w-16 h-16 text-[#ef4444] mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-white mb-2">No Image Selected</h2>
-          <p className="text-[#a0a0b0] mb-6">Please select an image from your gallery to create variations.</p>
-          <Link href="/gallery">
-            <Button className="btn-primary">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Gallery
-            </Button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  const pixel = isPixelStyleId(originalData?.styleId);
+  const isLoadingSource = !!generationId && loadingOriginal;
+  const activeImage = selected >= 0 ? variationImages[selected] : originalImage;
+  const thumbs = originalImage && variationImages.length > 0 ? [originalImage, ...variationImages] : [];
 
   return (
-    <div className="min-h-screen bg-[#0a0c10] relative overflow-hidden">
-      {/* Background */}
-      <div className="fixed inset-0 gradient-mesh pointer-events-none" />
-      <div className="fixed inset-0 grid-pattern pointer-events-none opacity-50" />
-      <div className="fixed top-20 left-10 w-96 h-96 bg-[#FF6B2C]/10 rounded-full blur-[120px] animate-glow-pulse pointer-events-none" />
+    <ToolShell>
+      <ToolPanel
+        title="Variations"
+        cost={numVariations}
+        backHref="/assets"
+        footer={
+          <>
+            <PrimaryButton onClick={handleGenerateVariations} disabled={loading || !originalImage} loading={loading}
+              loadingLabel={<>Generating… <span className="font-mono">{seconds}s</span></>}
+              icon={<Shuffle className="h-4 w-4" />}
+              label={`Generate ${numVariations} variation${numVariations > 1 ? "s" : ""}`} cost={numVariations} />
+            <p className="mt-2 text-center font-mono text-[11px] text-[#7A8294]">~60–120s · 1 credit each</p>
+            {error && <ErrorNote>{error}</ErrorNote>}
+          </>
+        }
+      >
+        <Field label="Source">
+          <SourceCard imageUrl={originalImage} loading={isLoadingSource} prompt={originalData?.prompt} pixel={pixel} />
+        </Field>
 
-      <div className="relative z-10 p-4 lg:p-8 max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <Link href="/gallery">
-            <Button variant="outline" className="mb-4 border-[rgba(255,255,255,0.06)]">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Gallery
-            </Button>
-          </Link>
-          <h1 className="text-3xl font-display font-black gradient-text neon-text mb-2">
-            CREATE VARIATIONS
-          </h1>
-          <p className="text-[#a0a0b0]">Generate multiple variations of your image</p>
-        </div>
-
-        {/* Original Image */}
-        <div className="mb-6 glass-card rounded-2xl overflow-hidden">
-          <div className="p-4 border-b border-[rgba(255,255,255,0.06)]">
-            <h3 className="font-semibold text-white flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-[#FF6B2C]" />
-              Original Image
-            </h3>
+        <Field label="Count">
+          <div className="grid grid-cols-4 gap-1 rounded-xl bg-white/[0.04] p-1">
+            {([1, 2, 3, 4] as const).map((num) => (
+              <button key={num} type="button" onClick={() => setNumVariations(num)} disabled={loading}
+                className={`rounded-lg py-1.5 font-mono text-[13px] font-semibold transition-colors disabled:cursor-not-allowed ${
+                  numVariations === num ? "bg-white/[0.1] text-white shadow-sm" : "text-[#8B93A5] hover:text-white"
+                }`}>
+                {num}
+              </button>
+            ))}
           </div>
-          <div className="aspect-video bg-[#11151b] flex items-center justify-center relative">
-            <div className="absolute inset-0 grid-pattern-dense opacity-30" />
-            {loadingOriginal ? (
-              <Loader2 className="w-12 h-12 text-[#FF6B2C] animate-spin" />
-            ) : originalImage ? (
-              <img
-                src={originalImage}
-                alt="Original"
-                className="w-full h-full object-contain p-4 relative z-10"
-              />
-            ) : (
-              <p className="text-[#a0a0b0]">Failed to load image</p>
-            )}
+        </Field>
+
+        <Field label="Similarity" hint={SIMILARITY_LEVELS.find((l) => l.id === similarity)?.desc}>
+          <div className="grid grid-cols-3 gap-1 rounded-xl bg-white/[0.04] p-1">
+            {SIMILARITY_LEVELS.map((level) => (
+              <button key={level.id} type="button" onClick={() => setSimilarity(level.id)} disabled={loading} title={level.desc}
+                className={`rounded-lg py-1.5 text-[12px] font-medium transition-colors disabled:cursor-not-allowed ${
+                  similarity === level.id ? "bg-white/[0.1] text-white shadow-sm" : "text-[#8B93A5] hover:text-white"
+                }`}>
+                {level.name}
+              </button>
+            ))}
           </div>
-        </div>
+        </Field>
 
-        {/* Variations Grid */}
-        {variationImages.length > 0 && (
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-white flex items-center gap-2">
-                <Shuffle className="w-5 h-5 text-[#FF6B2C]" />
-                Generated Variations ({variationImages.length})
-              </h3>
-              <Button
-                onClick={handleDownloadAll}
-                className="bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] hover:opacity-90 text-white"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Download All
-              </Button>
-            </div>
-            <div className={`grid gap-4 ${
-              variationImages.length === 1 ? "grid-cols-1" :
-              variationImages.length === 2 ? "grid-cols-2" :
-              "grid-cols-2 lg:grid-cols-4"
-            }`}>
-              {variationImages.map((imageUrl, index) => (
-                <div key={index} className="glass-card rounded-xl overflow-hidden group">
-                  <div className="aspect-square bg-[#11151b] relative">
-                    <div className="absolute inset-0 grid-pattern-dense opacity-30" />
-                    <img
-                      src={imageUrl}
-                      alt={`Variation ${index + 1}`}
-                      className="w-full h-full object-contain p-4 relative z-10"
-                    />
-                    <Button
-                      size="sm"
-                      onClick={() => handleDownload(imageUrl, index)}
-                      className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-[#FF6B2C] hover:bg-[#FF6B2C]/80 text-white z-20"
-                    >
-                      <Download className="w-3 h-3 mr-1" />
-                      Download
-                    </Button>
-                  </div>
-                  <div className="p-3 border-t border-[rgba(255,255,255,0.06)]">
-                    <p className="text-xs text-[#a0a0b0]">Variation {index + 1}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+        <Field label="Guide the variations (optional)">
+          <div className="rounded-2xl border border-white/[0.08] bg-[#151922] transition-colors focus-within:border-[#FF8A3D]/50">
+            <textarea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="e.g. different colors, add effects…"
+              disabled={loading}
+              rows={3}
+              className="w-full resize-none bg-transparent px-4 py-3 text-[14px] leading-relaxed text-white outline-none placeholder:text-[#7A8294] disabled:opacity-60"
+            />
           </div>
-        )}
+        </Field>
 
-        {/* Loading State */}
-        {loading && (
-          <div className="mb-6 glass-card rounded-2xl p-12">
-            <div className="text-center">
-              <div className="relative w-24 h-24 mx-auto mb-4">
-                <div className="absolute inset-0 bg-[#FF6B2C] rounded-full blur-xl opacity-50 animate-pulse" />
-                <div className="relative w-full h-full rounded-full border-4 border-[rgba(255,255,255,0.06)] border-t-[#FF6B2C] animate-spin" />
-                <Shuffle className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 text-[#FF6B2C]" />
-              </div>
-              <p className="font-display font-bold text-white mb-2">Generating {numVariations} Variations...</p>
-              <p className="text-sm text-[#a0a0b0]">This may take 60-120 seconds</p>
-            </div>
-          </div>
-        )}
+        <InfoNote icon={<Info className="h-3.5 w-3.5 text-[#8B93A5]" />}>
+          High similarity keeps the original look with minor tweaks. Low similarity creates more creative variations. Each variation costs 1 credit.
+        </InfoNote>
+      </ToolPanel>
 
-        {/* Controls */}
-        <div className="glass-card rounded-2xl p-6">
-          <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
-            <Shuffle className="w-5 h-5 text-[#FF6B2C]" />
-            Variation Settings
-          </h3>
-
-          <div className="space-y-6">
-            {/* Number of Variations */}
-            <div>
-              <label className="text-sm font-medium text-white mb-3 block">Number of Variations</label>
-              <div className="grid grid-cols-4 gap-3">
-                {[1, 2, 3, 4].map((num) => (
-                  <button
-                    key={num}
-                    onClick={() => setNumVariations(num as 1 | 2 | 3 | 4)}
-                    disabled={loading}
-                    className={`p-4 rounded-xl border-2 transition-all ${
-                      numVariations === num
-                        ? "border-[#FF6B2C] bg-[#FF6B2C]/10"
-                        : "border-[rgba(255,255,255,0.06)] hover:border-[#FF6B2C]/50"
-                    }`}
-                  >
-                    <div className="text-2xl font-bold text-white mb-1">{num}</div>
-                    <div className="text-xs text-[#a0a0b0]">{num} {num === 1 ? "image" : "images"}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Similarity Level */}
-            <div>
-              <label className="text-sm font-medium text-white mb-3 block">Similarity Level</label>
-              <div className="grid grid-cols-3 gap-3">
-                {similarityLevels.map((level) => (
-                  <button
-                    key={level.id}
-                    onClick={() => setSimilarity(level.id as "low" | "medium" | "high")}
-                    disabled={loading}
-                    className={`p-4 rounded-xl border-2 transition-all text-left ${
-                      similarity === level.id
-                        ? "border-[#FF6B2C] bg-[#FF6B2C]/10"
-                        : "border-[rgba(255,255,255,0.06)] hover:border-[#FF6B2C]/50"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xl">{level.emoji}</span>
-                      <span className={`font-bold text-sm ${similarity === level.id ? "text-[#FF6B2C]" : "text-white"}`}>
-                        {level.name}
-                      </span>
-                    </div>
-                    <p className="text-xs text-[#a0a0b0]">{level.desc}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Optional Prompt */}
-            <div>
-              <label className="text-sm font-medium text-white mb-3 block">
-                Optional: Guide the variations
-              </label>
-              <Input
-                placeholder="e.g., different colors, add effects..."
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                className="input-gaming"
-                disabled={loading}
-              />
-            </div>
-
-            <div className="p-3 rounded-lg bg-[#FF6B2C]/10 border border-[#FF6B2C]/20 flex items-start gap-2">
-              <Info className="w-4 h-4 text-[#FF6B2C] mt-0.5 shrink-0" />
-              <p className="text-xs text-[#FF6B2C]">
-                <strong>Pro tip:</strong> High similarity keeps the original look with minor tweaks. Low similarity creates more creative variations. Each variation costs 1 credit.
-              </p>
-            </div>
-
-            <Button
-              onClick={handleGenerateVariations}
-              disabled={loading || !originalImage}
-              className="w-full h-12 bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] hover:opacity-90 text-white font-display font-bold text-base disabled:opacity-50"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Shuffle className="w-5 h-5 mr-2" />
-                  GENERATE {numVariations} VARIATION{numVariations > 1 ? "S" : ""} ({numVariations} {numVariations === 1 ? "credit" : "credits"})
-                </>
+      <CanvasColumn
+        topLeft={
+          originalImage ? (
+            <>
+              <Chip>{selected >= 0 ? `variation ${selected + 1} of ${variationImages.length}` : "original"}</Chip>
+              {pixel && <Chip>pixel art</Chip>}
+            </>
+          ) : (
+            <span className="text-[12px] text-[#7A8294]">Your variations will appear here</span>
+          )
+        }
+        topRight={<BackdropToggle value={bgMode} onChange={setBgMode} />}
+        actions={
+          variationImages.length > 0 ? (
+            <>
+              {selected >= 0 && (
+                <DownloadButton onClick={() => handleDownload(variationImages[selected], selected)} />
               )}
-            </Button>
-
-            {error && (
-              <div className="p-4 rounded-xl bg-[#ef4444]/10 border border-[#ef4444]/30 text-[#ef4444] text-sm flex items-center gap-3">
-                <Flame className="w-5 h-5 shrink-0" />
-                {error}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+              {variationImages.length > 1 && (
+                <SecondaryButton onClick={handleDownloadAll}>
+                  <Download className="h-4 w-4" /> Download all <span className="font-mono text-[12px] text-[#8B93A5]">({variationImages.length})</span>
+                </SecondaryButton>
+              )}
+            </>
+          ) : undefined
+        }
+        below={
+          thumbs.length > 0 ? (
+            <div className="flex justify-center gap-2 overflow-x-auto px-5 pb-5">
+              {thumbs.map((url, i) => {
+                const idx = i - 1; // -1 = original
+                const active = selected === idx;
+                return (
+                  <button key={`${url}-${i}`} type="button" onClick={() => setSelected(idx)}
+                    title={idx < 0 ? "Original" : `Variation ${idx + 1}`}
+                    className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border bg-[#151922] transition-all ${
+                      active ? "border-[#FF8A3D] ring-2 ring-[#FF8A3D]/25" : "border-white/[0.06] opacity-70 hover:opacity-100"
+                    }`}
+                    style={{ backgroundImage: "repeating-conic-gradient(#ffffff08 0% 25%, transparent 0% 50%)", backgroundSize: "10px 10px" }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt="" className={`h-full w-full object-contain p-1.5 ${pixel ? "pixel-perfect" : ""}`} />
+                    <span className="absolute bottom-0.5 left-1 font-mono text-[9px] text-white/80">{idx < 0 ? "orig" : idx + 1}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : undefined
+        }
+      >
+        <CanvasFrame bg={bgMode}>
+          {!generationId ? (
+            <RecentAssetPicker toolPath="/variations" title="Create variations" />
+          ) : isLoadingSource ? (
+            <ProcessingOverlay icon={<Shuffle className="h-5 w-5" />} title="Loading sprite…" seconds={0} hint="fetching" />
+          ) : activeImage ? (
+            <>
+              <CanvasImage src={activeImage} alt={selected >= 0 ? `Variation ${selected + 1}` : "Original"} pixel={pixel} dim={loading} />
+              {loading && (
+                <ProcessingOverlay icon={<Shuffle className="h-5 w-5" />} title={`Generating ${numVariations} variation${numVariations > 1 ? "s" : ""}…`} seconds={seconds} hint="usually 60–120s" />
+              )}
+            </>
+          ) : (
+            <CanvasEmptyHint icon={<Shuffle className="h-5 w-5" />} title="Couldn't load this sprite" subtitle="Pick another one from your assets." />
+          )}
+        </CanvasFrame>
+      </CanvasColumn>
+    </ToolShell>
   );
+}
+
+function VariationsPageKeyed() {
+  const generationId = useSearchParams().get("id");
+  // Keyed so picking another sprite resets the tool state.
+  return <VariationsPageContent key={generationId ?? "none"} generationId={generationId} />;
 }
 
 export default function VariationsPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-[#0a0c10] flex items-center justify-center">
-        <Loader2 className="w-12 h-12 text-[#FF6B2C] animate-spin" />
-      </div>
-    }>
-      <VariationsPageContent />
+    <Suspense fallback={<PageFallback />}>
+      <VariationsPageKeyed />
     </Suspense>
   );
 }

@@ -4,7 +4,10 @@ import { prisma } from "@/lib/prisma";
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const limit = Math.min(parseInt(searchParams.get("limit") || "8"), 20);
+    const parsedLimit = parseInt(searchParams.get("limit") || "8", 10);
+    const limit = Number.isFinite(parsedLimit)
+      ? Math.min(Math.max(parsedLimit, 1), 20)
+      : 8;
 
     // Fetch recent public generations with good ratings/likes
     const generations = await prisma.generation.findMany({

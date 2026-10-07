@@ -128,6 +128,9 @@ export const GENERATE_CATEGORIES: GenerateCategory[] = [
       { categoryId: "ENVIRONMENT", subcategoryId: "BUILDINGS", label: "Buildings" },
       { categoryId: "ENVIRONMENT", subcategoryId: "PROPS", label: "Props" },
       { categoryId: "ENVIRONMENT", subcategoryId: "DUNGEON", label: "Dungeon" },
+      // Seamless square tiles: no background removal, fill the whole square
+      { categoryId: "TILESETS", subcategoryId: "GROUND", label: "Floor Tiles" },
+      { categoryId: "TILESETS", subcategoryId: "WALLS", label: "Wall Tiles" },
     ],
   },
   {

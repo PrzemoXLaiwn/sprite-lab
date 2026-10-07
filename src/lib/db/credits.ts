@@ -50,34 +50,20 @@ export async function getCreditTransactions(userId: string, limit = 50) {
 }
 
 // -----------------------------------------------------------------------------
-// WRITE — simple increment/decrement (not atomic)
+// WRITE — simple increment/decrement
 // -----------------------------------------------------------------------------
 
 /**
- * Simple (non-atomic) credit deduction. Prefer checkAndDeductCredits for
- * generation flows where race conditions must be prevented.
+ * Credit deduction that never drives the balance negative.
+ * Kept for backwards compatibility — delegates to checkAndDeductCredits.
  */
 export async function deductCredit(userId: string, amount = 1) {
-  try {
-    const user = await prisma.user.update({
-      where: { id: userId },
-      data: { credits: { decrement: amount } },
-    });
-
-    await prisma.creditTransaction.create({
-      data: {
-        userId,
-        amount: -amount,
-        type: "GENERATION",
-        description: "Image generation",
-      },
-    });
-
-    return { success: true, credits: user.credits };
-  } catch (error) {
-    console.error("Failed to deduct credit:", error);
-    return { success: false, error };
+  const result = await checkAndDeductCredits(userId, amount);
+  if (!result.success) {
+    console.error("Failed to deduct credit:", result.error);
+    return { success: false, error: result.error };
   }
+  return { success: true, credits: result.credits };
 }
 
 export async function addCredits(
@@ -122,18 +108,29 @@ export async function checkAndDeductCredits(
   amount = 1
 ): Promise<{ success: boolean; credits?: number; error?: string }> {
   try {
+    if (!Number.isInteger(amount) || amount < 1) throw new Error("Invalid amount");
+
     const result = await prisma.$transaction(async (tx) => {
-      const user = await tx.user.findUnique({
-        where: { id: userId },
-        select: { credits: true },
+      // Conditional decrement: the balance check and the update are a single
+      // UPDATE ... WHERE credits >= amount, so concurrent requests cannot both
+      // pass the check (a read-then-update is racy under READ COMMITTED).
+      const { count } = await tx.user.updateMany({
+        where: { id: userId, credits: { gte: amount } },
+        data: { credits: { decrement: amount } },
       });
 
-      if (!user) throw new Error("User not found");
-      if (user.credits < amount) throw new Error("INSUFFICIENT_CREDITS");
+      if (count !== 1) {
+        const exists = await tx.user.findUnique({
+          where: { id: userId },
+          select: { id: true },
+        });
+        if (!exists) throw new Error("User not found");
+        throw new Error("INSUFFICIENT_CREDITS");
+      }
 
-      const updatedUser = await tx.user.update({
+      const updatedUser = await tx.user.findUniqueOrThrow({
         where: { id: userId },
-        data: { credits: { decrement: amount } },
+        select: { credits: true },
       });
 
       await tx.creditTransaction.create({

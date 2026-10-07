@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import {
   Sparkles,
   Images,
@@ -13,11 +11,13 @@ import {
   Cuboid,
   Zap,
   Download,
+  ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { fetchDashboardData } from "./page.actions";
 import { CommunityShowcase } from "@/components/dashboard/CommunityShowcase";
+import { SHOWCASE, isPixelShowcase } from "@/data/showcase";
 
 interface DashboardData {
   stats: {
@@ -45,57 +45,104 @@ interface PendingJob {
   creditsUsed: number;
 }
 
+const BTN_PRIMARY =
+  "px-corners inline-flex items-center justify-center gap-2 bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] px-4 py-2.5 text-[13px] font-semibold text-white transition hover:brightness-110";
+const CARD = "rounded-2xl border border-white/[0.06] bg-[#0E1016]";
+const CHECKER = {
+  backgroundImage: "repeating-conic-gradient(#ffffff08 0% 25%, transparent 0% 50%)",
+  backgroundSize: "16px 16px",
+};
+
+function planLabel(plan?: string) {
+  const p = (plan || "FREE").toUpperCase();
+  if (p === "UNLIMITED") return "Studio";
+  if (p === "PRO") return "Pro";
+  if (p === "STARTER") return "Starter";
+  if (p === "LIFETIME") return "Lifetime";
+  return "Free";
+}
+
 function StatSkeleton() {
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <div className="h-4 w-24 bg-muted rounded animate-pulse mb-2" />
-        <div className="h-9 w-16 bg-muted rounded animate-pulse" />
-        <div className="h-3 w-20 bg-muted rounded animate-pulse mt-1" />
-      </CardContent>
-    </Card>
+    <div className={`${CARD} p-5`}>
+      <div className="mb-3 h-3 w-20 animate-pulse rounded bg-white/[0.06]" />
+      <div className="h-8 w-16 animate-pulse rounded bg-white/[0.06]" />
+      <div className="mt-2 h-3 w-24 animate-pulse rounded bg-white/[0.04]" />
+    </div>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  hint,
+  icon: Icon,
+  accent,
+}: {
+  label: string;
+  value: number;
+  hint: string;
+  icon: React.ComponentType<{ className?: string }>;
+  accent?: boolean;
+}) {
+  return (
+    <div className={`${CARD} p-5`}>
+      <div className="flex items-center justify-between">
+        <p className="text-[12px] text-[#8B93A5]">{label}</p>
+        <Icon className={`h-4 w-4 ${accent ? "text-[#FF8A3D]" : "text-[#7A8294]"}`} />
+      </div>
+      <p className="mt-2 font-sans tracking-tight text-[28px] font-semibold leading-none tabular-nums text-white">{value}</p>
+      <p className="mt-2 font-mono text-[11px] text-[#7A8294]">{hint}</p>
+    </div>
   );
 }
 
 // ── New User Welcome — shown when 0 generations ─────────────────────────────
 function NewUserWelcome({ credits }: { credits: number }) {
   return (
-    <div className="mb-8 rounded-2xl border border-primary/20 bg-linear-to-br from-primary/5 to-purple-500/5 p-6 md:p-8">
-      <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+    <div className={`${CARD} pixel-grid p-6 md:p-8`}>
+      <div className="flex flex-col items-start gap-6 md:flex-row md:items-center">
         <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            <span className="text-xs font-semibold text-primary uppercase tracking-wider">Ready to start</span>
-          </div>
-          <h2 className="text-xl md:text-2xl font-bold mb-2">
-            You have <span className="text-primary">{credits} credits</span> — generate your first asset
+          <span className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-[#FF8A3D]/25 bg-[#FF8A3D]/10 px-2.5 py-1 font-mono text-[11px] text-[#FFB27A]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#FF8A3D]" />
+            ready to start
+          </span>
+          <h2 className="text-[20px] font-semibold tracking-tight text-white md:text-[22px]">
+            You have <span className="text-[#FFB27A]">{credits} credits</span> — generate your first asset
           </h2>
-          <p className="text-sm text-muted-foreground mb-4 max-w-md">
+          <p className="mb-4 mt-2 max-w-md text-[13px] text-[#8B93A5]">
             Pick a type, choose a style, describe what you want. Your asset generates in about 5 seconds.
           </p>
-          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mb-5">
-            {["⚔️ Weapons", "🧪 Potions", "👾 Enemies", "🎮 Icons", "🛡️ Armor"].map((tag) => (
-              <span key={tag} className="px-2.5 py-1 rounded-full border border-border bg-background">{tag}</span>
+          <div className="mb-5 flex flex-wrap gap-1.5">
+            {["Weapons", "Potions", "Enemies", "Icons", "Armor"].map((tag) => (
+              <span key={tag} className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-[11px] text-[#C9CFDB]">
+                {tag}
+              </span>
             ))}
           </div>
-          <Button size="lg" asChild className="gap-2">
-            <Link href="/generate">
-              <Sparkles className="w-4 h-4" />
-              Generate Now — Free
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </Button>
+          <Link href="/generate" className={BTN_PRIMARY}>
+            <Sparkles className="h-4 w-4" />
+            Generate now — free
+            <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
 
-        {/* Quick example tiles */}
-        <div className="grid grid-cols-3 sm:grid-cols-3 gap-1.5 sm:gap-2 shrink-0">
-          {["⚔️", "🧪", "👾", "💎", "🛡️", "🔮"].map((emoji, i) => (
-            <div
-              key={i}
-              className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl border border-border bg-background/60 flex items-center justify-center text-2xl hover:scale-105 transition-transform"
+        {/* Example tiles — each one opens the generator pre-filled */}
+        <div className="grid shrink-0 grid-cols-3 gap-2">
+          {SHOWCASE.slice(0, 6).map((ex) => (
+            <Link
+              key={ex.id}
+              href={`/generate?${new URLSearchParams({ prompt: ex.prompt, styleId: ex.styleId, categoryId: ex.categoryId }).toString()}`}
+              title={`Try: ${ex.prompt}`}
+              className="group relative h-16 w-16 overflow-hidden rounded-xl border border-white/[0.06] bg-[#151922] transition-colors hover:border-[#FF8A3D]/50 sm:h-20 sm:w-20"
             >
-              {emoji}
-            </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={ex.imageUrl}
+                alt={ex.prompt}
+                className={`absolute inset-0 h-full w-full object-contain p-2 transition-transform duration-300 group-hover:scale-110 ${isPixelShowcase(ex) ? "pixel-perfect" : ""}`}
+              />
+            </Link>
           ))}
         </div>
       </div>
@@ -158,16 +205,31 @@ export default function DashboardPage() {
     (job) => job.status === "pending" || job.status === "processing"
   );
 
+  const header = (
+    <div className="flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <h1 className="font-display text-[22px] font-semibold tracking-tight text-white">Usage</h1>
+        <p className="mt-1 text-[13px] text-[#8B93A5]">Credits, activity and your latest generations</p>
+      </div>
+      <Link
+        href="/pricing"
+        className="inline-flex items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3.5 py-2 text-[13px] font-medium text-[#C9CFDB] transition-colors hover:bg-white/[0.08] hover:text-white"
+      >
+        <Zap className="h-4 w-4 text-[#FF8A3D]" /> Get credits
+      </Link>
+    </div>
+  );
+
   if (loading) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
-        <div className="h-8 w-40 bg-muted rounded animate-pulse mb-8" />
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+      <div className="mx-auto max-w-[1100px] space-y-6 px-5 py-6 lg:px-8">
+        {header}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {[1, 2, 3].map((i) => <StatSkeleton key={i} />)}
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="aspect-square rounded-xl bg-muted animate-pulse" />
+            <div key={i} className="aspect-square animate-pulse rounded-xl bg-[#151922]" />
           ))}
         </div>
       </div>
@@ -179,234 +241,174 @@ export default function DashboardPage() {
   const recentGens = data?.recentGenerations ?? [];
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
+    <div className="mx-auto max-w-[1100px] space-y-6 px-5 py-6 text-[#ECEEF3] lg:px-8">
+      {header}
 
       {/* ── Active Generations ───────────────────────────────────────── */}
       {activePendingJobs.length > 0 && (
-        <Card className="border-primary/30 bg-primary/5">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-              <CardTitle className="text-base">
-                Generating ({activePendingJobs.length})
-              </CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {activePendingJobs.map((job) => (
-                <div
-                  key={job.id}
-                  className="flex items-center gap-4 p-3 rounded-lg bg-background/50 border border-border"
-                >
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                    {job.mode === "3d"
-                      ? <Cuboid className="w-5 h-5 text-purple-400" />
-                      : <Loader2 className="w-5 h-5 text-primary animate-spin" />
-                    }
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{job.prompt}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-linear-to-r from-primary to-purple-500 transition-all duration-500"
-                          style={{ width: `${job.progress}%` }}
-                        />
-                      </div>
-                      <span className="text-xs text-muted-foreground shrink-0">
-                        {job.progressMessage || (job.status === "processing" ? "Processing…" : "Queued")}
-                      </span>
+        <div className="rounded-2xl border border-[#FF8A3D]/20 bg-[#FF8A3D]/[0.04] p-5">
+          <div className="mb-3 flex items-center gap-2">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#FF8A3D]" />
+            <h2 className="text-[15px] font-semibold text-white">Generating</h2>
+            <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 font-mono text-[11px] text-[#C9CFDB]">
+              {activePendingJobs.length}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {activePendingJobs.map((job) => (
+              <div
+                key={job.id}
+                className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-[#151922] p-3"
+              >
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.04]">
+                  {job.mode === "3d"
+                    ? <Cuboid className="h-4 w-4 text-[#FFB27A]" />
+                    : <Loader2 className="h-4 w-4 animate-spin text-[#FF8A3D]" />
+                  }
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13px] font-medium text-white">{job.prompt}</p>
+                  <div className="mt-1.5 flex items-center gap-3">
+                    <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/[0.08]">
+                      <div
+                        className="h-full bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] transition-all duration-500"
+                        style={{ width: `${job.progress}%` }}
+                      />
                     </div>
+                    <span className="shrink-0 font-mono text-[11px] text-[#8B93A5]">
+                      {job.progressMessage || (job.status === "processing" ? "Processing…" : "Queued")}
+                    </span>
                   </div>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* ── New user welcome ─────────────────────────────────────────── */}
       {isNewUser && <NewUserWelcome credits={stats?.credits ?? 0} />}
 
       {/* ── Stats ────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="pt-5">
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Credits</p>
-              <Zap className="w-4 h-4 text-primary" />
-            </div>
-            <p className="text-3xl font-bold">{stats?.credits ?? 0}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{stats?.plan ?? "FREE"} plan</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-5">
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Generated</p>
-              <Images className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <p className="text-3xl font-bold">{stats?.totalGenerations ?? 0}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">All time</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-5">
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">This Week</p>
-              <TrendingUp className="w-4 h-4 text-green-500" />
-            </div>
-            <p className="text-3xl font-bold">{stats?.recentGenerations ?? 0}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Last 7 days</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatCard label="Credits" value={stats?.credits ?? 0} hint={`${planLabel(stats?.plan)} plan`} icon={Zap} accent />
+        <StatCard label="Total generated" value={stats?.totalGenerations ?? 0} hint="all time" icon={Images} />
+        <StatCard label="This week" value={stats?.recentGenerations ?? 0} hint="last 7 days" icon={TrendingUp} />
       </div>
 
       {/* ── Main grid ────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
 
         {/* Recent Generations */}
         <div className="lg:col-span-2">
-          <Card className="h-full">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">Recent Generations</CardTitle>
-                {recentGens.length > 0 && (
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link href="/gallery" className="gap-1.5">
-                      View all <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
-                  </Button>
-                )}
+          <div className={`${CARD} h-full p-6`}>
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-[15px] font-semibold text-white">Recent generations</h2>
+                <p className="mt-1 text-[13px] text-[#8B93A5]">Your latest assets</p>
               </div>
-            </CardHeader>
-            <CardContent>
-              {recentGens.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {recentGens.map((gen) => (
-                    <div
-                      key={gen.id}
-                      className="relative aspect-square rounded-xl overflow-hidden border border-border hover:border-primary/40 transition-colors group cursor-pointer"
-                      style={{
-                        backgroundImage: "repeating-conic-gradient(#80808010 0% 25%, transparent 0% 50%)",
-                        backgroundSize: "16px 16px",
-                      }}
-                    >
-                      <Image
-                        src={gen.imageUrl}
-                        alt={gen.prompt}
-                        fill
-                        sizes="(max-width: 640px) 50vw, 200px"
-                        className="object-contain p-1"
-                        loading="lazy"
-                      />
-                      <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-2">
-                        <p className="text-xs text-white text-center line-clamp-2">{gen.prompt}</p>
-                        <a
-                          href={gen.imageUrl}
-                          download
-                          onClick={(e) => e.stopPropagation()}
-                          className="flex items-center gap-1 px-2 py-1 rounded-md bg-white/10 hover:bg-white/20 text-white text-xs transition-colors"
-                        >
-                          <Download className="w-3 h-3" />
-                          Download
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                /* Empty state */
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <div className="w-16 h-16 rounded-2xl border-2 border-dashed border-border flex items-center justify-center mb-4">
-                    <Sparkles className="w-7 h-7 text-muted-foreground/40" />
-                  </div>
-                  <p className="text-sm font-medium mb-1">No assets yet</p>
-                  <p className="text-xs text-muted-foreground mb-5 max-w-[200px]">
-                    Generate your first sprite, icon, or enemy in seconds
-                  </p>
-                  <Button asChild>
-                    <Link href="/generate" className="gap-2">
-                      <Sparkles className="w-4 h-4" />
-                      Generate now
-                    </Link>
-                  </Button>
-                </div>
+              {recentGens.length > 0 && (
+                <Link href="/assets" className="inline-flex shrink-0 items-center gap-1 text-[12px] font-medium text-[#8B93A5] transition-colors hover:text-white">
+                  View all <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
               )}
-            </CardContent>
-          </Card>
+            </div>
+            {recentGens.length > 0 ? (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {recentGens.map((gen) => (
+                  <div
+                    key={gen.id}
+                    className="group relative aspect-square overflow-hidden rounded-xl border border-white/[0.06] bg-[#151922] transition-colors hover:border-white/20"
+                    style={CHECKER}
+                  >
+                    <Image
+                      src={gen.imageUrl}
+                      alt={gen.prompt}
+                      fill
+                      sizes="(max-width: 640px) 50vw, 200px"
+                      className="object-contain p-2"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/75 p-2 opacity-0 transition-opacity group-hover:opacity-100">
+                      <p className="line-clamp-2 text-center text-[12px] text-white">{gen.prompt}</p>
+                      <a
+                        href={gen.imageUrl}
+                        download
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center gap-1 rounded-lg border border-white/[0.1] bg-white/[0.08] px-2.5 py-1 text-[12px] text-white transition-colors hover:bg-white/[0.16]"
+                      >
+                        <Download className="h-3 w-3" />
+                        Download
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              /* Empty state */
+              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/[0.08] py-14 text-center">
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl border border-white/[0.06] bg-[#151922]">
+                  <Sparkles className="h-5 w-5 text-[#7A8294]" />
+                </div>
+                <p className="text-[14px] font-medium text-white">No assets yet</p>
+                <p className="mb-5 mt-1 max-w-[240px] text-[12px] text-[#8B93A5]">
+                  Generate your first sprite, icon, or enemy in seconds
+                </p>
+                <Link href="/generate" className={BTN_PRIMARY}>
+                  <Sparkles className="h-4 w-4" />
+                  Generate now
+                </Link>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Sidebar */}
         <div className="space-y-4">
 
           {/* Quick actions */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Link
-                href="/generate"
-                className="flex items-center gap-3 p-3 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors group"
-              >
-                <div className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                  <Sparkles className="w-4 h-4 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold">Generate Asset</p>
-                  <p className="text-xs text-muted-foreground">1 credit · ~5 seconds</p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-muted-foreground ml-auto group-hover:translate-x-0.5 transition-transform" />
-              </Link>
-
-              <Link
-                href="/gallery"
-                className="flex items-center gap-3 p-3 rounded-xl border border-border hover:border-border/80 hover:bg-muted/40 transition-colors group"
-              >
-                <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                  <Images className="w-4 h-4 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold">My Gallery</p>
-                  <p className="text-xs text-muted-foreground">All your assets</p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-muted-foreground ml-auto group-hover:translate-x-0.5 transition-transform" />
-              </Link>
-
-              <Link
-                href="/pricing"
-                className="flex items-center gap-3 p-3 rounded-xl border border-border hover:border-border/80 hover:bg-muted/40 transition-colors group"
-              >
-                <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                  <CreditCard className="w-4 h-4 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold">Get Credits</p>
-                  <p className="text-xs text-muted-foreground">Top up anytime</p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-muted-foreground ml-auto group-hover:translate-x-0.5 transition-transform" />
-              </Link>
-            </CardContent>
-          </Card>
+          <div className={`${CARD} p-3`}>
+            <p className="px-2 pb-2 pt-1 font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">Quick actions</p>
+            <div className="space-y-1">
+              {[
+                { href: "/generate", title: "Generate asset", desc: "1 credit · ~5 seconds", icon: Sparkles, accent: true },
+                { href: "/assets", title: "My assets", desc: "All your assets", icon: Images, accent: false },
+                { href: "/pricing", title: "Get credits", desc: "Top up anytime", icon: CreditCard, accent: false },
+              ].map((a) => (
+                <Link
+                  key={a.href}
+                  href={a.href}
+                  className="group flex items-center gap-3 rounded-xl p-2.5 transition-colors hover:bg-white/[0.04]"
+                >
+                  <span
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${
+                      a.accent ? "border-[#FF8A3D]/25 bg-[#FF8A3D]/10" : "border-white/[0.06] bg-white/[0.04]"
+                    }`}
+                  >
+                    <a.icon className={`h-4 w-4 ${a.accent ? "text-[#FF8A3D]" : "text-[#C9CFDB]"}`} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[13px] font-medium text-white">{a.title}</span>
+                    <span className="block font-mono text-[11px] text-[#7A8294]">{a.desc}</span>
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-[#7A8294] transition-transform group-hover:translate-x-0.5 group-hover:text-white" />
+                </Link>
+              ))}
+            </div>
+          </div>
 
           {/* Upgrade card — only for free users */}
           {stats?.plan === "FREE" && (
-            <Card className="bg-linear-to-br from-primary to-purple-600 text-white border-0">
-              <CardContent className="pt-5">
-                <Zap className="w-6 h-6 mb-2 text-white/80" />
-                <h3 className="font-bold mb-1">Upgrade to Pro</h3>
-                <p className="text-sm text-white/70 mb-4">
-                  500 credits/month + higher quality + commercial rights
-                </p>
-                <Button variant="secondary" size="sm" className="w-full font-semibold" asChild>
-                  <Link href="/pricing">View Plans →</Link>
-                </Button>
-              </CardContent>
-            </Card>
+            <div className="rounded-2xl border border-[#FF8A3D]/20 bg-[#FF8A3D]/[0.05] p-5">
+              <Zap className="mb-2 h-5 w-5 text-[#FF8A3D]" />
+              <h3 className="text-[15px] font-semibold text-white">Upgrade to Pro</h3>
+              <p className="mb-4 mt-1 text-[13px] text-[#C9CFDB]">
+                500 credits/month + higher quality + commercial rights
+              </p>
+              <Link href="/pricing" className={`${BTN_PRIMARY} w-full`}>
+                View plans <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
           )}
 
           {/* Community */}

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAuthorizedCronRequest } from "@/lib/cron-auth";
 import { prisma } from "@/lib/prisma";
 import { sendDailyReminderEmail } from "@/lib/email/send";
-import { Prisma } from "@prisma/client";
 
 // Vercel Cron Job - Daily reminder emails
 // Runs every day at 9:00 AM UTC
@@ -83,15 +83,8 @@ async function calculateStreak(userId: string): Promise<number> {
 
 export async function GET(request: NextRequest) {
   try {
-    // Verify Vercel Cron or CRON_SECRET
-    const authHeader = request.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET;
-    const isVercelCron = request.headers.get("x-vercel-cron") === "true";
-
-    const isAuthorized =
-      isVercelCron || (cronSecret && authHeader === `Bearer ${cronSecret}`);
-
-    if (!isAuthorized && process.env.NODE_ENV === "production") {
+    // Verify CRON_SECRET (Vercel Cron sends it as a Bearer token)
+    if (!isAuthorizedCronRequest(request)) {
       console.log("[CRON:DailyReminder] Unauthorized request");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -135,33 +128,12 @@ export async function GET(request: NextRequest) {
         generations: {
           some: {},
         },
-        // Check email preferences
-        OR: [
-          // Users who explicitly opted in
-          {
-            emailPreferences: {
-              path: ["dailyReminders"],
-              equals: true,
-            },
-          },
-          // Users with credits who haven't set preferences (send by default to engaged users)
-          {
-            AND: [
-              { credits: { gte: 1 } },
-              {
-                OR: [
-                  { emailPreferences: { equals: Prisma.AnyNull } },
-                  {
-                    emailPreferences: {
-                      path: ["dailyReminders"],
-                      equals: Prisma.AnyNull,
-                    },
-                  },
-                ],
-              },
-            ],
-          },
-        ],
+        // Opt-in only — Settings shows daily reminders as off by default, and
+        // daily mail nobody asked for gets the domain flagged as spam.
+        emailPreferences: {
+          path: ["dailyReminders"],
+          equals: true,
+        },
       },
       select: {
         id: true,
@@ -225,7 +197,7 @@ export async function GET(request: NextRequest) {
           });
         } else {
           results.failed++;
-          results.errors.push(`${user.email}: ${result.error}`);
+          results.errors.push(`${user.id}: ${result.error}`);
         }
 
         // Small delay to avoid rate limits

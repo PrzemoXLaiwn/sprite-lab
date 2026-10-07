@@ -13,7 +13,7 @@ import {
   Sparkles,
   ArrowLeft,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { CHECKERBOARD, isPixelStyleId } from "@/components/community/shared";
 
 interface ProfilePageProps {
   params: Promise<{ username: string }>;
@@ -47,6 +47,7 @@ async function getProfile(username: string) {
           id: true,
           prompt: true,
           imageUrl: true,
+          styleId: true,
           likes: true,
           createdAt: true,
         },
@@ -67,14 +68,20 @@ export async function generateMetadata({ params }: ProfilePageProps) {
   const user = await getProfile(username);
 
   if (!user) {
-    return { title: "User Not Found | SpriteLab" };
+    return { title: { absolute: "User Not Found | SpriteLab" }, robots: { index: false } };
   }
 
+  const display = user.name || user.username;
   return {
-    title: `${user.name || user.username} | SpriteLab`,
-    description: user.bio || `Check out ${user.name || user.username}'s game assets on SpriteLab`,
+    // absolute: the root template would add a second "| SpriteLab"
+    title: { absolute: `${display} — game assets made with SpriteLab` },
+    description: user.bio || `Sprites and game assets ${display} made with SpriteLab, the AI game asset generator.`,
+    alternates: { canonical: `https://www.sprite-lab.com/u/${encodeURIComponent(user.username ?? username)}` },
   };
 }
+
+const SOCIAL_LINK =
+  "inline-flex h-8 items-center gap-1.5 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 text-[12px] text-[#C9CFDB] transition hover:bg-white/[0.08] hover:text-white";
 
 export default async function ProfilePage({ params }: ProfilePageProps) {
   const { username } = await params;
@@ -94,182 +101,199 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   const getPlanBadgeColor = (plan: string) => {
     switch (plan) {
       case "PRO":
-        return "bg-[#8b5cf6]/20 text-[#8b5cf6] border-[#8b5cf6]/30";
+        return "border-[#FF8A3D]/25 bg-[#FF8A3D]/10 text-[#FFB27A]";
       case "UNLIMITED":
-        return "bg-[#f59e0b]/20 text-[#f59e0b] border-[#f59e0b]/30";
+        return "border-amber-400/20 bg-amber-500/[0.06] text-amber-200";
       case "STARTER":
-        return "bg-[#FF6B2C]/20 text-[#FF6B2C] border-[#FF6B2C]/30";
+        return "border-sky-400/20 bg-sky-500/[0.06] text-sky-200";
       default:
-        return "bg-white/10 text-white/60 border-white/10";
+        return "border-white/[0.08] bg-white/[0.04] text-[#C9CFDB]";
     }
   };
 
-  return (
-    <div className="min-h-screen bg-[#0a0c10]">
-      {/* Background */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#FF6B2C]/5 via-transparent to-transparent" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-[#8b5cf6]/5 via-transparent to-transparent" />
-      </div>
+  const stats = [
+    { label: "public assets", value: user._count.generations, icon: Images },
+    { label: "likes received", value: user.totalLikesReceived, icon: Heart },
+  ];
 
-      {/* Header */}
-      <header className="relative border-b border-white/5 bg-[#11151b]/80 backdrop-blur-xl">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="relative">
-              <div className="absolute inset-0 bg-[#FF6B2C]/30 rounded-lg blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
-              <Image src="/logo.png" alt="SpriteLab" width={32} height={32} className="relative" />
-            </div>
-            <span className="font-display font-bold text-lg tracking-tight">
-              Sprite<span className="text-[#FF6B2C]">Lab</span>
+  return (
+    <div className="min-h-screen bg-[#0B0D12] text-[#ECEEF3]">
+      {/* Top bar */}
+      <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-[#0E1016]/90 backdrop-blur-xl">
+        <div className="mx-auto flex h-14 max-w-[1400px] items-center justify-between px-5 lg:px-8">
+          <Link href="/" className="flex items-center gap-2">
+            <Image src="/logo.png" alt="SpriteLab" width={26} height={26} />
+            <span className="font-display text-[16px] font-semibold tracking-normal text-white">
+              Sprite<span className="text-[#FF8A3D]">Lab</span>
             </span>
           </Link>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/community">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Community
-            </Link>
-          </Button>
+          <Link
+            href="/community"
+            className="flex h-9 items-center gap-1.5 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 text-[13px] text-[#C9CFDB] transition hover:bg-white/[0.08] hover:text-white"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Explore
+          </Link>
         </div>
       </header>
 
-      <main className="relative max-w-6xl mx-auto px-4 py-8">
-        {/* Profile Header */}
-        <div className="flex flex-col md:flex-row items-start gap-6 mb-8">
-          {/* Avatar */}
-          <div className="relative">
-            <div className="w-32 h-32 md:w-40 md:h-40 rounded-2xl bg-gradient-to-br from-[#FF6B2C]/20 to-[#FF6B2C]/20 border-2 border-[#FF6B2C]/30 flex items-center justify-center overflow-hidden">
+      <main className="mx-auto max-w-[1400px] px-5 py-6 lg:px-8">
+        {/* Profile header */}
+        <section className="pixel-grid rounded-2xl border border-white/[0.06] bg-[#0E1016] p-5 sm:p-6">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+            <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/[0.08] bg-[#151922]">
               {user.avatarUrl ? (
-                <img src={user.avatarUrl} alt={user.name || user.username || ""} className="w-full h-full object-cover" />
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={user.avatarUrl} alt={user.name || user.username || ""} className="h-full w-full object-cover" />
               ) : (
-                <User className="w-16 h-16 text-white/40" />
+                <User className="h-10 w-10 text-[#7A8294]" />
               )}
             </div>
-            {/* Plan badge */}
-            {user.plan !== "FREE" && (
-              <div className={`absolute -bottom-2 -right-2 px-2 py-0.5 text-[10px] font-bold rounded-full border ${getPlanBadgeColor(user.plan)}`}>
-                {user.plan}
+
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="font-display text-[26px] font-semibold leading-tight tracking-normal text-white">
+                  {user.name || user.username}
+                </h1>
+                {user.plan !== "FREE" && (
+                  <span className={`rounded-full border px-2.5 py-0.5 font-mono text-[10.5px] font-medium ${getPlanBadgeColor(user.plan)}`}>
+                    {user.plan}
+                  </span>
+                )}
               </div>
+              <p className="mt-0.5 font-mono text-[12px] text-[#8B93A5]">@{user.username}</p>
+
+              {user.bio && (
+                <p className="mt-3 max-w-2xl text-[14px] leading-relaxed text-[#C9CFDB]">{user.bio}</p>
+              )}
+
+              {/* Stats */}
+              <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3">
+                {stats.map((s) => (
+                  <div key={s.label} className="flex items-baseline gap-2">
+                    <span className="font-sans tracking-tight text-[22px] font-semibold leading-none tracking-normal text-white tabular-nums">{s.value}</span>
+                    <span className="flex items-center gap-1 font-mono text-[11px] text-[#8B93A5]">
+                      <s.icon className="h-3 w-3 text-[#FF8A3D]" />
+                      {s.label}
+                    </span>
+                  </div>
+                ))}
+                <span className="flex items-center gap-1.5 font-mono text-[11px] text-[#8B93A5]">
+                  <Calendar className="h-3 w-3" />
+                  Joined {formatDate(user.createdAt)}
+                </span>
+              </div>
+
+              {/* Social links */}
+              {(user.website || user.socialTwitter || user.socialGithub) && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {user.website && (
+                    <a
+                      href={user.website.startsWith("http") ? user.website : `https://${user.website}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={SOCIAL_LINK}
+                    >
+                      <Globe className="h-3.5 w-3.5" />
+                      Website
+                    </a>
+                  )}
+                  {user.socialTwitter && (
+                    <a
+                      href={`https://twitter.com/${user.socialTwitter}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={SOCIAL_LINK}
+                    >
+                      <Twitter className="h-3.5 w-3.5" />
+                      @{user.socialTwitter}
+                    </a>
+                  )}
+                  {user.socialGithub && (
+                    <a
+                      href={`https://github.com/${user.socialGithub}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={SOCIAL_LINK}
+                    >
+                      <Github className="h-3.5 w-3.5" />
+                      {user.socialGithub}
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <Link
+              href="/generate"
+              className="px-corners flex h-10 shrink-0 items-center justify-center gap-2 self-start bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] px-4 text-[13px] font-semibold text-white transition hover:brightness-110"
+            >
+              <Sparkles className="h-4 w-4" />
+              Create your own
+            </Link>
+          </div>
+        </section>
+
+        {/* Public gallery */}
+        <section className="mt-8">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">Public gallery</h2>
+            {user._count.generations > user.generations.length && (
+              <span className="font-mono text-[11px] text-[#7A8294]">
+                latest {user.generations.length} of {user._count.generations}
+              </span>
             )}
           </div>
-
-          {/* Info */}
-          <div className="flex-1">
-            <h1 className="text-3xl font-bold text-white mb-1">
-              {user.name || user.username}
-            </h1>
-            <p className="text-white/50 mb-3">@{user.username}</p>
-
-            {user.bio && (
-              <p className="text-white/70 mb-4 max-w-xl">{user.bio}</p>
-            )}
-
-            {/* Stats */}
-            <div className="flex flex-wrap gap-4 mb-4">
-              <div className="flex items-center gap-2 text-white/60">
-                <Images className="w-4 h-4 text-[#FF6B2C]" />
-                <span className="font-medium">{user._count.generations}</span>
-                <span className="text-sm">public assets</span>
-              </div>
-              <div className="flex items-center gap-2 text-white/60">
-                <Heart className="w-4 h-4 text-[#ef4444]" />
-                <span className="font-medium">{user.totalLikesReceived}</span>
-                <span className="text-sm">likes received</span>
-              </div>
-              <div className="flex items-center gap-2 text-white/60">
-                <Calendar className="w-4 h-4" />
-                <span className="text-sm">Joined {formatDate(user.createdAt)}</span>
-              </div>
-            </div>
-
-            {/* Social Links */}
-            <div className="flex flex-wrap gap-2">
-              {user.website && (
-                <a
-                  href={user.website.startsWith("http") ? user.website : `https://${user.website}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-sm transition-colors"
-                >
-                  <Globe className="w-4 h-4" />
-                  Website
-                </a>
-              )}
-              {user.socialTwitter && (
-                <a
-                  href={`https://twitter.com/${user.socialTwitter}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-sm transition-colors"
-                >
-                  <Twitter className="w-4 h-4" />
-                  @{user.socialTwitter}
-                </a>
-              )}
-              {user.socialGithub && (
-                <a
-                  href={`https://github.com/${user.socialGithub}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-sm transition-colors"
-                >
-                  <Github className="w-4 h-4" />
-                  {user.socialGithub}
-                </a>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Public Gallery */}
-        <div>
-          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-[#FF6B2C]" />
-            Public Gallery
-          </h2>
 
           {user.generations.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
               {user.generations.map((gen) => (
                 <div
                   key={gen.id}
-                  className="group relative aspect-square rounded-xl overflow-hidden border border-white/10 hover:border-[#FF6B2C]/50 transition-all"
+                  title={gen.prompt}
+                  className="group relative aspect-square overflow-hidden rounded-2xl border border-white/[0.06] bg-[#151922] transition-colors hover:border-white/20"
+                  style={CHECKERBOARD}
                 >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={gen.imageUrl}
                     alt={gen.prompt}
-                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    className={`absolute inset-0 h-full w-full object-contain p-[10%] pb-[20%] transition-transform duration-300 group-hover:scale-105 ${isPixelStyleId(gen.styleId) ? "pixel-perfect" : ""}`}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="absolute bottom-0 left-0 right-0 p-3">
-                      <p className="text-xs text-white/90 line-clamp-2 mb-1">{gen.prompt}</p>
-                      <div className="flex items-center gap-1 text-white/60">
-                        <Heart className="w-3 h-3" />
-                        <span className="text-xs">{gen.likes}</span>
-                      </div>
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent px-3 pb-2.5 pt-8">
+                    <p className="line-clamp-1 text-[12px] font-medium text-white">{gen.prompt}</p>
+                    <div className="mt-1 flex items-center gap-1 text-[#C9CFDB]">
+                      <Heart className={`h-3 w-3 ${gen.likes > 0 ? "fill-rose-400 text-rose-400" : ""}`} />
+                      <span className="font-mono text-[11px] tabular-nums">{gen.likes}</span>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center py-16 border border-dashed border-white/10 rounded-xl">
-              <Images className="w-12 h-12 text-white/20 mx-auto mb-3" />
-              <p className="text-white/40">No public assets yet</p>
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-white/[0.06] bg-[#0E1016] px-6 py-16 text-center">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.04]">
+                <Images className="h-5 w-5 text-[#8B93A5]" />
+              </div>
+              <p className="text-[15px] font-semibold text-white">No public assets yet</p>
+              <p className="mt-1 text-[13px] text-[#8B93A5]">Shared sprites will show up here.</p>
             </div>
           )}
-        </div>
+        </section>
 
         {/* CTA */}
-        <div className="mt-12 text-center">
-          <p className="text-white/40 mb-4">Want to create your own game assets?</p>
-          <Button asChild>
-            <Link href="/generate">
-              <Sparkles className="w-4 h-4 mr-2" />
-              Start Creating for Free
-            </Link>
-          </Button>
-        </div>
+        <section className="mt-12 flex flex-col items-center rounded-2xl border border-white/[0.06] bg-[#0E1016] px-6 py-10 text-center">
+          <p className="text-[15px] font-semibold text-white">Want to create your own game assets?</p>
+          <p className="mt-1 text-[13px] text-[#8B93A5]">Generate sprites from a text prompt in seconds.</p>
+          <Link
+            href="/generate"
+            className="px-corners mt-5 flex h-10 items-center gap-2 bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] px-5 text-[13px] font-semibold text-white transition hover:brightness-110"
+          >
+            <Sparkles className="h-4 w-4" />
+            Start creating for free
+          </Link>
+        </section>
       </main>
     </div>
   );

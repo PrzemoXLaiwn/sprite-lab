@@ -171,19 +171,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "You cannot use your own referral code" }, { status: 400 });
     }
 
-    // Apply referral
-    await prisma.$transaction([
-      // Update current user with referrer
-      prisma.user.update({
-        where: { id: user.id },
+    // Apply referral — conditional on referredBy still being null so two
+    // concurrent requests can't both bump the referrer's count.
+    const applied = await prisma.$transaction(async (tx) => {
+      const updated = await tx.user.updateMany({
+        where: { id: user.id, referredBy: null },
         data: { referredBy: referrer.id },
-      }),
-      // Increment referrer's count
-      prisma.user.update({
+      });
+      if (updated.count !== 1) return false;
+
+      await tx.user.update({
         where: { id: referrer.id },
         data: { referralCount: { increment: 1 } },
-      }),
-    ]);
+      });
+      return true;
+    });
+
+    if (!applied) {
+      return NextResponse.json({
+        error: "You already have a referral code applied",
+        alreadyReferred: true
+      }, { status: 400 });
+    }
 
     return NextResponse.json({
       success: true,

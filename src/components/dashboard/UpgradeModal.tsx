@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Sparkles, Zap, Crown, Infinity as InfinityIcon, Check, ArrowRight, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Zap, Check, ArrowRight, X } from "lucide-react";
 import Link from "next/link";
+import { PLAN_FEATURES } from "@/config/plan-features";
 
 // =============================================================================
 // UpgradeModal
@@ -33,9 +33,8 @@ const PLANS = [
     slug: "starter",
     price: 5,
     credits: 250,
-    icon: Zap,
-    color: "#FF6B2C",
-    features: ["250 credits/month", "All art styles", "Background removal", "Commercial license"],
+    // Skip the credits line (shown separately) — first 3 remaining features
+    features: PLAN_FEATURES.STARTER.slice(1, 4),
     popular: false,
   },
   {
@@ -43,9 +42,7 @@ const PLANS = [
     slug: "pro",
     price: 12,
     credits: 500,
-    icon: Crown,
-    color: "#8b5cf6",
-    features: ["500 credits/month", "Premium AI model", "Sprite sheets", "Image editing"],
+    features: PLAN_FEATURES.PRO.slice(1, 4),
     popular: true,
   },
   {
@@ -53,20 +50,22 @@ const PLANS = [
     slug: "unlimited",
     price: 25,
     credits: 1200,
-    icon: InfinityIcon,
-    color: "#f59e0b",
-    features: ["1200 credits/month", "Everything in Pro", "Priority support", "Early access"],
+    features: PLAN_FEATURES.UNLIMITED.slice(1, 4),
     popular: false,
   },
 ];
 
 export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(Boolean(forceShow));
   const [hasShownThisSession, setHasShownThisSession] = useState(false);
 
-  useEffect(() => {
+  // Open when `forceShow` flips to true (state adjusted during render instead
+  // of in an effect — avoids a cascading re-render).
+  const [prevForceShow, setPrevForceShow] = useState(forceShow);
+  if (forceShow !== prevForceShow) {
+    setPrevForceShow(forceShow);
     if (forceShow) setIsVisible(true);
-  }, [forceShow]);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -113,130 +112,104 @@ export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
     if (!open) onClose?.();
   };
 
+  // Links navigate away but the modal lives in the dashboard layout, so close
+  // it explicitly or it stays open over the destination page.
+  const closeOnNavigate = () => handleOpenChange(false);
+
   return (
     <Dialog.Root open={isVisible} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] data-[state=open]:opacity-100 data-[state=closed]:opacity-0 transition-opacity duration-200" />
+        <Dialog.Overlay className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm transition-opacity duration-200 data-[state=closed]:opacity-0 data-[state=open]:opacity-100" />
         <Dialog.Content
-          className="fixed left-1/2 top-1/2 z-[101] w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/10 bg-gradient-to-br from-[#1a1a2e] to-[#0f0f1a] shadow-2xl outline-none data-[state=open]:opacity-100 data-[state=closed]:opacity-0 transition-opacity duration-200"
+          className="fixed left-1/2 top-1/2 z-[101] max-h-[90vh] w-[95vw] max-w-3xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-white/[0.08] bg-[#0E1016] text-[#ECEEF3] shadow-2xl outline-none transition-opacity duration-200 data-[state=closed]:opacity-0 data-[state=open]:opacity-100"
           aria-describedby="upgrade-modal-description"
         >
-          {/* Animated gradient background */}
-          <div className="absolute inset-0 opacity-30 pointer-events-none rounded-2xl overflow-hidden">
-            <div className="absolute top-0 left-1/4 w-64 h-64 bg-[#FF6B2C] rounded-full blur-[100px] animate-pulse" />
-            <div
-              className="absolute bottom-0 right-1/4 w-64 h-64 bg-[#8b5cf6] rounded-full blur-[100px] animate-pulse"
-              style={{ animationDelay: "1s" }}
-            />
-          </div>
-
-          {/* Close button */}
           <Dialog.Close asChild>
             <button
               aria-label="Close"
-              className="absolute top-4 right-4 p-2 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors z-10 focus:outline-none focus:ring-2 focus:ring-[#FF6B2C]"
+              className="absolute right-4 top-4 z-10 rounded-lg p-2 text-[#8B93A5] transition-colors hover:bg-white/[0.06] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8A3D]/50"
             >
-              <X className="w-5 h-5" />
+              <X className="h-4 w-4" />
             </button>
           </Dialog.Close>
 
-          <div className="relative p-6 md:p-8">
+          <div className="p-5 sm:p-7">
             {/* Header */}
-            <div className="text-center mb-8">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#ef4444]/20 border border-[#ef4444]/40 text-[#ef4444] text-sm font-medium mb-4">
-                <Zap className="w-4 h-4" />
-                You&apos;re out of credits!
-              </div>
+            <div className="pr-10">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-red-400/20 bg-red-500/[0.06] px-2.5 py-1 font-mono text-[11px] text-red-200">
+                <Zap className="h-3 w-3" />
+                You&apos;re out of credits
+              </span>
               <Dialog.Title asChild>
-                <h2 className="text-3xl md:text-4xl font-display font-bold text-white mb-3">
-                  Upgrade to Keep Creating
+                <h2 className="mt-3 font-display text-[24px] font-semibold tracking-tight text-white">
+                  Upgrade to keep creating
                 </h2>
               </Dialog.Title>
               <Dialog.Description asChild>
-                <p id="upgrade-modal-description" className="text-white/60 max-w-md mx-auto">
+                <p id="upgrade-modal-description" className="mt-1 max-w-md text-[13px] text-[#8B93A5]">
                   Choose a plan that fits your needs. All plans include access to our latest AI models and features.
                 </p>
               </Dialog.Description>
             </div>
 
-            {/* Plans Grid */}
-            <div className="grid md:grid-cols-3 gap-4 mb-6">
-              {PLANS.map((plan) => {
-                const Icon = plan.icon;
-                return (
-                  <div
-                    key={plan.name}
-                    className={`relative p-5 rounded-xl border transition-all duration-300 hover:scale-[1.02] ${
+            {/* Plans */}
+            <div className="mt-6 grid gap-3 pt-2 md:grid-cols-3">
+              {PLANS.map((plan) => (
+                <div
+                  key={plan.name}
+                  className={`relative flex flex-col rounded-2xl border bg-[#151922] p-4 transition-colors ${
+                    plan.popular ? "border-[#FF8A3D]/60" : "border-white/[0.08] hover:border-white/20"
+                  }`}
+                >
+                  {plan.popular && (
+                    <span className="px-corners absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap bg-[#FF8A3D] px-3 py-1 font-mono text-[11px] font-semibold text-black">
+                      Most popular
+                    </span>
+                  )}
+
+                  <h3 className="font-display text-[17px] font-semibold text-white">{plan.name}</h3>
+                  <div className="mt-3 flex items-baseline gap-1.5">
+                    <span className="font-sans tracking-tight tabular-nums text-[28px] font-semibold leading-none text-white">£{plan.price}</span>
+                    <span className="font-mono text-[12px] text-[#8B93A5]">/month</span>
+                  </div>
+                  <span className="mt-3 w-fit rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] text-[#ECEEF3]">
+                    {plan.credits.toLocaleString()} credits/mo
+                  </span>
+
+                  <ul className="mt-4 flex-1 space-y-2">
+                    {plan.features.map((feature) => (
+                      <li key={feature} className="flex items-start gap-2 text-[13px] text-[#C9CFDB]">
+                        <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#FF8A3D]" strokeWidth={2.5} />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <Link
+                    href={`/checkout/${plan.slug}`}
+                    onClick={closeOnNavigate}
+                    className={`mt-5 flex h-10 w-full items-center justify-center gap-1.5 text-[13px] font-semibold ${
                       plan.popular
-                        ? "bg-gradient-to-br from-[#8b5cf6]/20 to-transparent border-[#8b5cf6]/40"
-                        : "bg-white/5 border-white/10 hover:border-white/20"
+                        ? "px-corners bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] text-white transition hover:brightness-110"
+                        : "rounded-xl border border-white/[0.1] bg-white/[0.04] text-[#C9CFDB] transition-colors hover:bg-white/[0.08] hover:text-white"
                     }`}
                   >
-                    {plan.popular && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gradient-to-r from-[#8b5cf6] to-[#FF6B2C] text-black text-xs font-bold">
-                        MOST POPULAR
-                      </div>
-                    )}
-
-                    <div
-                      className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
-                      style={{ backgroundColor: `${plan.color}20` }}
-                    >
-                      <Icon className="w-6 h-6" style={{ color: plan.color }} />
-                    </div>
-
-                    <h3 className="text-lg font-bold text-white mb-1">{plan.name}</h3>
-
-                    <div className="flex items-baseline gap-1 mb-4">
-                      <span className="text-3xl font-bold text-white">£{plan.price}</span>
-                      <span className="text-white/60">/mo</span>
-                    </div>
-
-                    <div
-                      className="flex items-center gap-2 px-3 py-2 rounded-lg mb-4"
-                      style={{ backgroundColor: `${plan.color}10`, borderColor: `${plan.color}30` }}
-                    >
-                      <Sparkles className="w-4 h-4" style={{ color: plan.color }} />
-                      <span className="font-bold" style={{ color: plan.color }}>
-                        {plan.credits} credits/mo
-                      </span>
-                    </div>
-
-                    <ul className="space-y-2 mb-5">
-                      {plan.features.map((feature, i) => (
-                        <li key={i} className="flex items-center gap-2 text-sm text-white/80">
-                          <Check className="w-4 h-4 text-[#FF6B2C] shrink-0" />
-                          {feature}
-                        </li>
-                      ))}
-                    </ul>
-
-                    <Button
-                      asChild
-                      className={`w-full font-medium ${
-                        plan.popular
-                          ? "bg-gradient-to-r from-[#8b5cf6] to-[#FF6B2C] text-black hover:opacity-90"
-                          : "bg-white/10 text-white border border-white/20 hover:bg-white/20"
-                      }`}
-                    >
-                      <Link href={`/checkout/${plan.slug}`}>
-                        Get Started
-                        <ArrowRight className="w-4 h-4 ml-1" />
-                      </Link>
-                    </Button>
-                  </div>
-                );
-              })}
+                    Get {plan.name}
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+              ))}
             </div>
 
-            <div className="text-center">
-              <p className="text-white/60 text-sm mb-2">Just need a few credits?</p>
+            <div className="mt-5 flex flex-col items-center justify-between gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 sm:flex-row">
+              <p className="text-[13px] text-[#8B93A5]">Just need a few credits? One-time packs, no subscription.</p>
               <Link
                 href="/pricing#credit-packs"
-                className="inline-flex items-center gap-2 text-[#FF6B2C] text-sm font-medium hover:underline"
+                onClick={closeOnNavigate}
+                className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#FFB27A] hover:underline"
               >
                 View credit packs
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
           </div>

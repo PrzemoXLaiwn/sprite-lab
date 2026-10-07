@@ -97,6 +97,8 @@ export const getFeaturedGenerations = unstable_cache(
   { revalidate: 300, tags: ["featured-generations"] }
 );
 
+export { SHOWCASE, isPixelShowcase } from "@/data/showcase";
+
 /** Never let a landing-page render fail because the gallery query did. */
 export async function getFeaturedGenerationsSafe(
   limit: number,

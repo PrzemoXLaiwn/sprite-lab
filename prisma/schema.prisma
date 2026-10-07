@@ -17,6 +17,7 @@ model User {
   plan                  String        @default("FREE") // FREE, STARTER, PRO, UNLIMITED
   role                  String        @default("USER") // USER, SUPPORT, MODERATOR, ADMIN, OWNER (SEO)
   isLifetime            Boolean       @default(false) @map("is_lifetime") // Lifetime deal (no subscription renewal)
+  lifetimeDeal          String?       @map("lifetime_deal") // LIFETIME_DEALS key (e.g. PRO_LIFETIME) — used for slot counting
   stripeCustomerId      String?       @unique @map("stripe_customer_id")
   stripeSubscriptionId  String?       @unique @map("stripe_subscription_id")
   stripePriceId         String?       @map("stripe_price_id")
@@ -65,10 +66,10 @@ model User {
   reports               Report[]       @relation("ReportedByUser")
   receivedReports       Report[]       @relation("ReportedUser")
 
+  // username / stripeCustomerId / stripeSubscriptionId are @unique, which
+  // already creates an index — separate @@index entries were redundant.
   @@index([role])
-  @@index([username])
-  @@index([stripeCustomerId])
-  @@index([stripeSubscriptionId])
+  @@index([isLifetime, lifetimeDeal])
   @@map("users")
 }
 
@@ -95,9 +96,11 @@ model Generation {
   analysis            ImageAnalysis?       // Auto-generated quality analysis
   verificationRecords VerificationRecord[] // Verification tests for hallucination fixes
 
-  @@index([userId])
+  // (userId, createdAt) and (isPublic, createdAt) also serve userId-only /
+  // isPublic-only lookups (leftmost prefix), so the single-column ones were dropped.
+  @@index([userId, createdAt])
+  @@index([isPublic, createdAt])
   @@index([createdAt])
-  @@index([isPublic])
   @@index([projectId])
   @@index([folderId])
   @@map("generations")
@@ -218,10 +221,15 @@ model CreditTransaction {
   id          String   @id @default(cuid())
   userId      String   @map("user_id")
   amount      Int      // Positive for additions, negative for deductions
-  type        String   // PURCHASE, GENERATION, REFUND, BONUS, ADMIN_GRANT
+  type        String   // PURCHASE, GENERATION, REFUND, BONUS, ADMIN_GRANT, PAYMENT_FAILED
   description String?
   moneyAmount Float?   @map("money_amount") // Amount in USD for purchases
   adminId     String?  @map("admin_id") // ID of admin who granted credits
+  // Idempotency keys for Stripe-funded grants. The unique constraint is what
+  // guarantees a payment / invoice is credited exactly once (P2002 = already done).
+  stripePaymentIntentId String? @unique @map("stripe_payment_intent_id") // one-off purchases (credit packs, lifetime)
+  stripeInvoiceId       String? @unique @map("stripe_invoice_id")        // subscription invoices
+  creditsReversed       Int     @default(0) @map("credits_reversed")     // credits clawed back by refunds/disputes
   createdAt   DateTime @default(now()) @map("created_at")
 
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -230,6 +238,17 @@ model CreditTransaction {
   @@index([createdAt])
   @@index([type])
   @@map("credit_transactions")
+}
+
+// Stripe webhook dedupe (id = Stripe event id, e.g. "evt_...") and one-shot
+// markers for client-confirmed objects (id = SetupIntent id, "seti_...").
+model ProcessedStripeEvent {
+  id        String   @id
+  type      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("processed_stripe_events")
 }
 
 model WaitlistEntry {
@@ -265,7 +284,7 @@ model Comment {
   createdAt    DateTime @default(now()) @map("created_at")
 
   @@index([userId])
-  @@index([generationId])
+  @@index([generationId, createdAt])
   @@index([createdAt])
   @@map("comments")
 }
@@ -304,8 +323,7 @@ model Notification {
 
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
-  @@index([isRead])
+  @@index([userId, isRead, createdAt])
   @@index([createdAt])
   @@map("notifications")
 }
@@ -479,7 +497,6 @@ model DailyStats {
   styleBreakdown     String?  @map("style_breakdown") // JSON: {"pixel-art": 40, "anime": 20}
   createdAt          DateTime @default(now()) @map("created_at")
 
-  @@index([date])
   @@map("daily_stats")
 }
 
@@ -567,7 +584,6 @@ model ImageAnalysis {
   // Relation to generation
   generation          Generation @relation(fields: [generationId], references: [id], onDelete: Cascade)
 
-  @@index([generationId])
   @@index([hasHallucination])
   @@index([promptAlignment])
   @@index([qualityScore])
@@ -785,6 +801,5 @@ model Asset {
   @@index([sourceAssetId])
   @@index([setId])
   @@index([legacy])
-  @@index([legacyGenerationId])
   @@map("assets")
 }

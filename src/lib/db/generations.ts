@@ -80,8 +80,57 @@ export async function getUserStats(userId: string) {
 // WRITE
 // -----------------------------------------------------------------------------
 
+/**
+ * projectId / folderId originate from the client. Only keep them when they
+ * belong to the user; otherwise a user could attach generations to (and leak
+ * them into) someone else's project. Invalid ids are dropped, not rejected,
+ * so a stale UI selection never loses a paid generation.
+ */
+async function resolveOwnedPlacement(
+  userId: string,
+  projectId?: string,
+  folderId?: string
+): Promise<{ projectId: string | null; folderId: string | null }> {
+  let ownedProjectId: string | null = null;
+  let ownedFolderId: string | null = null;
+
+  if (projectId) {
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, userId },
+      select: { id: true },
+    });
+    if (project) ownedProjectId = project.id;
+    else console.warn(`[saveGeneration] Dropping projectId not owned by user ${userId}`);
+  }
+
+  if (folderId) {
+    const folder = await prisma.projectFolder.findFirst({
+      where: {
+        id: folderId,
+        project: { userId },
+        ...(ownedProjectId ? { projectId: ownedProjectId } : {}),
+      },
+      select: { id: true, projectId: true },
+    });
+    if (folder) {
+      ownedFolderId = folder.id;
+      if (!ownedProjectId && !projectId) ownedProjectId = folder.projectId;
+    } else {
+      console.warn(`[saveGeneration] Dropping folderId not owned by user ${userId}`);
+    }
+  }
+
+  return { projectId: ownedProjectId, folderId: ownedFolderId };
+}
+
 export async function saveGeneration(params: SaveGenerationParams) {
   try {
+    const placement = await resolveOwnedPlacement(
+      params.userId,
+      params.projectId,
+      params.folderId
+    );
+
     const [generation] = await Promise.all([
       prisma.generation.create({
         data: {
@@ -94,8 +143,8 @@ export async function saveGeneration(params: SaveGenerationParams) {
           imageUrl: params.imageUrl,
           seed: params.seed,
           replicateCost: params.replicateCost,
-          projectId: params.projectId || null,
-          folderId: params.folderId || null,
+          projectId: placement.projectId,
+          folderId: placement.folderId,
         },
       }),
       prisma.user.update({

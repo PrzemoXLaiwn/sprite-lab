@@ -4,25 +4,25 @@
 
 @theme inline {
   /* Main color system */
-  --color-background: #0B0F19;
-  --color-foreground: #F8FAFC;
-  --color-card: #182033;
-  --color-card-foreground: #F8FAFC;
-  --color-popover: #182033;
-  --color-popover-foreground: #F8FAFC;
-  --color-primary: #F97316;
+  --color-background: #0B0D12;
+  --color-foreground: #ECEEF3;
+  --color-card: #151922;
+  --color-card-foreground: #ECEEF3;
+  --color-popover: #161A22;
+  --color-popover-foreground: #ECEEF3;
+  --color-primary: #FF8A3D;
   --color-primary-foreground: #ffffff;
-  --color-secondary: #121826;
-  --color-secondary-foreground: #F8FAFC;
-  --color-muted: #1A2235;
-  --color-muted-foreground: #64748B;
-  --color-accent: #F97316;
+  --color-secondary: #0E1016;
+  --color-secondary-foreground: #ECEEF3;
+  --color-muted: #151922;
+  --color-muted-foreground: #8B93A5;
+  --color-accent: #FF8A3D;
   --color-accent-foreground: #ffffff;
   --color-destructive: #ef4444;
   --color-destructive-foreground: #ffffff;
-  --color-border: #263046;
-  --color-input: #182033;
-  --color-ring: rgba(249, 115, 22, 0.45);
+  --color-border: rgba(255, 255, 255, 0.07);
+  --color-input: #151922;
+  --color-ring: rgba(255, 138, 61, 0.45);
   
   /* Custom colors */
   --sl-bg-main: #0B0F19;
@@ -44,8 +44,68 @@
   --color-chart-4: #eab308;
   --color-chart-5: #8b5cf6;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-grotesk), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* ── Pixel × dev design language ─────────────────────────────────────────
+   font-display → headings + logo (Space Grotesk — a pixel font was tried
+                  and rejected: unreadable, esp. digits)
+   font-mono   → labels, chips, counters, "terminal" hints (JetBrains Mono)
+   .px-corners → stepped 8-bit corners for primary buttons / badges
+   .pixel-grid → faint pixel-grid backdrop for hero / canvases
+   .caret      → blinking terminal block cursor                       */
+@layer utilities {
+  .px-corners {
+    clip-path: polygon(
+      0 4px, 4px 4px, 4px 0, calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+      100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%,
+      4px 100%, 4px calc(100% - 4px), 0 calc(100% - 4px)
+    );
+  }
+  .pixel-grid {
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    background-size: 16px 16px;
+  }
+  .caret {
+    display: inline-block;
+    width: 0.55em;
+    height: 1.05em;
+    margin-left: 2px;
+    vertical-align: -0.15em;
+    background: #FF8A3D;
+    animation: caret-blink 1.05s steps(1) infinite;
+  }
+}
+
+@keyframes caret-blink {
+  50% { opacity: 0; }
+}
+
+/* ── Accessibility ───────────────────────────────────────────────────────
+   Visible keyboard focus everywhere (mouse clicks don't show it), and no
+   blinking / floating / pulsing for people who ask the OS to reduce motion. */
+@layer base {
+  :where(a, button, input, textarea, select, summary, [role="button"], [tabindex]):focus-visible {
+    outline: 2px solid #FF8A3D;
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  :where(input, textarea, select):focus-visible {
+    outline-offset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .caret { animation: none; }
 }
 
 @layer base {

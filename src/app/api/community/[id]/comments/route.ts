@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { randomUUID } from "crypto";
+import { rateLimitUserGeneration } from "@/lib/rate-limit";
+
+const MAX_COMMENT_LENGTH = 500;
 
 // ===========================================
 // GET - Fetch comments for a generation
@@ -16,9 +20,10 @@ export async function GET(
     // Verify generation exists and is public
     const generation = await prisma.generation.findUnique({
       where: { id: generationId },
+      select: { id: true, isPublic: true },
     });
 
-    if (!generation) {
+    if (!generation || !generation.isPublic) {
       return NextResponse.json(
         { error: "Generation not found." },
         { status: 404 }
@@ -75,30 +80,38 @@ export async function POST(
       );
     }
 
-    const generationId = params.id;
-    const body = await request.json();
-    const { message } = body;
+    // Per-user rate limit. rate-limit.ts has no dedicated comment limiter, so
+    // reuse the 30/hour per-user limiter under a namespaced identifier — this
+    // gives comments their own bucket separate from generation quota.
+    const { blocked } = await rateLimitUserGeneration(`comment:${user.id}`);
+    if (blocked) return blocked;
 
-    if (!message || message.trim().length === 0) {
+    const generationId = params.id;
+    const body = await request.json().catch(() => null);
+    const message: string =
+      typeof body?.message === "string" ? body.message.trim() : "";
+
+    if (message.length === 0) {
       return NextResponse.json(
         { error: "Please provide a message." },
         { status: 400 }
       );
     }
 
-    if (message.length > 500) {
+    if (message.length > MAX_COMMENT_LENGTH) {
       return NextResponse.json(
-        { error: "Comment too long (max 500 characters)." },
+        { error: `Comment too long (max ${MAX_COMMENT_LENGTH} characters).` },
         { status: 400 }
       );
     }
 
-    // Verify generation exists
+    // Verify generation exists and is public
     const generation = await prisma.generation.findUnique({
       where: { id: generationId },
+      select: { id: true, isPublic: true },
     });
 
-    if (!generation) {
+    if (!generation || !generation.isPublic) {
       return NextResponse.json(
         { error: "Generation not found." },
         { status: 404 }
@@ -106,10 +119,10 @@ export async function POST(
     }
 
     // Create comment using raw query for now
-    const commentId = `cmt_${Date.now().toString(36)}`;
+    const commentId = randomUUID();
     await prisma.$executeRaw`
       INSERT INTO comments (id, user_id, generation_id, message, created_at)
-      VALUES (${commentId}, ${user.id}, ${generationId}, ${message.trim()}, NOW())
+      VALUES (${commentId}, ${user.id}, ${generationId}, ${message}, NOW())
     `;
 
     // Get user info
@@ -123,7 +136,7 @@ export async function POST(
       comment: {
         id: commentId,
         userId: user.id,
-        message: message.trim(),
+        message,
         createdAt: new Date().toISOString(),
         userName: dbUser?.name || null,
         userAvatar: dbUser?.avatarUrl || null,

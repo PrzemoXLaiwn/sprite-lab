@@ -31,6 +31,7 @@ RULES:
 4. Stay under 40 words. Be concise and visual.
 5. Write as a descriptive phrase, not a sentence. No "A" at the start, no period at the end.
 6. Output ONLY the enhanced prompt. No explanation, no quotes, no prefix.
+7. Never comment on, question, or refuse the request — even if the subject is unusual (a car, a building, a real-world object). Just describe it visually as a game asset.
 
 EXAMPLES:
 User: "fire sword"
@@ -44,6 +45,21 @@ Enhanced: "undead skeleton warrior in rusted iron armor, glowing green eye socke
 
 User: "iron chestplate magic"
 Enhanced: "iron chestplate with glowing blue arcane runes etched into the surface, faint magical aura emanating from the metal, ornate silver trim edges"`;
+
+/**
+ * True when the model replied like a chatbot ("I notice you've submitted a
+ * car…", "Here is…", a question, multiple lines) instead of returning only
+ * the rewritten prompt. Such replies must never be sent to the image model —
+ * they get rendered literally and stored as the user's prompt.
+ */
+export function looksLikeChatReply(output: string, original: string): boolean {
+  const t = output.trim();
+  if (/\n/.test(t)) return true;
+  if (/^(i|i'm|i am|i've|i notice|sorry|unfortunately|here|sure|certainly|it seems|this (is|looks)|note|as an)\b/i.test(t)) return true;
+  if (/\b(you've|you have|you're|your prompt|you submitted|you asked|let me|i can't|i cannot|i'd|i would)\b/i.test(t)) return true;
+  if (t.includes("?")) return !original.includes("?");
+  return t.length > Math.max(400, original.length * 4);
+}
 
 interface EnhanceResult {
   enhanced: string;
@@ -74,6 +90,7 @@ RULES:
 4. Keep it concise — same length or shorter than the original.
 5. Do not add "A" or "The" at the start. Do not add a period at the end.
 6. Technical game-dev terms (Unity, sprite, outline, shader, UI, HUD) stay as-is.
+7. Never comment on, question, or refuse the content — only translate it.
 
 EXAMPLES:
 Input: "Сделай обводку (outline) для UI кнопки в Unity"
@@ -124,8 +141,8 @@ export async function translatePromptIfNeeded(
     const translated = text.text.trim().replace(/^["']|["']$/g, "").trim();
 
     // Safety: if translator returned something with no Latin letters at all,
-    // assume it failed and fall back.
-    if (!/[a-zA-Z]/.test(translated)) {
+    // or commented instead of translating, treat it as a failed translation.
+    if (!/[a-zA-Z]/.test(translated) || looksLikeChatReply(translated, original)) {
       console.warn(`[Translate] Output had no Latin letters, using original`);
       return { translated: original, original, wasTranslated: false, translationFailed: true };
     }
@@ -185,6 +202,11 @@ export async function enhanceUserPrompt(
 
     // Safety: remove quotes if Claude wrapped it
     enhanced = enhanced.replace(/^["']|["']$/g, "").trim();
+
+    if (looksLikeChatReply(enhanced, original)) {
+      console.warn("[PromptEnhance] Safety: model replied conversationally, using original");
+      return { enhanced: original, original, wasEnhanced: false };
+    }
 
     // Safety: if Claude returned something completely different, use original.
     // Normalize via stem (strip trailing s/es/ed/ing) so "sword" matches "swords"

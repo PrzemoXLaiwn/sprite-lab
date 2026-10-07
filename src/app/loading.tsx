@@ -1,15 +1,14 @@
-"use client";
+import Image from "next/image";
 
 export default function Loading() {
   return (
-    <div className="min-h-screen bg-[#0a0c10] flex items-center justify-center">
-      <div className="text-center">
-        {/* Animated logo/loader */}
-        <div className="relative w-20 h-20 mx-auto mb-4">
-          <div className="absolute inset-0 bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] rounded-full blur-xl opacity-50 animate-pulse" />
-          <div className="relative w-full h-full rounded-full border-4 border-[rgba(255,255,255,0.06)] border-t-[#FF6B2C] animate-spin" />
+    <div className="flex min-h-screen items-center justify-center bg-[#0B0D12]">
+      <div className="flex flex-col items-center gap-4" role="status" aria-label="Loading">
+        <div className="relative flex h-14 w-14 items-center justify-center">
+          <div className="absolute inset-0 animate-spin rounded-full border-2 border-white/[0.06] border-t-[#FF8A3D]" />
+          <Image src="/logo.png" alt="" width={24} height={24} />
         </div>
-        <p className="text-[#a0a0b0] text-sm animate-pulse">Loading SpriteLab...</p>
+        <p className="font-mono text-[11px] text-[#7A8294]">loading<span className="caret" /></p>
       </div>
     </div>
   );

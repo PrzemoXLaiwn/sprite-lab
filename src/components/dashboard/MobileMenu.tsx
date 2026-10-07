@@ -1,33 +1,36 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   Menu,
   X,
-  Zap,
+  Wand2,
+  Home,
   Images,
+  FolderOpen,
+  Users,
   BarChart3,
   Settings,
-  LogOut,
-  FolderOpen,
-  ChevronRight,
-  Sparkles,
-  Crown,
   Shield,
-  Users,
+  ShieldCheck,
+  Zap,
+  LogOut,
+  Sparkles,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { fetchUserData } from "@/app/(dashboard)/layout.actions";
 
-const navItems = [
-  { href: "/generate", label: "Generate", icon: Zap, color: "text-[#FF6B2C]" },
-  { href: "/assets", label: "My Assets", icon: Images, color: "text-white/60" },
-  { href: "/projects", label: "Projects", icon: FolderOpen, color: "text-white/60" },
-  { href: "/community", label: "Community", icon: Users, color: "text-white/60" },
-  { href: "/usage", label: "Usage", icon: BarChart3, color: "text-white/60" },
-  { href: "/settings", label: "Settings", icon: Settings, color: "text-white/60" },
+// Mirrors the desktop AppRail (src/components/dashboard/AppRail.tsx).
+const NAV = [
+  { href: "/", label: "Home", icon: Home },
+  { href: "/generate", label: "Create", icon: Wand2 },
+  { href: "/assets", label: "Assets", icon: Images },
+  { href: "/projects", label: "Projects", icon: FolderOpen },
+  { href: "/community", label: "Explore", icon: Users },
+  { href: "/usage", label: "Usage", icon: BarChart3 },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 interface MobileMenuProps {
@@ -36,166 +39,190 @@ interface MobileMenuProps {
   userRole?: string;
 }
 
+function planLabel(plan: string) {
+  if (plan === "UNLIMITED") return "Studio";
+  if (plan === "PRO") return "Pro";
+  if (plan === "STARTER") return "Starter";
+  if (plan === "LIFETIME") return "Lifetime";
+  return "Free";
+}
+
 export function MobileMenu({ userEmail, userPlan = "FREE", userRole = "USER" }: MobileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [credits, setCredits] = useState<number | null>(null);
+  const [planName, setPlanName] = useState<string>("");
   const pathname = usePathname();
 
-  // Close menu when route changes
-  useEffect(() => {
+  // Close menu when route changes (adjust state during render instead of in
+  // an effect — avoids a cascading re-render).
+  const [lastPathname, setLastPathname] = useState(pathname);
+  if (pathname !== lastPathname) {
+    setLastPathname(pathname);
     setIsOpen(false);
-  }, [pathname]);
+  }
 
-  // Prevent body scroll when menu is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
+  const loadCredits = useCallback(async () => {
+    const result = await fetchUserData();
+    if (result.success && result.data) {
+      setCredits(result.data.credits);
+      setPlanName(result.data.planName);
     }
+  }, []);
+
+  const openMenu = () => {
+    setIsOpen(true);
+    loadCredits();
+  };
+
+  // Keep the balance fresh after generations while the menu exists.
+  useEffect(() => {
+    const onRefresh = () => loadCredits();
+    window.addEventListener("credits-updated", onRefresh);
+    return () => window.removeEventListener("credits-updated", onRefresh);
+  }, [loadCredits]);
+
+  // Prevent body scroll when menu is open; Escape closes it.
+  useEffect(() => {
+    if (!isOpen) return;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = "";
+      window.removeEventListener("keydown", onKey);
     };
   }, [isOpen]);
 
   const isAdmin = userRole === "ADMIN" || userRole === "OWNER";
+  const isModerator = isAdmin || userRole === "MODERATOR";
 
-  const getPlanColor = () => {
-    switch (userPlan) {
-      case "UNLIMITED": return "from-[#f59e0b] to-[#ef4444]";
-      case "PRO": return "from-[#8b5cf6] to-[#FF6B2C]";
-      case "STARTER": return "from-[#FF6B2C] to-[#FF6B2C]";
-      default: return "from-white/20 to-white/10";
-    }
-  };
+  const items = [
+    ...NAV,
+    ...(isModerator ? [{ href: "/moderator", label: "Moderator", icon: ShieldCheck }] : []),
+    ...(isAdmin ? [{ href: "/admin", label: "Admin", icon: Shield }] : []),
+  ];
+  const low = credits !== null && credits <= 2;
+  const displayPlan = planName || planLabel(userPlan);
 
   return (
     <>
       {/* Menu Button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="text-white/60 hover:text-white hover:bg-white/5"
-        onClick={() => setIsOpen(true)}
+      <button
+        type="button"
+        className="flex h-9 w-9 items-center justify-center rounded-xl text-[#8B93A5] transition-colors hover:bg-white/[0.05] hover:text-white"
+        onClick={openMenu}
         aria-label="Open menu"
+        aria-expanded={isOpen}
       >
-        <Menu className="w-5 h-5" />
-      </Button>
+        <Menu className="h-5 w-5" />
+      </button>
 
       {/* Overlay */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 md:hidden"
-          onClick={() => setIsOpen(false)}
-        />
-      )}
+      <div
+        className={`fixed inset-0 z-50 bg-black/60 backdrop-blur-sm transition-opacity duration-300 md:hidden ${
+          isOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+        onClick={() => setIsOpen(false)}
+        aria-hidden
+      />
 
       {/* Slide-out Menu */}
       <div
-        className={`fixed top-0 right-0 h-full w-[280px] bg-[#11151b] border-l border-white/10 z-50 transform transition-transform duration-300 ease-out md:hidden ${
+        className={`fixed right-0 top-0 z-50 flex h-full w-[284px] flex-col border-l border-white/[0.06] bg-[#0E1016] transition-transform duration-300 ease-out md:hidden ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Navigation"
+        aria-hidden={!isOpen}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-white/10">
+        <div className="flex h-12 items-center justify-between border-b border-white/[0.06] px-4">
           <Link href="/" className="flex items-center gap-2" onClick={() => setIsOpen(false)}>
-            <Image src="/logo.png" alt="SpriteLab" width={28} height={28} />
-            <span className="font-display font-bold">
-              Sprite<span className="text-[#FF6B2C]">Lab</span>
+            <Image src="/logo.png" alt="SpriteLab" width={22} height={22} />
+            <span className="font-display text-[14px] font-semibold tracking-tight text-white">
+              Sprite<span className="text-[#FF8A3D]">Lab</span>
             </span>
           </Link>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-white/60 hover:text-white"
+          <button
+            type="button"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-[#8B93A5] transition-colors hover:bg-white/[0.05] hover:text-white"
             onClick={() => setIsOpen(false)}
             aria-label="Close menu"
           >
-            <X className="w-5 h-5" />
-          </Button>
+            <X className="h-4 w-4" />
+          </button>
         </div>
 
         {/* User Info */}
-        <div className="p-4 border-b border-white/10">
+        <div className="border-b border-white/[0.06] p-4">
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getPlanColor()} flex items-center justify-center`}>
-              <span className="text-sm font-bold text-white">
-                {userEmail.charAt(0).toUpperCase()}
-              </span>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#FF8A3D] to-[#E0562A] text-[13px] font-bold text-white">
+              {userEmail.charAt(0).toUpperCase()}
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-white truncate">{userEmail}</p>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                {userPlan !== "FREE" ? (
-                  <Crown className="w-3 h-3 text-[#f59e0b]" />
-                ) : (
-                  <Sparkles className="w-3 h-3 text-white/40" />
-                )}
-                <span className={`text-xs font-medium ${
-                  userPlan === "UNLIMITED" ? "text-[#f59e0b]" :
-                  userPlan === "PRO" ? "text-[#8b5cf6]" :
-                  userPlan === "STARTER" ? "text-[#FF6B2C]" :
-                  "text-white/40"
-                }`}>
-                  {userPlan === "UNLIMITED" ? "Studio" :
-                   userPlan === "PRO" ? "Pro" :
-                   userPlan === "STARTER" ? "Starter" : "Free"}
-                </span>
-              </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[13px] font-medium text-white">{userEmail}</p>
+              <p className="font-mono text-[11px] text-[#8B93A5]">{displayPlan} plan</p>
             </div>
           </div>
+
+          <Link
+            href="/pricing"
+            onClick={() => setIsOpen(false)}
+            className={`mt-3 flex items-center gap-2.5 rounded-xl border px-3 py-2.5 transition-colors ${
+              low
+                ? "border-red-400/20 bg-red-500/[0.06] text-red-200 hover:bg-red-500/[0.1]"
+                : "border-[#FF8A3D]/20 bg-[#FF8A3D]/[0.08] text-[#FFB27A] hover:bg-[#FF8A3D]/[0.14]"
+            }`}
+          >
+            <Zap className="h-4 w-4 shrink-0" />
+            <span className="font-sans tracking-tight text-[16px] font-semibold tabular-nums leading-none text-white">
+              {credits === null ? "…" : credits}
+            </span>
+            <span className="font-mono text-[11px] opacity-80">credits</span>
+            <span className="ml-auto inline-flex items-center gap-1 text-[12px] font-medium">
+              <Sparkles className="h-3.5 w-3.5" /> Get more
+            </span>
+          </Link>
         </div>
 
         {/* Navigation */}
-        <nav className="p-3 space-y-1 overflow-y-auto max-h-[calc(100vh-220px)]">
-          {navItems.map((item) => {
+        <nav className="flex-1 space-y-0.5 overflow-y-auto p-2">
+          {items.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={() => setIsOpen(false)}
-                className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all ${
+                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-colors ${
                   isActive
-                    ? "bg-white/10 text-white"
-                    : "text-white/60 hover:text-white hover:bg-white/5"
+                    ? "bg-white/[0.07] text-white"
+                    : "text-[#8B93A5] hover:bg-white/[0.04] hover:text-white"
                 }`}
               >
-                <item.icon className={`w-5 h-5 ${isActive ? item.color : ""}`} />
-                <span className="flex-1 font-medium">{item.label}</span>
-                <ChevronRight className={`w-4 h-4 transition-opacity ${isActive ? "opacity-100" : "opacity-0"}`} />
+                <item.icon
+                  className={`h-[18px] w-[18px] ${isActive ? "text-[#FF8A3D]" : ""}`}
+                  strokeWidth={isActive ? 2.2 : 1.8}
+                />
+                {item.label}
               </Link>
             );
           })}
-
-          {/* Admin Link */}
-          {isAdmin && (
-            <Link
-              href="/admin"
-              onClick={() => setIsOpen(false)}
-              className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all ${
-                pathname === "/admin"
-                  ? "bg-[#ef4444]/10 text-[#ef4444]"
-                  : "text-white/60 hover:text-[#ef4444] hover:bg-[#ef4444]/5"
-              }`}
-            >
-              <Shield className="w-5 h-5" />
-              <span className="flex-1 font-medium">Admin Panel</span>
-              <ChevronRight className="w-4 h-4" />
-            </Link>
-          )}
         </nav>
 
         {/* Footer */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10 bg-[#11151b] safe-area-bottom">
+        <div className="border-t border-white/[0.06] p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
           <form action="/auth/signout" method="post">
-            <Button
-              variant="ghost"
+            <button
               type="submit"
-              className="w-full justify-start text-white/40 hover:text-white hover:bg-white/5"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-[#8B93A5] transition-colors hover:bg-white/[0.04] hover:text-white"
             >
-              <LogOut className="w-4 h-4 mr-2" />
+              <LogOut className="h-[18px] w-[18px]" strokeWidth={1.8} />
               Sign out
-            </Button>
+            </button>
           </form>
         </div>
       </div>

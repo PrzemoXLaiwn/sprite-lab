@@ -1,15 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/use-toast";
 import Link from "next/link";
 import {
   Download,
   Search,
-  Grid3x3,
   LayoutGrid,
   Loader2,
   ImageIcon,
@@ -27,14 +23,15 @@ import {
   Send,
   MessageSquare,
   ChevronRight,
-  ChevronLeft,
   Crown,
   Flame,
   Eye,
   Zap,
   Star,
   Trophy,
+  Plus,
 } from "lucide-react";
+import { CHECKERBOARD, CommunityAvatar, isPixelStyleId } from "@/components/community/shared";
 
 // ===========================================
 // TYPES
@@ -110,25 +107,27 @@ const getModelName = (styleId: string): string => {
 const getPlanBadge = (plan: string) => {
   switch (plan) {
     case "UNLIMITED":
-      return { label: "STUDIO", icon: Crown, color: "bg-gradient-to-r from-yellow-400 to-amber-500 text-black" };
+      return { label: "Studio", icon: Crown, color: "border-amber-400/20 bg-amber-500/[0.06] text-amber-200" };
     case "PRO":
-      return { label: "PRO", icon: Zap, color: "bg-gradient-to-r from-[#8b5cf6] to-[#a855f7] text-white" };
+      return { label: "Pro", icon: Zap, color: "border-[#FF8A3D]/25 bg-[#FF8A3D]/10 text-[#FFB27A]" };
     case "STARTER":
-      return { label: "STARTER", icon: Star, color: "bg-gradient-to-r from-[#FF6B2C] to-[#0ea5e9] text-white" };
+      return { label: "Starter", icon: Star, color: "border-sky-400/20 bg-sky-500/[0.06] text-sky-200" };
     default:
       return null;
   }
 };
 
+const cleanPrompt = (prompt: string) => prompt.replace(/^\[3D\]\s*/, "");
+
 const CATEGORIES = [
-  { id: "all", label: "All", icon: LayoutGrid, color: "from-white/20 to-white/10" },
-  { id: "WEAPONS", label: "Weapons", icon: Zap, color: "from-red-500/20 to-orange-500/20" },
-  { id: "ARMOR", label: "Armor", icon: Trophy, color: "from-blue-500/20 to-cyan-500/20" },
-  { id: "CONSUMABLES", label: "Potions", icon: Flame, color: "from-green-500/20 to-emerald-500/20" },
-  { id: "RESOURCES", label: "Resources", icon: Star, color: "from-yellow-500/20 to-amber-500/20" },
-  { id: "CHARACTERS", label: "Characters", icon: Users, color: "from-purple-500/20 to-pink-500/20" },
-  { id: "CREATURES", label: "Creatures", icon: Eye, color: "from-rose-500/20 to-red-500/20" },
-  { id: "ENVIRONMENT", label: "Environment", icon: Sparkles, color: "from-teal-500/20 to-cyan-500/20" },
+  { id: "all", label: "All", icon: LayoutGrid },
+  { id: "WEAPONS", label: "Weapons", icon: Zap },
+  { id: "ARMOR", label: "Armor", icon: Trophy },
+  { id: "CONSUMABLES", label: "Potions", icon: Flame },
+  { id: "RESOURCES", label: "Resources", icon: Star },
+  { id: "CHARACTERS", label: "Characters", icon: Users },
+  { id: "CREATURES", label: "Creatures", icon: Eye },
+  { id: "ENVIRONMENT", label: "Environment", icon: Sparkles },
 ];
 
 // ===========================================
@@ -153,20 +152,19 @@ export default function CommunityPage() {
   const [userLiked, setUserLiked] = useState(false);
   const [likingInProgress, setLikingInProgress] = useState(false);
 
-  // Chat state
-  const [chatOpen, setChatOpen] = useState(true);
+  // Chat state — collapsed by default; auto-opened on wide (>= 1536px) screens.
+  const [chatOpen, setChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [loadingChat, setLoadingChat] = useState(true);
   const [newChatMessage, setNewChatMessage] = useState("");
   const [sendingChat, setSendingChat] = useState(false);
-  const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+  const chatCountRef = useRef(0);
   const chatPollRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Hover state for cards
-  const [hoveredCard, setHoveredCard] = useState<string | null>(null);
 
   useEffect(() => {
     loadCommunityGallery();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterCategory, filterType, sortBy]);
 
   useEffect(() => {
@@ -179,11 +177,30 @@ export default function CommunityPage() {
     };
   }, []);
 
+  // Open the chat panel by default only when there is room for it.
   useEffect(() => {
-    if (chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: "smooth" });
+    const t = setTimeout(() => {
+      if (window.matchMedia("(min-width: 1536px)").matches) setChatOpen(true);
+    }, 0);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Keep the chat pinned to the newest message — only when new messages
+  // arrive (not on every poll) so reading history isn't interrupted.
+  useEffect(() => {
+    const el = chatScrollRef.current;
+    if (!el) return;
+    if (chatMessages.length !== chatCountRef.current) {
+      chatCountRef.current = chatMessages.length;
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
     }
   }, [chatMessages]);
+
+  useEffect(() => {
+    if (chatOpen && chatScrollRef.current) {
+      chatScrollRef.current.scrollTo({ top: chatScrollRef.current.scrollHeight });
+    }
+  }, [chatOpen]);
 
   useEffect(() => {
     if (selectedGen) {
@@ -191,6 +208,17 @@ export default function CommunityPage() {
       checkUserLiked(selectedGen.id);
     }
   }, [selectedGen]);
+
+  // Close the detail modal with Escape.
+  const modalOpen = selectedGen !== null;
+  useEffect(() => {
+    if (!modalOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSelectedGen(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [modalOpen]);
 
   const loadChatMessages = async () => {
     try {
@@ -383,384 +411,350 @@ export default function CommunityPage() {
   // Get featured (top liked) assets
   const featuredAssets = [...generations].sort((a, b) => b.likes - a.likes).slice(0, 3);
 
+  const hasFilters = searchQuery !== "" || filterCategory !== "all" || filterType !== "all";
+
+  const TYPE_TABS = [
+    { id: "all" as const, label: "All", icon: null },
+    { id: "2d" as const, label: "2D", icon: ImageIcon, count: total2D },
+    { id: "3d" as const, label: "3D", icon: Cuboid, count: total3D },
+  ];
+
+  const SORT_TABS = [
+    { id: "newest" as const, label: "Newest", icon: Clock },
+    { id: "popular" as const, label: "Popular", icon: TrendingUp },
+  ];
+
   return (
-    <div className="min-h-screen bg-[#0a0c10] relative overflow-hidden">
-      {/* Animated Background */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#8b5cf6]/10 via-transparent to-transparent" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-[#FF6B2C]/10 via-transparent to-transparent" />
-        <div className="absolute inset-0 grid-pattern opacity-30" />
+    <div className="min-h-screen bg-[#0B0D12] text-[#ECEEF3]">
+      <div className={`transition-[padding] duration-300 ${chatOpen ? "lg:pr-[320px]" : ""}`}>
+        <div className="mx-auto max-w-[1400px] px-5 py-6 lg:px-8">
+          {/* ═══ Header ═══════════════════════════════════════════════ */}
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div className="min-w-0">
+              <h1 className="font-display text-[26px] font-semibold leading-tight tracking-normal text-white">Explore</h1>
+              <p className="mt-1 text-[13px] text-[#8B93A5]">Discover sprites shared by the community</p>
+              <p className="mt-1.5 font-mono text-[11.5px] text-[#8B93A5]">
+                <span className="mr-1.5 text-[#FF8A3D]">&gt;</span>
+                <span className="font-mono tabular-nums text-[#C9CFDB]">{total}</span> creations
+                <span className="mx-1.5 text-[#7A8294]">·</span>
+                <span className="font-mono tabular-nums text-[#C9CFDB]">{total2D}</span> 2D
+                <span className="mx-1.5 text-[#7A8294]">·</span>
+                <span className="font-mono tabular-nums text-[#C9CFDB]">{total3D}</span> 3D
+                <span className="caret ml-1.5 align-[-2px]" aria-hidden="true" />
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={loadCommunityGallery}
+                title="Refresh"
+                aria-label="Refresh gallery"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.1] bg-white/[0.04] text-[#C9CFDB] transition hover:bg-white/[0.08] hover:text-white"
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setChatOpen(v => !v)}
+                aria-pressed={chatOpen}
+                className={`flex h-10 items-center gap-2 rounded-xl border px-3.5 text-[13px] font-medium transition ${
+                  chatOpen
+                    ? "border-[#FF8A3D]/40 bg-[#FF8A3D]/10 text-white"
+                    : "border-white/[0.1] bg-white/[0.04] text-[#C9CFDB] hover:bg-white/[0.08] hover:text-white"
+                }`}
+              >
+                <MessageSquare className={`h-4 w-4 ${chatOpen ? "text-[#FF8A3D]" : ""}`} />
+                <span className="hidden sm:inline">Live chat</span>
+                {chatMessages.length > 0 && (
+                  <span className="rounded-full bg-white/[0.08] px-1.5 py-0.5 text-[10px] font-semibold font-mono tabular-nums text-[#C9CFDB]">
+                    {chatMessages.length > 99 ? "99+" : chatMessages.length}
+                  </span>
+                )}
+              </button>
+              <Link
+                href="/generate"
+                className="flex h-10 items-center gap-2 px-corners bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] px-4 text-[13px] font-semibold text-white transition hover:brightness-110"
+              >
+                <Plus className="h-4 w-4" strokeWidth={2.4} />
+                Create
+              </Link>
+            </div>
+          </div>
 
-        {/* Floating orbs */}
-        <div className="absolute top-20 left-[10%] w-72 h-72 bg-[#8b5cf6]/20 rounded-full blur-[100px] animate-pulse" />
-        <div className="absolute bottom-40 right-[20%] w-96 h-96 bg-[#FF6B2C]/15 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: "1s" }} />
-        <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-[#FF6B2C]/10 rounded-full blur-[80px] animate-pulse" style={{ animationDelay: "2s" }} />
-      </div>
-
-      <div className="relative z-10 flex h-screen">
-        {/* Main Content */}
-        <div className={`flex-1 overflow-y-auto transition-all duration-300 ${chatOpen ? 'mr-80' : 'mr-0'}`}>
-          <div className="p-3 sm:p-6 lg:p-8">
-            {/* Hero Header */}
-            <div className="mb-8">
-              <div className="relative overflow-hidden rounded-xl sm:rounded-3xl bg-gradient-to-br from-[#8b5cf6]/20 via-[#11151b] to-[#FF6B2C]/20 border border-white/10 p-4 sm:p-8 mb-6 sm:mb-8">
-                <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMtOS45NDEgMC0xOCA4LjA1OS0xOCAxOHM4LjA1OSAxOCAxOCAxOCAxOC04LjA1OSAxOC0xOC04LjA1OS0xOC0xOC0xOHptMCAzMmMtNy43MzIgMC0xNC02LjI2OC0xNC0xNHM2LjI2OC0xNCAxNC0xNCAxNCA2LjI2OCAxNCAxNC02LjI2OCAxNC0xNCAxNHoiIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iLjAyIi8+PC9nPjwvc3ZnPg==')] opacity-50" />
-
-                <div className="relative flex flex-col lg:flex-row items-center justify-between gap-6">
-                  <div className="text-center lg:text-left">
-                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-sm mb-4">
-                      <Users className="w-4 h-4 text-[#FF6B2C]" />
-                      <span className="text-white/80">{total} creations shared</span>
-                      <span className="w-2 h-2 rounded-full bg-[#FF6B2C] animate-pulse" />
-                    </div>
-
-                    <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black mb-2 sm:mb-3">
-                      <span className="bg-gradient-to-r from-white via-[#8b5cf6] to-[#FF6B2C] bg-clip-text text-transparent">
-                        Community Gallery
-                      </span>
-                    </h1>
-                    <p className="text-white/60 text-sm sm:text-lg max-w-xl">
-                      Discover amazing game assets created by our community. Get inspired, download, and share your own creations!
-                    </p>
-                  </div>
-
-                  <div className="flex gap-2 sm:gap-3">
-                    <Link href="/generate">
-                      <Button className="h-10 sm:h-12 px-4 sm:px-6 text-sm sm:text-base bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] text-black font-bold hover:opacity-90 transition-all hover:scale-105 shadow-lg shadow-[#FF6B2C]/25">
-                        <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2" />
-                        Create Asset
-                      </Button>
-                    </Link>
-                    <Button
-                      variant="outline"
-                      className="h-12 px-6 border-white/20 hover:bg-white/10"
-                      onClick={loadCommunityGallery}
-                    >
-                      <RefreshCw className="w-5 h-5" />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Stats Bar */}
-                <div className="relative mt-4 sm:mt-8 grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-                  {[
-                    { label: "Total Assets", value: total, icon: ImageIcon, color: "text-[#FF6B2C]" },
-                    { label: "2D Sprites", value: total2D, icon: ImageIcon, color: "text-[#FF6B2C]" },
-                    { label: "3D Models", value: total3D, icon: Cuboid, color: "text-[#8b5cf6]" },
-                    { label: "Active Now", value: chatMessages.length > 0 ? "Live" : "0", icon: MessageSquare, color: "text-yellow-400" },
-                  ].map((stat, i) => (
-                    <div key={i} className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg sm:rounded-xl bg-white/5 border border-white/10">
-                      <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-white/10 flex items-center justify-center ${stat.color}`}>
-                        <stat.icon className="w-4 h-4 sm:w-5 sm:h-5" />
-                      </div>
-                      <div>
-                        <p className="text-lg sm:text-2xl font-bold text-white">{stat.value}</p>
-                        <p className="text-[10px] sm:text-xs text-white/50">{stat.label}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+          {/* ═══ Trending ═════════════════════════════════════════════ */}
+          {featuredAssets.length > 0 && featuredAssets[0].likes > 0 && (
+            <section className="mt-6">
+              <div className="mb-2.5 flex items-center gap-1.5">
+                <Flame className="h-3.5 w-3.5 text-[#FF8A3D]" />
+                <h2 className="font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">Trending now</h2>
               </div>
-
-              {/* Featured Section (only if there are liked assets) */}
-              {featuredAssets.length > 0 && featuredAssets[0].likes > 0 && (
-                <div className="mb-8">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Flame className="w-5 h-5 text-orange-400" />
-                    <h2 className="text-lg font-bold text-white">Trending Now</h2>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {featuredAssets.map((gen, index) => {
-                      const is3D = is3DFormat(gen.imageUrl) || is3DStyle(gen.styleId);
-                      return (
-                        <div
-                          key={gen.id}
-                          onClick={() => setSelectedGen(gen)}
-                          className="group relative overflow-hidden rounded-2xl cursor-pointer transition-all duration-300 hover:scale-[1.02]"
-                        >
-                          <div className={`absolute inset-0 bg-gradient-to-br ${index === 0 ? 'from-yellow-500/30 to-orange-500/30' : index === 1 ? 'from-gray-400/30 to-gray-500/30' : 'from-amber-600/30 to-amber-700/30'} opacity-0 group-hover:opacity-100 transition-opacity`} />
-                          <div className="aspect-video bg-[#11151b] relative">
-                            {is3D ? (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <FileBox className="w-16 h-16 text-[#8b5cf6]" />
-                              </div>
-                            ) : (
-                              <img src={gen.imageUrl} alt={gen.prompt} className="w-full h-full object-contain p-4" />
-                            )}
-
-                            {/* Rank Badge */}
-                            <div className={`absolute top-3 left-3 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                              index === 0 ? 'bg-gradient-to-br from-yellow-400 to-amber-500 text-black' :
-                              index === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-400 text-black' :
-                              'bg-gradient-to-br from-amber-600 to-amber-700 text-white'
-                            }`}>
-                              #{index + 1}
-                            </div>
-
-                            {/* Likes */}
-                            <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-sm">
-                              <Heart className="w-3.5 h-3.5 text-red-400 fill-red-400" />
-                              <span className="text-white text-sm font-medium">{gen.likes}</span>
-                            </div>
-                          </div>
-
-                          <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 to-transparent">
-                            <p className="text-white font-medium text-sm line-clamp-1">{gen.prompt}</p>
-                            <p className="text-white/50 text-xs mt-1">by {gen.user?.name || "Anonymous"}</p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Filters */}
-              <div className="space-y-4">
-                {/* Search & Sort Row */}
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <div className="flex-1 relative group">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40 group-focus-within:text-[#FF6B2C] transition-colors" />
-                    <Input
-                      placeholder="Search assets..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-12 h-12 bg-white/5 border-white/10 rounded-xl focus:border-[#FF6B2C]/50 focus:ring-[#FF6B2C]/20 text-white placeholder:text-white/40"
-                    />
-                  </div>
-
-                  <div className="flex gap-2">
+              <div className="grid grid-cols-1 gap-2.5 md:grid-cols-3">
+                {featuredAssets.map((gen, index) => {
+                  const is3D = is3DFormat(gen.imageUrl) || is3DStyle(gen.styleId);
+                  return (
                     <button
-                      onClick={() => setSortBy("newest")}
-                      className={`h-12 px-5 rounded-xl font-medium transition-all flex items-center gap-2 ${
-                        sortBy === "newest"
-                          ? "bg-gradient-to-r from-[#FF6B2C]/20 to-[#FF6B2C]/20 text-[#FF6B2C] border border-[#FF6B2C]/30"
-                          : "bg-white/5 text-white/60 hover:text-white border border-white/10"
-                      }`}
+                      key={gen.id}
+                      type="button"
+                      onClick={() => setSelectedGen(gen)}
+                      className="group flex items-center gap-3 rounded-2xl border border-white/[0.06] bg-[#0E1016] p-2 pr-3 text-left transition-colors hover:border-white/20 hover:bg-[#151922]"
                     >
-                      <Clock className="w-4 h-4" />
-                      New
-                    </button>
-                    <button
-                      onClick={() => setSortBy("popular")}
-                      className={`h-12 px-5 rounded-xl font-medium transition-all flex items-center gap-2 ${
-                        sortBy === "popular"
-                          ? "bg-gradient-to-r from-[#8b5cf6]/20 to-[#a855f7]/20 text-[#8b5cf6] border border-[#8b5cf6]/30"
-                          : "bg-white/5 text-white/60 hover:text-white border border-white/10"
-                      }`}
-                    >
-                      <TrendingUp className="w-4 h-4" />
-                      Hot
-                    </button>
-                  </div>
-                </div>
-
-                {/* Type Filter */}
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => setFilterType("all")}
-                    className={`h-10 px-4 rounded-lg font-medium transition-all ${
-                      filterType === "all"
-                        ? "bg-white/10 text-white border border-white/20"
-                        : "text-white/50 hover:text-white"
-                    }`}
-                  >
-                    All Types
-                  </button>
-                  <button
-                    onClick={() => setFilterType("2d")}
-                    className={`h-10 px-4 rounded-lg font-medium transition-all flex items-center gap-2 ${
-                      filterType === "2d"
-                        ? "bg-[#FF6B2C]/20 text-[#FF6B2C] border border-[#FF6B2C]/30"
-                        : "text-white/50 hover:text-[#FF6B2C]"
-                    }`}
-                  >
-                    <ImageIcon className="w-4 h-4" />
-                    2D ({total2D})
-                  </button>
-                  <button
-                    onClick={() => setFilterType("3d")}
-                    className={`h-10 px-4 rounded-lg font-medium transition-all flex items-center gap-2 ${
-                      filterType === "3d"
-                        ? "bg-[#8b5cf6]/20 text-[#8b5cf6] border border-[#8b5cf6]/30"
-                        : "text-white/50 hover:text-[#8b5cf6]"
-                    }`}
-                  >
-                    <Cuboid className="w-4 h-4" />
-                    3D ({total3D})
-                  </button>
-                </div>
-
-                {/* Category Pills */}
-                <div className="flex flex-wrap gap-2">
-                  {CATEGORIES.map((cat) => {
-                    const Icon = cat.icon;
-                    const count = cat.id === "all" ? total : (categoryCounts[cat.id] || 0);
-                    return (
-                      <button
-                        key={cat.id}
-                        onClick={() => setFilterCategory(cat.id)}
-                        className={`h-10 px-4 rounded-xl font-medium transition-all flex items-center gap-2 ${
-                          filterCategory === cat.id
-                            ? `bg-gradient-to-r ${cat.color} text-white border border-white/20 shadow-lg`
-                            : "bg-white/5 text-white/50 hover:text-white border border-transparent hover:border-white/10"
-                        }`}
+                      <div
+                        className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/[0.06] bg-[#151922]"
+                        style={CHECKERBOARD}
                       >
-                        <Icon className="w-4 h-4" />
-                        {cat.label}
-                        {count > 0 && (
-                          <span className={`text-xs px-1.5 py-0.5 rounded-full ${filterCategory === cat.id ? 'bg-white/20' : 'bg-white/10'}`}>
-                            {count}
-                          </span>
+                        {is3D ? (
+                          <FileBox className="absolute inset-0 m-auto h-6 w-6 text-[#FF8A3D]" />
+                        ) : (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={gen.imageUrl}
+                            alt={gen.prompt}
+                            loading="lazy"
+                            className={`h-full w-full object-contain p-1.5 transition-transform duration-300 group-hover:scale-110 ${isPixelStyleId(gen.styleId) ? "pixel-perfect" : ""}`}
+                          />
                         )}
-                      </button>
-                    );
-                  })}
-                </div>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[13px] font-medium text-white">{cleanPrompt(gen.prompt)}</p>
+                        <p className="mt-0.5 truncate text-[12px] text-[#8B93A5]">by {gen.user?.name || "Anonymous"}</p>
+                      </div>
+                      <div className="flex shrink-0 flex-col items-end gap-1">
+                        <span className="text-[11px] font-semibold font-mono tabular-nums text-[#7A8294]">#{index + 1}</span>
+                        <span className="flex items-center gap-1 text-[12px] font-mono tabular-nums text-[#C9CFDB]">
+                          <Heart className="h-3 w-3 fill-rose-400 text-rose-400" />
+                          {gen.likes}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
+            </section>
+          )}
+
+          {/* ═══ Toolbar ══════════════════════════════════════════════ */}
+          <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center">
+            <div className="relative flex-1 lg:max-w-md">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7A8294]" />
+              <input
+                type="text"
+                placeholder="Search prompts…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-10 w-full rounded-xl border border-white/[0.08] bg-[#151922] pl-10 pr-9 text-[13px] text-white outline-none transition-colors placeholder:text-[#7A8294] focus:border-[#FF8A3D]/50"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  aria-label="Clear search"
+                  className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-lg text-[#8B93A5] hover:bg-white/[0.06] hover:text-white"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
 
-            {/* Gallery Grid */}
+            <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
+              <div className="flex items-center gap-1 rounded-xl bg-white/[0.04] p-1">
+                {TYPE_TABS.map((tab) => {
+                  const active = filterType === tab.id;
+                  const Icon = tab.icon;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setFilterType(tab.id)}
+                      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium transition-colors ${
+                        active ? "bg-white/[0.1] text-white shadow-sm" : "text-[#8B93A5] hover:text-white"
+                      }`}
+                    >
+                      {Icon && <Icon className={`h-3.5 w-3.5 ${active ? "text-[#FF8A3D]" : ""}`} />}
+                      {tab.label}
+                      {tab.count !== undefined && (
+                        <span className={`font-mono tabular-nums ${active ? "text-[#C9CFDB]" : "text-[#7A8294]"}`}>{tab.count}</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="flex items-center gap-1 rounded-xl bg-white/[0.04] p-1">
+                {SORT_TABS.map((tab) => {
+                  const active = sortBy === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setSortBy(tab.id)}
+                      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium transition-colors ${
+                        active ? "bg-white/[0.1] text-white shadow-sm" : "text-[#8B93A5] hover:text-white"
+                      }`}
+                    >
+                      <tab.icon className={`h-3.5 w-3.5 ${active ? "text-[#FF8A3D]" : ""}`} />
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Category chips */}
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {CATEGORIES.map((cat) => {
+              const Icon = cat.icon;
+              const active = filterCategory === cat.id;
+              const count = cat.id === "all" ? total : (categoryCounts[cat.id] || 0);
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setFilterCategory(cat.id)}
+                  className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors ${
+                    active
+                      ? "border-[#FF8A3D]/60 bg-[#FF8A3D]/12 text-white"
+                      : "border-white/[0.08] text-[#9BA3B4] hover:border-white/20 hover:text-white"
+                  }`}
+                >
+                  <Icon className={`h-3.5 w-3.5 ${active ? "text-[#FF8A3D]" : ""}`} />
+                  {cat.label}
+                  {count > 0 && (
+                    <span className={`font-mono tabular-nums ${active ? "text-[#FFB27A]" : "text-[#7A8294]"}`}>{count}</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* ═══ Gallery ══════════════════════════════════════════════ */}
+          <div className="mt-5">
+            {!loading && searchQuery && filteredGenerations.length > 0 && (
+              <p className="mb-3 text-[12px] text-[#8B93A5]">
+                {filteredGenerations.length} result{filteredGenerations.length === 1 ? "" : "s"} for{" "}
+                <span className="text-[#C9CFDB]">&ldquo;{searchQuery}&rdquo;</span>
+              </p>
+            )}
+
             {loading ? (
-              <div className="flex flex-col items-center justify-center py-20">
-                <div className="relative">
-                  <div className="w-20 h-20 rounded-full border-4 border-[#8b5cf6]/20 border-t-[#8b5cf6] animate-spin" />
-                  <Sparkles className="absolute inset-0 m-auto w-8 h-8 text-[#8b5cf6]" />
-                </div>
-                <p className="text-white/60 mt-4">Loading amazing creations...</p>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+                {Array.from({ length: 18 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="aspect-square animate-pulse rounded-2xl bg-white/[0.04]"
+                    style={{ animationDelay: `${i * 40}ms` }}
+                  />
+                ))}
               </div>
             ) : filteredGenerations.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20">
-                <div className="w-32 h-32 rounded-3xl bg-gradient-to-br from-[#8b5cf6]/20 to-[#FF6B2C]/20 flex items-center justify-center mb-6 border border-white/10">
-                  <Users className="w-16 h-16 text-white/20" />
+              <div className="flex flex-col items-center justify-center pixel-grid rounded-2xl border border-white/[0.06] bg-[#0E1016] px-6 py-20 text-center">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.04]">
+                  {hasFilters ? <Search className="h-5 w-5 text-[#8B93A5]" /> : <Users className="h-5 w-5 text-[#8B93A5]" />}
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-2">No Assets Yet</h3>
-                <p className="text-white/50 mb-6 text-center max-w-md">
-                  {searchQuery || filterCategory !== "all" || filterType !== "all"
+                <h3 className="text-[15px] font-semibold text-white">
+                  {hasFilters ? "No matches" : "Nothing shared yet"}
+                </h3>
+                <p className="mt-1 max-w-sm text-[13px] text-[#8B93A5]">
+                  {hasFilters
                     ? "No assets match your filters. Try adjusting your search."
                     : "Be the first to share your creations with the community!"}
                 </p>
-                <Link href="/generate">
-                  <Button className="h-12 px-6 bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] text-black font-bold">
-                    <Sparkles className="w-5 h-5 mr-2" />
-                    Create First Asset
-                  </Button>
+                <Link
+                  href="/generate"
+                  className="mt-5 flex h-10 items-center gap-2 px-corners bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] px-4 text-[13px] font-semibold text-white transition hover:brightness-110"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Create an asset
                 </Link>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
                 {filteredGenerations.map((gen) => {
                   const is3D = is3DFormat(gen.imageUrl) || is3DStyle(gen.styleId);
                   const format3D = is3D ? get3DFormat(gen.imageUrl) : null;
-                  const isHovered = hoveredCard === gen.id;
 
                   return (
                     <div
                       key={gen.id}
-                      className="group relative"
-                      onMouseEnter={() => setHoveredCard(gen.id)}
-                      onMouseLeave={() => setHoveredCard(null)}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setSelectedGen(gen)}
+                      onKeyDown={(e) => {
+                        if (e.target !== e.currentTarget) return;
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setSelectedGen(gen);
+                        }
+                      }}
+                      title={`${cleanPrompt(gen.prompt)} · ${new Date(gen.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`}
+                      className="group relative aspect-square cursor-pointer overflow-hidden rounded-2xl border border-white/[0.06] bg-[#151922] outline-none transition-colors hover:border-white/20 focus-visible:border-[#FF8A3D] focus-visible:ring-2 focus-visible:ring-[#FF8A3D]/25"
+                      style={CHECKERBOARD}
                     >
-                      <div
-                        onClick={() => setSelectedGen(gen)}
-                        className={`relative overflow-hidden rounded-2xl cursor-pointer transition-all duration-300 ${
-                          isHovered ? 'scale-[1.02] z-10' : ''
-                        }`}
-                      >
-                        {/* Glow effect on hover */}
-                        <div className={`absolute -inset-1 bg-gradient-to-r ${is3D ? 'from-[#8b5cf6] to-[#a855f7]' : 'from-[#FF6B2C] to-[#FF6B2C]'} rounded-2xl opacity-0 group-hover:opacity-30 blur-lg transition-opacity`} />
-
-                        <div className="relative bg-[#11151b] border border-white/10 rounded-2xl overflow-hidden group-hover:border-white/20 transition-colors">
-                          {/* Image */}
-                          <div className="aspect-square relative overflow-hidden bg-gradient-to-br from-white/5 to-transparent">
-                            {/* Type Badge */}
-                            <div className="absolute top-2 left-2 z-10">
-                              <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold backdrop-blur-sm ${
-                                is3D
-                                  ? 'bg-[#8b5cf6]/90 text-white'
-                                  : 'bg-[#FF6B2C]/90 text-black'
-                              }`}>
-                                {is3D ? <Cuboid className="w-3 h-3" /> : <ImageIcon className="w-3 h-3" />}
-                                {is3D ? format3D : '2D'}
-                              </div>
-                            </div>
-
-                            {/* Likes Badge */}
-                            {gen.likes > 0 && (
-                              <div className="absolute top-2 right-2 z-10">
-                                <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-black/60 backdrop-blur-sm">
-                                  <Heart className="w-3 h-3 text-red-400 fill-red-400" />
-                                  <span className="text-white text-xs font-medium">{gen.likes}</span>
-                                </div>
-                              </div>
-                            )}
-
-                            {is3D ? (
-                              <div className="w-full h-full flex flex-col items-center justify-center p-4">
-                                <div className="relative">
-                                  <div className="absolute inset-0 bg-[#8b5cf6]/30 rounded-full blur-xl animate-pulse" />
-                                  <FileBox className="relative w-16 h-16 text-[#8b5cf6]" />
-                                </div>
-                                <span className="text-xs text-white/50 mt-3">{getModelName(gen.styleId)}</span>
-                              </div>
-                            ) : (
-                              <img
-                                src={gen.imageUrl}
-                                alt={gen.prompt}
-                                className="w-full h-full object-contain p-3 transition-transform duration-300 group-hover:scale-110"
-                              />
-                            )}
-
-                            {/* Hover Overlay */}
-                            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col items-center justify-end p-4">
-                              <div className="flex gap-2 mb-3">
-                                <Button
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDownload(gen);
-                                  }}
-                                  className={`${is3D ? 'bg-[#8b5cf6] hover:bg-[#a855f7]' : 'bg-[#FF6B2C] hover:bg-[#FF6B2C]'} text-black`}
-                                >
-                                  <Download className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    window.open(gen.imageUrl, "_blank");
-                                  }}
-                                  className="border-white/30 hover:bg-white/10"
-                                >
-                                  <ExternalLink className="w-4 h-4" />
-                                </Button>
-                              </div>
-                              <p className="text-white text-xs text-center line-clamp-2">{gen.prompt}</p>
-                            </div>
+                      {is3D ? (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 pb-8">
+                          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.04]">
+                            <FileBox className="h-7 w-7 text-[#FF8A3D]" />
                           </div>
+                          <span className="text-[11px] text-[#8B93A5]">{getModelName(gen.styleId)}</span>
+                        </div>
+                      ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={gen.imageUrl}
+                          alt={gen.prompt}
+                          loading="lazy"
+                          className={`absolute inset-0 h-full w-full object-contain p-[10%] pb-[20%] transition-transform duration-300 group-hover:scale-105 ${isPixelStyleId(gen.styleId) ? "pixel-perfect" : ""}`}
+                        />
+                      )}
 
-                          {/* Info */}
-                          <div className="p-3 border-t border-white/5">
-                            <p className="text-white text-sm font-medium truncate mb-2">
-                              {gen.prompt.replace(/^\[3D\]\s*/, '')}
-                            </p>
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                {gen.user?.avatarUrl ? (
-                                  <img src={gen.user.avatarUrl} alt="" className="w-5 h-5 rounded-full" />
-                                ) : (
-                                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#8b5cf6] to-[#FF6B2C]" />
-                                )}
-                                <span className="text-white/50 text-xs truncate max-w-[80px]">
-                                  {gen.user?.name || "Anonymous"}
-                                </span>
-                              </div>
-                              <span className="text-white/30 text-xs">
-                                {new Date(gen.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                              </span>
-                            </div>
+                      {/* Type chip — only 3D is called out; 2D is the default */}
+                      {is3D && (
+                        <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full border border-white/[0.08] bg-black/45 px-2 py-0.5 font-mono text-[10px] font-medium text-[#C9CFDB] backdrop-blur-sm">
+                          <Cuboid className="h-3 w-3 text-[#FF8A3D]" />
+                          {format3D}
+                        </span>
+                      )}
+
+                      {/* Hover actions */}
+                      <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                        <button
+                          type="button"
+                          title="Download"
+                          aria-label="Download"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownload(gen);
+                          }}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.1] bg-black/55 text-white backdrop-blur-sm transition hover:bg-black/75"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          title="Open original"
+                          aria-label="Open original"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(gen.imageUrl, "_blank");
+                          }}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.1] bg-black/55 text-white backdrop-blur-sm transition hover:bg-black/75"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Bottom info */}
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent px-3 pb-2.5 pt-8">
+                        <p className="line-clamp-1 text-[12px] font-medium text-white">{cleanPrompt(gen.prompt)}</p>
+                        <div className="mt-1.5 flex items-center justify-between gap-2">
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            <CommunityAvatar src={gen.user?.avatarUrl} name={gen.user?.name} size={16} />
+                            <span className="truncate text-[11px] text-[#C9CFDB]">{gen.user?.name || "Anonymous"}</span>
                           </div>
+                          <span className={`flex shrink-0 items-center gap-1 text-[11px] font-mono tabular-nums ${gen.likes > 0 ? "text-[#ECEEF3]" : "text-[#8B93A5]"}`}>
+                            <Heart className={`h-3 w-3 ${gen.likes > 0 ? "fill-rose-400 text-rose-400" : ""}`} />
+                            {gen.likes}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -770,277 +764,281 @@ export default function CommunityPage() {
             )}
           </div>
         </div>
-
-        {/* Chat Toggle Button */}
-        {!chatOpen && (
-          <button
-            onClick={() => setChatOpen(true)}
-            className="fixed right-0 top-1/2 -translate-y-1/2 z-30 w-12 h-32 rounded-l-2xl bg-gradient-to-b from-[#8b5cf6] to-[#FF6B2C] flex flex-col items-center justify-center gap-2 hover:w-14 transition-all shadow-lg shadow-[#8b5cf6]/25"
-          >
-            <MessageSquare className="w-5 h-5 text-white" />
-            <ChevronLeft className="w-4 h-4 text-white" />
-            {chatMessages.length > 0 && (
-              <span className="absolute -top-1 -left-1 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-bold">
-                {chatMessages.length > 99 ? '99+' : chatMessages.length}
-              </span>
-            )}
-          </button>
-        )}
-
-        {/* Chat Sidebar */}
-        <div
-          className={`fixed right-0 top-0 h-full w-80 bg-[#11151b]/95 backdrop-blur-xl border-l border-[#8b5cf6]/20 flex flex-col z-20 transition-transform duration-300 ${
-            chatOpen ? 'translate-x-0' : 'translate-x-full'
-          }`}
-        >
-          {/* Chat Header */}
-          <div className="p-4 border-b border-white/10">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#8b5cf6] to-[#FF6B2C] flex items-center justify-center">
-                    <MessageSquare className="w-5 h-5 text-white" />
-                  </div>
-                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-[#FF6B2C] border-2 border-[#11151b]" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-white">Live Chat</h3>
-                  <p className="text-xs text-white/50">{chatMessages.length} messages</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setChatOpen(false)}
-                className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors"
-              >
-                <ChevronRight className="w-4 h-4 text-white/50" />
-              </button>
-            </div>
-          </div>
-
-          {/* Chat Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {loadingChat ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-6 h-6 text-[#8b5cf6] animate-spin" />
-              </div>
-            ) : chatMessages.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#8b5cf6]/20 to-[#FF6B2C]/20 flex items-center justify-center">
-                  <MessageSquare className="w-8 h-8 text-white/30" />
-                </div>
-                <p className="text-white/50 text-sm">No messages yet</p>
-                <p className="text-white/30 text-xs mt-1">Be the first to say hello!</p>
-              </div>
-            ) : (
-              chatMessages.map((msg) => {
-                const planBadge = getPlanBadge(msg.userPlan);
-                return (
-                  <div key={msg.id} className="group animate-in slide-in-from-bottom-2 duration-300">
-                    <div className="flex items-start gap-2">
-                      {msg.userAvatar ? (
-                        <img src={msg.userAvatar} alt="" className="w-8 h-8 rounded-full flex-shrink-0 ring-2 ring-white/10" />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#8b5cf6] to-[#FF6B2C] flex-shrink-0 ring-2 ring-white/10" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-medium text-white truncate">
-                            {msg.userName || "Anonymous"}
-                          </span>
-                          {planBadge && (
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5 ${planBadge.color}`}>
-                              <planBadge.icon className="w-2.5 h-2.5" />
-                              {planBadge.label}
-                            </span>
-                          )}
-                          <span className="text-[10px] text-white/30 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                        <div className="bg-white/5 rounded-2xl rounded-tl-sm px-3 py-2">
-                          <p className="text-sm text-white/80 break-words">{msg.message}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-            <div ref={chatEndRef} />
-          </div>
-
-          {/* Chat Input */}
-          <div className="p-4 border-t border-white/10 bg-[#11151b]/50">
-            <div className="flex gap-2">
-              <Input
-                placeholder="Say something..."
-                value={newChatMessage}
-                onChange={(e) => setNewChatMessage(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendChatMessage()}
-                className="flex-1 h-11 bg-white/5 border-white/10 rounded-xl focus:border-[#8b5cf6]/50 text-white placeholder:text-white/30"
-                maxLength={500}
-              />
-              <Button
-                onClick={handleSendChatMessage}
-                disabled={!newChatMessage.trim() || sendingChat}
-                className="h-11 w-11 bg-gradient-to-r from-[#8b5cf6] to-[#FF6B2C] hover:opacity-90"
-              >
-                {sendingChat ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Send className="w-4 h-4" />
-                )}
-              </Button>
-            </div>
-            <p className="text-[10px] text-white/30 mt-2 text-center">
-              Be kind • Max 10 msg/min
-            </p>
-          </div>
-        </div>
       </div>
 
-      {/* Detail Modal */}
+      {/* ═══ Live chat panel ══════════════════════════════════════════ */}
+      <aside
+        aria-label="Live chat"
+        inert={!chatOpen}
+        className={`fixed bottom-12 right-0 top-12 z-30 flex w-full max-w-[320px] flex-col border-l border-white/[0.06] bg-[#0E1016] shadow-[-20px_0_40px_-20px_rgba(0,0,0,0.6)] transition-transform duration-300 md:bottom-0 md:top-0 ${
+          chatOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3.5">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.04]">
+              <MessageSquare className="h-4 w-4 text-[#FF8A3D]" />
+            </div>
+            <div>
+              <h3 className="text-[14px] font-semibold text-white">Live chat</h3>
+              <p className="flex items-center gap-1.5 font-mono text-[10.5px] text-[#8B93A5]">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                {chatMessages.length} messages
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setChatOpen(false)}
+            aria-label="Collapse chat"
+            title="Collapse chat"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-[#8B93A5] transition-colors hover:bg-white/[0.06] hover:text-white"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div ref={chatScrollRef} className="flex-1 space-y-3.5 overflow-y-auto px-4 py-4">
+          {loadingChat ? (
+            <div className="space-y-3.5">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-start gap-2.5">
+                  <div className="h-7 w-7 shrink-0 animate-pulse rounded-full bg-white/[0.04]" />
+                  <div className="flex-1 space-y-1.5">
+                    <div className="h-3 w-20 animate-pulse rounded bg-white/[0.04]" />
+                    <div className="h-8 animate-pulse rounded-xl bg-white/[0.04]" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : chatMessages.length === 0 ? (
+            <div className="flex flex-col items-center py-10 text-center">
+              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.04]">
+                <MessageSquare className="h-5 w-5 text-[#8B93A5]" />
+              </div>
+              <p className="text-[13px] font-medium text-white">No messages yet</p>
+              <p className="mt-1 text-[12px] text-[#8B93A5]">Be the first to say hello!</p>
+            </div>
+          ) : (
+            chatMessages.map((msg) => {
+              const planBadge = getPlanBadge(msg.userPlan);
+              return (
+                <div key={msg.id} className="group flex items-start gap-2.5">
+                  <CommunityAvatar src={msg.userAvatar} name={msg.userName} size={28} />
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex items-center gap-1.5">
+                      <span className="truncate text-[12.5px] font-medium text-white">
+                        {msg.userName || "Anonymous"}
+                      </span>
+                      {planBadge && (
+                        <span className={`flex shrink-0 items-center gap-0.5 rounded-full border px-1.5 py-px text-[10px] font-medium ${planBadge.color}`}>
+                          <planBadge.icon className="h-2.5 w-2.5" />
+                          {planBadge.label}
+                        </span>
+                      )}
+                      <span className="ml-auto shrink-0 text-[10px] font-mono tabular-nums text-[#7A8294] opacity-0 transition-opacity group-hover:opacity-100">
+                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    </div>
+                    <div className="rounded-xl rounded-tl-sm bg-white/[0.04] px-3 py-2">
+                      <p className="break-words text-[13px] leading-snug text-[#ECEEF3]">{msg.message}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        <div className="border-t border-white/[0.06] p-3">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Say something…"
+              value={newChatMessage}
+              onChange={(e) => setNewChatMessage(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendChatMessage()}
+              maxLength={500}
+              className="h-10 min-w-0 flex-1 rounded-xl border border-white/[0.08] bg-[#151922] px-3 text-[13px] text-white outline-none transition-colors placeholder:text-[#7A8294] focus:border-[#FF8A3D]/50"
+            />
+            <button
+              type="button"
+              onClick={handleSendChatMessage}
+              disabled={!newChatMessage.trim() || sendingChat}
+              aria-label="Send message"
+              className="flex h-10 w-10 shrink-0 items-center justify-center px-corners bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {sendingChat ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </button>
+          </div>
+          <p className="mt-2 text-center font-mono text-[10px] text-[#7A8294]">Be kind · Max 10 messages/min</p>
+        </div>
+      </aside>
+
+      {/* ═══ Detail modal ═════════════════════════════════════════════ */}
       {selectedGen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => setSelectedGen(null)}
         >
           <div
-            className="relative bg-[#11151b] border border-white/10 rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col md:flex-row animate-in zoom-in-95 duration-300"
+            role="dialog"
+            aria-modal="true"
+            aria-label={cleanPrompt(selectedGen.prompt)}
+            className="relative flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0E1016] shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)] animate-in zoom-in-95 duration-200 md:flex-row"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Image Side */}
-            <div className="md:w-1/2 aspect-square bg-gradient-to-br from-white/5 to-transparent relative flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => setSelectedGen(null)}
+              aria-label="Close"
+              className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-xl border border-white/[0.1] bg-black/50 text-white backdrop-blur-sm transition hover:bg-black/70"
+            >
+              <X className="h-4 w-4" />
+            </button>
+
+            {/* Preview */}
+            <div
+              className="relative h-[38vh] shrink-0 bg-[#151922] md:h-auto md:w-[56%] md:aspect-square"
+              style={CHECKERBOARD}
+            >
               {is3DFormat(selectedGen.imageUrl) || is3DStyle(selectedGen.styleId) ? (
-                <div className="w-full h-full flex flex-col items-center justify-center p-4">
-                  <div className="relative mb-4">
-                    <div className="absolute inset-0 bg-[#8b5cf6]/30 rounded-full blur-2xl animate-pulse" />
-                    <FileBox className="relative w-32 h-32 text-[#8b5cf6]" />
+                <div className="flex h-full w-full flex-col items-center justify-center gap-3 p-4">
+                  <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-white/[0.04]">
+                    <FileBox className="h-10 w-10 text-[#FF8A3D]" />
                   </div>
-                  <span className="text-xl font-bold text-white">3D Model</span>
-                  <span className="text-[#8b5cf6] font-mono">{get3DFormat(selectedGen.imageUrl)}</span>
+                  <span className="text-[15px] font-semibold text-white">3D Model</span>
+                  <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] text-[#C9CFDB]">
+                    {get3DFormat(selectedGen.imageUrl)}
+                  </span>
                 </div>
               ) : (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={selectedGen.imageUrl}
                   alt={selectedGen.prompt}
-                  className="w-full h-full object-contain p-6"
+                  className={`absolute inset-0 h-full w-full object-contain p-[8%] ${isPixelStyleId(selectedGen.styleId) ? "pixel-perfect" : ""}`}
                 />
               )}
-
-              <button
-                onClick={() => setSelectedGen(null)}
-                className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center hover:bg-black/80 transition-colors"
-              >
-                <X className="w-5 h-5 text-white" />
-              </button>
             </div>
 
-            {/* Details Side */}
-            <div className="md:w-1/2 flex flex-col max-h-[50vh] md:max-h-full">
-              {/* Header */}
-              <div className="p-6 border-b border-white/10">
-                <p className="text-white text-lg font-medium mb-3">
-                  {selectedGen.prompt.replace(/^\[3D\]\s*/, '')}
-                </p>
-                <div className="flex items-center gap-2 flex-wrap mb-4">
-                  <Badge className="bg-white/10 text-white border-white/20">
-                    {selectedGen.categoryId}
-                  </Badge>
-                  <Badge className="bg-[#8b5cf6]/20 text-[#8b5cf6] border-[#8b5cf6]/30">
-                    {getModelName(selectedGen.styleId)}
-                  </Badge>
+            {/* Details */}
+            <div className="flex min-h-0 flex-1 flex-col md:border-l md:border-white/[0.06]">
+              <div className="border-b border-white/[0.06] p-5">
+                <div className="flex items-center gap-3 pr-10">
+                  <CommunityAvatar src={selectedGen.user?.avatarUrl} name={selectedGen.user?.name} size={36} />
+                  <div className="min-w-0">
+                    <p className="truncate text-[14px] font-medium text-white">{selectedGen.user?.name || "Anonymous"}</p>
+                    <p className="font-mono text-[11px] text-[#8B93A5]">{new Date(selectedGen.createdAt).toLocaleDateString()}</p>
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {selectedGen.user?.avatarUrl ? (
-                      <img src={selectedGen.user.avatarUrl} alt="" className="w-10 h-10 rounded-full ring-2 ring-white/20" />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#8b5cf6] to-[#FF6B2C] ring-2 ring-white/20" />
-                    )}
-                    <div>
-                      <p className="text-white font-medium">{selectedGen.user?.name || "Anonymous"}</p>
-                      <p className="text-white/50 text-xs">{new Date(selectedGen.createdAt).toLocaleDateString()}</p>
-                    </div>
-                  </div>
+                <p className="mt-4 text-[14px] leading-relaxed text-[#ECEEF3]">{cleanPrompt(selectedGen.prompt)}</p>
 
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleLike}
-                      disabled={likingInProgress}
-                      className={`h-10 ${userLiked ? 'border-red-400 bg-red-400/10 text-red-400' : 'border-white/20'}`}
-                    >
-                      <Heart className={`w-4 h-4 mr-1.5 ${userLiked ? 'fill-current' : ''}`} />
-                      {selectedGen.likes}
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => handleDownload(selectedGen)}
-                      className="h-10 bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] text-black"
-                    >
-                      <Download className="w-4 h-4 mr-1.5" />
-                      Download
-                    </Button>
-                  </div>
+                <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                  <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-[11px] text-[#C9CFDB]">
+                    {selectedGen.categoryId}
+                  </span>
+                  <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-[11px] text-[#C9CFDB]">
+                    {getModelName(selectedGen.styleId)}
+                  </span>
+                  {selectedGen.seed !== undefined && selectedGen.seed !== null && (
+                    <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-[11px] font-mono tabular-nums text-[#8B93A5]">
+                      seed {selectedGen.seed}
+                    </span>
+                  )}
+                </div>
+
+                <div className="mt-4 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleDownload(selectedGen)}
+                    className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-white px-4 text-[13px] font-semibold text-black transition hover:bg-white/90"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleLike}
+                    disabled={likingInProgress}
+                    aria-pressed={userLiked}
+                    className={`flex h-10 items-center gap-1.5 rounded-xl border px-3.5 text-[13px] font-medium font-mono tabular-nums transition disabled:opacity-60 ${
+                      userLiked
+                        ? "border-rose-400/20 bg-rose-500/[0.06] text-rose-200 hover:bg-rose-500/[0.1]"
+                        : "border-white/[0.1] bg-white/[0.04] text-[#C9CFDB] hover:bg-white/[0.08]"
+                    }`}
+                  >
+                    <Heart className={`h-4 w-4 ${userLiked ? "fill-rose-400 text-rose-400" : ""}`} />
+                    {selectedGen.likes}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => window.open(selectedGen.imageUrl, "_blank")}
+                    title="Open original"
+                    aria-label="Open original"
+                    className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.1] bg-white/[0.04] text-[#C9CFDB] transition hover:bg-white/[0.08]"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
 
               {/* Comments */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                <h4 className="text-sm font-medium text-white flex items-center gap-2">
-                  <MessageCircle className="w-4 h-4" />
-                  Comments ({comments.length})
+              <div className="min-h-[120px] flex-1 overflow-y-auto p-5">
+                <h4 className="mb-4 flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">
+                  <MessageCircle className="h-3.5 w-3.5" />
+                  Comments
+                  <span className="font-mono tabular-nums text-[#7A8294]">{comments.length}</span>
                 </h4>
 
                 {loadingComments ? (
                   <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-6 h-6 text-[#8b5cf6] animate-spin" />
+                    <Loader2 className="h-5 w-5 animate-spin text-[#FF8A3D]" />
                   </div>
                 ) : comments.length === 0 ? (
-                  <p className="text-white/50 text-sm text-center py-4">
+                  <p className="py-6 text-center text-[13px] text-[#8B93A5]">
                     No comments yet. Be the first!
                   </p>
                 ) : (
-                  comments.map((comment) => (
-                    <div key={comment.id} className="flex items-start gap-3">
-                      {comment.userAvatar ? (
-                        <img src={comment.userAvatar} alt="" className="w-8 h-8 rounded-full" />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#8b5cf6] to-[#FF6B2C]" />
-                      )}
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-medium text-white">{comment.userName || "Anonymous"}</span>
-                          <span className="text-xs text-white/30">{new Date(comment.createdAt).toLocaleDateString()}</span>
+                  <div className="space-y-4">
+                    {comments.map((comment) => (
+                      <div key={comment.id} className="flex items-start gap-2.5">
+                        <CommunityAvatar src={comment.userAvatar} name={comment.userName} size={28} />
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-0.5 flex items-center gap-2">
+                            <span className="truncate text-[12.5px] font-medium text-white">{comment.userName || "Anonymous"}</span>
+                            <span className="shrink-0 font-mono text-[10.5px] text-[#7A8294]">{new Date(comment.createdAt).toLocaleDateString()}</span>
+                          </div>
+                          <p className="break-words text-[13px] leading-snug text-[#C9CFDB]">{comment.message}</p>
                         </div>
-                        <p className="text-sm text-white/70">{comment.message}</p>
                       </div>
-                    </div>
-                  ))
+                    ))}
+                  </div>
                 )}
               </div>
 
-              {/* Comment Input */}
-              <div className="p-4 border-t border-white/10">
+              {/* Comment input */}
+              <div className="border-t border-white/[0.06] p-4">
                 <div className="flex gap-2">
-                  <Input
-                    placeholder="Write a comment..."
+                  <input
+                    type="text"
+                    placeholder="Write a comment…"
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handlePostComment()}
-                    className="flex-1 h-11 bg-white/5 border-white/10 rounded-xl text-white placeholder:text-white/30"
                     maxLength={500}
+                    className="h-10 min-w-0 flex-1 rounded-xl border border-white/[0.08] bg-[#151922] px-3 text-[13px] text-white outline-none transition-colors placeholder:text-[#7A8294] focus:border-[#FF8A3D]/50"
                   />
-                  <Button
+                  <button
+                    type="button"
                     onClick={handlePostComment}
                     disabled={!newComment.trim() || submittingComment}
-                    className="h-11 bg-gradient-to-r from-[#8b5cf6] to-[#FF6B2C]"
+                    aria-label="Post comment"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center px-corners bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    {submittingComment ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                  </Button>
+                    {submittingComment ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  </button>
                 </div>
               </div>
             </div>

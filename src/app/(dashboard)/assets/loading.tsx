@@ -1,28 +1,40 @@
 export default function GalleryLoading() {
   return (
-    <div className="min-h-screen bg-[#0a0c10] p-6">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="h-8 w-40 bg-white/5 rounded-lg animate-pulse mb-2" />
-        <div className="h-4 w-64 bg-white/5 rounded animate-pulse" />
-      </div>
+    <div className="min-h-screen bg-[#0B0D12]">
+      <div className="mx-auto max-w-[1400px] px-5 py-6 lg:px-8">
+        {/* Header */}
+        <div className="mb-6 flex items-end justify-between gap-4">
+          <div>
+            <div className="mb-2 h-7 w-40 animate-pulse rounded-xl bg-white/[0.04]" />
+            <div className="h-4 w-56 animate-pulse rounded-lg bg-white/[0.04]" />
+          </div>
+          <div className="h-10 w-28 animate-pulse rounded-xl bg-white/[0.04]" />
+        </div>
 
-      {/* Filter bar skeleton */}
-      <div className="flex gap-4 mb-8">
-        <div className="h-10 w-32 bg-white/5 rounded-xl animate-pulse" />
-        <div className="h-10 w-32 bg-white/5 rounded-xl animate-pulse" />
-        <div className="h-10 w-48 bg-white/5 rounded-xl animate-pulse" />
-      </div>
+        {/* Toolbar */}
+        <div className="mb-5 space-y-3">
+          <div className="flex gap-2">
+            <div className="h-10 flex-1 animate-pulse rounded-xl bg-white/[0.04]" />
+            <div className="h-10 w-28 animate-pulse rounded-xl bg-white/[0.04]" />
+            <div className="h-10 w-20 animate-pulse rounded-xl bg-white/[0.04]" />
+          </div>
+          <div className="flex gap-1.5">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-8 w-20 animate-pulse rounded-full bg-white/[0.04]" />
+            ))}
+          </div>
+        </div>
 
-      {/* Gallery grid skeleton */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-        {Array.from({ length: 20 }).map((_, i) => (
-          <div
-            key={i}
-            className="aspect-square rounded-xl bg-white/5 animate-pulse"
-            style={{ animationDelay: `${i * 30}ms` }}
-          />
-        ))}
+        {/* Grid */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 2xl:grid-cols-5">
+          {Array.from({ length: 15 }).map((_, i) => (
+            <div
+              key={i}
+              className="aspect-[4/5] animate-pulse rounded-2xl bg-white/[0.04]"
+              style={{ animationDelay: `${i * 40}ms` }}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );

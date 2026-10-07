@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import {
@@ -9,6 +9,10 @@ import {
 import { getOrCreateUser, checkAndDeductCredits, refundCredits } from "@/lib/database";
 import { z } from "zod";
 import { parseJsonBody, validateBody } from "@/lib/validation/common";
+
+// The after() callback waits for /api/queue/process to finish, which can take
+// up to that route's maxDuration — keep this invocation alive as long.
+export const maxDuration = 300;
 
 // ─── Input validation schema ──────────────────────────────────────────────────
 const QueueSubmitSchema = z.object({
@@ -143,7 +147,8 @@ export async function POST(request: Request) {
       }
     }
 
-    // 📝 Create pending generation record
+    // 📝 Create pending generation record (refund if this fails — the
+    // credits were already taken above)
     const pendingGeneration = await prisma.pendingGeneration.create({
       data: {
         userId: user.id,
@@ -160,16 +165,32 @@ export async function POST(request: Request) {
         progressMessage: "Queued for processing...",
         creditsUsed: creditsRequired,
       },
+    }).catch(async (createError) => {
+      console.error("[Queue Submit] Failed to create job, refunding:", createError);
+      await refundCredits(user.id, creditsRequired);
+      return null;
     });
+
+    if (!pendingGeneration) {
+      return NextResponse.json(
+        { error: "Failed to queue generation. Credits refunded — please try again." },
+        { status: 500 }
+      );
+    }
 
     console.log(`[Queue] ✅ Job ${pendingGeneration.id} created for user ${user.id}`);
     console.log(`[Queue] Mode: ${mode}, Credits: ${creditsRequired}`);
 
-    // 🚀 Trigger background processing (fire and forget)
-    // In production, you'd use a job queue like BullMQ or Vercel Cron
-    // For now, we'll trigger it immediately but not wait for it
-    triggerProcessing(pendingGeneration.id).catch(err => {
-      console.error(`[Queue] Failed to trigger processing for ${pendingGeneration.id}:`, err);
+    // 🚀 Trigger background processing AFTER the response is sent.
+    // A bare fire-and-forget promise is dropped on Vercel once the response
+    // is returned (the function is frozen), leaving the job — and the user's
+    // credits — stuck in "pending". after() keeps the invocation alive until
+    // the trigger completes.
+    const jobId = pendingGeneration.id;
+    after(async () => {
+      await triggerProcessing(jobId).catch(err => {
+        console.error(`[Queue] Failed to trigger processing for ${jobId}:`, err);
+      });
     });
 
     return NextResponse.json({
@@ -193,19 +214,33 @@ export async function POST(request: Request) {
 // ===========================================
 // TRIGGER BACKGROUND PROCESSING
 // ===========================================
+function getBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/+$/, "");
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  return "http://localhost:3000";
+}
+
 async function triggerProcessing(jobId: string) {
+  const queueSecret = process.env.QUEUE_SECRET;
+  if (!queueSecret) {
+    // The worker fails closed without the secret; don't send a guessable
+    // default. Job stays pending (credits held) until the env var is set.
+    console.error(`[Queue] QUEUE_SECRET is not set — cannot trigger processing for job ${jobId}`);
+    return;
+  }
+
   try {
     // Call the process endpoint internally
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : 'http://localhost:3000';
-
-    const response = await fetch(`${baseUrl}/api/queue/process`, {
+    const response = await fetch(`${getBaseUrl()}/api/queue/process`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         // Use internal secret for auth
-        'x-queue-secret': process.env.QUEUE_SECRET || 'dev-secret',
+        'x-queue-secret': queueSecret,
       },
       body: JSON.stringify({ jobId }),
     });

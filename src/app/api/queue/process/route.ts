@@ -6,70 +6,102 @@ import {
   STYLES_2D_FULL,
   buildUltimatePrompt,
 } from "@/config";
-import { uploadImageToStorage } from "@/lib/storage";
+import { persistImage } from "@/lib/storage";
 import { generateImage, removeBackground, type RunwareModelId } from "@/lib/runware";
 import Replicate from "replicate";
+import { timingSafeEqual } from "crypto";
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
 });
 
+// Vercel Pro max. Replicate calls get REPLICATE_STEP_TIMEOUT_MS each and
+// Runware calls are capped in src/lib/runware.ts, so the failure/refund
+// transaction always has time to run.
+export const maxDuration = 300;
+const REPLICATE_STEP_TIMEOUT_MS = 110_000;
+
 // ===========================================
 // PROCESS QUEUE JOB (INTERNAL WORKER)
 // ===========================================
 
+/** Constant-time secret comparison (length leak only). */
+function secretsMatch(provided: string | null, expected: string): boolean {
+  if (!provided) return false;
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+
 export async function POST(request: Request) {
   try {
-    // Verify internal call
-    const secret = request.headers.get("x-queue-secret");
-    const validSecret = process.env.QUEUE_SECRET || "dev-secret";
+    // Verify internal call — FAIL CLOSED when the secret is not configured.
+    const validSecret = process.env.QUEUE_SECRET;
+    if (!validSecret) {
+      console.error("[Worker] QUEUE_SECRET is not set — refusing to process jobs");
+      return NextResponse.json(
+        { error: "Worker not configured" },
+        { status: 500 }
+      );
+    }
 
-    if (secret !== validSecret) {
+    const secret = request.headers.get("x-queue-secret");
+    if (!secretsMatch(secret, validSecret)) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
       );
     }
 
-    const { jobId } = await request.json();
+    let rawJobId: unknown;
+    try {
+      ({ jobId: rawJobId } = await request.json());
+    } catch {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    }
 
-    if (!jobId) {
+    if (!rawJobId || typeof rawJobId !== "string") {
       return NextResponse.json(
         { error: "Job ID required" },
         { status: 400 }
       );
     }
+    const jobId: string = rawJobId;
 
-    // Get the job
-    const job = await prisma.pendingGeneration.findUnique({
-      where: { id: jobId }
-    });
-
-    if (!job) {
-      return NextResponse.json(
-        { error: "Job not found" },
-        { status: 404 }
-      );
-    }
-
-    // Check if already processing or completed
-    if (job.status !== "pending") {
-      return NextResponse.json({
-        success: true,
-        message: `Job already ${job.status}`,
-        status: job.status
-      });
-    }
-
-    // Mark as processing
-    await prisma.pendingGeneration.update({
-      where: { id: jobId },
+    // Atomically CLAIM the job: only one worker invocation can move it from
+    // pending → processing. Duplicate triggers get count 0 and stop here,
+    // so a job can never be processed (or refunded) twice.
+    const claim = await prisma.pendingGeneration.updateMany({
+      where: { id: jobId, status: "pending" },
       data: {
         status: "processing",
         startedAt: new Date(),
         progress: 5,
         progressMessage: "Starting generation..."
       }
+    });
+
+    if (claim.count !== 1) {
+      const existing = await prisma.pendingGeneration.findUnique({
+        where: { id: jobId },
+        select: { status: true },
+      });
+      if (!existing) {
+        return NextResponse.json(
+          { error: "Job not found" },
+          { status: 404 }
+        );
+      }
+      return NextResponse.json({
+        success: true,
+        message: `Job already ${existing.status}`,
+        status: existing.status
+      });
+    }
+
+    const job = await prisma.pendingGeneration.findUniqueOrThrow({
+      where: { id: jobId }
     });
 
     console.log(`[Worker] Processing job ${jobId} (${job.mode})`);
@@ -81,35 +113,42 @@ export async function POST(request: Request) {
         await process2DGeneration(job);
       }
     } catch (error) {
-      // Mark as failed
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      await prisma.pendingGeneration.update({
-        where: { id: jobId },
-        data: {
-          status: "failed",
-          completedAt: new Date(),
-          errorMessage: errorMessage,
-          progressMessage: "Failed"
-        }
+      // Internal detail stays in logs; the job row (shown to the user via
+      // /api/queue/status) only gets a generic message.
+      const internalMessage = error instanceof Error ? error.message : "Unknown error";
+      console.error(`[Worker] Job ${jobId} failed:`, internalMessage);
+
+      // Mark failed + refund in ONE transaction, conditional on the job still
+      // being "processing" — the refund can only ever happen once.
+      const refunded = await prisma.$transaction(async (tx) => {
+        const { count } = await tx.pendingGeneration.updateMany({
+          where: { id: jobId, status: "processing" },
+          data: {
+            status: "failed",
+            completedAt: new Date(),
+            errorMessage: "Generation failed. Your credits were refunded.",
+            progressMessage: "Failed"
+          }
+        });
+        if (count !== 1) return false;
+
+        await tx.user.update({
+          where: { id: job.userId },
+          data: { credits: { increment: job.creditsUsed } }
+        });
+
+        await tx.creditTransaction.create({
+          data: {
+            userId: job.userId,
+            amount: job.creditsUsed,
+            type: "REFUND",
+            description: "Queued generation failed — credits refunded"
+          }
+        });
+        return true;
       });
 
-      // Refund credits on failure
-      await prisma.user.update({
-        where: { id: job.userId },
-        data: { credits: { increment: job.creditsUsed } }
-      });
-
-      await prisma.creditTransaction.create({
-        data: {
-          userId: job.userId,
-          amount: job.creditsUsed,
-          type: "REFUND",
-          description: `Generation failed: ${errorMessage.substring(0, 100)}`
-        }
-      });
-
-      console.error(`[Worker] Job ${jobId} failed:`, errorMessage);
-      return NextResponse.json({ success: false, error: errorMessage });
+      return NextResponse.json({ success: false, error: "Generation failed", refunded });
     }
 
     return NextResponse.json({ success: true, jobId });
@@ -194,8 +233,11 @@ async function process2DGeneration(job: {
 
   // Upload to storage
   const fileName = `sprite-${categoryId}-${subcategoryId}-${styleId}-${generatedImage.seed}`;
-  const uploadResult = await uploadImageToStorage(imageUrlForUpload, userId, fileName);
-  const finalUrl = uploadResult.success && uploadResult.url ? uploadResult.url : imageUrlForUpload;
+  const persistedUrl = await persistImage(imageUrlForUpload, userId, fileName);
+  if (!persistedUrl) {
+    console.error(`[Worker] Re-host failed for job ${jobId} — saving TEMPORARY provider URL (will expire)`);
+  }
+  const finalUrl = persistedUrl ?? imageUrlForUpload;
 
   // Update progress
   await updateProgress(jobId, 90, "Saving to gallery...");
@@ -269,7 +311,8 @@ async function process3DGeneration(job: {
       output_format: "png",
       output_quality: 95,
       num_inference_steps: 28,
-    }
+    },
+    signal: AbortSignal.timeout(REPLICATE_STEP_TIMEOUT_MS),
   });
 
   const referenceImageUrl = extractUrl(refOutput);
@@ -286,7 +329,7 @@ async function process3DGeneration(job: {
 
   const output3D = await replicate.run(
     modelConfig.replicateModel as `${string}/${string}`,
-    { input: input3D }
+    { input: input3D, signal: AbortSignal.timeout(REPLICATE_STEP_TIMEOUT_MS) }
   );
 
   const modelUrl = modelConfig.parseOutput(output3D);

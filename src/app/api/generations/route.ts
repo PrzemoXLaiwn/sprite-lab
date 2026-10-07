@@ -1,8 +1,24 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { deleteImageFromStorage } from "@/lib/storage";
+import { deleteFromR2, isR2Configured, isR2Url } from "@/lib/r2";
 import { getOrCreateUser } from "@/lib/database";
+
+// Best-effort removal of a generation's image from whichever backend hosts it.
+// Never throws — a storage failure must not block the DB delete.
+async function deleteGenerationImage(imageUrl: string): Promise<void> {
+  try {
+    if (imageUrl.includes("supabase")) {
+      await deleteImageFromStorage(imageUrl);
+    } else if (isR2Configured() && isR2Url(imageUrl)) {
+      await deleteFromR2(imageUrl);
+    }
+  } catch (error) {
+    console.error("[Bulk Delete] Storage delete failed:", error);
+  }
+}
 
 // ===========================================
 // GET - Fetch user's generations
@@ -25,12 +41,16 @@ export async function GET(request: Request) {
 
     // Get query parameters
     const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get("limit") || "50");
-    const offset = parseInt(searchParams.get("offset") || "0");
+    const parsedLimit = parseInt(searchParams.get("limit") || "50", 10);
+    const parsedOffset = parseInt(searchParams.get("offset") || "0", 10);
+    const limit = Number.isFinite(parsedLimit)
+      ? Math.min(Math.max(parsedLimit, 1), 100)
+      : 50;
+    const offset = Number.isFinite(parsedOffset) ? Math.max(parsedOffset, 0) : 0;
     const categoryId = searchParams.get("category");
 
     // Build where clause
-    const where: any = {
+    const where: Prisma.GenerationWhereInput = {
       userId: user.id,
     };
 
@@ -126,12 +146,8 @@ export async function DELETE(request: Request) {
       );
     }
 
-    // Delete from storage (for Supabase URLs)
-    const deletePromises = generations
-      .filter(g => g.imageUrl.includes("supabase"))
-      .map(g => deleteImageFromStorage(g.imageUrl).catch(console.error));
-
-    await Promise.all(deletePromises);
+    // Delete from storage (Supabase or R2)
+    await Promise.all(generations.map(g => deleteGenerationImage(g.imageUrl)));
 
     // Delete from database
     const result = await prisma.generation.deleteMany({
@@ -149,7 +165,7 @@ export async function DELETE(request: Request) {
   } catch (error) {
     console.error("[Bulk Delete] Error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to delete generations" },
+      { error: "Failed to delete generations" },
       { status: 500 }
     );
   }

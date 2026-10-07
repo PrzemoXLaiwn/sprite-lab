@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { sendPromoEmail } from "@/lib/email/send";
+import { isAdmin } from "@/lib/admin";
+import { Prisma } from "@prisma/client";
+
+const MAX_BATCH_SIZE = 500;
 
 // Admin endpoint to send promotional emails
 export async function POST(request: Request) {
@@ -15,13 +19,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Check if admin
-    const adminUser = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: { role: true },
-    });
-
-    if (adminUser?.role !== "ADMIN") {
+    // Check if admin (ADMIN or OWNER)
+    if (!(await isAdmin(user.id))) {
       return NextResponse.json({ error: "Admin access required" }, { status: 403 });
     }
 
@@ -40,15 +39,24 @@ export async function POST(request: Request) {
       promoMessage = "Get more credits at a special price!",
 
       // Options
-      limit = 100,
+      limit: requestedLimit = 100,
       dryRun = false
     } = body;
 
+    // Cap batch size (emails are sent sequentially with a delay)
+    const limit = Number.isInteger(requestedLimit)
+      ? Math.min(Math.max(requestedLimit, 1), MAX_BATCH_SIZE)
+      : 100;
+
+    if (targetAudience === "inactive" && (!Number.isFinite(inactiveDays) || inactiveDays < 0)) {
+      return NextResponse.json({ error: "Invalid inactiveDays" }, { status: 400 });
+    }
+
     // Build query based on target audience
-    let whereClause: any = {
+    const whereClause: Prisma.UserWhereInput = {
       // Only users who allow marketing emails
       OR: [
-        { emailPreferences: { equals: null } },
+        { emailPreferences: { equals: Prisma.AnyNull } },
         {
           emailPreferences: {
             path: ["marketing"],

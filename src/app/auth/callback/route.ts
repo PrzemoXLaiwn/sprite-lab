@@ -2,12 +2,63 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendWelcomeEmail } from "@/lib/email/send";
+import { RELAUNCH, relaunchActive } from "@/config/relaunch";
+
+// Only allow same-origin relative paths. `${origin}${next}` with next="@evil.com"
+// or ".evil.com" would otherwise redirect to an attacker-controlled host.
+function safeRedirectPath(next: string | null, origin: string): string {
+  const fallback = "/generate";
+  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) {
+    return fallback;
+  }
+  try {
+    const url = new URL(next, origin);
+    if (url.origin !== origin) return fallback;
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return fallback;
+  }
+}
+
+// user_metadata is user-writable via the anon key (supabase.auth.updateUser),
+// so it is only trusted for the initial profile on account creation, and only
+// within these bounds.
+const MAX_NAME_LENGTH = 50;
+const TRUSTED_AVATAR_HOST_SUFFIXES = [
+  "googleusercontent.com",
+  "discordapp.com",
+  "discord.com",
+  "githubusercontent.com",
+];
+
+function sanitizeName(metadata: Record<string, unknown> | undefined): string | null {
+  const raw = metadata?.full_name || metadata?.name;
+  if (typeof raw !== "string") return null;
+  const name = raw.trim().slice(0, MAX_NAME_LENGTH);
+  return name || null;
+}
+
+function sanitizeAvatarUrl(metadata: Record<string, unknown> | undefined): string | null {
+  const raw = metadata?.avatar_url;
+  if (typeof raw !== "string" || !raw) return null;
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:") return null;
+    const host = url.hostname.toLowerCase();
+    const trusted = TRUSTED_AVATAR_HOST_SUFFIXES.some(
+      (suffix) => host === suffix || host.endsWith(`.${suffix}`)
+    );
+    return trusted ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   const type = searchParams.get("type");
-  const next = searchParams.get("next") ?? "/generate";
+  const next = safeRedirectPath(searchParams.get("next"), origin);
   const referralCode = searchParams.get("ref");
 
   if (code) {
@@ -32,16 +83,14 @@ export async function GET(request: Request) {
         try {
           await prisma.user.upsert({
             where: { id: user.id },
-            update: {
-              // Update name/avatar if changed
-              name: user.user_metadata?.full_name || user.user_metadata?.name || undefined,
-              avatarUrl: user.user_metadata?.avatar_url || undefined,
-            },
+            // Never overwrite name/avatar on login: user_metadata is
+            // user-controlled, so it only seeds the profile on creation.
+            update: {},
             create: {
               id: user.id,
               email: user.email!,
-              name: user.user_metadata?.full_name || user.user_metadata?.name || null,
-              avatarUrl: user.user_metadata?.avatar_url || null,
+              name: sanitizeName(user.user_metadata),
+              avatarUrl: sanitizeAvatarUrl(user.user_metadata),
               credits: 10,
               plan: "FREE",
               role: "USER",
@@ -93,8 +142,9 @@ export async function GET(request: Request) {
         if (user) {
           sendWelcomeEmail(
             user.email!,
-            user.user_metadata?.full_name || user.user_metadata?.name,
-            10,
+            sanitizeName(user.user_metadata) ?? undefined,
+            // The relaunch bonus is added on their first app visit
+            RELAUNCH.SIGNUP_CREDITS + (relaunchActive() ? RELAUNCH.NEW_USER_BONUS : 0),
             user.id
           ).catch((err) => console.error("[Auth Callback] Welcome email failed:", err));
         }

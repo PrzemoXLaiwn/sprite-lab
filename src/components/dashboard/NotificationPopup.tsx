@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Gift, X, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 interface Notification {
   id: string;
@@ -12,6 +11,16 @@ interface Notification {
   data?: string;
   createdAt: string;
 }
+
+// Deterministic confetti layout — computed once at module load so render
+// stays pure (no Math.random during render).
+const CONFETTI_COLORS = ["#FF8A3D", "#FFB27A", "#FF9F43", "#ECEEF3"];
+const CONFETTI = Array.from({ length: 20 }, (_, i) => ({
+  left: (i * 53 + 17) % 100,
+  color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+  delay: ((i * 7) % 20) / 10,
+  duration: 2 + ((i * 13) % 20) / 10,
+}));
 
 export function NotificationPopup() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -41,14 +50,17 @@ export function NotificationPopup() {
 
   useEffect(() => {
     // Initial fetch
-    fetchNotifications();
+    const initial = setTimeout(fetchNotifications, 0);
 
     // Poll every 60 seconds. The previous 30s cadence doubled request volume
     // for no perceptible UX gain — notifications appear after server-side
     // events (purchases, admin grants) that don't need real-time polling.
     const interval = setInterval(fetchNotifications, 60_000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(initial);
+      clearInterval(interval);
+    };
   }, [fetchNotifications]);
 
   const handleDismiss = async () => {
@@ -98,7 +110,7 @@ export function NotificationPopup() {
     <>
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] transition-opacity duration-300 ${
+        className={`fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
           isVisible ? "opacity-100" : "opacity-0"
         }`}
         onClick={handleDismiss}
@@ -106,27 +118,26 @@ export function NotificationPopup() {
 
       {/* Popup */}
       <div
-        className={`fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[101] w-[90vw] max-w-md transition-all duration-300 ${
-          isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"
+        className={`fixed left-1/2 top-1/2 z-[101] w-[90vw] max-w-sm -translate-x-1/2 -translate-y-1/2 transition-all duration-300 ${
+          isVisible ? "scale-100 opacity-100" : "scale-95 opacity-0"
         }`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="notification-title"
       >
-        <div className="relative bg-gradient-to-br from-[#0f0f1a] to-[#11151b] rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
-          {/* Glow effects */}
-          <div className="absolute inset-0 bg-gradient-to-br from-[#FF6B2C]/10 via-transparent to-[#8b5cf6]/10 pointer-events-none" />
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-32 bg-[#FF6B2C]/20 rounded-full blur-3xl" />
-
-          {/* Confetti particles (CSS only) */}
+        <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0E1016] shadow-2xl">
+          {/* Confetti particles (CSS only, deterministic positions) */}
           {currentNotification.type === "CREDIT_GRANT" && isVisible && (
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              {[...Array(20)].map((_, i) => (
+            <div className="pointer-events-none absolute inset-0 overflow-hidden">
+              {CONFETTI.map((p, i) => (
                 <div
                   key={i}
-                  className="absolute w-2 h-2 rounded-full animate-confetti"
+                  className="animate-confetti absolute h-1.5 w-1.5"
                   style={{
-                    left: `${Math.random() * 100}%`,
-                    backgroundColor: ["#FF6B2C", "#FF6B2C", "#8b5cf6", "#f59e0b"][i % 4],
-                    animationDelay: `${Math.random() * 2}s`,
-                    animationDuration: `${2 + Math.random() * 2}s`,
+                    left: `${p.left}%`,
+                    backgroundColor: p.color,
+                    animationDelay: `${p.delay}s`,
+                    animationDuration: `${p.duration}s`,
                   }}
                 />
               ))}
@@ -135,66 +146,60 @@ export function NotificationPopup() {
 
           {/* Close button */}
           <button
+            type="button"
             onClick={handleDismiss}
-            className="absolute top-4 right-4 p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors z-10"
+            aria-label="Close"
+            className="absolute right-3 top-3 z-10 rounded-lg p-1.5 text-[#7A8294] transition-colors hover:bg-white/[0.05] hover:text-white"
           >
-            <X className="w-5 h-5" />
+            <X className="h-4 w-4" />
           </button>
 
           {/* Content */}
-          <div className="relative p-6 pt-8 text-center">
+          <div className="pixel-grid relative p-6 pt-8 text-center">
             {/* Icon */}
-            {currentNotification.type === "CREDIT_GRANT" ? (
-              <div className="relative mx-auto w-20 h-20 mb-4">
-                <div className="absolute inset-0 bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] rounded-full blur-xl opacity-50 animate-pulse" />
-                <div className="relative w-full h-full rounded-full bg-gradient-to-br from-[#FF6B2C] to-[#FF6B2C] flex items-center justify-center animate-bounce-slow">
-                  <Gift className="w-10 h-10 text-white" />
-                </div>
-                <Sparkles className="absolute -top-1 -right-1 w-6 h-6 text-[#f59e0b] animate-bounce" />
-              </div>
-            ) : (
-              <div className="relative mx-auto w-20 h-20 mb-4">
-                <div className="absolute inset-0 bg-[#FF6B2C]/30 rounded-full blur-xl" />
-                <div className="relative w-full h-full rounded-full bg-gradient-to-br from-[#FF6B2C] to-[#8b5cf6] flex items-center justify-center">
-                  <Sparkles className="w-10 h-10 text-white" />
-                </div>
-              </div>
-            )}
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#FF8A3D]/25 bg-[#FF8A3D]/10">
+              {currentNotification.type === "CREDIT_GRANT" ? (
+                <Gift className="animate-bounce-slow h-6 w-6 text-[#FF8A3D]" />
+              ) : (
+                <Sparkles className="h-6 w-6 text-[#FF8A3D]" />
+              )}
+            </div>
 
             {/* Title */}
-            <h2 className="text-2xl font-display font-bold text-white mb-2">
+            <h2 id="notification-title" className="font-display text-[22px] font-semibold tracking-tight text-white">
               {currentNotification.title}
             </h2>
 
             {/* Credit amount for credit grants */}
             {currentNotification.type === "CREDIT_GRANT" && notificationData?.amount && (
-              <div className="mb-4">
-                <span className="text-5xl font-display font-bold bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] text-transparent bg-clip-text animate-pulse">
+              <div className="mt-3 flex items-baseline justify-center gap-2">
+                <span className="font-sans tracking-tight text-[44px] font-semibold leading-none tabular-nums text-[#FFB27A]">
                   +{notificationData.amount}
                 </span>
-                <span className="text-lg text-white/60 ml-2">credits</span>
+                <span className="font-mono text-[12px] text-[#8B93A5]">credits</span>
               </div>
             )}
 
             {/* Message */}
-            <p className="text-white/70 mb-6 leading-relaxed">
+            <p className="mb-6 mt-3 text-[13px] leading-relaxed text-[#C9CFDB]">
               {currentNotification.message}
             </p>
 
             {/* Admin info */}
             {notificationData?.adminName && (
-              <p className="text-sm text-white/40 mb-6">
-                From: <span className="text-[#FF6B2C]">{notificationData.adminName}</span>
+              <p className="-mt-3 mb-6 font-mono text-[11px] text-[#7A8294]">
+                from <span className="text-[#FFB27A]">{notificationData.adminName}</span>
               </p>
             )}
 
             {/* CTA Button */}
-            <Button
+            <button
+              type="button"
               onClick={handleDismiss}
-              className="w-full bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] text-black font-bold py-6 rounded-xl hover:opacity-90 transition-opacity"
+              className="px-corners w-full bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] py-3 text-[14px] font-semibold text-white transition hover:brightness-110"
             >
               Awesome, thanks!
-            </Button>
+            </button>
           </div>
         </div>
       </div>

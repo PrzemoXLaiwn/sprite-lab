@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { RefreshCw, Home, AlertTriangle } from "lucide-react";
 
 export default function Error({
@@ -17,65 +16,39 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="min-h-screen bg-[#0a0c10] flex items-center justify-center p-4">
-      {/* Background effects */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#ef4444]/10 via-transparent to-transparent" />
-        <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-[#ef4444]/15 rounded-full blur-[200px] animate-float" style={{ animationDuration: "8s" }} />
-        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-[#ef4444]/10 rounded-full blur-[150px] animate-float" style={{ animationDelay: "2s", animationDuration: "10s" }} />
-        <div className="absolute inset-0 grid-pattern opacity-20" />
-      </div>
+    <div className="relative flex min-h-screen items-center justify-center bg-[#0B0D12] px-4 py-10 text-[#ECEEF3]">
+      <div className="pixel-grid pointer-events-none absolute inset-0" />
 
-      <div className="relative z-10 text-center max-w-lg">
-        {/* Error icon */}
-        <div className="w-16 h-16 mx-auto mb-8 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
-          <span className="text-3xl">!</span>
+      <div className="relative w-full max-w-[420px] text-center">
+        <div className="mx-auto mb-6 flex h-12 w-12 items-center justify-center rounded-xl border border-red-400/20 bg-red-500/[0.06] text-red-200">
+          <AlertTriangle className="h-5 w-5" />
         </div>
 
-        {/* Error badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#ef4444]/10 border border-[#ef4444]/30 text-[#ef4444] text-sm mb-6">
-          <AlertTriangle className="w-4 h-4" />
-          <span>Something went wrong</span>
-        </div>
-
-        {/* Error Text */}
-        <h1 className="text-6xl md:text-7xl font-display font-black mb-4 text-[#ef4444]">
-          Oops!
-        </h1>
-
-        <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
-          An Error Occurred
-        </h2>
-
-        <p className="text-white/50 mb-10 text-lg leading-relaxed">
-          Coreling ran into an unexpected error. Don&apos;t worry, our team has been notified!
+        <h1 className="font-display text-[24px] font-semibold text-white">Something went wrong</h1>
+        <p className="mt-2 text-[14px] leading-relaxed text-[#8B93A5]">
+          An unexpected error occurred. Try again, or head back home.
         </p>
 
-        {/* Action buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <div className="mt-8 flex flex-col gap-2.5 sm:flex-row sm:justify-center">
           <button
+            type="button"
             onClick={() => reset()}
-            className="group flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] text-black font-bold hover:shadow-xl hover:shadow-[#FF6B2C]/30 transition-all hover:scale-105"
+            className="group px-corners inline-flex h-11 items-center justify-center gap-2 bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] px-5 text-[14px] font-semibold text-white transition-[filter] hover:brightness-110"
           >
-            <RefreshCw className="w-5 h-5 group-hover:rotate-180 transition-transform duration-500" />
-            Try Again
+            <RefreshCw className="h-4 w-4 transition-transform duration-500 group-hover:rotate-180" />
+            Try again
           </button>
           <Link
             href="/"
-            className="group flex items-center gap-2 px-8 py-4 rounded-xl bg-white/5 text-white font-medium hover:bg-white/10 transition-all border border-white/10 hover:border-[#FF6B2C]/30"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-5 text-[14px] font-medium text-[#ECEEF3] transition-colors hover:bg-white/[0.08]"
           >
-            <Home className="w-5 h-5" />
-            Go Home
+            <Home className="h-4 w-4" />
+            Go home
           </Link>
         </div>
 
-        {/* Error code */}
         {error.digest && (
-          <div className="mt-10 p-3 rounded-lg bg-white/5 border border-white/10">
-            <p className="text-xs text-white/30 font-mono">
-              Error ID: {error.digest}
-            </p>
-          </div>
+          <p className="mt-8 font-mono text-[11px] text-[#7A8294]">Error ID: {error.digest}</p>
         )}
       </div>
     </div>

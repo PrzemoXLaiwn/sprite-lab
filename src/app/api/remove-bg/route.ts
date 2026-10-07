@@ -3,15 +3,28 @@ import { createClient } from "@/lib/supabase/server";
 import { getUserCredits, checkAndDeductCredits, refundCredits } from "@/lib/database";
 import { prisma } from "@/lib/prisma";
 import { removeBackground } from "@/lib/runware";
+import { persistImage } from "@/lib/storage";
+import { safeFetchImage, safeFetchErrorResponse } from "@/lib/safe-fetch";
+import { rateLimitUserGeneration } from "@/lib/rate-limit";
+import { parseJsonBody, validateBody } from "@/lib/validation/common";
+import { removeBackgroundSchema } from "@/lib/validations";
+
+// Runware bg removal is capped at 20s (BG_REMOVAL_TIMEOUT in runware.ts);
+// re-hosting adds up to ~30s.
+export const maxDuration = 90;
 
 // Cost: 1 credit for background removal
 const REMOVE_BG_COST = 1;
+const MAX_INPUT_IMAGE_MB = 10;
 
 // Plans that have access to Remove BG (Free is excluded, but now it's auto for all generations)
 // PRO = Pro plan, UNLIMITED = Studio plan, STARTER = Starter plan, LIFETIME = any lifetime deal
 const ALLOWED_PLANS = ["STARTER", "PRO", "UNLIMITED", "LIFETIME"];
 
 export async function POST(request: Request) {
+  let creditsDeducted = false;
+  let chargedUserId: string | null = null;
+
   try {
     // Authentication
     const supabase = await createClient();
@@ -37,34 +50,45 @@ export async function POST(request: Request) {
       );
     }
 
-    const body = await request.json();
-    const { imageUrl, originalPrompt, categoryId, subcategoryId, styleId } = body;
+    const { blocked: rateLimitBlocked } = await rateLimitUserGeneration(user.id);
+    if (rateLimitBlocked) return rateLimitBlocked;
 
-    if (!imageUrl) {
-      return NextResponse.json(
-        { error: "No image URL provided" },
-        { status: 400 }
-      );
+    const rawBody = await parseJsonBody(request);
+    if (rawBody === null) {
+      return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+    }
+    const parsed = validateBody(removeBackgroundSchema, rawBody);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
+    }
+    const { imageUrl, originalPrompt, categoryId, subcategoryId, styleId } = parsed.data;
+
+    // Host allowlist / size check before charging (Runware fetches this URL).
+    try {
+      await safeFetchImage(imageUrl, { maxBytes: MAX_INPUT_IMAGE_MB * 1024 * 1024 });
+    } catch (fetchError) {
+      console.warn("[RemoveBG] Input image rejected:", fetchError instanceof Error ? fetchError.message : fetchError);
+      const { error, status } = safeFetchErrorResponse(fetchError, MAX_INPUT_IMAGE_MB);
+      return NextResponse.json({ error }, { status });
     }
 
-    console.log("===========================================");
-    console.log("REMOVING BACKGROUND (Runware)");
-    console.log("===========================================");
-    console.log("Input image URL:", imageUrl);
+    console.log("[RemoveBG] Removing background (Runware)");
 
     // Atomically check and deduct credits BEFORE processing
     const creditResult = await checkAndDeductCredits(user.id, REMOVE_BG_COST);
     if (!creditResult.success) {
-      const errorMsg = creditResult.error === "INSUFFICIENT_CREDITS"
+      const insufficient = creditResult.error === "Not enough credits";
+      if (!insufficient) console.error("[RemoveBG] Credit deduction failed:", creditResult.error);
+      const errorMsg = insufficient
         ? `Not enough credits. Background removal costs ${REMOVE_BG_COST} credit.`
         : "Failed to process credits. Please try again.";
       return NextResponse.json(
-        { error: errorMsg, noCredits: creditResult.error === "INSUFFICIENT_CREDITS" },
-        { status: 402 }
+        { error: errorMsg, noCredits: insufficient },
+        { status: insufficient ? 402 : 500 }
       );
     }
-
-    console.log(`Atomically deducted ${REMOVE_BG_COST} credit for background removal`);
+    creditsDeducted = true;
+    chargedUserId = user.id;
 
     // Use Runware for background removal
     const result = await removeBackground(imageUrl);
@@ -72,15 +96,22 @@ export async function POST(request: Request) {
     if (!result.success || !result.imageUrl) {
       console.error("Background removal failed:", result.error);
       // Refund credit on failure
+      creditsDeducted = false;
       await refundCredits(user.id, REMOVE_BG_COST);
       return NextResponse.json(
-        { error: result.error || "Background removal failed. Credit refunded." },
+        { error: "Background removal failed. Credit refunded." },
         { status: 500 }
       );
     }
+    // Provider delivered — no refund past this point.
+    creditsDeducted = false;
 
-    const outputUrl = result.imageUrl;
-    console.log("Output URL (first 100 chars):", outputUrl.substring(0, 100));
+    // Runware output URLs are temporary — re-host before saving to gallery.
+    const persistedUrl = await persistImage(result.imageUrl, user.id, `nobg-${Date.now()}`);
+    if (!persistedUrl) {
+      console.error("[RemoveBG] Re-host failed — saving TEMPORARY provider URL (will expire)");
+    }
+    const outputUrl = persistedUrl ?? result.imageUrl;
 
     // Auto-save to user's gallery as a new generation
     let savedGenerationId: string | null = null;
@@ -117,8 +148,12 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error("Background removal error:", error);
+    if (creditsDeducted && chargedUserId) {
+      creditsDeducted = false;
+      await refundCredits(chargedUserId, REMOVE_BG_COST);
+    }
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Background removal failed" },
+      { error: "Background removal failed. Please try again." },
       { status: 500 }
     );
   }

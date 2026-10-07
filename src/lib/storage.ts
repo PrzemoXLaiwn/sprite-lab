@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { isR2Configured, uploadToR2 } from "@/lib/r2";
 
 const BUCKET_NAME = "generations";
 
@@ -14,8 +15,9 @@ export async function uploadImageToStorage(
   try {
     const supabase = await createClient();
 
-    // Fetch image from Replicate URL
-    const response = await fetch(imageUrl);
+    // Fetch image from provider URL (server-produced, not client input).
+    // Bounded so a stalled provider CDN can't eat the route's maxDuration.
+    const response = await fetch(imageUrl, { signal: AbortSignal.timeout(30_000) });
     if (!response.ok) {
       throw new Error(`Failed to fetch image: ${response.statusText}`);
     }
@@ -62,6 +64,28 @@ export async function uploadImageToStorage(
       error: error instanceof Error ? error.message : "Upload failed",
     };
   }
+}
+
+/**
+ * Re-host a temporary provider URL (Runware / Replicate) to permanent storage.
+ * Order: R2 (primary) → Supabase Storage (fallback).
+ * Returns null when both fail — callers decide whether to fall back to the
+ * temporary URL (it will expire) and must log that they did.
+ */
+export async function persistImage(
+  imageUrl: string,
+  userId: string,
+  fileName: string
+): Promise<string | null> {
+  if (isR2Configured()) {
+    const r2Result = await uploadToR2(imageUrl, userId);
+    if (r2Result.success && r2Result.url) return r2Result.url;
+    console.error("[Storage] R2 re-host failed, trying Supabase:", r2Result.error);
+  }
+  const result = await uploadImageToStorage(imageUrl, userId, fileName);
+  if (result.success && result.url) return result.url;
+  console.error("[Storage] Re-host failed on all providers:", result.error);
+  return null;
 }
 
 /**

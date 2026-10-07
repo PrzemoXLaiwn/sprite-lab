@@ -19,7 +19,7 @@ export function SessionHistory({ items, selectedIndex, onSelect }: Props) {
 
   return (
     <div>
-      <p className="text-[10px] uppercase tracking-wider text-white/25 mb-2">
+      <p className="text-[10px] uppercase tracking-wider text-[#7A8294] mb-2">
         Session History
       </p>
       <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">

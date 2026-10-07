@@ -27,7 +27,8 @@ dist
 # Python scripts (not needed for deployment)
 *.py
 
-# IDE
+# IDE / tooling
+.claude
 .vscode
 .idea
 *.swp

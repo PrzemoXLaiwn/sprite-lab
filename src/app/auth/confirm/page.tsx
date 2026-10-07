@@ -1,9 +1,10 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { CheckCircle, Sparkles, Rocket } from "lucide-react";
+import { ArrowRight, CheckCircle2, Zap } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
+import { primaryBtnCls } from "@/app/(auth)/_components/auth-ui";
 
 export default function EmailConfirmedPage() {
   const [countdown, setCountdown] = useState(5);
@@ -29,62 +30,42 @@ export default function EmailConfirmedPage() {
   }, []);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0a0c10]">
-      {/* Background effects */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#FF6B2C]/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-[#8b5cf6]/10 rounded-full blur-[100px]" />
-      </div>
+    <div className="relative flex min-h-screen items-center justify-center bg-[#0B0D12] px-4 py-10 text-[#ECEEF3]">
+      <div className="pixel-grid pointer-events-none absolute inset-0" />
 
-      <div className="relative max-w-md w-full mx-4">
-        <div className="glass-card border border-[rgba(255,255,255,0.06)] rounded-2xl p-8 text-center">
-          {/* Success Icon */}
-          <div className="w-24 h-24 mx-auto mb-6 relative">
-            <div className="absolute inset-0 bg-[#FF6B2C]/30 rounded-full blur-xl animate-pulse" />
-            <div className="relative w-full h-full rounded-full bg-[#FF6B2C]/10 flex items-center justify-center border-2 border-[#FF6B2C]">
-              <CheckCircle className="w-12 h-12 text-[#FF6B2C]" />
-            </div>
+      <div className="relative w-full max-w-[400px]">
+        <Link href="/" className="mb-8 flex items-center justify-center gap-2.5">
+          <Image src="/logo.png" alt="SpriteLab" width={28} height={28} priority />
+          <span className="font-display text-[17px] font-semibold text-white">
+            Sprite<span className="text-[#FF8A3D]">Lab</span>
+          </span>
+        </Link>
+
+        <div className="rounded-2xl border border-white/[0.06] bg-[#0E1016] p-7 text-center">
+          <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-xl border border-emerald-400/20 bg-emerald-500/[0.06] text-emerald-300">
+            <CheckCircle2 className="h-6 w-6" />
           </div>
 
-          {/* Title */}
-          <h1 className="text-3xl font-display font-bold text-white mb-2">
-            You're In! 🎉
-          </h1>
+          <h1 className="font-display text-[24px] font-semibold text-white">You&apos;re in</h1>
+          <p className="mt-2 text-[14px] text-[#8B93A5]">Your email is confirmed and your account is active.</p>
 
-          {/* Description */}
-          <p className="text-[#a0a0b0] mb-4">
-            Your account is now active.
+          <div className="mt-5 inline-flex items-center gap-2 rounded-lg border border-[#FF8A3D]/20 bg-[#FF8A3D]/[0.06] px-3 py-1.5 text-[13px] text-[#FFB27A]">
+            <Zap className="h-3.5 w-3.5" />
+            10 free credits ready to use
+          </div>
+
+          <p className="mt-5 text-[13px] leading-relaxed text-[#C9CFDB]">
+            We&apos;ll guide you through creating your first game asset in about 30 seconds.
           </p>
 
-          {/* Credits badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FF6B2C]/10 border border-[#FF6B2C]/30 text-[#FF6B2C] mb-6">
-            <Sparkles className="w-4 h-4" />
-            <span className="font-semibold">10 free credits ready to use!</span>
-          </div>
+          <Link href="/generate?welcome=1" className={`${primaryBtnCls} mt-6`}>
+            Start creating
+            <ArrowRight className="h-4 w-4" />
+          </Link>
 
-          {/* What's next */}
-          <div className="p-4 rounded-xl bg-[#11151b] border border-[rgba(255,255,255,0.06)] mb-6 text-left">
-            <div className="flex items-center gap-2 text-white font-medium mb-2">
-              <Rocket className="w-4 h-4 text-[#8b5cf6]" />
-              What's next?
-            </div>
-            <p className="text-sm text-[#a0a0b0]">
-              We'll guide you through creating your first game asset in just 30 seconds!
-            </p>
-          </div>
-
-          {/* Countdown */}
-          <p className="text-sm text-[#606070] mb-4">
-            Starting your journey in <span className="text-[#FF6B2C] font-mono font-bold">{countdown}</span>...
+          <p className="mt-4 font-mono text-[11px] text-[#7A8294]">
+            Redirecting in <span className="tabular-nums text-[#FFB27A]">{countdown}</span>s
           </p>
-
-          {/* CTA Button */}
-          <Button asChild className="w-full h-12 bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] text-[#0a0c10] font-bold hover:opacity-90">
-            <Link href="/generate?welcome=1">
-              <Sparkles className="w-4 h-4 mr-2" />
-              Let's Go!
-            </Link>
-          </Button>
         </div>
       </div>
     </div>

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 
+const MAX_METADATA_LENGTH = 2000;
+
 // POST - Track a generation event
 export async function POST(request: NextRequest) {
   try {
@@ -14,10 +16,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { generationId, eventType, metadata } = body;
+    const body = await request.json().catch(() => null);
+    const { generationId, eventType, metadata } = body || {};
 
-    if (!generationId || !eventType) {
+    if (
+      !generationId ||
+      !eventType ||
+      typeof generationId !== "string" ||
+      typeof eventType !== "string"
+    ) {
       return NextResponse.json(
         { error: "Generation ID and event type are required" },
         { status: 400 }
@@ -45,13 +52,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const serializedMetadata = metadata ? JSON.stringify(metadata) : null;
+    if (serializedMetadata && serializedMetadata.length > MAX_METADATA_LENGTH) {
+      return NextResponse.json(
+        { error: "Metadata too large" },
+        { status: 400 }
+      );
+    }
+
+    // Only allow events on the user's own generations or public ones
+    const generation = await prisma.generation.findUnique({
+      where: { id: generationId },
+      select: { userId: true, isPublic: true },
+    });
+
+    if (!generation || (generation.userId !== user.id && !generation.isPublic)) {
+      return NextResponse.json(
+        { error: "Generation not found" },
+        { status: 404 }
+      );
+    }
+
     // Create event
     const event = await prisma.generationEvent.create({
       data: {
         generationId,
         userId: user.id,
         eventType,
-        metadata: metadata ? JSON.stringify(metadata) : null,
+        metadata: serializedMetadata,
       },
     });
 

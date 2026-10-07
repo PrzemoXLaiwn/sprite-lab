@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getUser, updateUserProfile, getCreditTransactions, checkUsernameAvailable, UpdateProfileData } from "@/lib/database";
 import { prisma } from "@/lib/prisma";
+import { z } from "zod";
 
 export async function fetchUserProfile() {
   const supabase = await createClient();
@@ -29,13 +30,42 @@ export async function fetchUserProfile() {
   }
 }
 
-export async function updateProfile(data: UpdateProfileData) {
+// Server actions are public POST endpoints — validate the payload at runtime.
+// avatarUrl is intentionally absent: it is only set by uploadAvatar.
+const optionalText = (max: number) => z.string().trim().max(max).optional();
+
+const ProfileUpdateSchema = z
+  .object({
+    name: optionalText(50),
+    username: optionalText(20),
+    bio: optionalText(300),
+    website: z
+      .string()
+      .trim()
+      .max(200)
+      .refine((v) => v === "" || /^(https?:\/\/)?[^\s/$.?#].[^\s]*$/i.test(v), "Invalid website URL")
+      .refine((v) => !/^[a-z][a-z0-9+.-]*:/i.test(v) || /^https?:\/\//i.test(v), "Website must use http or https")
+      .optional(),
+    socialTwitter: z.string().trim().regex(/^@?[A-Za-z0-9_]{0,15}$/, "Invalid Twitter handle").optional(),
+    socialGithub: z.string().trim().regex(/^[A-Za-z0-9-]{0,39}$/, "Invalid GitHub username").optional(),
+    isProfilePublic: z.boolean().optional(),
+  })
+  .strict();
+
+export async function updateProfile(input: UpdateProfileData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
     return { success: false, error: "Unauthorized" };
   }
+
+  const parsed = ProfileUpdateSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid profile data" };
+  }
+  const data: UpdateProfileData = parsed.data;
+  if (data.socialTwitter) data.socialTwitter = data.socialTwitter.replace(/^@/, "");
 
   // If username is being updated, check availability
   if (data.username) {
@@ -57,6 +87,9 @@ export async function updateProfile(data: UpdateProfileData) {
   }
 
   const result = await updateUserProfile(user.id, data);
+  if (!result.success) {
+    return { success: false, error: "Failed to update profile" };
+  }
   return result;
 }
 
@@ -114,7 +147,14 @@ export async function uploadAvatar(formData: FormData) {
     return { success: false, error: "File too large. Max 2MB" };
   }
 
-  const fileExt = file.name.split(".").pop();
+  // Derive the extension from the validated MIME type, never from file.name
+  const extByType: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+  };
+  const fileExt = extByType[file.type];
   const fileName = `${user.id}-${Date.now()}.${fileExt}`;
 
   const { error: uploadError } = await supabase.storage
@@ -131,7 +171,7 @@ export async function uploadAvatar(formData: FormData) {
       name: uploadError.name,
       cause: uploadError.cause,
     });
-    return { success: false, error: `Failed to upload avatar: ${uploadError.message}` };
+    return { success: false, error: "Failed to upload avatar" };
   }
 
   const { data: { publicUrl } } = supabase.storage
@@ -213,6 +253,22 @@ export async function updateEmailPreferences(
     });
 
     const currentPrefs = (dbUser?.emailPreferences as Record<string, unknown>) || {};
+
+    // Only user-facing boolean toggles may be changed here; other keys in this
+    // JSON (e.g. cron bookkeeping timestamps) are server-managed.
+    const allowedKeys: (keyof EmailPreferences)[] = [
+      "marketing",
+      "productUpdates",
+      "creditAlerts",
+      "dailyReminders",
+      "weeklyDigest",
+    ];
+    const sanitized: Partial<EmailPreferences> = {};
+    for (const key of allowedKeys) {
+      const value = (preferences as Record<string, unknown> | null)?.[key];
+      if (typeof value === "boolean") sanitized[key] = value;
+    }
+    preferences = sanitized;
 
     // Merge with new preferences
     await prisma.user.update({

@@ -4,7 +4,9 @@ import { updateSession } from "@/lib/supabase/middleware";
 // ===========================================
 // RATE LIMITING CONFIGURATION
 // ===========================================
-// For production at scale, use Redis or Vercel KV
+// Best-effort only: these Maps live per serverless instance, so limits are not
+// shared across instances. Cost-sensitive routes enforce their own limits via
+// Upstash (src/lib/rate-limit.ts).
 
 // General API rate limits
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
@@ -170,7 +172,7 @@ export async function proxy(request: NextRequest) {
     /\.asp$/i,
     /\.aspx$/i,
     /admin\.php/i,
-    /shell/i,
+    /\/shell(\/|$)/i,
     /eval-stdin/i,
     /\.htaccess/i,
     /\.htpasswd/i,
@@ -186,7 +188,6 @@ export async function proxy(request: NextRequest) {
     /phpMyAdmin/i,
     /phpmyadmin/i,
     /cgi-bin/i,
-    /\.well-known\/security\.txt/i,
   ];
 
   if (blockedPaths.some((pattern) => pattern.test(pathname))) {
@@ -195,13 +196,22 @@ export async function proxy(request: NextRequest) {
   }
 
   // ===========================================
-  // SECURITY: Block SQL injection attempts in query params
+  // SECURITY: Block obvious SQL injection probes in the URL
   // ===========================================
-  const url = request.nextUrl.toString();
+  // Only blatant scanner payloads. All DB access goes through Prisma
+  // (parameterized), so this is noise reduction, not protection. Patterns that
+  // matched a bare quote, "--" or "=...;" were removed: they blocked legitimate
+  // requests such as searches containing an apostrophe.
+  // Only the pathname is inspected: query strings carry free text (e.g.
+  // /generate?prompt=select+armor+from+shop) and reach the DB only through
+  // parameterized Prisma queries anyway.
+  let url = pathname;
+  try {
+    url = decodeURIComponent(pathname);
+  } catch {
+    // Malformed percent-encoding — test the raw pathname instead.
+  }
   const sqlInjectionPatterns = [
-    /(\%27)|(\')|(\-\-)|(\%23)|(#)/i,
-    /((\%3D)|(=))[^\n]*((\%27)|(\')|(\-\-)|(\%3B)|(;))/i,
-    /\w*((\%27)|(\'))((\%6F)|o|(\%4F))((\%72)|r|(\%52))/i,
     /((\%27)|(\'))union/i,
     /exec(\s|\+)+(s|x)p\w+/i,
     /UNION(\s+)SELECT/i,
@@ -274,7 +284,8 @@ export async function proxy(request: NextRequest) {
   // ===========================================
   // SECURITY: Block requests without user agent
   // ===========================================
-  if (!userAgent && pathname.startsWith("/api/") && !pathname.includes("/webhook")) {
+  // (mail clients' one-click unsubscribe POSTs may come without one)
+  if (!userAgent && pathname.startsWith("/api/") && !pathname.includes("/webhook") && pathname !== "/api/email/unsubscribe") {
     console.warn(`[SECURITY] Blocked request without User-Agent from ${ip}`);
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

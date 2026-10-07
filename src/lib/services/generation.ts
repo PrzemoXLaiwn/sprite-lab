@@ -33,13 +33,12 @@
 // =============================================================================
 
 import {
-  generateImage,
   removeBackground,
+  generateSpriteImage,
   DEFAULT_MODEL,
   TIER_MODELS,
-  type GenerateImageOptions,
-  type GeneratedImage,
   type RunwareModelId,
+  type SpriteModelKey,
   type UserTier,
 } from "@/lib/runware";
 import { uploadToR2, isR2Configured, uploadGenerationBufferToR2 } from "@/lib/r2";
@@ -52,9 +51,10 @@ import {
   buildEnhancedPrompt,
   STYLES_2D_FULL,
 } from "@/config";
-import { resolveLorasForGeneration, composeLoraTriggerPhrase } from "@/config/loras";
+import { COLOR_PALETTES } from "@/config/features/premium-features";
 import { enhancePromptWithLearnedFixes } from "@/lib/analytics/prompt-enhancer";
-import { pixelateImage } from "@/lib/image/pixelate";
+import { postprocessSprite, postprocessTile } from "@/lib/image/sprite-postprocess";
+import { buildSpritePrompt, isPixelStyle, isTileCategory, normalizeStyleId } from "@/config/prompts/sprite-prompt";
 
 // =============================================================================
 // SECTION 1 — TYPES
@@ -80,14 +80,14 @@ const QUALITY_SETTINGS: Record<QualityPreset, { steps: number; guidance: number 
   hd:     { steps: 40, guidance: 3.8 },
 };
 
-// Credit cost per preset. Draft + Normal = 1 credit (entry-level). HD costs
-// 2 credits because it uses ~40 steps vs ~25 for normal — provider cost is
-// roughly proportional. Surfacing the cost in the UI is the caller's job
-// (see CREDIT_COSTS export below).
+// Credit cost per preset. Draft + Normal = 1 credit (FLUX.2 klein, ~$0.001).
+// HD runs on GPT Image Mini (~$0.036/image ≈ the price of 1 credit in the
+// cheapest pack), so it costs 3 credits to keep a margin. Surfacing the cost
+// in the UI is the caller's job (see CREDIT_COSTS export below).
 export const CREDIT_COSTS: Record<QualityPreset, number> = {
   draft: 1,
   normal: 1,
-  hd: 2,
+  hd: 3,
 };
 
 export function creditsForPreset(preset?: QualityPreset): number {
@@ -151,6 +151,8 @@ export interface GuestGenerationRequest {
 // ---------------------------------------------------------------------------
 
 export interface GeneratedAsset {
+  /** DB id of the saved Generation row (set after save; used for project accept). */
+  generationId?: string;
   /** Final persisted URL (R2, Supabase, or temporary Runware URL as last resort) */
   imageUrl: string;
   /** Random seed used — expose so user can reproduce */
@@ -396,63 +398,47 @@ export async function generateGuestAsset(
     style: request.style,
   });
 
-  const GUEST_STYLE_PROMPTS: Record<GuestGenerationRequest["style"], {
-    prompt: string;
-    negative: string;
-  }> = {
-    pixel: {
-      prompt: "pixel art style, 16-bit, retro game sprite, clean edges, limited color palette",
-      negative: "blurry, realistic, 3D render, photograph, noisy, gradient, anti-aliased",
-    },
-    cartoon: {
-      prompt: "cartoon style, bold outlines, vibrant colors, game asset, clean design",
-      negative: "realistic, photograph, blurry, noisy, complex background",
-    },
-  };
+  // Same sprite pipeline as signed-in users (standard model) so the demo
+  // shows exactly the quality people get after signing up.
+  const styleId = request.style === "pixel" ? "PIXEL_ART_16" : "CARTOON_WESTERN";
+  const finalPrompt = buildSpritePrompt({ subject: request.prompt, styleId });
 
-  const styleConfig = GUEST_STYLE_PROMPTS[request.style];
-  const finalPrompt = `${styleConfig.prompt}, ${request.prompt.trim()}, game sprite, single object, centered, transparent background, high quality`;
-
-  log("generation:prompt", {
-    mode: "guest",
-    finalPromptPreview: finalPrompt.substring(0, 100),
-  });
-
-  // Guest always uses free tier model
-  const modelId = DEFAULT_MODEL["free"];
-
-  log("generation:model", { mode: "guest", modelId });
-
-  const result = await generateImage(
-    {
+  let generated: Awaited<ReturnType<typeof generateSpriteImage>>;
+  try {
+    generated = await generateSpriteImage({
       prompt: finalPrompt,
-      negativePrompt: styleConfig.negative,
-      model: modelId,
+      model: "standard",
       seed: Math.floor(Math.random() * 2147483647),
-      steps: 25,
-      guidance: 3.0,
-      width: 1024,
-      height: 1024,
-    },
-    "free"
-  );
-
-  if (!result.success || !result.images?.length) {
-    log("generation:error", { mode: "guest", error: result.error });
+    });
+  } catch (err) {
+    log("generation:error", { mode: "guest", error: err instanceof Error ? err.message : String(err) });
     throw new GenerationError({
       code: "PROVIDER_ERROR",
       userMessage: "Generation failed. Please try again.",
       isExpected: false,
-      cause: result.error,
+      cause: err,
     });
   }
 
-  const img = result.images[0];
+  let png = generated.image;
+  try {
+    png = (await postprocessSprite(generated.image, {
+      pixelGrid: request.style === "pixel" ? 128 : undefined,
+      paletteSize: 32,
+    })).png;
+  } catch (err) {
+    log("generation:error", { mode: "guest", stage: "postprocess", error: err instanceof Error ? err.message : String(err) });
+  }
+
+  // Persist so the URL outlives the provider's temporary link; fall back to
+  // an inline data URL if storage is unavailable.
+  const upload = await uploadGenerationBufferToR2(png, "guest");
+  const imageUrl = upload.success && upload.url ? upload.url : `data:image/png;base64,${png.toString("base64")}`;
 
   log("generation:result", {
     mode: "guest",
-    seed: img.seed,
-    model: img.model,
+    seed: generated.seed,
+    model: generated.model,
     durationMs: Date.now() - startMs,
   });
 
@@ -460,10 +446,10 @@ export async function generateGuestAsset(
     success: true,
     assets: [
       {
-        imageUrl: img.imageURL,
-        seed: img.seed,
-        model: img.model,
-        providerCost: img.cost,
+        imageUrl,
+        seed: generated.seed,
+        model: generated.model,
+        providerCost: generated.cost,
         finalPrompt,
         appliedOptimizations: [],
         warnings: [],
@@ -548,280 +534,141 @@ async function generateSinglePipeline(
 // =============================================================================
 
 /**
- * Generates a single 2D image through the full pipeline:
- * prompt build → enhancement → Runware → bg removal → upload.
+ * Generates a single 2D sprite:
+ *   short instruction prompt → instruction-following model (flat background)
+ *   → deterministic post-processing (transparency, crop, pixel grid, palette)
+ *   → upload.
+ *
+ * The model only has to draw the subject; every hard spec the user expects
+ * (transparent PNG, centred single object, real pixel grid, limited palette)
+ * is enforced in code by postprocessSprite(), so it holds on every run.
  *
  * Does NOT handle credits. Callers must deduct/refund.
  * Throws GenerationError on any failure.
  */
 async function generateSingle2D(request: GenerationRequest): Promise<GeneratedAsset> {
-  // ── 1. Resolve model ───────────────────────────────────────────────────────
-  // Honour the style's intended model when the user's tier allows it.
-  // Each entry in STYLES_2D_FULL declares whether it was tuned for
-  // flux-schnell (fast & cheap) or flux-dev (better fidelity). If the
-  // user's tier doesn't permit the intended model, downgrade and surface
-  // a warning so the user knows the result will not match the style preview.
-  const tier = await getUserTier(request.userId);
-  const styleConfig = STYLES_2D_FULL[request.styleId];
-  const intendedModel = styleConfig?.model as RunwareModelId | undefined;
-  const allowed = TIER_MODELS[tier];
-  const tierDefault = DEFAULT_MODEL[tier];
+  const warnings: string[] = [];
+  const styleId = normalizeStyleId(request.styleId);
 
-  let modelId: RunwareModelId;
-  let modelDowngraded = false;
-  if (intendedModel && allowed.includes(intendedModel)) {
-    modelId = intendedModel;
-  } else if (intendedModel && !allowed.includes(intendedModel)) {
-    modelId = tierDefault;
-    modelDowngraded = true;
-  } else {
-    modelId = tierDefault;
-  }
+  // ── 1. Model: HD preset → GPT Image Mini, otherwise FLUX.2 klein ──────────
+  const modelKey: SpriteModelKey = request.qualityPreset === "hd" ? "hd" : "standard";
 
-  log("generation:model", {
-    userId: request.userId,
-    tier,
-    modelId,
-    intendedModel: intendedModel ?? null,
-    downgraded: modelDowngraded,
+  // ── 2. Prompt ──────────────────────────────────────────────────────────────
+  const view = request.view && request.view !== "DEFAULT" ? request.view : undefined;
+  const palette = request.colorPaletteId
+    ? COLOR_PALETTES.find((p) => p.id === request.colorPaletteId)
+    : undefined;
+  const finalPrompt = buildSpritePrompt({
+    subject: request.prompt,
+    styleId,
+    categoryId: request.categoryId,
+    view,
+    colorHint: palette?.promptModifier,
+    pose: request.pose,
   });
 
-  // ── 2. Build prompt ────────────────────────────────────────────────────────
-  const {
-    finalPrompt,
-    negativePrompt,
-    guidance: styleGuidance,
-    steps: styleSteps,
-    appliedOptimizations,
-    warnings,
-    resolvedView,
-  } = await buildPromptForGeneration(
-    request.prompt,
-    request.categoryId,
-    request.subcategoryId,
-    request.styleId,
-    {
-      colorPaletteId: request.colorPaletteId,
-      view: request.view,
-      qualityPreset: request.qualityPreset,
-      pose: request.pose,
-    }
-  );
-
-  // Surface a view-conflict warning when the prompt redirected the view
-  // away from what the user picked in the selector. The UI shows a live
-  // hint pre-submit (form's detectViewInText), but if the user ignored
-  // it and clicked Generate anyway they should still know what happened.
-  const requestedView = request.view ?? "DEFAULT";
-  if (resolvedView && resolvedView !== requestedView && requestedView !== "DEFAULT") {
-    warnings.push(
-      `Your prompt referenced "${resolvedView.toLowerCase().replace("_", " ")}" — we used that instead of the "${requestedView.toLowerCase().replace("_", " ")}" you selected.`
-    );
+  log("generation:model", { userId: request.userId, modelKey, styleId });
+  if (process.env.DEBUG_PROMPTS === "1") {
+    console.debug("[Generation] Prompt:", finalPrompt.slice(0, 300));
   }
 
-  // Quality preset:
-  //  - "normal" (default) honours the style's tuned steps + guidance from
-  //    STYLES_2D_FULL — every style was hand-calibrated for these defaults.
-  //  - "draft" forces the cheap-and-fast preset (icon-safe, low fidelity).
-  //  - "hd" forces the high-step / high-guidance preset for max detail.
-  // Earlier code always pulled QUALITY_SETTINGS[preset] which buried the
-  // style's own steps under the medium-preset constants.
-  const preset = request.qualityPreset ?? "normal";
-  const quality =
-    preset === "normal"
-      ? { steps: styleSteps, guidance: styleGuidance }
-      : QUALITY_SETTINGS[preset];
-
-  log("generation:prompt", {
-    userId: request.userId,
-    promptPreview: finalPrompt.substring(0, 120),
-    optimizations: appliedOptimizations.length,
-  });
-
-  // ── 3. Generate via Runware ────────────────────────────────────────────────
-  // LoRA stack — style + category specific adapters layered on top of
-  // the base FLUX model. Lives in src/config/loras.ts so we can swap
-  // public Civitai LoRAs for our own custom-trained SpriteLab LoRAs
-  // without touching the pipeline.
-  const loras = resolveLorasForGeneration(request.styleId, request.categoryId);
-
-  // Many Civitai LoRAs only "switch on" when their activator token is
-  // present in the prompt (e.g. `dvr-pixel-flux` for the Dever
-  // pixel-game-assets LoRA). Prepend so the trigger gets early-token
-  // weighting — burying it 200 tokens deep makes the LoRA barely engage.
-  // The composed prompt becomes both what FLUX sees AND what we record on
-  // the Generation row, so the DB is faithful to what was sent.
-  const triggerPhrase = composeLoraTriggerPhrase(loras);
-  const promptWithTriggers = triggerPhrase
-    ? `${triggerPhrase}, ${finalPrompt}`
-    : finalPrompt;
-
-  // Full prompt debug — remove after debugging views/colors
-  console.log("\n" + "═".repeat(80));
-  console.log("🔍 FULL PROMPT SENT TO FLUX:");
-  console.log("═".repeat(80));
-  console.log("VIEW:", request.view || "DEFAULT");
-  console.log("POSITIVE:", promptWithTriggers);
-  console.log("─".repeat(80));
-  console.log("NEGATIVE:", negativePrompt);
-  if (loras.length > 0) {
-    console.log("LORAS:", loras.map((l) => `${l.model}@${l.weight}`).join(", "));
-    if (triggerPhrase) console.log("LORA TRIGGERS:", triggerPhrase);
-  }
-  console.log("WORDS:", promptWithTriggers.split(/\s+/).length, "positive /", negativePrompt.split(/\s+/).length, "negative");
-  console.log("═".repeat(80) + "\n");
-
-  const generationOptions: GenerateImageOptions = {
-    prompt: promptWithTriggers,
-    negativePrompt,
-    model: modelId,
-    seed: request.seed,
-    steps: quality.steps,
-    guidance: quality.guidance,
-    width: 1024,
-    height: 1024,
-    loras: loras.length > 0 ? loras.map((l) => ({ model: l.model, weight: l.weight })) : undefined,
-  };
-
-  let result = await generateImage(generationOptions, tier);
-
-  // Defensive LoRA fallback: an unresolvable or broken adapter AIR fails the
-  // whole call — this is exactly how the Civitai AIRs took down every
-  // pixel-art generation in e8cb99e. Retry once WITHOUT the LoRA stack; a
-  // sprite from the base model beats a 500 and a refunded credit. Drop the
-  // trigger phrase too — it's meaningless with no adapter to activate.
-  let loraFallbackUsed = false;
-  if ((!result.success || !result.images?.length) && loras.length > 0) {
-    log("generation:error", {
-      stage: "lora_fallback",
-      userId: request.userId,
-      styleId: request.styleId,
-      loras: loras.map((l) => l.model),
-      error: result.error,
-    });
-    result = await generateImage(
-      { ...generationOptions, prompt: finalPrompt, loras: undefined },
-      tier
-    );
-    if (result.success && result.images?.length) {
-      loraFallbackUsed = true;
-      warnings.push(
-        "The style adapter was unavailable, so this was generated with the base model. Try again for the adapter-enhanced look."
-      );
-    }
-  }
-
-  if (!result.success || !result.images?.length) {
-    throw new GenerationError({
-      code: "PROVIDER_ERROR",
-      userMessage: "Generation failed. Please try again.",
-      isExpected: false,
-      cause: result.error,
-    });
-  }
-
-  const generatedImage: GeneratedImage = result.images[0];
-
-  // ── 4. Remove background ───────────────────────────────────────────────────
-  // Non-fatal: if bg removal fails we still upload the original. Surface a
-  // warning so the UI can flag the image as having a baked-in background
-  // rather than the transparent PNG the user expects.
-  let imageUrlForUpload = generatedImage.imageURL;
-  let bgRemovalFailed = false;
+  // ── 3. Generate ────────────────────────────────────────────────────────────
+  let generated: Awaited<ReturnType<typeof generateSpriteImage>>;
   try {
-    const bgResult = await removeBackground(generatedImage.imageURL);
-    if (bgResult.success && bgResult.imageUrl) {
-      imageUrlForUpload = bgResult.imageUrl;
-    } else {
-      bgRemovalFailed = true;
-      log("generation:error", {
-        stage: "bg_removal",
-        userId: request.userId,
-        error: bgResult.error,
+    generated = await generateSpriteImage({ prompt: finalPrompt, model: modelKey, seed: request.seed });
+  } catch (err) {
+    // One retry on the standard model — a transient provider error shouldn't
+    // cost the user a refund round-trip.
+    log("generation:error", {
+      stage: "provider",
+      userId: request.userId,
+      modelKey,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    try {
+      generated = await generateSpriteImage({ prompt: finalPrompt, model: "standard", seed: request.seed });
+      if (modelKey === "hd") warnings.push("HD model was busy — this sprite was made with the standard model.");
+    } catch (retryErr) {
+      throw new GenerationError({
+        code: "PROVIDER_ERROR",
+        userMessage: "Generation failed. Please try again.",
+        isExpected: false,
+        cause: retryErr,
       });
     }
-  } catch (bgErr) {
-    bgRemovalFailed = true;
+  }
+
+  // ── 4. Post-process ────────────────────────────────────────────────────────
+  // Pixel styles: canvas of up to 128 art pixels. The model's own pixel size
+  // is kept when detected; forcing a smaller grid (we tried 64) merged faces
+  // and fine detail into blobs.
+  const pixelGrid = isPixelStyle(styleId) ? 128 : undefined;
+  const paletteSize = 32;
+  let png: Buffer;
+  if (isTileCategory(request.categoryId)) {
+    try {
+      png = (await postprocessTile(generated.image, { pixelGrid, paletteSize })).png;
+    } catch (err) {
+      log("generation:error", { stage: "postprocess-tile", userId: request.userId, error: err instanceof Error ? err.message : String(err) });
+      png = generated.image;
+    }
+  } else try {
+    const processed = await postprocessSprite(generated.image, { pixelGrid, paletteSize });
+    png = processed.png;
+    if (!processed.backgroundRemoved) {
+      // Model drew a scene despite the instruction — fall back to the AI
+      // background remover, then re-run the deterministic steps on its alpha.
+      const bg = await removeBackgroundFromBuffer(generated.image);
+      if (bg) {
+        png = (await postprocessSprite(bg, { pixelGrid, paletteSize, trustInputAlpha: true })).png;
+      } else {
+        warnings.push("We couldn't separate the background on this one — try generating again.");
+      }
+    }
+  } catch (err) {
     log("generation:error", {
-      stage: "bg_removal",
+      stage: "postprocess",
       userId: request.userId,
-      error: bgErr instanceof Error ? bgErr.message : String(bgErr),
+      error: err instanceof Error ? err.message : String(err),
+    });
+    png = generated.image;
+    warnings.push("Post-processing failed for this sprite — showing the raw image.");
+  }
+
+  // ── 5. Upload ──────────────────────────────────────────────────────────────
+  const upload = await uploadGenerationBufferToR2(png, request.userId);
+  if (!upload.success || !upload.url) {
+    throw new GenerationError({
+      code: "UPLOAD_ERROR",
+      userMessage: "Couldn't save your sprite. Please try again.",
+      isExpected: false,
+      cause: upload.error,
     });
   }
-  if (bgRemovalFailed) {
-    warnings.push("Background removal was unavailable — your image keeps its original background. Try again to get a transparent PNG.");
-  }
-  if (modelDowngraded && intendedModel) {
-    warnings.push(
-      `This style is tuned for ${intendedModel}; your plan ran it on ${modelId}. Output may look softer than the preview — upgrade for full fidelity.`
-    );
-  }
-
-  // ── 4b. Pixel-snap post-processing ────────────────────────────────────────
-  // Pixel-art styles declare a `pixelGrid` (e.g. 64 for SNES-era, 128 for
-  // modern indie). Without this step FLUX produces images that LOOK
-  // pixelated but aren't on a real grid — sub-pixel anti-aliasing, fractional
-  // pixel sizes, gradients masquerading as dithering. After this step the
-  // asset is genuine pixel art ready for nearest-neighbor scaling in any
-  // game engine.
-  let pixelatedUrl: string | null = null;
-  if (styleConfig?.pixelGrid) {
-    try {
-      const pixelBuffer = await pixelateImage(imageUrlForUpload, {
-        gridSize: styleConfig.pixelGrid,
-        outputSize: 1024,
-      });
-      const pxUpload = await uploadGenerationBufferToR2(pixelBuffer, request.userId);
-      if (pxUpload.success && pxUpload.url) {
-        pixelatedUrl = pxUpload.url;
-      } else {
-        log("generation:error", {
-          stage: "pixelate_upload",
-          userId: request.userId,
-          error: pxUpload.error,
-        });
-        warnings.push(
-          "Pixel-grid post-processing was skipped this run — your sprite may show sub-pixel smoothing. Try regenerating."
-        );
-      }
-    } catch (err) {
-      log("generation:error", {
-        stage: "pixelate",
-        userId: request.userId,
-        error: err instanceof Error ? err.message : String(err),
-      });
-      warnings.push(
-        "Pixel-grid post-processing was skipped this run — your sprite may show sub-pixel smoothing. Try regenerating."
-      );
-    }
-  }
-
-  // ── 5. Upload to storage ───────────────────────────────────────────────────
-  // If pixelate succeeded, the asset is already on R2; skip the second
-  // upload pass and use the pixel URL directly.
-  const finalUrl = pixelatedUrl ?? await uploadGeneratedAsset(
-    imageUrlForUpload,
-    request.userId,
-    request.categoryId,
-    request.subcategoryId,
-    request.styleId,
-    generatedImage.seed
-  );
 
   return {
-    imageUrl: finalUrl,
-    seed: generatedImage.seed,
-    model: generatedImage.model,
-    providerCost: generatedImage.cost,
-    // Persist the prompt FLUX actually saw. Normally that's promptWithTriggers,
-    // but when the LoRA fallback fired we re-sent the plain finalPrompt (no
-    // adapter, no trigger) — record THAT, or the fullPrompt column lies and the
-    // training export captions the image with input that didn't produce it.
-    finalPrompt: loraFallbackUsed ? finalPrompt : promptWithTriggers,
-    appliedOptimizations,
+    imageUrl: upload.url,
+    seed: generated.seed,
+    model: generated.model,
+    providerCost: generated.cost,
+    finalPrompt,
+    appliedOptimizations: [],
     warnings,
-    resolvedView,
+    resolvedView: view ?? "DEFAULT",
   };
+}
+
+/** AI background removal for a buffer (fallback path). Returns PNG or null. */
+async function removeBackgroundFromBuffer(image: Buffer): Promise<Buffer | null> {
+  try {
+    const dataUri = `data:image/png;base64,${image.toString("base64")}`;
+    const result = await removeBackground(dataUri);
+    if (!result.success || !result.imageUrl) return null;
+    const res = await fetch(result.imageUrl);
+    return res.ok ? Buffer.from(await res.arrayBuffer()) : null;
+  } catch {
+    return null;
+  }
 }
 
 // =============================================================================
@@ -940,6 +787,9 @@ async function saveGeneratedAssets(
     };
 
     const saveResult = await saveGeneration(params);
+    if (saveResult.success && "generation" in saveResult && saveResult.generation) {
+      asset.generationId = saveResult.generation.id;
+    }
     if (!saveResult.success) {
       // Case C failure: image was generated but record not saved.
       // Log for manual recovery — do NOT throw or refund.

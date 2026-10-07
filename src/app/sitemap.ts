@@ -1,5 +1,9 @@
 import { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
+import { SEO_PAGES } from "@/data/seo-pages";
+
+// Rebuilt daily so newly public profiles show up without a deploy
+export const revalidate = 86400;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = "https://www.sprite-lab.com";
@@ -16,24 +20,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
 
     // SEO landing pages — high priority organic traffic targets
-    {
-      url: `${baseUrl}/pixel-art-generator`,
+    ...SEO_PAGES.map((p) => ({
+      url: `${baseUrl}/${p.slug}`,
       lastModified: now,
-      changeFrequency: "weekly",
+      changeFrequency: "weekly" as const,
       priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/game-weapon-generator`,
-      lastModified: now,
-      changeFrequency: "weekly",
-      priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/rpg-character-creator`,
-      lastModified: now,
-      changeFrequency: "weekly",
-      priority: 0.9,
-    },
+    })),
 
     // Pricing — public, high conversion intent
     {
@@ -51,19 +43,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     },
 
-    // Auth pages — indexable for brand searches
-    {
-      url: `${baseUrl}/login`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.5,
-    },
-    {
-      url: `${baseUrl}/register`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.5,
-    },
 
     // Info pages
     {

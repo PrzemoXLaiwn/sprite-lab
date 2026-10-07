@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { prisma } from "@/lib/prisma";
-import { stripe, LIFETIME_DEALS } from "@/lib/stripe";
+import { fulfillOneTimePayment } from "../_lib/fulfillment";
 
 export async function POST(request: Request) {
   try {
@@ -12,152 +11,67 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { paymentIntentId } = await request.json();
+    const body = await request.json().catch(() => null);
+    const paymentIntentId = body?.paymentIntentId;
 
-    if (!paymentIntentId) {
+    if (typeof paymentIntentId !== "string" || !paymentIntentId) {
       return NextResponse.json({ error: "Missing payment intent ID" }, { status: 400 });
     }
 
-    // Retrieve the PaymentIntent
-    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    // Shared with the payment_intent.succeeded webhook. The slot check, the
+    // "already lifetime" re-check and the idempotency row all run inside one
+    // DB transaction under an advisory lock; sold-out / duplicate purchases
+    // are refunded automatically.
+    const result = await fulfillOneTimePayment(paymentIntentId, { expectedUserId: user.id });
 
-    if (paymentIntent.status !== "succeeded") {
-      return NextResponse.json({ error: "Payment not completed" }, { status: 400 });
-    }
-
-    // Verify the user matches
-    if (paymentIntent.metadata.userId !== user.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const credits = parseInt(paymentIntent.metadata.credits, 10);
-    const basePlan = paymentIntent.metadata.basePlan;
-    const dealName = paymentIntent.metadata.deal;
-
-    if (isNaN(credits) || credits <= 0) {
-      return NextResponse.json({ error: "Invalid credits amount" }, { status: 400 });
-    }
-
-    // Check if this payment was already processed (idempotency)
-    const existingTransaction = await prisma.creditTransaction.findFirst({
-      where: {
-        userId: user.id,
-        type: "PURCHASE",
-        description: { contains: paymentIntentId },
-      },
-    });
-
-    if (existingTransaction) {
-      return NextResponse.json({
-        success: true,
-        credits,
-        message: "Lifetime deal already activated",
-      });
-    }
-
-    // ========================================
-    // CRITICAL: Final check before activating
-    // Double-check slots to prevent race conditions
-    // ========================================
-    const lifetimeCount = await prisma.user.count({
-      where: {
-        isLifetime: true,
-        plan: basePlan,
-      },
-    });
-
-    const dealConfig = Object.values(LIFETIME_DEALS).find(d => d.basePlan === basePlan);
-    if (dealConfig && lifetimeCount >= dealConfig.maxSlots) {
-      // CRITICAL: Slots are full - initiate refund
-      console.error(`❌ RACE CONDITION: ${basePlan} lifetime slots full. Initiating refund for ${paymentIntentId}`);
-
-      try {
-        await stripe.refunds.create({
-          payment_intent: paymentIntentId,
-          reason: "requested_by_customer",
+    switch (result.status) {
+      case "credited":
+        if (result.kind !== "lifetime_deal") break;
+        return NextResponse.json({
+          success: true,
+          credits: result.credits,
+          plan: result.plan,
+          totalCredits: result.totalCredits,
         });
-        console.log(`✅ Refund initiated for ${paymentIntentId}`);
-      } catch (refundError) {
-        console.error("Failed to auto-refund:", refundError);
-      }
-
-      return NextResponse.json(
-        {
-          error: "SOLD_OUT",
-          message: `Sorry! ${dealConfig.name} sold out while processing your payment. A refund has been initiated.`,
-          refundInitiated: true,
-        },
-        { status: 410 }
-      );
-    }
-
-    // Also check total slots
-    const totalLifetimeCount = await prisma.user.count({
-      where: { isLifetime: true },
-    });
-    const totalMaxSlots = Object.values(LIFETIME_DEALS).reduce((sum, d) => sum + d.maxSlots, 0);
-
-    if (totalLifetimeCount >= totalMaxSlots) {
-      console.error(`❌ RACE CONDITION: Total lifetime slots (${totalMaxSlots}) full. Initiating refund.`);
-
-      try {
-        await stripe.refunds.create({
-          payment_intent: paymentIntentId,
-          reason: "requested_by_customer",
+      case "already_processed":
+        if (result.kind !== "lifetime_deal") break;
+        return NextResponse.json({
+          success: true,
+          credits: result.credits,
+          plan: result.plan,
+          message: "Lifetime deal already activated",
         });
-      } catch (refundError) {
-        console.error("Failed to auto-refund:", refundError);
-      }
-
-      return NextResponse.json(
-        {
-          error: "SOLD_OUT",
-          message: "All 50 lifetime spots have been claimed! A refund has been initiated.",
-          refundInitiated: true,
-        },
-        { status: 410 }
-      );
+      case "sold_out":
+        return NextResponse.json(
+          {
+            error: "SOLD_OUT",
+            message: result.message,
+            refundInitiated: result.refundInitiated,
+          },
+          { status: 410 }
+        );
+      case "already_lifetime":
+        return NextResponse.json(
+          {
+            error: "ALREADY_LIFETIME",
+            message: "You already have a lifetime plan! This payment has been refunded.",
+            refundInitiated: result.refundInitiated,
+          },
+          { status: 409 }
+        );
+      case "forbidden":
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      case "not_paid":
+        return NextResponse.json({ error: "Payment not completed" }, { status: 400 });
     }
 
-    // Update user to lifetime plan and add initial credits
-    const [updatedUser] = await prisma.$transaction([
-      prisma.user.update({
-        where: { id: user.id },
-        data: {
-          plan: basePlan,
-          isLifetime: true,
-          credits: {
-            increment: credits,
-          },
-          totalSpent: {
-            increment: paymentIntent.amount / 100,
-          },
-        },
-      }),
-      prisma.creditTransaction.create({
-        data: {
-          userId: user.id,
-          amount: credits,
-          type: "PURCHASE",
-          description: `Lifetime deal: ${dealName} (${credits} credits/month forever) - ${paymentIntentId}`,
-          moneyAmount: paymentIntent.amount / 100,
-        },
-      }),
-    ]);
-
-    console.log(`✅ Lifetime deal activated for user ${user.id}: ${dealName} (${basePlan}, ${credits} credits/month)`);
-
-    return NextResponse.json({
-      success: true,
-      credits,
-      plan: basePlan,
-      totalCredits: updatedUser.credits,
-    });
+    console.error(`confirm-lifetime-purchase: unexpected result for ${paymentIntentId}:`, result);
+    return NextResponse.json({ error: "Invalid payment" }, { status: 400 });
 
   } catch (error) {
     console.error("Confirm lifetime purchase error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to confirm purchase" },
+      { error: "Failed to confirm purchase" },
       { status: 500 }
     );
   }

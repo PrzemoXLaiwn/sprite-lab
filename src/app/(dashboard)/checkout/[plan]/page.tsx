@@ -9,10 +9,21 @@ import {
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, Shield, CheckCircle, ArrowLeft, CreditCard } from "lucide-react";
-import Link from "next/link";
+import { Loader2 } from "lucide-react";
+import {
+  BTN_PRIMARY,
+  stripeAppearance,
+  PageSpinner,
+  CheckoutError,
+  CheckoutShell,
+  SummaryCard,
+  SummaryRow,
+  FeatureList,
+  FormError,
+  SecureNote,
+  InlineSuccess,
+  CreditChip,
+} from "../_components/checkout-ui";
 
 // Load Stripe outside of component to avoid recreating on every render
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
@@ -47,7 +58,9 @@ function CheckoutForm({ plan, planDetails }: { plan: string; planDetails: PlanDe
       const { error: submitError, setupIntent } = await stripe.confirmSetup({
         elements,
         confirmParams: {
-          return_url: `${window.location.origin}/checkout/success`,
+          // If a redirect (e.g. 3DS) is needed, the success page finishes the
+          // subscription using the setup_intent query param Stripe appends.
+          return_url: `${window.location.origin}/checkout/success?plan=${encodeURIComponent(plan)}`,
         },
         redirect: "if_required",
       });
@@ -91,54 +104,37 @@ function CheckoutForm({ plan, planDetails }: { plan: string; planDetails: PlanDe
   };
 
   if (success) {
-    return (
-      <div className="text-center py-8">
-        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-500/10 flex items-center justify-center">
-          <CheckCircle className="w-8 h-8 text-green-500" />
-        </div>
-        <h3 className="text-xl font-bold mb-2">Payment Successful!</h3>
-        <p className="text-muted-foreground">Redirecting to your dashboard...</p>
-      </div>
-    );
+    return <InlineSuccess title="Payment successful">Your {planDetails.name} plan is being activated.</InlineSuccess>;
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-5">
       <PaymentElement
         options={{
           layout: "tabs",
         }}
       />
 
-      {error && (
-        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
-          {error}
-        </div>
-      )}
+      {error && <FormError message={error} />}
 
-      <Button
+      <button
         type="submit"
         disabled={!stripe || isLoading}
-        className="w-full bg-gradient-to-r from-primary to-purple-500 hover:opacity-90"
-        size="lg"
+        className={`flex h-12 w-full items-center justify-center gap-2 text-[14px] ${BTN_PRIMARY}`}
       >
         {isLoading ? (
           <>
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Processing...
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Processing…
           </>
         ) : (
           <>
-            <CreditCard className="w-4 h-4 mr-2" />
-            Subscribe to {planDetails.name} - £{planDetails.price}/month
+            Subscribe to {planDetails.name} · <span className="font-mono">£{planDetails.price}/month</span>
           </>
         )}
-      </Button>
+      </button>
 
-      <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-        <Shield className="w-3 h-3" />
-        <span>Secured by Stripe. Cancel anytime.</span>
-      </div>
+      <SecureNote>Payments processed securely by Stripe. Cancel anytime.</SecureNote>
     </form>
   );
 }
@@ -196,125 +192,66 @@ export default function CheckoutPage() {
       });
   }, [plan, router]);
 
+
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+    return <PageSpinner />;
   }
 
   if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="max-w-md w-full">
-          <CardContent className="pt-6 text-center">
-            <p className="text-red-500 mb-4">{error}</p>
-            <Button asChild variant="outline">
-              <Link href="/pricing">Back to Pricing</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <CheckoutError message={error} />;
   }
 
   if (!clientSecret || !planDetails) {
     return null;
   }
 
-  // Stripe Elements appearance customization
-  const appearance = {
-    theme: "night" as const,
-    variables: {
-      colorPrimary: "#8B5CF6",
-      colorBackground: "#0f0f0f",
-      colorText: "#ffffff",
-      colorDanger: "#ef4444",
-      fontFamily: "system-ui, sans-serif",
-      borderRadius: "8px",
-      spacingUnit: "4px",
-    },
-    rules: {
-      ".Input": {
-        backgroundColor: "#1a1a1a",
-        border: "1px solid #333",
-      },
-      ".Input:focus": {
-        border: "1px solid #8B5CF6",
-        boxShadow: "0 0 0 1px #8B5CF6",
-      },
-      ".Label": {
-        color: "#a1a1aa",
-      },
-      ".Tab": {
-        backgroundColor: "#1a1a1a",
-        border: "1px solid #333",
-      },
-      ".Tab--selected": {
-        backgroundColor: "#8B5CF6",
-        borderColor: "#8B5CF6",
-      },
-    },
-  };
-
   return (
-    <div className="min-h-screen bg-background py-12 px-4">
-      <div className="max-w-lg mx-auto">
-        {/* Back Link */}
-        <Link
-          href="/pricing"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-8"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to pricing
-        </Link>
+    <CheckoutShell
+      title={`Subscribe to ${planDetails.name}`}
+      subtitle="Monthly subscription. Cancel anytime from your settings."
+      summary={
+        <>
+          <SummaryCard highlight>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="font-display text-[18px] font-semibold text-white">{planDetails.name} plan</h2>
+                <p className="mt-0.5 text-[13px] text-[#8B93A5]">Billed monthly</p>
+              </div>
+              <CreditChip>{planDetails.credits} credits/mo</CreditChip>
+            </div>
+            <div className="mt-5 flex items-baseline gap-1.5">
+              <span className="font-sans tracking-tight tabular-nums text-[32px] font-semibold leading-none text-white">£{planDetails.price}</span>
+              <span className="font-mono text-[12px] text-[#8B93A5]">/month</span>
+            </div>
+            <div className="mt-5 border-t border-white/[0.06] pt-2">
+              <SummaryRow label="Credits" value={`${planDetails.credits} / month`} />
+              <SummaryRow label="Price" value={`£${planDetails.price} / month`} strong />
+            </div>
+          </SummaryCard>
 
-        {/* Plan Summary */}
-        <Card className="mb-6 bg-gradient-to-br from-primary/10 to-purple-500/10 border-primary/20">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>{planDetails.name} Plan</span>
-              <span className="text-2xl">£{planDetails.price}<span className="text-sm font-normal text-muted-foreground">/mo</span></span>
-            </CardTitle>
-            <CardDescription>
-              {planDetails.credits} credits per month
-            </CardDescription>
-          </CardHeader>
-        </Card>
-
-        {/* Payment Form */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Payment Details</CardTitle>
-            <CardDescription>
-              Enter your card information to start your subscription
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Elements
-              stripe={stripePromise}
-              options={{
-                clientSecret,
-                appearance,
-              }}
-            >
-              <CheckoutForm plan={plan} planDetails={planDetails} />
-            </Elements>
-          </CardContent>
-        </Card>
-
-        {/* Features reminder */}
-        <div className="mt-6 text-center text-sm text-muted-foreground">
-          <p>Your subscription includes:</p>
-          <ul className="mt-2 space-y-1">
-            <li>• {planDetails.credits} credits per month</li>
-            <li>• All asset categories & art styles</li>
-            <li>• Background removal & editing tools</li>
-            <li>• Cancel anytime</li>
-          </ul>
-        </div>
-      </div>
-    </div>
+          <SummaryCard>
+            <p className="mb-3 text-[13px] font-medium text-white">Your subscription includes</p>
+            <FeatureList
+              items={[
+                `${planDetails.credits} credits per month`,
+                "All asset categories & art styles",
+                "Background removal & editing tools",
+                "Cancel anytime",
+              ]}
+            />
+          </SummaryCard>
+        </>
+      }
+    >
+      <Elements
+        stripe={stripePromise}
+        options={{
+          clientSecret,
+          appearance: stripeAppearance,
+        }}
+      >
+        <CheckoutForm plan={plan} planDetails={planDetails} />
+      </Elements>
+    </CheckoutShell>
   );
 }

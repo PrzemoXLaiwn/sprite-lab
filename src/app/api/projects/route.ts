@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import Anthropic from "@anthropic-ai/sdk";
+import { rateLimitFeedback } from "@/lib/rate-limit";
+import { parseProjectFields } from "./validation";
 
 export const dynamic = "force-dynamic";
 
@@ -29,82 +31,109 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await req.json();
-  const { name, gameType, perspective, artStyle, mood, systems, notes } = body;
+  // Each create triggers a paid Anthropic call — limit per user (10/hour,
+  // reusing the generic per-user feedback limiter under its own bucket).
+  const { blocked } = await rateLimitFeedback(`project:${user.id}`);
+  if (blocked) return blocked;
 
-  if (!name?.trim()) {
+  const body = await req.json().catch(() => null);
+  if (!body || typeof body !== "object") {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
+
+  const parsed = parseProjectFields(body);
+  if ("error" in parsed) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
+  }
+  const { name, gameType, perspective, artStyle, mood, systems, notes } = parsed.fields;
+
+  if (!name) {
     return NextResponse.json({ error: "Project name is required" }, { status: 400 });
   }
 
-  // Create the project first
-  const project = await prisma.project.create({
-    data: {
-      userId: user.id,
-      name: name.trim(),
-      gameType: gameType || null,
-      perspective: perspective || null,
-      artStyle: artStyle || null,
-      mood: mood || null,
-      systems: systems || null,
-      notes: notes || null,
-    },
-  });
-
-  // Generate folder plan with AI
-  const folders = await generateFolderPlan({
-    name, gameType, perspective, artStyle, mood, systems, notes,
-  });
-
-  // Map perspective to default view
-  const viewMap: Record<string, string> = {
-    "top-down": "TOP_DOWN",
-    "side-scroll": "SIDE_VIEW",
-    "isometric": "DEFAULT",
-    "front": "FRONT",
-  };
-
-  // Map artStyle to style ID
-  const styleMap: Record<string, string> = {
-    "pixel art": "PIXEL_ART_16",
-    "pixel art hd": "PIXEL_ART_32",
-    "hand-painted": "HAND_PAINTED",
-    "anime": "ANIME_GAME",
-    "dark fantasy": "DARK_SOULS",
-    "cartoon": "CARTOON_WESTERN",
-    "vector": "VECTOR_CLEAN",
-    "realistic": "REALISTIC_PAINTED",
-  };
-
-  const defaultView = viewMap[(perspective || "").toLowerCase()] || "DEFAULT";
-  const defaultStyleId = styleMap[(artStyle || "").toLowerCase()] || "PIXEL_ART_16";
-
-  // Create folders in DB
-  if (folders.length > 0) {
-    await prisma.projectFolder.createMany({
-      data: folders.map((f, i) => ({
-        projectId: project.id,
-        name: f.name,
-        category: f.category,
-        subcategory: f.subcategory || null,
-        description: f.description || null,
-        suggestedAssets: f.suggestedAssets ? JSON.stringify(f.suggestedAssets) : null,
-        defaultStyleId,
-        defaultView,
-        sortOrder: i,
-      })),
+  try {
+    // Create the project first
+    const project = await prisma.project.create({
+      data: {
+        userId: user.id,
+        name,
+        gameType: gameType || null,
+        perspective: perspective || null,
+        artStyle: artStyle || null,
+        mood: mood || null,
+        systems: systems || null,
+        notes: notes || null,
+      },
     });
+
+    // Generate folder plan with AI
+    const folders = (await generateFolderPlan({
+      name,
+      gameType: gameType ?? undefined,
+      perspective: perspective ?? undefined,
+      artStyle: artStyle ?? undefined,
+      mood: mood ?? undefined,
+      systems: systems ?? undefined,
+      notes: notes ?? undefined,
+    })).filter(
+      // AI output is untrusted — drop entries missing the required string fields
+      (f) => f && typeof f.name === "string" && typeof f.category === "string"
+    );
+
+    // Map perspective to default view
+    const viewMap: Record<string, string> = {
+      "top-down": "TOP_DOWN",
+      "side-scroll": "SIDE_VIEW",
+      "isometric": "DEFAULT",
+      "front": "FRONT",
+    };
+
+    // Map artStyle to style ID
+    const styleMap: Record<string, string> = {
+      "pixel art": "PIXEL_ART_16",
+      "pixel art hd": "PIXEL_ART_32",
+      "hand-painted": "HAND_PAINTED",
+      "anime": "ANIME_GAME",
+      "dark fantasy": "DARK_SOULS",
+      "cartoon": "CARTOON_WESTERN",
+      "vector": "VECTOR_CLEAN",
+      "realistic": "REALISTIC_PAINTED",
+    };
+
+    const defaultView = viewMap[(perspective || "").toLowerCase()] || "DEFAULT";
+    const defaultStyleId = styleMap[(artStyle || "").toLowerCase()] || "PIXEL_ART_16";
+
+    // Create folders in DB
+    if (folders.length > 0) {
+      await prisma.projectFolder.createMany({
+        data: folders.map((f, i) => ({
+          projectId: project.id,
+          name: f.name,
+          category: f.category,
+          subcategory: typeof f.subcategory === "string" ? f.subcategory : null,
+          description: typeof f.description === "string" ? f.description : null,
+          suggestedAssets: f.suggestedAssets ? JSON.stringify(f.suggestedAssets) : null,
+          defaultStyleId,
+          defaultView,
+          sortOrder: i,
+        })),
+      });
+    }
+
+    // Fetch complete project with folders
+    const fullProject = await prisma.project.findUnique({
+      where: { id: project.id },
+      include: {
+        folders: { orderBy: { sortOrder: "asc" } },
+        _count: { select: { generations: true } },
+      },
+    });
+
+    return NextResponse.json({ project: fullProject });
+  } catch (error) {
+    console.error("[Projects POST] Error:", error);
+    return NextResponse.json({ error: "Failed to create project" }, { status: 500 });
   }
-
-  // Fetch complete project with folders
-  const fullProject = await prisma.project.findUnique({
-    where: { id: project.id },
-    include: {
-      folders: { orderBy: { sortOrder: "asc" } },
-      _count: { select: { generations: true } },
-    },
-  });
-
-  return NextResponse.json({ project: fullProject });
 }
 
 // ─── AI Folder Plan Generator ─────────────────────────────────────────────────

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { rateLimitFeedback } from "@/lib/rate-limit";
+import { Prisma } from "@prisma/client";
 
 // Report reasons
 const VALID_REASONS = [
@@ -13,6 +15,9 @@ const VALID_REASONS = [
 ] as const;
 
 type ReportReason = typeof VALID_REASONS[number];
+
+const MAX_DESCRIPTION_LENGTH = 1000;
+const MAX_ID_LENGTH = 100;
 
 interface ReportRequest {
   reason: ReportReason;
@@ -35,14 +40,44 @@ export async function POST(request: Request) {
       );
     }
 
+    // Per-user rate limit (shares the 10/hour feedback limiter, own bucket)
+    const { blocked } = await rateLimitFeedback(`report:${user.id}`);
+    if (blocked) return blocked;
+
     // Parse request
-    const body: ReportRequest = await request.json();
-    const { reason, description, reportedUserId, postId, generationId } = body;
+    const body: ReportRequest | null = await request.json().catch(() => null);
+    if (!body || typeof body !== "object") {
+      return NextResponse.json(
+        { error: "Invalid request body." },
+        { status: 400 }
+      );
+    }
+    const { reason, description } = body;
+    // Only accept non-empty string IDs; anything else is treated as absent
+    const asId = (v: unknown) =>
+      typeof v === "string" && v.length > 0 && v.length <= MAX_ID_LENGTH ? v : undefined;
+    const reportedUserId = asId(body.reportedUserId);
+    const postId = asId(body.postId);
+    const generationId = asId(body.generationId);
 
     // Validation
     if (!reason || !VALID_REASONS.includes(reason)) {
       return NextResponse.json(
         { error: "Invalid report reason." },
+        { status: 400 }
+      );
+    }
+
+    if (description !== undefined && description !== null && typeof description !== "string") {
+      return NextResponse.json(
+        { error: "Invalid description." },
+        { status: 400 }
+      );
+    }
+
+    if (typeof description === "string" && description.trim().length > MAX_DESCRIPTION_LENGTH) {
+      return NextResponse.json(
+        { error: `Description too long (max ${MAX_DESCRIPTION_LENGTH} characters).` },
         { status: 400 }
       );
     }
@@ -63,17 +98,19 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check if already reported (prevent spam)
+    // Check if already reported (prevent spam). Match the exact target so a
+    // report on one generation doesn't block reporting a different one by the
+    // same user. There is no DB unique constraint, so a concurrent duplicate is
+    // still possible; the rate limit above bounds how many can slip through.
     const existingReport = await prisma.report.findFirst({
       where: {
         reporterId: user.id,
-        OR: [
-          reportedUserId ? { reportedUserId } : {},
-          postId ? { postId } : {},
-          generationId ? { generationId } : {},
-        ].filter(obj => Object.keys(obj).length > 0),
+        reportedUserId: reportedUserId ?? null,
+        postId: postId ?? null,
+        generationId: generationId ?? null,
         status: { in: ["PENDING", "REVIEWED"] },
       },
+      select: { id: true },
     });
 
     if (existingReport) {
@@ -84,17 +121,39 @@ export async function POST(request: Request) {
     }
 
     // Create report
-    const report = await prisma.report.create({
-      data: {
-        reporterId: user.id,
-        reportedUserId: reportedUserId || null,
-        postId: postId || null,
-        generationId: generationId || null,
-        reason,
-        description: description?.trim() || null,
-        status: "PENDING",
-      },
-    });
+    let report: { id: string };
+    try {
+      report = await prisma.report.create({
+        data: {
+          reporterId: user.id,
+          reportedUserId: reportedUserId || null,
+          postId: postId || null,
+          generationId: generationId || null,
+          reason,
+          description: description?.trim() || null,
+          status: "PENDING",
+        },
+        select: { id: true },
+      });
+    } catch (createError) {
+      if (createError instanceof Prisma.PrismaClientKnownRequestError) {
+        // P2002: unique violation (if a unique constraint is added later)
+        if (createError.code === "P2002") {
+          return NextResponse.json(
+            { error: "You have already submitted a report for this content." },
+            { status: 400 }
+          );
+        }
+        // P2003: reported user / post does not exist
+        if (createError.code === "P2003") {
+          return NextResponse.json(
+            { error: "The reported content could not be found." },
+            { status: 404 }
+          );
+        }
+      }
+      throw createError;
+    }
 
     console.log(`[Report] User ${user.id} reported: ${JSON.stringify({ reportedUserId, postId, generationId, reason })}`);
 

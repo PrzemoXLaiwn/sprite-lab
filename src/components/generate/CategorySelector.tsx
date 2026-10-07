@@ -20,7 +20,7 @@ export function CategorySelector({ selectedCategoryId, onSelect }: Props) {
             className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border text-xs font-medium transition-all duration-150 ${
               isActive
                 ? "border-primary bg-primary/10 text-primary shadow-sm shadow-primary/20"
-                : "border-white/10 bg-white/[0.03] text-white/50 hover:border-white/20 hover:text-white/70 hover:bg-white/[0.05]"
+                : "border-white/10 bg-white/[0.03] text-[#8B93A5] hover:border-white/20 hover:text-white/70 hover:bg-white/[0.05]"
             }`}
           >
             <Icon className="w-5 h-5" />

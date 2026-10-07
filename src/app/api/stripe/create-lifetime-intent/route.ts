@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { stripe, getOrCreateStripeCustomer, LIFETIME_DEALS, LifetimeDealName } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
+import { getLifetimeSlotsSold, TOTAL_LIFETIME_SLOTS } from "../_lib/fulfillment";
 
 export async function POST(request: Request) {
   try {
@@ -21,16 +22,12 @@ export async function POST(request: Request) {
     const selectedDeal = LIFETIME_DEALS[deal as LifetimeDealName];
 
     // ========================================
-    // CRITICAL: Check if slots are available
+    // Pre-check slot availability (UX only — the authoritative, atomic check
+    // runs inside the purchase transaction at confirm/webhook time)
     // ========================================
-    const lifetimeCount = await prisma.user.count({
-      where: {
-        isLifetime: true,
-        plan: selectedDeal.basePlan,
-      },
-    });
+    const slots = await getLifetimeSlotsSold();
 
-    if (lifetimeCount >= selectedDeal.maxSlots) {
+    if (slots.perDeal[deal as LifetimeDealName] >= selectedDeal.maxSlots) {
       return NextResponse.json(
         { error: "SOLD_OUT", message: `${selectedDeal.name} is sold out! All ${selectedDeal.maxSlots} slots have been claimed.` },
         { status: 410 } // 410 Gone
@@ -38,12 +35,7 @@ export async function POST(request: Request) {
     }
 
     // Also check TOTAL lifetime slots (50 max across all plans)
-    const totalLifetimeCount = await prisma.user.count({
-      where: { isLifetime: true },
-    });
-
-    const totalMaxSlots = Object.values(LIFETIME_DEALS).reduce((sum, d) => sum + d.maxSlots, 0);
-    if (totalLifetimeCount >= totalMaxSlots) {
+    if (slots.total >= TOTAL_LIFETIME_SLOTS) {
       return NextResponse.json(
         { error: "SOLD_OUT", message: "All 50 lifetime spots have been claimed! Lifetime deals are no longer available." },
         { status: 410 }
@@ -97,7 +89,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Create lifetime intent error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to create payment intent" },
+      { error: "Failed to create payment intent" },
       { status: 500 }
     );
   }

@@ -82,7 +82,7 @@ export async function GET() {
   checks.stripe_subscriptions = envGroup("Stripe subscription price IDs", [
     "STRIPE_STARTER_PRICE_ID",
     "STRIPE_PRO_PRICE_ID",
-    "STRIPE_UNLIMITED_PRICE_ID",
+    process.env.STRIPE_STUDIO_PRICE_ID ? "STRIPE_STUDIO_PRICE_ID" : "STRIPE_UNLIMITED_PRICE_ID",
   ]);
   checks.stripe_credit_packs = envGroup("Stripe credit-pack price IDs", [
     "STRIPE_CREDITS_25_PRICE_ID",
@@ -100,10 +100,13 @@ export async function GET() {
     : { status: "PARTIAL", detail: "ANTHROPIC_API_KEY missing — non-English prompts will be refused" };
 
   // ── Upstash (rate limiting) ───────────────────────────────────────────────
-  checks.rate_limiting = envGroup("Upstash rate limiter", [
+  // Optional: without it guest generation uses an in-memory limiter and
+  // authenticated routes rely on credits — degraded, not broken.
+  const upstash = envGroup("Upstash rate limiter", [
     "UPSTASH_REDIS_REST_URL",
     "UPSTASH_REDIS_REST_TOKEN",
   ]);
+  checks.rate_limiting = upstash.status === "MISSING" ? { ...upstash, status: "PARTIAL" } : upstash;
 
   // ── Replicate (guest TryItNow + 3D) ───────────────────────────────────────
   checks.replicate = process.env.REPLICATE_API_TOKEN

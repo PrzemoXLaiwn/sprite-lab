@@ -2,11 +2,21 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import Replicate from "replicate";
 import { checkAndDeductCredits, refundCredits, saveGeneration } from "@/lib/database";
-import { uploadImageToStorage } from "@/lib/storage";
+import { persistImage } from "@/lib/storage";
+import { safeFetchImage, safeFetchErrorResponse } from "@/lib/safe-fetch";
+import { rateLimitUserGeneration } from "@/lib/rate-limit";
+import { parseJsonBody, validateBody } from "@/lib/validation/common";
+import { variationsSchema } from "@/lib/validations";
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
 });
+
+// Vercel Pro max. Generation loop gets GENERATION_BUDGET_MS in total; the
+// rest is for input validation, re-hosting, DB writes and refunds.
+export const maxDuration = 300;
+const GENERATION_BUDGET_MS = 200_000;
+const MAX_INPUT_IMAGE_MB = 5;
 
 // ====================================// VARIATION GENERATION
 // ====================================
@@ -25,6 +35,9 @@ interface VariationOptions {
 async function generateVariations(
   options: VariationOptions
 ): Promise<{ success: boolean; imageUrls?: string[]; error?: string }> {
+  // Declared outside try so a mid-loop exception still returns the
+  // variations that DID succeed (the caller refunds only the missing ones).
+  const collectedUrls: string[] = [];
   try {
     console.log("[Variations] Starting generation...");
     console.log("[Variations] Num variations:", options.numVariations);
@@ -39,10 +52,16 @@ async function generateVariations(
     };
 
     const strength = strengthMap[options.similarity];
-    const collectedUrls: string[] = [];
 
-    // Generate variations one at a time for better quality
+    // Generate variations one at a time for better quality.
+    // A single overall deadline keeps the whole loop inside maxDuration so
+    // partial-failure refunds always run.
+    const deadline = Date.now() + GENERATION_BUDGET_MS;
     for (let i = 0; i < options.numVariations; i++) {
+      if (Date.now() >= deadline) {
+        console.warn(`[Variations] Time budget exhausted before variation ${i + 1}`);
+        break;
+      }
       console.log(`[Variations] Generating variation ${i + 1}/${options.numVariations}...`);
 
       // Use FLUX 1.1 Pro with image input for img2img style variations
@@ -68,7 +87,8 @@ async function generateVariations(
 
       while (
         (result.status === "starting" || result.status === "processing") &&
-        waitTime < maxWait
+        waitTime < maxWait &&
+        Date.now() < deadline
       ) {
         await new Promise((resolve) => setTimeout(resolve, 2000));
         result = await replicate.predictions.get(prediction.id);
@@ -87,6 +107,10 @@ async function generateVariations(
         }
       } else if (result.status === "failed") {
         console.error(`[Variations] Variation ${i + 1} failed:`, result.error);
+      } else if (result.status === "starting" || result.status === "processing") {
+        // Timed out — cancel so we don't pay for output we'll never deliver.
+        console.warn(`[Variations] Variation ${i + 1} timed out, cancelling`);
+        try { await replicate.predictions.cancel(prediction.id); } catch { /* ignore */ }
       }
     }
 
@@ -98,6 +122,9 @@ async function generateVariations(
     return { success: false, error: "No variations were generated" };
   } catch (error) {
     console.error(`[Variations] Error:`, error);
+    if (collectedUrls.length > 0) {
+      return { success: true, imageUrls: collectedUrls };
+    }
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
@@ -165,60 +192,34 @@ export async function POST(request: Request) {
 
     userId = user.id;
 
-    // Parse request
-    const body = await request.json();
-    let {
-      imageUrl,
-      prompt,
-      numVariations = 2,
-      similarity = "medium",
-      seed,
-      originalGeneration,
-    } = body;
+    const { blocked: rateLimitBlocked } = await rateLimitUserGeneration(user.id);
+    if (rateLimitBlocked) return rateLimitBlocked;
 
-    // Validation
-    if (!imageUrl) {
-      return NextResponse.json(
-        { error: "Image URL is required." },
-        { status: 400 }
-      );
+    // Parse + validate request
+    const rawBody = await parseJsonBody(request);
+    if (rawBody === null) {
+      return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
     }
+    const parsed = validateBody(variationsSchema, rawBody);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
+    }
+    const { imageUrl, prompt, numVariations, originalGeneration } = parsed.data;
+    let { similarity } = parsed.data;
+    const seed = parsed.data.seed ?? undefined;
 
-    // Image size validation to prevent CUDA memory errors
-    // SDXL img2img can handle max ~1024x1024 safely
+    // Image size validation to prevent CUDA memory errors (SSRF-safe,
+    // size capped while streaming; also enforces the host allowlist for the
+    // URL we hand to Replicate).
     try {
-      const imageResponse = await fetch(imageUrl);
-      const imageBuffer = await imageResponse.arrayBuffer();
-      const imageSizeMB = imageBuffer.byteLength / (1024 * 1024);
-
-      console.log(`[Variations] Image size: ${imageSizeMB.toFixed(2)}MB`);
-
-      // If image is too large (>5MB or likely >1024x1024), warn user
-      if (imageSizeMB > 5) {
-        return NextResponse.json(
-          {
-            error: "Image too large for variations (max 5MB or 1024x1024 pixels). Please use a smaller image or upscale feature first.",
-            imageTooLarge: true
-          },
-          { status: 400 }
-        );
-      }
-    } catch (sizeError) {
-      console.warn("[Variations] Could not validate image size:", sizeError);
-      // Continue anyway - size check is not critical
-    }
-
-    if (numVariations < 1 || numVariations > 4) {
+      const { buffer } = await safeFetchImage(imageUrl, { maxBytes: MAX_INPUT_IMAGE_MB * 1024 * 1024 });
+      console.log(`[Variations] Image size: ${(buffer.byteLength / (1024 * 1024)).toFixed(2)}MB`);
+    } catch (fetchError) {
+      console.warn("[Variations] Input image rejected:", fetchError instanceof Error ? fetchError.message : fetchError);
+      const { error, status } = safeFetchErrorResponse(fetchError, MAX_INPUT_IMAGE_MB);
       return NextResponse.json(
-        { error: "Number of variations must be between 1 and 4." },
-        { status: 400 }
-      );
-    }
-
-    if (!["low", "medium", "high"].includes(similarity)) {
-      return NextResponse.json(
-        { error: "Similarity must be 'low', 'medium', or 'high'." },
-        { status: 400 }
+        { error, imageTooLarge: status === 413 || undefined },
+        { status }
       );
     }
 
@@ -228,6 +229,13 @@ export async function POST(request: Request) {
     // Atomically check and deduct credits BEFORE processing
     const creditResult = await checkAndDeductCredits(user.id, creditsNeeded);
     if (!creditResult.success) {
+      if (creditResult.error !== "Not enough credits") {
+        console.error("[Variations] Credit deduction failed:", creditResult.error);
+        return NextResponse.json(
+          { error: "Failed to process credits. Please try again." },
+          { status: 500 }
+        );
+      }
       return NextResponse.json(
         {
           error: `Not enough credits. You need ${creditsNeeded} credits for ${numVariations} variations.`,
@@ -238,14 +246,12 @@ export async function POST(request: Request) {
     }
     creditsDeducted = true;
 
-    console.log("===========================================");
-    console.log("VARIATION GENERATION");
-    console.log("===========================================");
-    console.log("User:", user.id);
-    console.log("Num Variations:", numVariations);
-    console.log("Similarity:", similarity);
-    console.log("Prompt:", prompt || "default");
-    console.log("Input URL:", imageUrl);
+    console.log("[Variations] Variation generation", {
+      user: user.id,
+      numVariations,
+      similarity,
+      promptPreview: (prompt || "default").substring(0, 80),
+    });
 
     // Build enhanced prompt for variations
     let enhancedPrompt = prompt || originalGeneration?.prompt || "game asset, high quality, detailed";
@@ -304,33 +310,50 @@ export async function POST(request: Request) {
       // Refund credits on failure
       if (creditsDeducted && userId) {
         console.log("[Variations] Generation failed, refunding credits...");
-        await refundCredits(userId, creditsNeeded);
         creditsDeducted = false;
+        await refundCredits(userId, creditsNeeded);
       }
       return NextResponse.json(
-        { error: result.error || "Variation generation failed. Credits refunded." },
+        { error: "Variation generation failed. Credits refunded." },
         { status: 500 }
       );
     }
 
+    // Partial success: charge only for the variations actually delivered.
+    const generatedCount = result.imageUrls.length;
+    const failedCount = creditsNeeded - generatedCount;
+    // Provider delivered — no further full refunds past this point.
+    creditsDeducted = false;
+    if (failedCount > 0 && userId) {
+      console.warn(`[Variations] ${failedCount}/${creditsNeeded} variations failed, refunding ${failedCount} credit(s)`);
+      creditsNeeded = generatedCount;
+      await refundCredits(userId, failedCount);
+    }
+
     console.log("[Variations] Uploading to storage...");
 
-    // Upload all variations to permanent storage
+    // Re-host all variations in parallel (provider URLs are temporary)
+    const persisted = await Promise.all(
+      result.imageUrls.map((varUrl, i) =>
+        persistImage(varUrl, user.id, `variation-${i + 1}-${Date.now()}`)
+      )
+    );
+
     const uploadedUrls: string[] = [];
     const savedGenerations: string[] = [];
 
     for (let i = 0; i < result.imageUrls.length; i++) {
       const varUrl = result.imageUrls[i];
-      const fileName = `variation-${i + 1}-${Date.now()}`;
-      const uploadResult = await uploadImageToStorage(varUrl, user.id, fileName);
-
-      const finalUrl = uploadResult.success && uploadResult.url ? uploadResult.url : varUrl;
+      if (!persisted[i]) {
+        console.error(`[Variations] Re-host failed for variation ${i + 1} — saving TEMPORARY provider URL (will expire)`);
+      }
+      const finalUrl = persisted[i] ?? varUrl;
       uploadedUrls.push(finalUrl);
 
       // Save each variation to database
       const saveResult = await saveGeneration({
         userId: user.id,
-        prompt: `[Variation ${i + 1}/${numVariations}] ${originalGeneration?.prompt || prompt || "Image variation"}`,
+        prompt: `[Variation ${i + 1}/${generatedCount}] ${originalGeneration?.prompt || prompt || "Image variation"}`,
         fullPrompt: `Variation with ${similarity} similarity`,
         categoryId: originalGeneration?.categoryId || "VARIATIONS",
         subcategoryId: originalGeneration?.subcategoryId || "GENERATED",
@@ -366,12 +389,13 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("[Variations] Unexpected error:", error);
-    // Refund credits on unexpected error
+    // Refund credits on unexpected error (only before the provider delivered)
     if (creditsDeducted && userId) {
+      creditsDeducted = false;
       await refundCredits(userId, creditsNeeded);
     }
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Variation generation failed. Credits refunded." },
+      { error: "Variation generation failed. Please try again." },
       { status: 500 }
     );
   }

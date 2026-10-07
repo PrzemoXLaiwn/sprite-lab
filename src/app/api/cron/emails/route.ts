@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAuthorizedCronRequest } from "@/lib/cron-auth";
 import { prisma } from "@/lib/prisma";
 import { sendReEngagementEmail, sendAbandonedCartEmail, sendSpecialOfferEmail } from "@/lib/email/send";
 import { stripe, PLANS, CREDIT_PACKS } from "@/lib/stripe";
 import { Prisma } from "@prisma/client";
+import { relaunchActive } from "@/config/relaunch";
 
 // Vercel Cron Job - Automated email campaigns
 // Runs daily at 10:00 AM UTC
@@ -19,7 +21,7 @@ function getPlanFromPriceId(priceId: string): { name: string; credits: string; p
   if (priceId === process.env.STRIPE_PRO_PRICE_ID) {
     return { name: PLANS.PRO.name, credits: `${PLANS.PRO.credits} credits/month`, price: `£${PLANS.PRO.price}` };
   }
-  if (priceId === process.env.STRIPE_UNLIMITED_PRICE_ID) {
+  if (PLANS.UNLIMITED.priceId && priceId === PLANS.UNLIMITED.priceId) {
     return { name: PLANS.UNLIMITED.name, credits: `${PLANS.UNLIMITED.credits} credits/month`, price: `£${PLANS.UNLIMITED.price}` };
   }
   // Credit packs — pulled from CREDIT_PACKS so the email copy stays in sync
@@ -42,15 +44,8 @@ function getPlanFromPriceId(priceId: string): { name: string; credits: string; p
 
 export async function GET(request: NextRequest) {
   try {
-    // Verify Vercel Cron or CRON_SECRET
-    const authHeader = request.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET;
-    const isVercelCron = request.headers.get("x-vercel-cron") === "true";
-
-    const isAuthorized =
-      isVercelCron || (cronSecret && authHeader === `Bearer ${cronSecret}`);
-
-    if (!isAuthorized && process.env.NODE_ENV === "production") {
+    // Verify CRON_SECRET (Vercel Cron sends it as a Bearer token)
+    if (!isAuthorizedCronRequest(request)) {
       console.log("[CRON:Email] Unauthorized request");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -85,7 +80,9 @@ export async function GET(request: NextRequest) {
     // Don't send more than 1 re-engagement email per 7 days
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-    const inactiveUsers = await prisma.user.findMany({
+    // While the relaunch campaign runs, inactive users get the relaunch email
+    // (/api/cron/relaunch) instead of this one — never both.
+    const inactiveUsers = relaunchActive() ? [] : await prisma.user.findMany({
       where: {
         credits: { gte: 1 },
         // User must have been active at some point AND inactive for X days
@@ -163,7 +160,7 @@ export async function GET(request: NextRequest) {
         });
       } else {
         results.reEngagement.failed++;
-        results.reEngagement.errors.push(`${user.email}: ${result.error}`);
+        results.reEngagement.errors.push(`${user.id}: ${result.error}`);
       }
 
       // Small delay to avoid rate limits
@@ -241,7 +238,7 @@ export async function GET(request: NextRequest) {
           }
         } else {
           results.abandonedCart.failed++;
-          results.abandonedCart.errors.push(`${email}: ${result.error}`);
+          results.abandonedCart.errors.push(`${email.replace(/^(.).*@/, "$1***@")}: ${result.error}`);
         }
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
@@ -259,7 +256,7 @@ export async function GET(request: NextRequest) {
     const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
     const sevenDaysAgoOffer = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-    const zeroCreditsUsers = await prisma.user.findMany({
+    const zeroCreditsUsers = relaunchActive() ? [] : await prisma.user.findMany({
       where: {
         credits: 0,
         createdAt: { lt: sevenDaysAgoOffer },
@@ -323,7 +320,7 @@ export async function GET(request: NextRequest) {
         });
       } else {
         results.specialOffer.failed++;
-        results.specialOffer.errors.push(`${user.email}: ${result.error}`);
+        results.specialOffer.errors.push(`${user.id}: ${result.error}`);
       }
       await new Promise((resolve) => setTimeout(resolve, 100));
     }

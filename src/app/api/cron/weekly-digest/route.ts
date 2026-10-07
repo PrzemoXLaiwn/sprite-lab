@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAuthorizedCronRequest } from "@/lib/cron-auth";
 import { prisma } from "@/lib/prisma";
 import { sendWeeklyDigestEmail } from "@/lib/email/send";
 import { Prisma } from "@prisma/client";
@@ -154,15 +155,8 @@ async function getUserWeeklyStats(userId: string) {
 
 export async function GET(request: NextRequest) {
   try {
-    // Verify Vercel Cron or CRON_SECRET
-    const authHeader = request.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET;
-    const isVercelCron = request.headers.get("x-vercel-cron") === "true";
-
-    const isAuthorized =
-      isVercelCron || (cronSecret && authHeader === `Bearer ${cronSecret}`);
-
-    if (!isAuthorized && process.env.NODE_ENV === "production") {
+    // Verify CRON_SECRET (Vercel Cron sends it as a Bearer token)
+    if (!isAuthorizedCronRequest(request)) {
       console.log("[CRON:WeeklyDigest] Unauthorized request");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -313,7 +307,7 @@ export async function GET(request: NextRequest) {
           });
         } else {
           results.failed++;
-          results.errors.push(`${user.email}: ${result.error}`);
+          results.errors.push(`${user.id}: ${result.error}`);
         }
 
         // Small delay to avoid rate limits

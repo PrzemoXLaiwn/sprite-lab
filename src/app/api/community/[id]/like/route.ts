@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 
@@ -23,63 +24,62 @@ export async function POST(
 
     const generationId = params.id;
 
-    // Verify generation exists
+    // Verify generation exists and is public (private generations can't be liked)
     const generation = await prisma.generation.findUnique({
       where: { id: generationId },
+      select: { id: true, isPublic: true },
     });
 
-    if (!generation) {
+    if (!generation || !generation.isPublic) {
       return NextResponse.json(
         { error: "Generation not found." },
         { status: 404 }
       );
     }
 
-    // Check if already liked using raw query
-    const existingLike = await prisma.$queryRaw<{ id: string }[]>`
-      SELECT id FROM likes
-      WHERE user_id = ${user.id} AND generation_id = ${generationId}
-      LIMIT 1
-    `;
+    // Toggle atomically: try to remove an existing like first; if nothing was
+    // removed, insert one. The counter only moves by the number of rows that
+    // were actually deleted/inserted, so concurrent double-clicks can't drift it.
+    const { liked, likes } = await prisma.$transaction(async (tx) => {
+      let liked: boolean;
 
-    let liked: boolean;
-
-    if (existingLike.length > 0) {
-      // Unlike - remove the like
-      await prisma.$executeRaw`
+      const deleted = await tx.$executeRaw`
         DELETE FROM likes
         WHERE user_id = ${user.id} AND generation_id = ${generationId}
       `;
-      // Decrement likes count
-      await prisma.$executeRaw`
-        UPDATE generations SET likes = GREATEST(0, likes - 1)
-        WHERE id = ${generationId}
-      `;
-      liked = false;
-    } else {
-      // Like - add new like
-      const likeId = `like_${Date.now().toString(36)}`;
-      await prisma.$executeRaw`
-        INSERT INTO likes (id, user_id, generation_id, created_at)
-        VALUES (${likeId}, ${user.id}, ${generationId}, NOW())
-      `;
-      // Increment likes count
-      await prisma.$executeRaw`
-        UPDATE generations SET likes = likes + 1
-        WHERE id = ${generationId}
-      `;
-      liked = true;
-    }
 
-    // Get updated likes count
-    const updated = await prisma.$queryRaw<{ likes: number }[]>`
-      SELECT likes FROM generations WHERE id = ${generationId}
-    `;
+      if (deleted > 0) {
+        await tx.$executeRaw`
+          UPDATE generations SET likes = GREATEST(0, likes - ${deleted})
+          WHERE id = ${generationId}
+        `;
+        liked = false;
+      } else {
+        const inserted = await tx.$executeRaw`
+          INSERT INTO likes (id, user_id, generation_id, created_at)
+          VALUES (${randomUUID()}, ${user.id}, ${generationId}, NOW())
+          ON CONFLICT DO NOTHING
+        `;
+        if (inserted > 0) {
+          await tx.$executeRaw`
+            UPDATE generations SET likes = likes + 1
+            WHERE id = ${generationId}
+          `;
+        }
+        liked = true;
+      }
+
+      const updated = await tx.$queryRaw<{ likes: number }[]>`
+        SELECT likes FROM generations WHERE id = ${generationId}
+      `;
+
+      return { liked, likes: updated[0]?.likes || 0 };
+    });
 
     return NextResponse.json({
       success: true,
       liked,
-      likes: updated[0]?.likes || 0,
+      likes,
     });
   } catch (error) {
     console.error("[Like] Error:", error);

@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { PLAN_FEATURES } from "@/config/plan-features";
 
 // =============================================================================
 // Stripe client — lazy-initialised
@@ -65,55 +66,30 @@ export const PLANS = {
     credits: 10,
     price: 0,
     priceId: null,
-    features: [
-      "10 generation credits",
-      "All asset categories",
-      "Fast AI model",
-      "PNG downloads",
-    ],
+    features: [...PLAN_FEATURES.FREE],
   },
   STARTER: {
     name: "Starter",
     credits: 250,
     price: 5.00,
     priceId: process.env.STRIPE_STARTER_PRICE_ID,
-    features: [
-      "250 credits/month",
-      "All art styles",
-      "Fast AI model",
-      "Background removal",
-      "30-day storage",
-      "Commercial license",
-    ],
+    features: [...PLAN_FEATURES.STARTER],
   },
   PRO: {
     name: "Pro",
     credits: 500,
     price: 12.00,
     priceId: process.env.STRIPE_PRO_PRICE_ID,
-    features: [
-      "500 credits/month",
-      "Premium AI model",
-      "Best quality output",
-      "Sprite sheets",
-      "Image editing",
-      "Unlimited storage",
-      "Commercial license",
-    ],
+    features: [...PLAN_FEATURES.PRO],
   },
   UNLIMITED: {
     name: "Studio",
     credits: 1200,
     price: 25.00,
-    priceId: process.env.STRIPE_UNLIMITED_PRICE_ID,
-    features: [
-      "1200 credits/month",
-      "Everything in Pro",
-      "Priority support",
-      "Early access",
-      "Custom styles",
-      "API access (soon)",
-    ],
+    // Vercel stores this as STRIPE_STUDIO_PRICE_ID (the plan's display name);
+    // accept the legacy name too.
+    priceId: process.env.STRIPE_UNLIMITED_PRICE_ID || process.env.STRIPE_STUDIO_PRICE_ID,
+    features: [...PLAN_FEATURES.UNLIMITED],
   },
 } as const;
 
@@ -124,13 +100,32 @@ export type PlanName = keyof typeof PLANS;
 // ===========================================
 // Pay-as-you-go option for casual users
 // PRICING: Must cover AI cost (~£0.024/gen flux-dev) + Stripe (~2.9%+£0.20) + margin (min 25%)
+// The promo end is a FIXED date from LAUNCH_PROMO_END_DATE (ISO 8601, e.g.
+// "2026-12-31T23:59:59Z"; a bare date means 00:00 UTC that day). Unset,
+// unparseable or past ⇒ promo inactive. Server-side only (no NEXT_PUBLIC_).
+function parseLaunchPromoEnd(): Date | null {
+  const raw = process.env.LAUNCH_PROMO_END_DATE;
+  if (!raw) return null;
+  const date = new Date(raw);
+  return isNaN(date.getTime()) ? null : date;
+}
+
 export const LAUNCH_PROMO = {
-  enabled: true,
-  // Dynamic - always 7 days from now for urgency
-  get endDate() {
-    return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+  /** ISO date (YYYY-MM-DD) the promo ends, or null when not configured. */
+  get endDate(): string | null {
+    const end = parseLaunchPromoEnd();
+    return end ? end.toISOString().split("T")[0] : null;
+  },
+  /** True only while a configured end date is in the future. */
+  get enabled(): boolean {
+    return isLaunchPromoActive();
   },
 };
+
+export function isLaunchPromoActive(now: Date = new Date()): boolean {
+  const end = parseLaunchPromoEnd();
+  return end !== null && now < end;
+}
 
 export const CREDIT_PACKS = {
   PACK_25: {

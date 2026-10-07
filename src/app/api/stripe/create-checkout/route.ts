@@ -6,6 +6,8 @@ import {
   PLANS,
   getCreditPackByCredits
 } from "@/lib/stripe";
+import prisma from "@/lib/prisma";
+import { hasActiveSubscription } from "../_lib/fulfillment";
 
 export async function POST(request: Request) {
   try {
@@ -24,8 +26,9 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { plan, type, credits } = body;
 
-    // Get the origin for redirect URLs (use env variable for production)
-    const origin = process.env.NEXT_PUBLIC_APP_URL || request.headers.get("origin") || "http://localhost:3000";
+    // Redirect base URL. Fail closed: never derive it from the request Origin
+    // header, which the caller controls (open redirect after checkout).
+    const origin = process.env.NEXT_PUBLIC_APP_URL || "https://www.sprite-lab.com";
 
     // Handle credit pack purchases
     if (type === "credits" && credits) {
@@ -89,6 +92,18 @@ export async function POST(request: Request) {
       );
     }
 
+    // One subscription per user — changes go through the billing portal
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { stripeSubscriptionId: true },
+    });
+    if (await hasActiveSubscription(dbUser?.stripeSubscriptionId)) {
+      return NextResponse.json(
+        { error: "You already have an active subscription. Manage it from your account settings." },
+        { status: 409 }
+      );
+    }
+
     // Create checkout session
     const session = await createCheckoutSession(
       user.id,
@@ -109,7 +124,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Checkout error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to create checkout session" },
+      { error: "Failed to create checkout session" },
       { status: 500 }
     );
   }

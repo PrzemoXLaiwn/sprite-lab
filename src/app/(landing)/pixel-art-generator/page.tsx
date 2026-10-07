@@ -1,10 +1,10 @@
-import Link from "next/link";
-import Image from "next/image";
 import type { Metadata } from "next";
-import { ArrowRight, Sparkles, Check, Zap, Palette, Download } from "lucide-react";
+import { Zap, Palette, Download, Grid3x3, Shield, Layers } from "lucide-react";
+import { SeoLanding } from "@/components/landing/SeoLanding";
+import { SHOWCASE, isPixelShowcase } from "@/data/showcase";
 
 export const metadata: Metadata = {
-  title: "Free AI Pixel Art Generator | Create Retro Game Sprites - SpriteLab",
+  title: { absolute: "Free AI Pixel Art Generator | Create Retro Game Sprites | SpriteLab" },
   description:
     "Generate stunning pixel art sprites for your games in seconds. 8-bit, 16-bit, and 32-bit styles. Free to try, no art skills required. Perfect for indie game developers.",
   keywords: [
@@ -31,221 +31,143 @@ export const metadata: Metadata = {
   },
 };
 
-const pixelStyles = [
-  {
-    name: "8-Bit Classic",
-    description: "Retro NES/Game Boy style with limited colors",
-    colors: "4-8 colors",
-  },
-  {
-    name: "16-Bit SNES",
-    description: "Super Nintendo era pixel art with more detail",
-    colors: "16-32 colors",
-  },
-  {
-    name: "32-Bit HD",
-    description: "High-resolution pixel art for modern games",
-    colors: "Full palette",
-  },
-];
-
-const features = [
-  {
-    icon: Zap,
-    title: "Instant Generation",
-    description: "Get your pixel art sprite in under 30 seconds",
-  },
-  {
-    icon: Palette,
-    title: "Multiple Styles",
-    description: "8-bit, 16-bit, 32-bit and custom palettes",
-  },
-  {
-    icon: Download,
-    title: "Ready to Use",
-    description: "PNG format with transparent backgrounds",
-  },
-];
-
-const useCases = [
-  "RPG characters and NPCs",
-  "Platformer heroes and enemies",
-  "Weapons and equipment",
-  "Items and power-ups",
-  "Environment tiles",
-  "UI icons and buttons",
-];
+const pixelShowcase = SHOWCASE.filter(isPixelShowcase);
 
 export default function PixelArtGeneratorPage() {
   return (
-    <main className="min-h-screen bg-[#11151b] text-white overflow-x-hidden">
-      {/* Hero Section */}
-      <section className="relative min-h-[60vh] sm:min-h-[80vh] flex items-center justify-center pt-20 pb-16 overflow-hidden">
-        {/* Background Effects */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#FF6B2C]/5 via-transparent to-transparent" />
-        <div className="absolute top-1/4 left-1/4 w-48 sm:w-96 h-48 sm:h-96 bg-[#FF6B2C]/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-48 sm:w-96 h-48 sm:h-96 bg-[#FF6B2C]/10 rounded-full blur-3xl" />
-
-        <div className="max-w-6xl mx-auto px-3 sm:px-4 relative z-10">
-          {/* Logo */}
-          <Link href="/" className="flex items-center justify-center gap-2 mb-5 sm:mb-8">
-            <Image src="/logo.png" alt="SpriteLab" width={40} height={40} />
-            <span className="font-display font-bold text-2xl">
-              Sprite<span className="text-[#FF6B2C]">Lab</span>
-            </span>
-          </Link>
-
-          <div className="text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FF6B2C]/10 border border-[#FF6B2C]/20 text-[#FF6B2C] text-xs sm:text-sm font-medium mb-6">
-              <Sparkles className="w-4 h-4" />
-              AI-Powered Pixel Art Generator
-            </div>
-
-            <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
-              Create <span className="text-[#FF6B2C]">Pixel Art</span>
-              <br />
-              <span className="text-white/80">in Seconds</span>
-            </h1>
-
-            <p className="text-base sm:text-lg md:text-xl text-white/60 max-w-2xl mx-auto mb-10">
-              Generate stunning 8-bit, 16-bit, and 32-bit pixel art sprites for your games.
-              No art skills required. Just describe what you want.
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
-              <Link
-                href="/register"
-                className="inline-flex items-center justify-center gap-2 px-5 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] text-black font-semibold rounded-lg hover:opacity-90 transition-opacity text-base sm:text-lg"
-              >
-                Start Creating Free
-                <ArrowRight className="w-5 h-5" />
-              </Link>
-              <Link
-                href="/#try-it"
-                className="inline-flex items-center justify-center gap-2 px-5 sm:px-8 py-3 sm:py-4 bg-white/5 border border-white/10 text-white font-semibold rounded-lg hover:bg-white/10 transition-colors text-base sm:text-lg"
-              >
-                Try Without Account
-              </Link>
-            </div>
-
-            <p className="text-white/40 text-xs sm:text-sm mt-6">
-              10 free credits on signup • No credit card required
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Pixel Styles Section */}
-      <section className="py-12 sm:py-20 relative">
-        <div className="max-w-6xl mx-auto px-3 sm:px-4">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-4">
-            Choose Your <span className="text-[#FF6B2C]">Pixel Style</span>
-          </h2>
-          <p className="text-sm sm:text-base text-white/60 text-center mb-8 sm:mb-12 max-w-xl mx-auto">
-            From classic retro to modern HD pixel art - we support all styles
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
-            {pixelStyles.map((style) => (
-              <div
-                key={style.name}
-                className="bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6 hover:border-[#FF6B2C]/50 transition-colors"
-              >
-                <div className="w-full aspect-square bg-gradient-to-br from-[#FF6B2C]/10 to-transparent rounded-lg mb-4 flex items-center justify-center">
-                  <div className="text-4xl sm:text-6xl">🎮</div>
-                </div>
-                <h3 className="text-lg sm:text-xl font-bold mb-2">{style.name}</h3>
-                <p className="text-white/60 text-xs sm:text-sm mb-2">{style.description}</p>
-                <span className="text-xs text-[#FF6B2C]">{style.colors}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section className="py-12 sm:py-20 bg-white/[0.02]">
-        <div className="max-w-6xl mx-auto px-3 sm:px-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-8">
-            {features.map((feature) => (
-              <div key={feature.title} className="text-center">
-                <div className="w-12 sm:w-16 h-12 sm:h-16 rounded-full bg-[#FF6B2C]/10 flex items-center justify-center mx-auto mb-4">
-                  <feature.icon className="w-6 sm:w-8 h-6 sm:h-8 text-[#FF6B2C]" />
-                </div>
-                <h3 className="text-lg sm:text-xl font-bold mb-2">{feature.title}</h3>
-                <p className="text-sm sm:text-base text-white/60">{feature.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Use Cases */}
-      <section className="py-12 sm:py-20">
-        <div className="max-w-4xl mx-auto px-3 sm:px-4">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-4">
-            Perfect For <span className="text-[#FF6B2C]">Any Game</span>
-          </h2>
-          <p className="text-sm sm:text-base text-white/60 text-center mb-8 sm:mb-12">
-            Generate any type of pixel art asset you need
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-            {useCases.map((useCase) => (
-              <div
-                key={useCase}
-                className="flex items-center gap-3 p-3 sm:p-4 bg-white/5 rounded-lg"
-              >
-                <Check className="w-5 h-5 text-[#FF6B2C] flex-shrink-0" />
-                <span className="text-sm sm:text-base">{useCase}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-12 sm:py-20 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-[#FF6B2C]/10 via-transparent to-[#FF6B2C]/10" />
-        <div className="max-w-4xl mx-auto px-3 sm:px-4 text-center relative z-10">
-          <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold mb-6">
-            Start Creating <span className="text-[#FF6B2C]">Pixel Art</span> Today
-          </h2>
-          <p className="text-sm sm:text-base text-white/60 mb-8 max-w-xl mx-auto">
-            Build your game faster with AI-generated pixel art — no artists needed
-          </p>
-          <Link
-            href="/register"
-            className="inline-flex items-center justify-center gap-2 px-5 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] text-black font-semibold rounded-lg hover:opacity-90 transition-opacity text-base sm:text-lg"
-          >
-            Get 10 Free Credits
-            <ArrowRight className="w-5 h-5" />
-          </Link>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="py-8 border-t border-white/5">
-        <div className="max-w-6xl mx-auto px-3 sm:px-4 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
-          <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo.png" alt="SpriteLab" width={24} height={24} />
-            <span className="font-display font-bold">
-              Sprite<span className="text-[#FF6B2C]">Lab</span>
-            </span>
-          </Link>
-          <div className="flex items-center gap-4 sm:gap-6 text-xs sm:text-sm text-white/40">
-            <Link href="/pricing" className="hover:text-white">
-              Pricing
-            </Link>
-            <Link href="/privacy" className="hover:text-white">
-              Privacy
-            </Link>
-            <Link href="/terms" className="hover:text-white">
-              Terms
-            </Link>
-          </div>
-        </div>
-      </footer>
-    </main>
+    <SeoLanding
+      slug="pixel-art-generator"
+      appName="SpriteLab AI Pixel Art Generator"
+      appDescription="Generate 8-bit, 16-bit and 32-bit pixel art game sprites from a text prompt. Transparent PNG, commercial license."
+      heroLine="ai pixel art generator"
+      h1={
+        <>
+          AI Pixel Art Generator
+          <br />
+          <span className="text-[#FF8A3D]">sprites in seconds</span>
+        </>
+      }
+      subtitle="Generate 8-bit, 16-bit and 32-bit pixel art sprites for your games. No art skills required — just describe what you want."
+      trust={["3 free tries, no account", "10 credits on signup", "transparent png", "real pixel grid"]}
+      floating={[
+        { src: "/showcase/knight.png", alt: "", pixel: true, cls: "left-[7%] top-[30%] w-24 animate-float" },
+        { src: "/showcase/health-potion.png", alt: "", pixel: true, cls: "left-[15%] top-[62%] w-14 animate-float [animation-delay:1.2s]" },
+        { src: "/showcase/flame-blade.png", alt: "", pixel: true, cls: "right-[8%] top-[26%] w-24 animate-float [animation-delay:0.6s]" },
+        { src: "/showcase/slime.png", alt: "", pixel: true, cls: "right-[15%] top-[60%] w-16 animate-float [animation-delay:1.8s]" },
+      ]}
+      sections={[
+        {
+          kind: "cards",
+          id: "styles",
+          eyebrow: "styles",
+          title: (
+            <>
+              Choose your <span className="text-[#FF8A3D]">pixel style</span>
+            </>
+          ),
+          intro:
+            "From classic retro to modern HD pixel art. Sprites are snapped to a real pixel grid with a limited palette — no blurry fake pixels.",
+          cards: [
+            {
+              title: "Pixel 16-bit",
+              tag: "8 / 16-bit",
+              body: "Classic retro sprites in the spirit of NES, Game Boy and SNES-era games, with a limited color palette.",
+              image: { src: "/styles/pixel_art_16.png", alt: "16-bit pixel art knight sprite generated by SpriteLab", pixel: true },
+            },
+            {
+              title: "Pixel HD",
+              tag: "32-bit",
+              body: "Higher-resolution 32-bit pixel art with more detail and shading — the modern indie look.",
+              image: { src: "/styles/pixel_art_32.png", alt: "32-bit HD pixel art knight sprite generated by SpriteLab", pixel: true },
+            },
+            {
+              title: "Isometric Pixel",
+              tag: "iso",
+              body: "Isometric pixel art for strategy, tactics and city-builder games — the RTS classic.",
+              image: { src: "/styles/isometric_pixel.png", alt: "Isometric pixel art sprite generated by SpriteLab", pixel: true },
+            },
+          ],
+        },
+        { kind: "gallery", items: pixelShowcase },
+        {
+          kind: "features",
+          id: "features",
+          eyebrow: "features",
+          title: (
+            <>
+              Built for <span className="text-[#FF8A3D]">game-ready</span> pixel art
+            </>
+          ),
+          cards: [
+            { icon: Zap, title: "Instant generation", body: "Get your pixel art sprite in seconds — iterate on the prompt until it fits your game." },
+            { icon: Palette, title: "Multiple styles", body: "8-bit, 16-bit, 32-bit HD and isometric pixel art — plus 9 more non-pixel styles." },
+            { icon: Download, title: "Ready to use", body: "PNG format with transparent backgrounds. Drop it straight into Unity, Godot or GameMaker." },
+            { icon: Grid3x3, title: "Real pixel grid", body: "Sprites are stored at native resolution, so they scale up crisply with nearest-neighbour filtering." },
+            { icon: Shield, title: "Commercial license", body: "Use what you generate in commercial games on Steam, itch.io or mobile. No attribution required." },
+            { icon: Layers, title: "Asset library", body: "Keep every sprite organized by project in your own library once you sign up." },
+          ],
+        },
+        {
+          kind: "checklist",
+          id: "use-cases",
+          eyebrow: "use cases",
+          title: (
+            <>
+              Perfect for <span className="text-[#FF8A3D]">any game</span>
+            </>
+          ),
+          intro: "Generate any type of pixel art asset you need — retro game sprites for platformers, RPGs, roguelikes and more.",
+          items: [
+            "RPG characters and NPCs",
+            "Platformer heroes and enemies",
+            "Weapons and equipment",
+            "Items and power-ups",
+            "Environment tiles",
+            "UI icons and buttons",
+          ],
+        },
+        {
+          kind: "steps",
+          eyebrow: "how it works",
+          title: (
+            <>
+              Three steps. <span className="text-[#FF8A3D]">That&apos;s it.</span>
+            </>
+          ),
+          steps: [
+            { title: "Describe your sprite", body: "Write a short prompt — “a goblin archer with a bow, side view”. Colors and materials help." },
+            { title: "Pick a pixel style", body: "Choose 16-bit retro, 32-bit HD or isometric pixel art to match your game." },
+            { title: "Download the PNG", body: "Get a transparent pixel art PNG, ready for your game engine." },
+          ],
+        },
+      ]}
+      faq={[
+        {
+          q: "Is the AI pixel art generator free?",
+          a: "You can try it right on this page without an account. Signing up gives you 10 free credits, no credit card required.",
+        },
+        {
+          q: "Can I make 8-bit and 16-bit pixel art?",
+          a: "Yes. The Pixel 16-bit style produces classic retro sprites with a limited palette, Pixel HD gives you more detailed 32-bit pixel art, and Isometric Pixel covers strategy-style views.",
+        },
+        {
+          q: "Can I use the pixel art in commercial games?",
+          a: "Yes. You get full ownership of every asset you generate and can use it in any commercial project — Steam, App Store, itch.io, anywhere. No attribution required.",
+        },
+        {
+          q: "What format are the sprites?",
+          a: "Sprites export as PNG with a transparent background. Pixel art is kept at its native resolution so you can scale it up crisply in Unity, Godot, GameMaker or any engine.",
+        },
+      ]}
+      cta={{
+        title: (
+          <>
+            Start creating <span className="text-[#FF8A3D]">pixel art</span> today
+          </>
+        ),
+        body: "Build your game faster with AI-generated pixel art — no artists needed.",
+        button: "Get 10 free credits",
+      }}
+    />
   );
 }

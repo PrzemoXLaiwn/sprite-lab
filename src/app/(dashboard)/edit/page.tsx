@@ -2,41 +2,44 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import Image from "next/image";
-import Link from "next/link";
-import {
-  Download,
-  Loader2,
-  Wand2,
-  ArrowLeft,
-  Sparkles,
-  Flame,
-  Zap,
-  Check,
-  Info,
-} from "lucide-react";
+import { Wand2, Info } from "lucide-react";
 import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
+import {
+  ToolShell, ToolPanel, Field, CanvasColumn, CanvasFrame, CanvasImage, BeforeAfter,
+  BackdropToggle, Chip, PrimaryButton, DownloadButton, ErrorNote, InfoNote,
+  SourceCard, RecentAssetPicker, ProcessingOverlay, CanvasEmptyHint, Segmented, PageFallback,
+  isPixelStyleId, useElapsedSeconds, type ToolBgModeId, type ToolGeneration,
+} from "@/components/tools/ToolWorkspace";
 
-function EditPageContent() {
-  const searchParams = useSearchParams();
-  const generationId = searchParams.get("id");
+const COST = 1;
 
+const SUGGESTIONS = [
+  "add fire effects",
+  "make it golden",
+  "add glowing runes",
+  "add ice effects",
+  "make it magical",
+  "add lightning",
+];
+
+function EditPageContent({ generationId }: { generationId: string | null }) {
   const [loading, setLoading] = useState(false);
   const [loadingOriginal, setLoadingOriginal] = useState(true);
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [editedImage, setEditedImage] = useState<string | null>(null);
   const [editPrompt, setEditPrompt] = useState("");
   const [error, setError] = useState("");
-  const [originalData, setOriginalData] = useState<any>(null);
+  const [originalData, setOriginalData] = useState<ToolGeneration | null>(null);
+  const [bgMode, setBgMode] = useState<ToolBgModeId>("checker");
+  const [view, setView] = useState<"compare" | "result">("compare");
+  const seconds = useElapsedSeconds(loading);
 
   // Load original generation
   useEffect(() => {
     if (generationId) {
       loadOriginalGeneration();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [generationId]);
 
   const loadOriginalGeneration = async () => {
@@ -49,7 +52,7 @@ function EditPageContent() {
       } else {
         setError("Failed to load original image");
       }
-    } catch (err) {
+    } catch {
       setError("Error loading image");
     } finally {
       setLoadingOriginal(false);
@@ -89,6 +92,7 @@ function EditPageContent() {
       }
 
       setEditedImage(data.imageUrl);
+      setView("compare");
       triggerCreditsRefresh();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Something went wrong";
@@ -115,204 +119,124 @@ function EditPageContent() {
     }
   };
 
-  if (!generationId) {
-    return (
-      <div className="min-h-screen bg-[#0a0c10] flex items-center justify-center p-4">
-        <div className="glass-card rounded-2xl p-8 text-center max-w-md">
-          <Flame className="w-16 h-16 text-[#ef4444] mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-white mb-2">No Image Selected</h2>
-          <p className="text-[#a0a0b0] mb-6">Please select an image from your gallery to edit.</p>
-          <Link href="/gallery">
-            <Button className="btn-primary">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Gallery
-            </Button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  const pixel = isPixelStyleId(originalData?.styleId);
+  const isLoadingSource = !!generationId && loadingOriginal;
 
   return (
-    <div className="min-h-screen bg-[#0a0c10] relative overflow-hidden">
-      {/* Background */}
-      <div className="fixed inset-0 gradient-mesh pointer-events-none" />
-      <div className="fixed inset-0 grid-pattern pointer-events-none opacity-50" />
-      <div className="fixed top-20 left-10 w-96 h-96 bg-[#8b5cf6]/10 rounded-full blur-[120px] animate-glow-pulse pointer-events-none" />
+    <ToolShell>
+      <ToolPanel
+        title="Edit with AI"
+        cost={COST}
+        backHref="/assets"
+        footer={
+          <>
+            <PrimaryButton onClick={handleEdit} disabled={loading || !originalImage || !editPrompt.trim()} loading={loading}
+              loadingLabel={<>Editing… <span className="font-mono">{seconds}s</span></>}
+              icon={<Wand2 className="h-4 w-4" />} label="Apply edit" cost={COST} />
+            <p className="mt-2 text-center font-mono text-[11px] text-[#7A8294]">~30–60s · Ctrl + Enter</p>
+            {error && <ErrorNote>{error}</ErrorNote>}
+          </>
+        }
+      >
+        <Field label="Source">
+          <SourceCard imageUrl={originalImage} loading={isLoadingSource} prompt={originalData?.prompt} pixel={pixel} />
+        </Field>
 
-      <div className="relative z-10 p-4 lg:p-8 max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <Link href="/gallery">
-            <Button variant="outline" className="mb-4 border-[rgba(255,255,255,0.06)]">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Gallery
-            </Button>
-          </Link>
-          <h1 className="text-3xl font-display font-black gradient-text neon-text mb-2">
-            EDIT IMAGE
-          </h1>
-          <p className="text-[#a0a0b0]">Transform your image with AI-powered editing</p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Original Image */}
-          <div className="glass-card rounded-2xl overflow-hidden">
-            <div className="p-4 border-b border-[rgba(255,255,255,0.06)]">
-              <h3 className="font-semibold text-white flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-[#FF6B2C]" />
-                Original Image
-              </h3>
-            </div>
-            <div className="aspect-square bg-[#11151b] flex items-center justify-center relative">
-              <div className="absolute inset-0 grid-pattern-dense opacity-30" />
-              {loadingOriginal ? (
-                <Loader2 className="w-12 h-12 text-[#FF6B2C] animate-spin" />
-              ) : originalImage ? (
-                <img
-                  src={originalImage}
-                  alt="Original"
-                  className="w-full h-full object-contain p-4 relative z-10"
-                />
-              ) : (
-                <p className="text-[#a0a0b0]">Failed to load image</p>
-              )}
-            </div>
+        <Field label="Describe your edit">
+          <div className="rounded-2xl border border-white/[0.08] bg-[#151922] transition-colors focus-within:border-[#FF8A3D]/50">
+            <textarea
+              value={editPrompt}
+              onChange={(e) => setEditPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && !loading && originalImage && editPrompt.trim()) {
+                  e.preventDefault();
+                  handleEdit();
+                }
+              }}
+              placeholder="e.g. add fire effects, make it golden, add glowing runes…"
+              disabled={loading || !originalImage}
+              rows={4}
+              className="w-full resize-none bg-transparent px-4 py-3 text-[14px] leading-relaxed text-white outline-none placeholder:text-[#7A8294] disabled:opacity-60"
+            />
           </div>
-
-          {/* Edited Image */}
-          <div className="glass-card rounded-2xl overflow-hidden">
-            <div className="p-4 border-b border-[rgba(255,255,255,0.06)]">
-              <h3 className="font-semibold text-white flex items-center gap-2">
-                <Wand2 className="w-4 h-4 text-[#8b5cf6]" />
-                Edited Result
-              </h3>
-            </div>
-            <div className="aspect-square bg-[#11151b] flex items-center justify-center relative">
-              <div className="absolute inset-0 grid-pattern-dense opacity-30" />
-              {loading ? (
-                <div className="text-center p-6 relative z-10">
-                  <div className="relative w-24 h-24 mx-auto mb-4">
-                    <div className="absolute inset-0 bg-[#8b5cf6] rounded-full blur-xl opacity-50 animate-pulse" />
-                    <div className="relative w-full h-full rounded-full border-4 border-[rgba(255,255,255,0.06)] border-t-[#8b5cf6] animate-spin" />
-                    <Wand2 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 text-[#8b5cf6]" />
-                  </div>
-                  <p className="font-display font-bold text-white">Editing Image...</p>
-                  <p className="text-sm text-[#a0a0b0] mt-1">This may take 30-60 seconds</p>
-                </div>
-              ) : editedImage ? (
-                <>
-                  <img
-                    src={editedImage}
-                    alt="Edited"
-                    className="w-full h-full object-contain p-4 relative z-10"
-                  />
-                  <Button
-                    onClick={() => handleDownload(editedImage)}
-                    className="absolute bottom-4 right-4 btn-primary z-20"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Download
-                  </Button>
-                </>
-              ) : (
-                <div className="text-center p-8 relative z-10">
-                  <div className="w-24 h-24 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#8b5cf6]/20 to-[#FF6B2C]/20 flex items-center justify-center border border-[#8b5cf6]/20">
-                    <Wand2 className="w-12 h-12 text-[#8b5cf6]/50" />
-                  </div>
-                  <p className="text-[#a0a0b0]">Your edited image will appear here</p>
-                </div>
-              )}
-            </div>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {SUGGESTIONS.map((suggestion) => (
+              <button key={suggestion} type="button" onClick={() => setEditPrompt(suggestion)} disabled={loading}
+                className={`rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors disabled:opacity-50 ${
+                  editPrompt === suggestion
+                    ? "border-[#FF8A3D]/60 bg-[#FF8A3D]/12 text-white"
+                    : "border-white/[0.08] text-[#9BA3B4] hover:border-white/20 hover:text-white"
+                }`}>
+                {suggestion}
+              </button>
+            ))}
           </div>
-        </div>
+        </Field>
 
-        {/* Edit Controls */}
-        <div className="mt-6 glass-card rounded-2xl p-6">
-          <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
-            <Zap className="w-5 h-5 text-[#8b5cf6]" />
-            Describe Your Edit
-          </h3>
+        <InfoNote icon={<Info className="h-3.5 w-3.5 text-[#8B93A5]" />}>
+          Be specific about what you want to change. The AI keeps the original sprite and only applies your requested changes.
+        </InfoNote>
+      </ToolPanel>
 
-          <div className="space-y-4">
-            <div className="relative">
-              <Input
-                placeholder="e.g., add fire effects, make it golden, add glowing runes..."
-                value={editPrompt}
-                onChange={(e) => setEditPrompt(e.target.value)}
-                className="h-14 text-base input-gaming pr-12"
-                disabled={loading || !originalImage}
-              />
-              <Wand2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8b5cf6]" />
-            </div>
-
-            {/* Quick Edit Suggestions */}
-            <div className="flex flex-wrap gap-2">
-              {[
-                "add fire effects",
-                "make it golden",
-                "add glowing runes",
-                "add ice effects",
-                "make it magical",
-                "add lightning",
-              ].map((suggestion) => (
-                <button
-                  key={suggestion}
-                  onClick={() => setEditPrompt(suggestion)}
-                  className="text-xs px-3 py-1.5 rounded-full bg-[#8b5cf6]/10 text-[#8b5cf6] hover:bg-[#8b5cf6]/20 transition-colors border border-[#8b5cf6]/20"
-                  disabled={loading}
-                >
-                  {suggestion}
-                </button>
-              ))}
-            </div>
-
-            <div className="p-3 rounded-lg bg-[#FF6B2C]/10 border border-[#FF6B2C]/20 flex items-start gap-2">
-              <Info className="w-4 h-4 text-[#FF6B2C] mt-0.5 shrink-0" />
-              <p className="text-xs text-[#FF6B2C]">
-                <strong>Pro tip:</strong> Be specific about what you want to change. The AI will preserve the original image and only apply your requested changes.
-              </p>
-            </div>
-
-            <Button
-              onClick={handleEdit}
-              disabled={loading || !originalImage || !editPrompt.trim()}
-              className="w-full h-12 bg-gradient-to-r from-[#8b5cf6] to-[#FF6B2C] hover:opacity-90 text-white font-display font-bold text-base disabled:opacity-50"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Editing...
-                </>
-              ) : (
-                <>
-                  <Wand2 className="w-5 h-5 mr-2" />
-                  EDIT IMAGE (1 credit)
-                </>
-              )}
-            </Button>
-
-            {error && (
-              <div className="p-4 rounded-xl bg-[#ef4444]/10 border border-[#ef4444]/30 text-[#ef4444] text-sm flex items-center gap-3">
-                <Flame className="w-5 h-5 shrink-0" />
-                {error}
-              </div>
+      <CanvasColumn
+        topLeft={
+          originalImage ? (
+            <>
+              <Chip>{editedImage ? "edited" : "original"}</Chip>
+              {pixel && <Chip>pixel art</Chip>}
+            </>
+          ) : (
+            <span className="text-[12px] text-[#7A8294]">Your edited sprite will appear here</span>
+          )
+        }
+        topRight={
+          <div className="flex items-center gap-2">
+            {editedImage && (
+              <Segmented value={view} onChange={setView}
+                options={[{ id: "compare", label: "Compare" }, { id: "result", label: "Result" }]} />
             )}
+            <BackdropToggle value={bgMode} onChange={setBgMode} />
           </div>
-        </div>
-      </div>
-    </div>
+        }
+        actions={editedImage ? <DownloadButton onClick={() => handleDownload(editedImage)} /> : undefined}
+      >
+        <CanvasFrame bg={bgMode}>
+          {!generationId ? (
+            <RecentAssetPicker toolPath="/edit" title="Edit a sprite" />
+          ) : isLoadingSource ? (
+            <ProcessingOverlay icon={<Wand2 className="h-5 w-5" />} title="Loading sprite…" seconds={0} hint="fetching" />
+          ) : editedImage && originalImage ? (
+            view === "compare" ? (
+              <BeforeAfter before={originalImage} after={editedImage} pixel={pixel} beforeLabel="Original" afterLabel="Edited" />
+            ) : (
+              <CanvasImage src={editedImage} alt="Edited" pixel={pixel} />
+            )
+          ) : originalImage ? (
+            <>
+              <CanvasImage src={originalImage} alt="Original" pixel={pixel} dim={loading} />
+              {loading && (
+                <ProcessingOverlay icon={<Wand2 className="h-5 w-5" />} title="Editing sprite…" seconds={seconds} hint="usually 30–60s" />
+              )}
+            </>
+          ) : (
+            <CanvasEmptyHint icon={<Wand2 className="h-5 w-5" />} title="Couldn't load this sprite" subtitle="Pick another one from your assets." />
+          )}
+        </CanvasFrame>
+      </CanvasColumn>
+    </ToolShell>
   );
+}
+
+function EditPageKeyed() {
+  const generationId = useSearchParams().get("id");
+  // Keyed so picking another sprite resets the tool state.
+  return <EditPageContent key={generationId ?? "none"} generationId={generationId} />;
 }
 
 export default function EditPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-[#0a0c10] flex items-center justify-center">
-        <Loader2 className="w-12 h-12 text-[#FF6B2C] animate-spin" />
-      </div>
-    }>
-      <EditPageContent />
+    <Suspense fallback={<PageFallback />}>
+      <EditPageKeyed />
     </Suspense>
   );
 }

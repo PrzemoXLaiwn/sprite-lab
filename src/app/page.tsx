@@ -1,7 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import {
   ArrowRight,
@@ -20,25 +19,27 @@ import {
   Target,
 } from "lucide-react";
 import { PricingSection } from "@/components/landing/PricingSection";
-import { TryItNow } from "@/components/landing/TryItNow";
-import { ExamplesGallery } from "@/components/landing/ExamplesGallery";
-import { HeroGallery } from "@/components/landing/HeroGallery";
-import { getFeaturedGenerationsSafe } from "@/lib/featured-generations";
+import { HeroPrompt } from "@/components/landing/HeroPrompt";
+import { SiteNav } from "@/components/layout/SiteNav";
+import { CommunityWall } from "@/components/landing/CommunityWall";
+import { SHOWCASE, getFeaturedGenerationsSafe } from "@/lib/featured-generations";
+import { HOME_FAQ } from "@/data/geo-content";
+import { SEO_PAGES } from "@/data/seo-pages";
 
 export const metadata: Metadata = {
-  title: "SpriteLab — Game Asset Generator for Indie Developers",
-  description: "Generate game-ready sprites, weapons, characters and icons in seconds. Pixel art, dark fantasy, anime styles. 10 free credits, no card required.",
-  keywords: ["game assets", "sprite generator", "pixel art", "indie game development", "game icons", "2D assets", "RPG sprites"],
+  title: { absolute: "SpriteLab — AI Game Asset Generator for Indie Developers" },
+  description: "Generate game-ready sprites, pixel art, sprite-sheet animations and seamless tiles with AI. Transparent PNG for Unity, Godot and GameMaker. 10 free credits, no card required.",
+  keywords: ["AI game asset generator", "AI sprite generator", "AI pixel art generator", "sprite sheet generator", "sprite animation", "indie game development", "Unity sprites", "Godot sprites", "RPG sprites"],
   openGraph: {
-    title: "SpriteLab — Game Asset Generator",
-    description: "Create game-ready sprites in seconds. 8 art styles, transparent PNG, commercial license.",
+    title: "SpriteLab — AI Game Asset Generator",
+    description: "Game-ready sprites, pixel art and sprite-sheet animations from a text prompt. 12 art styles, transparent PNG, commercial use.",
     url: "https://www.sprite-lab.com",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "SpriteLab — Game Asset Generator",
-    description: "Create game-ready sprites in seconds for your indie game.",
+    title: "SpriteLab — AI Game Asset Generator",
+    description: "Game-ready sprites and sprite-sheet animations for your indie game, from a text prompt.",
   },
   alternates: { canonical: "https://www.sprite-lab.com" },
 };
@@ -50,125 +51,91 @@ export default async function Home({
 }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (user) redirect("/generate");
+  // Signed-in users can see the home page too (logo → home). The nav shows
+  // "Open app" and the hero prompt sends them straight into the generator.
+  const signedIn = Boolean(user);
 
   const params = await searchParams;
   const refCode = params.ref;
   const registerUrl = refCode ? `/register?ref=${refCode}` : "/register";
 
-  // One cached query feeds both galleries — the hero uses the first 6.
-  const featured = await getFeaturedGenerationsSafe(12);
+  // Explore wall: curated pipeline showcase first, then the most-liked public
+  // community sprites (cached 5 min; never fails the render — falls back to
+  // the showcase alone if the DB is unavailable).
+  const community = await getFeaturedGenerationsSafe(36);
+  const seen = new Set(SHOWCASE.map((s) => s.imageUrl));
+  const wall = [...SHOWCASE, ...community.filter((c) => !seen.has(c.imageUrl))];
 
   return (
-    <main className="min-h-screen bg-[#0B0F19] text-white">
+    <main className="min-h-screen bg-[#0B0D12] text-white">
 
       {/* ═══ NAV ═════════════════════════════════════════════ */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0B0F19]/85 backdrop-blur-xl border-b border-white/[0.06]">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5">
-            <Image src="/logo.png" alt="SpriteLab" width={28} height={28} priority />
-            <span className="font-bold text-[16px] tracking-tight text-white/90">
-              Sprite<span className="text-[#F97316]">Lab</span>
-            </span>
-          </Link>
+      <SiteNav registerUrl={registerUrl} anchorsOnHome signedIn={signedIn} />
 
-          <div className="hidden md:flex items-center gap-8">
-            <a href="#features" className="text-[13px] text-white/70 hover:text-white transition-colors">Features</a>
-            <a href="#gallery" className="text-[13px] text-white/70 hover:text-white transition-colors">Gallery</a>
-            <a href="#pricing" className="text-[13px] text-white/70 hover:text-white transition-colors">Pricing</a>
-            <a href="#faq" className="text-[13px] text-white/70 hover:text-white transition-colors">FAQ</a>
-          </div>
+      {/* ═══ HERO — prompt first (Meshy-style) ═══════════════ */}
+      <section className="relative overflow-hidden pb-6 pt-28 sm:pt-36">
+        <div className="pixel-grid pointer-events-none absolute inset-0 [mask-image:radial-gradient(ellipse_at_top,black_20%,transparent_70%)]" />
+        <div className="pointer-events-none absolute left-1/2 top-0 h-[520px] w-[960px] -translate-x-1/2 bg-[radial-gradient(ellipse_at_center,rgba(255,138,61,0.13)_0%,transparent_70%)]" />
 
-          <div className="flex items-center gap-3">
-            <Link href="/login" className="text-[13px] text-white/75 hover:text-white transition-colors px-3 py-2">
-              Log in
-            </Link>
-            <Link href={registerUrl}
-              className="sl-cta text-[13px] font-semibold px-5 py-2.5 rounded-lg transition-all">
-              Get Started Free
-            </Link>
-          </div>
-        </div>
-      </nav>
-
-      {/* ═══ HERO ════════════════════════════════════════════ */}
-      <section className="relative pt-32 sm:pt-40 pb-20 sm:pb-28 overflow-hidden">
-        {/* Background atmosphere */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[600px] bg-[radial-gradient(ellipse_at_center,rgba(249,115,22,0.08)_0%,transparent_70%)]" />
-          <div className="absolute top-20 right-0 w-[400px] h-[400px] bg-[radial-gradient(ellipse_at_center,rgba(59,130,246,0.04)_0%,transparent_70%)]" />
-          <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
+        {/* Floating sprites — pixel flavour around the headline (desktop) */}
+        <div className="pointer-events-none absolute inset-0 hidden lg:block" aria-hidden="true">
+          {[
+            { src: "/showcase/knight.png", cls: "left-[7%] top-[30%] w-24 animate-float" },
+            { src: "/showcase/health-potion.png", cls: "left-[15%] top-[62%] w-14 animate-float [animation-delay:1.2s]" },
+            { src: "/showcase/fire-sword.png", cls: "right-[8%] top-[26%] w-24 animate-float [animation-delay:0.6s]" },
+            { src: "/showcase/slime.png", cls: "right-[15%] top-[60%] w-16 animate-float [animation-delay:1.8s]" },
+          ].map((s) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img key={s.src} src={s.src} alt="" className={`pixel-perfect absolute opacity-80 ${s.cls}`} />
+          ))}
         </div>
 
-        {/* Grid pattern overlay */}
-        <div className="absolute inset-0 grid-pattern opacity-40 pointer-events-none" />
-
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 text-center relative z-10">
-
-          {/* Top badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#F97316]/[0.08] border border-[#F97316]/20 mb-8 animate-slide-up">
-            <Gamepad2 className="w-3.5 h-3.5 text-[#F97316]" />
-            <span className="text-[12px] font-medium text-[#F97316]/90 tracking-wide uppercase">Built for indie game developers</span>
-          </div>
-
-          {/* Headline */}
-          <h1 className="text-5xl sm:text-7xl md:text-[80px] font-bold mb-6 leading-[1.05] tracking-tight animate-slide-up" style={{ animationDelay: "80ms" }}>
-            Generate Game Assets
+        <div className="relative z-10 mx-auto max-w-5xl px-5 text-center">
+          <p className="font-mono text-[12px] text-[#FFB27A]">
+            &gt; ai game asset generator for indie devs<span className="caret" />
+          </p>
+          <h1 className="mt-5 font-display text-[44px] font-semibold leading-[1.02] text-white sm:text-[64px] md:text-[76px]">
+            Game sprites from
             <br />
-            <span className="bg-gradient-to-r from-[#F97316] via-[#FB923C] to-[#F97316] bg-clip-text text-transparent">Ready in Seconds</span>
+            <span className="text-[#FF8A3D]">a single sentence</span>
           </h1>
-
-          {/* Subheadline */}
-          <p className="text-lg sm:text-xl text-[#94A3B8] max-w-2xl mx-auto mb-10 leading-relaxed animate-slide-up" style={{ animationDelay: "160ms" }}>
-            Weapons, characters, potions, icons, and props — in pixel art, dark fantasy, anime, and more.
-            <br className="hidden sm:block" />
-            Describe it. Generate it. Download transparent PNG. Ship your game.
+          <p className="mx-auto mt-5 max-w-xl text-[16px] leading-relaxed text-[#8B93A5] sm:text-[17px]">
+            Characters, creatures, weapons, items and tiles — transparent PNG on a real pixel grid, animated into sprite sheets, ready for Unity, Godot or GameMaker.
           </p>
 
-          {/* CTA buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12 animate-slide-up" style={{ animationDelay: "240ms" }}>
-            <Link href={registerUrl}
-              className="group sl-cta flex items-center gap-2.5 px-8 py-4 rounded-xl font-bold text-[16px] transition-all w-full sm:w-auto justify-center">
-              Start Creating — 10 Free Credits
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </Link>
-            <a href="#gallery"
-              className="flex items-center gap-2 px-6 py-4 rounded-xl border border-white/[0.08] text-white/50 hover:text-white/80 hover:border-white/[0.15] hover:bg-white/[0.02] transition-all text-[15px] font-medium w-full sm:w-auto justify-center">
-              See examples
-              <ChevronDown className="w-4 h-4" />
-            </a>
+          <div className="mt-9">
+            <HeroPrompt registerUrl={registerUrl} signedIn={signedIn} />
           </div>
 
-          {/* Trust points */}
-          <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-[13px] text-[#94A3B8]/70 mb-16 animate-slide-up" style={{ animationDelay: "320ms" }}>
-            <span className="flex items-center gap-2"><Check className="w-4 h-4 text-[#F97316]/60" />10 free credits</span>
-            <span className="flex items-center gap-2"><Check className="w-4 h-4 text-[#F97316]/60" />No credit card required</span>
-            <span className="flex items-center gap-2"><Check className="w-4 h-4 text-[#F97316]/60" />Commercial license</span>
-            <span className="flex items-center gap-2"><Check className="w-4 h-4 text-[#F97316]/60" />Transparent PNG</span>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 font-mono text-[11.5px] text-[#8B93A5]">
+            <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-[#FF8A3D]" />3 free tries, no account</span>
+            <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-[#FF8A3D]" />10 credits on signup</span>
+            <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-[#FF8A3D]" />transparent png</span>
+            <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-[#FF8A3D]" />commercial license</span>
           </div>
-
-          {/* Hero Gallery */}
-          <HeroGallery images={featured} />
         </div>
       </section>
 
+      {/* ═══ EXPLORE — community wall ═════════════════════════ */}
+      <CommunityWall items={wall} registerUrl={registerUrl} />
+
       {/* ═══ VALUE STRIP ═════════════════════════════════════ */}
-      <section className="relative py-6 border-y border-white/[0.04] bg-[#0D111B]">
+      <section className="relative py-6 border-y border-white/[0.04] bg-[#0E1016]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
             {[
               { value: "Seconds", label: "Generation time", icon: Zap },
-              { value: "8+", label: "Art styles", icon: Palette },
+              { value: "12", label: "Art styles", icon: Palette },
               { value: "PNG", label: "Transparent export", icon: Download },
               { value: "100%", label: "Commercial rights", icon: Shield },
             ].map((stat, i) => (
               <div key={i} className="flex items-center gap-3 justify-center py-3">
-                <div className="w-9 h-9 rounded-lg bg-[#F97316]/[0.07] border border-[#F97316]/[0.12] flex items-center justify-center flex-shrink-0">
-                  <stat.icon className="w-4 h-4 text-[#F97316]/80" />
+                <div className="w-9 h-9 rounded-lg bg-[#FF8A3D]/[0.07] border border-[#FF8A3D]/[0.12] flex items-center justify-center flex-shrink-0">
+                  <stat.icon className="w-4 h-4 text-[#FF8A3D]/80" />
                 </div>
                 <div>
                   <div className="text-[15px] font-bold text-white/90">{stat.value}</div>
-                  <div className="text-[11px] text-white/30 uppercase tracking-wider">{stat.label}</div>
+                  <div className="font-mono text-[11px] text-[#7A8294] uppercase tracking-wider">{stat.label}</div>
                 </div>
               </div>
             ))}
@@ -183,16 +150,16 @@ export default async function Home({
 
         <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10">
           <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-[11px] uppercase tracking-widest text-white/40 font-medium mb-5">
-              <Sparkles className="w-3 h-3 text-[#F97316]/60" /> Why SpriteLab
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] font-mono text-[11px] uppercase tracking-widest text-[#8B93A5] font-medium mb-5">
+              <Sparkles className="w-3 h-3 text-[#FF8A3D]/60" /> Why SpriteLab
             </div>
-            <h2 className="text-3xl sm:text-5xl font-bold mb-4">
+            <h2 className="font-display text-3xl sm:text-5xl font-semibold mb-4">
               Everything you need to
               <br />
-              <span className="text-[#F97316]">ship assets faster</span>
+              <span className="text-[#FF8A3D]">ship assets faster</span>
             </h2>
-            <p className="text-[#94A3B8] text-base max-w-lg mx-auto">
-              Purpose-built for indie devs who need quality game assets without the freelancer wait times or learning curve.
+            <p className="text-[#8B93A5] text-base max-w-lg mx-auto">
+              SpriteLab is an AI game asset generator built for indie game developers — not a general image generator. Every result is cleaned up to be used in a game.
             </p>
           </div>
 
@@ -202,12 +169,12 @@ export default async function Home({
                 icon: Zap,
                 title: "Generated in Seconds",
                 desc: "Describe your asset, get a production-ready sprite in seconds. No design skills needed.",
-                accent: "from-[#F97316]/20 to-[#F97316]/0",
+                accent: "from-[#FF8A3D]/20 to-[#FF8A3D]/0",
               },
               {
                 icon: Palette,
-                title: "8 Art Styles",
-                desc: "Pixel art, HD pixel, hand-painted, anime, dark fantasy, cartoon, vector, and realistic.",
+                title: "12 Art Styles",
+                desc: "16-bit and HD pixel art, isometric, hand-painted, anime, chibi, dark fantasy, cartoon, vector and realistic.",
                 accent: "from-[#8B5CF6]/20 to-[#8B5CF6]/0",
               },
               {
@@ -218,8 +185,8 @@ export default async function Home({
               },
               {
                 icon: Clock,
-                title: "Days to Minutes",
-                desc: "Stop waiting weeks for freelancer deliveries. Generate exactly what you need, iterate in real-time.",
+                title: "Sprite Animations",
+                desc: "Idle, walk, attack, jump, fly or your own move — AI suggests motions for each sprite and exports a sprite sheet + GIF.",
                 accent: "from-[#10B981]/20 to-[#10B981]/0",
               },
               {
@@ -231,11 +198,11 @@ export default async function Home({
               {
                 icon: Layers,
                 title: "Project Organization",
-                desc: "Group assets by game project. AI auto-categorizes into weapons, characters, items, and more.",
+                desc: "Generate for your game, accept the keepers — they sort into folders by type. Download the whole pack as a .zip.",
                 accent: "from-[#EC4899]/20 to-[#EC4899]/0",
               },
             ].map((f, i) => (
-              <div key={i} className="group relative p-6 rounded-2xl bg-gradient-to-b from-[#121826] to-[#0F1320] border border-white/[0.06] hover:border-[#F97316]/20 transition-all duration-300">
+              <div key={i} className="group relative p-6 rounded-2xl bg-gradient-to-b from-[#0E1016] to-[#0F1320] border border-white/[0.06] hover:border-[#FF8A3D]/20 transition-all duration-300">
                 {/* Subtle top gradient accent */}
                 <div className={`absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent opacity-0 group-hover:opacity-100 transition-opacity`} />
 
@@ -243,7 +210,7 @@ export default async function Home({
                   <f.icon className="w-5 h-5 text-white/70" />
                 </div>
                 <h3 className="text-[15px] font-semibold text-white/90 mb-2">{f.title}</h3>
-                <p className="text-[13px] text-[#94A3B8]/70 leading-relaxed">{f.desc}</p>
+                <p className="text-[13px] text-[#8B93A5] leading-relaxed">{f.desc}</p>
               </div>
             ))}
           </div>
@@ -252,19 +219,19 @@ export default async function Home({
 
       {/* ═══ HOW IT WORKS ════════════════════════════════════ */}
       <section className="relative py-24 sm:py-32">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0B0F19] via-[#0D111B] to-[#0B0F19] pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0B0D12] via-[#0E1016] to-[#0B0D12] pointer-events-none" />
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
 
         <div className="max-w-5xl mx-auto px-4 sm:px-6 relative z-10">
           <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-[11px] uppercase tracking-widest text-white/40 font-medium mb-5">
-              <Target className="w-3 h-3 text-[#F97316]/60" /> How it works
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] font-mono text-[11px] uppercase tracking-widest text-[#8B93A5] font-medium mb-5">
+              <Target className="w-3 h-3 text-[#FF8A3D]/60" /> How it works
             </div>
-            <h2 className="text-3xl sm:text-5xl font-bold mb-4">
-              Three steps. <span className="text-[#F97316]">That&apos;s it.</span>
+            <h2 className="font-display text-3xl sm:text-5xl font-semibold mb-4">
+              Three steps. <span className="text-[#FF8A3D]">That&apos;s it.</span>
             </h2>
-            <p className="text-[#94A3B8] text-base max-w-md mx-auto">
+            <p className="text-[#8B93A5] text-base max-w-md mx-auto">
               From idea to game-ready asset in under a minute.
             </p>
           </div>
@@ -296,13 +263,13 @@ export default async function Home({
                   <div className="hidden md:block absolute top-12 right-0 w-6 h-px bg-gradient-to-r from-white/10 to-white/0 translate-x-full z-20" />
                 )}
 
-                <div className="relative p-7 rounded-2xl bg-gradient-to-b from-[#121826] to-[#0F1320] border border-white/[0.06] hover:border-[#F97316]/15 transition-all duration-300 text-center h-full">
+                <div className="relative p-7 rounded-2xl bg-gradient-to-b from-[#0E1016] to-[#0F1320] border border-white/[0.06] hover:border-[#FF8A3D]/15 transition-all duration-300 text-center h-full">
                   {/* Step number */}
-                  <div className="w-12 h-12 rounded-2xl bg-[#F97316]/[0.08] border border-[#F97316]/20 text-[#F97316] text-sm font-bold flex items-center justify-center mx-auto mb-5">
+                  <div className="w-12 h-12 rounded-2xl bg-[#FF8A3D]/[0.08] border border-[#FF8A3D]/20 text-[#FF8A3D] text-sm font-bold flex items-center justify-center mx-auto mb-5">
                     {item.step}
                   </div>
                   <h3 className="text-[15px] font-semibold text-white/90 mb-2.5">{item.title}</h3>
-                  <p className="text-[13px] text-[#94A3B8]/60 leading-relaxed">{item.desc}</p>
+                  <p className="text-[13px] text-[#8B93A5] leading-relaxed">{item.desc}</p>
                 </div>
               </div>
             ))}
@@ -322,10 +289,10 @@ export default async function Home({
       <section className="relative py-20 sm:py-28">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-14">
-            <h2 className="text-3xl sm:text-5xl font-bold mb-4">
-              Built for <span className="text-[#F97316]">your</span> game
+            <h2 className="font-display text-3xl sm:text-5xl font-semibold mb-4">
+              Built for <span className="text-[#FF8A3D]">your</span> game
             </h2>
-            <p className="text-[#94A3B8] text-base max-w-lg mx-auto">
+            <p className="text-[#8B93A5] text-base max-w-lg mx-auto">
               Whether you&apos;re building an RPG, roguelike, survival game, or mobile puzzler — SpriteLab generates assets that match your vision.
             </p>
           </div>
@@ -353,21 +320,16 @@ export default async function Home({
                 style: "Cartoon, vector, anime",
               },
             ].map((uc, i) => (
-              <div key={i} className="p-6 rounded-2xl bg-[#121826]/60 border border-white/[0.05] hover:border-white/[0.1] transition-all">
-                <div className="text-[11px] font-semibold text-[#F97316] uppercase tracking-wider mb-2">{uc.genre}</div>
+              <div key={i} className="p-6 rounded-2xl bg-[#0E1016]/60 border border-white/[0.05] hover:border-white/[0.1] transition-all">
+                <div className="font-mono text-[11px] font-semibold text-[#FF8A3D] uppercase tracking-wider mb-2">{uc.genre}</div>
                 <p className="text-[14px] text-white/70 mb-3 leading-relaxed">{uc.items}</p>
-                <p className="text-[12px] text-white/30">Best styles: {uc.style}</p>
+                <p className="text-[12px] text-[#7A8294]">Best styles: {uc.style}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ═══ EXAMPLES ════════════════════════════════════════ */}
-      <ExamplesGallery initialSprites={featured} />
-
-      {/* ═══ TRY IT ══════════════════════════════════════════ */}
-      <TryItNow />
 
       {/* ═══ PRICING ═════════════════════════════════════════ */}
       <PricingSection />
@@ -378,48 +340,47 @@ export default async function Home({
 
         <div className="max-w-2xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-[11px] uppercase tracking-widest text-white/40 font-medium mb-5">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] font-mono text-[11px] uppercase tracking-widest text-[#8B93A5] font-medium mb-5">
               FAQ
             </div>
-            <h2 className="text-3xl sm:text-4xl font-bold">
+            <h2 className="font-display text-3xl sm:text-4xl font-semibold">
               Common Questions
             </h2>
           </div>
 
           <div className="space-y-3">
-            {[
-              {
-                q: "Can I use generated assets in commercial games?",
-                a: "Yes. You get full ownership of every asset you generate. Use them in any commercial project — Steam, App Store, itch.io, anywhere. No attribution required.",
-              },
-              {
-                q: "What file formats do you support?",
-                a: "2D assets export as PNG with transparent backgrounds. 3D models export as GLB, PLY, and OBJ. All formats are game-engine ready.",
-              },
-              {
-                q: "How fast is generation?",
-                a: "2D sprites typically generate in 10-20 seconds. 3D models take 30-60 seconds depending on complexity.",
-              },
-              {
-                q: "Do my credits expire?",
-                a: "Free credits never expire. Paid subscription credits refresh monthly. Credit pack purchases never expire.",
-              },
-              {
-                q: "What art styles are available?",
-                a: "Eight styles: Pixel Art (16-bit), HD Pixel Art, Hand-Painted, Anime, Dark Fantasy, Cartoon, Vector, and Realistic.",
-              },
-              {
-                q: "Can I use SpriteLab with Unity / Godot / Unreal?",
-                a: "Yes. All assets export as standard transparent PNG files that work in any game engine, framework, or design tool.",
-              },
-            ].map((faq, i) => (
-              <div key={i} className="p-5 rounded-xl bg-[#121826]/60 border border-white/[0.05] hover:border-white/[0.08] transition-colors">
+            {HOME_FAQ.map((faq, i) => (
+              <div key={i} className="p-5 rounded-xl bg-[#0E1016]/60 border border-white/[0.05] hover:border-white/[0.08] transition-colors">
                 <h3 className="text-[14px] font-semibold text-white/80 mb-2">{faq.q}</h3>
-                <p className="text-[13px] text-[#94A3B8]/60 leading-relaxed">{faq.a}</p>
+                <p className="text-[13px] text-[#8B93A5] leading-relaxed">{faq.a}</p>
               </div>
             ))}
           </div>
+
+          {/* Tools & guides — every landing page linked from the homepage */}
+          <nav aria-label="Tools and guides" className="mt-12">
+            <p className="mb-3 text-center font-mono text-[11px] uppercase tracking-widest text-[#7A8294]">tools &amp; guides</p>
+            <div className="flex flex-wrap justify-center gap-2">
+              {SEO_PAGES.map((p) => (
+                <Link key={p.slug} href={`/${p.slug}`}
+                  className="rounded-full border border-white/[0.08] px-3 py-1.5 text-[12px] text-[#A6ADBB] transition-colors hover:border-white/20 hover:text-white">
+                  {p.label}
+                </Link>
+              ))}
+            </div>
+          </nav>
         </div>
+        {/* FAQPage structured data — the same Q&A that is visible above */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "FAQPage",
+              mainEntity: HOME_FAQ.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
+            }).replace(/</g, "\\u003c"),
+          }}
+        />
       </section>
 
       {/* ═══ FINAL CTA ═══════════════════════════════════════ */}
@@ -431,17 +392,17 @@ export default async function Home({
         </div>
 
         <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center relative z-10">
-          <div className="p-10 sm:p-14 rounded-3xl bg-gradient-to-b from-[#121826] to-[#0D111B] border border-white/[0.06] relative overflow-hidden">
+          <div className="p-10 sm:p-14 rounded-3xl bg-gradient-to-b from-[#0E1016] to-[#0E1016] border border-white/[0.06] relative overflow-hidden">
             {/* Corner accents */}
             <div className="absolute top-0 left-0 w-20 h-20 bg-[radial-gradient(ellipse_at_top_left,rgba(249,115,22,0.08)_0%,transparent_70%)]" />
             <div className="absolute bottom-0 right-0 w-20 h-20 bg-[radial-gradient(ellipse_at_bottom_right,rgba(249,115,22,0.08)_0%,transparent_70%)]" />
 
-            <h2 className="text-3xl sm:text-5xl font-bold mb-4">
+            <h2 className="font-display text-3xl sm:text-5xl font-semibold mb-4">
               Your game deserves
               <br />
-              <span className="text-[#F97316]">better assets.</span>
+              <span className="text-[#FF8A3D]">better assets.</span>
             </h2>
-            <p className="text-[#94A3B8] mb-10 text-base max-w-md mx-auto">
+            <p className="text-[#8B93A5] mb-10 text-base max-w-md mx-auto">
               Stop waiting on artists or fighting Photoshop. Describe what you need and ship your game faster. 10 free credits, no credit card.
             </p>
             <Link href={registerUrl}
@@ -449,7 +410,7 @@ export default async function Home({
               Start Creating Free
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
-            <p className="text-[12px] text-white/20 mt-5">No credit card required. Generate your first asset in seconds.</p>
+            <p className="text-[12px] text-[#7A8294] mt-5">No credit card required. Generate your first asset in seconds.</p>
           </div>
         </div>
       </section>
@@ -461,16 +422,16 @@ export default async function Home({
             <div className="flex items-center gap-2.5">
               <Image src="/logo.png" alt="SpriteLab" width={22} height={22} loading="lazy" />
               <span className="font-bold text-sm tracking-tight">
-                Sprite<span className="text-[#F97316]">Lab</span>
+                Sprite<span className="text-[#FF8A3D]">Lab</span>
               </span>
             </div>
-            <div className="flex items-center gap-8 text-[12px] text-white/25">
-              <Link href="/privacy" className="hover:text-white/50 transition-colors">Privacy</Link>
-              <Link href="/terms" className="hover:text-white/50 transition-colors">Terms</Link>
-              <Link href="/changelog" className="hover:text-white/50 transition-colors">Changelog</Link>
-              <a href="mailto:support@sprite-lab.com" className="hover:text-white/50 transition-colors">Contact</a>
+            <div className="flex items-center gap-8 text-[12px] text-[#7A8294]">
+              <Link href="/privacy" className="hover:text-[#8B93A5] transition-colors">Privacy</Link>
+              <Link href="/terms" className="hover:text-[#8B93A5] transition-colors">Terms</Link>
+              <Link href="/changelog" className="hover:text-[#8B93A5] transition-colors">Changelog</Link>
+              <a href="mailto:support@sprite-lab.com" className="hover:text-[#8B93A5] transition-colors">Contact</a>
             </div>
-            <p className="text-[11px] text-white/15">&copy; {new Date().getFullYear()} SpriteLab. All rights reserved.</p>
+            <p className="text-[11px] text-[#7A8294]">&copy; {new Date().getFullYear()} SpriteLab. All rights reserved.</p>
           </div>
         </div>
       </footer>

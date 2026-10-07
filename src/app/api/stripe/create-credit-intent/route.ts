@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { stripe, getOrCreateStripeCustomer, CREDIT_PACKS, CreditPackName, LAUNCH_PROMO } from "@/lib/stripe";
+import { stripe, getOrCreateStripeCustomer, CREDIT_PACKS, CreditPackName, isLaunchPromoActive } from "@/lib/stripe";
 
 export async function POST(request: Request) {
   try {
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     }
 
     // Check if promo is active
-    const isPromoActive = LAUNCH_PROMO.enabled && new Date() < new Date(LAUNCH_PROMO.endDate);
+    const isPromoActive = isLaunchPromoActive();
     const bonusCredits = isPromoActive ? selectedPack.bonus : 0;
     const totalCredits = selectedPack.credits + bonusCredits;
 
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Create credit intent error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to create payment intent" },
+      { error: "Failed to create payment intent" },
       { status: 500 }
     );
   }

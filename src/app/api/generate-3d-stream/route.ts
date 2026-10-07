@@ -1,32 +1,61 @@
 import { createClient } from "@/lib/supabase/server";
 import Replicate from "replicate";
 import { getCategoryById, getSubcategoryById } from "@/config";
-import { getOrCreateUser, getUserCredits, deductCredit, saveGeneration } from "@/lib/database";
+import { getOrCreateUser, checkAndDeductCredits, refundCredits, saveGeneration } from "@/lib/database";
+import { rateLimit3DGeneration } from "@/lib/rate-limit";
+import { validateBody } from "@/lib/validation/common";
+import { generate3DStreamSchema } from "@/lib/validations";
+import { assertSafeImageUrl } from "@/lib/safe-fetch";
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
 });
 
+// Vercel Pro max. All Replicate calls share PIPELINE_BUDGET_MS (and are
+// aborted if the client disconnects) so the refund path always runs.
+export const maxDuration = 300;
+const PIPELINE_BUDGET_MS = 240_000;
+const CREDITS_REQUIRED = 4;
+
 // ===========================================
 // SSE Helper
 // ===========================================
-function createSSEStream() {
+function createSSEStream(onCancel?: () => void) {
   const encoder = new TextEncoder();
   let controller: ReadableStreamDefaultController<Uint8Array>;
+  let closed = false;
 
   const stream = new ReadableStream<Uint8Array>({
     start(c) {
       controller = c;
     },
+    cancel() {
+      // Client disconnected
+      closed = true;
+      onCancel?.();
+    },
   });
 
+  // Writes after the client went away must not throw — that would skip the
+  // refund logic in the pipeline.
   const send = (event: string, data: unknown) => {
-    const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-    controller.enqueue(encoder.encode(message));
+    if (closed) return;
+    try {
+      const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+      controller.enqueue(encoder.encode(message));
+    } catch {
+      closed = true;
+    }
   };
 
   const close = () => {
-    controller.close();
+    if (closed) return;
+    closed = true;
+    try {
+      controller.close();
+    } catch {
+      // already closed
+    }
   };
 
   return { stream, send, close };
@@ -146,14 +175,15 @@ function isRetryableError(errorMessage: string): boolean {
   return retryablePatterns.some(p => lowerMessage.includes(p.toLowerCase()));
 }
 
-async function runWithRetry<T>(fn: () => Promise<T>, maxRetries = 3, baseDelay = 5000): Promise<T> {
+async function runWithRetry<T>(fn: () => Promise<T>, maxRetries = 3, baseDelay = 5000, signal?: AbortSignal): Promise<T> {
   let lastError: Error | null = null;
   for (let attempt = 0; attempt < maxRetries; attempt++) {
+    if (signal?.aborted) throw new Error("Pipeline aborted");
     try {
       return await fn();
     } catch (error) {
       lastError = error as Error;
-      if (isRetryableError(lastError.message || "")) {
+      if (!signal?.aborted && isRetryableError(lastError.message || "")) {
         await sleep(baseDelay * (attempt + 1));
         continue;
       }
@@ -167,7 +197,32 @@ async function runWithRetry<T>(fn: () => Promise<T>, maxRetries = 3, baseDelay =
 // MAIN STREAMING HANDLER
 // ===========================================
 export async function POST(request: Request) {
-  const { stream, send, close } = createSSEStream();
+  // Aborted when the client disconnects or the time budget runs out. Every
+  // Replicate call receives this signal so an abandoned request stops
+  // spending money and falls through to the refund path.
+  const pipelineController = new AbortController();
+  const budgetTimer = setTimeout(() => pipelineController.abort(), PIPELINE_BUDGET_MS);
+  const onClientGone = () => pipelineController.abort();
+  request.signal?.addEventListener("abort", onClientGone);
+  const signal = pipelineController.signal;
+
+  const { stream, send, close } = createSSEStream(onClientGone);
+
+  // Set while credits are held and the provider has not delivered yet.
+  // Cleared BEFORE refunding so a refund happens at most once.
+  let chargedUserId: string | null = null;
+  const refundIfCharged = async (reason: string) => {
+    if (!chargedUserId) return;
+    const uid = chargedUserId;
+    chargedUserId = null;
+    console.warn(`[3D Stream] Refunding ${CREDITS_REQUIRED} credits (${reason})`);
+    await refundCredits(uid, CREDITS_REQUIRED);
+  };
+  const fail = async (message: string, reason: string) => {
+    await refundIfCharged(reason);
+    send("error", { message });
+    close();
+  };
 
   // Process in background
   (async () => {
@@ -182,21 +237,43 @@ export async function POST(request: Request) {
         return;
       }
 
-      // Parse request
-      const body = await request.json();
-      const { prompt, categoryId, subcategoryId, modelId = "rodin", styleId = "STYLIZED", qualityPreset = "medium", seed, customImageUrl } = body;
-
-      // Validation - prompt is optional if customImageUrl is provided
-      if (!customImageUrl && !prompt) {
-        send("error", { message: "Please provide a description or upload an image" });
+      const { blocked } = await rateLimit3DGeneration(user.id);
+      if (blocked) {
+        send("error", { message: "Too many requests. Please wait before trying again." });
         close();
         return;
       }
 
-      if (!categoryId || !subcategoryId) {
-        send("error", { message: "Please select category and subcategory" });
+      // Parse + validate request
+      let rawBody: unknown;
+      try {
+        rawBody = await request.json();
+      } catch {
+        send("error", { message: "Invalid request body." });
         close();
         return;
+      }
+      const parsed = validateBody(generate3DStreamSchema, rawBody);
+      if (!parsed.success) {
+        send("error", { message: parsed.error });
+        close();
+        return;
+      }
+      const { categoryId, subcategoryId, modelId, qualityPreset, seed } = parsed.data;
+      const prompt = parsed.data.prompt || "";
+      const customImageUrl = parsed.data.customImageUrl || null;
+      const styleId = Object.hasOwn(STYLE_3D_CONFIGS, parsed.data.styleId) ? parsed.data.styleId : "STYLIZED";
+
+      // Custom images must come from our own storage (uploads go to Supabase
+      // via /api/upload-image) — never an arbitrary URL.
+      if (customImageUrl) {
+        try {
+          assertSafeImageUrl(customImageUrl);
+        } catch {
+          send("error", { message: "Please upload your image again and retry." });
+          close();
+          return;
+        }
       }
 
       const category = getCategoryById(categoryId);
@@ -207,24 +284,32 @@ export async function POST(request: Request) {
         return;
       }
 
-      // Credits check
-      const CREDITS_REQUIRED = 4;
+      // Credits: atomic deduct up-front. Parallel or aborted requests can no
+      // longer get free generations; every failure path below refunds.
       await getOrCreateUser(user.id, user.email!);
-      const { credits } = await getUserCredits(user.id);
-
-      if (credits < CREDITS_REQUIRED) {
-        send("error", { message: `Not enough credits. Need ${CREDITS_REQUIRED}, have ${credits}.`, noCredits: true });
+      const creditResult = await checkAndDeductCredits(user.id, CREDITS_REQUIRED);
+      if (!creditResult.success) {
+        if (creditResult.error === "Not enough credits") {
+          send("error", { message: `Not enough credits. Need ${CREDITS_REQUIRED}.`, noCredits: true });
+        } else {
+          console.error("[3D Stream] Credit deduction failed:", creditResult.error);
+          send("error", { message: "Failed to process credits. Please try again." });
+        }
         close();
         return;
       }
+      chargedUserId = user.id;
 
       // Get style configuration
-      const styleConfig = STYLE_3D_CONFIGS[styleId] || STYLE_3D_CONFIGS.STYLIZED;
+      const styleConfig = STYLE_3D_CONFIGS[styleId];
 
       // ========================================
       // STEP 1: Get or Generate reference image
       // ========================================
-      const usedSeed = seed ? Number(seed) : Math.floor(Math.random() * 2147483647);
+      const seedNum = seed !== undefined && seed !== null && seed !== "" ? Number(seed) : NaN;
+      const usedSeed = Number.isInteger(seedNum) && seedNum >= 0 && seedNum <= 2147483647
+        ? seedNum
+        : Math.floor(Math.random() * 2147483647);
       let referenceImageUrl: string | null = null;
 
       if (customImageUrl) {
@@ -262,6 +347,7 @@ export async function POST(request: Request) {
                   guidance_scale: 7.5,
                   num_inference_steps: 30,
                 },
+                signal,
               });
             }
             // FLUX for stylized looks
@@ -276,11 +362,13 @@ export async function POST(request: Request) {
                 output_quality: 95,
                 num_inference_steps: 28,
               },
+              signal,
             });
-          });
+          }, 3, 5000, signal);
 
           referenceImageUrl = await extractImageUrl(imageOutput);
-        } catch {
+        } catch (primaryError) {
+          if (signal.aborted) throw primaryError;
           // Fallback to SDXL with style-specific negative prompt
           const sdxlOutput = await runWithRetry(async () => {
             return await replicate.run("stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b", {
@@ -294,14 +382,14 @@ export async function POST(request: Request) {
                 guidance_scale: 7.5,
                 num_inference_steps: 30,
               },
+              signal,
             });
-          });
+          }, 3, 5000, signal);
           referenceImageUrl = await extractImageUrl(sdxlOutput);
         }
 
         if (!referenceImageUrl) {
-          send("error", { message: "Failed to generate reference image" });
-          close();
+          await fail("Failed to generate reference image. Credits refunded.", "no reference image");
           return;
         }
 
@@ -333,11 +421,13 @@ export async function POST(request: Request) {
               geometry_file_format: "glb",
               mesh_mode: "Quad",
             },
+            signal,
           });
-        }, 2, 3000);
+        }, 2, 3000, signal);
         usedModel = "rodin";
       } catch (rodinError) {
         console.error("[3D Gen] Rodin failed:", rodinError);
+        if (signal.aborted) throw rodinError;
 
         // Try Hunyuan3D as fallback
         try {
@@ -351,13 +441,13 @@ export async function POST(request: Request) {
                 foreground_ratio: 0.9,
                 remesh: "none",
               },
+              signal,
             });
-          }, 2, 3000);
+          }, 2, 3000, signal);
           usedModel = "hunyuan3d";
         } catch (hunyuanError) {
           console.error("[3D Gen] Hunyuan3D failed:", hunyuanError);
-          send("error", { message: "All 3D generators failed. Please try again later." });
-          close();
+          await fail("All 3D generators failed. Credits refunded — please try again later.", "all 3D generators failed");
           return;
         }
       }
@@ -414,10 +504,13 @@ export async function POST(request: Request) {
       }
 
       if (!modelUrl) {
-        send("error", { message: "3D model generation failed - no output URL" });
-        close();
+        await fail("3D model generation failed. Credits refunded.", "no output URL");
         return;
       }
+
+      // Provider delivered — credits are now earned; no refund past here.
+      // (Even if the client disconnected, the model is saved to their gallery.)
+      chargedUserId = null;
 
       send("step", { step: 2, total: 3, title: "3D geometry complete", description: "Mesh created successfully!", completed: true });
 
@@ -426,14 +519,12 @@ export async function POST(request: Request) {
       // ========================================
       send("step", { step: 3, total: 3, title: "Finalizing", description: "Preparing download..." });
 
-      // Deduct credits
-      await deductCredit(user.id, CREDITS_REQUIRED);
-
-      // Save to database
+      // Save to database (prompt is optional when an image was uploaded)
+      const savedPrompt = prompt.trim() || "[Image to 3D]";
       await saveGeneration({
         userId: user.id,
-        prompt: prompt.trim(),
-        fullPrompt: `[3D] ${prompt.trim()}`,
+        prompt: savedPrompt,
+        fullPrompt: `[3D] ${savedPrompt}`,
         categoryId,
         subcategoryId,
         styleId: `3D_${modelId.toUpperCase()}`,
@@ -456,8 +547,15 @@ export async function POST(request: Request) {
       close();
     } catch (error) {
       console.error("[3D Stream] Error:", error);
-      send("error", { message: error instanceof Error ? error.message : "Something went wrong" });
-      close();
+      await fail(
+        signal.aborted
+          ? "3D generation timed out or was cancelled. Credits refunded."
+          : "Something went wrong. Please try again.",
+        signal.aborted ? "aborted" : "unexpected error"
+      );
+    } finally {
+      clearTimeout(budgetTimer);
+      request.signal?.removeEventListener("abort", onClientGone);
     }
   })();
 

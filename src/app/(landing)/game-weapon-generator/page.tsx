@@ -1,10 +1,9 @@
-import Link from "next/link";
-import Image from "next/image";
 import type { Metadata } from "next";
-import { ArrowRight, Sparkles, Check, Sword, Shield, Wand2 } from "lucide-react";
+import { SeoLanding } from "@/components/landing/SeoLanding";
+import { SHOWCASE } from "@/data/showcase";
 
 export const metadata: Metadata = {
-  title: "AI Game Weapon Generator | Create Swords, Guns & Magic Items - SpriteLab",
+  title: { absolute: "AI Game Weapon Generator | Create Swords, Guns & Magic Items | SpriteLab" },
   description:
     "Generate unique game weapons instantly with AI. Swords, axes, guns, staffs, shields and more. Multiple art styles. Free to try. Perfect for RPGs, action games, and MMOs.",
   keywords: [
@@ -31,226 +30,149 @@ export const metadata: Metadata = {
   },
 };
 
-const weaponTypes = [
-  {
-    icon: "⚔️",
-    name: "Melee Weapons",
-    items: ["Swords", "Axes", "Hammers", "Daggers", "Spears"],
-  },
-  {
-    icon: "🔫",
-    name: "Ranged Weapons",
-    items: ["Bows", "Crossbows", "Guns", "Rifles", "Lasers"],
-  },
-  {
-    icon: "✨",
-    name: "Magic Weapons",
-    items: ["Staffs", "Wands", "Orbs", "Tomes", "Runes"],
-  },
-  {
-    icon: "🛡️",
-    name: "Defensive Gear",
-    items: ["Shields", "Armor", "Helmets", "Gauntlets", "Boots"],
-  },
-];
-
-const styles = [
-  "Pixel Art - Retro game style",
-  "Dark Fantasy - Grimdark aesthetic",
-  "Anime - Japanese game art",
-  "Hand Painted - Painterly look",
-  "Sci-Fi - Futuristic weapons",
-  "Cartoon - Fun, colorful style",
+// Weapons first, then the rest of the curated showcase.
+const weaponShowcase = [
+  ...SHOWCASE.filter((s) => s.categoryId === "WEAPONS"),
+  ...SHOWCASE.filter((s) => s.categoryId !== "WEAPONS"),
 ];
 
 export default function GameWeaponGeneratorPage() {
   return (
-    <main className="min-h-screen bg-[#11151b] text-white overflow-x-hidden">
-      {/* Hero */}
-      <section className="relative min-h-[60vh] sm:min-h-[80vh] flex items-center justify-center pt-20 pb-16 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#ef4444]/5 via-transparent to-transparent" />
-        <div className="absolute top-1/4 left-1/4 w-48 sm:w-96 h-48 sm:h-96 bg-[#ef4444]/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-48 sm:w-96 h-48 sm:h-96 bg-[#FF6B2C]/10 rounded-full blur-3xl" />
-
-        <div className="max-w-6xl mx-auto px-3 sm:px-4 relative z-10">
-          <Link href="/" className="flex items-center justify-center gap-2 mb-5 sm:mb-8">
-            <Image src="/logo.png" alt="SpriteLab" width={40} height={40} />
-            <span className="font-display font-bold text-2xl">
-              Sprite<span className="text-[#FF6B2C]">Lab</span>
-            </span>
-          </Link>
-
-          <div className="text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#ef4444]/10 border border-[#ef4444]/20 text-[#ef4444] text-xs sm:text-sm font-medium mb-6">
-              <Sword className="w-4 h-4" />
-              AI Weapon Generator
-            </div>
-
-            <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
-              Generate <span className="text-[#ef4444]">Epic Weapons</span>
-              <br />
-              <span className="text-white/80">for Your Game</span>
-            </h1>
-
-            <p className="text-base sm:text-lg md:text-xl text-white/60 max-w-2xl mx-auto mb-10">
-              Create unique swords, guns, staffs, shields and more. Any style, any fantasy.
-              Just describe your weapon and watch the magic happen.
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
-              <Link
-                href="/register"
-                className="inline-flex items-center justify-center gap-2 px-5 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-[#ef4444] to-[#f59e0b] text-black font-semibold rounded-lg hover:opacity-90 transition-opacity text-base sm:text-lg"
-              >
-                Create Weapons Free
-                <ArrowRight className="w-5 h-5" />
-              </Link>
-              <Link
-                href="/#try-it"
-                className="inline-flex items-center justify-center gap-2 px-5 sm:px-8 py-3 sm:py-4 bg-white/5 border border-white/10 text-white font-semibold rounded-lg hover:bg-white/10 transition-colors text-base sm:text-lg"
-              >
-                Try It Now
-              </Link>
-            </div>
-
-            <p className="text-white/40 text-xs sm:text-sm mt-6">
-              10 free credits • No credit card required
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Weapon Types */}
-      <section className="py-12 sm:py-20 relative">
-        <div className="max-w-6xl mx-auto px-3 sm:px-4">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-4">
-            Every <span className="text-[#ef4444]">Weapon Type</span> You Need
-          </h2>
-          <p className="text-sm sm:text-base text-white/60 text-center mb-8 sm:mb-12 max-w-xl mx-auto">
-            From medieval swords to futuristic laser guns - we&apos;ve got you covered
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
-            {weaponTypes.map((type) => (
-              <div
-                key={type.name}
-                className="bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6 hover:border-[#ef4444]/50 transition-colors"
-              >
-                <div className="text-3xl sm:text-4xl mb-4">{type.icon}</div>
-                <h3 className="text-lg sm:text-xl font-bold mb-3">{type.name}</h3>
-                <ul className="space-y-1">
-                  {type.items.map((item) => (
-                    <li key={item} className="text-white/60 text-xs sm:text-sm flex items-center gap-2">
-                      <span className="w-1 h-1 bg-[#ef4444] rounded-full" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Styles */}
-      <section className="py-12 sm:py-20 bg-white/[0.02]">
-        <div className="max-w-4xl mx-auto px-3 sm:px-4">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-4">
-            Multiple <span className="text-[#FF6B2C]">Art Styles</span>
-          </h2>
-          <p className="text-sm sm:text-base text-white/60 text-center mb-8 sm:mb-12">
-            Match your game&apos;s aesthetic perfectly
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-            {styles.map((style) => (
-              <div
-                key={style}
-                className="flex items-center gap-3 p-3 sm:p-4 bg-white/5 rounded-lg"
-              >
-                <Check className="w-5 h-5 text-[#FF6B2C] flex-shrink-0" />
-                <span className="text-xs sm:text-sm">{style}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works */}
-      <section className="py-12 sm:py-20">
-        <div className="max-w-4xl mx-auto px-3 sm:px-4">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-8 sm:mb-12">
-            How It <span className="text-[#FF6B2C]">Works</span>
-          </h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-8">
-            <div className="text-center">
-              <div className="w-12 h-12 rounded-full bg-[#FF6B2C]/20 flex items-center justify-center mx-auto mb-4 text-[#FF6B2C] font-bold text-xl">
-                1
-              </div>
-              <h3 className="font-bold mb-2 text-sm sm:text-base">Describe Your Weapon</h3>
-              <p className="text-white/60 text-xs sm:text-sm">
-                &quot;A flaming sword with dragon engravings&quot;
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="w-12 h-12 rounded-full bg-[#FF6B2C]/20 flex items-center justify-center mx-auto mb-4 text-[#FF6B2C] font-bold text-xl">
-                2
-              </div>
-              <h3 className="font-bold mb-2 text-sm sm:text-base">Choose Style</h3>
-              <p className="text-white/60 text-xs sm:text-sm">
-                Pick from pixel art, dark fantasy, anime, and more
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="w-12 h-12 rounded-full bg-[#FF6B2C]/20 flex items-center justify-center mx-auto mb-4 text-[#FF6B2C] font-bold text-xl">
-                3
-              </div>
-              <h3 className="font-bold mb-2 text-sm sm:text-base">Download & Use</h3>
-              <p className="text-white/60 text-xs sm:text-sm">
-                Get your weapon PNG ready for your game engine
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="py-12 sm:py-20 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-[#ef4444]/10 via-transparent to-[#f59e0b]/10" />
-        <div className="max-w-4xl mx-auto px-3 sm:px-4 text-center relative z-10">
-          <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold mb-6">
-            Forge Your <span className="text-[#ef4444]">Arsenal</span> Today
-          </h2>
-          <p className="text-sm sm:text-base text-white/60 mb-8 max-w-xl mx-auto">
-            Stop searching for weapon assets. Generate exactly what you need in seconds.
-          </p>
-          <Link
-            href="/register"
-            className="inline-flex items-center justify-center gap-2 px-5 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-[#ef4444] to-[#f59e0b] text-black font-semibold rounded-lg hover:opacity-90 transition-opacity text-base sm:text-lg"
-          >
-            Get 10 Free Credits
-            <ArrowRight className="w-5 h-5" />
-          </Link>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="py-8 border-t border-white/5">
-        <div className="max-w-6xl mx-auto px-3 sm:px-4 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
-          <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo.png" alt="SpriteLab" width={24} height={24} />
-            <span className="font-display font-bold">
-              Sprite<span className="text-[#FF6B2C]">Lab</span>
-            </span>
-          </Link>
-          <div className="flex items-center gap-4 sm:gap-6 text-xs sm:text-sm text-white/40">
-            <Link href="/pricing" className="hover:text-white">Pricing</Link>
-            <Link href="/privacy" className="hover:text-white">Privacy</Link>
-            <Link href="/terms" className="hover:text-white">Terms</Link>
-          </div>
-        </div>
-      </footer>
-    </main>
+    <SeoLanding
+      slug="game-weapon-generator"
+      appName="SpriteLab AI Game Weapon Generator"
+      appDescription="Generate game weapon sprites — swords, axes, guns, staffs, shields and more — from a text prompt. Transparent PNG, multiple art styles."
+      heroLine="ai game weapon generator"
+      h1={
+        <>
+          AI Game Weapon Generator
+          <br />
+          <span className="text-[#FF8A3D]">forge epic weapons</span>
+        </>
+      }
+      subtitle="Create unique swords, guns, staffs, shields and more for your game. Any style, any fantasy — just describe your weapon."
+      trust={["3 free tries, no account", "10 credits on signup", "transparent png", "commercial license"]}
+      floating={[
+        { src: "/showcase/fire-sword.png", alt: "", pixel: true, cls: "left-[7%] top-[30%] w-24 animate-float" },
+        { src: "/showcase/ice-staff.png", alt: "", pixel: true, cls: "left-[14%] top-[60%] w-20 animate-float [animation-delay:1.2s]" },
+        { src: "/showcase/flame-blade.png", alt: "", pixel: true, cls: "right-[8%] top-[26%] w-24 animate-float [animation-delay:0.6s]" },
+        { src: "/showcase/goblin-archer.png", alt: "", pixel: true, cls: "right-[15%] top-[60%] w-16 animate-float [animation-delay:1.8s]" },
+      ]}
+      sections={[
+        {
+          kind: "cards",
+          id: "weapon-types",
+          eyebrow: "weapon types",
+          title: (
+            <>
+              Every <span className="text-[#FF8A3D]">weapon type</span> you need
+            </>
+          ),
+          intro: "From medieval swords to futuristic laser guns — fantasy weapons, sci-fi weapons and all the equipment in between.",
+          cols: 4,
+          cards: [
+            {
+              title: "Melee weapons",
+              items: ["Swords", "Axes", "Hammers", "Daggers", "Spears"],
+              image: { src: "/showcase/flame-blade.png", alt: "Pixel art flame blade sword sprite generated by SpriteLab", pixel: true },
+            },
+            {
+              title: "Ranged weapons",
+              items: ["Bows", "Crossbows", "Guns", "Rifles", "Lasers"],
+              image: { src: "/showcase/goblin-archer.png", alt: "Pixel art goblin archer with a bow generated by SpriteLab", pixel: true },
+            },
+            {
+              title: "Magic weapons",
+              items: ["Staffs", "Wands", "Orbs", "Tomes", "Runes"],
+              image: { src: "/showcase/ice-staff.png", alt: "Pixel art ice crystal staff sprite generated by SpriteLab", pixel: true },
+            },
+            {
+              title: "Defensive gear",
+              items: ["Shields", "Armor", "Helmets", "Gauntlets", "Boots"],
+              image: { src: "/showcase/armored-knight.png", alt: "Pixel art armored knight with shield and armor generated by SpriteLab", pixel: true },
+            },
+          ],
+        },
+        { kind: "gallery", items: weaponShowcase },
+        {
+          kind: "cards",
+          id: "styles",
+          eyebrow: "art styles",
+          title: (
+            <>
+              Multiple <span className="text-[#FF8A3D]">art styles</span>
+            </>
+          ),
+          intro: "Match your game's aesthetic perfectly — the same sword-and-shield prompt, rendered in each style.",
+          cards: [
+            { title: "Pixel Art", tag: "retro", body: "Retro game style weapon sprites on a real pixel grid.", image: { src: "/styles/pixel_art_16.png", alt: "Pixel art style weapon and armor example", pixel: true } },
+            { title: "Dark Fantasy", tag: "grimdark", body: "Grimdark, gritty medieval aesthetic for souls-likes and ARPGs.", image: { src: "/styles/dark_souls.png", alt: "Dark fantasy style sword and shield example" } },
+            { title: "Anime", tag: "jrpg", body: "Japanese game art, clean lines — ideal for JRPG weapon art.", image: { src: "/styles/anime_game.png", alt: "Anime style sword and shield example" } },
+            { title: "Hand Painted", tag: "painterly", body: "A painterly look for rich item icons and inventory art.", image: { src: "/styles/hand_painted.png", alt: "Hand painted style sword and shield example" } },
+            { title: "Realistic", tag: "aaa", body: "AAA concept-art detail — great for sci-fi rifles and futuristic weapons too.", image: { src: "/styles/realistic_painted.png", alt: "Realistic painted style sword and shield example" } },
+            { title: "Cartoon", tag: "fun", body: "Fun, colorful style for casual and mobile games.", image: { src: "/styles/cartoon_western.png", alt: "Cartoon style sword and shield example" } },
+          ],
+        },
+        {
+          kind: "steps",
+          eyebrow: "how it works",
+          title: (
+            <>
+              How it <span className="text-[#FF8A3D]">works</span>
+            </>
+          ),
+          steps: [
+            { title: "Describe your weapon", body: "“A flaming sword with dragon engravings” — add materials, colors and mood." },
+            { title: "Choose a style", body: "Pick from pixel art, dark fantasy, anime and more to match your game." },
+            { title: "Download & use", body: "Get your weapon PNG with a transparent background, ready for your game engine." },
+          ],
+        },
+        {
+          kind: "prompts",
+          eyebrow: "example prompts",
+          title: (
+            <>
+              Weapon <span className="text-[#FF8A3D]">prompt ideas</span>
+            </>
+          ),
+          intro: "A few starting points for RPGs, action games and MMOs.",
+          prompts: [
+            "a flaming sword with dragon engravings",
+            "an ice crystal staff glowing blue",
+            "a rusty double-headed battle axe",
+            "a futuristic plasma rifle with neon accents",
+            "an elven longbow carved from white wood",
+            "a round wooden shield with an iron rim",
+          ],
+        },
+      ]}
+      faq={[
+        {
+          q: "What kinds of weapons can I generate?",
+          a: "Melee weapons like swords, axes, hammers, daggers and spears; ranged weapons like bows, crossbows, guns and lasers; magic staffs, wands, orbs and tomes; and defensive gear like shields, armor and helmets.",
+        },
+        {
+          q: "Can I use the weapon sprites in a commercial game?",
+          a: "Yes. You get full ownership of every asset you generate and can use it in any commercial project, with no attribution required.",
+        },
+        {
+          q: "Which art styles work best for weapons?",
+          a: "Pixel art suits retro and roguelike games, Dark Fantasy fits souls-likes and ARPGs, Anime fits JRPGs, and Hand Painted or Realistic work well for detailed item icons.",
+        },
+        {
+          q: "Is it free to try?",
+          a: "Yes. You can try the generator on this page without an account, and signing up gives you 10 free credits — no credit card required.",
+        },
+      ]}
+      cta={{
+        title: (
+          <>
+            Forge your <span className="text-[#FF8A3D]">arsenal</span> today
+          </>
+        ),
+        body: "Stop searching for weapon assets. Generate exactly what you need in seconds.",
+        button: "Get 10 free credits",
+      }}
+    />
   );
 }

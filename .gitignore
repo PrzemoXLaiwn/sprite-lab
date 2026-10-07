@@ -49,3 +49,6 @@ nul
 
 # archive/migration scripts
 /scripts/archive/
+
+.vercel
+.env*

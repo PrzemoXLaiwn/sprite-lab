@@ -2,10 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle, Sparkles, Coins } from "lucide-react";
-import Link from "next/link";
+import { CreditChip, PageSpinner, SuccessShell } from "../../_components/checkout-ui";
 
 // Declare gtag for TypeScript
 declare global {
@@ -94,61 +91,25 @@ function SuccessContent() {
   }, []);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="max-w-md w-full">
-        <CardContent className="pt-8 pb-8 text-center">
-          {/* Success Icon */}
-          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-green-500/10 flex items-center justify-center">
-            <CheckCircle className="w-10 h-10 text-green-500" />
-          </div>
-
-          {/* Title */}
-          <h1 className="text-2xl font-bold mb-2">Credits Added!</h1>
-
-          {/* Description */}
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <Coins className="w-5 h-5 text-orange-500" />
-            <span className="text-lg font-semibold text-orange-500">+{credits} credits</span>
-          </div>
-          <p className="text-muted-foreground mb-6">
-            Your {packName} pack has been added to your account.
-          </p>
-
-          {/* Countdown */}
-          <p className="text-sm text-muted-foreground mb-6">
-            Redirecting to generator in <span className="text-primary font-medium">{countdown}</span> seconds...
-          </p>
-
-          {/* CTA Button */}
-          <Button asChild className="w-full bg-gradient-to-r from-primary to-purple-500 hover:opacity-90 mb-4">
-            <Link href="/generate">
-              <Sparkles className="w-4 h-4 mr-2" />
-              Start Creating
-            </Link>
-          </Button>
-
-          {/* Secondary Links */}
-          <div className="flex gap-4 justify-center text-sm">
-            <Link href="/assets" className="text-muted-foreground hover:text-foreground">
-              My Assets
-            </Link>
-            <Link href="/pricing" className="text-muted-foreground hover:text-foreground">
-              Buy More Credits
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    <SuccessShell
+      title="Credits added"
+      countdown={countdown}
+      secondaryLinks={[
+        { href: "/assets", label: "My assets" },
+        { href: "/pricing#credit-packs", label: "Buy more credits" },
+      ]}
+    >
+      <p>
+        <CreditChip>+{credits} credits</CreditChip>
+      </p>
+      <p className="text-[#8B93A5]">Your {packName} pack has been added to your account.</p>
+    </SuccessShell>
   );
 }
 
 export default function CreditSuccessPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <Coins className="w-8 h-8 animate-pulse text-orange-500" />
-      </div>
-    }>
+    <Suspense fallback={<PageSpinner />}>
       <SuccessContent />
     </Suspense>
   );

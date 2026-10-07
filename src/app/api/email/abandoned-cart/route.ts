@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { stripe, PLANS } from "@/lib/stripe";
+import { isAuthorizedCronRequest } from "@/lib/cron-auth";
+import { stripe, PLANS, CREDIT_PACKS } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { sendAbandonedCartEmail } from "@/lib/email/send";
 import { Prisma } from "@prisma/client";
@@ -19,36 +20,26 @@ function getPlanFromPriceId(priceId: string): { name: string; credits: string; p
   if (priceId === process.env.STRIPE_PRO_PRICE_ID) {
     return { name: PLANS.PRO.name, credits: `${PLANS.PRO.credits} credits/month`, price: `£${PLANS.PRO.price}` };
   }
-  if (priceId === process.env.STRIPE_UNLIMITED_PRICE_ID) {
+  if (PLANS.UNLIMITED.priceId && priceId === PLANS.UNLIMITED.priceId) {
     return { name: PLANS.UNLIMITED.name, credits: `${PLANS.UNLIMITED.credits} credits/month`, price: `£${PLANS.UNLIMITED.price}` };
   }
-  // Check one-time credit packs
-  if (priceId === process.env.STRIPE_CREDITS_25_PRICE_ID) {
-    return { name: "Spark Pack", credits: "30 credits", price: "£0.99" };
-  }
-  if (priceId === process.env.STRIPE_CREDITS_75_PRICE_ID) {
-    return { name: "Blaze Pack", credits: "90 credits", price: "£2.99" };
-  }
-  if (priceId === process.env.STRIPE_CREDITS_200_PRICE_ID) {
-    return { name: "Inferno Pack", credits: "250 credits", price: "£6.99" };
-  }
-  if (priceId === process.env.STRIPE_CREDITS_500_PRICE_ID) {
-    return { name: "Supernova Pack", credits: "650 credits", price: "£19.99" };
+  // One-time credit packs — derived from CREDIT_PACKS so names/prices match checkout
+  for (const pack of Object.values(CREDIT_PACKS)) {
+    if (pack.priceId && priceId === pack.priceId) {
+      return {
+        name: `${pack.name} Pack`,
+        credits: `${pack.credits + pack.bonus} credits`,
+        price: `£${(pack.price / 100).toFixed(2)}`,
+      };
+    }
   }
   return null;
 }
 
 export async function GET(request: NextRequest) {
   try {
-    // Verify authorization
-    const authHeader = request.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET;
-    const isVercelCron = request.headers.get("x-vercel-cron") === "true";
-
-    const isAuthorized =
-      isVercelCron || (cronSecret && authHeader === `Bearer ${cronSecret}`);
-
-    if (!isAuthorized && process.env.NODE_ENV === "production") {
+    // Verify CRON_SECRET
+    if (!isAuthorizedCronRequest(request)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -196,7 +187,7 @@ export async function GET(request: NextRequest) {
         }
       } else {
         results.failed++;
-        results.errors.push(`${email}: ${result.error}`);
+        results.errors.push(`${email.replace(/^(.).*@/, "$1***@")}: ${result.error}`);
       }
 
       // Small delay to avoid rate limits

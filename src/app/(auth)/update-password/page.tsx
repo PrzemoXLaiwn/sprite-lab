@@ -3,12 +3,18 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Lock, CheckCircle, Loader2, AlertCircle, Eye, EyeOff, Check, X } from "lucide-react";
+import { CheckCircle2, Lock } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import {
+  AuthHeading,
+  Field,
+  PasswordInput,
+  PrimaryButton,
+  RuleItem,
+  StatusMessage,
+  linkCls,
+  primaryBtnCls,
+} from "../_components/auth-ui";
 
 export default function UpdatePasswordPage() {
   const router = useRouter();
@@ -96,163 +102,89 @@ export default function UpdatePasswordPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          <div className="bg-[#11151b]/80 border border-white/10 rounded-2xl p-8 backdrop-blur-xl text-center">
-            <div className="w-16 h-16 rounded-full bg-[#FF6B2C]/20 flex items-center justify-center mx-auto mb-6">
-              <CheckCircle className="w-8 h-8 text-[#FF6B2C]" />
-            </div>
-
-            <h1 className="text-2xl font-bold mb-2">Password updated!</h1>
-            <p className="text-white/60 mb-6">
-              Your password has been successfully updated. Redirecting you to login...
-            </p>
-
-            <Link href="/login">
-              <Button className="w-full bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] text-black font-semibold">
-                Go to login
-              </Button>
-            </Link>
-          </div>
-        </div>
+      <div>
+        <AuthHeading
+          icon={<CheckCircle2 className="h-5 w-5" />}
+          title="Password updated"
+          subtitle="Your password has been changed. Redirecting you to sign in..."
+        />
+        <Link href="/login" className={primaryBtnCls}>
+          Go to sign in
+        </Link>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <Link href="/" className="flex items-center justify-center gap-2 mb-8 group">
-          <div className="relative">
-            <div className="absolute inset-0 bg-[#FF6B2C]/30 rounded-lg blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
-            <Image src="/logo.png" alt="SpriteLab" width={40} height={40} className="relative" />
-          </div>
-          <span className="font-display font-bold text-2xl tracking-tight">
-            Sprite<span className="text-[#FF6B2C]">Lab</span>
-          </span>
-        </Link>
+    <div>
+      <AuthHeading
+        icon={<Lock className="h-5 w-5" />}
+        title="Set a new password"
+        subtitle="Choose a strong password you haven't used before."
+      />
 
-        {/* Update Form */}
-        <div className="bg-[#11151b]/80 border border-white/10 rounded-2xl p-8 backdrop-blur-xl">
-          <div className="text-center mb-8">
-            <div className="w-12 h-12 rounded-full bg-[#FF6B2C]/20 flex items-center justify-center mx-auto mb-4">
-              <Lock className="w-6 h-6 text-[#FF6B2C]" />
-            </div>
-            <h1 className="text-2xl font-bold mb-2">Set new password</h1>
-            <p className="text-white/60">
-              Enter your new password below.
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-              <div className="flex flex-col gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  {error}
-                </div>
-                {error.includes("expired") && (
-                  <Link
-                    href="/reset-password"
-                    className="text-[#FF6B2C] hover:underline text-xs mt-1"
-                  >
-                    Request a new reset link →
-                  </Link>
-                )}
-              </div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <StatusMessage>
+            {error}
+            {error.includes("expired") && (
+              <Link href="/reset-password" className={`mt-1 block text-[12px] ${linkCls}`}>
+                Request a new reset link
+              </Link>
             )}
+          </StatusMessage>
+        )}
 
-            <div className="space-y-2">
-              <Label htmlFor="password">New password</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="bg-white/5 border-white/10 focus:border-[#FF6B2C]/50 pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
+        <Field id="password" label="New password">
+          <PasswordInput
+            id="password"
+            autoComplete="new-password"
+            placeholder="At least 8 characters"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            visible={showPassword}
+            onToggle={() => setShowPassword(!showPassword)}
+            required
+          />
+          {/* Password requirements */}
+          {password.length > 0 && (
+            <div className="grid grid-cols-2 gap-1.5 pt-1.5">
+              <RuleItem passed={passwordChecks.length}>8+ characters</RuleItem>
+              <RuleItem passed={passwordChecks.uppercase}>Uppercase letter</RuleItem>
+              <RuleItem passed={passwordChecks.lowercase}>Lowercase letter</RuleItem>
+              <RuleItem passed={passwordChecks.number}>Number</RuleItem>
             </div>
+          )}
+        </Field>
 
-            {/* Password requirements */}
-            {password.length > 0 && (
-              <div className="space-y-2 p-3 rounded-lg bg-white/5 border border-white/10">
-                <p className="text-xs text-white/60 font-medium mb-2">Password requirements:</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <PasswordCheck passed={passwordChecks.length} label="8+ characters" />
-                  <PasswordCheck passed={passwordChecks.uppercase} label="Uppercase letter" />
-                  <PasswordCheck passed={passwordChecks.lowercase} label="Lowercase letter" />
-                  <PasswordCheck passed={passwordChecks.number} label="Number" />
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm new password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                placeholder="••••••••"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                className="bg-white/5 border-white/10 focus:border-[#FF6B2C]/50"
-              />
-              {confirmPassword.length > 0 && (
-                <div className="flex items-center gap-1.5 mt-1">
-                  {passwordChecks.match ? (
-                    <Check className="w-3.5 h-3.5 text-[#FF6B2C]" />
-                  ) : (
-                    <X className="w-3.5 h-3.5 text-red-400" />
-                  )}
-                  <span className={`text-xs ${passwordChecks.match ? "text-[#FF6B2C]" : "text-red-400"}`}>
-                    {passwordChecks.match ? "Passwords match" : "Passwords don't match"}
-                  </span>
-                </div>
-              )}
+        <Field id="confirmPassword" label="Confirm new password">
+          <PasswordInput
+            id="confirmPassword"
+            autoComplete="new-password"
+            placeholder="Repeat your password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+          />
+          {confirmPassword.length > 0 && (
+            <div className="pt-1.5">
+              <RuleItem passed={passwordChecks.match} tone={passwordChecks.match ? undefined : "error"}>
+                {passwordChecks.match ? "Passwords match" : "Passwords don't match"}
+              </RuleItem>
             </div>
+          )}
+        </Field>
 
-            <Button
-              type="submit"
-              className="w-full bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] text-black font-semibold hover:opacity-90"
-              disabled={isLoading || !isPasswordValid}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Updating password...
-                </>
-              ) : (
-                "Update password"
-              )}
-            </Button>
-          </form>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function PasswordCheck({ passed, label }: { passed: boolean; label: string }) {
-  return (
-    <div className="flex items-center gap-1.5">
-      {passed ? (
-        <Check className="w-3.5 h-3.5 text-[#FF6B2C]" />
-      ) : (
-        <X className="w-3.5 h-3.5 text-white/30" />
-      )}
-      <span className={`text-xs ${passed ? "text-[#FF6B2C]" : "text-white/40"}`}>{label}</span>
+        <PrimaryButton
+          type="submit"
+          disabled={isLoading || !isPasswordValid}
+          loading={isLoading}
+          loadingText="Updating password..."
+          className="mt-2"
+        >
+          Update password
+        </PrimaryButton>
+      </form>
     </div>
   );
 }

@@ -1,8 +1,26 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getUserCredits, checkAndDeductCredits, refundCredits, saveGeneration } from "@/lib/database";
-import { uploadImageToStorage } from "@/lib/storage";
-import { getRunwareClient, type UserTier, RUNWARE_MODELS, DEFAULT_MODEL, MODEL_COSTS } from "@/lib/runware";
+import { persistImage } from "@/lib/storage";
+import {
+  getRunwareClient,
+  type UserTier,
+  RUNWARE_MODELS,
+  DEFAULT_MODEL,
+  MODEL_COSTS,
+  RUNWARE_INFERENCE_TIMEOUT_MS,
+  withTimeout,
+} from "@/lib/runware";
+import { safeFetchImage, safeFetchErrorResponse } from "@/lib/safe-fetch";
+import { rateLimitUserGeneration } from "@/lib/rate-limit";
+import { parseJsonBody, validateBody } from "@/lib/validation/common";
+import { editImageSchema } from "@/lib/validations";
+
+// Runware edit is capped at RUNWARE_INFERENCE_TIMEOUT_MS (75s); leaves
+// headroom for input validation, re-hosting and refunds.
+export const maxDuration = 120;
+
+const MAX_INPUT_IMAGE_MB = 10;
 
 // ===========================================
 // RUNWARE-BASED IMAGE EDITING
@@ -579,7 +597,7 @@ async function editImageWithRunware(
 
     // Use imageInference with inputImage for img2img editing
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = await (runware as any).imageInference({
+    const result = await withTimeout((runware as any).imageInference({
       positivePrompt: prompt,
       negativePrompt: negativePrompt,
       model: modelAIR,
@@ -592,7 +610,7 @@ async function editImageWithRunware(
       numberResults: 1,
       outputType: "URL",
       outputFormat: "PNG",
-    });
+    }) as Promise<unknown[]>, RUNWARE_INFERENCE_TIMEOUT_MS, "Runware edit");
 
     if (!result || result.length === 0) {
       return { success: false, error: "No result from Runware" };
@@ -629,6 +647,8 @@ async function editImageWithRunware(
 
 export async function POST(request: Request) {
   const startTime = Date.now();
+  let creditsDeducted = false;
+  let chargedUserId: string | null = null;
 
   try {
     // Authentication
@@ -655,9 +675,45 @@ export async function POST(request: Request) {
       );
     }
 
-    // Atomically check and deduct credits BEFORE processing
+    const { blocked: rateLimitBlocked } = await rateLimitUserGeneration(user.id);
+    if (rateLimitBlocked) return rateLimitBlocked;
+
+    // ── Parse + validate BEFORE charging ─────────────────────────────────────
+    const rawBody = await parseJsonBody(request);
+    if (rawBody === null) {
+      return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+    }
+    const parsed = validateBody(editImageSchema, rawBody);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
+    }
+    const {
+      imageUrl,
+      editPrompt: trimmedPrompt,
+      originalGeneration,
+      strength: userStrength,
+    } = parsed.data;
+
+    // Image validation (SSRF-safe, size capped while streaming). Also
+    // enforces the host allowlist for the URL we hand to Runware.
+    try {
+      await safeFetchImage(imageUrl, { maxBytes: MAX_INPUT_IMAGE_MB * 1024 * 1024 });
+    } catch (fetchError) {
+      console.warn("[Edit] Input image rejected:", fetchError instanceof Error ? fetchError.message : fetchError);
+      const { error, status } = safeFetchErrorResponse(fetchError, MAX_INPUT_IMAGE_MB);
+      return NextResponse.json({ error }, { status });
+    }
+
+    // Atomically check and deduct credits — only after the request is valid
     const creditResult = await checkAndDeductCredits(user.id, 1);
     if (!creditResult.success) {
+      if (creditResult.error !== "Not enough credits") {
+        console.error("[Edit] Credit deduction failed:", creditResult.error);
+        return NextResponse.json(
+          { error: "Failed to process credits. Please try again." },
+          { status: 500 }
+        );
+      }
       return NextResponse.json(
         {
           error: "No credits left! Please top up your account.",
@@ -666,51 +722,14 @@ export async function POST(request: Request) {
         { status: 402 }
       );
     }
-
-    // Parse request
-    const body = await request.json();
-    const {
-      imageUrl,
-      editPrompt,
-      originalGeneration,
-      strength: userStrength,
-    } = body;
-
-    // Validation
-    if (!imageUrl) {
-      return NextResponse.json({ error: "No image URL provided" }, { status: 400 });
-    }
-
-    if (!editPrompt || !editPrompt.trim()) {
-      return NextResponse.json(
-        { error: "Please describe what you want to change" },
-        { status: 400 }
-      );
-    }
-
-    // Image size validation
-    try {
-      const imageResponse = await fetch(imageUrl);
-      const imageBuffer = await imageResponse.arrayBuffer();
-      const imageSizeMB = imageBuffer.byteLength / (1024 * 1024);
-
-      if (imageSizeMB > 10) {
-        return NextResponse.json(
-          { error: "Image too large (max 10MB). Please use a smaller image." },
-          { status: 400 }
-        );
-      }
-    } catch (sizeError) {
-      console.warn("Could not validate image size:", sizeError);
-    }
-
-    const trimmedPrompt = editPrompt.trim();
+    creditsDeducted = true;
+    chargedUserId = user.id;
 
     // Analyze user intent
     const editAnalysis = analyzeEditIntent(trimmedPrompt);
 
     // Detect item type and find best preset
-    const itemType = detectItemType(originalGeneration);
+    const itemType = detectItemType(originalGeneration ?? undefined);
     const { preset, presetName } = findBestPreset(trimmedPrompt);
 
     // Build prompts
@@ -721,16 +740,14 @@ export async function POST(request: Request) {
     // Get user tier for model selection
     const userTier = getUserTier(plan, role);
 
-    // Logging
-    console.log("===========================================");
-    console.log("RUNWARE IMAGE EDIT");
-    console.log("===========================================");
-    console.log("User prompt:", trimmedPrompt);
-    console.log("Edit type:", editAnalysis.type);
-    console.log("Preset:", presetName || "default");
-    console.log("User tier:", userTier);
-    console.log("Strength:", strength);
-    console.log("Final prompt:", finalPrompt.substring(0, 200) + "...");
+    // Logging (prompt truncated — don't dump user content into logs)
+    console.log("[Edit] Runware image edit", {
+      editType: editAnalysis.type,
+      preset: presetName || "default",
+      userTier,
+      strength,
+      promptPreview: trimmedPrompt.substring(0, 80),
+    });
 
     // Run the edit with Runware
     const result = await editImageWithRunware(
@@ -743,21 +760,26 @@ export async function POST(request: Request) {
 
     if (!result.success || !result.imageUrl) {
       console.error("Edit failed:", result.error);
-      // Refund credit on failure
+      // Refund credit on failure (exactly once — flag cleared)
+      creditsDeducted = false;
       await refundCredits(user.id, 1);
       return NextResponse.json(
-        { error: result.error || "Edit failed. Please try different instructions. Credit refunded." },
+        { error: "Edit failed. Please try different instructions. Credit refunded." },
         { status: 500 }
       );
     }
+    // Provider succeeded — from here on the edit is delivered; no refund.
+    creditsDeducted = false;
 
     console.log("Edit succeeded! Uploading to storage...");
 
     // Upload to permanent storage
     const fileName = `edited-${Date.now()}-${presetName || "custom"}`;
-    const uploadResult = await uploadImageToStorage(result.imageUrl, user.id, fileName);
-
-    const finalUrl = uploadResult.success && uploadResult.url ? uploadResult.url : result.imageUrl;
+    const persistedUrl = await persistImage(result.imageUrl, user.id, fileName);
+    if (!persistedUrl) {
+      console.error("[Edit] Re-host failed — saving TEMPORARY provider URL (will expire)");
+    }
+    const finalUrl = persistedUrl ?? result.imageUrl;
 
     // Save to database
     const saveResult = await saveGeneration({
@@ -803,10 +825,13 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("Edit image error:", error);
-    // Note: We can't easily refund here since we don't know if credits were deducted
-    // The checkAndDeductCredits is atomic so if it failed, no credits were deducted
+    // Refund only if we charged and the provider had not yet delivered.
+    if (creditsDeducted && chargedUserId) {
+      creditsDeducted = false;
+      await refundCredits(chargedUserId, 1);
+    }
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Edit failed" },
+      { error: "Edit failed. Please try again." },
       { status: 500 }
     );
   }

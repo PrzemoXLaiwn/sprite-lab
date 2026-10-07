@@ -7,6 +7,8 @@ import { SpecialOfferEmail } from "./templates/SpecialOfferEmail";
 import { DailyReminderEmail } from "./templates/DailyReminderEmail";
 import { WeeklyDigestEmail } from "./templates/WeeklyDigestEmail";
 import { NewFeaturesEmail } from "./templates/NewFeaturesEmail";
+import { RelaunchEmail, type RelaunchEmailProps } from "./templates/RelaunchEmail";
+import { unsubscribeHeaders } from "./unsubscribe";
 import { prisma } from "@/lib/prisma";
 import { render } from "@react-email/render";
 
@@ -25,7 +27,8 @@ export type EmailType =
   | "SPECIAL_OFFER"
   | "DAILY_REMINDER"
   | "WEEKLY_DIGEST"
-  | "NEW_FEATURES";
+  | "NEW_FEATURES"
+  | "RELAUNCH";
 
 /**
  * Log email to database for tracking
@@ -671,6 +674,41 @@ export async function sendNewFeaturesEmail(
       errorMessage: errorMsg,
       metadata: { campaignId: options.campaignId },
     });
+    return { success: false, error: errorMsg };
+  }
+}
+
+/**
+ * "SpriteLab is back" relaunch email (one per account, see relaunch-campaign.ts)
+ */
+export async function sendRelaunchEmail(
+  email: string,
+  userId: string,
+  props: RelaunchEmailProps,
+  options: { campaignId?: string } = {}
+): Promise<EmailResult> {
+  const subject = `SpriteLab is back — rebuilt, with ${props.bonus} free credits for you`;
+  const metadata = { campaignId: options.campaignId ?? "relaunch-2026-10", bonus: props.bonus };
+  try {
+    const html = await render(<RelaunchEmail {...props} />);
+    if (!resend) return { success: false, error: "RESEND_API_KEY not configured" };
+    const { data, error } = await resend.emails.send({
+      from: EMAIL_FROM,
+      to: email,
+      replyTo: EMAIL_REPLY_TO,
+      subject,
+      html,
+      headers: unsubscribeHeaders(userId),
+    });
+    if (error) {
+      await logEmail({ email, userId, type: "RELAUNCH", subject, status: "failed", errorMessage: error.message, metadata });
+      return { success: false, error: error.message };
+    }
+    await logEmail({ email, userId, type: "RELAUNCH", subject, status: "sent", messageId: data?.id, metadata });
+    return { success: true, messageId: data?.id };
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : "Unknown error";
+    await logEmail({ email, userId, type: "RELAUNCH", subject, status: "failed", errorMessage: errorMsg, metadata });
     return { success: false, error: errorMsg };
   }
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { rateLimitGuestGeneration } from "@/lib/rate-limit";
+import { rateLimitGuestGeneration, getClientIp } from "@/lib/rate-limit";
 import { parseJsonBody, validateBody } from "@/lib/validation/common";
 import {
   generateGuestAsset,
@@ -17,6 +17,9 @@ import {
 // 15–30 seconds we used to get from Replicate SDXL — matching the "Seconds"
 // claim on the landing page and removing a slow first impression.
 // =============================================================================
+
+// Runware calls are capped at 75s (src/lib/runware.ts).
+export const maxDuration = 120;
 
 // ─── Validation schema ────────────────────────────────────────────────────────
 const GuestGenerateSchema = z.object({
@@ -38,7 +41,9 @@ export async function POST(request: Request) {
   const startTime = Date.now();
 
   try {
-    // 1. Rate limit (Upstash Redis, fail-open when not configured)
+    // 1. Rate limit (Upstash Redis). FAIL-CLOSED in production: if Upstash
+    //    is missing or erroring, guests are denied (503) — there are no
+    //    credits backing this endpoint, so the limiter is the only cap.
     const { blocked } = await rateLimitGuestGeneration(request);
     if (blocked) return blocked;
 
@@ -63,10 +68,8 @@ export async function POST(request: Request) {
     const { prompt, style } = parsed.data;
 
     // 4. Resolve client IP for the service (used for rate-limit identifier).
-    const ipAddress =
-      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      request.headers.get("x-real-ip") ||
-      "0.0.0.0";
+    const clientIp = getClientIp(request);
+    const ipAddress = clientIp === "unknown" ? "0.0.0.0" : clientIp;
 
     // 5. Generate via the canonical service (Runware FLUX Schnell, free tier)
     const result = await generateGuestAsset({

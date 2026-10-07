@@ -95,7 +95,9 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "font-src 'self' data:",
               "img-src 'self' data: blob: https:",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://replicate.delivery https://*.replicate.delivery https://va.vercel-scripts.com https://vitals.vercel-insights.com",
+              // R2 (*.r2.dev) + Runware hosts: client-side "Download PNG" fetches
+              // the image bytes; data:/blob: for guest fallbacks and canvas exports.
+              "connect-src 'self' data: blob: https://*.r2.dev https://im.runware.ai https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://replicate.delivery https://*.replicate.delivery https://va.vercel-scripts.com https://vitals.vercel-insights.com",
               "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://vercel.live",
               "worker-src 'self' blob:",
               "media-src 'self' blob: https:",
@@ -186,6 +188,13 @@ const nextConfig: NextConfig = {
   // ===========================================
   async redirects() {
     return [
+      { source: "/home", destination: "/", permanent: false },
+      // RFC 9116: security.txt is expected under /.well-known/
+      {
+        source: "/.well-known/security.txt",
+        destination: "/security.txt",
+        permanent: false,
+      },
       {
         source: "/gallery",
         destination: "/assets",

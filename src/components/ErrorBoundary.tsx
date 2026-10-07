@@ -68,8 +68,8 @@ export function ImageErrorBoundary({ children }: { children: ReactNode }) {
       fallback={
         <div className="aspect-square bg-white/5 rounded-xl flex items-center justify-center">
           <div className="text-center p-4">
-            <AlertTriangle className="w-8 h-8 text-white/30 mx-auto mb-2" />
-            <p className="text-white/40 text-sm">Failed to load image</p>
+            <AlertTriangle className="w-8 h-8 text-[#7A8294] mx-auto mb-2" />
+            <p className="text-[#8B93A5] text-sm">Failed to load image</p>
           </div>
         </div>
       }

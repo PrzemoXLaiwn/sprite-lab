@@ -15,8 +15,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import {
   Shield,
   Users,
@@ -89,16 +87,20 @@ function formatRelative(date: Date | string): string {
 
 function StatCardSkeleton() {
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <div className="flex items-center justify-between mb-3">
-          <div className="h-4 w-24 bg-white/10 rounded animate-pulse" />
-          <div className="h-5 w-5 bg-white/10 rounded animate-pulse" />
-        </div>
-        <div className="h-9 w-20 bg-white/10 rounded animate-pulse" />
-        <div className="h-3 w-32 bg-white/10 rounded animate-pulse mt-3" />
-      </CardContent>
-    </Card>
+    <div className="rounded-2xl border border-white/[0.06] bg-[#0E1016] p-5">
+      <div className="mb-3 flex items-center justify-between">
+        <div className="h-3 w-20 animate-pulse rounded bg-white/[0.06]" />
+        <div className="h-4 w-4 animate-pulse rounded bg-white/[0.06]" />
+      </div>
+      <div className="h-8 w-20 animate-pulse rounded bg-white/[0.06]" />
+      <div className="mt-3 h-3 w-28 animate-pulse rounded bg-white/[0.04]" />
+    </div>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="mb-3 font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">{children}</h2>
   );
 }
 
@@ -116,22 +118,18 @@ function StatCard({
   emphasis?: "positive" | "negative" | "neutral";
 }) {
   const emphasisClass =
-    emphasis === "positive" ? "text-emerald-400" :
-    emphasis === "negative" ? "text-rose-400" :
-    "text-foreground";
+    emphasis === "positive" ? "text-emerald-300" :
+    emphasis === "negative" ? "text-red-300" :
+    "text-white";
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
-            {label}
-          </p>
-          <Icon className="w-4 h-4 text-muted-foreground/70" />
-        </div>
-        <p className={`text-3xl font-bold tabular-nums ${emphasisClass}`}>{value}</p>
-        {hint && <p className="text-xs text-muted-foreground mt-2">{hint}</p>}
-      </CardContent>
-    </Card>
+    <div className="rounded-2xl border border-white/[0.06] bg-[#0E1016] p-5">
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-[12px] text-[#8B93A5]">{label}</p>
+        <Icon className="h-4 w-4 text-[#7A8294]" />
+      </div>
+      <p className={`font-sans tracking-tight text-[28px] font-semibold leading-tight tabular-nums ${emphasisClass}`}>{value}</p>
+      {hint && <p className="mt-2 font-mono text-[11px] text-[#7A8294]">{hint}</p>}
+    </div>
   );
 }
 
@@ -197,12 +195,12 @@ export default function AdminPage() {
 
   if (!authChecked || loading) {
     return (
-      <div className="p-6 lg:p-8 max-w-6xl mx-auto">
-        <div className="mb-8 flex items-center gap-2">
-          <Shield className="w-6 h-6 text-primary" />
-          <h1 className="text-2xl font-bold">Admin</h1>
+      <div className="mx-auto max-w-[1100px] px-5 py-6 lg:px-8">
+        <div className="mb-8 flex items-center gap-2.5">
+          <Shield className="h-5 w-5 text-[#FF8A3D]" />
+          <h1 className="font-display text-[22px] font-semibold tracking-tight text-white">Admin</h1>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => <StatCardSkeleton key={i} />)}
         </div>
       </div>
@@ -214,50 +212,48 @@ export default function AdminPage() {
     : null;
 
   return (
-    <div className="p-6 lg:p-8 max-w-6xl mx-auto">
+    <div className="mx-auto max-w-[1100px] px-5 py-6 text-[#ECEEF3] lg:px-8">
       {/* Header */}
-      <div className="mb-8 flex items-start justify-between gap-4">
+      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Shield className="w-6 h-6 text-primary" />
-            <h1 className="text-2xl font-bold">Admin</h1>
+          <div className="flex items-center gap-2.5">
+            <Shield className="h-5 w-5 text-[#FF8A3D]" />
+            <h1 className="font-display text-[22px] font-semibold tracking-tight text-white">Admin</h1>
           </div>
-          <p className="text-sm text-muted-foreground">
+          <p className="mt-1 text-[13px] text-[#8B93A5]">
             People &amp; cost overview. Auto-refreshes every 30 seconds.
           </p>
         </div>
         <div className="flex items-center gap-3">
           {lastUpdated && (
-            <span className="text-xs text-muted-foreground hidden sm:inline">
-              Updated {formatRelative(lastUpdated)}
+            <span className="hidden font-mono text-[11px] text-[#7A8294] sm:inline">
+              updated {formatRelative(lastUpdated)}
             </span>
           )}
-          <Button
-            variant="outline"
-            size="sm"
+          <button
+            type="button"
             onClick={handleRefresh}
             disabled={refreshing}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3.5 py-2 text-[13px] font-medium text-[#C9CFDB] transition-colors hover:bg-white/[0.08] hover:text-white disabled:opacity-60"
           >
             {refreshing
-              ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-              : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
+              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              : <RefreshCw className="h-3.5 w-3.5" />}
             Refresh
-          </Button>
+          </button>
         </div>
       </div>
 
       {error && (
-        <div className="mb-6 p-3 rounded-lg border border-rose-500/30 bg-rose-500/5 text-sm text-rose-200">
+        <div className="mb-6 rounded-xl border border-red-400/20 bg-red-500/[0.06] px-4 py-3 text-[13px] text-red-200">
           {error}
         </div>
       )}
 
       {/* People */}
       <section className="mb-8">
-        <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">
-          People
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <SectionLabel>People</SectionLabel>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Total users"
             value={formatNumber(stats?.totalUsers ?? 0)}
@@ -291,10 +287,8 @@ export default function AdminPage() {
 
       {/* Costs / revenue */}
       <section className="mb-8">
-        <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">
-          Money
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <SectionLabel>Money</SectionLabel>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Total revenue"
             value={formatGBP(stats?.totalRevenue ?? 0)}
@@ -329,48 +323,44 @@ export default function AdminPage() {
       </section>
 
       {/* Recent purchases — small, optional, just for "did anyone pay today?" */}
-      <section>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Recent purchases</CardTitle>
-            <CardDescription>Last 10 paid credit / subscription transactions.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {stats?.recentTransactions?.length ? (
-              <ul className="divide-y divide-border">
-                {stats.recentTransactions.map((tx) => (
-                  <li
-                    key={tx.id}
-                    className="flex items-center justify-between gap-3 py-2.5 text-sm"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-foreground truncate">
-                        {tx.user.name || tx.user.email}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {tx.user.name ? tx.user.email : null}
-                      </p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="font-semibold tabular-nums">
-                        {tx.moneyAmount != null
-                          ? formatGBP(tx.moneyAmount)
-                          : `${tx.amount > 0 ? "+" : ""}${tx.amount} credits`}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatRelative(tx.createdAt)}
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-muted-foreground py-4 text-center">
-                No purchases yet.
-              </p>
-            )}
-          </CardContent>
-        </Card>
+      <section className="rounded-2xl border border-white/[0.06] bg-[#0E1016] p-6">
+        <div className="mb-4">
+          <h2 className="text-[15px] font-semibold text-white">Recent purchases</h2>
+          <p className="mt-1 text-[13px] text-[#8B93A5]">Last 10 paid credit / subscription transactions.</p>
+        </div>
+        {stats?.recentTransactions?.length ? (
+          <ul className="-mx-2 divide-y divide-white/[0.06]">
+            {stats.recentTransactions.map((tx) => (
+              <li
+                key={tx.id}
+                className="flex items-center justify-between gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-white/[0.03]"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13px] font-medium text-[#ECEEF3]">
+                    {tx.user.name || tx.user.email}
+                  </p>
+                  {tx.user.name && (
+                    <p className="truncate text-[12px] text-[#8B93A5]">{tx.user.email}</p>
+                  )}
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="font-mono text-[13px] font-semibold tabular-nums text-white">
+                    {tx.moneyAmount != null
+                      ? formatGBP(tx.moneyAmount)
+                      : `${tx.amount > 0 ? "+" : ""}${tx.amount} credits`}
+                  </p>
+                  <p className="font-mono text-[11px] text-[#7A8294]">
+                    {formatRelative(tx.createdAt)}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="rounded-xl border border-dashed border-white/[0.08] py-8 text-center text-[13px] text-[#8B93A5]">
+            No purchases yet.
+          </div>
+        )}
       </section>
     </div>
   );

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { deleteImageFromStorage } from "@/lib/storage";
+import { deleteFromR2, isR2Configured, isR2Url } from "@/lib/r2";
 
 // ===========================================
 // DELETE - Delete a generation
@@ -45,9 +46,16 @@ export async function DELETE(
       );
     }
 
-    // Delete from storage (if it's a Supabase storage URL)
-    if (generation.imageUrl.includes("supabase")) {
-      await deleteImageFromStorage(generation.imageUrl);
+    // Delete from storage (Supabase or R2). Best-effort: a storage failure
+    // must not block removing the DB record.
+    try {
+      if (generation.imageUrl.includes("supabase")) {
+        await deleteImageFromStorage(generation.imageUrl);
+      } else if (isR2Configured() && isR2Url(generation.imageUrl)) {
+        await deleteFromR2(generation.imageUrl);
+      }
+    } catch (storageError) {
+      console.error("[Delete Generation] Storage delete failed:", storageError);
     }
 
     // Delete from database
@@ -62,7 +70,7 @@ export async function DELETE(
   } catch (error) {
     console.error("[Delete Generation] Error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to delete generation" },
+      { error: "Failed to delete generation" },
       { status: 500 }
     );
   }
@@ -131,7 +139,7 @@ export async function PATCH(
   } catch (error) {
     console.error("[Update Generation] Error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to update generation" },
+      { error: "Failed to update generation" },
       { status: 500 }
     );
   }
@@ -186,7 +194,7 @@ export async function GET(
   } catch (error) {
     console.error("[Get Generation] Error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to fetch generation" },
+      { error: "Failed to fetch generation" },
       { status: 500 }
     );
   }

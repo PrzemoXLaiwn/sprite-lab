@@ -15,7 +15,7 @@ export function PromptChips({ categoryId, onChipClick }: Props) {
     <div className="space-y-2 pt-1">
       {groups.map((group) => (
         <div key={group.label} className="flex flex-wrap items-center gap-1">
-          <span className="text-[10px] uppercase tracking-wider text-white/25 mr-1 shrink-0">
+          <span className="text-[10px] uppercase tracking-wider text-[#7A8294] mr-1 shrink-0">
             {group.label}
           </span>
           {group.chips.map((chip) => (
@@ -23,7 +23,7 @@ export function PromptChips({ categoryId, onChipClick }: Props) {
               key={chip}
               type="button"
               onClick={() => onChipClick(chip)}
-              className="px-2 py-0.5 text-[11px] rounded border border-white/8 bg-white/[0.02] text-white/40 hover:border-primary/30 hover:text-primary/70 hover:bg-primary/5 transition-all duration-150"
+              className="px-2 py-0.5 text-[11px] rounded border border-white/8 bg-white/[0.02] text-[#8B93A5] hover:border-primary/30 hover:text-primary/70 hover:bg-primary/5 transition-all duration-150"
             >
               {chip}
             </button>

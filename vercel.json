@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/analyze",
-      "schedule": "*/2 * * * *"
+      "schedule": "5 * * * *"
     },
     {
       "path": "/api/cron/emails",
@@ -15,6 +15,14 @@
     {
       "path": "/api/cron/weekly-digest",
       "schedule": "0 10 * * 0"
+    },
+    {
+      "path": "/api/cron/lifetime-credits",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/relaunch",
+      "schedule": "0 16 * * *"
     }
   ],
   "redirects": [

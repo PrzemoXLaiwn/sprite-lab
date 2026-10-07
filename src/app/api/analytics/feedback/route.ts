@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 
+// Valid rating ranges per feedback type. The UI (GenerationFeedback.tsx) sends
+// thumbs as -1 / 1, and 0 when the user toggles their vote off.
+const RATING_RANGES: Record<string, { min: number; max: number }> = {
+  thumbs: { min: -1, max: 1 },
+  rating: { min: 0, max: 5 },
+  report: { min: -1, max: 1 },
+};
+const MAX_COMMENT_LENGTH = 1000;
+const MAX_ISSUES = 20;
+
 // POST - Submit feedback for a generation
 export async function POST(request: NextRequest) {
   try {
@@ -14,10 +24,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { generationId, rating, feedbackType = "thumbs", comment, issues } = body;
+    const body = await request.json().catch(() => null);
+    const { generationId, rating, feedbackType = "thumbs", comment, issues } = body || {};
 
-    if (!generationId) {
+    if (!generationId || typeof generationId !== "string") {
       return NextResponse.json(
         { error: "Generation ID is required" },
         { status: 400 }
@@ -31,12 +41,49 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (typeof feedbackType !== "string" || !(feedbackType in RATING_RANGES)) {
+      return NextResponse.json(
+        { error: "Invalid feedback type" },
+        { status: 400 }
+      );
+    }
+
+    const range = RATING_RANGES[feedbackType];
+    if (!Number.isInteger(rating) || rating < range.min || rating > range.max) {
+      return NextResponse.json(
+        { error: `Rating must be an integer between ${range.min} and ${range.max}` },
+        { status: 400 }
+      );
+    }
+
+    if (comment !== undefined && comment !== null && typeof comment !== "string") {
+      return NextResponse.json(
+        { error: "Invalid comment" },
+        { status: 400 }
+      );
+    }
+    const trimmedComment =
+      typeof comment === "string" ? comment.trim().slice(0, MAX_COMMENT_LENGTH) || null : null;
+
+    if (
+      issues !== undefined &&
+      issues !== null &&
+      (!Array.isArray(issues) ||
+        issues.length > MAX_ISSUES ||
+        !issues.every((i: unknown) => typeof i === "string" && i.length <= 100))
+    ) {
+      return NextResponse.json(
+        { error: "Invalid issues" },
+        { status: 400 }
+      );
+    }
+
     // Verify the generation exists and belongs to user (or is public)
     const generation = await prisma.generation.findUnique({
       where: { id: generationId },
     });
 
-    if (!generation) {
+    if (!generation || (generation.userId !== user.id && !generation.isPublic)) {
       return NextResponse.json(
         { error: "Generation not found" },
         { status: 404 }
@@ -54,7 +101,7 @@ export async function POST(request: NextRequest) {
       update: {
         rating,
         feedbackType,
-        comment,
+        comment: trimmedComment,
         issues: issues ? JSON.stringify(issues) : null,
       },
       create: {
@@ -62,7 +109,7 @@ export async function POST(request: NextRequest) {
         userId: user.id,
         rating,
         feedbackType,
-        comment,
+        comment: trimmedComment,
         issues: issues ? JSON.stringify(issues) : null,
       },
     });

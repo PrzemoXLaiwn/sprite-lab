@@ -1,35 +1,34 @@
 export default function PricingLoading() {
   return (
-    <div className="min-h-screen bg-[#0a0c10] p-6">
-      {/* Header */}
-      <div className="text-center mb-12">
-        <div className="h-10 w-64 bg-white/5 rounded-lg animate-pulse mx-auto mb-4" />
-        <div className="h-4 w-96 bg-white/5 rounded animate-pulse mx-auto" />
+    <div className="min-h-screen bg-[#0B0D12]">
+      <div className="border-b border-white/[0.06]">
+        <div className="mx-auto max-w-[1200px] px-5 pb-6 pt-8 lg:px-8">
+          <div className="h-3 w-16 animate-pulse rounded bg-white/[0.06]" />
+          <div className="mt-3 h-7 w-56 animate-pulse rounded-lg bg-white/[0.06]" />
+          <div className="mt-2 h-4 w-80 max-w-full animate-pulse rounded bg-white/[0.04]" />
+          <div className="mt-6 h-9 w-[340px] max-w-full animate-pulse rounded-xl bg-white/[0.04]" />
+        </div>
       </div>
 
-      {/* Pricing cards skeleton */}
-      <div className="max-w-5xl mx-auto grid md:grid-cols-3 gap-6">
-        {Array.from({ length: 3 }).map((_, i) => (
+      <div className="mx-auto grid max-w-[1200px] grid-cols-1 gap-4 px-5 py-8 sm:grid-cols-2 lg:grid-cols-4 lg:px-8">
+        {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
-            className="rounded-2xl bg-white/5 border border-white/10 p-8 animate-pulse"
+            className="animate-pulse rounded-2xl border border-white/[0.08] bg-[#151922] p-5"
             style={{ animationDelay: `${i * 100}ms` }}
           >
-            {/* Plan name */}
-            <div className="h-6 w-24 bg-white/10 rounded mb-2" />
-            {/* Price */}
-            <div className="h-12 w-32 bg-white/10 rounded mb-6" />
-            {/* Features */}
-            <div className="space-y-3">
+            <div className="h-5 w-20 rounded bg-white/[0.06]" />
+            <div className="mt-2 h-3 w-32 rounded bg-white/[0.04]" />
+            <div className="mt-6 h-8 w-24 rounded bg-white/[0.06]" />
+            <div className="mt-6 space-y-3">
               {Array.from({ length: 5 }).map((_, j) => (
-                <div key={j} className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full bg-white/10" />
-                  <div className="h-4 flex-1 bg-white/10 rounded" />
+                <div key={j} className="flex items-center gap-2.5">
+                  <div className="h-3.5 w-3.5 rounded bg-white/[0.06]" />
+                  <div className="h-3 flex-1 rounded bg-white/[0.04]" />
                 </div>
               ))}
             </div>
-            {/* Button */}
-            <div className="h-12 w-full bg-white/10 rounded-xl mt-8" />
+            <div className="mt-8 h-11 w-full rounded-xl bg-white/[0.06]" />
           </div>
         ))}
       </div>

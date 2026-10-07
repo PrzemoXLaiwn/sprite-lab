@@ -13,10 +13,15 @@ import { parseJsonBody, validateBody } from "@/lib/validation/common";
 import {
   generateAssets,
   GenerationError,
+  CREDIT_COSTS,
   type GenerationRequest,
 } from "@/lib/services/generation";
 import { enhanceUserPrompt, translatePromptIfNeeded } from "@/lib/prompt-enhance";
 import { rateLimitUserGeneration } from "@/lib/rate-limit";
+
+// Vercel Pro limit is 300s. Runware calls are capped at 75s each (see
+// src/lib/runware.ts) so a failed generation still has time to refund.
+export const maxDuration = 300;
 
 // ─── Input validation schema ──────────────────────────────────────────────────
 // Schema mirrors what the form actually sends. enableStyleMix / style2Id /
@@ -157,6 +162,21 @@ export async function POST(request: Request) {
       );
     }
 
+    // ── 4a. Early credit check (read-only) ──────────────────────────────────
+    // Translation/enhancement below are paid LLM calls, so refuse users who
+    // can't afford the generation before making them. The authoritative,
+    // atomic deduction still happens inside generateAssets().
+    const creditsRequired = CREDIT_COSTS[qualityPreset];
+    if (dbUser.user.credits < creditsRequired) {
+      return NextResponse.json(
+        {
+          error: `Not enough credits. You need ${creditsRequired} credit${creditsRequired === 1 ? "" : "s"}.`,
+          noCredits: true,
+        },
+        { status: 402 }
+      );
+    }
+
     // ── 4b. Translate non-English prompts (all users) ───────────────────────
     // FLUX is English-trained; Cyrillic/Polish/etc. pass through as garbage
     // and produce unrelated images. Translate first, then optionally enhance.
@@ -251,6 +271,7 @@ export async function POST(request: Request) {
     // ── 8. Return success — shape kept identical to pre-migration ─────────────
     return NextResponse.json({
       success: true,
+      generationId: asset.generationId,
       imageUrl: asset.imageUrl,
       format: "png",
       is2DSprite: true,

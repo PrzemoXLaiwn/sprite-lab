@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 
 // ===========================================
 // GET - Fetch public community gallery
@@ -8,8 +9,15 @@ import { prisma } from "@/lib/prisma";
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get("limit") || "50");
-    const offset = parseInt(searchParams.get("offset") || "0");
+    const parsedLimit = parseInt(searchParams.get("limit") || "50", 10);
+    const parsedOffset = parseInt(searchParams.get("offset") || "0", 10);
+    // Max 100: the community page requests limit=100 and has no pagination.
+    const limit = Number.isFinite(parsedLimit)
+      ? Math.min(Math.max(parsedLimit, 1), 100)
+      : 50;
+    const offset = Number.isFinite(parsedOffset)
+      ? Math.min(Math.max(parsedOffset, 0), 10000)
+      : 0;
     const categoryId = searchParams.get("category");
     const filterType = searchParams.get("type"); // "2d" | "3d" | "all"
     const sortBy = searchParams.get("sort") || "newest"; // "newest" | "popular"
@@ -37,7 +45,7 @@ export async function GET(request: Request) {
     }
 
     // Build orderBy
-    const orderBy: any = sortBy === "popular"
+    const orderBy: Prisma.GenerationOrderByWithRelationInput[] | Prisma.GenerationOrderByWithRelationInput = sortBy === "popular"
       ? [{ likes: "desc" }, { createdAt: "desc" }]
       : { createdAt: "desc" };
 
@@ -57,9 +65,9 @@ export async function GET(request: Request) {
         seed: true,
         likes: true,
         createdAt: true,
+        // Internal user id intentionally not exposed publicly
         user: {
           select: {
-            id: true,
             name: true,
             avatarUrl: true,
           },
