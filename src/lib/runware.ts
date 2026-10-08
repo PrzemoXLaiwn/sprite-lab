@@ -1,4 +1,5 @@
 import { Runware } from "@runware/sdk-js";
+import { cloudflareAiConfigured, generateWithCloudflare } from "./cloudflare-ai";
 
 // ===========================================
 // RUNWARE API CLIENT
@@ -344,6 +345,24 @@ export interface SpriteImageResult {
 }
 
 export async function generateSpriteImage(opts: {
+  prompt: string;
+  model: SpriteModelKey;
+  seed?: number;
+}): Promise<SpriteImageResult> {
+  try {
+    return await generateSpriteImageRunware(opts);
+  } catch (err) {
+    // Runware down or out of prepaid balance → free Cloudflare fallback so
+    // users still get their sprite (post-processing is identical).
+    if (!cloudflareAiConfigured()) throw err;
+    console.warn("[Sprite] Runware failed, using Cloudflare Workers AI:", err instanceof Error ? err.message : err);
+    const seed = opts.seed ?? Math.floor(Math.random() * 2_147_483_647);
+    const cf = await generateWithCloudflare({ prompt: opts.prompt, hd: opts.model === "hd", seed });
+    return { image: cf.image, seed, model: cf.model, cost: 0 };
+  }
+}
+
+async function generateSpriteImageRunware(opts: {
   prompt: string;
   model: SpriteModelKey;
   seed?: number;

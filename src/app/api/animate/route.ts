@@ -164,8 +164,13 @@ export async function POST(request: Request) {
       creditsUsed: smooth && !smoothed ? option.credits : credits,
     });
   } catch (err) {
-    console.error("[Animate] Failed:", err instanceof Error ? err.message : err);
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[Animate] Failed:", msg);
     await refundCredits(user.id, credits);
+    // Provider balance ran out: say so plainly instead of "try again"
+    if (/insufficientCredits|insufficient credits|top-up/i.test(msg)) {
+      return NextResponse.json({ error: "Animations are paused for a short while — your credits were refunded. Sprites still work." }, { status: 503 });
+    }
     return NextResponse.json({ error: "Animation failed — your credits were refunded. Please try again." }, { status: 502 });
   }
 }
