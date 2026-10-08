@@ -36,7 +36,7 @@ const WEAPONS: { sub: string; name: string; prompt: string }[] = [
   { sub: "AXES", name: "Spiked Mace", prompt: "spiked iron morningstar mace with a leather grip" },
   { sub: "POLEARMS", name: "Steel Spear", prompt: "steel spear with a leaf-shaped tip and a long wooden shaft" },
   { sub: "POLEARMS", name: "Golden Trident", prompt: "golden sea trident with three sharp prongs and a coral-blue shaft" },
-  { sub: "BOWS", name: "Hunter Longbow", prompt: "wooden hunter longbow with a green leather grip and a taut string" },
+  { sub: "SWORDS", name: "Steel Scimitar", prompt: "curved steel scimitar with a golden crossguard and a wrapped grip" },
   { sub: "BOWS", name: "Crossbow", prompt: "wooden and iron crossbow loaded with a bolt" },
   { sub: "STAFFS", name: "Fire Staff", prompt: "wooden wizard staff topped with a glowing red fire orb" },
   { sub: "STAFFS", name: "Ice Staff", prompt: "crystal ice staff with a floating pale blue shard at the top" },

@@ -5,8 +5,8 @@
 // out). Workers AI includes a free daily allowance on every plan, so basic
 // sprite generation keeps working at $0 until Runware is topped up again.
 //   standard → FLUX.2 [klein] 4B   (~100 images/day inside the free allowance)
-//   hd       → FLUX.2 [klein] 9B   (bigger model, a handful per day free),
-//              falling back to 4B when its allowance is used up
+//   hd       → also 4B by default (9B uses ~13× the allowance; opt in with
+//              CLOUDFLARE_AI_ALLOW_9B=true)
 // Needs CLOUDFLARE_AI_TOKEN (API token with the "Workers AI" permission) and
 // the account id (R2_ACCOUNT_ID, same Cloudflare account as storage).
 // =============================================================================
@@ -61,7 +61,11 @@ async function run(model: string, prompt: string, seed?: number): Promise<Buffer
  * free allowance is small, so it leads only for HD requests.
  */
 export async function generateWithCloudflare(opts: { prompt: string; hd: boolean; seed?: number }): Promise<{ image: Buffer; model: string }> {
-  const order = opts.hd ? [MODELS.klein9b, MODELS.klein4b] : [MODELS.klein4b, MODELS.klein9b];
+  // 9B costs ~13× more of the shared daily free allowance than 4B — a few
+  // HD requests would use up the whole day for everyone, so production uses
+  // 4B only (CLOUDFLARE_AI_ALLOW_9B=true re-enables 9B for HD).
+  const allow9b = process.env.CLOUDFLARE_AI_ALLOW_9B === "true";
+  const order = opts.hd && allow9b ? [MODELS.klein9b, MODELS.klein4b] : [MODELS.klein4b];
   const firstSeed = opts.seed ?? Math.floor(Math.random() * 2_147_483_647);
   let lastErr: unknown;
   for (const model of order) {
