@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { toast } from "@/components/ui/use-toast";
+import { createClient as createBrowserClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import {
   Download,
@@ -167,14 +168,35 @@ export default function CommunityPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterCategory, filterType, sortBy]);
 
+  // Load the chat once (for the message count), then poll only while the
+  // panel is open and the tab is visible — every open tab polling every few
+  // seconds used to add up to thousands of requests an hour.
   useEffect(() => {
     loadChatMessages();
-    chatPollRef.current = setInterval(() => {
-      loadChatMessages();
-    }, 5000);
+     
+  }, []);
+
+  useEffect(() => {
+    if (!chatOpen) return;
+    const tick = () => {
+      if (document.visibilityState === "visible") loadChatMessages();
+    };
+    tick();
+    chatPollRef.current = setInterval(tick, 8000);
+    document.addEventListener("visibilitychange", tick);
     return () => {
       if (chatPollRef.current) clearInterval(chatPollRef.current);
+      document.removeEventListener("visibilitychange", tick);
     };
+     
+  }, [chatOpen]);
+
+  // Whether this visitor can post (the page is public; posting needs an account)
+  const [signedIn, setSignedIn] = useState<boolean | null>(null);
+  useEffect(() => {
+    createBrowserClient().auth.getUser()
+      .then(({ data }) => setSignedIn(Boolean(data.user)))
+      .catch(() => setSignedIn(false));
   }, []);
 
   // Open the chat panel by default only when there is room for it.
@@ -851,6 +873,12 @@ export default function CommunityPage() {
         </div>
 
         <div className="border-t border-white/[0.06] p-3">
+          {signedIn === false ? (
+            <Link href="/login?redirectTo=/community"
+              className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] text-[13px] font-medium text-white transition-colors hover:bg-white/[0.08]">
+              Sign in to chat
+            </Link>
+          ) : (
           <div className="flex gap-2">
             <input
               type="text"
@@ -871,6 +899,7 @@ export default function CommunityPage() {
               {sendingChat ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </button>
           </div>
+          )}
           <p className="mt-2 text-center font-mono text-[10px] text-[#7A8294]">Be kind · Max 10 messages/min</p>
         </div>
       </aside>

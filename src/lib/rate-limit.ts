@@ -369,6 +369,15 @@ export async function rateLimitAiHelper(
 }
 
 /**
+ * Community live chat: 10 messages per minute per user (shown in the UI).
+ */
+export async function rateLimitChat(
+  userId: string
+): Promise<RateLimitResult> {
+  return check("chat", 10, 60, userId);
+}
+
+/**
  * Feedback endpoints: 10 per hour per user.
  */
 export async function rateLimitFeedback(
