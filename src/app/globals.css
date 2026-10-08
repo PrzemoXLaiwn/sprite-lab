@@ -115,6 +115,13 @@
   html {
     scroll-behavior: smooth;
   }
+  /* Decorative glows are wider than a phone; never let anything widen the
+     page sideways (53% of visitors are on mobile). `clip`, not `hidden`, so
+     position: sticky keeps working. */
+  html,
+  body {
+    overflow-x: clip;
+  }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);

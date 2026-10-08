@@ -15,6 +15,14 @@ const IDEAS = [
   "ice crystal staff glowing blue",
 ];
 
+/** One-tap examples under the input. */
+const QUICK = [
+  { label: "🐉 baby dragon", prompt: "baby red dragon with small wings" },
+  { label: "🗡️ fire sword", prompt: "flaming sword with a glowing orange blade" },
+  { label: "🧙 wizard", prompt: "wizard with a purple robe and a glowing staff" },
+  { label: "🧪 potion", prompt: "red health potion in a round glass flask" },
+];
+
 /** Fired by the community wall ("Try this prompt") to fill the hero input. */
 export const HERO_PROMPT_EVENT = "spritelab:hero-prompt";
 
@@ -54,11 +62,12 @@ export function HeroPrompt({ registerUrl, signedIn = false }: { registerUrl: str
     return () => clearInterval(id);
   }, [isGenerating]);
 
-  const generate = async () => {
-    if (!prompt.trim() || isGenerating) return;
+  const generate = async (override?: string) => {
+    const text = (override ?? prompt).trim();
+    if (!text || isGenerating) return;
     if (signedIn) {
       const params = new URLSearchParams({
-        prompt: prompt.trim().slice(0, 500),
+        prompt: text.slice(0, 500),
         styleId: style === "pixel" ? "PIXEL_ART_16" : "CARTOON_WESTERN",
       });
       window.location.href = `/generate?${params.toString()}`;
@@ -71,7 +80,7 @@ export function HeroPrompt({ registerUrl, signedIn = false }: { registerUrl: str
       const res = await fetch("/api/generate-guest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: prompt.trim().slice(0, 200), style }),
+        body: JSON.stringify({ prompt: text.slice(0, 200), style }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -114,7 +123,7 @@ export function HeroPrompt({ registerUrl, signedIn = false }: { registerUrl: str
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); generate(); }
+            if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void generate(); }
           }}
           maxLength={200}
           rows={2}
@@ -138,17 +147,32 @@ export function HeroPrompt({ registerUrl, signedIn = false }: { registerUrl: str
           <div className="flex-1" />
           {limitReached ? (
             <Link href={registerUrl}
-              className="flex h-10 items-center gap-2 rounded-xl bg-white px-5 text-[14px] font-semibold text-black transition hover:bg-white/90">
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-5 text-[14px] font-semibold text-black transition hover:bg-white/90 sm:h-10 sm:w-auto">
               Sign up free <ArrowRight className="h-4 w-4" />
             </Link>
           ) : (
-            <button type="button" onClick={generate} disabled={!prompt.trim() || isGenerating}
-              className="px-corners flex h-10 items-center gap-2 bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] px-5 text-[14px] font-semibold text-white transition hover:brightness-110 disabled:opacity-40">
+            <button type="button" onClick={() => void generate()} disabled={!prompt.trim() || isGenerating}
+              className="px-corners flex h-11 w-full items-center justify-center gap-2 bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] px-5 text-[14px] font-semibold text-white transition hover:brightness-110 disabled:opacity-40 sm:h-10 sm:w-auto">
               {isGenerating ? <><Loader2 className="h-4 w-4 animate-spin" /> <span className="font-mono">{elapsed}s</span></> : <><Sparkles className="h-4 w-4" /> Generate</>}
             </button>
           )}
         </div>
       </div>
+
+      {/* One tap = a finished sprite: most visitors are on phones and never
+          type a prompt (2% of visitors started a generation). */}
+      {!image && !isGenerating && !limitReached && (
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5">
+          <span className="font-mono text-[11px] text-[#7A8294]">try:</span>
+          {QUICK.map((q) => (
+            <button key={q.label} type="button"
+              onClick={() => { setPrompt(q.prompt); void generate(q.prompt); }}
+              className="rounded-full border border-white/[0.1] bg-white/[0.03] px-3 py-1.5 text-[12px] text-[#C9CFDB] transition-colors hover:border-[#FF8A3D]/50 hover:text-white">
+              {q.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {error && (
         <p className="mt-3 text-center text-[13px] text-amber-200/90">{error}</p>
