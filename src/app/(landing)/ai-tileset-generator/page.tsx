@@ -4,15 +4,20 @@ import { SeoLanding } from "@/components/landing/SeoLanding";
 const URL = "https://www.sprite-lab.com/ai-tileset-generator";
 
 export const metadata: Metadata = {
-  title: { absolute: "AI Tile Generator — Seamless Floor & Wall Tiles for Games | SpriteLab" },
+  title: { absolute: "AI Tile Generator — Seamless Floor & Wall Tiles | SpriteLab" },
   description:
-    "Generate seamless, tileable floor and wall tiles for 2D games with AI: stone, grass, water, lava, wood. Pixel-art tiles that repeat without seams, and animated water and lava.",
+    "Generate seamless floor and wall tiles for 2D games with AI: stone, grass, water, lava, wood. Pixel-art tiles that repeat without visible seams.",
   keywords: ["AI tile generator", "seamless tile generator", "tileable texture AI", "pixel art tiles", "game floor tiles", "wall tiles generator", "animated water tile"],
   openGraph: {
     title: "AI Seamless Tile Generator for Games — SpriteLab",
     description: "Floor and wall tiles that repeat without seams, plus animated water and lava.",
     url: URL,
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AI Tile Generator — Seamless Floor & Wall Tiles | SpriteLab",
+    description: "Generate seamless floor and wall tiles for 2D games with AI: stone, grass, water, lava, wood. Pixel-art tiles that repeat without visible seams.",
   },
   alternates: { canonical: URL },
 };

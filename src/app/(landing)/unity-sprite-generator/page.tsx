@@ -6,15 +6,20 @@ import { SHOWCASE } from "@/data/showcase";
 const URL = "https://www.sprite-lab.com/unity-sprite-generator";
 
 export const metadata: Metadata = {
-  title: { absolute: "AI Sprites for Unity — Generate & Import Sprite Sheets | SpriteLab" },
+  title: { absolute: "AI Sprites for Unity — Import-Ready Sprite Sheets | SpriteLab" },
   description:
-    "Generate 2D sprites and sprite-sheet animations for Unity with AI, then import them in minutes: Point filter for pixel art, Sprite Mode Multiple, Slice by cell size.",
+    "Generate 2D sprites and sprite-sheet animations for Unity with AI, then import them: Point filter for pixel art, Sprite Mode Multiple, slice by cell size.",
   keywords: ["AI sprites for Unity", "Unity sprite generator", "Unity 2D assets AI", "Unity sprite sheet", "pixel art Unity", "Unity 2D animation sprites"],
   openGraph: {
     title: "AI Sprites for Unity — SpriteLab",
     description: "Generate sprites and sprite sheets with AI and import them into Unity 2D.",
     url: URL,
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AI Sprites for Unity — Import-Ready Sprite Sheets | SpriteLab",
+    description: "Generate 2D sprites and sprite-sheet animations for Unity with AI, then import them: Point filter for pixel art, Sprite Mode Multiple, slice by cell size.",
   },
   alternates: { canonical: URL },
 };

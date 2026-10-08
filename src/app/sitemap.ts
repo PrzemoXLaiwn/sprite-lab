@@ -1,6 +1,8 @@
 import { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
 import { SEO_PAGES } from "@/data/seo-pages";
+import { GUIDES } from "@/data/guides";
+import { COMPARISONS, COMPARE_CHECKED_ON } from "@/data/compare";
 
 // Rebuilt daily so newly public profiles show up without a deploy
 export const revalidate = 86400;
@@ -25,6 +27,34 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: now,
       changeFrequency: "weekly" as const,
       priority: 0.9,
+    })),
+
+    // Game dev guides — answer-first articles for search and AI assistants
+    {
+      url: `${baseUrl}/guides`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+    ...GUIDES.map((g) => ({
+      url: `${baseUrl}/guides/${g.slug}`,
+      lastModified: new Date(g.updated).toISOString(),
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
+    })),
+
+    // Honest comparisons with other AI sprite tools
+    {
+      url: `${baseUrl}/compare`,
+      lastModified: new Date(COMPARE_CHECKED_ON).toISOString(),
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+    ...COMPARISONS.map((c) => ({
+      url: `${baseUrl}/compare/${c.slug}`,
+      lastModified: new Date(COMPARE_CHECKED_ON).toISOString(),
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
     })),
 
     // Pricing — public, high conversion intent

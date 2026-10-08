@@ -4,9 +4,9 @@ import { SeoLanding } from "@/components/landing/SeoLanding";
 import { SHOWCASE, isPixelShowcase } from "@/data/showcase";
 
 export const metadata: Metadata = {
-  title: { absolute: "Free AI Pixel Art Generator | Create Retro Game Sprites | SpriteLab" },
+  title: { absolute: "Free AI Pixel Art Generator — Retro Game Sprites | SpriteLab" },
   description:
-    "Generate stunning pixel art sprites for your games in seconds. 8-bit, 16-bit, and 32-bit styles. Free to try, no art skills required. Perfect for indie game developers.",
+    "Generate pixel art game sprites with AI, snapped to a real pixel grid with a limited palette. 16-bit retro, HD and isometric styles. Free to try.",
   keywords: [
     "pixel art generator",
     "free pixel art maker",
@@ -25,6 +25,11 @@ export const metadata: Metadata = {
       "Generate pixel art sprites for your games instantly. 8-bit, 16-bit, 32-bit styles. No art skills needed.",
     url: "https://www.sprite-lab.com/pixel-art-generator",
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Free AI Pixel Art Generator — Retro Game Sprites | SpriteLab",
+    description: "Generate pixel art game sprites with AI, snapped to a real pixel grid with a limited palette. 16-bit retro, HD and isometric styles. Free to try.",
   },
   alternates: {
     canonical: "https://www.sprite-lab.com/pixel-art-generator",

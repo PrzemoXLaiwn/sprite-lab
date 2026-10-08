@@ -11,8 +11,8 @@ import {
   TOTAL_LIFETIME_SLOTS,
   formatPence,
   type LifetimeSlotInfo,
-} from "@/app/(dashboard)/pricing/pricing-data";
-import { fetchLaunchPromoStatus } from "@/app/(dashboard)/pricing/page.actions";
+} from "@/app/(public-app)/pricing/pricing-data";
+import { fetchLaunchPromoStatus } from "@/app/(public-app)/pricing/page.actions";
 
 // Display data comes from pricing-data.ts, a client-safe mirror of
 // src/lib/stripe.ts (the source of truth for what is actually charged).

@@ -3,11 +3,40 @@ import Link from "next/link";
 import { ArrowLeft, Sparkles, Zap, Bug, Star } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Changelog - SpriteLab",
-  description: "SpriteLab Changelog - See what's new and improved in our AI game asset generator.",
+  title: "Changelog — New Features & Updates",
+  description:
+    "Release notes for SpriteLab, the AI game asset generator for indie developers: new features, improvements and fixes to sprite generation and animation.",
+  alternates: { canonical: "https://www.sprite-lab.com/changelog" },
+  openGraph: {
+    title: "Changelog — New Features & Updates | SpriteLab",
+    description: "Release notes for SpriteLab, the AI game asset generator for indie developers: new features, improvements and fixes to sprite generation and animation.",
+    url: "https://www.sprite-lab.com/changelog",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Changelog — New Features & Updates | SpriteLab",
+    description: "Release notes for SpriteLab, the AI game asset generator for indie developers: new features, improvements and fixes to sprite generation and animation.",
+  },
 };
 
 const CHANGELOG = [
+  {
+    date: "October 2026",
+    version: "2.0.0",
+    title: "Relaunch: New Sprite Pipeline & Animation",
+    type: "release" as const,
+    changes: [
+      "New generation pipeline: transparent PNG sprites, with pixel art snapped to a real pixel grid and a limited palette",
+      "12 art styles, from Pixel 16-bit and Pixel HD to Dark Fantasy, Anime and Hand Painted",
+      "Sprite animation: idle, walk, run, attack, jump, fly, turnaround or a custom move, exported as a horizontal sprite sheet, frames and a GIF",
+      "4, 6 or 9 key poses, or smooth mode with up to 18 frames",
+      "Seamless floor and wall tiles",
+      "Projects with automatic folder sorting and ZIP export",
+      "Free pixel-perfect upscale",
+      "Try 3 generations without an account; 10 free credits on signup",
+    ],
+  },
   {
     date: "December 2024",
     version: "1.2.0",
@@ -23,13 +52,14 @@ const CHANGELOG = [
   {
     date: "December 2024",
     version: "1.1.0",
-    title: "3D Model Generation",
+    title: "3D Model Generation (since retired)",
     type: "feature" as const,
     changes: [
       "3D model generation with TRELLIS AI",
       "GLB/PLY format export for game engines",
       "Support for Unity, Unreal, Godot, and Blender",
       "Improved 3D preview in gallery",
+      "Update: 3D generation has since been retired. SpriteLab now focuses on 2D game assets.",
     ],
   },
   {

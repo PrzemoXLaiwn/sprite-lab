@@ -3,9 +3,9 @@ import { SeoLanding } from "@/components/landing/SeoLanding";
 import { SHOWCASE } from "@/data/showcase";
 
 export const metadata: Metadata = {
-  title: { absolute: "AI RPG Character Creator | Generate Heroes, NPCs & Monsters | SpriteLab" },
+  title: { absolute: "AI RPG Character Creator — Heroes, NPCs & Monsters | SpriteLab" },
   description:
-    "Create unique RPG characters with AI. Heroes, villains, NPCs, monsters, and bosses. Multiple fantasy and sci-fi styles. Free to try. Perfect for indie RPG developers.",
+    "Create RPG characters with AI: heroes, villains, NPCs, monsters and bosses as transparent PNG sprites in 12 art styles, ready to animate.",
   keywords: [
     "RPG character generator",
     "AI character creator",
@@ -24,6 +24,11 @@ export const metadata: Metadata = {
       "Create unique RPG characters instantly. Heroes, villains, NPCs, monsters in any style.",
     url: "https://www.sprite-lab.com/rpg-character-creator",
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AI RPG Character Creator — Heroes, NPCs & Monsters | SpriteLab",
+    description: "Create RPG characters with AI: heroes, villains, NPCs, monsters and bosses as transparent PNG sprites in 12 art styles, ready to animate.",
   },
   alternates: {
     canonical: "https://www.sprite-lab.com/rpg-character-creator",

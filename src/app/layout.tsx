@@ -84,7 +84,7 @@ export const metadata: Metadata = {
       "Game-ready sprites, pixel art and sprite-sheet animations from a text prompt. Free to start.",
     // Same deal — `src/app/twitter-image.tsx` (or the opengraph-image
     // fallback) renders this. Don't hardcode a static path.
-    creator: "@spritelab",
+    // Add `creator: "@handle"` once SpriteLab has a confirmed X account.
   },
   robots: {
     index: true,
@@ -127,9 +127,9 @@ const jsonLd = {
       },
       description: "SpriteLab makes an AI game asset generator for indie game developers.",
       foundingDate: "2024",
-      sameAs: [
-        "https://twitter.com/spritelab",
-      ],
+      // sameAs: list SpriteLab's own social profiles here once they exist
+      // (a handle we don't control would tell search engines it's ours).
+      sameAs: ["https://github.com/PrzemoXLaiwn/sprite-lab"],
       contactPoint: {
         "@type": "ContactPoint",
         email: "support@sprite-lab.com",

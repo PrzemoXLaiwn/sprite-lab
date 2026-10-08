@@ -3,8 +3,21 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy - SpriteLab",
-  description: "SpriteLab Privacy Policy - How we collect, use, and protect your data.",
+  title: "Privacy Policy — How We Handle Your Data",
+  description:
+    "How SpriteLab collects, uses and protects your personal data when you generate game sprites, animations and tiles, and how to exercise your GDPR rights.",
+  alternates: { canonical: "https://www.sprite-lab.com/privacy" },
+  openGraph: {
+    title: "Privacy Policy — How We Handle Your Data | SpriteLab",
+    description: "How SpriteLab collects, uses and protects your personal data when you generate game sprites, animations and tiles, and how to exercise your GDPR rights.",
+    url: "https://www.sprite-lab.com/privacy",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Privacy Policy — How We Handle Your Data | SpriteLab",
+    description: "How SpriteLab collects, uses and protects your personal data when you generate game sprites, animations and tiles, and how to exercise your GDPR rights.",
+  },
 };
 
 export default function PrivacyPage() {

@@ -3,9 +3,9 @@ import { SeoLanding } from "@/components/landing/SeoLanding";
 import { SHOWCASE } from "@/data/showcase";
 
 export const metadata: Metadata = {
-  title: { absolute: "AI Game Weapon Generator | Create Swords, Guns & Magic Items | SpriteLab" },
+  title: { absolute: "AI Game Weapon Generator — Swords, Guns & Staffs | SpriteLab" },
   description:
-    "Generate unique game weapons instantly with AI. Swords, axes, guns, staffs, shields and more. Multiple art styles. Free to try. Perfect for RPGs, action games, and MMOs.",
+    "Generate game weapons with AI: swords, axes, guns, staffs, shields and more as transparent PNG sprites in 12 art styles. Free to try.",
   keywords: [
     "game weapon generator",
     "AI weapon sprites",
@@ -24,6 +24,11 @@ export const metadata: Metadata = {
       "Generate swords, guns, staffs, shields and more for your games. Multiple styles, instant results.",
     url: "https://www.sprite-lab.com/game-weapon-generator",
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AI Game Weapon Generator — Swords, Guns & Staffs | SpriteLab",
+    description: "Generate game weapons with AI: swords, axes, guns, staffs, shields and more as transparent PNG sprites in 12 art styles. Free to try.",
   },
   alternates: {
     canonical: "https://www.sprite-lab.com/game-weapon-generator",

@@ -1,11 +1,20 @@
 import Link from "next/link";
 import Image from "next/image";
 import { SEO_PAGES } from "@/data/seo-pages";
+import { GUIDES } from "@/data/guides";
 
 const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
   {
     title: "tools",
     links: SEO_PAGES.map((p) => ({ label: p.label.toLowerCase(), href: `/${p.slug}` })),
+  },
+  {
+    title: "learn",
+    links: [
+      { label: "all guides", href: "/guides" },
+      ...GUIDES.slice(0, 4).map((g) => ({ label: g.title.toLowerCase(), href: `/guides/${g.slug}` })),
+      { label: "compare ai sprite tools", href: "/compare" },
+    ],
   },
   {
     title: "product",
@@ -32,7 +41,7 @@ export function Footer() {
   return (
     <footer className="border-t border-white/[0.06] bg-[#0B0D12]">
       <div className="mx-auto max-w-[1200px] px-5 py-12 lg:px-8">
-        <div className="grid grid-cols-2 gap-8 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
+        <div className="grid grid-cols-2 gap-8 md:grid-cols-[1.4fr_1fr_1fr_1fr_1fr]">
           <div className="col-span-2 md:col-span-1">
             <Link href="/" className="flex items-center gap-2.5">
               <Image src="/logo.png" alt="SpriteLab" width={24} height={24} />

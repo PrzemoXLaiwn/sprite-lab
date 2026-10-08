@@ -180,7 +180,6 @@ export default function PricingPage() {
   const router = useRouter();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [currentPlan, setCurrentPlan] = useState<string>("FREE");
-  const [isLoading, setIsLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("subscriptions");
   const [promoActive, setPromoActive] = useState(false);
   const [lifetimeSlots, setLifetimeSlots] = useState<Record<string, LifetimeSlotInfo>>({});
@@ -196,7 +195,6 @@ export default function PricingPage() {
       if (result.success) {
         setCurrentPlan(result.plan);
       }
-      setIsLoading(false);
     };
 
     loadUserPlan();
@@ -266,13 +264,9 @@ export default function PricingPage() {
     router.push(`/checkout/${urlName}`);
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0B0D12]">
-        <Loader2 className="h-6 w-6 animate-spin text-[#FF8A3D]" />
-      </div>
-    );
-  }
+  // No full-page spinner while the plan loads: prices must be in the first
+  // HTML for visitors and search engines; only the "current plan" badge
+  // waits for fetchUserPlan.
 
   const userCount = stats.totalUsers > 0 ? stats.totalUsers : stats.activeUsers;
   const currentPlanName = PLAN_CARDS.find((p) => p.id === currentPlan)?.name;

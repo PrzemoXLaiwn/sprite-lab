@@ -5,15 +5,20 @@ import { SHOWCASE } from "@/data/showcase";
 const URL = "https://www.sprite-lab.com/ai-sprite-generator";
 
 export const metadata: Metadata = {
-  title: { absolute: "AI Sprite Generator for Games — Transparent PNG Sprites | SpriteLab" },
+  title: { absolute: "AI Sprite Generator — Transparent PNG Game Sprites | SpriteLab" },
   description:
-    "Generate game-ready 2D sprites with AI: characters, creatures, weapons, items and props as transparent PNGs, in 12 art styles. Animate them into sprite sheets. Free to try.",
+    "Generate game-ready 2D sprites with AI: characters, creatures, weapons, items and props as transparent PNGs in 12 art styles. Free to try.",
   keywords: ["AI sprite generator", "sprite generator", "game sprite maker", "2D sprite generator", "AI game sprites", "transparent PNG sprites", "sprite creator online"],
   openGraph: {
     title: "AI Sprite Generator for Games — SpriteLab",
     description: "Describe a sprite, get a game-ready transparent PNG. Characters, creatures, weapons, items — then animate them.",
     url: URL,
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AI Sprite Generator — Transparent PNG Game Sprites | SpriteLab",
+    description: "Generate game-ready 2D sprites with AI: characters, creatures, weapons, items and props as transparent PNGs in 12 art styles. Free to try.",
   },
   alternates: { canonical: URL },
 };

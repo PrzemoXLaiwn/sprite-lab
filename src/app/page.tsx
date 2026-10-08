@@ -9,12 +9,10 @@ import {
   Download,
   Clock,
   Shield,
-  ChevronDown,
   Check,
   Layers,
   Crosshair,
   Sparkles,
-  Gamepad2,
   Swords,
   Target,
 } from "lucide-react";
@@ -77,7 +75,9 @@ export default async function Home({
         <div className="pixel-grid pointer-events-none absolute inset-0 [mask-image:radial-gradient(ellipse_at_top,black_20%,transparent_70%)]" />
         <div className="pointer-events-none absolute left-1/2 top-0 h-[520px] w-[960px] -translate-x-1/2 bg-[radial-gradient(ellipse_at_center,rgba(255,138,61,0.13)_0%,transparent_70%)]" />
 
-        {/* Floating sprites — pixel flavour around the headline (desktop) */}
+        {/* Floating sprites — pixel flavour around the headline (desktop). Lazy so
+            mobile (display:none) never fetches them and they are not preloaded
+            ahead of the LCP headline. */}
         <div className="pointer-events-none absolute inset-0 hidden lg:block" aria-hidden="true">
           {[
             { src: "/showcase/knight.png", cls: "left-[7%] top-[30%] w-24 animate-float" },
@@ -86,7 +86,7 @@ export default async function Home({
             { src: "/showcase/slime.png", cls: "right-[15%] top-[60%] w-16 animate-float [animation-delay:1.8s]" },
           ].map((s) => (
             // eslint-disable-next-line @next/next/no-img-element
-            <img key={s.src} src={s.src} alt="" className={`pixel-perfect absolute opacity-80 ${s.cls}`} />
+            <img key={s.src} src={s.src} alt="" loading="lazy" decoding="async" className={`pixel-perfect absolute opacity-80 ${s.cls}`} />
           ))}
         </div>
 

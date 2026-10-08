@@ -8,13 +8,18 @@ const URL = "https://www.sprite-lab.com/godot-sprite-generator";
 export const metadata: Metadata = {
   title: { absolute: "AI Sprites for Godot 4 — Sprite2D & AnimatedSprite2D | SpriteLab" },
   description:
-    "Generate 2D sprites and sprite-sheet animations for Godot 4 with AI. Use them in Sprite2D, or load sheets into AnimatedSprite2D with 'Add frames from sprite sheet'.",
+    "Generate 2D sprites and sprite-sheet animations for Godot 4 with AI. Use them in Sprite2D or load sheets into AnimatedSprite2D in a few clicks.",
   keywords: ["AI sprites for Godot", "Godot sprite generator", "Godot 4 sprite sheet", "AnimatedSprite2D sprite sheet", "Godot pixel art", "Godot 2D assets AI"],
   openGraph: {
     title: "AI Sprites for Godot 4 — SpriteLab",
     description: "Generate sprites and sprite sheets with AI and use them in Godot 4.",
     url: URL,
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AI Sprites for Godot 4 — Sprite2D & AnimatedSprite2D | SpriteLab",
+    description: "Generate 2D sprites and sprite-sheet animations for Godot 4 with AI. Use them in Sprite2D or load sheets into AnimatedSprite2D in a few clicks.",
   },
   alternates: { canonical: URL },
 };

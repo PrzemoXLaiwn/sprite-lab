@@ -3,8 +3,21 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Terms of Service - SpriteLab",
-  description: "SpriteLab Terms of Service - Rules and guidelines for using our platform.",
+  title: "Terms of Service — Accounts, Credits & Asset Use",
+  description:
+    "The terms for using SpriteLab, the AI game asset generator: accounts, credits and payments, acceptable use and your license to the assets you generate.",
+  alternates: { canonical: "https://www.sprite-lab.com/terms" },
+  openGraph: {
+    title: "Terms of Service — Accounts, Credits & Asset Use | SpriteLab",
+    description: "The terms for using SpriteLab, the AI game asset generator: accounts, credits and payments, acceptable use and your license to the assets you generate.",
+    url: "https://www.sprite-lab.com/terms",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Terms of Service — Accounts, Credits & Asset Use | SpriteLab",
+    description: "The terms for using SpriteLab, the AI game asset generator: accounts, credits and payments, acceptable use and your license to the assets you generate.",
+  },
 };
 
 export default function TermsPage() {
@@ -33,7 +46,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-2xl font-semibold mb-4">2. Description of Service</h2>
             <p className="text-muted-foreground">
-              SpriteLab is an AI-powered platform that generates game assets including 2D sprites, icons, and 3D models. Users can generate assets using text prompts and various style options.
+              SpriteLab is an AI-powered platform that generates 2D game assets including sprites, sprite animations, tiles and icons. Users can generate assets using text prompts and various style options.
             </p>
           </section>
 
@@ -89,7 +102,7 @@ export default function TermsPage() {
             <h2 className="text-2xl font-semibold mb-4">6. Credits and Payments</h2>
             <h3 className="text-xl font-medium mb-2">6.1 Credit System</h3>
             <p className="text-muted-foreground mb-4">
-              Asset generation requires credits. Credits are consumed based on the type of generation (2D vs 3D) and model complexity.
+              Asset generation requires credits. Credits are consumed based on the type of generation (for example standard or HD quality, and the number of animation frames).
             </p>
 
             <h3 className="text-xl font-medium mb-2">6.2 Subscriptions</h3>

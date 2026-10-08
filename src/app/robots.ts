@@ -23,6 +23,8 @@ const AI_CRAWLERS = [
 const PUBLIC = [
   "/",
   ...SEO_PAGES.map((p) => `/${p.slug}`),
+  "/guides",
+  "/compare",
   "/pricing",
   "/community",
   "/u/",

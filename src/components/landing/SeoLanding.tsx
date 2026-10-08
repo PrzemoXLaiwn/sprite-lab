@@ -54,6 +54,8 @@ export interface SeoLandingProps {
   /** Short product name for structured data, e.g. "SpriteLab AI Pixel Art Generator". */
   appName: string;
   appDescription: string;
+  /** Breadcrumb label; defaults to appName without the "SpriteLab " prefix. */
+  breadcrumb?: string;
   /** Mono line above the H1 (without the leading "> "). */
   heroLine: string;
   h1: ReactNode;
@@ -242,6 +244,19 @@ export function SeoLanding(props: SeoLandingProps) {
     },
     {
       "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "SpriteLab", item: SITE },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: props.breadcrumb ?? props.appName.replace(/^SpriteLab\s+(—\s+)?/, ""),
+          item: url,
+        },
+      ],
+    },
+    {
+      "@context": "https://schema.org",
       "@type": "FAQPage",
       mainEntity: props.faq.map((f) => ({
         "@type": "Question",
@@ -261,6 +276,8 @@ export function SeoLanding(props: SeoLandingProps) {
         <div className="pixel-grid pointer-events-none absolute inset-0 [mask-image:radial-gradient(ellipse_at_top,black_20%,transparent_70%)]" />
         <div className="pointer-events-none absolute left-1/2 top-0 h-[520px] w-[960px] -translate-x-1/2 bg-[radial-gradient(ellipse_at_center,rgba(255,138,61,0.13)_0%,transparent_70%)]" />
 
+        {/* Decorative, desktop-only: lazy so mobile (display:none) never fetches them
+            and React does not preload them ahead of the LCP text/CSS. */}
         <div className="pointer-events-none absolute inset-0 hidden lg:block" aria-hidden="true">
           {props.floating.map((s) => (
             // eslint-disable-next-line @next/next/no-img-element
@@ -268,6 +285,8 @@ export function SeoLanding(props: SeoLandingProps) {
               key={s.src}
               src={s.src}
               alt=""
+              loading="lazy"
+              decoding="async"
               className={`absolute opacity-80 ${s.pixel ? "pixel-perfect" : ""} ${s.cls}`}
             />
           ))}

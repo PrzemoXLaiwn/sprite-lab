@@ -6,13 +6,18 @@ const URL = "https://www.sprite-lab.com/ai-game-icon-generator";
 export const metadata: Metadata = {
   title: { absolute: "AI Game Icon Generator — Item, Skill & Status Icons | SpriteLab" },
   description:
-    "Generate game icons with AI: inventory item icons, skill and spell icons, status effect icons and UI buttons. Pixel art or painted, transparent PNG, matching frames.",
+    "Generate game icons with AI: inventory items, skills, spells, status effects and UI buttons. Pixel art or painted, transparent PNG, matching frames.",
   keywords: ["AI game icon generator", "game icon generator", "skill icon generator", "item icon generator", "RPG icons", "pixel art icons", "inventory icons"],
   openGraph: {
     title: "AI Game Icon Generator — SpriteLab",
     description: "Item, skill and status icons for inventories, hotbars and HUDs.",
     url: URL,
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AI Game Icon Generator — Item, Skill & Status Icons | SpriteLab",
+    description: "Generate game icons with AI: inventory items, skills, spells, status effects and UI buttons. Pixel art or painted, transparent PNG, matching frames.",
   },
   alternates: { canonical: URL },
 };

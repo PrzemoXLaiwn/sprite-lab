@@ -45,4 +45,6 @@ foreach ($path in "/", "/api/stats", "/api/lifetime-slots", "/pixel-art-generato
     Write-Host ("  FAIL {0}" -f $path) -ForegroundColor Red
   }
 }
+Write-Host "`n[+] Notifying search engines (IndexNow)..." -ForegroundColor Cyan
+try { & "$PSScriptRoot\indexnow.ps1" } catch { Write-Host "  IndexNow skipped: $_" -ForegroundColor Yellow }
 Write-Host "`nDone." -ForegroundColor Green

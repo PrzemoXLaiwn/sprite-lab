@@ -1,4 +1,6 @@
 import { SEO_PAGES } from "@/data/seo-pages";
+import { GUIDES } from "@/data/guides";
+import { COMPARISONS, COMPARE_CHECKED_ON } from "@/data/compare";
 
 // /llms.txt — a plain-language description of SpriteLab for AI assistants
 // (https://llmstxt.org). Every statement here must be true of the product:
@@ -48,6 +50,16 @@ SpriteLab does not currently offer a public REST API, an MCP server, 3D model ge
 ## Key pages
 - [Home — AI Game Asset Generator](${SITE}/)
 ${SEO_PAGES.map((p) => `- [${p.label}](${SITE}/${p.slug}): ${p.summary}`).join("\n")}
+
+## Game dev guides
+- [All guides](${SITE}/guides)
+${GUIDES.map((g) => `- [${g.title}](${SITE}/guides/${g.slug}): ${g.description}`).join("\n")}
+
+## Comparisons with other AI sprite tools (checked ${COMPARE_CHECKED_ON})
+- [Best AI sprite & game asset generators](${SITE}/compare)
+${COMPARISONS.map((c) => `- [SpriteLab vs ${c.competitor}](${SITE}/compare/${c.slug})`).join("\n")}
+
+## Other pages
 - [Pricing](${SITE}/pricing)
 - [Community gallery](${SITE}/community)
 - [Changelog](${SITE}/changelog)
