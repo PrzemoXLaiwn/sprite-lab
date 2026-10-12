@@ -1,0 +1,2017 @@
+// ===========================================
+// SPRITELAB - ULTIMATE PROMPT CONFIG
+// Version: 4.0
+// Purpose:
+// - deterministic prompt assembly
+// - minimal hallucination / minimal wrong composition
+// - strong control over view / style / quality
+// - backward compatibility aliases
+// - category/subcategory safe resolution
+// - UI-ready labels aligned with current app
+// ===========================================
+
+import type { SubcategoryPromptConfig } from "../types";
+
+// --------------------------------------------------
+// CORE TYPES
+// --------------------------------------------------
+export type AssetCategory =
+  | "WEAPONS"
+  | "ARMOR"
+  | "CONSUMABLES"
+  | "RESOURCES"
+  | "CHARACTERS"
+  | "CREATURES"
+  | "UI_ELEMENTS"
+  | "ENVIRONMENT"
+  | "QUEST_ITEMS"
+  | "EFFECTS"
+  | "PROJECTILES";
+
+export type AssetView =
+  | "DEFAULT"
+  | "SIDE_VIEW"
+  | "FRONT"
+  | "TOP_DOWN";
+
+export type AssetQuality = "FAST" | "MEDIUM" | "HD";
+
+export type AssetStyle =
+  | "PIXEL_16"
+  | "PIXEL_HD"
+  | "HAND_PAINTED"
+  | "ANIME"
+  | "DARK_FANTASY"
+  | "CARTOON"
+  | "VECTOR"
+  | "REALISTIC";
+
+export interface PromptBuildInput {
+  category: string;
+  subcategory: string;
+  style?: string;
+  view?: string;
+  quality?: string;
+  userPrompt?: string;
+  element?: string[];
+  material?: string[];
+  color?: string[];
+  extraTags?: string[];
+  /**
+   * Override the default A-pose for character / creature subcategories.
+   * - "auto" / undefined → default A-pose for game rigging (recommended)
+   * - "a-pose"           → A-pose explicit
+   * - "t-pose"           → strict T-pose for Spine / Unity skeletal export
+   * - "dynamic"          → no pose constraint (key art / marketing shot)
+   * Only applied when the resolved category is CHARACTERS or CREATURES.
+   */
+  pose?: AssetPose;
+}
+
+export interface PromptBuildResult {
+  fullPrompt: string;
+  negativePrompt: string;
+  debug: {
+    resolvedCategory: string;
+    resolvedSubcategory: string;
+    resolvedStyle: string;
+    resolvedView: string;
+    resolvedQuality: string;
+  };
+}
+
+export interface StylePromptConfig {
+  positive: string;
+  negative: string;
+}
+
+export interface ViewPromptConfig {
+  positive: string;
+  negative: string;
+  categoryOverrides?: Partial<Record<AssetCategory, string>>;
+  subcategoryOverrides?: Record<string, string>;
+}
+
+export interface QualityPromptConfig {
+  positive: string;
+  negative: string;
+}
+
+export interface CategoryMeta {
+  label: string;
+  description: string;
+}
+
+export interface SubcategoryMeta {
+  label: string;
+}
+
+export interface ExtendedSubcategoryPromptConfig extends SubcategoryPromptConfig {
+  // Optional stronger overrides
+  viewOverrides?: Partial<Record<AssetView, string>>;
+  /**
+   * Negatives appended to the global VIEW_PROMPT_CONFIGS[view].negative.
+   * Use when the subcategory has additional things to forbid for a view.
+   */
+  additionalNegativeByView?: Partial<Record<AssetView, string>>;
+  /**
+   * Negatives that REPLACE the global VIEW_PROMPT_CONFIGS[view].negative.
+   * Use when the global negative actively contradicts the subcategory —
+   * e.g. character TOP_DOWN: globally "no standing upright" is correct for
+   * weapons (flat-lay) but wrong for characters (top-down sprites are
+   * standing on a tile).
+   */
+  replaceViewNegative?: Partial<Record<AssetView, string>>;
+}
+
+// --------------------------------------------------
+// HELPERS
+// --------------------------------------------------
+function compact(parts: Array<string | undefined | null | false>): string[] {
+  return parts
+    .flatMap((part) => String(part ?? "").split(","))
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function joinCsv(parts: Array<string | undefined | null | false>): string {
+  return compact(parts).join(", ");
+}
+
+function dedupeCsv(parts: Array<string | undefined | null | false>): string {
+  const seen = new Set<string>();
+  const out: string[] = [];
+
+  for (const item of compact(parts)) {
+    const key = item.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      out.push(item);
+    }
+  }
+
+  return out.join(", ");
+}
+
+function makeConfig(
+  objectType: string,
+  visualDesc: string,
+  composition: string,
+  avoid: string,
+  extras?: Partial<ExtendedSubcategoryPromptConfig>
+): ExtendedSubcategoryPromptConfig {
+  return {
+    objectType,
+    visualDesc,
+    composition,
+    avoid,
+    ...extras,
+  };
+}
+
+function normalizeKey(input?: string): string {
+  return String(input ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[\s&/-]+/g, "_")
+    .replace(/[^A-Z0-9_]/g, "");
+}
+
+// --------------------------------------------------
+// USER-PROMPT VIEW DETECTOR
+// Scans the user's free-text for explicit view/camera keywords
+// (English + Polish) so that "sword, top-down" in the prompt
+// forces TOP_DOWN even when the UI selector is DEFAULT.
+// User-typed intent always wins.
+// --------------------------------------------------
+const VIEW_KEYWORD_PATTERNS: Array<{ view: AssetView; pattern: RegExp }> = [
+  {
+    view: "TOP_DOWN",
+    pattern: /\b(top[\s-]?down(?:\s+view)?|bird'?s?[\s-]?eye(?:\s+view)?|from\s+above|overhead(?:\s+view)?|aerial\s+view|flat\s+lay|z\s+g[oó]ry|widok\s+z\s+g[oó]ry|z\s+lotu\s+ptaka|od\s+g[oó]ry|odg[oó]ry|perspektywa\s+z\s+g[oó]ry)\b/gi,
+  },
+  {
+    view: "SIDE_VIEW",
+    pattern: /\b(side[\s-]?view|side\s+profile|from\s+the\s+side|platformer\s+view|widok\s+z\s+boku|z\s+boku|z\s+profilu|profilu|profil\s+boczny)\b/gi,
+  },
+  {
+    view: "FRONT",
+    pattern: /\b(front[\s-]?view|front[\s-]?facing|facing\s+(?:forward|viewer)|frontal\s+view|head[\s-]?on|straight[\s-]?on|widok\s+z\s+przodu|z\s+przodu|od\s+przodu|na\s+wprost|frontalnie|frontalny)\b/gi,
+  },
+];
+
+export function detectViewFromPrompt(userText: string): {
+  view: AssetView | null;
+  stripped: string;
+} {
+  if (!userText) return { view: null, stripped: "" };
+  let stripped = userText;
+  let detected: AssetView | null = null;
+
+  // Priority order: TOP_DOWN > SIDE_VIEW > FRONT (most specific to least).
+  // If multiple match, first wins — but we still strip ALL matches (global
+  // flag) to avoid conflicting phrases polluting the final prompt.
+  // Note: regex patterns are declared with /g so `.replace` removes every
+  // occurrence; we use `.search() >= 0` instead of `.test()` since /g on
+  // test() is stateful across calls.
+  for (const { view, pattern } of VIEW_KEYWORD_PATTERNS) {
+    if (stripped.search(pattern) >= 0) {
+      if (!detected) detected = view;
+      stripped = stripped.replace(pattern, " ");
+    }
+  }
+
+  // Clean up whitespace and dangling punctuation left after stripping.
+  stripped = stripped
+    .replace(/\s*,\s*,/g, ",")
+    .replace(/^[\s,]+|[\s,]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return { view: detected, stripped };
+}
+
+// --------------------------------------------------
+// GLOBAL RENDER RULES
+// --------------------------------------------------
+// Compact — the inline base in buildAssetPrompt() handles essentials.
+// This is kept for backward compat exports but NOT used in prompt assembly.
+export const GLOBAL_POSITIVE_BASE =
+  "single isolated game asset, transparent background, centered, clear silhouette, fully visible";
+
+export const GLOBAL_NEGATIVE_BASE =
+  "multiple objects, crowd, busy background, landscape, environment scene, " +
+  "cropped, cut off, partial, tiny subject, text, watermark, logo, " +
+  "UI overlay, frame, hands holding unless requested, " +
+  "person wearing unless requested, duplicate, extra objects";
+
+// --------------------------------------------------
+// VIEW CONFIGS
+// Important:
+// - DEFAULT = neutral readable product/icon angle
+// - SIDE_VIEW = orthographic side/readable profile
+// - FRONT = straight front-facing / symmetrical where applicable
+// - TOP_DOWN = camera from above, NOT isometric, NOT front
+// --------------------------------------------------
+export const VIEW_PROMPT_CONFIGS: Record<AssetView, ViewPromptConfig> = {
+  // ── DEFAULT ────────────────────────────────────────────
+  // Neutral 3/4 angle — the "game shop icon" perspective.
+  // Most readable for isolated assets: slight angle shows
+  // depth without dramatic foreshortening.
+  DEFAULT: {
+    positive: "Displayed at a neutral slight angle for clear readability",
+    negative: "extreme perspective, dutch angle, fisheye, worm's eye view, extreme close-up",
+    categoryOverrides: {
+      WEAPONS: "Displayed at a slight angle showing blade and handle clearly, like an RPG inventory icon",
+      ARMOR: "Displayed at a neutral angle as an empty equipment icon, no body inside",
+      CHARACTERS: "Standing in neutral pose at slight 3/4 angle, full body from head to feet visible",
+      CREATURES: "In neutral pose at slight 3/4 angle, full body visible from head to tail",
+      CONSUMABLES: "Displayed upright at slight angle, full object visible as inventory item",
+      RESOURCES: "Displayed at slight angle showing material texture clearly",
+      EFFECTS: "Displayed as isolated VFX element at neutral angle",
+      PROJECTILES: "Displayed at slight angle showing flight direction",
+    },
+  },
+
+  // ── SIDE VIEW ──────────────────────────────────────────
+  // Strict profile: camera at exact 90° to the subject's side.
+  // Like a platformer sprite or weapon blueprint.
+  SIDE_VIEW: {
+    positive: "((strict side view profile)), facing right, camera at exact 90 degrees to the side, 2D side-scrolling game sprite orientation",
+    negative: "front view, front-facing, looking at camera, top-down, 3/4 angle, three-quarter, isometric, rotated toward viewer, angled",
+    categoryOverrides: {
+      WEAPONS: "weapon horizontal side profile like a blueprint, full length visible left to right",
+      ARMOR: "equipment side profile, shape readable from the side, empty armor piece",
+      CHARACTERS: "character facing right in strict side profile, full body visible, platformer sprite, like Mario or Mega Man side-scrolling pose",
+      CREATURES: "creature facing right in strict side profile, full body nose to tail, platformer enemy",
+      CONSUMABLES: "item side profile, bottle silhouette facing right",
+      RESOURCES: "resource chunk in strict side profile, full outline readable from the side",
+      QUEST_ITEMS: "quest item in strict side profile, full outline readable from the side",
+      UI_ELEMENTS: "UI element in strict side profile, cross-section style, flat side readout",
+      ENVIRONMENT: "prop in strict side profile, full height silhouette visible from the side",
+      EFFECTS: "effect side profile, energy spread visible from the side",
+      PROJECTILES: "projectile flying right, strict horizontal side profile, full length visible",
+    },
+    subcategoryOverrides: {
+      // Characters
+      HEROES: "hero facing right strict side profile, full body, platformer sprite like Mario or Mega Man, walking or standing",
+      ENEMIES: "enemy facing right strict side profile, full body, combat pose, platformer enemy sprite",
+      NPCS: "NPC facing right strict side profile, full body, idle pose",
+      BOSSES: "boss facing right strict side profile, full imposing form visible",
+      // Creatures
+      ANIMALS: "animal facing right strict side profile, full body nose to tail, like a safari field guide illustration",
+      MYTHICAL: "mythical creature facing right strict side profile, wings and limbs visible",
+      COMPANIONS: "companion pet facing right strict side profile, full body, friendly idle pose",
+      ELEMENTALS: "elemental creature facing right strict side profile, flowing form visible from the side",
+      // Weapons (extend category default with specifics)
+      POLEARMS: "polearm horizontal side profile, full shaft and head visible left to right, blueprint framing",
+      FIREARMS: "firearm horizontal side profile, full barrel and stock visible, blueprint framing",
+      THROWING: "throwing weapon horizontal side profile, full outline visible edge-on",
+      STAFFS_WANDS: "staff or wand horizontal side profile, full length visible left to right",
+      // Armor
+      GLOVES: "gauntlet or glove side profile, fingers pointing right, empty armor piece",
+      BOOTS: "boot side profile, toe pointing right, empty footwear",
+      ACCESSORIES: "accessory side profile, clasp or chain visible from the side",
+      // Consumables
+      POTIONS: "potion bottle side profile, label facing right, cork at top",
+      FOOD: "food item side profile, layers or cross-section readable from the side",
+      SCROLLS: "scroll side profile, rolled cylinder with end-cap facing right",
+      // Resources
+      GEMS: "gem crystal side profile, facets visible edge-on",
+      ORES: "ore chunk side profile, rocky silhouette facing right",
+      // Quest items
+      KEYS: "key side profile, teeth pointing right, bow at left",
+      CONTAINERS: "chest or container side profile, hinges and lid readable from the side",
+      ARTIFACTS: "artifact side profile, full outline visible from the side",
+      // Environment
+      BUILDINGS: "building side profile elevation, facade visible from the side, no perspective",
+      TREES_PLANTS: "tree or plant side profile, full height from root to canopy visible",
+    },
+  },
+
+  // ── FRONT ──────────────────────────────────────────────
+  // Straight-on frontal view: camera directly in front of subject.
+  // Symmetrical presentation, like a character select screen.
+  FRONT: {
+    positive: "((strict front view)), camera directly in front, straight-on frontal, symmetrical, subject facing viewer",
+    negative: "side view, side profile, back view, top-down, isometric, 3/4 angle, turned away, looking sideways",
+    categoryOverrides: {
+      WEAPONS: "weapon shown front-on, blade or head facing viewer, handle pointing down, symmetrical presentation",
+      ARMOR: "equipment shown front-on, as if on an invisible mannequin facing the viewer, symmetrical, no body inside",
+      CHARACTERS: "full body character facing directly forward at viewer, symmetrical standing pose, character select screen style",
+      CREATURES: "full body creature facing directly forward, symmetrical when possible, menacing or neutral frontal pose",
+      CONSUMABLES: "item viewed from the front, label or contents visible, bottle or container facing viewer",
+      RESOURCES: "resource shown front-on, flat face toward viewer, symmetrical presentation",
+      QUEST_ITEMS: "quest item shown front-on, key face or container face toward viewer, symmetrical",
+      UI_ELEMENTS: "UI element shown front-on, flat symmetrical presentation, icon facing viewer",
+      ENVIRONMENT: "prop shown front-on, facade or front face toward viewer, symmetrical presentation",
+      EFFECTS: "effect viewed from the front, energy radiating toward the viewer",
+      PROJECTILES: "projectile coming directly toward viewer, foreshortened circular front of projectile visible",
+    },
+    subcategoryOverrides: {
+      // Characters
+      HEROES: "hero facing directly forward, full body visible, symmetrical heroic standing pose, character select presentation",
+      ENEMIES: "enemy facing directly forward, full body visible, threatening frontal pose",
+      NPCS: "NPC facing directly forward, full body visible, neutral welcoming pose",
+      BOSSES: "boss facing directly forward, full imposing form, intimidating frontal presentation",
+      // Creatures
+      ANIMALS: "animal facing directly forward, head and body symmetrically visible",
+      MYTHICAL: "mythical creature facing directly forward, full wingspan or form symmetrically displayed",
+      COMPANIONS: "companion pet facing directly forward, full body visible, friendly frontal pose",
+      ELEMENTALS: "elemental creature facing directly forward, core and aura symmetrically visible",
+      // Weapons
+      SWORDS: "sword shown front-on blade tip up, handle down, perfectly symmetrical vertical presentation",
+      AXES_HAMMERS: "axe or hammer shown front-on, head facing viewer, handle pointing down, symmetrical",
+      POLEARMS: "polearm shown front-on, head or spearpoint facing viewer, shaft pointing down, symmetrical",
+      BOWS: "bow shown front-on, string side toward viewer, limbs symmetrical left-right",
+      STAFFS_WANDS: "staff or wand shown front-on, ornament at top, shaft pointing down, symmetrical",
+      FIREARMS: "firearm shown front-on, muzzle facing viewer, stock pointing down, symmetrical",
+      THROWING: "throwing weapon shown front-on, point or edge facing viewer, symmetrical",
+      // Armor
+      HELMETS: "helmet front-on, visor or face opening directly toward viewer, symmetrical",
+      CHEST_ARMOR: "chest armor front-on, as if worn by invisible figure facing viewer",
+      SHIELDS: "shield front face shown directly, full emblem and rim visible, flat frontal view",
+      GLOVES: "gauntlet or glove pair front-on, palms or knuckles facing viewer, empty armor",
+      BOOTS: "boot pair front-on, toes facing viewer, symmetrical empty footwear",
+      ACCESSORIES: "accessory front-on, charm or face of the item toward viewer, symmetrical",
+      // Consumables
+      POTIONS: "potion bottle front-on, label facing viewer, cork visible at top, symmetrical silhouette",
+      FOOD: "food item front-on, main face toward viewer, symmetrical plating",
+      SCROLLS: "scroll unrolled with content facing viewer, or rolled cylinder front-on with end-cap toward viewer",
+      // Resources
+      GEMS: "gem crystal front-on, primary facet toward viewer, symmetrical faceted silhouette",
+      ORES: "ore chunk front-on, largest rocky face toward viewer",
+      WOOD_STONE: "wood or stone material front-on, main face toward viewer",
+      PLANTS: "plant front-on, stem vertical, leaves symmetrical left-right",
+      MONSTER_PARTS: "monster part front-on, main surface toward viewer",
+      MAGIC_MATERIALS: "magical material front-on, glowing core facing viewer",
+      // Quest items
+      KEYS: "key front-on, bow or handle at top, teeth pointing down, flat frontal presentation",
+      ARTIFACTS: "artifact front-on, main face or emblem toward viewer, symmetrical",
+      CONTAINERS: "chest or container front-on, lock or face panel toward viewer, closed lid",
+      COLLECTIBLES: "collectible front-on, primary face toward viewer, symmetrical presentation",
+      // Environment
+      BUILDINGS: "building front-on facade, main entrance centered, no perspective, symmetrical elevation",
+      TREES_PLANTS: "tree or plant front-on, trunk vertical centered, foliage symmetrical around axis",
+      PROPS: "prop front-on, main face toward viewer, symmetrical",
+      DUNGEON: "dungeon object front-on, carved face or mechanism toward viewer",
+    },
+  },
+
+  // ── TOP DOWN ───────────────────────────────────────────
+  // TRUE top-down: camera is directly above looking straight
+  // down at 90°. Shows the top surface only. NOT isometric.
+  // Used for top-down RPGs (Zelda, Stardew Valley).
+  TOP_DOWN: {
+    positive: "((bird's eye view from directly above)), ((top-down overhead camera looking straight down)), 90 degree overhead angle, only top surface visible, flat lay product photography, NOT standing upright NOT vertical",
+    negative: "front view, side view, profile, isometric, 2.5D, 3/4 angle, three-quarter, horizon line, walls from side, eye-level, vanishing point, standing upright, vertical orientation, upright position",
+    categoryOverrides: {
+      WEAPONS: "((flat lay weapon on table)), photographed from directly above, bird's eye view, weapon laying HORIZONTAL on flat surface, like product photography from overhead",
+      ARMOR: "flat lay armor piece photographed from directly above, equipment on table, bird's eye view",
+      CONSUMABLES: "item photographed from directly above showing round cap, bird's eye view, on table",
+      RESOURCES: "resource photographed from directly above showing top surface, bird's eye flat lay",
+      CHARACTERS: "character seen from directly above showing top of head and shoulders, like top-down RPG Maker sprite, Zelda SNES overhead view",
+      CREATURES: "creature seen from directly above showing back of body, top-down RPG enemy, overhead game sprite",
+      UI_ELEMENTS: "flat 2D icon, no perspective depth, overhead presentation",
+      ENVIRONMENT: "prop seen from directly above, roof or canopy top visible, top-down tilemap game asset",
+      QUEST_ITEMS: "item photographed from directly above, flat lay, bird's eye view",
+      EFFECTS: "effect seen from directly above, radial circular spread, top-down spell circle on ground",
+      PROJECTILES: "projectile seen from directly above, top-down flight path visible",
+    },
+    subcategoryOverrides: {
+      // Characters
+      HEROES: "hero character seen from directly above, top of head visible, body below, top-down RPG sprite like Zelda SNES or Stardew Valley overhead",
+      ENEMIES: "enemy seen from directly above, top of head and back visible, top-down RPG enemy overhead sprite",
+      NPCS: "NPC seen from directly above, head and shoulders, top-down RPG villager overhead sprite",
+      BOSSES: "boss seen from directly above, large top-down silhouette, overhead RPG boss sprite",
+      // Creatures
+      ANIMALS: "animal seen from directly above, back and head visible, top-down overhead game sprite",
+      MYTHICAL: "mythical creature from directly above, wingspan visible, overhead top-down sprite",
+      COMPANIONS: "companion pet seen from directly above, back and head visible, top-down overhead sprite",
+      ELEMENTALS: "elemental seen from directly above, radial aura or flowing form, top-down overhead sprite",
+      // Weapons
+      SWORDS: "((sword laying flat horizontally on table)), photographed from directly above, bird's eye flat lay, blade pointing left handle pointing right, NO vertical sword",
+      AXES_HAMMERS: "axe or hammer laying flat photographed from directly above, bird's eye flat lay",
+      POLEARMS: "polearm laying flat photographed from directly above, full shaft and head visible horizontal, bird's eye flat lay",
+      BOWS: "bow laying flat photographed from directly above, curved shape visible, bird's eye flat lay",
+      STAFFS_WANDS: "staff laying flat photographed from directly above, full length visible, bird's eye",
+      FIREARMS: "firearm laying flat photographed from directly above, full barrel and stock visible, bird's eye flat lay",
+      THROWING: "throwing weapon laying flat photographed from directly above, full outline visible, bird's eye",
+      // Armor
+      HELMETS: "helmet photographed from directly above showing crown of the head, round silhouette, bird's eye",
+      CHEST_ARMOR: "chest armor laid flat photographed from directly above, breastplate laying on back showing front side, bird's eye",
+      SHIELDS: "shield laying flat from directly above, full emblem visible as circle or kite, bird's eye flat lay",
+      GLOVES: "gauntlet or glove pair laid flat from directly above, palms facing up, bird's eye",
+      BOOTS: "boot pair laid flat from directly above, soles facing down, bird's eye flat lay",
+      ACCESSORIES: "accessory laid flat photographed from directly above, chain or band visible, bird's eye",
+      // Consumables
+      POTIONS: "potion bottle from directly above showing round cork cap, circular top-down shape, bird's eye",
+      FOOD: "food item on plate photographed from directly above, bird's eye top-down food photography",
+      SCROLLS: "scroll laid flat from directly above, rolled cylinder or unrolled parchment, bird's eye",
+      // Resources
+      GEMS: "gem photographed from directly above showing primary facet flat, top-down gem silhouette",
+      ORES: "ore chunk photographed from directly above showing rocky top face, bird's eye",
+      WOOD_STONE: "wood log or stone block from directly above showing top face, bird's eye",
+      PLANTS: "plant seen from directly above as rosette pattern, leaves radiating from center, top-down",
+      MONSTER_PARTS: "monster part laid flat photographed from directly above, bird's eye flat lay",
+      MAGIC_MATERIALS: "magical material laid flat from directly above, glowing core visible, bird's eye",
+      // Quest items
+      KEYS: "key laying flat photographed from directly above, bow and teeth visible horizontal, bird's eye flat lay",
+      ARTIFACTS: "artifact laid flat photographed from directly above, bird's eye top-down presentation",
+      CONTAINERS: "chest or container photographed from directly above showing top of lid, bird's eye overhead view, closed chest",
+      COLLECTIBLES: "collectible laid flat from directly above, bird's eye flat lay",
+      // UI
+      ITEM_ICONS: "flat top-down item icon, no perspective depth, overhead presentation",
+      SKILL_ICONS: "flat top-down skill icon, radial composition, overhead presentation",
+      STATUS_ICONS: "flat top-down status icon, symmetrical composition",
+      UI_ICONS: "flat top-down UI icon, no perspective depth",
+      BUTTONS: "flat button seen from directly above, no depth, overhead presentation",
+      BARS: "flat bar seen from directly above, no depth",
+      FRAMES: "flat frame seen from directly above, no depth",
+      PANELS: "flat panel seen from directly above, no depth",
+      SLOTS_GRID: "flat slot grid seen from directly above, no depth",
+      // Environment
+      TREES_PLANTS: "tree canopy seen from directly above filling frame, round organic shape, trunk hidden below",
+      BUILDINGS: "building roof seen from directly above, NO walls visible, floor plan style, top-down RPG building",
+      ROCKS_TERRAIN: "rock or terrain chunk seen from directly above showing top face, bird's eye overhead",
+      PROPS: "prop seen from directly above showing top surface, bird's eye top-down tilemap asset",
+      DUNGEON: "dungeon object seen from directly above showing top surface, bird's eye top-down tilemap asset",
+    },
+  },
+};
+
+// --------------------------------------------------
+// STYLE CONFIGS
+// --------------------------------------------------
+export const STYLE_PROMPT_CONFIGS: Record<AssetStyle, StylePromptConfig> = {
+  PIXEL_16: {
+    positive: dedupeCsv([
+      "16-bit pixel art style",
+      "classic retro game asset",
+      "clean pixel clusters",
+      "low-resolution readability",
+      "limited color palette",
+      "crisp sprite edges",
+      "designed for game sprite use",
+    ]),
+    negative: dedupeCsv([
+      "blurry anti-aliased painting",
+      "realistic photo textures",
+      "3D render look",
+      "high-frequency micro-detail",
+      "soft painterly brushwork",
+      "vector gradients",
+    ]),
+  },
+
+  PIXEL_HD: {
+    positive: dedupeCsv([
+      "HD pixel art style",
+      "modern indie pixel asset",
+      "higher detail pixel clusters",
+      "clean silhouette",
+      "pixel-perfect readability",
+      "game sprite polish",
+    ]),
+    negative: dedupeCsv([
+      "photo realism",
+      "soft painted blur",
+      "3D model render look",
+      "vector flat icon style",
+    ]),
+  },
+
+  HAND_PAINTED: {
+    positive: dedupeCsv([
+      "hand-painted game art style",
+      "painterly brushwork",
+      "stylized fantasy asset rendering",
+      "rich material definition",
+      "clean subject readability",
+    ]),
+    negative: dedupeCsv([
+      "pixel art",
+      "vector flat icon",
+      "photo realism",
+      "hard 3D CGI look",
+      "messy background scene",
+    ]),
+  },
+
+  ANIME: {
+    positive: dedupeCsv([
+      "anime-inspired game asset style",
+      "clean stylized linework",
+      "controlled cel-shaded rendering",
+      "clear readable forms",
+    ]),
+    negative: dedupeCsv([
+      "photo realism",
+      "western comic exaggeration",
+      "messy painterly texture",
+      "pixel art",
+    ]),
+  },
+
+  DARK_FANTASY: {
+    positive: dedupeCsv([
+      "dark fantasy aesthetic",
+      "grim medieval mood",
+      "cold restrained palette",
+      "worn believable materials",
+      "moody but readable asset design",
+    ]),
+    negative: dedupeCsv([
+      "cute toy-like style",
+      "bright cheerful palette",
+      "sci-fi neon theme",
+      "cartoony comedy look",
+    ]),
+  },
+
+  CARTOON: {
+    positive: dedupeCsv([
+      "cartoon game asset style",
+      "bold shapes",
+      "simplified readable forms",
+      "friendly stylization",
+      "high clarity silhouette",
+    ]),
+    negative: dedupeCsv([
+      "photo realism",
+      "grim dark over-texturing",
+      "pixel art",
+      "overly detailed gritty rendering",
+    ]),
+  },
+
+  VECTOR: {
+    positive: dedupeCsv([
+      "clean vector-like game asset style",
+      "flat shapes",
+      "minimal controlled detail",
+      "high readability",
+      "mobile-friendly icon clarity",
+    ]),
+    negative: dedupeCsv([
+      "photo realism",
+      "painterly brush texture",
+      "pixel art dithering",
+      "3D depth-heavy rendering",
+    ]),
+  },
+
+  REALISTIC: {
+    positive: dedupeCsv([
+      "realistic game concept asset style",
+      "believable materials",
+      "accurate lighting on subject",
+      "high detail",
+      "AAA asset concept clarity",
+    ]),
+    negative: dedupeCsv([
+      "cartoon exaggeration",
+      "vector flat simplification",
+      "pixel art",
+      "anime cel shading",
+    ]),
+  },
+};
+
+// --------------------------------------------------
+// QUALITY CONFIGS
+// Note:
+// quality should influence polish/detail,
+// not composition or count of objects
+// --------------------------------------------------
+export const QUALITY_PROMPT_CONFIGS: Record<AssetQuality, QualityPromptConfig> = {
+  FAST: {
+    positive: dedupeCsv([
+      "simple clean rendering",
+      "fast readable asset generation",
+      "minimal but clear detail",
+    ]),
+    negative: dedupeCsv([
+      "overly intricate decoration",
+      "micro-details everywhere",
+      "excessive texture noise",
+    ]),
+  },
+
+  MEDIUM: {
+    positive: dedupeCsv([
+      "balanced detail level",
+      "clean polished game asset",
+      "good material readability",
+    ]),
+    negative: dedupeCsv([
+      "extreme over-detail",
+      "visual clutter",
+    ]),
+  },
+
+  HD: {
+    positive: dedupeCsv([
+      "high detail polished asset",
+      "refined materials",
+      "extra surface detail where appropriate",
+      "premium concept quality",
+    ]),
+    negative: dedupeCsv([
+      "messy noisy detail",
+      "detail that breaks silhouette",
+    ]),
+  },
+};
+
+// --------------------------------------------------
+// CATEGORY LABELS / UI METADATA
+// --------------------------------------------------
+export const CATEGORY_META: Record<AssetCategory, CategoryMeta> = {
+  WEAPONS: {
+    label: "Weapons",
+    description: "Game weapon items and combat equipment.",
+  },
+  ARMOR: {
+    label: "Armor",
+    description: "Protective gear and wearable equipment icons.",
+  },
+  CONSUMABLES: {
+    label: "Consumables",
+    description: "Potions, food, scrolls and usable pickups.",
+  },
+  RESOURCES: {
+    label: "Resources",
+    description: "Crafting materials, ores, gems, plants and drops.",
+  },
+  CHARACTERS: {
+    label: "Characters",
+    description: "Heroes, NPCs, enemies and bosses.",
+  },
+  CREATURES: {
+    label: "Creatures",
+    description: "Animals, mythical creatures, companions and elementals.",
+  },
+  UI_ELEMENTS: {
+    label: "Icons",
+    description: "Game UI icons, slots, buttons, bars, frames and panels.",
+  },
+  ENVIRONMENT: {
+    label: "Environment",
+    description: "Props, buildings, trees, dungeon objects and terrain assets.",
+  },
+  QUEST_ITEMS: {
+    label: "Loot",
+    description: "Keys, artifacts, containers and collectibles.",
+  },
+  EFFECTS: {
+    label: "Effects",
+    description: "Combat VFX, magic effects, elemental bursts and particles.",
+  },
+  PROJECTILES: {
+    label: "Projectiles",
+    description: "Arrows, bullets, magic projectiles and thrown weapons.",
+  },
+};
+
+// --------------------------------------------------
+// SUBCATEGORY LABELS / ALIASES
+// --------------------------------------------------
+export const SUBCATEGORY_META: Record<string, SubcategoryMeta> = {
+  SWORDS: { label: "Swords" },
+  AXES_HAMMERS: { label: "Axes & Hammers" },
+  POLEARMS: { label: "Polearms" },
+  BOWS: { label: "Bows" },
+  STAFFS_WANDS: { label: "Staffs & Wands" },
+  FIREARMS: { label: "Firearms" },
+  THROWING: { label: "Throwing" },
+
+  HELMETS: { label: "Helmets" },
+  CHEST_ARMOR: { label: "Chest Armor" },
+  SHIELDS: { label: "Shields" },
+  GLOVES: { label: "Gloves" },
+  BOOTS: { label: "Boots" },
+  ACCESSORIES: { label: "Accessories" },
+
+  POTIONS: { label: "Potions" },
+  FOOD: { label: "Food" },
+  SCROLLS: { label: "Scrolls" },
+
+  GEMS: { label: "Gems" },
+  ORES: { label: "Ores" },
+  WOOD_STONE: { label: "Wood & Stone" },
+  PLANTS: { label: "Plants" },
+  MONSTER_PARTS: { label: "Monster Parts" },
+  MAGIC_MATERIALS: { label: "Magic Materials" },
+
+  HEROES: { label: "Heroes" },
+  ENEMIES: { label: "Enemies" },
+  NPCS: { label: "NPCs" },
+  BOSSES: { label: "Bosses" },
+
+  ANIMALS: { label: "Animals" },
+  MYTHICAL: { label: "Mythical" },
+  COMPANIONS: { label: "Companions" },
+  ELEMENTALS: { label: "Elementals" },
+
+  ITEM_ICONS: { label: "Item Icons" },
+  SKILL_ICONS: { label: "Skill Icons" },
+  STATUS_ICONS: { label: "Status Icons" },
+  UI_ICONS: { label: "UI Icons" },
+  BUTTONS: { label: "Buttons" },
+  BARS: { label: "Bars" },
+  FRAMES: { label: "Frames" },
+  PANELS: { label: "Panels" },
+  SLOTS_GRID: { label: "Slots Grid" },
+
+  TREES_PLANTS: { label: "Trees & Plants" },
+  ROCKS_TERRAIN: { label: "Rocks & Terrain" },
+  BUILDINGS: { label: "Buildings" },
+  PROPS: { label: "Props" },
+  DUNGEON: { label: "Dungeon" },
+
+  KEYS: { label: "Keys" },
+  ARTIFACTS: { label: "Artifacts" },
+  CONTAINERS: { label: "Containers" },
+  COLLECTIBLES: { label: "Collectibles" },
+};
+
+export const CATEGORY_ALIASES: Record<string, AssetCategory> = {
+  ICONS: "UI_ELEMENTS",
+  UI: "UI_ELEMENTS",
+  LOOT: "QUEST_ITEMS",
+  QUEST_ITEMS: "QUEST_ITEMS",
+  // Old generate page lowercase IDs
+  CHARACTERS: "CHARACTERS",
+  WEAPONS: "WEAPONS",
+  ARMOR: "ARMOR",
+  CONSUMABLES: "CONSUMABLES",
+  RESOURCES: "RESOURCES",
+  CREATURES: "CREATURES",
+  ENVIRONMENT: "ENVIRONMENT",
+  UI_ELEMENTS: "UI_ELEMENTS",
+  // From old data/generate-categories.ts
+  ITEMS: "CONSUMABLES",
+  // Added categories
+  EFFECTS: "EFFECTS",
+  PROJECTILES: "PROJECTILES",
+  VFX: "EFFECTS",
+  SPELLS: "EFFECTS",
+};
+
+export const SUBCATEGORY_ALIASES: Record<string, string> = {
+  AXES: "AXES_HAMMERS",
+  HAMMERS: "AXES_HAMMERS",
+  AXES_HAMMERS: "AXES_HAMMERS",
+
+  STAFFS: "STAFFS_WANDS",
+  WANDS: "STAFFS_WANDS",
+  STAFFS_WANDS: "STAFFS_WANDS",
+
+  GUNS: "FIREARMS",
+  FIREARMS: "FIREARMS",
+
+  PETS: "COMPANIONS",
+  COMPANIONS: "COMPANIONS",
+
+  ICONS_UI: "UI_ICONS",
+  UI_ICONS: "UI_ICONS",
+
+  INVENTORY: "SLOTS_GRID",
+  SLOTS: "SLOTS_GRID",
+  SLOTS_GRID: "SLOTS_GRID",
+};
+
+// --------------------------------------------------
+// PROMPT CONFIGS - WEAPONS
+// --------------------------------------------------
+export const WEAPONS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
+  SWORDS: makeConfig(
+    "single sword weapon, game item sprite",
+    "blade with handle and crossguard",
+    "weapon shown at slight angle, full blade visible tip to pommel, centered",
+    "multiple swords, sword collection, hand holding it, combat scene, person wielding, broken blade, sprite sheet, magical aura unless described, glowing unless described, fire unless described, runes unless described"
+  ),
+
+  AXES_HAMMERS: makeConfig(
+    "one single melee weapon, either axe or hammer based on user description",
+    "heavy weapon head on sturdy handle, axe blade or hammer head, reinforced striking design",
+    "single isolated weapon shown clearly, full head and handle visible, centered game item presentation",
+    "multiple weapons, weapon rack, collection, hand holding it, blacksmith scene, broken handle, mixed weapon set"
+  ),
+
+  POLEARMS: makeConfig(
+    "one single polearm weapon",
+    "long shaft weapon with spearhead, halberd blade, glaive edge, or pointed tip",
+    "single isolated polearm, full length visible from tip to butt end, readable centered presentation",
+    "multiple spears, group of weapons, soldier holding it, battle scene, broken shaft, head without shaft"
+  ),
+
+  BOWS: makeConfig(
+    "one single bow weapon",
+    "curved limbs, bowstring, wooden or composite construction",
+    "single isolated bow, full curve and string visible, no arrow nocked unless requested",
+    "multiple bows, quiver, archer, drawn bow, firing scene, bow set"
+  ),
+
+  STAFFS_WANDS: makeConfig(
+    "one single magical staff or wand",
+    "magic channeling focus, wood or metal shaft, crystal or orb or carved magical headpiece",
+    "single isolated magical focus item, fully visible, centered, clear magical identity",
+    "multiple staffs, wizard holding it, walking stick without magical identity, spell scene, broken staff"
+  ),
+
+  FIREARMS: makeConfig(
+    "one single firearm weapon",
+    "barrel, grip, trigger mechanism, compact or long-ranged gun silhouette, game-ready readable weapon design",
+    "single isolated firearm shown clearly from readable angle, full weapon visible, centered",
+    "multiple guns, ammo spread, hand holding it, firing scene, muzzle flash, holster, weapon wall"
+  ),
+
+  THROWING: makeConfig(
+    "one single throwing weapon",
+    "throwing knife, shuriken, kunai, dart, or similar compact throwable weapon",
+    "single isolated throwing weapon, full silhouette visible, centered, readable as one item",
+    "multiple shurikens, volley of weapons, hand throwing it, target impact, motion blur scene"
+  ),
+};
+
+// --------------------------------------------------
+// PROMPT CONFIGS - ARMOR
+// --------------------------------------------------
+export const ARMOR_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
+  HELMETS: makeConfig(
+    "single empty helmet, game equipment icon, NO head inside",
+    "hollow armor headpiece, empty dark interior visible, floating loot drop",
+    "one helmet centered, completely empty inside, inventory icon style",
+    "head inside helmet, face visible, skull inside, person wearing it, neck attached, body parts, multiple helmets, worn helmet, human features, skin showing, horns unless requested"
+  ),
+
+  CHEST_ARMOR: makeConfig(
+    "single empty chest armor, game equipment icon, NO body inside",
+    "isolated breastplate, empty hollow armor piece, loot drop style",
+    "one chest armor centered, completely empty, inventory icon",
+    "person wearing armor, body inside, torso, arms attached, skin visible, character, multiple armors"
+  ),
+
+  SHIELDS: makeConfig(
+    "isolated shield equipment icon",
+    "single standalone shield, defensive gear, clear face design, usable game equipment item",
+    "single shield fully visible from readable angle, centered, no hand or arm",
+    "hand holding shield, arm attached, warrior using shield, multiple shields, shield wall, battle scene"
+  ),
+
+  GLOVES: makeConfig(
+    "isolated gloves equipment icon",
+    "pair of empty gloves or gauntlets, standalone wearable item, inventory presentation",
+    "single pair of gloves shown as one equipment item, empty inside, readable and centered",
+    "hands inside gloves, arms attached, skin, worn on person, mannequin hands, multiple glove pairs"
+  ),
+
+  BOOTS: makeConfig(
+    "isolated boots equipment icon",
+    "pair of empty boots, standalone wearable footwear item, inventory presentation",
+    "single pair of boots shown as one equipment item, empty inside, readable and centered",
+    "legs inside boots, feet visible, worn on person, mannequin legs, skin, multiple pairs"
+  ),
+
+  ACCESSORIES: makeConfig(
+    "isolated accessory equipment icon",
+    "single wearable accessory item such as ring, amulet, belt, cape clasp, bracelet, charm",
+    "single standalone accessory item, centered inventory style presentation, not worn on a body",
+    "person wearing item, neck with amulet, finger with ring, full outfit, character, accessory set"
+  ),
+};
+
+// --------------------------------------------------
+// PROMPT CONFIGS - CONSUMABLES
+// --------------------------------------------------
+export const CONSUMABLES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
+  POTIONS: makeConfig(
+    "single potion bottle, game item",
+    "glass flask with colored liquid inside, cork stopper",
+    "one bottle centered, upright, full bottle visible",
+    "multiple potions, potion shelf, hand holding it, brewing scene, cauldron, table, wizard, character, extra bottles, alchemy lab, glowing unless described"
+  ),
+
+  FOOD: makeConfig(
+    "single food item",
+    "game consumable food such as bread, meat, fruit, cheese, stew bowl or ration item depending on request",
+    "single isolated food item, centered, readable as one pickup or consumable",
+    "banquet table, multiple food items, person eating, restaurant scene, rotten food unless requested"
+  ),
+
+  SCROLLS: makeConfig(
+    "single magic or quest scroll",
+    "rolled parchment scroll, ribbon or wax seal, arcane markings or mystical script if appropriate",
+    "single isolated scroll, rolled or slightly unrolled, fully visible, centered",
+    "stack of scrolls, open book, library scene, torn burnt paper unless requested"
+  ),
+};
+
+// --------------------------------------------------
+// PROMPT CONFIGS - RESOURCES
+// --------------------------------------------------
+export const RESOURCES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
+  GEMS: makeConfig(
+    "single gemstone, game resource item",
+    "faceted precious crystal catching light, clean crafting material",
+    "one gem centered, full crystal visible, not in jewelry",
+    "multiple gems, gem pile, jewelry, ring, crown, necklace, mine scene, treasure chest, character, hand holding, glowing unless described"
+  ),
+
+  ORES: makeConfig(
+    "single ore resource chunk",
+    "rough ore rock with embedded mineral veins or valuable material",
+    "single rough ore chunk, centered, readable natural silhouette",
+    "multiple ore chunks, ingot, refined metal bar, mining scene, rock pile"
+  ),
+
+  WOOD_STONE: makeConfig(
+    "single raw material resource",
+    "natural wood log, timber chunk, stone block, rock piece, or similar raw crafting material depending on request",
+    "single isolated material piece, centered, readable natural texture",
+    "multiple logs, forest scene, quarry scene, lumber stack, wall made of stone"
+  ),
+
+  PLANTS: makeConfig(
+    "single herb or plant resource",
+    "harvestable plant, herb, flower, mushroom, root or magical flora item",
+    "single isolated plant resource, centered, roots or stem visible when useful",
+    "garden scene, potted plant, bouquet, multiple species mixed together, landscape"
+  ),
+
+  MONSTER_PARTS: makeConfig(
+    "single monster drop resource",
+    "one creature-derived crafting component such as fang, claw, scale, horn fragment, feather, shell or eye depending on request",
+    "single isolated monster part, centered, readable as one loot drop item",
+    "full monster, gore scene, pile of body parts, blood pool, hunting scene, complete skeleton"
+  ),
+
+  MAGIC_MATERIALS: makeConfig(
+    "single magical crafting material",
+    "mana crystal, soul shard, glowing orb, enchanted dust cluster, magical essence item",
+    "single isolated magical material item, centered, clearly magical and readable",
+    "wizard casting scene, container full of materials, multiple items scattered, spell explosion"
+  ),
+};
+
+// --------------------------------------------------
+// PROMPT CONFIGS - CHARACTERS
+// --------------------------------------------------
+// "Top-down" for living subjects in pixel-art games means the established
+// gaming convention — a small Zelda / Pokemon / RPG-Maker style sprite
+// rendered at a high 3/4 angle (camera tilted ~70° from horizontal) — NOT
+// a literal 90° bird's-eye view of the character's skull. An earlier
+// version told FLUX "body lying along the vertical axis of the frame, NOT
+// a standing portrait" and FLUX correctly refused, because that's not
+// what a top-down character sprite is. We now describe the actual
+// reference (Zelda / Pokemon / Stardew sprite) and let the model do the
+// thing it has thousands of training examples for.
+const CHARACTER_VIEW_NEG_COMMON =
+  "tall hero portrait, character select screen artwork, splash art, dramatic close-up, bust shot, key art, marketing render, magazine cover composition";
+// Top-down sprites describe the CAMERA, not the SCENE. Without this list FLUX
+// interprets "top-down game" / "RPG grid" literally and renders a floor tile,
+// drop shadow, or ground under the character — the user wants a clean
+// isolated sprite on transparent background.
+const CHARACTER_TOP_DOWN_NEG = `${CHARACTER_VIEW_NEG_COMMON}, isometric perspective, side profile, front-facing pose, low camera angle, ground-level shot, floor tile under feet, ground tile, dirt patch, drop shadow on ground, scenery, terrain, environment background, grass, stone floor, rendered floor`;
+const CHARACTER_SIDE_NEG = `${CHARACTER_VIEW_NEG_COMMON}, front-facing pose, top-down camera, isometric, three-quarter angle, facing camera, character select pose`;
+const CHARACTER_FRONT_NEG = `${CHARACTER_VIEW_NEG_COMMON}, side profile, top-down camera, isometric, three-quarter angle, back view, turned away`;
+
+// REPLACES the global TOP_DOWN negative for character/creature subcategories.
+// The global is tuned for inanimate flat-lay (weapons on a table) and forbids
+// "standing upright" — which is exactly what a Zelda-style top-down sprite IS,
+// so the global was actively fighting the subcategory's intent.
+const CHARACTER_TOP_DOWN_NEG_REPLACEMENT =
+  "front view, side view, profile, isometric, eye-level horizon line, walls from side, vanishing point, low camera angle, photorealistic render";
+
+// =============================================================================
+// CHARACTER POSE DOCTRINE — picker-driven, animation-rig friendly default
+// =============================================================================
+// SpriteLab characters are intended to be imported into a game engine and
+// rigged for animation. The default ("auto"/A-pose) requires a neutral idle:
+//   - Limbs clearly separated from torso (no arm-against-side overlap)
+//   - Symmetric, balanced weight distribution
+//   - No mid-action freeze-frame (running, jumping, swinging)
+//
+// Users can override via the Pose picker (form value → AssetPose):
+//   "auto" / "a-pose" → A-pose (default for game rigging)
+//   "t-pose"          → strict T-pose (for skeletal rig export to Spine etc.)
+//   "dynamic"         → no pose constraint (marketing shot, action key art)
+//
+// The strings below are the prompt fragments that get injected into the
+// composition slot of each character/creature subcategory.
+
+export type AssetPose = "auto" | "a-pose" | "t-pose" | "dynamic";
+
+// IMPORTANT: pose fragments must describe the POSE only — never mention
+// "skeleton", "skeletal rigging", "mannequin", "rig reference", "Spine",
+// "Unity", "DragonBones" or "wireframe". FLUX takes those words literally
+// and starts producing actual skeletons or featureless plastic mannequins
+// stripped of the user's wizard / knight / wizard / costume description.
+// Tester reported: "dark wizard with staff" + T-pose → bare bone skeleton.
+//
+// We keep pose language pictorial: arm angle, leg stance, weight
+// distribution. The character's identity (clothing, gear, hair, beard,
+// armor) is preserved by the user's prompt, which sits earlier in the
+// final string with (()) emphasis.
+const POSE_FRAGMENTS_HUMAN: Record<AssetPose, { positive: string; negative: string }> = {
+  auto: {
+    positive:
+      "A-pose stance, arms angled slightly away from the body, legs slightly apart, neutral balanced idle pose, symmetric weight, weapon held at the side with the blade pointing down, idle reference frame, NOT a dynamic action shot",
+    negative:
+      "dynamic action pose, mid-swing motion, mid-attack frame, combat lunge, jumping pose, running pose, crouching, leaping, charging forward, weapon raised overhead, weapon held high, two-handed combat stance, arms crossed in front of chest, hands hidden behind back, legs crossed, frozen mid-motion, action shot, fighting stance, defensive stance",
+  },
+  "a-pose": {
+    positive:
+      "((A-pose stance)), arms angled ~30° away from the body, legs slightly apart, neutral balanced idle pose, symmetric weight, weapon held at the side with the blade pointing down, idle reference frame",
+    negative:
+      "dynamic action pose, mid-swing motion, combat stance, weapon raised overhead, fighting stance, arms perpendicular to body, running, jumping, crouching",
+  },
+  "t-pose": {
+    positive:
+      "((T-pose stance: arms held out horizontally straight to the sides at exactly 90° from the torso, palms facing down, legs together upright)), the character must keep all clothing, robes, armor, hat, hair, beard, equipment and identity from the description, full body visible, idle reference frame, neutral facial expression",
+    negative:
+      "A-pose, arms angled down, arms at side, dynamic action pose, mid-swing motion, combat stance, weapon raised, running, jumping, crouching, asymmetric pose, bare skeleton, bones visible, plastic mannequin, featureless figure, undressed character, naked figure, skeleton without skin, wireframe, anatomy reference, ((skeleton))",
+  },
+  dynamic: {
+    positive:
+      "dynamic dramatic pose, expressive action stance, character key art composition, full body visible",
+    negative: "",
+  },
+};
+
+const POSE_FRAGMENTS_CREATURE: Record<AssetPose, { positive: string; negative: string }> = {
+  auto: {
+    positive:
+      "neutral idle stance, four legs evenly planted (or wings spread evenly for flying creatures), symmetric balanced silhouette, head facing forward, NOT a mid-leap or attack pose",
+    negative:
+      "dynamic action pose, mid-leap, mid-pounce, attack pose, lunging forward, running pose, jumping pose, frozen mid-motion, action shot",
+  },
+  "a-pose": {
+    positive:
+      "neutral idle creature stance, four legs evenly planted, symmetric balanced silhouette, head facing forward, idle reference frame",
+    negative:
+      "dynamic action pose, mid-leap, attack pose, lunging forward, running, jumping, mid-motion",
+  },
+  "t-pose": {
+    positive:
+      "((T-pose stance: limbs spread symmetrically straight outward, wings extended fully horizontal if winged, tail straight, head facing forward)), the creature must keep all fur, scales, feathers, coloration and identity from the description, full body visible, idle reference frame",
+    negative:
+      "dynamic action pose, mid-leap, attack pose, asymmetric stance, curled body, running, bare skeleton, bones visible, plastic mannequin, featureless figure, wireframe, anatomy reference, skinless creature",
+  },
+  dynamic: {
+    positive:
+      "dynamic dramatic creature pose, expressive action stance, mid-motion key art composition",
+    negative: "",
+  },
+};
+
+/** Default pose used when the form omits the field (older clients, URL params). */
+const DEFAULT_POSE: AssetPose = "auto";
+
+export function poseFragmentsForHuman(pose: AssetPose) {
+  return POSE_FRAGMENTS_HUMAN[pose] ?? POSE_FRAGMENTS_HUMAN[DEFAULT_POSE];
+}
+
+export function poseFragmentsForCreature(pose: AssetPose) {
+  return POSE_FRAGMENTS_CREATURE[pose] ?? POSE_FRAGMENTS_CREATURE[DEFAULT_POSE];
+}
+
+// Backward-compatible aliases — the existing CHARACTERS_PROMPT_CONFIG and
+// CREATURES_PROMPT_CONFIG entries embed these strings directly into their
+// composition / avoid fields. The auto pose (A-pose) is the default; other
+// poses are layered on top by `buildAssetPrompt` via the `pose` input.
+const ANIMATION_READY_POSE = POSE_FRAGMENTS_HUMAN.auto.positive;
+const CREATURE_ANIMATION_READY_POSE = POSE_FRAGMENTS_CREATURE.auto.positive;
+const ANIMATION_POSE_NEG = POSE_FRAGMENTS_HUMAN.auto.negative;
+
+export const CHARACTERS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
+  HEROES: makeConfig(
+    "single A-pose game character sprite, animation-rig ready",
+    "heroic adventurer with equipment matching the description exactly, weapon held calmly at the side",
+    `one character centered, head to feet visible, ${ANIMATION_READY_POSE}`,
+    `multiple characters, party, crowd, companion, portrait only, background scene, wrong class gear, extra armor unless requested, ${ANIMATION_POSE_NEG}`,
+    {
+      viewOverrides: {
+        FRONT: `hero facing directly at camera, full body visible, ${ANIMATION_READY_POSE}, symmetrical character-select-screen framing`,
+        TOP_DOWN: `((top-down RPG hero sprite)), Zelda / Pokemon / Stardew Valley style overhead character, small pixel figure for a top-down game, camera high above looking down at a steep 3/4 angle, ${ANIMATION_READY_POSE}, isolated on transparent background, NO floor, NO shadow, NO ground, NO tile, NO scenery`,
+        SIDE_VIEW: `hero in strict side profile facing right, full body visible, ${ANIMATION_READY_POSE}, platformer rigging sprite reference like Mario or Mega Man idle pose`,
+      },
+      additionalNegativeByView: {
+        TOP_DOWN: CHARACTER_TOP_DOWN_NEG,
+        SIDE_VIEW: CHARACTER_SIDE_NEG,
+        FRONT: CHARACTER_FRONT_NEG,
+      },
+      replaceViewNegative: {
+        TOP_DOWN: CHARACTER_TOP_DOWN_NEG_REPLACEMENT,
+      },
+    }
+  ),
+
+  ENEMIES: makeConfig(
+    "single A-pose enemy character sprite, animation-rig ready",
+    "threatening hostile creature with equipment matching the description, weapon held calmly at the side",
+    `one enemy centered, full body head to feet, ${ANIMATION_READY_POSE}`,
+    `enemy group, multiple enemies, two enemies, swarm, horde, hero fighting it, background scene, dungeon, cave, forest, corpse, defeated pose, dead body, cropped figure, companion, duplicate, landscape, ${ANIMATION_POSE_NEG}`,
+    {
+      viewOverrides: {
+        FRONT: `enemy facing directly at camera, full body visible, ${ANIMATION_READY_POSE}`,
+        TOP_DOWN: `((top-down RPG enemy sprite)), Zelda / Pokemon style overhead enemy, small pixel figure for a top-down game, high 3/4 camera looking down, ${ANIMATION_READY_POSE}, isolated on transparent background, NO floor, NO shadow, NO ground, NO tile, NO scenery`,
+        SIDE_VIEW: `enemy in strict side profile facing right, full body visible, ${ANIMATION_READY_POSE}, platformer enemy idle sprite`,
+      },
+      additionalNegativeByView: {
+        TOP_DOWN: CHARACTER_TOP_DOWN_NEG,
+        SIDE_VIEW: CHARACTER_SIDE_NEG,
+        FRONT: CHARACTER_FRONT_NEG,
+      },
+      replaceViewNegative: {
+        TOP_DOWN: CHARACTER_TOP_DOWN_NEG_REPLACEMENT,
+      },
+    }
+  ),
+
+  NPCS: makeConfig(
+    "single A-pose NPC character sprite, animation-rig ready",
+    "non-playable character such as merchant, villager, guard, blacksmith, priest, scholar or quest giver based on request",
+    `single full body NPC, isolated, ${ANIMATION_READY_POSE}, no scene clutter`,
+    `multiple NPCs, town crowd, shop background, dialogue window, portrait only, ${ANIMATION_POSE_NEG}`,
+    {
+      viewOverrides: {
+        FRONT: `NPC facing directly at camera, full body visible, ${ANIMATION_READY_POSE}, neutral welcoming framing`,
+        TOP_DOWN: `((top-down RPG villager sprite)), Stardew Valley / Pokemon / Harvest Moon style overhead NPC, small pixel figure for a top-down game, high 3/4 camera, ${ANIMATION_READY_POSE}, isolated on transparent background, NO floor, NO shadow, NO ground, NO tile, NO scenery`,
+        SIDE_VIEW: `NPC in strict side profile facing right, full body visible, ${ANIMATION_READY_POSE}`,
+      },
+      additionalNegativeByView: {
+        TOP_DOWN: CHARACTER_TOP_DOWN_NEG,
+        SIDE_VIEW: CHARACTER_SIDE_NEG,
+        FRONT: CHARACTER_FRONT_NEG,
+      },
+      replaceViewNegative: {
+        TOP_DOWN: CHARACTER_TOP_DOWN_NEG_REPLACEMENT,
+      },
+    }
+  ),
+
+  BOSSES: makeConfig(
+    "single A-pose boss character sprite, animation-rig ready",
+    "large unique boss enemy with strong silhouette and memorable presence",
+    `single full body boss, isolated, complete form visible, ${ANIMATION_READY_POSE}, dominant readable design`,
+    `minions, arena scene, boss UI, health bars, defeated boss, multiple bosses, ${ANIMATION_POSE_NEG}`,
+    {
+      viewOverrides: {
+        FRONT: `boss facing directly at camera, full imposing form visible, ${ANIMATION_READY_POSE}`,
+        TOP_DOWN: `((top-down RPG boss sprite)), Zelda / Secret of Mana style overhead boss, larger pixel figure for a top-down game, high 3/4 camera looking down, ${ANIMATION_READY_POSE}, isolated on transparent background, NO floor, NO shadow, NO ground, NO tile, NO scenery`,
+        SIDE_VIEW: `boss in strict side profile facing right, full imposing form visible, ${ANIMATION_READY_POSE}`,
+      },
+      additionalNegativeByView: {
+        TOP_DOWN: CHARACTER_TOP_DOWN_NEG,
+        SIDE_VIEW: CHARACTER_SIDE_NEG,
+        FRONT: CHARACTER_FRONT_NEG,
+      },
+      replaceViewNegative: {
+        TOP_DOWN: CHARACTER_TOP_DOWN_NEG_REPLACEMENT,
+      },
+    }
+  ),
+};
+
+// --------------------------------------------------
+// PROMPT CONFIGS - CREATURES
+// --------------------------------------------------
+// Creatures follow the same gaming convention — top-down means a Zelda-style
+// overhead sprite, NOT a literal bird's-eye photograph of an animal's back.
+const CREATURE_VIEW_NEG_COMMON =
+  "key art splash render, dramatic close-up, magazine cover composition, photorealistic wildlife photograph, hero portrait";
+const CREATURE_TOP_DOWN_NEG = `${CREATURE_VIEW_NEG_COMMON}, isometric perspective, side profile, ground-level shot, low camera angle, floor tile under feet, ground tile, dirt patch, drop shadow on ground, scenery, terrain, environment background, grass, stone floor`;
+
+export const CREATURES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
+  ANIMALS: makeConfig(
+    "((exactly one animal)), isolated A-pose game creature sprite, single animal only, animation-rig ready",
+    "one complete animal with all limbs visible, stylized game creature design, clear readable silhouette",
+    `((ONLY ONE ANIMAL)), single full body animal on transparent background, complete body from nose to tail, ${CREATURE_ANIMATION_READY_POSE}, NO other animals nearby, NO background, centered game sprite`,
+    `animal herd, multiple animals, two animals, pack, flock, group, rider on mount, person with animal, landscape scene, dead animal, cropped body, forest background, grass ground, sky, nature scene, hunter, pet owner, leash collar unless requested, saddle unless requested, cage, zoo enclosure, barn interior, trees, rocks, water, ${ANIMATION_POSE_NEG}`,
+    {
+      viewOverrides: {
+        TOP_DOWN: "((top-down RPG creature sprite)), Zelda / Stardew Valley style overhead animal, small pixel figure for a top-down game, high 3/4 camera looking down, isolated on transparent background, NO floor, NO shadow, NO ground, NO tile, NO scenery",
+      },
+      additionalNegativeByView: {
+        TOP_DOWN: CREATURE_TOP_DOWN_NEG,
+        SIDE_VIEW: `${CREATURE_VIEW_NEG_COMMON}, front-facing pose, top-down view, isometric, three-quarter angle, facing camera`,
+        FRONT: `${CREATURE_VIEW_NEG_COMMON}, side profile, top-down view, isometric, three-quarter angle, back view`,
+      },
+      replaceViewNegative: {
+        TOP_DOWN: CHARACTER_TOP_DOWN_NEG_REPLACEMENT,
+      },
+    }
+  ),
+
+  MYTHICAL: makeConfig(
+    "single A-pose mythical creature sprite, animation-rig ready",
+    "legendary creature such as dragon, griffin, phoenix, unicorn, hydra or other mythic beast depending on request",
+    `single full body mythical creature, isolated, ${CREATURE_ANIMATION_READY_POSE}, readable shape and defining anatomy visible`,
+    `multiple creatures, rider on creature, battle scene, hatchling only unless requested, dead version, ${ANIMATION_POSE_NEG}`,
+    {
+      viewOverrides: {
+        TOP_DOWN: "((top-down RPG mythical creature sprite)), overhead game sprite of a legendary beast, high 3/4 camera, full silhouette visible, isolated on transparent background, NO floor, NO shadow, NO ground, NO tile, NO scenery",
+      },
+      additionalNegativeByView: {
+        TOP_DOWN: CREATURE_TOP_DOWN_NEG,
+        SIDE_VIEW: `${CREATURE_VIEW_NEG_COMMON}, front-facing pose, top-down view, isometric, three-quarter angle, facing camera`,
+        FRONT: `${CREATURE_VIEW_NEG_COMMON}, side profile, top-down view, isometric, three-quarter angle, back view`,
+      },
+      replaceViewNegative: {
+        TOP_DOWN: CHARACTER_TOP_DOWN_NEG_REPLACEMENT,
+      },
+    }
+  ),
+
+  COMPANIONS: makeConfig(
+    "single A-pose companion creature sprite, animation-rig ready",
+    "friendly pet or companion creature suitable for game sidekick or summon role",
+    `single full body companion, isolated, ${CREATURE_ANIMATION_READY_POSE}, readable cute or loyal silhouette`,
+    `multiple pets, owner with companion, pet shop scene, sad injured animal, crowded scene, ${ANIMATION_POSE_NEG}`,
+    {
+      viewOverrides: {
+        TOP_DOWN: "((top-down RPG companion sprite)), Pokemon / Stardew Valley style overhead pet, small pixel figure for a top-down game, high 3/4 camera, idle companion silhouette, isolated on transparent background, NO floor, NO shadow, NO ground, NO tile, NO scenery",
+      },
+      additionalNegativeByView: {
+        TOP_DOWN: CREATURE_TOP_DOWN_NEG,
+        SIDE_VIEW: `${CREATURE_VIEW_NEG_COMMON}, front-facing pose, top-down view, isometric, three-quarter angle, facing camera`,
+        FRONT: `${CREATURE_VIEW_NEG_COMMON}, side profile, top-down view, isometric, three-quarter angle, back view`,
+      },
+      replaceViewNegative: {
+        TOP_DOWN: CHARACTER_TOP_DOWN_NEG_REPLACEMENT,
+      },
+    }
+  ),
+
+  ELEMENTALS: makeConfig(
+    "single A-pose elemental creature sprite, animation-rig ready",
+    "creature made from a dominant element such as fire, ice, water, stone, lightning, shadow or nature depending on request",
+    `single full form elemental, isolated, ${CREATURE_ANIMATION_READY_POSE}, clearly readable as one element-based being`,
+    `wizard summoning it, mixed elements without request, environment scene, multiple elementals, ${ANIMATION_POSE_NEG}`,
+    {
+      viewOverrides: {
+        TOP_DOWN: "((top-down RPG elemental sprite)), overhead game sprite of an elemental creature, high 3/4 camera, swirling element silhouette from above, isolated on transparent background, NO floor, NO shadow, NO ground, NO tile, NO scenery",
+      },
+      additionalNegativeByView: {
+        TOP_DOWN: CREATURE_TOP_DOWN_NEG,
+        SIDE_VIEW: `${CREATURE_VIEW_NEG_COMMON}, front-facing pose, top-down view, isometric, three-quarter angle, facing camera`,
+        FRONT: `${CREATURE_VIEW_NEG_COMMON}, side profile, top-down view, isometric, three-quarter angle, back view`,
+      },
+      replaceViewNegative: {
+        TOP_DOWN: CHARACTER_TOP_DOWN_NEG_REPLACEMENT,
+      },
+    }
+  ),
+};
+
+// --------------------------------------------------
+// PROMPT CONFIGS - UI ELEMENTS
+// --------------------------------------------------
+export const UI_ELEMENTS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
+  ITEM_ICONS: makeConfig(
+    "((exactly one item icon)), game inventory icon sprite, single symbol only",
+    "one bold simplified item rendered as flat game icon, high contrast, RPG inventory style, fills 80% of frame, readable at small size",
+    "((ONLY ONE ICON)), single centered item icon on transparent background, square format, NO frame border NO grid NO slot, NO multiple icons, clean flat icon presentation",
+    "inventory grid, multiple icons, two icons, icon sheet, icon collection, icon set, icon pack, full scene, tiny object in corner, character holding item, UI frame around it, slot borders, grid layout, realistic photo style, cluttered composition, background behind icon, 3D depth shading, perspective"
+  ),
+
+  SKILL_ICONS: makeConfig(
+    "single skill icon",
+    "one symbolic ability icon, readable as a clean game skill symbol, not a scene",
+    "single centered icon, symbol fills most of frame, transparent background, small-size readability",
+    "character casting spell, multiple icons, full combat scene, spellbook page, UI bar strip"
+  ),
+
+  STATUS_ICONS: makeConfig(
+    "single status icon",
+    "one compact symbolic buff or debuff icon, very readable, flat badge-like design",
+    "single centered icon, clear simple status symbol, transparent background, tiny-size readability",
+    "character affected by status, multiple icons, potion bottle unless requested, full scene, tooltip"
+  ),
+
+  UI_ICONS: makeConfig(
+    "single UI navigation icon",
+    "one clean interface symbol such as gear, bag, map pin, sword, shield, chat, mail, home",
+    "single centered interface icon, transparent background, very readable at small size",
+    "icon set, full menu, text label, realistic illustration, screenshot UI"
+  ),
+
+  BUTTONS: makeConfig(
+    "single UI button element",
+    "clean game button shape, clickable appearance, empty textless button unless user requests label",
+    "single centered button, readable shape, no full menu around it",
+    "full menu screen, cursor click scene, multiple buttons panel, text unless requested"
+  ),
+
+  BARS: makeConfig(
+    "single UI bar element",
+    "single progress bar such as health, mana, stamina, xp or loading bar",
+    "single horizontal UI bar, centered, readable frame and fill",
+    "full HUD, multiple bars at once, portrait attached, full screen interface"
+  ),
+
+  FRAMES: makeConfig(
+    "single UI frame element",
+    "decorative border or scalable UI frame for menus and windows",
+    "single centered frame only, border visible, interior empty",
+    "menu content inside, stacked windows, text, buttons, full interface"
+  ),
+
+  PANELS: makeConfig(
+    "single UI panel element",
+    "game UI panel or window with internal organization, sections or layout structure",
+    "single centered panel, readable internal structure, empty content areas",
+    "items filling the panel, full interface screen, character equipment screen, multiple windows"
+  ),
+
+  SLOTS_GRID: makeConfig(
+    "empty inventory slot grid",
+    "one empty slot or organized empty grid of square item slots, no items inside",
+    "empty bordered slot layout, centered, clean grid structure, readable spacing",
+    "items inside slots, full inventory screen, character paperdoll equipment screen, messy scattered slots"
+  ),
+};
+
+// --------------------------------------------------
+// PROMPT CONFIGS - ENVIRONMENT
+// --------------------------------------------------
+export const ENVIRONMENT_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
+  TREES_PLANTS: makeConfig(
+    "((exactly one tree or plant)), isolated game prop, single vegetation only",
+    "one placeable tree bush shrub or plant, game environment decoration, complete from roots to top",
+    "((ONLY ONE TREE OR PLANT)), single isolated vegetation on transparent background, complete form visible, NO forest NO landscape NO sky, centered game prop asset",
+    "forest scene, landscape, multiple trees, two trees, row of trees, many plants, mixed species, character next to tree, garden scene, sky, sun, clouds, grass ground, path, river, background scene, animals, birds"
+  ),
+
+  ROCKS_TERRAIN: makeConfig(
+    "single terrain prop",
+    "one environment terrain asset such as rock, boulder, crystal cluster, stump, mound, cliff fragment or ground feature",
+    "single isolated terrain prop, readable natural shape, centered and complete",
+    "mountain landscape, quarry scene, multiple random rocks, character climbing it"
+  ),
+
+  BUILDINGS: makeConfig(
+    "((exactly one building)), isolated game environment asset, single structure only",
+    "one complete building with roof and walls, game-ready placeable asset, clean readable structure",
+    "((ONLY ONE BUILDING)), single isolated building on transparent background, complete from ground to roof, NO other buildings, NO town, NO landscape, NO sky, centered game asset",
+    "city block, town scene, two buildings, interior view, multiple buildings, street scene, neighborhood, landscape background, sky background, people, NPCs, characters, vehicles, road, path, trees unless requested, garden unless requested, fence unless requested, other structures, birds, clouds, sun, moon, panoramic view, aerial cityscape, ground texture, grass, water",
+    {
+      viewOverrides: {
+        TOP_DOWN: "building roof seen from directly above, floor plan style, NO walls visible, bird's eye view",
+        FRONT: "building facade straight front view, full structure from ground to roof, front elevation",
+        SIDE_VIEW: "building side elevation, full structure from ground to roof, side profile",
+      },
+    }
+  ),
+
+  PROPS: makeConfig(
+    "single environment prop",
+    "one placeable prop such as barrel, crate, chair, table, signpost, torch, altar, campfire, lamp or similar object",
+    "single isolated prop, complete object visible, centered game-ready presentation",
+    "room scene, prop collection, character using it, storefront display"
+  ),
+
+  DUNGEON: makeConfig(
+    "single dungeon prop",
+    "one dungeon-related gameplay asset such as trap, lever, gate, altar, cage, brazier, obelisk or ritual object",
+    "single isolated dungeon prop, centered, functional gameplay-readability prioritized",
+    "whole dungeon room, multiple traps, character triggering it, labyrinth scene"
+  ),
+};
+
+// --------------------------------------------------
+// PROMPT CONFIGS - QUEST ITEMS / LOOT
+// --------------------------------------------------
+export const QUEST_ITEMS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
+  KEYS: makeConfig(
+    "single key item",
+    "one special key with distinct silhouette and decorative design, fantasy or game loot style",
+    "single isolated key, fully visible from bow to teeth, centered",
+    "keyring with many keys, lock and door scene, hand holding key, plain modern house key unless requested"
+  ),
+
+  ARTIFACTS: makeConfig(
+    "single artifact item",
+    "one unique relic or magical artifact, powerful and special-looking, design driven by request",
+    "single isolated artifact, centered, complete item visible, mysterious but readable",
+    "artifact collection, museum scene, hand holding it, shattered fragments unless requested"
+  ),
+
+  CONTAINERS: makeConfig(
+    "single loot container item",
+    "one container such as chest, box, satchel, urn, crate or magical vessel depending on request",
+    "single isolated closed container, centered, complete silhouette visible",
+    "multiple containers, open chest with loot explosion, storage room scene, hand opening it"
+  ),
+
+  COLLECTIBLES: makeConfig(
+    "single collectible item",
+    "one collectible such as coin, token, medal, badge, emblem, trophy or unique pickup item",
+    "single isolated collectible, centered, readable and valuable-looking",
+    "pile of coins, display shelf, hand holding item, multiple collectibles"
+  ),
+};
+
+// --------------------------------------------------
+// PROMPT CONFIGS - EFFECTS
+// --------------------------------------------------
+export const EFFECTS_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
+  COMBAT_EFFECTS: makeConfig(
+    "((one combat visual effect only)), pure VFX sprite, ABSOLUTELY NO characters NO people NO hands",
+    "isolated slash arc or impact burst or energy wave, abstract combat effect, NO person performing it, just the effect floating alone",
+    "((ONLY THE EFFECT)), single VFX element on transparent background, NO character NO body NO hands NO arms NO weapon separate from effect, pure energy or motion graphic",
+    "character performing action, person attacking, hand visible, arm swinging, warrior, fighter, human body, weapon shown separately, full body, face, head, torso, legs, multiple effects overlapping, animation sheet, sprite sheet, background scene, floor, ground, sword, shield, armor"
+  ),
+
+  MAGIC_EFFECTS: makeConfig(
+    "((ONE single magic VFX sprite)), isolated spell effect, ZERO characters, ZERO wizards, ZERO casters",
+    "magical visual effect like spell burst, healing aura glow, buff sparkle, magic circle, enchantment energy, pure magic phenomenon only",
+    "((ONLY the magical effect)), single isolated magic effect on transparent background, glowing energy clearly visible, NO caster, NO character casting",
+    "wizard casting, mage character, person casting spell, hands visible, staff or wand visible, character body, spell hitting target, multiple spells, animation sheet, background scene"
+  ),
+
+  ELEMENTAL: makeConfig(
+    "((ONE single elemental VFX sprite)), isolated element effect, ZERO characters",
+    "elemental visual effect like fire burst, ice crystal shards, lightning bolt, water splash, pure element manifestation",
+    "((ONLY the elemental effect)), single isolated element on transparent background, element type clearly identifiable",
+    "elemental creature, golem, character, person, wizard, multiple elements mixed, animation sheet, environment scene, landscape"
+  ),
+
+  AMBIENT: makeConfig(
+    "((ONE single ambient particle effect)), isolated subtle VFX",
+    "ambient effect like magical sparkle, floating dust motes, smoke wisp, rain drops, snow particle, subtle atmospheric element",
+    "single particle or small cluster of same particle type on transparent background, subtle and delicate",
+    "weather system scene, smokey room, dusty cave, multiple different effect types, landscape, character, full scene"
+  ),
+};
+
+// --------------------------------------------------
+// PROMPT CONFIGS - PROJECTILES
+// --------------------------------------------------
+export const PROJECTILES_PROMPT_CONFIG: Record<string, ExtendedSubcategoryPromptConfig> = {
+  ARROWS: makeConfig(
+    "((ONE single arrow projectile)), isolated flying arrow sprite",
+    "arrow with pointed arrowhead, straight shaft, fletching feathers, in-flight pose",
+    "single arrow in horizontal flight, full arrow visible from tip to fletching, motion direction clear, on transparent background",
+    "multiple arrows volley, quiver, bow weapon, archer character, arrow stuck in target, hand holding arrow"
+  ),
+
+  BULLETS: makeConfig(
+    "((ONE single bullet or ammunition projectile)), isolated ammunition sprite",
+    "ammunition like metal bullet, cannonball, rocket, or energy shot, compact projectile design",
+    "single projectile on transparent background, motion direction clear, full projectile visible, speed trail optional",
+    "multiple bullets spray, gun firing, muzzle flash, impact explosion, shell casing, ammo box, character shooting"
+  ),
+
+  MAGIC_PROJECTILES: makeConfig(
+    "((ONE single magic projectile)), isolated spell projectile sprite, ZERO characters",
+    "magical projectile like fireball, ice shard, shadow bolt, arcane missile, glowing spell energy in flight",
+    "single magic projectile on transparent background, glowing energy, motion direction clear, trailing magic effect",
+    "wizard casting, mage character, spell impact on target, multiple projectiles, barrage, character body, hands visible"
+  ),
+
+  THROWN: makeConfig(
+    "((ONE single thrown projectile)), isolated throwing weapon in flight",
+    "thrown weapon in mid-flight like spinning throwing knife, bomb, javelin, or grenade",
+    "single thrown object in flight pose on transparent background, motion implied through angle, mid-air",
+    "multiple thrown items, thrower character, person throwing, impact explosion, target being hit, hand visible"
+  ),
+};
+
+// --------------------------------------------------
+// COMBINED CATEGORY CONFIGS
+// --------------------------------------------------
+export const CATEGORY_PROMPT_CONFIGS: Record<AssetCategory, Record<string, ExtendedSubcategoryPromptConfig>> = {
+  WEAPONS: WEAPONS_PROMPT_CONFIG,
+  ARMOR: ARMOR_PROMPT_CONFIG,
+  CONSUMABLES: CONSUMABLES_PROMPT_CONFIG,
+  RESOURCES: RESOURCES_PROMPT_CONFIG,
+  CHARACTERS: CHARACTERS_PROMPT_CONFIG,
+  CREATURES: CREATURES_PROMPT_CONFIG,
+  UI_ELEMENTS: UI_ELEMENTS_PROMPT_CONFIG,
+  ENVIRONMENT: ENVIRONMENT_PROMPT_CONFIG,
+  QUEST_ITEMS: QUEST_ITEMS_PROMPT_CONFIG,
+  EFFECTS: EFFECTS_PROMPT_CONFIG,
+  PROJECTILES: PROJECTILES_PROMPT_CONFIG,
+};
+
+// --------------------------------------------------
+// BASE CATEGORY DESCRIPTIONS
+// --------------------------------------------------
+export const CATEGORY_BASE_DESCRIPTIONS: Record<AssetCategory, string> = {
+  WEAPONS: "game weapon item, isolated combat asset, readable equipment design",
+  ARMOR: "game armor equipment, isolated wearable item icon, loot-style presentation",
+  CONSUMABLES: "game consumable item, isolated pickup asset, usable inventory object",
+  RESOURCES: "game crafting resource, isolated material drop, readable inventory item",
+  CHARACTERS: "game character asset, isolated full-body figure, gameplay-readable silhouette",
+  CREATURES: "game creature asset, isolated full-body monster or animal, readable silhouette",
+  UI_ELEMENTS: "game UI graphic element, isolated interface asset, readable small-size design",
+  ENVIRONMENT: "game environment prop, isolated placeable world object, clean asset presentation",
+  QUEST_ITEMS: "game loot or quest item, isolated important pickup object, readable collectible design",
+  EFFECTS: "game visual effect sprite, isolated VFX element, ZERO characters or people, pure effect only",
+  PROJECTILES: "game projectile sprite, isolated flying ammunition or spell, motion-implied design",
+};
+
+// --------------------------------------------------
+// RESOLVERS
+// --------------------------------------------------
+export function resolveCategoryKey(category: string): AssetCategory | undefined {
+  const normalized = normalizeKey(category);
+  return CATEGORY_ALIASES[normalized] ?? (normalized as AssetCategory);
+}
+
+export function resolveSubcategoryKey(subcategory: string): string {
+  const normalized = normalizeKey(subcategory);
+  return SUBCATEGORY_ALIASES[normalized] ?? normalized;
+}
+
+export function resolveStyleKey(style?: string): AssetStyle {
+  const normalized = normalizeKey(style) || "PIXEL_16";
+  const map: Record<string, AssetStyle> = {
+    // Canonical names
+    PIXEL_16: "PIXEL_16",
+    PIXEL16: "PIXEL_16",
+    PIXEL_HD: "PIXEL_HD",
+    PIXELHD: "PIXEL_HD",
+    HAND_PAINTED: "HAND_PAINTED",
+    HANDPAINTED: "HAND_PAINTED",
+    ANIME: "ANIME",
+    DARK_FANTASY: "DARK_FANTASY",
+    DARKFANTASY: "DARK_FANTASY",
+    CARTOON: "CARTOON",
+    VECTOR: "VECTOR",
+    REALISTIC: "REALISTIC",
+    // Aliases from STYLES_2D_FULL (src/config/styles/styles-2d.ts)
+    PIXEL_ART_16: "PIXEL_16",
+    PIXELART16: "PIXEL_16",
+    PIXEL_ART_32: "PIXEL_HD",
+    PIXELART32: "PIXEL_HD",
+    VECTOR_CLEAN: "VECTOR",
+    VECTORCLEAN: "VECTOR",
+    ANIME_GAME: "ANIME",
+    ANIMEGAME: "ANIME",
+    CARTOON_WESTERN: "CARTOON",
+    CARTOONWESTERN: "CARTOON",
+    DARK_SOULS: "DARK_FANTASY",
+    DARKSOULS: "DARK_FANTASY",
+    CHIBI_CUTE: "CARTOON",
+    CHIBICUTE: "CARTOON",
+    REALISTIC_PAINTED: "REALISTIC",
+    REALISTICPAINTED: "REALISTIC",
+    // Isometric styles map to PIXEL_16 for prompt purposes (iso view handled separately)
+    ISOMETRIC: "PIXEL_16",
+    ISOMETRIC_PIXEL: "PIXEL_16",
+    ISOMETRICPIXEL: "PIXEL_16",
+    ISOMETRIC_CARTOON: "CARTOON",
+    ISOMETRICCARTOON: "CARTOON",
+    // Frontend generate page IDs (lowercase kebab)
+    PIXEL_16_BIT: "PIXEL_16",
+    PIXEL_HD_2: "PIXEL_HD",
+  };
+
+  return map[normalized] ?? "PIXEL_16";
+}
+
+export function resolveViewKey(view?: string): AssetView {
+  const normalized = normalizeKey(view) || "DEFAULT";
+  const map: Record<string, AssetView> = {
+    DEFAULT: "DEFAULT",
+    SIDE_VIEW: "SIDE_VIEW",
+    SIDEVIEW: "SIDE_VIEW",
+    SIDE: "SIDE_VIEW",
+    FRONT: "FRONT",
+    TOP_DOWN: "TOP_DOWN",
+    TOPDOWN: "TOP_DOWN",
+    TOP: "TOP_DOWN",
+  };
+
+  return map[normalized] ?? "DEFAULT";
+}
+
+export function resolveQualityKey(quality?: string): AssetQuality {
+  const normalized = normalizeKey(quality) || "MEDIUM";
+  const map: Record<string, AssetQuality> = {
+    FAST: "FAST",
+    MEDIUM: "MEDIUM",
+    HD: "HD",
+  };
+
+  return map[normalized] ?? "MEDIUM";
+}
+
+export function getPromptConfig(
+  category: string,
+  subcategory: string
+): ExtendedSubcategoryPromptConfig | undefined {
+  const resolvedCategory = resolveCategoryKey(category);
+  if (!resolvedCategory) return undefined;
+
+  const categoryConfig = CATEGORY_PROMPT_CONFIGS[resolvedCategory];
+  if (!categoryConfig) return undefined;
+
+  const resolvedSubcategory = resolveSubcategoryKey(subcategory);
+  return categoryConfig[resolvedSubcategory];
+}
+
+// --------------------------------------------------
+// TOKEN TAG NORMALIZATION
+// --------------------------------------------------
+export function normalizeTagList(values?: string[]): string[] {
+  return (values ?? [])
+    .map((v) => v.trim())
+    .filter(Boolean)
+    .slice(0, 12);
+}
+
+export function buildTagPrompt(
+  label: string,
+  values?: string[]
+): string {
+  const clean = normalizeTagList(values);
+  if (!clean.length) return "";
+  return `${label}: ${clean.join(", ")}`;
+}
+
+// --------------------------------------------------
+// VIEW APPLICATION
+// Order of precedence:
+// 1. subcategory.viewOverrides[view]
+// 2. view.subcategoryOverrides[subcategory]
+// 3. view.categoryOverrides[category]
+// 4. view.positive
+// --------------------------------------------------
+export function getViewPositive(
+  category: AssetCategory,
+  subcategory: string,
+  config: ExtendedSubcategoryPromptConfig,
+  view: AssetView
+): string {
+  const subOverride = config.viewOverrides?.[view];
+  if (subOverride) return subOverride;
+
+  const viewConfig = VIEW_PROMPT_CONFIGS[view];
+  const subcategoryOverride = viewConfig.subcategoryOverrides?.[subcategory];
+  if (subcategoryOverride) return subcategoryOverride;
+
+  const categoryOverride = viewConfig.categoryOverrides?.[category];
+  if (categoryOverride) return categoryOverride;
+
+  return viewConfig.positive;
+}
+
+export function getViewNegative(
+  config: ExtendedSubcategoryPromptConfig,
+  view: AssetView
+): string {
+  // If the subcategory provides a full replacement, use it instead of the
+  // global negative — needed when the global directly contradicts the
+  // subcategory's intent (e.g. character TOP_DOWN must allow standing).
+  const replacement = config.replaceViewNegative?.[view];
+  const baseNegative = replacement ?? VIEW_PROMPT_CONFIGS[view].negative;
+  return dedupeCsv([
+    baseNegative,
+    config.additionalNegativeByView?.[view],
+  ]);
+}
+
+// --------------------------------------------------
+// MAIN PROMPT BUILDER
+// --------------------------------------------------
+export function buildAssetPrompt(input: PromptBuildInput): PromptBuildResult {
+  const resolvedCategory = resolveCategoryKey(input.category);
+  if (!resolvedCategory) {
+    throw new Error(`Unknown category: ${input.category}`);
+  }
+
+  const resolvedSubcategory = resolveSubcategoryKey(input.subcategory);
+  const config = getPromptConfig(resolvedCategory, resolvedSubcategory);
+
+  if (!config) {
+    throw new Error(
+      `Missing prompt config for ${resolvedCategory}.${resolvedSubcategory}`
+    );
+  }
+
+  const resolvedStyle = resolveStyleKey(input.style);
+
+  // ── VIEW RESOLUTION ───────────────────────────────────────
+  // User-typed view in free text ALWAYS wins over UI selector.
+  // Rationale: if the user types "top down" they expect top-down
+  // regardless of what was clicked. Also strip the phrase so it
+  // doesn't duplicate with the enforced camera clause below.
+  const uiView = resolveViewKey(input.view);
+  const { view: promptView, stripped: promptWithoutView } =
+    detectViewFromPrompt(input.userPrompt || "");
+  const viewCameFromPrompt = promptView !== null;
+  const resolvedView: AssetView = promptView ?? uiView;
+  const userDescCleaned = viewCameFromPrompt
+    ? promptWithoutView
+    : (input.userPrompt || "").trim();
+
+  const resolvedQuality = resolveQualityKey(input.quality);
+
+  // categoryBase, styleConfig, qualityConfig intentionally not used in prompt assembly.
+  // Style comes from STYLES_2D_FULL via prompt-builder.ts bridgeResult().
+  // Quality comes from generation service QUALITY_SETTINGS (steps/guidance).
+  // This avoids bloating the prompt past FLUX's 80-word sweet spot.
+
+  const elementPrompt = buildTagPrompt("elemental theme", input.element);
+  const materialPrompt = buildTagPrompt("materials", input.material);
+  const colorPrompt = buildTagPrompt("colors", input.color);
+  // extraTags not used in prompt — tags bloat prompt past FLUX optimal length
+
+  const viewPositive = getViewPositive(
+    resolvedCategory,
+    resolvedSubcategory,
+    config,
+    resolvedView
+  );
+  const viewNegative = getViewNegative(config, resolvedView);
+
+  // ═══════════════════════════════════════════════════════
+  // POSITIVE PROMPT ORDER — optimized for FLUX (50-80 words ideal)
+  // FLUX gives highest weight to FIRST phrases in prompt.
+  // Order: identity → user intent → camera → framing → base rules
+  // ═══════════════════════════════════════════════════════
+  // NOTE: styleConfig.positive and qualityConfig.positive are intentionally
+  // EXCLUDED from here — they are redundant with STYLES_2D_FULL which adds
+  // styleCore + styleMandatory via prompt-builder.ts bridgeResult().
+  // Including both would bloat the prompt past the 100-word enhancer limit
+  // and cause critical phrases to be truncated.
+  // When user explicitly picks a non-default view (TOP_DOWN, SIDE_VIEW, FRONT),
+  // the camera angle MUST be the very first thing FLUX sees — it's the user's
+  // primary intent and FLUX gives highest weight to the first phrases.
+  // For DEFAULT view, object identity comes first (standard behavior).
+  const isExplicitView = resolvedView !== "DEFAULT";
+
+  // When the view came from the user's free text, double down on the camera
+  // clause so FLUX cannot ignore it. Wrap the camera phrase in (()) emphasis
+  // and prepend a hard-statement sentence. Strip any existing (()) from the
+  // view override first to avoid (((((nested))))) paren explosions that dilute
+  // FLUX's weight signal.
+  const viewPositiveFlat = viewPositive.replace(/\(+|\)+/g, "").trim();
+  const humanView = resolvedView.toLowerCase().replace("_", "-");
+  const cameraPhrase = !isExplicitView
+    ? `${viewPositive}.`
+    : viewCameFromPrompt
+      ? `((${viewPositiveFlat})). The camera angle is strictly ${humanView} with no deviation — do not rotate or angle the subject.`
+      // Selector-picked view: wrap in (()) emphasis too. Without this FLUX
+      // routinely ignores TOP_DOWN/SIDE_VIEW for character categories
+      // because its priors for "warrior holding axe" overpower a flat
+      // single-clause camera mention buried mid-prompt.
+      : `((${viewPositiveFlat})). Camera angle is strictly ${humanView} — do not rotate the subject to any other angle.`;
+
+  // ── Color detection ───────────────────────────────────────────────
+  const ACTUAL_COLORS = new Set(["red", "blue", "green", "purple", "gold", "golden", "black", "white", "orange", "yellow", "pink", "silver", "crimson"]);
+  const userLower = userDescCleaned.toLowerCase();
+  const detectedColors = userLower.split(/\s+/).filter(w => ACTUAL_COLORS.has(w));
+  const colorClause = detectedColors.length > 0
+    ? `The color is distinctly ${detectedColors.join(" and ")}.`
+    : "";
+
+  // ── PROMPT ASSEMBLY — STYLE EARLY for FLUX ──────────────────────
+  // FLUX gives highest weight to FIRST ~40 words.
+  // Style MUST appear in first 20 words or FLUX ignores it.
+  // Order: [style] [subject] [user desc] [view] [composition] [base]
+  //
+  // The user's own description gets wrapped in (()) emphasis so FLUX
+  // weights it above the framing scaffolding. Without this, prompts
+  // like "ranger with longbow, green hood" produced characters with
+  // axes and red shirts because the surrounding A-pose / view /
+  // composition tokens drowned out the few user words. The strip-then-
+  // wrap dance prevents nested-paren weight inflation if a user types
+  // their own (()) — FLUX's parser loses signal past two layers.
+  const userDescStripped = userDescCleaned.replace(/\(+|\)+/g, "").trim();
+  const userDesc = userDescStripped.length > 0 ? `((${userDescStripped}))` : userDescCleaned;
+  const tags = [elementPrompt, materialPrompt, colorPrompt].filter(Boolean).join(", ");
+
+  // Short style tag — injected at position #1 so FLUX renders correct style
+  const styleTag = STYLE_PROMPT_CONFIGS[resolvedStyle]?.positive || "";
+
+  let fullPrompt: string;
+  if (viewCameFromPrompt) {
+    // User typed the view in free text — camera is the PRIMARY intent.
+    // Put it first (higher FLUX weight than style) so a "top-down sword"
+    // actually lands top-down even when the model's priors want 3/4.
+    fullPrompt = [
+      `${cameraPhrase}`,                                           // 1. CAMERA FIRST (absolute priority)
+      `${styleTag} ${config.objectType}: ${userDesc}.`,            // 2. STYLE + WHAT + USER
+      colorClause,                                                  // 3. Color
+      tags ? `${tags}.` : "",                                       // 4. Tags
+      `Isolated on transparent background, centered, game sprite.`, // 5. Base
+    ].filter(Boolean).join(" ");
+  } else if (isExplicitView) {
+    // View picked via UI selector — strong but not primary.
+    fullPrompt = [
+      `${styleTag} ${cameraPhrase}`,                               // 1. STYLE + CAMERA
+      `${config.objectType}: ${userDesc}.`,                        // 2. WHAT + USER INTENT
+      colorClause,                                                  // 3. Color reinforcement
+      tags ? `${tags}.` : "",                                       // 4. Tags
+      `Isolated on transparent background, centered, game sprite.`, // 5. Base
+    ].filter(Boolean).join(" ");
+  } else {
+    fullPrompt = [
+      `${styleTag} ${config.objectType}: ${userDesc}.`,            // 1. STYLE + WHAT + USER (first 15 words!)
+      config.visualDesc ? `${config.visualDesc}.` : "",             // 2. Visual details
+      colorClause,                                                  // 3. Color
+      cameraPhrase,                                                 // 4. Camera
+      config.composition ? `${config.composition}.` : "",           // 5. Framing
+      tags ? `${tags}.` : "",                                       // 6. Tags
+      `Transparent background, centered, single game sprite.`,      // 7. Base
+    ].filter(Boolean).join(" ");
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // NEGATIVE PROMPT — blocks hallucinations
+  // styleConfig.negative excluded — STYLES_2D_FULL.negatives handles it
+  // When the view was user-typed, add a hard-block on common rotations
+  // that FLUX's priors default to (esp. 3/4 angle for weapons/characters).
+  // ═══════════════════════════════════════════════════════
+  const extraViewNegative = viewCameFromPrompt
+    ? "3/4 angle, three-quarter view, angled perspective, rotated subject, tilted subject, diagonal composition, dutch angle, any camera angle other than " + humanView
+    : "";
+
+  // Pose override — only applies to character / creature subcategories.
+  //
+  // Earlier code APPENDED the override fragment at the end of the prompt
+  // and FLUX (correctly) weighted the auto/A-pose words baked into the
+  // category config more heavily. Result: tester picked T-pose, got a
+  // standing wizard holding a staff at his side.
+  //
+  // Two fixes layered:
+  //   1. Strip the auto A-pose / animation-rig phrasing out of the
+  //      assembled prompt so it doesn't compete with the user's pick.
+  //   2. PREPEND the new pose fragment with (()) emphasis at position #1
+  //      so it lands in FLUX's high-weight first-tokens zone.
+  // For pose === "auto", do nothing — the auto baseline is already what
+  // the configs bake in.
+  const isLivingSubject =
+    resolvedCategory === "CHARACTERS" || resolvedCategory === "CREATURES";
+  const requestedPose: AssetPose = input.pose ?? "auto";
+
+  let fullPromptWithPose = fullPrompt;
+  let poseExtraNegative = "";
+  if (isLivingSubject && requestedPose !== "auto") {
+    const fragments =
+      resolvedCategory === "CREATURES"
+        ? poseFragmentsForCreature(requestedPose)
+        : poseFragmentsForHuman(requestedPose);
+    poseExtraNegative = fragments.negative;
+
+    // 1. Strip the auto-pose phrases that contradict the user's choice.
+    //    These come from the static ANIMATION_READY_POSE / CREATURE_ANIMATION_READY_POSE
+    //    constants baked into config.composition / config.objectType.
+    const autoFragments =
+      resolvedCategory === "CREATURES"
+        ? poseFragmentsForCreature("auto")
+        : poseFragmentsForHuman("auto");
+    const autoPhrasesToStrip = [
+      autoFragments.positive,
+      "A-pose game character sprite, animation-rig ready",
+      "A-pose enemy character sprite, animation-rig ready",
+      "A-pose NPC character sprite, animation-rig ready",
+      "A-pose boss character sprite, animation-rig ready",
+      "A-pose game-rigging stance",
+      "animation-rig ready",
+      "A-pose",
+    ];
+    for (const phrase of autoPhrasesToStrip) {
+      // Case-insensitive removal, then collapse double spaces / commas.
+      fullPromptWithPose = fullPromptWithPose.replace(
+        new RegExp(escapeRegex(phrase), "gi"),
+        ""
+      );
+    }
+    fullPromptWithPose = fullPromptWithPose
+      .replace(/,\s*,+/g, ",")
+      .replace(/\s{2,}/g, " ")
+      .replace(/\s+([,.])/g, "$1")
+      .trim();
+
+    // 2. Prepend the requested pose fragment so it leads the prompt.
+    //    The hard "must be / do not deviate" sentence after closes the
+    //    door on FLUX silently reverting to its standing-figure prior.
+    const enforcement =
+      requestedPose === "t-pose"
+        ? "Arms must be perpendicular to the torso. Do NOT hold any object at the side; weapons or staffs (if any) must be held by hands that are extended straight out to the sides."
+        : requestedPose === "dynamic"
+        ? "The pose must read as motion or expression."
+        : "Arms must be visibly angled away from the body for clean rigging.";
+    fullPromptWithPose = `((${fragments.positive})). ${enforcement} ${fullPromptWithPose}`;
+  }
+
+  const negativePrompt = dedupeCsv([
+    GLOBAL_NEGATIVE_BASE,
+    config.avoid,
+    viewNegative,
+    extraViewNegative,
+    poseExtraNegative,
+  ]);
+
+  return {
+    fullPrompt: fullPromptWithPose,
+    negativePrompt,
+    debug: {
+      resolvedCategory,
+      resolvedSubcategory,
+      resolvedStyle,
+      resolvedView,
+      resolvedQuality,
+    },
+  };
+}
+
+// Local helper — escape a string for use inside a RegExp constructor.
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// --------------------------------------------------
+// VALIDATION
+// --------------------------------------------------
+export function validatePromptConfigs(): string[] {
+  const errors: string[] = [];
+
+  for (const [category, configMap] of Object.entries(CATEGORY_PROMPT_CONFIGS)) {
+    if (!CATEGORY_BASE_DESCRIPTIONS[category as AssetCategory]) {
+      errors.push(`Missing CATEGORY_BASE_DESCRIPTIONS entry for ${category}`);
+    }
+
+    for (const [subcategory, config] of Object.entries(configMap)) {
+      if (!config.objectType?.trim()) {
+        errors.push(`${category}.${subcategory}: missing objectType`);
+      }
+      if (!config.visualDesc?.trim()) {
+        errors.push(`${category}.${subcategory}: missing visualDesc`);
+      }
+      if (!config.composition?.trim()) {
+        errors.push(`${category}.${subcategory}: missing composition`);
+      }
+      if (!config.avoid?.trim()) {
+        errors.push(`${category}.${subcategory}: missing avoid`);
+      }
+
+      if (config.viewOverrides) {
+        for (const [viewKey, value] of Object.entries(config.viewOverrides)) {
+          if (!value?.trim()) {
+            errors.push(`${category}.${subcategory}: empty view override for ${viewKey}`);
+          }
+        }
+      }
+    }
+  }
+
+  return errors;
+}
+
+// --------------------------------------------------
+// DEV CHECK
+// --------------------------------------------------
+export function assertPromptConfigValidity(): void {
+  const errors = validatePromptConfigs();
+  if (errors.length) {
+    throw new Error(`SPRITELAB prompt config validation failed:\n${errors.join("\n")}`);
+  }
+}

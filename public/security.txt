@@ -1,0 +1,45 @@
+Contact: mailto:security@sprite-lab.com
+Expires: 2026-12-31T23:59:59.000Z
+Encryption: https://www.sprite-lab.com/pgp-key.txt
+Preferred-Languages: en, pl
+Canonical: https://www.sprite-lab.com/.well-known/security.txt
+
+# Security Policy
+
+We take security seriously at SpriteLab. If you discover a security vulnerability, 
+please report it to us responsibly.
+
+## Reporting a Vulnerability
+
+Please send details to: security@sprite-lab.com
+
+Include:
+- Description of the vulnerability
+- Steps to reproduce
+- Potential impact
+- Your contact information (optional)
+
+## What to Expect
+
+- We will acknowledge your report within 48 hours
+- We will provide a detailed response within 7 days
+- We will keep you informed of our progress
+- We will credit you in our security acknowledgments (if desired)
+
+## Scope
+
+In scope:
+- SQL injection
+- Cross-site scripting (XSS)
+- Authentication/authorization issues
+- Server-side request forgery (SSRF)
+- Remote code execution
+- Sensitive data exposure
+
+Out of scope:
+- Social engineering attacks
+- Physical attacks
+- Denial of service attacks
+- Issues in third-party services
+
+Thank you for helping keep SpriteLab secure!

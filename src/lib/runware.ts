@@ -1,0 +1,640 @@
+import { Runware } from "@runware/sdk-js";
+import { cloudflareAiConfigured, generateWithCloudflare } from "./cloudflare-ai";
+
+// ===========================================
+// RUNWARE API CLIENT
+// ===========================================
+
+let runwareInstance: InstanceType<typeof Runware> | null = null;
+let isConnected = false;
+
+export async function getRunwareClient(): Promise<InstanceType<typeof Runware>> {
+  const apiKey = process.env.RUNWARE_API_KEY;
+  if (!apiKey) {
+    console.error("[Runware] RUNWARE_API_KEY environment variable is not set!");
+    throw new Error("Image generation service is temporarily unavailable. Please try again later.");
+  }
+
+  // Create new instance if needed
+  if (!runwareInstance) {
+    console.log("[Runware] Creating new client instance...");
+    runwareInstance = new Runware({ apiKey });
+    isConnected = false;
+  }
+
+  // Ensure connection is established
+  if (!isConnected) {
+    try {
+      console.log("[Runware] Ensuring connection...");
+      await runwareInstance.ensureConnection();
+      isConnected = true;
+      console.log("[Runware] ✅ Connected successfully");
+    } catch (connError) {
+      console.error("[Runware] ❌ Connection failed:", connError);
+      // Reset instance to try fresh on next attempt
+      runwareInstance = null;
+      isConnected = false;
+      throw new Error(`Failed to connect to Runware: ${connError instanceof Error ? connError.message : String(connError)}`);
+    }
+  }
+
+  return runwareInstance;
+}
+
+// ===========================================
+// TIMEOUTS
+// ===========================================
+// Provider calls must finish well before the calling route's maxDuration so
+// the route still has time to refund credits on failure.
+export const RUNWARE_INFERENCE_TIMEOUT_MS = 75_000;
+export const RUNWARE_UPSCALE_TIMEOUT_MS = 90_000;
+
+export function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
+}
+
+// Reset connection (useful for error recovery)
+export function resetRunwareConnection(): void {
+  if (runwareInstance) {
+    try {
+      runwareInstance.disconnect();
+    } catch {
+      // Ignore disconnect errors
+    }
+  }
+  runwareInstance = null;
+  isConnected = false;
+  console.log("[Runware] Connection reset");
+}
+
+// ===========================================
+// MODEL CONFIGURATION BY TIER
+// ===========================================
+
+export type UserTier = "free" | "starter" | "pro" | "lifetime";
+
+// Model AIR identifiers from Runware
+// Format: "provider:model_id@version" or direct model name
+// See: https://runware.ai/docs/en/image-inference/text-to-image
+//
+// 🎮 MODEL QUALITY RANKING:
+// FLUX Pro    → 🥇 Best (details, lighting, textures)
+// FLUX Dev    → 🥈 Very good (90-95% of Pro quality)
+// FLUX Schnell → 🥉 Good (simpler, smoother, less detail)
+//
+// For pixel art/detailed styles → Use Dev (every pixel matters!)
+// For cartoon/vector → Schnell OK (simpler styles)
+export const RUNWARE_MODELS = {
+  // Tier 3 - Free/Budget (fast, cheap, 4 steps)
+  "flux-schnell": "runware:100@1", // FLUX.1 [schnell] - 2-3 sec, simple styles OK
+
+  // Tier 2 - Starter (quality, 20-28 steps)
+  "flux-dev": "runware:101@1", // FLUX.1 [dev] - 8-15 sec, great for pixel art
+
+  // Tier 1 - Pro/Lifetime (BEST quality!)
+  // BFL AIR IDs: bfl:2@1 = FLUX.1.1 Pro, bfl:2@2 = FLUX.1.1 Pro Ultra
+  // bfl:6@1 = FLUX.2 [flex], bfl:7@1 = FLUX.2 [max]
+  "flux-pro": "bfl:2@1", // FLUX.1.1 Pro - najlepsza jakość, detale, tekstury
+} as const;
+
+export type RunwareModelId = keyof typeof RUNWARE_MODELS;
+
+// Model selection by user tier
+export const TIER_MODELS: Record<UserTier, RunwareModelId[]> = {
+  free: ["flux-schnell"],
+  starter: ["flux-dev", "flux-schnell"],
+  pro: ["flux-pro", "flux-dev", "flux-schnell"],
+  lifetime: ["flux-pro", "flux-dev", "flux-schnell"],
+};
+
+// Default model per tier
+export const DEFAULT_MODEL: Record<UserTier, RunwareModelId> = {
+  free: "flux-schnell",
+  starter: "flux-dev",
+  pro: "flux-pro",      // 🔥 FLUX.1.1 Pro - najlepsza jakość!
+  lifetime: "flux-pro", // 🔥 FLUX.1.1 Pro - najlepsza jakość!
+};
+
+// Model costs (approximate USD per image)
+export const MODEL_COSTS: Record<RunwareModelId, number> = {
+  "flux-schnell": 0.003,  // ~$0.003 per image (4 steps)
+  "flux-dev": 0.01,       // ~$0.01 per image
+  "flux-pro": 0.03,       // ~$0.03 per image (premium quality)
+};
+
+// ===========================================
+// IMAGE GENERATION
+// ===========================================
+
+export interface GenerateImageOptions {
+  prompt: string;
+  negativePrompt?: string;
+  model?: RunwareModelId;
+  width?: number;
+  height?: number;
+  seed?: number;
+  steps?: number;
+  guidance?: number;
+  numberOfImages?: number;
+  /**
+   * Optional LoRA stack to apply at inference. Each entry has an AIR
+   * identifier (Runware Asset ID) and a weight 0-2.
+   *
+   * Examples of AIR formats Runware accepts:
+   *   - Civitai: "civitai:12345@67890"  (model id @ version id)
+   *   - Runware-hosted user LoRA: "runware:USER_ID/lora-name@v1"
+   *
+   * Used by SpriteLab to (a) apply public Civitai LoRAs that match a
+   * given style picker entry, and (b) apply our own custom-trained
+   * LoRAs once they exist (see docs/CUSTOM_MODEL.md).
+   */
+  loras?: Array<{ model: string; weight: number }>;
+}
+
+export interface GeneratedImage {
+  imageURL: string;
+  seed: number;
+  model: string;
+  cost: number;
+}
+
+export async function generateImage(
+  options: GenerateImageOptions,
+  userTier: UserTier = "free"
+): Promise<{ success: boolean; images?: GeneratedImage[]; error?: string }> {
+  try {
+    const runware = await getRunwareClient();
+
+    // Select model based on tier
+    let modelId = options.model || DEFAULT_MODEL[userTier];
+
+    // Verify user has access to this model
+    const allowedModels = TIER_MODELS[userTier];
+    if (!allowedModels.includes(modelId)) {
+      console.log(`[Runware] Model ${modelId} not allowed for tier ${userTier}, using default`);
+      modelId = DEFAULT_MODEL[userTier];
+    }
+
+    const modelAIR = RUNWARE_MODELS[modelId];
+    const cost = MODEL_COSTS[modelId];
+
+    // 🔥 FLUX OPTIMIZATION: Limit by WORDS (optimal: 50-80, max: 100)
+    const MAX_PROMPT_WORDS = 100;
+
+    let safePrompt = options.prompt;
+    const promptWords = safePrompt.split(/\s+/);
+
+    if (promptWords.length > MAX_PROMPT_WORDS) {
+      console.log(`[Runware] ⚠️ PROMPT TOO LONG (${promptWords.length} words), limiting to ${MAX_PROMPT_WORDS}`);
+      safePrompt = promptWords.slice(0, MAX_PROMPT_WORDS).join(" ");
+    }
+
+    // Final character check (Runware hard limit: 3000)
+    if (safePrompt.length > 2900) {
+      console.log(`[Runware] ⚠️ Still too many chars (${safePrompt.length}), hard truncating`);
+      safePrompt = safePrompt.substring(0, 2900);
+      const lastSpace = safePrompt.lastIndexOf(" ");
+      if (lastSpace > 2700) safePrompt = safePrompt.substring(0, lastSpace);
+    }
+
+    const finalWordCount = safePrompt.split(/\s+/).length;
+    console.log(`[Runware] 🚀 Generating with ${modelId} (AIR: ${modelAIR})`);
+    console.log(`[Runware] Prompt: ${finalWordCount} words, ${safePrompt.length} chars`);
+    console.log(`[Runware] Preview: ${safePrompt.substring(0, 80)}...`);
+
+    // Runware SDK and FLUX both support negativePrompt — earlier code dropped
+    // it because of a stale comment claiming the API did not. Without it the
+    // style-specific negatives ("no anti-aliasing", "no 3/4 angle") and view
+    // negatives are computed all the way through the pipeline and thrown
+    // away. Passing it through is the single biggest leverage on FLUX
+    // following the user's intent.
+    let safeNegative = options.negativePrompt;
+    if (safeNegative && safeNegative.length > 1900) {
+      const trimmed = safeNegative.substring(0, 1900);
+      const lastSpace = trimmed.lastIndexOf(" ");
+      safeNegative = lastSpace > 1700 ? trimmed.substring(0, lastSpace) : trimmed;
+    }
+
+    // Sanitize LoRA stack — drop entries without a model id and clamp
+    // weights into the safe 0-2 range. Without this a typo in a style
+    // config could send `weight: NaN` and Runware would 400 the call.
+    const safeLoras = (options.loras ?? [])
+      .filter((l) => typeof l.model === "string" && l.model.length > 0)
+      .map((l) => ({
+        model: l.model,
+        weight: Math.max(0, Math.min(2, Number.isFinite(l.weight) ? l.weight : 1)),
+      }));
+
+    if (safeLoras.length > 0) {
+      console.log(`[Runware] 🎨 Applying ${safeLoras.length} LoRA(s):`, safeLoras.map((l) => `${l.model}@${l.weight}`).join(", "));
+    }
+
+    // FLUX-optimized defaults: guidance 2-4, steps 20-28
+    const result = await withTimeout(runware.imageInference({
+      positivePrompt: safePrompt,
+      negativePrompt: safeNegative || undefined,
+      model: modelAIR,
+      width: options.width || 1024,
+      height: options.height || 1024,
+      seed: options.seed,
+      steps: options.steps || 25,           // FLUX optimal: 20-28
+      CFGScale: options.guidance || 3.5,    // FLUX optimal: 2-4 (NOT 7!)
+      numberResults: options.numberOfImages || 1,
+      outputType: "URL",
+      outputFormat: "PNG",
+      lora: safeLoras.length > 0 ? safeLoras : undefined,
+    }), RUNWARE_INFERENCE_TIMEOUT_MS, "Runware imageInference");
+
+    if (!result || result.length === 0) {
+      return { success: false, error: "No images generated" };
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const images: GeneratedImage[] = result.map((img: any) => ({
+      imageURL: img.imageURL || img.imageUrl || String(img),
+      seed: img.seed || options.seed || 0,
+      model: modelId,
+      cost,
+    }));
+
+    console.log(`[Runware] ✅ Generated ${images.length} image(s)`);
+
+    return { success: true, images };
+  } catch (error) {
+    // Reset connection on error for fresh retry next time
+    resetRunwareConnection();
+
+    let errorMessage: string;
+
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'object' && error !== null) {
+      // Handle Runware API error objects - try multiple common fields
+      const errObj = error as Record<string, unknown>;
+
+      // Try to extract meaningful error message
+      if (typeof errObj.message === 'string') {
+        errorMessage = errObj.message;
+      } else if (typeof errObj.error === 'string') {
+        errorMessage = errObj.error;
+      } else if (typeof errObj.errorMessage === 'string') {
+        errorMessage = errObj.errorMessage;
+      } else if (errObj.errors && Array.isArray(errObj.errors)) {
+        errorMessage = errObj.errors.map((e: unknown) =>
+          typeof e === 'string' ? e : JSON.stringify(e)
+        ).join(', ');
+      } else if (errObj.data && typeof errObj.data === 'object') {
+        // Some APIs nest error in data field
+        const dataObj = errObj.data as Record<string, unknown>;
+        errorMessage = (dataObj.message as string) || (dataObj.error as string) || JSON.stringify(errObj.data);
+      } else {
+        // Last resort - stringify the whole object
+        try {
+          errorMessage = JSON.stringify(error, null, 0);
+        } catch {
+          errorMessage = "Unknown error object";
+        }
+      }
+    } else {
+      errorMessage = String(error);
+    }
+
+    console.error("[Runware] ❌ Error details:", {
+      type: typeof error,
+      isError: error instanceof Error,
+      message: errorMessage,
+      raw: error,
+    });
+
+    return {
+      success: false,
+      error: `Runware: ${errorMessage}`,
+    };
+  }
+}
+
+// ===========================================
+// SPRITE GENERATION (instruction-following models)
+// ===========================================
+// The sprite pipeline uses newer models that follow plain instructions
+// (see src/config/prompts/sprite-prompt.ts). They don't accept the FLUX.1
+// knobs (steps / CFG / negative prompt / LoRA), so they go through the REST
+// API with only the parameters every model supports.
+
+export const SPRITE_MODELS = {
+  // FLUX.2 [klein] 9B — ~$0.0008/image, good adherence, fast
+  standard: { air: "runware:400@2", label: "FLUX.2 klein", approxCostUsd: 0.0008 },
+  // GPT Image 1 Mini — ~$0.036/image, cleanest pixel art, best adherence
+  hd: { air: "openai:1@2", label: "GPT Image Mini", approxCostUsd: 0.036 },
+} as const;
+
+export type SpriteModelKey = keyof typeof SPRITE_MODELS;
+
+export interface SpriteImageResult {
+  image: Buffer;
+  seed: number;
+  model: string;
+  cost: number;
+}
+
+export async function generateSpriteImage(opts: {
+  prompt: string;
+  model: SpriteModelKey;
+  seed?: number;
+}): Promise<SpriteImageResult> {
+  try {
+    return await generateSpriteImageRunware(opts);
+  } catch (err) {
+    // Runware down or out of prepaid balance → free Cloudflare fallback so
+    // users still get their sprite (post-processing is identical).
+    if (!cloudflareAiConfigured()) throw err;
+    console.warn("[Sprite] Runware failed, using Cloudflare Workers AI:", err instanceof Error ? err.message : err);
+    const seed = opts.seed ?? Math.floor(Math.random() * 2_147_483_647);
+    const cf = await generateWithCloudflare({ prompt: opts.prompt, hd: opts.model === "hd", seed });
+    return { image: cf.image, seed, model: cf.model, cost: 0 };
+  }
+}
+
+async function generateSpriteImageRunware(opts: {
+  prompt: string;
+  model: SpriteModelKey;
+  seed?: number;
+}): Promise<SpriteImageResult> {
+  const apiKey = process.env.RUNWARE_API_KEY;
+  if (!apiKey) throw new Error("RUNWARE_API_KEY is not set");
+  const spec = SPRITE_MODELS[opts.model];
+
+  const task: Record<string, unknown> = {
+    taskType: "imageInference",
+    taskUUID: crypto.randomUUID(),
+    model: spec.air,
+    positivePrompt: opts.prompt.slice(0, 2900),
+    width: 1024,
+    height: 1024,
+    numberResults: 1,
+    outputType: "URL",
+    outputFormat: "PNG",
+    includeCost: true,
+  };
+  // Only FLUX-family checkpoints on Runware accept a seed
+  if (opts.model === "standard" && Number.isSafeInteger(opts.seed) && opts.seed! >= 1) task.seed = opts.seed;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), RUNWARE_INFERENCE_TIMEOUT_MS);
+  try {
+    const res = await fetch("https://api.runware.ai/v1", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify([task]),
+      signal: controller.signal,
+    });
+    // A gateway error page (HTML) must surface as a provider error, not a SyntaxError
+    const json = (await res.json().catch(() => ({}))) as {
+      data?: Array<{ imageURL: string; seed?: number; cost?: number }>;
+      errors?: Array<{ code?: string; message?: string }>;
+    };
+    if (json.errors?.length || !json.data?.[0]?.imageURL) {
+      const e = json.errors?.[0];
+      throw new Error(`Runware ${e?.code ?? res.status}: ${e?.message ?? "no image returned"}`);
+    }
+    const item = json.data[0];
+    const imgRes = await fetch(item.imageURL, { signal: controller.signal });
+    if (!imgRes.ok) throw new Error(`Runware image download failed (${imgRes.status})`);
+    return {
+      image: Buffer.from(await imgRes.arrayBuffer()),
+      seed: item.seed ?? opts.seed ?? 0,
+      model: spec.air,
+      cost: item.cost ?? spec.approxCostUsd,
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// ===========================================
+// ANIMATION FRAMES (reference-image edit model)
+// ===========================================
+// Nano Banana 2 keeps a character's design consistent across poses when given
+// the sprite as a reference — tested to produce clean 2×2 frame grids.
+export const ANIMATION_MODEL = { air: "google:4@3", approxCostUsd: 0.07 } as const;
+
+type AnimationGridOpts = {
+  prompt: string;
+  /** PNG of the source sprite on a white background */
+  reference: Buffer;
+  /** Square canvas side - the model only accepts 1024 or 2048 for square output. */
+  size?: 1024 | 2048;
+};
+
+/**
+ * Google's moderation sometimes rejects harmless game art (a "slime monster",
+ * "acid spit"). One retry framed explicitly as cartoon game art usually passes.
+ */
+export async function generateAnimationGrid(opts: AnimationGridOpts): Promise<{ image: Buffer; cost: number }> {
+  try {
+    return await generateAnimationGridOnce(opts);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!/invalidProviderContent|moderation|flagged/i.test(msg)) throw err;
+    console.warn("[Runware] Animation grid flagged by provider moderation - retrying as cartoon game art");
+    return generateAnimationGridOnce({
+      ...opts,
+      prompt: `Harmless, family-friendly cartoon video game sprite sheet for an indie game, no gore, no realistic violence.\n${opts.prompt}`,
+    });
+  }
+}
+
+async function generateAnimationGridOnce(opts: AnimationGridOpts): Promise<{ image: Buffer; cost: number }> {
+  const apiKey = process.env.RUNWARE_API_KEY;
+  if (!apiKey) throw new Error("RUNWARE_API_KEY is not set");
+  const controller = new AbortController();
+  // 2K sheets take noticeably longer than single sprites
+  const timer = setTimeout(() => controller.abort(), 150_000);
+  try {
+    const res = await fetch("https://api.runware.ai/v1", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify([{
+        taskType: "imageInference",
+        taskUUID: crypto.randomUUID(),
+        model: ANIMATION_MODEL.air,
+        positivePrompt: opts.prompt.slice(0, 2900),
+        referenceImages: [`data:image/png;base64,${opts.reference.toString("base64")}`],
+        width: opts.size ?? 1024,
+        height: opts.size ?? 1024,
+        numberResults: 1,
+        outputType: "URL",
+        outputFormat: "PNG",
+        includeCost: true,
+      }]),
+      signal: controller.signal,
+    });
+    const json = (await res.json().catch(() => ({}))) as {
+      data?: Array<{ imageURL: string; cost?: number }>;
+      errors?: Array<{ code?: string; message?: string }>;
+    };
+    if (json.errors?.length || !json.data?.[0]?.imageURL) {
+      const e = json.errors?.[0];
+      throw new Error(`Runware ${e?.code ?? res.status}: ${e?.message ?? "no image returned"}`);
+    }
+    const imgRes = await fetch(json.data[0].imageURL, { signal: controller.signal });
+    if (!imgRes.ok) throw new Error(`Runware image download failed (${imgRes.status})`);
+    return { image: Buffer.from(await imgRes.arrayBuffer()), cost: json.data[0].cost ?? ANIMATION_MODEL.approxCostUsd };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// ===========================================
+// UPSCALING
+// ===========================================
+
+export async function upscaleImage(
+  imageUrl: string,
+  upscaleFactor: number = 2
+): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
+  try {
+    const runware = await getRunwareClient();
+
+    console.log(`[Runware] 🔍 Upscaling image ${upscaleFactor}x`);
+
+    const result = await withTimeout(runware.upscale({
+      inputImage: imageUrl,
+      upscaleFactor: upscaleFactor as 2 | 4,
+      outputType: "URL",
+      outputFormat: "PNG",
+    }), RUNWARE_UPSCALE_TIMEOUT_MS, "Runware upscale");
+
+    // Handle result - can be single object or array
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const resultAny = result as any;
+    let upscaledUrl: string | null = null;
+
+    if (Array.isArray(resultAny) && resultAny.length > 0) {
+      upscaledUrl = resultAny[0].imageURL || resultAny[0].imageUrl || String(resultAny[0]);
+    } else if (resultAny && typeof resultAny === "object") {
+      upscaledUrl = resultAny.imageURL || resultAny.imageUrl || String(resultAny);
+    }
+
+    if (!upscaledUrl || !upscaledUrl.startsWith("http")) {
+      return { success: false, error: "Upscale failed - no valid output URL" };
+    }
+
+    console.log(`[Runware] ✅ Upscaled successfully`);
+    return { success: true, imageUrl: upscaledUrl };
+  } catch (error) {
+    console.error("[Runware] ❌ Upscale error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Upscale failed",
+    };
+  }
+}
+
+// ===========================================
+// BACKGROUND REMOVAL
+// ===========================================
+
+// Timeout for background removal (20 seconds - reduced for faster fallback)
+const BG_REMOVAL_TIMEOUT = 20000;
+
+export async function removeBackground(
+  imageUrl: string
+): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
+  try {
+    const runware = await getRunwareClient();
+
+    console.log(`[Runware] ✂️ Removing background...`);
+
+    // Timeout so a hung socket can't stall the caller (timer is cleared on settle)
+    let result;
+    try {
+      result = await withTimeout(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (runware as any).removeBackground({
+          inputImage: imageUrl,
+          outputType: "URL",
+          outputFormat: "PNG",
+        }) as Promise<unknown>,
+        BG_REMOVAL_TIMEOUT,
+        "Background removal"
+      );
+    } catch (innerError) {
+      // Check for network errors - return gracefully instead of throwing
+      const errorMsg = innerError instanceof Error ? innerError.message : String(innerError);
+      if (errorMsg.includes("timeout") || errorMsg.includes("timed out") || errorMsg.includes("ENOTFOUND") ||
+          errorMsg.includes("ECONNREFUSED") || errorMsg.includes("ERR_NAME_NOT_RESOLVED") ||
+          errorMsg.includes("fetch failed") || errorMsg.includes("network")) {
+        console.log(`[Runware] ⚠️ Background removal network issue: ${errorMsg}`);
+        return { success: false, error: `Network issue: ${errorMsg}` };
+      }
+      throw innerError;
+    }
+
+    // Handle result - can be single object or array
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const resultAny = result as any;
+    let resultUrl: string | null = null;
+
+    if (Array.isArray(resultAny) && resultAny.length > 0) {
+      resultUrl = resultAny[0].imageURL || resultAny[0].imageUrl || String(resultAny[0]);
+    } else if (resultAny && typeof resultAny === "object") {
+      resultUrl = resultAny.imageURL || resultAny.imageUrl || String(resultAny);
+    }
+
+    if (!resultUrl || !resultUrl.startsWith("http")) {
+      return { success: false, error: "Background removal failed - no valid output URL" };
+    }
+
+    console.log(`[Runware] ✅ Background removed successfully`);
+    return { success: true, imageUrl: resultUrl };
+  } catch (error) {
+    console.error("[Runware] ❌ Background removal error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Background removal failed",
+    };
+  }
+}
+
+
+// ===========================================
+// PROMPT ENHANCEMENT
+// ===========================================
+
+export async function enhancePrompt(
+  prompt: string,
+  maxLength: number = 300
+): Promise<{ success: boolean; enhancedPrompt?: string; error?: string }> {
+  try {
+    const runware = await getRunwareClient();
+
+    console.log(`[Runware] ✨ Enhancing prompt`);
+
+    const result = await withTimeout(runware.enhancePrompt({
+      prompt,
+      promptMaxLength: maxLength,
+      promptVersions: 1,
+    }), 20_000, "Runware enhancePrompt");
+
+    if (!result || result.length === 0) {
+      return { success: false, error: "Prompt enhancement failed" };
+    }
+
+    console.log(`[Runware] ✅ Prompt enhanced`);
+
+    return { success: true, enhancedPrompt: result[0].text };
+  } catch (error) {
+    console.error("[Runware] ❌ Prompt enhancement error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Enhancement failed",
+    };
+  }
+}

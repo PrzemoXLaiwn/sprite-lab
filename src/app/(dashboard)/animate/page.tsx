@@ -1,0 +1,435 @@
+"use client";
+
+import { useEffect, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { SpritePlayer } from "@/components/animate/SpritePlayer";
+import { MovesetBuilder } from "@/components/animate/MovesetBuilder";
+import { buildEnginePack, saveBlob } from "@/lib/export/engine-pack";
+import { Film, Info, Check, Wand2, Loader2, Compass } from "lucide-react";
+import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
+import {
+  ToolShell, ToolPanel, ToolTabs, Field, FooterHint, CanvasColumn, CanvasFrame, CanvasImage,
+  BackdropToggle, Chip, TopBarHint, PrimaryButton, DownloadButton, SecondaryButton, ErrorNote, InfoNote, OptionCard, SuggestionChip,
+  SourceCard, RecentAssetPicker, ProcessingOverlay, SourceMissing, Segmented, PageFallback, Elapsed,
+  isPixelStyleId, useSourceGeneration, toolErrorMessage, downloadImage, saveBlobAs, type ToolBgModeId,
+} from "@/components/tools/ToolWorkspace";
+import { ANIMATION_FRAME_OPTIONS, DEFAULT_ANIMATION_FRAMES, RIG_CREDITS, RIG_FRAMES, ROTATIONS, rotationFor, supportsRotation, animationCredits, animationFrameOption, animationPresetsFor, rigMotionFor } from "@/config/animations";
+import type { SuggestedMotion } from "@/lib/animation-suggest";
+
+const CUSTOM_EXAMPLES = [
+  "breathes a stream of fire forward",
+  "raises the staff and summons lightning",
+  "draws the bow and shoots an arrow",
+  "dances happily and spins around",
+];
+
+interface AnimationResult {
+  sheetUrl: string;
+  gifUrl: string | null;
+  frameCount: number;
+  frameWidth: number;
+  frameHeight: number;
+  /** Grid sheets (4-direction walk): frames per row. */
+  sheetCols?: number;
+}
+
+/** Motions where the character travels — the game view scrolls the ground. */
+const TRAVELS = /\b(walk|run|jog|sprint|trot|gallop|march|crawl|slither|fly|flight|swim|drive|roll|dash|hop|skate)/i;
+
+/** Splits the sheet into individual frame PNGs and zips them. */
+async function downloadFramesZip(result: AnimationResult, baseName: string) {
+  const blob = await (await fetch(result.sheetUrl)).blob();
+  const bitmap = await createImageBitmap(blob);
+  const JSZip = (await import("jszip")).default;
+  const zip = new JSZip();
+  const canvas = document.createElement("canvas");
+  const w = result.frameWidth, h = result.frameHeight;
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("canvas-unavailable");
+  ctx.imageSmoothingEnabled = false;
+  const cols = result.sheetCols ?? result.frameCount;
+  for (let i = 0; i < result.frameCount; i++) {
+    ctx.clearRect(0, 0, w, h);
+    ctx.drawImage(bitmap, (i % cols) * w, Math.floor(i / cols) * h, w, h, 0, 0, w, h);
+    const frame = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/png"));
+    if (frame) zip.file(`${baseName}_frame${String(i + 1).padStart(2, "0")}.png`, frame);
+  }
+  zip.file(`${baseName}_sheet.png`, blob);
+  saveBlobAs(await zip.generateAsync({ type: "blob" }), `${baseName}_frames.zip`);
+}
+
+function AnimatePageContent({ generationId }: { generationId: string | null }) {
+  const { source, loading: loadingSource, error: sourceError } = useSourceGeneration(generationId);
+  const [action, setAction] = useState<string>("");
+  const [customMotion, setCustomMotion] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [zipping, setZipping] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState<AnimationResult | null>(null);
+  const [view, setView] = useState<"play" | "game" | "sheet">("play");
+  // What the last result shows (file names + the game view: does it travel?)
+  const [resultMotion, setResultMotion] = useState({ id: "", text: "" });
+  const [frames, setFrames] = useState<number>(DEFAULT_ANIMATION_FRAMES);
+  const [smooth, setSmooth] = useState(true);
+  const [fps, setFps] = useState(8);
+  const [bgMode, setBgMode] = useState<ToolBgModeId>("checker");
+
+  // Motions tailored to this sprite (a dog gets Bark / Sit, not Fly); the
+  // category presets show until they arrive or if the helper is unavailable.
+  const [suggested, setSuggested] = useState<SuggestedMotion[] | null>(null);
+  const [suggesting, setSuggesting] = useState(Boolean(generationId));
+  useEffect(() => {
+    if (!generationId) return;
+    let cancelled = false;
+    fetch(`/api/animate/suggest?id=${encodeURIComponent(generationId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.ai && Array.isArray(data.motions) && data.motions.length) {
+          setSuggested(data.motions);
+          setAction((a) => (a && a !== "custom" && !rotationFor(a) ? "" : a)); // re-pick the first tailored motion
+        }
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setSuggesting(false); });
+    return () => { cancelled = true; };
+  }, [generationId]);
+
+  const presets: SuggestedMotion[] = suggested ?? animationPresetsFor(source?.categoryId).map((p) => ({ ...p, loop: p.loop ?? true }));
+  const selected = action || presets[0]?.id || "custom";
+  const selectedPreset = presets.find((p) => p.id === selected);
+  const isTile = (source?.categoryId ?? "").toUpperCase() === "TILESETS";
+  const smoothOn = smooth && !isTile;
+
+  // Each motion comes with a recommended number of key poses (a walk needs
+  // more than a pulse) — applied until the user picks a count themselves.
+  const [framesTouched, setFramesTouched] = useState(false);
+  const recommendedFrames = selectedPreset?.frames;
+  useEffect(() => {
+    if (!framesTouched && recommendedFrames) setFrames(recommendedFrames);
+  }, [recommendedFrames, framesTouched]);
+
+  const pixel = isPixelStyleId(source?.styleId);
+  const option = animationFrameOption(frames);
+  // Idle / breathing / hover are rigged from the original sprite (no redraw, no flicker)
+  const rigKind = !isTile && selected !== "custom" ? rigMotionFor(selected, selectedPreset?.label)
+    // Pixel-art walks are rigged too (whole-pixel steps); AI frames only as a fallback
+    ?? (pixel && /walk/i.test(`${selected} ${selectedPreset?.label ?? ""}`) ? "walk" : null) : null;
+  const rotation = rotationFor(selected);
+  const canRotate = supportsRotation(source?.categoryId);
+  const cost = rotation ? rotation.credits : rigKind ? RIG_CREDITS : animationCredits(frames, smoothOn);
+  const rigFrames = pixel ? (rigKind === "walk" ? 4 : 6) : RIG_FRAMES;
+  // Frames in the finished sheet, for the summary lines
+  const outFrames = rotation ? rotation.frames : rigKind ? rigFrames : smoothOn ? option.frames * 2 : option.frames;
+  const customTooShort = selected === "custom" && customMotion.trim().length < 3;
+
+  const animate = async () => {
+    if (!generationId || loading) return;
+    if (customTooShort) {
+      setError("Describe how it should move — a few words are enough.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    setResult(null);
+    try {
+      const res = await fetch("/api/animate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          generationId, action: selected, frames, smooth: smoothOn,
+          ...(selected === "custom" ? { customMotion } : {}),
+          // Tailored motions travel with their description
+          ...(selected.startsWith("ai-") && selectedPreset ? { customMotion: selectedPreset.motion, label: selectedPreset.label, loop: selectedPreset.loop, anchor: selectedPreset.anchor } : {}),
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(toolErrorMessage(res, data, "Animation failed."));
+      if (!data?.sheetUrl) throw new Error("The animation finished but returned no sprite sheet. Please try again.");
+      setResult(data);
+      setResultMotion({ id: selected, text: `${selected} ${selectedPreset?.label ?? ""} ${selected === "custom" ? customMotion : ""}` });
+      setFps(typeof data.fps === "number" ? data.fps : data.smoothed ? (data.frameCount >= 12 ? 12 : 10) : data.frameCount >= 9 ? 10 : 8);
+      setView("play");
+      triggerCreditsRefresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Animation failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const baseName = () => `spritelab-${(resultMotion.id || "animation").replace(/[^a-z0-9-]+/gi, "-").toLowerCase()}`;
+
+  const [packing, setPacking] = useState(false);
+  const downloadEngine = async () => {
+    if (!result || packing) return;
+    setPacking(true);
+    try {
+      const name = (resultMotion.id || "animation").replace(/^ai-/, "");
+      const blob = await buildEnginePack((source?.prompt ?? "character").split(/[,.]/)[0].slice(0, 32), [{
+        name, sheetUrl: result.sheetUrl, frameCount: result.frameCount, frameWidth: result.frameWidth, frameHeight: result.frameHeight,
+        fps, loop: /idle|walk|run|fly|float|loop/i.test(name), sheetCols: result.sheetCols,
+      }]);
+      saveBlob(blob, `${baseName()}_engine.zip`);
+    } catch {
+      setError("Couldn't build the engine pack. Download the sprite sheet instead, or try again.");
+    } finally {
+      setPacking(false);
+    }
+  };
+
+  const downloadZip = async () => {
+    if (!result || zipping) return;
+    setZipping(true);
+    try {
+      await downloadFramesZip(result, baseName());
+    } catch {
+      setError("Couldn't build the frames .zip. Download the sprite sheet instead, or try again.");
+    } finally {
+      setZipping(false);
+    }
+  };
+
+  const shownError = error || sourceError;
+
+  return (
+    <ToolShell>
+      <ToolPanel
+        title="Animate"
+        cost={cost}
+        tabs={<ToolTabs active="animate" generationId={generationId} />}
+        footer={
+          <>
+            <PrimaryButton onClick={animate} disabled={loading || !source} loading={loading}
+              loadingLabel={<>Animating… <Elapsed /></>}
+              icon={<Film className="h-4 w-4" />} label="Animate" cost={cost} />
+            <FooterHint>
+              {!rotation && !rigKind && <>{smoothOn ? "~45–90s" : option.frames > 4 ? "~30–60s" : "~25–45s"} · </>}
+              {outFrames} frames · sprite sheet + GIF
+            </FooterHint>
+            {shownError && <ErrorNote>{shownError}</ErrorNote>}
+          </>
+        }
+      >
+        <Field label="Sprite">
+          <SourceCard imageUrl={source?.imageUrl ?? null} loading={loadingSource} prompt={source?.prompt} pixel={pixel} />
+        </Field>
+
+        {source && (
+          <Field label={suggesting ? "Motion · tailoring to your sprite…" : suggested ? "Motion · picked for this sprite" : "Motion"}>
+            <div className={`grid grid-cols-2 gap-1.5 transition-opacity ${suggesting ? "opacity-60" : ""}`} aria-busy={suggesting || undefined}>
+              {[...presets, { id: "custom", label: "Custom…", motion: "" }].map((p) => (
+                <OptionCard key={p.id} active={selected === p.id} onClick={() => setAction(p.id)} disabled={loading}
+                  title={p.motion || "Describe your own motion"} className="min-h-11 px-3 py-2.5">
+                  <span className={`text-[13px] font-medium ${selected === p.id ? "text-white" : "text-[#C9CFDB]"}`}>{p.label}</span>
+                </OptionCard>
+              ))}
+            </div>
+            {selectedPreset && selected !== "custom" && (
+              <p className="mt-2 rounded-lg bg-white/[0.03] px-3 py-2 text-[11.5px] leading-snug text-[#9BA3B4]">{selectedPreset.motion}</p>
+            )}
+            {selected === "custom" && (
+              <>
+                <textarea value={customMotion} onChange={(e) => setCustomMotion(e.target.value)} maxLength={300} rows={3}
+                  placeholder="e.g. swings the axe overhead and slams it down"
+                  aria-label="Describe the motion" disabled={loading}
+                  className="mt-2 w-full resize-none rounded-xl border border-white/[0.08] bg-[#151922] px-3 py-2.5 text-[13px] text-white outline-none placeholder:text-[#7A8294] focus:border-[#FF8A3D]/50 disabled:opacity-60" />
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {CUSTOM_EXAMPLES.map((ex) => (
+                    <SuggestionChip key={ex} active={customMotion === ex} onClick={() => setCustomMotion(ex)} disabled={loading}>{ex}</SuggestionChip>
+                  ))}
+                </div>
+              </>
+            )}
+          </Field>
+        )}
+
+        {source && canRotate && (
+          <Field label="Directions · for top-down & isometric games">
+            <div className="grid grid-cols-1 gap-1.5 min-[400px]:grid-cols-3">
+              {ROTATIONS.map((r) => (
+                <OptionCard key={r.id} active={selected === r.id} onClick={() => setAction(r.id)} disabled={loading}>
+                  {/* Phones: one compact row per option (cost on the right); 3 columns from 400px */}
+                  <span className="flex items-center justify-between gap-3 min-[400px]:block">
+                    <span className="min-w-0">
+                      <span className="block text-[13px] font-medium text-white">{r.label}</span>
+                      <span className="block text-[11.5px] leading-snug text-[#8B93A5] min-[400px]:text-[11px]">{r.hint}</span>
+                    </span>
+                    <span className="block shrink-0 font-mono text-[11px] text-[#FFB27A] min-[400px]:mt-0.5 min-[400px]:text-[10.5px]">{r.credits} credits</span>
+                  </span>
+                </OptionCard>
+              ))}
+            </div>
+          </Field>
+        )}
+
+        {source && canRotate && generationId && (
+          <Field label="Whole move set · one click">
+            <MovesetBuilder generationId={generationId} characterName={(source.prompt ?? "character").split(/[,.]/)[0].slice(0, 32)} disabled={loading} />
+          </Field>
+        )}
+
+        {source && rotation && (
+          <InfoNote icon={<Compass className="h-3.5 w-3.5 text-emerald-300" />}>
+            <span className="text-[#C9CFDB]">{rotation.label} · {rotation.frames} frames · {rotation.credits} credits.</span>{" "}
+            {rotation.kind === "walk"
+              ? "Your character walking in all 4 directions — a classic RPG sheet: row 1 front, row 2 right, row 3 back, row 4 left, 4 steps each. Ready for top-down movement."
+              : `The same sprite seen from ${rotation.directions === 4 ? "the front, right, back and left" : "every 45°"} — same size, same ground line, one view per frame in the sheet (${rotation.directions === 4 ? "S, E, N, W" : "S, SE, E, NE, N, NW, W, SW"}).`}
+          </InfoNote>
+        )}
+
+        {source && rigKind && !rotation && (
+          <InfoNote icon={<Check className="h-3.5 w-3.5 text-emerald-300" />}>
+            <span className="text-[#C9CFDB]">{pixel ? "Pixel rig" : "Smooth rig"} · {rigFrames} frames · {RIG_CREDITS} credits.</span>{" "}
+            {rigKind === "float"
+              ? "Your sprite itself hovers up and down"
+              : pixel
+                ? rigKind === "walk"
+                  ? "Your sprite steps in place in whole pixels — legs lift in turn, the body bobs, arms swing — like hand-made 16-bit animation"
+                  : "Your sprite breathes in whole pixels — the body sinks 1px, head and arms follow — like hand-made 16-bit animation"
+                : "Your sprite gets a skeleton: it shifts its weight from leg to leg with feet planted, arms swing gently, the head and tail follow"}
+            {" "}— the original drawing is reused, never redrawn, so colours and details stay identical.
+            {rigKind === "walk" ? " If it can't be rigged, the AI draws the frames instead at the normal price." : ""}
+          </InfoNote>
+        )}
+
+        {source && !rigKind && !rotation && (
+          <Field label="Key poses" hint="More poses = more detailed motion. “Best fit” is the count this motion was designed for.">
+            <div className="grid grid-cols-3 gap-1.5" role="radiogroup" aria-label="Number of key poses">
+              {ANIMATION_FRAME_OPTIONS.map((o) => {
+                const active = frames === o.frames;
+                return (
+                  <button key={o.frames} type="button" role="radio" aria-checked={active} onClick={() => { setFrames(o.frames); setFramesTouched(true); }} disabled={loading}
+                    className={`rounded-xl border px-2 py-2 text-center transition-colors disabled:cursor-not-allowed ${
+                      active ? "border-[#FF8A3D] bg-[#FF8A3D]/[0.07] ring-2 ring-[#FF8A3D]/25" : "border-white/[0.08] bg-[#151922] hover:border-white/20"
+                    }`}>
+                    <span className="block text-[15px] font-semibold tabular-nums text-white">{o.frames}</span>
+                    <span className="block text-[11px] leading-snug text-[#8B93A5]">{o.hint}</span>
+                    <span className="mt-0.5 block font-mono text-[10.5px] tabular-nums text-[#FFB27A]">{animationCredits(o.frames, smoothOn)} credits</span>
+                    {selectedPreset?.frames === o.frames && <span className="mt-0.5 block font-mono text-[9.5px] uppercase tracking-wide text-emerald-300/90">best fit</span>}
+                  </button>
+                );
+              })}
+            </div>
+            {!isTile && (
+              <button type="button" role="switch" aria-checked={smooth} onClick={() => setSmooth((v) => !v)} disabled={loading}
+                className={`mt-2 flex w-full items-start gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors disabled:cursor-not-allowed ${
+                  smooth ? "border-[#FF8A3D]/60 bg-[#FF8A3D]/[0.06]" : "border-white/[0.08] bg-[#151922] hover:border-white/20"
+                }`}>
+                <span aria-hidden className={`mt-0.5 flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors ${smooth ? "bg-[#FF8A3D]" : "bg-white/[0.12]"}`}>
+                  <span className={`h-4 w-4 rounded-full bg-white transition-transform ${smooth ? "translate-x-4" : ""}`} />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[13px] font-medium text-white">
+                    Smooth motion <span className="font-mono text-[11px] text-[#FFB27A]">· {option.frames * 2} frames</span>
+                  </span>
+                  <span className="block text-[11.5px] leading-snug text-[#8B93A5]">
+                    Adds an in-between pose for every pair, so the animation flows instead of stepping. Doubles the frames and adds {option.smoothExtra} credits.
+                  </span>
+                </span>
+              </button>
+            )}
+          </Field>
+        )}
+
+        {result && (
+          <Field label={`Preview speed · ${fps} fps`} labelFor="animate-fps"
+            hint="Only changes the preview — the sheet is the same. Set the speed in your engine.">
+            <input id="animate-fps" type="range" min={2} max={24} value={fps} onChange={(e) => setFps(Number(e.target.value))}
+              aria-valuetext={`${fps} frames per second`} className="h-6 w-full accent-[#FF8A3D]" />
+          </Field>
+        )}
+
+        <InfoNote icon={<Info className="h-3.5 w-3.5 text-[#8B93A5]" />}>
+          {rotation?.kind === "walk"
+            ? <>You get a <span className="text-[#C9CFDB]">4-row sprite sheet</span> ({outFrames} frames, transparent) plus a GIF preview.</>
+            : <>You get a <span className="text-[#C9CFDB]">sprite sheet</span> ({outFrames} frames in a row, transparent) for Unity, Godot or GameMaker, plus a GIF preview.</>}
+          {!rotation && !rigKind && " The AI studies your sprite first (outfit, wings, weapon…) and plans every pose; all frames share one baseline and palette so nothing jitters."}
+        </InfoNote>
+
+        {result && (
+          <InfoNote tone="success" icon={<Check className="h-3.5 w-3.5 text-emerald-300" />}>
+            Animation ready — saved to your assets{source?.projectId ? " and project" : ""}.
+          </InfoNote>
+        )}
+      </ToolPanel>
+
+      <CanvasColumn
+        topLeft={
+          source ? (
+            <>
+              <Chip>{result ? `${result.frameCount} frames` : "original"}</Chip>
+              {pixel && <Chip>pixel art</Chip>}
+            </>
+          ) : (
+            <TopBarHint>Your animation will appear here</TopBarHint>
+          )
+        }
+        topRight={
+          <>
+            {result && (
+              <Segmented label="Preview mode" value={view} onChange={setView}
+                options={[{ id: "play", label: "Play" }, { id: "game", label: "In game" }, { id: "sheet", label: "Sheet" }]} />
+            )}
+            <BackdropToggle value={bgMode} onChange={setBgMode} />
+          </>
+        }
+        actions={
+          result ? (
+            <>
+              <DownloadButton label="Sprite sheet" onClick={() => downloadImage(result.sheetUrl, `${baseName()}_sheet.png`)} />
+              {result.gifUrl && (
+                <SecondaryButton onClick={() => downloadImage(result.gifUrl!, `${baseName()}.gif`)}>GIF</SecondaryButton>
+              )}
+              <SecondaryButton onClick={downloadEngine} disabled={packing} title="Godot SpriteFrames, Unity frames, GameMaker strip and hitboxes">
+                {packing && <Loader2 className="h-4 w-4 animate-spin" />} Engine pack
+              </SecondaryButton>
+              <SecondaryButton onClick={downloadZip} disabled={zipping} title="Every frame as its own PNG, plus the sheet">
+                {zipping && <Loader2 className="h-4 w-4 animate-spin" />} Frames .zip
+              </SecondaryButton>
+            </>
+          ) : undefined
+        }
+      >
+        <CanvasFrame bg={bgMode}>
+          {!generationId ? (
+            <RecentAssetPicker toolPath="/animate" title="Animate a sprite" />
+          ) : loadingSource ? (
+            <ProcessingOverlay icon={<Film className="h-5 w-5" />} title="Loading sprite…" />
+          ) : result ? (
+            view !== "sheet" ? (
+              <SpritePlayer sheetUrl={result.sheetUrl} frameCount={result.frameCount} frameWidth={result.frameWidth}
+                frameHeight={result.frameHeight} fps={fps} pixel={pixel} mode={view === "game" ? "game" : "inspect"} sheetCols={result.sheetCols}
+                moving={TRAVELS.test(resultMotion.text)} />
+            ) : (
+              <CanvasImage src={result.sheetUrl} alt="Sprite sheet" pixel={pixel} />
+            )
+          ) : source?.imageUrl ? (
+            <>
+              <CanvasImage src={source.imageUrl} alt="Your sprite" pixel={pixel} dim={loading} />
+              {loading && (
+                <ProcessingOverlay icon={<Wand2 className="h-5 w-5" />} title="Drawing frames…" hint="planning poses, then drawing" timed />
+              )}
+            </>
+          ) : (
+            <SourceMissing icon={<Film className="h-5 w-5" />} message={sourceError} />
+          )}
+        </CanvasFrame>
+      </CanvasColumn>
+    </ToolShell>
+  );
+}
+
+function AnimatePageKeyed() {
+  const generationId = useSearchParams().get("id");
+  return <AnimatePageContent key={generationId ?? "none"} generationId={generationId} />;
+}
+
+export default function AnimatePage() {
+  return (
+    <Suspense fallback={<PageFallback />}>
+      <AnimatePageKeyed />
+    </Suspense>
+  );
+}

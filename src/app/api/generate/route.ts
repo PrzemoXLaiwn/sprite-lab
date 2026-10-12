@@ -1,0 +1,420 @@
+import { pixelCanvasOf } from "@/lib/image/sprite-postprocess";
+import { prisma } from "@/lib/prisma";
+import { safeFetchImage } from "@/lib/safe-fetch";
+import sharp from "sharp";
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import {
+  getCategoryById,
+  getSubcategoryById,
+  STYLES_2D_FULL,
+  CATEGORY_PROMPT_CONFIGS,
+} from "@/config";
+import { RUNWARE_MODELS, MODEL_COSTS, type RunwareModelId } from "@/lib/runware";
+import { getOrCreateUser } from "@/lib/database";
+import { z } from "zod";
+import { parseJsonBody, validateBody } from "@/lib/validation/common";
+import {
+  generateAssets,
+  GenerationError,
+  CREDIT_COSTS, STYLE_MATCH_CREDITS,
+  type GenerationRequest,
+} from "@/lib/services/generation";
+import { enhanceUserPrompt, translatePromptIfNeeded } from "@/lib/prompt-enhance";
+import { rateLimitUserGeneration } from "@/lib/rate-limit";
+import { cleanUserPrompt } from "@/lib/prompt-clean";
+
+// Vercel Pro limit is 300s. Runware calls are capped at 75s each (see
+// src/lib/runware.ts) so a failed generation still has time to refund.
+export const maxDuration = 300;
+
+// ─── Input validation schema ──────────────────────────────────────────────────
+// Schema mirrors what the form actually sends. enableStyleMix / style2Id /
+// style1Weight / modelId were accepted before but never wired to UI — the
+// pipeline branched on them anyway and the dead branches misled readers.
+// Strip-mode (no .passthrough()) so unknown fields are silently dropped
+// instead of leaking into the service request.
+const GenerateBodySchema = z.object({
+  prompt: z
+    .string()
+    .min(1, "Please enter a description for your sprite.")
+    .max(500, "Description too long. Maximum 500 characters.")
+    .transform((v) => v.trim()),
+  categoryId: z.string().min(1, "Please select a category.").max(100),
+  subcategoryId: z.string().min(1, "Please select a type.").max(100),
+  styleId: z.string().max(100).optional().default("PIXEL_ART_16"),
+  view: z.string().max(50).optional().default("DEFAULT"),
+  seed: z.union([z.number(), z.string().max(20), z.null()]).optional(),
+  qualityPreset: z.enum(["draft", "normal", "hd"]).optional().default("normal"),
+  colorPaletteId: z.string().max(100).optional(),
+  pose: z.enum(["auto", "a-pose", "t-pose", "dynamic"]).optional().default("auto"),
+  projectId: z.string().max(64).optional(),
+  folderId: z.string().max(64).optional(),
+  /** One of the user's own sprites whose art style the new sprite should match. */
+  styleReferenceId: z.string().max(64).optional(),
+});
+
+// ─── Error code → HTTP status mapping ────────────────────────────────────────
+function statusForCode(code: string): number {
+  switch (code) {
+    case "INSUFFICIENT_CREDITS":   return 402;
+    case "INVALID_REQUEST":
+    case "INVALID_CATEGORY":
+    case "INVALID_SUBCATEGORY":
+    case "INVALID_STYLE":
+    case "UNSUPPORTED_MODE":       return 400;
+    case "UNAUTHENTICATED":        return 401;
+    case "CAPACITY_EXHAUSTED":     return 503;
+    case "PROVIDER_ERROR":
+    case "PROVIDER_TIMEOUT":       return 500;
+    default:                       return 500;
+  }
+}
+
+// =============================================================================
+// POST — Generate a single 2D sprite
+// =============================================================================
+export async function POST(request: Request) {
+  const startTime = Date.now();
+
+  try {
+    // ── 1. Auth ───────────────────────────────────────────────────────────────
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Please log in to generate sprites." },
+        { status: 401 }
+      );
+    }
+
+    // ── 1b. Rate limit ────────────────────────────────────────────────────────
+    // 30 generations per hour per user. The credit system already caps how
+    // many requests a user can run before they pay; this layer protects us
+    // from abuse by users who DO have credits (mass-batch, scraping, etc.).
+    // Fail-open if Upstash is not configured.
+    const { blocked: rateLimitBlocked } = await rateLimitUserGeneration(user.id);
+    if (rateLimitBlocked) return rateLimitBlocked;
+
+    // ── 2. Parse + validate body ──────────────────────────────────────────────
+    const rawBody = await parseJsonBody(request);
+    if (rawBody === null) {
+      return NextResponse.json(
+        { error: "Invalid request body.", code: "INVALID_JSON" },
+        { status: 400 }
+      );
+    }
+
+    const parsed = validateBody(GenerateBodySchema, rawBody);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error, code: "VALIDATION_ERROR" },
+        { status: 400 }
+      );
+    }
+
+    const {
+      prompt: rawPrompt,
+      categoryId: pickedCategoryId,
+      subcategoryId: pickedSubcategoryId,
+      styleId,
+      view,
+      seed,
+      qualityPreset,
+      colorPaletteId,
+      pose,
+      projectId,
+      folderId,
+      styleReferenceId,
+    } = parsed.data;
+
+    // Fix common prompt mistakes: leftover example text, chat-model
+    // boilerplate, and the asset type left on the default (a character in
+    // "Weapons" gets framed as a diagonal weapon)
+    const cleaned = cleanUserPrompt(rawPrompt, pickedCategoryId);
+    const prompt = cleaned.prompt;
+    const categoryId = cleaned.category?.categoryId ?? pickedCategoryId;
+    const subcategoryId = cleaned.category?.subcategoryId ?? pickedSubcategoryId;
+
+    // ── 3. Semantic validation ────────────────────────────────────────────────
+    // The service does not validate category/subcategory/style existence —
+    // it relies on callers to do this before dispatch.
+    const category = getCategoryById(categoryId);
+    if (!category) {
+      return NextResponse.json(
+        { error: `Invalid category: ${categoryId}`, code: "VALIDATION_ERROR" },
+        { status: 400 }
+      );
+    }
+
+    const subcategory = getSubcategoryById(categoryId, subcategoryId);
+    if (!subcategory) {
+      return NextResponse.json(
+        { error: `Invalid type: ${subcategoryId}`, code: "VALIDATION_ERROR" },
+        { status: 400 }
+      );
+    }
+
+    if (!Object.hasOwn(STYLES_2D_FULL, styleId)) {
+      return NextResponse.json(
+        { error: `Invalid style: ${styleId}`, code: "VALIDATION_ERROR" },
+        { status: 400 }
+      );
+    }
+
+    // ── 4. Ensure user record exists ──────────────────────────────────────────
+    // First-generate-after-signup race: Supabase auth completes before the
+    // Prisma User row is created. Bail out with an actionable error rather
+    // than letting checkAndDeductCredits throw "User not found" downstream.
+    const dbUser = await getOrCreateUser(user.id, user.email!);
+    if (!dbUser?.success || !dbUser.user) {
+      console.error("[Generate] getOrCreateUser failed for", user.id, dbUser?.error);
+      return NextResponse.json(
+        {
+          error: "We couldn't load your account. Please refresh the page and try again.",
+          code: "USER_BOOTSTRAP_FAILED",
+        },
+        { status: 503 }
+      );
+    }
+
+    // ── 4a. Early credit check (read-only) ──────────────────────────────────
+    // Translation/enhancement below are paid LLM calls, so refuse users who
+    // can't afford the generation before making them. The authoritative,
+    // atomic deduction still happens inside generateAssets().
+    // Style reference: must be the user's own sprite (or a public one)
+    let styleReference: Buffer | undefined;
+    let styleReferenceGrid: number | undefined;
+    if (styleReferenceId) {
+      const ref = await prisma.generation.findFirst({
+        where: { id: styleReferenceId, OR: [{ userId: user.id }, { isPublic: true }] },
+        select: { imageUrl: true },
+      });
+      if (!ref) return NextResponse.json({ error: "Style reference not found.", code: "VALIDATION_ERROR" }, { status: 400 });
+      try {
+        const { buffer } = await safeFetchImage(ref.imageUrl, { maxBytes: 10 * 1024 * 1024 });
+        styleReferenceGrid = (await pixelCanvasOf(buffer)) ?? undefined;
+        styleReference = await sharp(buffer)
+          .resize(768, 768, { fit: "contain", background: { r: 255, g: 255, b: 255, alpha: 1 }, kernel: "nearest" })
+          .flatten({ background: "#ffffff" }).png().toBuffer();
+      } catch {
+        return NextResponse.json({ error: "Couldn't load the style reference.", code: "VALIDATION_ERROR" }, { status: 400 });
+      }
+    }
+    const creditsRequired = styleReference ? STYLE_MATCH_CREDITS : CREDIT_COSTS[qualityPreset];
+    if (dbUser.user.credits < creditsRequired) {
+      return NextResponse.json(
+        {
+          error: `Not enough credits. You need ${creditsRequired} credit${creditsRequired === 1 ? "" : "s"}.`,
+          noCredits: true,
+        },
+        { status: 402 }
+      );
+    }
+
+    // ── 4b. Translate non-English prompts (all users) ───────────────────────
+    // FLUX is English-trained; Cyrillic/Polish/etc. pass through as garbage
+    // and produce unrelated images. Translate first, then optionally enhance.
+    let finalUserPrompt = prompt;
+    let promptWasEnhanced = false;
+    let promptWasTranslated = false;
+
+    try {
+      const { translated, wasTranslated, translationFailed } = await translatePromptIfNeeded(prompt);
+      if (translationFailed) {
+        // Non-English prompt that we couldn't translate. FLUX would produce
+        // garbage — refuse with an actionable message instead of charging
+        // the user a credit for an unrelated image.
+        return NextResponse.json(
+          {
+            error: "We couldn't translate your prompt right now. Please type the description in English and try again.",
+            code: "TRANSLATION_UNAVAILABLE",
+          },
+          { status: 503 }
+        );
+      }
+      if (wasTranslated) {
+        finalUserPrompt = translated;
+        promptWasTranslated = true;
+      }
+    } catch {
+      // Should not happen — translatePromptIfNeeded swallows its errors.
+    }
+
+    // ── 4c. AI Prompt Enhancement (Pro/Studio only) ─────────────────────────
+    // Expands short prompts like "iron sword magic" into detailed visual
+    // descriptions while preserving the user's exact intent. Operates on the
+    // (already-translated) English prompt so the safety check works correctly.
+    const userPlan = dbUser?.user?.plan ?? "FREE";
+    const isPaidPlan = ["PRO", "UNLIMITED", "STARTER"].includes(userPlan);
+
+    if (isPaidPlan && finalUserPrompt.split(/\s+/).length < 7) {
+      try {
+        const { enhanced, wasEnhanced } = await enhanceUserPrompt(
+          finalUserPrompt,
+          categoryId,
+          subcategoryId
+        );
+        if (wasEnhanced) {
+          finalUserPrompt = enhanced;
+          promptWasEnhanced = true;
+        }
+      } catch {
+        // Enhancement failed — use translated prompt, don't block generation
+      }
+    }
+
+    // ── 5. Resolve seed ───────────────────────────────────────────────────────
+    // Service accepts seed as number | undefined. Convert here before dispatch.
+    let resolvedSeed: number | undefined;
+    if (seed !== undefined && seed !== null && seed !== "") {
+      const n = Number(seed);
+      resolvedSeed = !isNaN(n) && n >= 0 && n <= 2147483647 ? n : undefined;
+    }
+
+    // ── 6. Build service request ──────────────────────────────────────────────
+    // userId comes from the verified session — never from the request body.
+    const serviceRequest: GenerationRequest = {
+      userId: user.id,
+      mode: "single",
+      prompt: finalUserPrompt,
+      categoryId,
+      subcategoryId,
+      styleId,
+      view,
+      projectId,
+      folderId,
+      seed: resolvedSeed,
+      qualityPreset,
+      colorPaletteId,
+      pose,
+      styleReference,
+      styleReferenceGrid,
+    };
+
+    // ── 7. Delegate to service ────────────────────────────────────────────────
+    const result = await generateAssets(serviceRequest);
+    const asset = result.assets[0];
+    if (!asset) {
+      throw new GenerationError({
+        code: "UNEXPECTED_ERROR",
+        userMessage: "Something went wrong. Please try again.",
+        message: "generateAssets returned empty assets array for mode:single",
+      });
+    }
+    const styleConfig = STYLES_2D_FULL[styleId];
+    const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+
+    // ── 8. Return success — shape kept identical to pre-migration ─────────────
+    return NextResponse.json({
+      success: true,
+      generationId: asset.generationId,
+      imageUrl: asset.imageUrl,
+      format: "png",
+      is2DSprite: true,
+      transparentBackground: true,
+      prompt: prompt.trim(),
+      translatedPrompt: promptWasTranslated ? finalUserPrompt : undefined,
+      enhancedPrompt: promptWasEnhanced ? finalUserPrompt : undefined,
+      fullPrompt: asset.finalPrompt,
+      seed: asset.seed,
+      modelUsed: asset.model,
+      appliedOptimizations: asset.appliedOptimizations,
+      warnings: [
+        ...(asset.warnings ?? []),
+        ...(cleaned.category ? [`This looked like ${cleaned.category.categoryId === "CHARACTERS" ? "a character" : cleaned.category.categoryId === "ENVIRONMENT" ? "a building" : "a UI icon"}, so it was generated as one — pick the asset type to override.`] : []),
+        ...(cleaned.wantsSheet ? ["The generator makes one sprite at a time — use Animate to turn it into frames."] : []),
+      ],
+      resolvedView: asset.resolvedView ?? view,
+      style: {
+        id: styleId,
+        name: styleConfig?.name ?? styleId,
+      },
+      category: {
+        id: category.id,
+        name: category.name,
+      },
+      subcategory: {
+        id: subcategory.id,
+        name: subcategory.name,
+      },
+      creditsUsed: result.creditsUsed,
+      duration: `${duration}s`,
+    });
+
+  } catch (error) {
+    // ── Typed service errors ──────────────────────────────────────────────────
+    if (error instanceof GenerationError) {
+      const status = statusForCode(error.code);
+
+      // Insufficient credits: keep legacy noCredits flag for frontend compat
+      if (error.code === "INSUFFICIENT_CREDITS") {
+        return NextResponse.json(
+          { error: error.userMessage, noCredits: true },
+          { status: 402 }
+        );
+      }
+
+      return NextResponse.json(
+        { error: error.userMessage, code: error.code },
+        { status }
+      );
+    }
+
+    // ── Unexpected errors — never leak stack trace ────────────────────────────
+    console.error("[Generate] ❌ Unexpected error:", {
+      message: error instanceof Error ? error.message : String(error),
+      name: error instanceof Error ? error.name : "Unknown",
+    });
+
+    return NextResponse.json(
+      { error: "Something went wrong. Please try again." },
+      { status: 500 }
+    );
+  }
+}
+
+// =============================================================================
+// GET — API info (unchanged)
+// =============================================================================
+export async function GET() {
+  const styles = Object.entries(STYLES_2D_FULL).map(([id, config]) => ({
+    id,
+    name: config.name,
+    model: config.model,
+  }));
+
+  const categories = Object.keys(CATEGORY_PROMPT_CONFIGS).map(catId => ({
+    id: catId,
+    subcategories: Object.keys((CATEGORY_PROMPT_CONFIGS as Record<string, Record<string, unknown>>)[catId] || {}),
+  }));
+
+  const models = Object.entries(RUNWARE_MODELS).map(([id, air]) => ({
+    id,
+    air,
+    cost: MODEL_COSTS[id as RunwareModelId],
+  }));
+
+  return NextResponse.json({
+    version: "4.2.0",
+    name: "Ultimate 2D Sprite Generator (Runware + Auto-Learning)",
+    provider: "Runware",
+    styles,
+    categories,
+    models,
+    defaultStyle: "PIXEL_ART_16",
+    outputFormat: "png",
+    resolution: "1024x1024",
+    creditsPerGeneration: 1,
+    features: [
+      "Tier-based model selection",
+      "FLUX.2 Pro for premium users",
+      "Hand-crafted prompts for every category",
+      "Sub-second inference times",
+      "Smart fallback system",
+      "Auto-learning from quality analysis",
+      "Automatic hallucination prevention",
+    ],
+  });
+}

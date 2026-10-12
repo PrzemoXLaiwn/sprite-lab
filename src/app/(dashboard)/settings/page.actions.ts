@@ -1,0 +1,275 @@
+"use server";
+import { mergeEmailPreferences } from "@/app/api/_lib/email-prefs";
+
+import { createClient } from "@/lib/supabase/server";
+import { getUser, updateUserProfile, getCreditTransactions, checkUsernameAvailable, UpdateProfileData } from "@/lib/database";
+import { prisma } from "@/lib/prisma";
+import { z } from "zod";
+
+export async function fetchUserProfile() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: "Unauthorized", user: null };
+  }
+
+  try {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: {
+        _count: {
+          select: { generations: true },
+        },
+      },
+    });
+
+    return { success: true, user: dbUser };
+  } catch (error) {
+    console.error("Failed to fetch user:", error);
+    return { success: false, error: "Failed to fetch profile", user: null };
+  }
+}
+
+// Server actions are public POST endpoints — validate the payload at runtime.
+// avatarUrl is intentionally absent: it is only set by uploadAvatar.
+const optionalText = (max: number) => z.string().trim().max(max).optional();
+
+const ProfileUpdateSchema = z
+  .object({
+    name: optionalText(50),
+    username: optionalText(20),
+    bio: optionalText(300),
+    website: z
+      .string()
+      .trim()
+      .max(200)
+      .refine((v) => v === "" || /^(https?:\/\/)?[^\s/$.?#].[^\s]*$/i.test(v), "Invalid website URL")
+      .refine((v) => !/^[a-z][a-z0-9+.-]*:/i.test(v) || /^https?:\/\//i.test(v), "Website must use http or https")
+      .optional(),
+    socialTwitter: z.string().trim().regex(/^@?[A-Za-z0-9_]{0,15}$/, "Invalid Twitter handle").optional(),
+    socialGithub: z.string().trim().regex(/^[A-Za-z0-9-]{0,39}$/, "Invalid GitHub username").optional(),
+    isProfilePublic: z.boolean().optional(),
+  })
+  .strict();
+
+export async function updateProfile(input: UpdateProfileData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  const parsed = ProfileUpdateSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid profile data" };
+  }
+  const data: UpdateProfileData = parsed.data;
+  if (data.socialTwitter) data.socialTwitter = data.socialTwitter.replace(/^@/, "");
+
+  // If username is being updated, check availability
+  if (data.username) {
+    const normalizedUsername = data.username.toLowerCase().trim();
+
+    // Validate username format
+    if (!/^[a-z0-9_]{3,20}$/.test(normalizedUsername)) {
+      return {
+        success: false,
+        error: "Username must be 3-20 characters, lowercase letters, numbers, and underscores only"
+      };
+    }
+
+    const { available } = await checkUsernameAvailable(normalizedUsername, user.id);
+    if (!available) {
+      return { success: false, error: "Username is already taken" };
+    }
+    data.username = normalizedUsername;
+  }
+
+  const result = await updateUserProfile(user.id, data);
+  if (!result.success) {
+    return { success: false, error: "Failed to update profile" };
+  }
+  return result;
+}
+
+export async function checkUsername(username: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, available: false };
+  }
+
+  const normalizedUsername = username.toLowerCase().trim();
+
+  if (!/^[a-z0-9_]{3,20}$/.test(normalizedUsername)) {
+    return { success: true, available: false, error: "Invalid format" };
+  }
+
+  const result = await checkUsernameAvailable(normalizedUsername, user.id);
+  return { success: true, ...result };
+}
+
+export async function fetchCreditHistory() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: "Unauthorized", transactions: [] };
+  }
+
+  const result = await getCreditTransactions(user.id);
+  return result;
+}
+
+export async function uploadAvatar(formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  const file = formData.get("file") as File;
+  if (!file) {
+    return { success: false, error: "No file provided" };
+  }
+
+  // Validate file type
+  const validTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+  if (!validTypes.includes(file.type)) {
+    return { success: false, error: "Invalid file type. Use JPG, PNG, WebP, or GIF" };
+  }
+
+  // Validate file size (max 2MB)
+  if (file.size > 2 * 1024 * 1024) {
+    return { success: false, error: "File too large. Max 2MB" };
+  }
+
+  // Derive the extension from the validated MIME type, never from file.name
+  const extByType: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+  };
+  const fileExt = extByType[file.type];
+  const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("avatars")
+    .upload(fileName, file, {
+      cacheControl: "3600",
+      upsert: true,
+    });
+
+  if (uploadError) {
+    console.error("Upload error:", uploadError);
+    console.error("Upload error details:", {
+      message: uploadError.message,
+      name: uploadError.name,
+      cause: uploadError.cause,
+    });
+    return { success: false, error: "Failed to upload avatar" };
+  }
+
+  const { data: { publicUrl } } = supabase.storage
+    .from("avatars")
+    .getPublicUrl(fileName);
+
+  // Update user profile with new avatar URL
+  await updateUserProfile(user.id, { avatarUrl: publicUrl });
+
+  return { success: true, url: publicUrl };
+}
+
+// Email preferences
+export interface EmailPreferences {
+  marketing: boolean;
+  productUpdates: boolean;
+  creditAlerts: boolean;
+  dailyReminders: boolean;
+  weeklyDigest: boolean;
+}
+
+export async function fetchEmailPreferences(): Promise<{
+  success: boolean;
+  preferences?: EmailPreferences;
+  error?: string;
+}> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  try {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { emailPreferences: true },
+    });
+
+    // Default preferences
+    const defaults: EmailPreferences = {
+      marketing: true,
+      productUpdates: true,
+      creditAlerts: true,
+      dailyReminders: false,
+      weeklyDigest: true,
+    };
+
+    const prefs = dbUser?.emailPreferences as Partial<EmailPreferences> | null;
+
+    return {
+      success: true,
+      preferences: {
+        ...defaults,
+        ...(prefs || {}),
+      },
+    };
+  } catch (error) {
+    console.error("Failed to fetch email preferences:", error);
+    return { success: false, error: "Failed to fetch preferences" };
+  }
+}
+
+export async function updateEmailPreferences(
+  preferences: Partial<EmailPreferences>
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  try {
+    // Only user-facing boolean toggles may be changed here; other keys in this
+    // JSON (e.g. cron bookkeeping timestamps) are server-managed.
+    const allowedKeys: (keyof EmailPreferences)[] = [
+      "marketing",
+      "productUpdates",
+      "creditAlerts",
+      "dailyReminders",
+      "weeklyDigest",
+    ];
+    const sanitized: Partial<EmailPreferences> = {};
+    for (const key of allowedKeys) {
+      const value = (preferences as Record<string, unknown> | null)?.[key];
+      if (typeof value === "boolean") sanitized[key] = value;
+    }
+    preferences = sanitized;
+
+    // Merge in one statement — never write back a stale copy (the same JSON
+    // holds gift / relaunch claim markers)
+    await mergeEmailPreferences(user.id, preferences as Record<string, unknown>);
+
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to update email preferences:", error);
+    return { success: false, error: "Failed to update preferences" };
+  }
+}
