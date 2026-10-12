@@ -201,3 +201,40 @@ async function queueGenerationForAnalysis(generationId: string): Promise<void> {
     }
   }
 }
+
+// -----------------------------------------------------------------------------
+// ANIMATION → SOURCE SPRITE
+// -----------------------------------------------------------------------------
+
+/**
+ * Best guess at the sprite an animation was made from. There is no
+ * source_generation_id column yet, so this matches the source prompt that
+ * /api/animate copies into the animation's prompt ("[Animation: walk, 8f]
+ * <source prompt>") against the same user's non-animation generations made
+ * before it, newest first. Prompts are cut at 1000 chars when saved, so a
+ * truncated source prompt is matched as a prefix.
+ */
+export async function findAnimationSourceId(
+  userId: string,
+  animation: { sourcePrompt: string; createdAt: Date; savedPromptLength: number }
+): Promise<string | null> {
+  const sourcePrompt = animation.sourcePrompt;
+  if (!sourcePrompt) return null;
+  const truncated = animation.savedPromptLength >= 1000;
+  try {
+    const match = await prisma.generation.findFirst({
+      where: {
+        userId,
+        createdAt: { lte: animation.createdAt },
+        NOT: { subcategoryId: "ANIMATION" },
+        prompt: truncated ? { startsWith: sourcePrompt } : { equals: sourcePrompt },
+      },
+      orderBy: { createdAt: "desc" },
+      select: { id: true },
+    });
+    return match?.id ?? null;
+  } catch (error) {
+    console.error("Failed to find animation source:", error);
+    return null;
+  }
+}

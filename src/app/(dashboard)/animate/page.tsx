@@ -1,7 +1,15 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { HistoryButton, HistoryPanel, type HistoryItem } from "@/components/workspace/HistoryPanel";
+import { RestoredNote } from "@/components/workspace/ContinueBanner";
+import { animationFromGeneration, fetchOwnGeneration, resolveAnimationSource, useStoredRaw } from "@/components/workspace/restore";
+import { classifyGeneration, cleanGenerationPrompt } from "@/lib/workspace/history";
+import {
+  buildToolHref, clearDraft, clearLastActivity, draftKey, loadDraft, parseDraft, lookupSourceLink, parseToolParams, rememberSourceLink,
+  saveDraft, saveLastActivity, withResultParam,
+} from "@/lib/workspace/session";
 import { SpritePlayer } from "@/components/animate/SpritePlayer";
 import { MovesetBuilder } from "@/components/animate/MovesetBuilder";
 import { buildEnginePack, saveBlob } from "@/lib/export/engine-pack";
@@ -60,7 +68,11 @@ async function downloadFramesZip(result: AnimationResult, baseName: string) {
   saveBlobAs(await zip.generateAsync({ type: "blob" }), `${baseName}_frames.zip`);
 }
 
-function AnimatePageContent({ generationId }: { generationId: string | null }) {
+/** Set right before a bare /animate visit reopens the saved session, so the page can say so. */
+let reopenedFromDraft = false;
+
+function AnimatePageContent({ generationId, resultId }: { generationId: string | null; resultId: string | null }) {
+  const router = useRouter();
   const { source, loading: loadingSource, error: sourceError } = useSourceGeneration(generationId);
   const [action, setAction] = useState<string>("");
   const [customMotion, setCustomMotion] = useState("");
@@ -75,6 +87,43 @@ function AnimatePageContent({ generationId }: { generationId: string | null }) {
   const [smooth, setSmooth] = useState(true);
   const [fps, setFps] = useState(8);
   const [bgMode, setBgMode] = useState<ToolBgModeId>("checker");
+  const [framesTouched, setFramesTouched] = useState(false);
+
+  // ── Session restore ("continue where you left off") ────────────────────
+  // URL = what is shown (?id= sprite, ?result= animation); the draft adds the
+  // typed motion, options and the GIF URL. Restored before the suggestion
+  // fetch below runs (effects run in order), so a restored list isn't replaced.
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [showRestored, setShowRestored] = useState(false);
+  const [draftReady, setDraftReady] = useState(false);
+  const [resultFromRun, setResultFromRun] = useState(false);
+  const [restoringResult, setRestoringResult] = useState(Boolean(resultId));
+  const [shownResultId, setShownResultId] = useState<string | null>(null);
+  const [resultStyleId, setResultStyleId] = useState<string | null>(null);
+  const shownResultRef = useRef<string | null>(null);
+  const skipSuggestRef = useRef(false);
+  useEffect(() => {
+    if (reopenedFromDraft) {
+      reopenedFromDraft = false;
+      setShowRestored(true);
+    }
+    const d = loadDraft("animate");
+    if (d && generationId && d.sourceId === generationId) {
+      if (d.action) setAction(d.action);
+      if (d.customMotion) setCustomMotion(d.customMotion);
+      if (d.frames) setFrames(d.frames);
+      if (d.framesTouched) setFramesTouched(true);
+      if (typeof d.smooth === "boolean") setSmooth(d.smooth);
+      if (d.fps) setFps(d.fps);
+      if (d.suggested?.length) {
+        setSuggested(d.suggested);
+        skipSuggestRef.current = true;
+      }
+    }
+    setDraftReady(true);
+    // Once per sprite (the page is keyed on it)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Motions tailored to this sprite (a dog gets Bark / Sit, not Fly); the
   // category presets show until they arrive or if the helper is unavailable.
@@ -82,6 +131,7 @@ function AnimatePageContent({ generationId }: { generationId: string | null }) {
   const [suggesting, setSuggesting] = useState(Boolean(generationId));
   useEffect(() => {
     if (!generationId) return;
+    if (skipSuggestRef.current) { setSuggesting(false); return; }
     let cancelled = false;
     fetch(`/api/animate/suggest?id=${encodeURIComponent(generationId)}`)
       .then((r) => (r.ok ? r.json() : null))
@@ -104,13 +154,12 @@ function AnimatePageContent({ generationId }: { generationId: string | null }) {
 
   // Each motion comes with a recommended number of key poses (a walk needs
   // more than a pulse) — applied until the user picks a count themselves.
-  const [framesTouched, setFramesTouched] = useState(false);
   const recommendedFrames = selectedPreset?.frames;
   useEffect(() => {
     if (!framesTouched && recommendedFrames) setFrames(recommendedFrames);
   }, [recommendedFrames, framesTouched]);
 
-  const pixel = isPixelStyleId(source?.styleId);
+  const pixel = isPixelStyleId(source?.styleId ?? resultStyleId);
   const option = animationFrameOption(frames);
   // Idle / breathing / hover are rigged from the original sprite (no redraw, no flicker)
   const rigKind = !isTile && selected !== "custom" ? rigMotionFor(selected, selectedPreset?.label)
@@ -123,6 +172,102 @@ function AnimatePageContent({ generationId }: { generationId: string | null }) {
   // Frames in the finished sheet, for the summary lines
   const outFrames = rotation ? rotation.frames : rigKind ? rigFrames : smoothOn ? option.frames * 2 : option.frames;
   const customTooShort = selected === "custom" && customMotion.trim().length < 3;
+
+  /** Points the address bar at the shown animation (no navigation, no remount). */
+  const showResultInUrl = useCallback((id: string | null) => {
+    shownResultRef.current = id;
+    setShownResultId(id);
+    const next = withResultParam(`${window.location.pathname}${window.location.search}${window.location.hash}`, id);
+    if (next) window.history.replaceState(window.history.state, "", next);
+  }, []);
+
+  // ?result= → show that animation again (player, sheet, downloads). This
+  // browser's draft has the GIF URL; otherwise the sheet is measured.
+  useEffect(() => {
+    if (!resultId || resultId === shownResultRef.current) { setRestoringResult(false); return; }
+    let cancelled = false;
+    setRestoringResult(true);
+    (async () => {
+      const d = loadDraft("animate");
+      if (d?.resultId === resultId && d.result) {
+        if (cancelled) return;
+        setResult(d.result);
+        if (d.resultMotion) setResultMotion(d.resultMotion);
+        if (d.fps) setFps(d.fps);
+      } else {
+        const fetched = await fetchOwnGeneration(resultId);
+        const restored = fetched && classifyGeneration(fetched.generation) === "animation" ? await animationFromGeneration(fetched.generation) : null;
+        if (cancelled) return;
+        if (!restored) {
+          setError("Couldn't open that animation — it may have been deleted.");
+          showResultInUrl(null);
+          return;
+        }
+        setResult(restored.result);
+        setResultStyleId(fetched?.generation.styleId ?? null);
+        setResultMotion(restored.motion);
+        setFps(restored.fps);
+        if (restored.action) setAction(restored.action);
+        if (generationId) rememberSourceLink(resultId, generationId);
+      }
+      shownResultRef.current = resultId;
+      setShownResultId(resultId);
+      setResultFromRun(false);
+      setView("play");
+    })().finally(() => { if (!cancelled) setRestoringResult(false); });
+    return () => { cancelled = true; };
+  }, [resultId, generationId, showResultInUrl]);
+
+  // Remember the session: options + last result (draft) and where to come back to
+  useEffect(() => {
+    if (!draftReady || !generationId || restoringResult) return;
+    const isAi = selected.startsWith("ai-");
+    saveDraft("animate", {
+      sourceId: generationId,
+      action: selected,
+      customMotion,
+      frames,
+      framesTouched,
+      smooth,
+      fps,
+      resultId: result ? shownResultId ?? undefined : undefined,
+      result: result ? {
+        sheetUrl: result.sheetUrl, gifUrl: result.gifUrl ?? null, frameCount: result.frameCount,
+        frameWidth: result.frameWidth, frameHeight: result.frameHeight, sheetCols: result.sheetCols,
+      } : undefined,
+      resultMotion: result ? resultMotion : undefined,
+      // Tailored cards are kept so a restored "ai-…" choice still exists
+      suggested: suggested && (isAi || suggested.some((m) => m.id === selected)) ? suggested : undefined,
+    });
+  }, [draftReady, generationId, restoringResult, selected, customMotion, frames, framesTouched, smooth, fps, result, shownResultId, resultMotion, suggested]);
+
+  useEffect(() => {
+    if (!generationId || !source?.imageUrl) return;
+    saveLastActivity({
+      tool: "animate",
+      href: buildToolHref("animate", { id: generationId, result: shownResultId }),
+      title: cleanGenerationPrompt(source.prompt) || "Your sprite",
+      thumbUrl: source.imageUrl,
+      pixel: isPixelStyleId(source.styleId),
+    });
+  }, [generationId, source, shownResultId]);
+
+  /** History: a sprite opens fresh; an animation opens with its sprite (when known). */
+  const openFromHistory = (item: HistoryItem) => {
+    if (classifyGeneration(item) === "animation") {
+      if (item.id === shownResultId) return;
+      const src = lookupSourceLink(item.id) ?? (generationId && item.id === resultId ? generationId : null);
+      router.push(buildToolHref("animate", { id: src, result: item.id }));
+    } else if (item.id !== generationId) {
+      router.push(buildToolHref("animate", { id: item.id }));
+    }
+  };
+
+  const startFresh = () => {
+    clearDraft("animate");
+    clearLastActivity("animate");
+    router.push("/animate");
+  };
 
   const animate = async () => {
     if (!generationId || loading) return;
@@ -148,6 +293,11 @@ function AnimatePageContent({ generationId }: { generationId: string | null }) {
       if (!res.ok) throw new Error(toolErrorMessage(res, data, "Animation failed."));
       if (!data?.sheetUrl) throw new Error("The animation finished but returned no sprite sheet. Please try again.");
       setResult(data);
+      // Address bar → this animation, so a reload or a later visit reopens it
+      const newId = typeof data.generationId === "string" ? data.generationId : null;
+      if (newId) rememberSourceLink(newId, generationId);
+      showResultInUrl(newId);
+      setResultFromRun(true);
       setResultMotion({ id: selected, text: `${selected} ${selectedPreset?.label ?? ""} ${selected === "custom" ? customMotion : ""}` });
       setFps(typeof data.fps === "number" ? data.fps : data.smoothed ? (data.frameCount >= 12 ? 12 : 10) : data.frameCount >= 9 ? 10 : 8);
       setView("play");
@@ -199,6 +349,7 @@ function AnimatePageContent({ generationId }: { generationId: string | null }) {
         title="Animate"
         cost={cost}
         tabs={<ToolTabs active="animate" generationId={generationId} />}
+        headerAction={<HistoryButton onClick={() => setHistoryOpen(true)} />}
         footer={
           <>
             <PrimaryButton onClick={animate} disabled={loading || !source} loading={loading}
@@ -212,8 +363,15 @@ function AnimatePageContent({ generationId }: { generationId: string | null }) {
           </>
         }
       >
+        {showRestored && <RestoredNote onStartFresh={startFresh} onDismiss={() => setShowRestored(false)} />}
+
         <Field label="Sprite">
           <SourceCard imageUrl={source?.imageUrl ?? null} loading={loadingSource} prompt={source?.prompt} pixel={pixel} />
+          {!generationId && result && (
+            <p className="mt-2 text-[11.5px] leading-snug text-[#8B93A5]">
+              We couldn&apos;t find the sprite this animation was made from. Pick it from your history to animate it again.
+            </p>
+          )}
         </Field>
 
         {source && (
@@ -348,16 +506,21 @@ function AnimatePageContent({ generationId }: { generationId: string | null }) {
           {!rotation && !rigKind && " The AI studies your sprite first (outfit, wings, weapon…) and plans every pose; all frames share one baseline and palette so nothing jitters."}
         </InfoNote>
 
-        {result && (
+        {result && resultFromRun && (
           <InfoNote tone="success" icon={<Check className="h-3.5 w-3.5 text-emerald-300" />}>
             Animation ready — saved to your assets{source?.projectId ? " and project" : ""}.
+          </InfoNote>
+        )}
+        {result && !resultFromRun && (
+          <InfoNote icon={<Film className="h-3.5 w-3.5 text-[#8B93A5]" />}>
+            Opened from your history. Change the motion or options and press Animate to make a new version — this one stays in your assets.
           </InfoNote>
         )}
       </ToolPanel>
 
       <CanvasColumn
         topLeft={
-          source ? (
+          source || result ? (
             <>
               <Chip>{result ? `${result.frameCount} frames` : "original"}</Chip>
               {pixel && <Chip>pixel art</Chip>}
@@ -393,7 +556,9 @@ function AnimatePageContent({ generationId }: { generationId: string | null }) {
         }
       >
         <CanvasFrame bg={bgMode}>
-          {!generationId ? (
+          {restoringResult ? (
+            <ProcessingOverlay icon={<Film className="h-5 w-5" />} title="Opening animation…" />
+          ) : !generationId && !result ? (
             <RecentAssetPicker toolPath="/animate" title="Animate a sprite" />
           ) : loadingSource ? (
             <ProcessingOverlay icon={<Film className="h-5 w-5" />} title="Loading sprite…" />
@@ -417,13 +582,44 @@ function AnimatePageContent({ generationId }: { generationId: string | null }) {
           )}
         </CanvasFrame>
       </CanvasColumn>
+
+      <HistoryPanel tool="animate" open={historyOpen} onOpenChange={setHistoryOpen} onSelect={openFromHistory}
+        activeIds={[generationId, shownResultId]} refreshKey={shownResultId} />
     </ToolShell>
   );
 }
 
 function AnimatePageKeyed() {
-  const generationId = useSearchParams().get("id");
-  return <AnimatePageContent key={generationId ?? "none"} generationId={generationId} />;
+  const router = useRouter();
+  const { id, result } = parseToolParams(useSearchParams());
+  // ?result= without ?id=: look up the sprite the animation was made from
+  const [resolved, setResolved] = useState<string | null>(null);
+  const needsSource = Boolean(result && !id && resolved !== result);
+  // Bare /animate (sidebar, bottom nav): reopen the last session, if any.
+  // null = not readable yet (server render / hydration), "" = no draft.
+  const bare = !id && !result;
+  const draftRaw = useStoredRaw(draftKey("animate"));
+  const draft = useMemo(() => (draftRaw ? parseDraft("animate", draftRaw) : null), [draftRaw]);
+
+  useEffect(() => {
+    if (!needsSource || !result) return;
+    let cancelled = false;
+    resolveAnimationSource(result).then((src) => {
+      if (cancelled) return;
+      if (src) router.replace(buildToolHref("animate", { id: src, result }));
+      else setResolved(result); // show the animation on its own
+    });
+    return () => { cancelled = true; };
+  }, [needsSource, result, router]);
+
+  useEffect(() => {
+    if (!bare || !draft) return;
+    reopenedFromDraft = true;
+    router.replace(buildToolHref("animate", { id: draft.sourceId, result: draft.resultId }));
+  }, [bare, draft, router]);
+
+  if (needsSource || (bare && (draftRaw === null || draft))) return <PageFallback />;
+  return <AnimatePageContent key={id ?? "none"} generationId={id} resultId={result} />;
 }
 
 export default function AnimatePage() {

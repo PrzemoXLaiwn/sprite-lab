@@ -232,11 +232,13 @@ export function CostBadge({ cost }: { cost: number }) {
 export const PANEL_FOOTER =
   "sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-20 border-t border-white/[0.06] bg-[#0E1016] px-4 pb-3 pt-3 shadow-[0_-16px_32px_-16px_rgba(0,0,0,0.75)] md:bottom-0 lg:static lg:p-4 lg:shadow-none";
 
-export function ToolPanel({ title, cost, tabs, backHref, children, footer, className }: {
+export function ToolPanel({ title, cost, tabs, backHref, headerAction, children, footer, className }: {
   title: string;
   cost: number;
   tabs?: React.ReactNode;
   backHref?: string;
+  /** Extra control next to the cost badge (e.g. the History button on small screens). */
+  headerAction?: React.ReactNode;
   children: React.ReactNode;
   footer: React.ReactNode;
   className?: string;
@@ -251,8 +253,11 @@ export function ToolPanel({ title, cost, tabs, backHref, children, footer, class
           </Link>
         )}
         <div className="flex items-center justify-between gap-3">
-          <h1 className="font-display text-[19px] font-semibold tracking-tight text-white">{title}</h1>
-          <CostBadge cost={cost} />
+          <h1 className="min-w-0 font-display text-[19px] font-semibold tracking-tight text-white">{title}</h1>
+          <div className="flex shrink-0 items-center gap-2">
+            {headerAction}
+            <CostBadge cost={cost} />
+          </div>
         </div>
         {tabs}
       </div>

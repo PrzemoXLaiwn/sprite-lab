@@ -34,6 +34,9 @@ import { GENERATE_STYLES, ALL_GENERATE_STYLE_IDS } from "@/data/generate-styles"
 import { SHOWCASE, isPixelShowcase } from "@/data/showcase";
 import { useAutoSettings } from "@/hooks/useAutoSettings";
 import { AutoSettingsBar, AutoBadge, autoFlash } from "@/components/generate/AutoSettingsBar";
+import { useCreateSession, type CreateRestore } from "@/components/generate/useCreateSession";
+import { HistoryButton, HistoryPanel } from "@/components/workspace/HistoryPanel";
+import { ContinueBanner, RestoredNote } from "@/components/workspace/ContinueBanner";
 
 // =============================================================================
 // VIEW + DETAIL
@@ -266,6 +269,31 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
     initiallyUserSet: urlPrompt
       ? [...(urlCatId || urlSubId ? ["type" as const] : []), ...(urlStyleId ? ["style" as const] : []), ...(urlView ? ["view" as const] : [])]
       : [],
+  });
+
+  // Continue where you left off: draft / ?result= restore + history panel (see useCreateSession)
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const applySession = useCallback((p: CreateRestore) => {
+    const f = p.form ?? {};
+    const sub = f.subcategoryId;
+    const hasSub = (c: GenerateCategory) => !!sub && c.subcategories.some((s) => s.subcategoryId === sub);
+    const group = GENERATE_CATEGORIES.find((c) => c.id === f.groupId && (!sub || hasSub(c))) ?? GENERATE_CATEGORIES.find(hasSub);
+    if (group) {
+      setSelectedCategory(group);
+      setSelectedSubcategoryId(hasSub(group) ? sub! : group.subcategories[0].subcategoryId);
+    }
+    if (f.styleId && (ALL_GENERATE_STYLE_IDS as readonly string[]).includes(f.styleId)) setStyleId(f.styleId);
+    if (VIEW_OPTIONS.some((o) => o.id === f.view)) setView(f.view as ViewId);
+    if (DETAIL_OPTIONS.some((o) => o.id === f.detail)) setDetail(f.detail as DetailId);
+    if (PALETTE_OPTIONS.some((o) => o.id === f.palette)) setPalette(f.palette as PaletteId);
+    if (POSE_OPTIONS.some((o) => o.id === f.pose)) setPose(f.pose as PoseId);
+    if (typeof f.prompt === "string") setPrompt(f.prompt);
+    if (p.results) setHistory(p.results);
+    if (typeof p.selectedIndex === "number") setSelectedIndex(p.selectedIndex);
+  }, []);
+  const session = useCreateSession({
+    state: { prompt, groupId: selectedCategory.id, subcategoryId: selectedSubcategoryId, styleId, view, detail, palette, pose },
+    results: history, selectedIndex, projectId, apply: applySession,
   });
 
   const isGenerating = status === "generating";
@@ -811,12 +839,14 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
               </button>
             </div>
           )}
+          {!showWelcomeBanner && !projectId && <ContinueBanner current="create" />}
 
           <div className="flex items-center justify-between gap-3">
             <h1 className="font-display text-[19px] font-semibold tracking-tight text-white">Create a sprite</h1>
-            <CostBadge cost={cost} />
+            <div className="flex shrink-0 items-center gap-2"><HistoryButton onClick={() => setHistoryOpen(true)} /><CostBadge cost={cost} /></div>
           </div>
           <ToolTabs active="generate" generationId={activeResult?.generationId} />
+          {session.restoredNote && <div className="mt-3"><RestoredNote onStartFresh={session.startFresh} onDismiss={session.dismissRestoredNote} /></div>}
 
           {/* Project mode banner — results get Accept / Decline */}
           {projectId && (
@@ -1235,7 +1265,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
 
             {/* History strip (when there's no right panel) */}
             {history.length > 0 && (
-              <div role="group" aria-label="This session" className="flex gap-2 overflow-x-auto px-4 pb-5 sm:px-5 2xl:hidden">
+              <div role="group" aria-label="This session" className="flex gap-2 overflow-x-auto px-4 pb-5 sm:px-5 xl:hidden">
                 {history.map((item, index) => (
                   <HistoryThumb key={item.id} item={item} active={selectedIndex === index} pixel={isPixelStyle(item.styleId)}
                     onClick={() => setSelectedIndex(index)} className="h-16 w-16 shrink-0" />
@@ -1279,23 +1309,9 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
         </CanvasFrame>
       </CanvasColumn>
 
-      {/* ═══ RIGHT — session history (wide screens) ═════════════════════ */}
-      <aside aria-label="This session" className="hidden w-[248px] shrink-0 flex-col border-l border-white/[0.06] bg-[#0E1016] 2xl:flex">
-        <div className="flex items-center justify-between px-4 py-4">
-          <p className="text-[13px] font-semibold text-white">This session</p>
-          <Link href="/assets" className="text-[11.5px] text-[#8B93A5] hover:text-white">All assets →</Link>
-        </div>
-        {history.length === 0 ? (
-          <p className="px-4 text-[12px] leading-relaxed text-[#7A8294]">Sprites you make appear here. Everything is also saved to your Assets.</p>
-        ) : (
-          <div className="grid grid-cols-2 gap-2 overflow-y-auto px-4 pb-4">
-            {history.map((item, index) => (
-              <HistoryThumb key={item.id} item={item} active={selectedIndex === index} pixel={isPixelStyle(item.styleId)}
-                onClick={() => setSelectedIndex(index)} className="aspect-square w-full" />
-            ))}
-          </div>
-        )}
-      </aside>
+      {/* ═══ RIGHT — my generations (column from xl, bottom sheet below) ═══ */}
+      <HistoryPanel tool="create" open={historyOpen} onOpenChange={setHistoryOpen} onSelect={session.openFromHistory}
+        activeIds={[session.activeGenerationId]} refreshKey={history[0]?.generationId} />
     </div>
   );
 }
