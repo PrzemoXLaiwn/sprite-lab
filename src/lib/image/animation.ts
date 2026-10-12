@@ -131,6 +131,20 @@ export async function extractFrames(gridImage: Buffer, cols: number, rows: numbe
 }
 
 /**
+ * True when a cut-out sprite has a straight, mostly-filled side or top edge —
+ * the mark of a figure sliced by a fallback grid cut (a real outline only
+ * touches its bounding box at a few pixels; measured: sliced ≥0.7, whole ≤0.3).
+ */
+export function hasCutEdge(f: Raw, threshold = 0.6): boolean {
+  if (f.width < 4 || f.height < 4) return false;
+  const opaque = (x: number, y: number) => f.data[(y * f.width + x) * 4 + 3] > 128;
+  let left = 0, right = 0, top = 0;
+  for (let y = 0; y < f.height; y++) { if (opaque(0, y)) left++; if (opaque(f.width - 1, y)) right++; }
+  for (let x = 0; x < f.width; x++) if (opaque(x, 0)) top++;
+  return left / f.height > threshold || right / f.height > threshold || top / f.width > threshold;
+}
+
+/**
  * Animated tiles (water, lava): no background to remove — each grid cell is
  * one full frame. Cells are inset slightly to drop any gutter the model drew.
  */

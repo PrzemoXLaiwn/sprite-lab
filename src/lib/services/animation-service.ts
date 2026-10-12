@@ -19,6 +19,7 @@ import {
   assembleTileAnimation,
   extractFrames,
   extractTileFrames,
+  hasCutEdge,
   interleave,
   referenceGrid,
   type AnimationResult,
@@ -207,6 +208,8 @@ export async function makeRotation(input: { reference: Buffer; prompt: string; p
     console.warn(`[Rotate] Views look wrong (${found.length}/${expected}) — attempt ${attempt + 1}`);
   }
   if (views.length < expected) throw new Error(`only ${views.length} of ${expected} views found`);
+  // Never ship a direction sheet with a sliced or missing figure — fail and refund instead
+  if (!framesLookRight(views, expected)) throw new Error("direction views came back broken (sliced or merged figures)");
   if (r.kind === "walk") {
     const fixed = await fixFrozenWalkRows(views, r.cols, { pixel: input.pixel, subject: input.prompt });
     views = fixed.views;
@@ -335,7 +338,8 @@ function framesLookRight(frames: Frame[], expected: number): boolean {
   if (frames.length !== expected) return false;
   const med = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
   const mh = med(frames.map((f) => f.height)), mw = med(frames.map((f) => f.width));
-  return frames.every((f) => f.height >= mh * 0.5 && f.width >= mw * 0.35);
+  // …and no figure sliced in half by a fallback grid cut
+  return frames.every((f) => f.height >= mh * 0.5 && f.width >= mw * 0.35 && !hasCutEdge(f));
 }
 
 /** For picking the better of two attempts. */

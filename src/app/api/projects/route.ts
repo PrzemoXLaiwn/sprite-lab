@@ -191,7 +191,9 @@ Output raw JSON array only, no markdown, no explanation.`,
     const text = response.content[0];
     if (text.type !== "text") return getDefaultFolders(brief.systems || "");
 
-    const parsed = JSON.parse(text.text) as FolderPlan[];
+    // The model sometimes wraps the JSON in a ```json fence
+    const json = text.text.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
+    const parsed = JSON.parse(json) as FolderPlan[];
     if (!Array.isArray(parsed)) return getDefaultFolders(brief.systems || "");
 
     return parsed.slice(0, 20); // Cap at 20 folders
