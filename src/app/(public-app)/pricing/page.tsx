@@ -51,7 +51,7 @@ const faqs = [
   },
   {
     q: "Will my price go up later?",
-    a: "Your price stays the same as long as your subscription is active and we keep that plan available. If you cancel and resubscribe later, the price at that time applies. For a guaranteed price for life, pick a Lifetime deal.",
+    a: "Your price stays the same as long as your subscription is active and we keep that plan available. If you cancel and resubscribe later, the price at that time applies.",
   },
   {
     q: "Can I use assets commercially?",
@@ -185,6 +185,8 @@ export default function PricingPage() {
   const [tab, setTab] = useState<Tab>("subscriptions");
   const [promoActive, setPromoActive] = useState(false);
   const [lifetimeSlots, setLifetimeSlots] = useState<Record<string, LifetimeSlotInfo>>({});
+  // Lifetime tab only when the server says sales are open (paused by default)
+  const [lifetimeOn, setLifetimeOn] = useState(false);
   const [stats, setStats] = useState({
     totalAssets: 0,
     activeUsers: 0,
@@ -212,6 +214,7 @@ export default function PricingPage() {
       .then((res) => res.json())
       .then((data) => {
         if (data.slots) setLifetimeSlots(data.slots);
+        setLifetimeOn(data.salesEnabled === true);
       })
       .catch(() => {});
 
@@ -301,7 +304,7 @@ export default function PricingPage() {
                 Plans &amp; credits
               </h1>
               <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-[#8B93A5]">
-                Every plan gets all 12 styles in Standard and HD; plans differ in monthly credits and a few extra tools. Cancel anytime, or pay once with a Lifetime deal.
+                Every plan gets all 12 styles in Standard and HD; plans differ in monthly credits and a few extra tools. Cancel anytime.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -327,7 +330,7 @@ export default function PricingPage() {
 
           {/* Segmented toggle */}
           <div role="tablist" aria-label="Pricing options" className="mt-6 inline-grid grid-cols-3 gap-1 rounded-xl bg-white/[0.04] p-1 text-[13px] font-medium">
-            {TABS.map((t) => (
+            {TABS.filter((t) => t.id !== "lifetime" || lifetimeOn).map((t) => (
               <button
                 key={t.id}
                 type="button"
@@ -504,7 +507,7 @@ export default function PricingPage() {
         )}
 
         {/* ═══ LIFETIME ═══════════════════════════════════════ */}
-        {tab === "lifetime" && (
+        {tab === "lifetime" && lifetimeOn && (
           <section id="lifetime" aria-label="Lifetime deals">
             <div className="mb-5 flex flex-col gap-1">
               <h2 className="flex items-center gap-2 text-[17px] font-semibold tracking-tight text-white">

@@ -12,6 +12,7 @@ import {
 } from "@/config";
 import { RUNWARE_MODELS, MODEL_COSTS, type RunwareModelId } from "@/lib/runware";
 import { getOrCreateUser } from "@/lib/database";
+import { requestIp } from "@/lib/billing/operations";
 import { z } from "zod";
 import { parseJsonBody, validateBody } from "@/lib/validation/common";
 import {
@@ -64,7 +65,9 @@ function statusForCode(code: string): number {
     case "INVALID_STYLE":
     case "UNSUPPORTED_MODE":       return 400;
     case "UNAUTHENTICATED":        return 401;
-    case "CAPACITY_EXHAUSTED":     return 503;
+    case "CAPACITY_EXHAUSTED":
+    case "SERVICE_PAUSED":         return 503;
+    case "RATE_LIMITED":           return 429;
     case "PROVIDER_ERROR":
     case "PROVIDER_TIMEOUT":       return 500;
     default:                       return 500;
@@ -291,6 +294,8 @@ export async function POST(request: Request) {
       pose,
       styleReference,
       styleReferenceGrid,
+      plan: userPlan,
+      ip: requestIp(request),
     };
 
     // ── 7. Delegate to service ────────────────────────────────────────────────

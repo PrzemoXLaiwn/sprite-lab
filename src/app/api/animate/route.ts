@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import sharp from "sharp";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { checkAndDeductCredits, refundCredits } from "@/lib/db/credits";
+import { startOperation, requestIp } from "@/lib/billing/operations";
+import { animationFeature } from "@/lib/billing/features";
 import { saveGeneration } from "@/lib/db/generations";
 import { rateLimitUserGeneration } from "@/lib/rate-limit";
 import { safeFetchImage } from "@/lib/safe-fetch";
@@ -68,6 +69,10 @@ export async function POST(request: Request) {
     select: { id: true, imageUrl: true, prompt: true, styleId: true, categoryId: true, subcategoryId: true, projectId: true, folderId: true },
   });
   if (!source) return NextResponse.json({ error: "Sprite not found." }, { status: 404 });
+  const account = await prisma.user.findUnique({ where: { id: user.id }, select: { plan: true } });
+  const plan = account?.plan ?? "FREE";
+  const ip = requestIp(request);
+  const opInput = { generationId, action, customMotion, frames: option.frames, smooth };
   if (source.subcategoryId === "ANIMATION") {
     return NextResponse.json({ error: "Pick a single sprite, not an animation sheet." }, { status: 400 });
   }
@@ -86,13 +91,11 @@ export async function POST(request: Request) {
     } catch {
       return NextResponse.json({ error: "Couldn't load this sprite." }, { status: 400 });
     }
-    const charged = await checkAndDeductCredits(user.id, rotation.credits);
-    if (!charged.success) {
-      const insufficient = charged.error === "Not enough credits";
-      return NextResponse.json({ error: insufficient ? `This costs ${rotation.credits} credits.` : "Couldn't process credits.", noCredits: insufficient || undefined }, { status: insufficient ? 402 : 500 });
-    }
+    const started = await startOperation({ userId: user.id, feature: rotation.id as "rotate4" | "rotate8" | "walk4dir", credits: rotation.credits, plan, input: opInput, ip });
+    if (!started.ok) return NextResponse.json(started.body, { status: started.status });
+    const op = started.op;
     try {
-      const { anim, prompt: rPrompt, cost } = await makeRotation({ reference: referenceR, prompt: source.prompt, pixel: pixelR, rotation });
+      const { anim, prompt: rPrompt, cost } = await op.run(() => makeRotation({ reference: referenceR, prompt: source.prompt, pixel: pixelR, rotation }));
       const [sheet, gif] = await Promise.all([
         uploadGenerationBufferToR2(anim.sheetPng, user.id, "png"),
         uploadGenerationBufferToR2(anim.gif, user.id, "gif"),
@@ -110,6 +113,8 @@ export async function POST(request: Request) {
         projectId: source.projectId ?? undefined,
         folderId: source.folderId ?? undefined,
       });
+      const savedId = saved.success && "generation" in saved && saved.generation ? saved.generation.id : undefined;
+      await op.succeed(savedId);
       return NextResponse.json({
         success: true,
         sheetUrl: sheet.url,
@@ -117,7 +122,7 @@ export async function POST(request: Request) {
         frameCount: anim.frameCount,
         frameWidth: anim.frameWidth,
         frameHeight: anim.frameHeight,
-        generationId: saved.success && "generation" in saved && saved.generation ? saved.generation.id : undefined,
+        generationId: savedId,
         smoothed: false,
         fps: rotation.kind === "walk" ? 6 : 2,
         directions: DIRECTION_KEYS[rotation.directions],
@@ -128,7 +133,7 @@ export async function POST(request: Request) {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("[Rotate] Failed:", msg);
-      await refundCredits(user.id, rotation.credits);
+      await op.fail(/insufficientCredits|insufficient credits|top-up/i.test(msg) ? "PROVIDER_BALANCE" : "ROTATION_FAILED");
       if (/insufficientCredits|insufficient credits|top-up/i.test(msg)) {
         return NextResponse.json({ error: "Directions are paused for a short while — your credits were refunded." }, { status: 503 });
       }
@@ -178,21 +183,16 @@ export async function POST(request: Request) {
     } catch { /* fall through to the AI walk */ }
   }
   if (rig || pixelWalk) {
-    const charged = await checkAndDeductCredits(user.id, RIG_CREDITS);
-    if (!charged.success) {
-      const insufficient = charged.error === "Not enough credits";
-      return NextResponse.json(
-        { error: insufficient ? `This animation costs ${RIG_CREDITS} credits.` : "Couldn't process credits.", noCredits: insufficient || undefined },
-        { status: insufficient ? 402 : 500 }
-      );
-    }
+    const started = await startOperation({ userId: user.id, feature: "rig", credits: RIG_CREDITS, plan, input: opInput, ip });
+    if (!started.ok) return NextResponse.json(started.body, { status: started.status });
+    const op = started.op;
     try {
       const { buffer } = await safeFetchImage(source.imageUrl, { maxBytes: 10 * 1024 * 1024 });
       // Bipeds get a real skeleton (weight shift, arms, head, tail); anything the
       // rigger can't read falls back to gentle breathing / hovering
-      const anim = pixelWalk
+      const anim = await op.run(async () => pixelWalk
         ?? (rig === "breathe" ? await makeSkeletonIdle(buffer, { pixel, frames: RIG_FRAMES }) : null)
-        ?? await makeRigAnimation(buffer, { kind: rig ?? "breathe", pixel, frames: RIG_FRAMES });
+        ?? await makeRigAnimation(buffer, { kind: rig ?? "breathe", pixel, frames: RIG_FRAMES }));
       const [sheet, gif] = await Promise.all([
         uploadGenerationBufferToR2(anim.sheetPng, user.id, "png"),
         uploadGenerationBufferToR2(anim.gif, user.id, "gif"),
@@ -210,6 +210,8 @@ export async function POST(request: Request) {
         projectId: source.projectId ?? undefined,
         folderId: source.folderId ?? undefined,
       });
+      const savedId = saved.success && "generation" in saved && saved.generation ? saved.generation.id : undefined;
+      await op.succeed(savedId);
       return NextResponse.json({
         success: true,
         sheetUrl: sheet.url,
@@ -217,7 +219,7 @@ export async function POST(request: Request) {
         frameCount: anim.frameCount,
         frameWidth: anim.frameWidth,
         frameHeight: anim.frameHeight,
-        generationId: saved.success && "generation" in saved && saved.generation ? saved.generation.id : undefined,
+        generationId: savedId,
         smoothed: false,
         rigged: true,
         fps: anim.fps ?? 12,
@@ -225,7 +227,7 @@ export async function POST(request: Request) {
       });
     } catch (err) {
       console.error("[Animate] Rig failed:", err instanceof Error ? err.message : err);
-      await refundCredits(user.id, RIG_CREDITS);
+      await op.fail("RIG_FAILED");
       return NextResponse.json({ error: "Animation failed — your credits were refunded. Please try again." }, { status: 502 });
     }
   }
@@ -245,19 +247,12 @@ export async function POST(request: Request) {
 
   // Smooth motion = a second image pass drawing in-betweens → twice the frames, twice the credits
   const credits = animationCredits(option.frames, smooth);
-  const charged = await checkAndDeductCredits(user.id, credits);
-  if (!charged.success) {
-    const insufficient = charged.error === "Not enough credits";
-    return NextResponse.json(
-      { error: insufficient ? `This animation costs ${credits} credits.` : "Couldn't process credits.", noCredits: insufficient || undefined },
-      { status: insufficient ? 402 : 500 }
-    );
-  }
+  const started = await startOperation({ userId: user.id, feature: isTile ? "tile_anim" : animationFeature(option.frames, smooth), credits, plan, input: opInput, ip });
+  if (!started.ok) return NextResponse.json(started.body, { status: started.status });
+  const op = started.op;
 
-  // Credits already given back (partial smooth refund) — never refund twice
-  let refunded = 0;
   try {
-    const { anim, plan, prompt, cost, smoothed } = await makeAnimation({
+    const { anim, plan: motionPlan, prompt, cost, smoothed } = await op.run(() => makeAnimation({
       reference,
       prompt: source.prompt,
       categoryId: source.categoryId,
@@ -268,12 +263,10 @@ export async function POST(request: Request) {
       anchor,
       loop,
       tile: isTile,
-    });
+    }));
     // The in-between pass didn't line up — the user got key frames only
-    if (smooth && !smoothed) {
-      await refundCredits(user.id, credits - option.credits);
-      refunded = credits - option.credits;
-    }
+    // (idempotent: an operation never refunds more than it charged)
+    if (smooth && !smoothed) await op.refund(credits - option.credits, "smooth_pass_unavailable");
 
     const [sheet, gif] = await Promise.all([
       uploadGenerationBufferToR2(anim.sheetPng, user.id, "png"),
@@ -293,6 +286,9 @@ export async function POST(request: Request) {
       projectId: source.projectId ?? undefined,
       folderId: source.folderId ?? undefined,
     });
+    const savedId = saved.success && "generation" in saved && saved.generation ? saved.generation.id : undefined;
+    if (smooth && !smoothed) await op.partial(savedId ?? null, "smooth_pass_unavailable");
+    else await op.succeed(savedId);
 
     return NextResponse.json({
       success: true,
@@ -301,15 +297,15 @@ export async function POST(request: Request) {
       frameCount: anim.frameCount,
       frameWidth: anim.frameWidth,
       frameHeight: anim.frameHeight,
-      bodyType: plan.bodyType,
-      generationId: saved.success && "generation" in saved && saved.generation ? saved.generation.id : undefined,
+      bodyType: motionPlan.bodyType,
+      generationId: savedId,
       smoothed,
       creditsUsed: smooth && !smoothed ? option.credits : credits,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[Animate] Failed:", msg);
-    if (credits - refunded > 0) await refundCredits(user.id, credits - refunded);
+    await op.fail(/insufficientCredits|insufficient credits|top-up/i.test(msg) ? "PROVIDER_BALANCE" : "ANIMATION_FAILED");
     // Provider balance ran out: say so plainly instead of "try again"
     if (/insufficientCredits|insufficient credits|top-up/i.test(msg)) {
       return NextResponse.json({ error: "Animations are paused for a short while — your credits were refunded. Sprites still work." }, { status: 503 });

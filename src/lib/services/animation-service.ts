@@ -37,6 +37,11 @@ import {
   type MotionAnchor,
 } from "@/config/animations";
 import { walkRowFrozen, walkRowScore } from "@/lib/image/walk-check";
+import { canSpend } from "@/lib/billing/ledger";
+import { PRICE } from "@/lib/billing/features";
+
+/** List price of one image pass at this sheet size — for the per-operation cost cap. */
+const passPrice = (size: number) => (size > 1024 ? PRICE.grid2048 : PRICE.grid1024);
 
 export interface MakeAnimationInput {
   /** The sprite on white, 512px. */
@@ -105,6 +110,8 @@ export async function makeAnimation(input: MakeAnimationInput): Promise<MakeAnim
   let keys: Frame[] = [];
   for (let attempt = 0; attempt < 2; attempt++) {
     if (attempt > 0 && keys.length >= 2 && Date.now() - startedAt > REDRAW_BUDGET_MS) break;
+    // A redraw only happens within the operation's cost cap
+    if (attempt > 0 && !canSpend(passPrice(option.size))) break;
     let found: Frame[];
     try {
       const keyGrid = await generateAnimationGrid({ prompt, reference: input.reference, size: option.size });
@@ -135,6 +142,10 @@ export async function makeAnimation(input: MakeAnimationInput): Promise<MakeAnim
     return { anim: keyAnim, plan, prompt, cost, smoothed: false };
   }
   const layout = gridFor(keyAnim.frames.length);
+  if (!canSpend(passPrice(layout.size))) {
+    console.warn("[Animate] Smoothing skipped: operation cost cap reached");
+    return { anim: keyAnim, plan, prompt, cost, smoothed: false };
+  }
   try {
     const sheet = await referenceGrid(keyAnim.frames, layout.cols, layout.rows, 1024);
     const betweenGrid = await generateAnimationGrid({
@@ -178,6 +189,7 @@ export async function makeRotation(input: { reference: Buffer; prompt: string; p
   const startedAt = Date.now();
   for (let attempt = 0; attempt < 2; attempt++) {
     if (attempt > 0 && views.length >= expected && Date.now() - startedAt > REDRAW_BUDGET_MS) break;
+    if (attempt > 0 && !canSpend(passPrice(r.size))) break;
     let found: Frame[];
     try {
       const grid = await generateAnimationGrid({ prompt, reference: input.reference, size: r.size });
@@ -219,7 +231,11 @@ const WALK_VIEWS = ["front", "side", "back"] as const;
  */
 async function fixFrozenWalkRows(views: Frame[], cols: number, opts: { pixel: boolean; subject: string }): Promise<{ views: Frame[]; cost: number }> {
   const rows = WALK_VIEWS.map((view, r) => ({ view, r, frames: views.slice(r * cols, r * cols + cols) }));
-  const frozen = rows.filter((row) => walkRowFrozen(row.frames, row.view));
+  const allFrozen = rows.filter((row) => walkRowFrozen(row.frames, row.view));
+  if (!allFrozen.length) return { views, cost: 0 };
+  // Side rows first (a frozen side walk is the most visible); stop at the cost cap
+  allFrozen.sort((a, b) => Number(b.view === "side") - Number(a.view === "side"));
+  const frozen = allFrozen.filter((_, i) => canSpend(PRICE.grid1024 * (i + 1)));
   if (!frozen.length) return { views, cost: 0 };
   console.warn(`[Walk] Frozen rows: ${frozen.map((f) => f.view).join(", ")} — redrawing`);
   const out = [...views];

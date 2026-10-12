@@ -803,3 +803,75 @@ model Asset {
   @@index([legacy])
   @@map("assets")
 }
+
+// =============================================================================
+// Cost ledger (Oct 2026) — every paid request is an Operation; every call to
+// an AI provider is a ProviderCall (also failures/timeouts). Additive tables,
+// no foreign keys: cost history must outlive users and generations.
+// SQL: prisma/sql/2026-10-13_cost_ledger.sql
+// =============================================================================
+
+model Operation {
+  id                String    @id @default(cuid())
+  userId            String    @map("user_id")
+  feature           String    // see src/lib/billing/features.ts
+  status            String    @default("RUNNING") // RUNNING | SUCCEEDED | PARTIAL | FAILED
+  creditsCharged    Int       @map("credits_charged")
+  creditsRefunded   Int       @default(0) @map("credits_refunded")
+  estCostUsd        Float     @map("est_cost_usd") // worst-case reservation for the spend guard
+  costCapUsd        Float     @map("cost_cap_usd") // retries stop when the next call would cross it
+  inputHash         String?   @map("input_hash")
+  ipHash            String?   @map("ip_hash")
+  plan              String?
+  errorCode         String?   @map("error_code")
+  generationId      String?   @map("generation_id")
+  costLogIncomplete Boolean   @default(false) @map("cost_log_incomplete")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  finishedAt        DateTime? @map("finished_at")
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([createdAt])
+  @@index([ipHash, createdAt])
+  @@map("operations")
+}
+
+model ProviderCall {
+  id             String   @id @default(cuid())
+  operationId    String?  @map("operation_id")
+  userId         String?  @map("user_id")
+  provider       String   // runware | anthropic | cloudflare
+  model          String
+  task           String   // sprite | grid | edit | plan | rig | translate | enhance ...
+  size           String?
+  attempt        Int      @default(1)
+  outcome        String   // ok | error | timeout | moderated | discarded
+  costUsd        Float?   @map("cost_usd") // as reported by the provider (null = not reported)
+  estCostUsd     Float    @map("est_cost_usd") // our list-price estimate, always set
+  inputTokens    Int?     @map("input_tokens")
+  outputTokens   Int?     @map("output_tokens")
+  latencyMs      Int?     @map("latency_ms")
+  providerTaskId String?  @map("provider_task_id")
+  error          String?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([operationId])
+  @@index([provider, createdAt])
+  @@index([createdAt])
+  @@map("provider_calls")
+}
+
+model CostReconciliation {
+  id               String   @id @default(cuid())
+  provider         String
+  checkedAt        DateTime @default(now()) @map("checked_at")
+  reportedTotalUsd Float    @map("reported_total_usd") // provider's cumulative usage counter
+  reportedDeltaUsd Float?   @map("reported_delta_usd") // since the previous snapshot
+  loggedDeltaUsd   Float?   @map("logged_delta_usd")   // our provider_calls over the same window
+  gapUsd           Float?   @map("gap_usd")            // reported − logged (unlogged spend)
+  sinceAt          DateTime? @map("since_at")
+  note             String?
+
+  @@index([provider, checkedAt])
+  @@map("cost_reconciliations")
+}

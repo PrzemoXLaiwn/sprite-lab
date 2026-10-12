@@ -317,14 +317,35 @@ export async function rateLimitGuestGeneration(
 
 /**
  * Authenticated generation: 30 requests per hour per user ID.
- * Applied to /api/generate (and the other paid image/3D routes) for extra
- * protection beyond the credit system. Fail-open is acceptable here: every
- * request still has to atomically pay credits, which bounds the cost.
+ * Applied to /api/generate and the other paid routes. Credits alone don't
+ * bound the cost — a failed request is refunded but the provider still
+ * bills us — so this never fails open: without Upstash it counts the user's
+ * charges in the database (shared by all instances), and if that fails too,
+ * a per-instance in-memory limiter.
  */
 export async function rateLimitUserGeneration(
   userId: string
 ): Promise<RateLimitResult> {
-  return check("user:gen", 30, 3600, userId);
+  if (getRedis()) return check("user:gen", 30, 3600, userId, true);
+  return dbChargeLimit(userId, 30, 3600);
+}
+
+async function dbChargeLimit(userId: string, requests: number, windowSeconds: number): Promise<RateLimitResult> {
+  try {
+    const { prisma } = await import("@/lib/prisma");
+    const since = new Date(Date.now() - windowSeconds * 1000);
+    const used = await prisma.creditTransaction.count({ where: { userId, type: "GENERATION", createdAt: { gte: since } } });
+    if (used < requests) return { blocked: null };
+    return {
+      blocked: Response.json(
+        { success: false, error: "Too many requests. Please wait before trying again.", code: "RATE_LIMITED", retryAfter: 600 },
+        { status: 429, headers: { "Retry-After": "600" } },
+      ),
+    };
+  } catch (err) {
+    console.error("[RateLimit] database fallback failed — using in-memory limiter:", err);
+    return memoryCheck("user:gen", requests, windowSeconds, userId);
+  }
 }
 
 /**

@@ -56,6 +56,7 @@ export function PricingSection() {
   const [tab, setTab] = useState<Tab>("subscriptions");
   const [promoActive, setPromoActive] = useState(false);
   const [lifetimeSlots, setLifetimeSlots] = useState<Record<string, LifetimeSlotInfo>>({});
+  const [lifetimeOn, setLifetimeOn] = useState(false);
 
   useEffect(() => {
     fetchLaunchPromoStatus()
@@ -69,6 +70,7 @@ export function PricingSection() {
         if (data.slots) {
           setLifetimeSlots(data.slots);
         }
+        setLifetimeOn(data.salesEnabled === true);
       })
       .catch(console.error);
   }, []);
@@ -88,7 +90,7 @@ export function PricingSection() {
           />
 
           <div role="tablist" aria-label="Pricing options" className="mt-8 inline-grid grid-cols-3 gap-1 rounded-xl bg-white/[0.04] p-1 text-[13px] font-medium">
-            {TABS.map((t) => (
+            {TABS.filter((t) => t.id !== "lifetime" || lifetimeOn).map((t) => (
               <button
                 key={t.id}
                 type="button"
@@ -194,7 +196,7 @@ export function PricingSection() {
           )}
 
           {/* Lifetime */}
-          {tab === "lifetime" && (
+          {tab === "lifetime" && lifetimeOn && (
             <>
               <p className="mb-5 flex items-center justify-center gap-1.5 text-center text-[13px] text-[#8B93A5]">
                 <InfinityIcon className="h-4 w-4 text-[#FF8A3D]" />

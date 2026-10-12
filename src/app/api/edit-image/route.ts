@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getUserCredits, checkAndDeductCredits, refundCredits, saveGeneration } from "@/lib/database";
+import { saveGeneration } from "@/lib/database";
 import { persistImage } from "@/lib/storage";
 import {
   getRunwareClient,
@@ -13,6 +13,8 @@ import {
 } from "@/lib/runware";
 import { safeFetchImage, safeFetchErrorResponse } from "@/lib/safe-fetch";
 import { rateLimitUserGeneration } from "@/lib/rate-limit";
+import { prisma } from "@/lib/prisma";
+import { startOperation, requestIp, type OpHandle } from "@/lib/billing/operations";
 import { parseJsonBody, validateBody } from "@/lib/validation/common";
 import { editImageSchema } from "@/lib/validations";
 import { editSprite, EDIT_CREDITS } from "@/lib/image/sprite-edit";
@@ -649,8 +651,8 @@ async function editImageWithRunware(
 
 export async function POST(request: Request) {
   const startTime = Date.now();
-  let creditsDeducted = false;
-  let chargedUserId: string | null = null;
+  // Paid operation; null once the edit was delivered (no refund from then on)
+  let pendingOp: OpHandle | null = null;
 
   try {
     const supabase = await createClient();
@@ -682,19 +684,20 @@ export async function POST(request: Request) {
     }
     const pixel = (originalGeneration?.styleId ?? "").toUpperCase().includes("PIXEL");
 
-    const creditResult = await checkAndDeductCredits(user.id, EDIT_CREDITS);
-    if (!creditResult.success) {
-      if (creditResult.error !== "Not enough credits") {
-        console.error("[Edit] Credit deduction failed:", creditResult.error);
-        return NextResponse.json({ error: "Failed to process credits. Please try again." }, { status: 500 });
-      }
-      return NextResponse.json({ error: `Editing costs ${EDIT_CREDITS} credits.`, noCredits: true }, { status: 402 });
+    const account = await prisma.user.findUnique({ where: { id: user.id }, select: { plan: true } });
+    const started = await startOperation({
+      userId: user.id, feature: "edit", credits: EDIT_CREDITS, plan: account?.plan ?? "FREE", ip: requestIp(request),
+      input: { imageUrl, instruction, masked: Boolean(mask) },
+    });
+    if (!started.ok) {
+      const body = started.status === 402 ? { ...started.body, error: `Editing costs ${EDIT_CREDITS} credits.` } : started.body;
+      return NextResponse.json(body, { status: started.status });
     }
-    creditsDeducted = true;
-    chargedUserId = user.id;
+    const op = started.op;
+    pendingOp = op;
 
-    const result = await editSprite({ sprite, instruction, pixel, mask });
-    creditsDeducted = false; // delivered — no refund from here on
+    const result = await op.run(() => editSprite({ sprite, instruction, pixel, mask }));
+    pendingOp = null; // delivered — no refund from here on
 
     const upload = await uploadGenerationBufferToR2(result.png, user.id, "png");
     if (!upload.success || !upload.url) throw new Error(`upload failed: ${upload.error}`);
@@ -708,8 +711,10 @@ export async function POST(request: Request) {
       styleId: originalGeneration?.styleId || "PIXEL_ART_16",
       imageUrl: upload.url,
       seed: undefined,
+      replicateCost: result.cost,
     });
     if (!saveResult.success) console.error("Failed to save generation:", saveResult.error);
+    await op.succeed(saveResult.generation?.id ?? null);
 
     return NextResponse.json({
       success: true,
@@ -722,9 +727,10 @@ export async function POST(request: Request) {
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     console.error("Edit image error:", msg);
-    if (creditsDeducted && chargedUserId) {
-      creditsDeducted = false;
-      await refundCredits(chargedUserId, EDIT_CREDITS);
+    if (pendingOp) {
+      const op = pendingOp;
+      pendingOp = null;
+      await op.fail(/insufficientCredits|insufficient credits|top-up/i.test(msg) ? "PROVIDER_BALANCE" : "EDIT_FAILED");
     }
     if (/insufficientCredits|insufficient credits|top-up/i.test(msg)) {
       return NextResponse.json({ error: "Editing is paused for a short while — your credits were refunded." }, { status: 503 });

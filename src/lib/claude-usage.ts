@@ -7,6 +7,7 @@
 // =============================================================================
 
 import { prisma } from "@/lib/prisma";
+import { recordProviderCall } from "@/lib/billing/ledger";
 
 /** USD per million tokens [input, output]. Cache reads bill at 10% of input. */
 const PRICES: Record<string, [number, number]> = {
@@ -49,6 +50,8 @@ export function trackClaude(feature: string, response: { model?: string; usage?:
     cacheRead: u.cache_read_input_tokens ?? 0,
     cost: Number(claudeCostUsd(model, u).toFixed(6)),
   };
+  // Cost ledger (correlated with the paid operation, if any)
+  recordProviderCall({ provider: "anthropic", model, task: feature, outcome: "ok", costUsd: null, estCostUsd: meta.cost, inputTokens: meta.input, outputTokens: meta.output });
   prisma.generationEvent
     .create({ data: { generationId: "claude", userId, eventType: CLAUDE_USAGE_EVENT, metadata: JSON.stringify(meta) } })
     .catch(() => {});

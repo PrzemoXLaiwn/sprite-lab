@@ -9,7 +9,7 @@
 // ARCHITECTURE:
 //   Public API:    generateAssets()  generateGuestAsset()
 //   Core pipeline: generateSingle2D() (shared by all 2D flows)
-//   Helpers:       saveGeneratedAssets()  refundCreditsSafely()
+//   Helpers:       saveGeneratedAssets()  (charging/refunds: src/lib/billing/operations.ts)
 //
 // 3D NOTE:
 //   3D generation uses Replicate (not Runware) and produces a different output
@@ -18,7 +18,7 @@
 //
 // CREDIT SAFETY CONTRACT:
 //   A. Failure BEFORE deduction     → no action needed
-//   B. Failure AFTER deduction,     → refund via refundCreditsSafely()
+//   B. Failure AFTER deduction,     → op.fail() refunds what is still due (once)
 //      BEFORE provider success
 //   C. Failure AFTER provider       → image exists; attempt DB save anyway.
 //      success, BEFORE DB save        If save fails, log for manual recovery.
@@ -41,7 +41,7 @@ import {
 } from "@/lib/runware";
 import { isDailyAllowanceError, dailyAllowanceMessage } from "@/lib/cloudflare-ai";
 import { uploadGenerationBufferToR2 } from "@/lib/r2";
-import { checkAndDeductCredits, refundCredits } from "@/lib/db/credits";
+import { startOperation, type OpHandle } from "@/lib/billing/operations";
 import { saveGeneration, type SaveGenerationParams } from "@/lib/db/generations";
 import { COLOR_PALETTES } from "@/config/features/premium-features";
 import { postprocessSprite, postprocessTile } from "@/lib/image/sprite-postprocess";
@@ -121,6 +121,10 @@ export interface GenerationRequest {
   styleReference?: Buffer;
   /** Pixel canvas of the reference (e.g. 64) so the new sprite gets the same pixel size. */
   styleReferenceGrid?: number;
+  /** For the free-tier spend guard. */
+  plan?: string | null;
+  /** For the per-network failure guard. */
+  ip?: string | null;
 
   // The style-mix / model-override / pack-batch fields used to live here
   // but were never wired to a real UI surface. Removed to make the
@@ -204,6 +208,8 @@ export type GenerationErrorCode =
   | "PROVIDER_ERROR"
   | "PROVIDER_TIMEOUT"
   | "CAPACITY_EXHAUSTED"
+  | "RATE_LIMITED"
+  | "SERVICE_PAUSED"
   | "UPLOAD_ERROR"
   | "SAVE_ERROR"
   | "UNEXPECTED_ERROR";
@@ -391,39 +397,39 @@ async function generateSinglePipeline(
   // looked free to the user while costing us multiples per image.
   const creditsRequired = request.styleReference ? STYLE_MATCH_CREDITS : creditsForPreset(request.qualityPreset);
 
-  // ── Credit deduction (case A boundary) ────────────────────────────────────
-  const creditResult = await checkAndDeductCredits(request.userId, creditsRequired);
-  if (!creditResult.success) {
-    if (creditResult.error === "Not enough credits") {
-      throw new GenerationError({
-        code: "INSUFFICIENT_CREDITS",
-        userMessage: `Not enough credits. You need ${creditsRequired} credit${creditsRequired === 1 ? "" : "s"}.`,
-        isExpected: true,
-      });
-    }
+  // ── Charge as a paid operation (case A boundary) ──────────────────────────
+  // Guards (rate, failures, daily budget) run first; nothing is charged when they refuse.
+  const feature = request.styleReference ? "style_match" : request.qualityPreset === "hd" ? "sprite_hd" : "sprite";
+  const started = await startOperation({
+    userId: request.userId, feature, credits: creditsRequired, plan: request.plan ?? null, ip: request.ip ?? null,
+    input: { prompt: request.prompt, categoryId: request.categoryId, subcategoryId: request.subcategoryId, styleId: request.styleId, preset: request.qualityPreset, styleMatch: !!request.styleReference },
+  });
+  if (!started.ok) {
+    const code: GenerationErrorCode = started.status === 402 ? "INSUFFICIENT_CREDITS" : started.status === 429 ? "RATE_LIMITED" : started.status === 503 ? "SERVICE_PAUSED" : "UNEXPECTED_ERROR";
     throw new GenerationError({
-      code: "UNEXPECTED_ERROR",
-      userMessage: "Something went wrong. Please try again.",
-      isExpected: false,
-      message: `Credit deduction failed: ${creditResult.error}`,
+      code,
+      userMessage: started.status === 402 ? `Not enough credits. You need ${creditsRequired} credit${creditsRequired === 1 ? "" : "s"}.` : started.body.error,
+      isExpected: started.status !== 500,
+      message: `Operation refused: ${started.code}`,
     });
   }
+  const op: OpHandle = started.op;
   // ── CREDITS DEDUCTED — failures from here require refund (case B) ─────────
 
   let asset: GeneratedAsset;
   let creditsUsed = creditsRequired;
   try {
-    const out = await generateSingle2D(request);
+    const out = await op.run(() => generateSingle2D(request));
     asset = out.asset;
     // Style match or HD fell back to the standard model: charge only for
-    // what was delivered and give the difference back.
+    // what was delivered and give the difference back (idempotent per operation).
     if (out.creditsUsed < creditsRequired) {
-      await refundCreditsSafely(request.userId, creditsRequired - out.creditsUsed, "single:downgrade");
+      await op.refund(creditsRequired - out.creditsUsed, "single:downgrade");
       creditsUsed = out.creditsUsed;
     }
   } catch (err) {
-    // Case B: provider failed after deduction — refund
-    await refundCreditsSafely(request.userId, creditsRequired, "single:provider_error");
+    // Case B: provider failed after deduction — refund what's still due, once
+    await op.fail(err instanceof GenerationError ? err.code : "PROVIDER_ERROR");
     throw err; // Re-throw — already a GenerationError
   }
   // ── PROVIDER SUCCESS — case C boundary ────────────────────────────────────
@@ -432,6 +438,8 @@ async function generateSinglePipeline(
   // Case C: save to DB. If this fails, log for manual recovery.
   // The image was generated and provider was paid — no refund issued.
   await saveGeneratedAssets(request.userId, request, [asset]);
+  if (creditsUsed < creditsRequired) await op.partial(null, "downgraded");
+  else await op.succeed(null);
 
   // Case D: safe to return. DB record exists.
   log("generation:result", {
@@ -692,53 +700,6 @@ async function saveGeneratedAssets(
         recoveryNote: "Image generated successfully. DB record missing — manual save needed.",
       });
     }
-  }
-}
-
-// ---------------------------------------------------------------------------
-// refundCreditsSafely — internal
-// ---------------------------------------------------------------------------
-
-/**
- * Issues a credit refund and logs the outcome.
- * Absorbs errors — a failed refund is logged but does not crash the request.
- * Never throws.
- *
- * Context is a short string for log tracing, e.g. "single:provider_error".
- */
-async function refundCreditsSafely(
-  userId: string,
-  amount: number,
-  context: string
-): Promise<void> {
-  try {
-    const refundResult = await refundCredits(userId, amount);
-    if (refundResult.success) {
-      log("generation:error", {
-        stage: "refund_issued",
-        context,
-        userId,
-        amount,
-        newBalance: refundResult.credits,
-      });
-    } else {
-      log("generation:error", {
-        stage: "refund_failed",
-        context,
-        userId,
-        amount,
-        warning: "Refund call returned success: false — manual credit restore needed.",
-      });
-    }
-  } catch (err) {
-    log("generation:error", {
-      stage: "refund_exception",
-      context,
-      userId,
-      amount,
-      error: err instanceof Error ? err.message : String(err),
-      warning: "Refund threw an exception — manual credit restore needed.",
-    });
   }
 }
 

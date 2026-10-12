@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { LIFETIME_DEALS, LifetimeDealName } from "@/lib/stripe";
 import { getLifetimeSlotsSold } from "@/app/api/stripe/_lib/fulfillment";
+import { lifetimeSalesEnabled } from "@/lib/lifetime-sales";
 
 export async function GET() {
+  if (!lifetimeSalesEnabled()) return NextResponse.json({ success: true, salesEnabled: false, slots: {} });
   try {
     // Count lifetime users per deal (by lifetimeDeal, falling back to plan
     // for rows created before that column existed)
@@ -22,6 +24,7 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
+      salesEnabled: true,
       slots: soldSlots,
     });
   } catch (error) {

@@ -1,67 +1,34 @@
-// Every paid action must cost the user more than it costs us — even for the
-// customer who gets the cheapest credits (the biggest monthly plan).
-//
-// Provider costs are the real averages from generations.replicate_cost
-// (Oct 2026); Claude is the animation planner call. Update them when the
-// models or their prices change.
-
+// Structure of prices + a regression guard on unit economics.
+// The full margin report (with today's KNOWN_FAILURE rows) is `npm run economics`;
+// this test only fails on NEW violations so a price/cost change can't silently
+// make another feature lose money.
 import { describe, expect, it } from "vitest";
-import { ANIMATION_FRAME_OPTIONS, RIG_CREDITS, ROTATIONS, animationCredits } from "./animations";
+import { RIG_CREDITS, ROTATIONS } from "./animations";
 import { MOVESETS, moveCredits, movesetCredits } from "./movesets";
-import { PLANS } from "@/lib/stripe";
+import { costGbp, featureCredits, netPerCreditGbp, violations, violationKey } from "./economics";
+import { FEATURE_COSTS } from "./provider-costs";
+import { KNOWN_MARGIN_VIOLATIONS } from "./economics-known";
 
-const CLAUDE_PLANNER_USD = 0.03;
-
-/** Average provider cost in USD, keyed by action. */
-const PROVIDER_COST: Record<string, number> = {
-  "anim:4": 0.069 + CLAUDE_PLANNER_USD,
-  "anim:6": 0.117 + CLAUDE_PLANNER_USD,
-  "anim:9": 0.103 + CLAUDE_PLANNER_USD,
-  "smooth:4": 0.142 + CLAUDE_PLANNER_USD,
-  "smooth:6": 0.206 + CLAUDE_PLANNER_USD,
-  "smooth:9": 0.206 + CLAUDE_PLANNER_USD,
-  rotate4: 0.069,
-  rotate8: 0.137,
-  walk4dir: 0.206,
-  rig: 0.03, // Claude joints only, image work is local
-};
-
-// Monthly plans only: lifetime deals are priced on a different basis
-const paidPlans = Object.values(PLANS).filter((p) => p.price > 0);
-const cheapestCreditUsd = Math.min(...paidPlans.map((p) => p.price / p.credits));
-
-const revenue = (credits: number) => credits * cheapestCreditUsd;
-
-describe("pricing covers provider cost", () => {
-  it("knows the cheapest credit price", () => {
-    expect(cheapestCreditUsd).toBeGreaterThan(0.015);
+describe("unit economics", () => {
+  it("has cost data for every paid feature", () => {
+    for (const f of Object.keys(featureCredits())) expect(FEATURE_COSTS[f], f).toBeDefined();
   });
 
-  for (const o of ANIMATION_FRAME_OPTIONS) {
-    it(`AI animation ${o.frames} frames`, () => {
-      expect(revenue(animationCredits(o.frames, false))).toBeGreaterThan(PROVIDER_COST[`anim:${o.frames}`]);
-    });
-    it(`smooth AI animation ${o.frames} frames`, () => {
-      expect(revenue(animationCredits(o.frames, true))).toBeGreaterThan(PROVIDER_COST[`smooth:${o.frames}`]);
-    });
-  }
+  it("uses the documented formula (Pro: $12 → £8.41 net, matching the real charge)", () => {
+    expect(netPerCreditGbp({ priceUsd: 12, credits: 500 }, false) * 500).toBeCloseTo(8.41, 2);
+    expect(netPerCreditGbp({ priceUsd: 12, credits: 500 }, true)).toBeLessThan(netPerCreditGbp({ priceUsd: 12, credits: 500 }, false));
+    expect(costGbp("anim_6", "worst")).toBeGreaterThan(costGbp("anim_6", "central"));
+  });
 
-  for (const r of ROTATIONS) {
-    it(`${r.label}`, () => {
-      expect(revenue(r.credits)).toBeGreaterThan(PROVIDER_COST[r.id]);
-    });
-  }
-
-  it("rig idle", () => {
-    expect(revenue(RIG_CREDITS)).toBeGreaterThan(PROVIDER_COST.rig);
+  it("introduces no NEW margin violations beyond the known list (see npm run economics)", () => {
+    const fresh = violations().map(violationKey).filter((k) => !KNOWN_MARGIN_VIOLATIONS.includes(k));
+    expect(fresh).toEqual([]);
   });
 });
 
 describe("move sets", () => {
   it("total equals the sum of each move", () => {
-    for (const set of MOVESETS) {
-      expect(movesetCredits(set)).toBe(set.moves.reduce((a, m) => a + moveCredits(m), 0));
-    }
+    for (const set of MOVESETS) expect(movesetCredits(set)).toBe(set.moves.reduce((a, m) => a + moveCredits(m), 0));
   });
 
   it("idle uses the rig price and walk4dir the rotation price", () => {

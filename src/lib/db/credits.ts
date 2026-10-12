@@ -166,18 +166,23 @@ export async function refundCredits(
   amount = 1
 ): Promise<{ success: boolean; credits?: number }> {
   try {
-    const user = await prisma.user.update({
-      where: { id: userId },
-      data: { credits: { increment: amount } },
-    });
-
-    await prisma.creditTransaction.create({
-      data: {
-        userId,
-        amount,
-        type: "REFUND",
-        description: "Generation failed — credits refunded",
-      },
+    // Balance and ledger row change together or not at all. (Paid flows on
+    // src/lib/billing/operations.ts get idempotent, per-operation refunds;
+    // this legacy helper is kept for the remaining routes.)
+    const user = await prisma.$transaction(async (tx) => {
+      const u = await tx.user.update({
+        where: { id: userId },
+        data: { credits: { increment: amount } },
+      });
+      await tx.creditTransaction.create({
+        data: {
+          userId,
+          amount,
+          type: "REFUND",
+          description: "Generation failed — credits refunded",
+        },
+      });
+      return u;
     });
 
     console.log(`Refunded ${amount} credit(s) to user ${userId}`);

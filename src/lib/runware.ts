@@ -1,3 +1,5 @@
+import { canSpend, recordProviderCall } from "@/lib/billing/ledger";
+import { PRICE } from "@/lib/billing/features";
 import { Runware } from "@runware/sdk-js";
 import { cloudflareAiConfigured, generateWithCloudflare } from "./cloudflare-ai";
 
@@ -370,9 +372,12 @@ async function generateSpriteImageRunware(opts: {
   if (!apiKey) throw new Error("RUNWARE_API_KEY is not set");
   const spec = SPRITE_MODELS[opts.model];
 
+  const taskUUID = crypto.randomUUID();
+  const started = Date.now();
+  let reported: number | null = null;
   const task: Record<string, unknown> = {
     taskType: "imageInference",
-    taskUUID: crypto.randomUUID(),
+    taskUUID,
     model: spec.air,
     positivePrompt: opts.prompt.slice(0, 2900),
     width: 1024,
@@ -404,14 +409,20 @@ async function generateSpriteImageRunware(opts: {
       throw new Error(`Runware ${e?.code ?? res.status}: ${e?.message ?? "no image returned"}`);
     }
     const item = json.data[0];
+    reported = typeof item.cost === "number" ? item.cost : null;
     const imgRes = await fetch(item.imageURL, { signal: controller.signal });
     if (!imgRes.ok) throw new Error(`Runware image download failed (${imgRes.status})`);
+    const image = Buffer.from(await imgRes.arrayBuffer());
+    logRunware({ task: opts.model === "hd" ? "sprite_hd" : "sprite", model: spec.air, size: 1024, started, taskUUID, listPrice: spec.approxCostUsd, reported });
     return {
-      image: Buffer.from(await imgRes.arrayBuffer()),
+      image,
       seed: item.seed ?? opts.seed ?? 0,
       model: spec.air,
-      cost: item.cost ?? spec.approxCostUsd,
+      cost: reported ?? spec.approxCostUsd,
     };
+  } catch (err) {
+    logRunware({ task: opts.model === "hd" ? "sprite_hd" : "sprite", model: spec.air, size: 1024, started, taskUUID, listPrice: spec.approxCostUsd, reported, err });
+    throw err;
   } finally {
     clearTimeout(timer);
   }
@@ -423,6 +434,34 @@ async function generateSpriteImageRunware(opts: {
 // Nano Banana 2 keeps a character's design consistent across poses when given
 // the sprite as a reference — tested to produce clean 2×2 frame grids.
 export const ANIMATION_MODEL = { air: "google:4@3", approxCostUsd: 0.07 } as const;
+
+/** List price of one Nano Banana pass by size (as seen in Runware responses). */
+const gridPrice = (size?: number) => ((size ?? 1024) > 1024 ? PRICE.grid2048 : PRICE.grid1024);
+
+/**
+ * Ledger row for one Runware call. Explicit API errors are recorded with no
+ * estimated cost (no image came back); timeouts / dropped connections keep
+ * the full list price because the task may have run anyway. Reconciliation
+ * against Runware's usage counter shows whether that assumption holds.
+ */
+function logRunware(o: { task: string; model: string; size?: number; started: number; taskUUID: string; listPrice: number; reported?: number | null; err?: unknown }) {
+  const msg = o.err instanceof Error ? o.err.message : o.err ? String(o.err) : undefined;
+  const timeout = !!msg && /abort|timeout|ECONNRESET|fetch failed|socket/i.test(msg);
+  const moderated = !!msg && /invalidProviderContent|moderation|flagged/i.test(msg);
+  const providerError = !!msg && /^Runware /.test(msg) && !/download failed/.test(msg);
+  recordProviderCall({
+    provider: "runware",
+    model: o.model,
+    task: o.task,
+    size: o.size ? String(o.size) : undefined,
+    outcome: !msg ? "ok" : timeout ? "timeout" : moderated ? "moderated" : "error",
+    costUsd: o.reported ?? null,
+    estCostUsd: msg && providerError && !timeout ? 0 : o.listPrice,
+    latencyMs: Date.now() - o.started,
+    providerTaskId: o.taskUUID,
+    error: msg,
+  });
+}
 
 type AnimationGridOpts = {
   prompt: string;
@@ -442,6 +481,7 @@ export async function generateAnimationGrid(opts: AnimationGridOpts): Promise<{ 
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (!/invalidProviderContent|moderation|flagged/i.test(msg)) throw err;
+    if (!canSpend(gridPrice(opts.size))) throw err;
     console.warn("[Runware] Animation grid flagged by provider moderation - retrying as cartoon game art");
     return generateAnimationGridOnce({
       ...opts,
@@ -456,13 +496,16 @@ async function generateAnimationGridOnce(opts: AnimationGridOpts): Promise<{ ima
   const controller = new AbortController();
   // 2K sheets take noticeably longer than single sprites
   const timer = setTimeout(() => controller.abort(), 150_000);
+  const taskUUID = crypto.randomUUID();
+  const started = Date.now();
+  let reported: number | null = null;
   try {
     const res = await fetch("https://api.runware.ai/v1", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify([{
         taskType: "imageInference",
-        taskUUID: crypto.randomUUID(),
+        taskUUID,
         model: ANIMATION_MODEL.air,
         positivePrompt: opts.prompt.slice(0, 2900),
         referenceImages: [`data:image/png;base64,${opts.reference.toString("base64")}`],
@@ -483,9 +526,15 @@ async function generateAnimationGridOnce(opts: AnimationGridOpts): Promise<{ ima
       const e = json.errors?.[0];
       throw new Error(`Runware ${e?.code ?? res.status}: ${e?.message ?? "no image returned"}`);
     }
+    reported = typeof json.data[0].cost === "number" ? json.data[0].cost : null;
     const imgRes = await fetch(json.data[0].imageURL, { signal: controller.signal });
     if (!imgRes.ok) throw new Error(`Runware image download failed (${imgRes.status})`);
-    return { image: Buffer.from(await imgRes.arrayBuffer()), cost: json.data[0].cost ?? ANIMATION_MODEL.approxCostUsd };
+    const image = Buffer.from(await imgRes.arrayBuffer());
+    logRunware({ task: "grid", model: ANIMATION_MODEL.air, size: opts.size ?? 1024, started, taskUUID, listPrice: gridPrice(opts.size), reported });
+    return { image, cost: reported ?? gridPrice(opts.size) };
+  } catch (err) {
+    logRunware({ task: "grid", model: ANIMATION_MODEL.air, size: opts.size ?? 1024, started, taskUUID, listPrice: gridPrice(opts.size), reported, err });
+    throw err;
   } finally {
     clearTimeout(timer);
   }
