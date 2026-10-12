@@ -32,6 +32,8 @@ import { track, FUNNEL } from "@/lib/analytics";
 import { GENERATE_CATEGORIES, SUBTYPE_PLACEHOLDERS, type GenerateCategory, type GenerateSubcategory } from "@/data/generate-categories";
 import { GENERATE_STYLES, ALL_GENERATE_STYLE_IDS } from "@/data/generate-styles";
 import { SHOWCASE, isPixelShowcase } from "@/data/showcase";
+import { useAutoSettings } from "@/hooks/useAutoSettings";
+import { AutoSettingsBar, AutoBadge, autoFlash } from "@/components/generate/AutoSettingsBar";
 
 // =============================================================================
 // VIEW + DETAIL
@@ -246,6 +248,25 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
   const [styleLocked, setStyleLocked]     = useState(false);
   const [seedCopied, setSeedCopied]       = useState(false);
   const seedRef                           = useRef("");
+
+  // Auto-settings: the prompt picks asset type, style, view, palette and pose.
+  // Never overrides a control set by hand (or by a shared link) this session.
+  const auto = useAutoSettings({
+    prompt,
+    values: { groupId: selectedCategory.id, subcategoryId: selectedSubcategoryId, styleId, view, palette, pose },
+    apply: (p) => {
+      const cat = p.groupId ? GENERATE_CATEGORIES.find((c) => c.id === p.groupId) : undefined;
+      if (cat) setSelectedCategory(cat);
+      if (p.subcategoryId) setSelectedSubcategoryId(p.subcategoryId);
+      if (p.styleId) setStyleId(p.styleId);
+      if (p.view) setView(p.view as ViewId);
+      if (p.palette) setPalette(p.palette as PaletteId);
+      if (p.pose) setPose(p.pose as PoseId);
+    },
+    initiallyUserSet: urlPrompt
+      ? [...(urlCatId || urlSubId ? ["type" as const] : []), ...(urlStyleId ? ["style" as const] : []), ...(urlView ? ["view" as const] : [])]
+      : [],
+  });
 
   const isGenerating = status === "generating";
   const activeResult = history[selectedIndex] ?? null;
@@ -878,6 +899,8 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                 {promptQuality.hint}
               </p>
             )}
+            <AutoSettingsBar enabled={auto.enabled} onToggle={auto.setEnabled} changes={auto.changes} onUndo={auto.undo}
+              labels={{ view: VIEW_OPTIONS, palette: PALETTE_OPTIONS, pose: POSE_OPTIONS }} />
             {viewConflict && detectedView && detectedViewLabel && (
               <button type="button" onClick={() => setView(detectedView)}
                 className="mt-2 flex w-full items-start gap-2 rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-3 py-2 text-left text-[11.5px] text-amber-100/90 transition-colors hover:bg-amber-400/[0.1]">
@@ -888,13 +911,13 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
           </Field>
 
           {/* Style */}
-          <Field label="Style" hint={selectedStyle ? `${selectedStyle.name} — ${selectedStyle.description}` : undefined} action={
+          <Field label={<>Style<AutoBadge show={auto.isAuto("style")} /></>} hint={selectedStyle ? `${selectedStyle.name} — ${selectedStyle.description}` : undefined} action={
             <button type="button" onClick={() => setShowAllStyles((v) => !v)} aria-expanded={showAllStyles}
               className="-my-1 inline-flex min-h-10 items-center text-[12px] font-medium text-[#9BA3B4] transition-colors hover:text-white lg:min-h-8 lg:text-[11.5px]">
               {showAllStyles ? "Show fewer" : `All ${GENERATE_STYLES.length} styles`}
             </button>
           }>
-            <div className="grid grid-cols-3 gap-2">
+            <div className={`grid grid-cols-3 gap-2${autoFlash(auto.isFlashing("style"))}`}>
               {visibleStyles.map((s) => {
                 const active = s.id === styleId;
                 return (
@@ -917,8 +940,8 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
           </Field>
 
           {/* Asset type */}
-          <Field label="Asset type">
-            <div className="flex flex-wrap gap-1.5">
+          <Field label={<>Asset type<AutoBadge show={auto.isAuto("type")} /></>}>
+            <div className={`flex flex-wrap gap-1.5${autoFlash(auto.isFlashing("type"))}`}>
               {GENERATE_CATEGORIES.map((c) => {
                 const active = c.id === selectedCategory.id;
                 const Icon = c.icon;
@@ -936,8 +959,8 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
 
           {/* View */}
           {viewApplies && (
-            <Field label="Camera view" hint={VIEW_OPTIONS.find((v) => v.id === view)?.id === "none" ? "Default is a 3/4 angle — pick Side for platformers, Top-down for RPG maps." : VIEW_OPTIONS.find((v) => v.id === view)?.desc}>
-              <div className="grid grid-cols-4 gap-1 rounded-xl bg-white/[0.04] p-1">
+            <Field label={<>Camera view<AutoBadge show={auto.isAuto("view")} /></>} hint={VIEW_OPTIONS.find((v) => v.id === view)?.id === "none" ? "Default is a 3/4 angle — pick Side for platformers, Top-down for RPG maps." : VIEW_OPTIONS.find((v) => v.id === view)?.desc}>
+              <div className={`grid grid-cols-4 gap-1 rounded-xl bg-white/[0.04] p-1${autoFlash(auto.isFlashing("view"))}`}>
                 {VIEW_OPTIONS.map((v) => (
                   <button key={v.id} type="button" onClick={() => setView(v.id)} title={v.desc} aria-pressed={view === v.id}
                     className={`min-h-9 rounded-lg text-[12px] font-medium transition-colors lg:min-h-8 ${
@@ -987,8 +1010,8 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
             </button>
             {showAdvanced && (
               <div id="generate-more-options" className="space-y-5 border-t border-white/[0.06] px-4 pb-4 pt-4">
-                <Field label="Color palette" hint={palette === "auto" ? "Auto lets the style choose the colours." : PALETTE_OPTIONS.find((p) => p.id === palette)?.label}>
-                  <div className="flex flex-wrap gap-0.5 lg:gap-1.5">
+                <Field label={<>Color palette<AutoBadge show={auto.isAuto("palette")} /></>} hint={palette === "auto" ? "Auto lets the style choose the colours." : PALETTE_OPTIONS.find((p) => p.id === palette)?.label}>
+                  <div className={`flex flex-wrap gap-0.5 lg:gap-1.5${autoFlash(auto.isFlashing("palette"))}`}>
                     {PALETTE_OPTIONS.map((p) => {
                       const active = p.id === palette;
                       return p.id === "auto" ? (
@@ -1009,17 +1032,17 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                   </div>
                 </Field>
 
-                <Field label="Exact type" labelFor="generate-type" hint="Narrows the asset type, e.g. sword vs. axe.">
+                <Field label={<>Exact type<AutoBadge show={auto.isAuto("type")} /></>} labelFor="generate-type" hint="Narrows the asset type, e.g. sword vs. axe.">
                   <select id="generate-type" value={selectedSubcategoryId}
                     onChange={(e) => { const s = selectedCategory.subcategories.find((x) => x.subcategoryId === e.target.value); if (s) handleSubcategoryChange(s); }}
-                    className="h-10 w-full rounded-xl border border-white/[0.08] bg-[#151922] px-3 text-[13px] text-white outline-none focus:border-[#FF8A3D]/50">
+                    className={`h-10 w-full rounded-xl border border-white/[0.08] bg-[#151922] px-3 text-[13px] text-white outline-none focus:border-[#FF8A3D]/50${autoFlash(auto.isFlashing("type"))}`}>
                     {selectedCategory.subcategories.map((s) => <option key={s.subcategoryId} value={s.subcategoryId}>{s.label}</option>)}
                   </select>
                 </Field>
 
                 {isCreature && (
-                  <Field label="Pose" hint={POSE_OPTIONS.find((p) => p.id === pose)?.desc}>
-                    <div className="grid grid-cols-4 gap-1 rounded-xl bg-white/[0.04] p-1">
+                  <Field label={<>Pose<AutoBadge show={auto.isAuto("pose")} /></>} hint={POSE_OPTIONS.find((p) => p.id === pose)?.desc}>
+                    <div className={`grid grid-cols-4 gap-1 rounded-xl bg-white/[0.04] p-1${autoFlash(auto.isFlashing("pose"))}`}>
                       {POSE_OPTIONS.map((p) => (
                         <button key={p.id} type="button" onClick={() => setPose(p.id)} title={p.desc} aria-pressed={pose === p.id}
                           className={`min-h-9 rounded-lg text-[11.5px] font-medium transition-colors lg:min-h-8 ${
