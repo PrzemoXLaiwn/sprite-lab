@@ -5,6 +5,7 @@ import type { Prisma } from "@prisma/client";
 import { deleteImageFromStorage } from "@/lib/storage";
 import { deleteFromR2, isR2Configured, isR2Url } from "@/lib/r2";
 import { getOrCreateUser } from "@/lib/database";
+import { historyWhere, isHistoryFilterId } from "@/lib/workspace/history";
 
 // Best-effort removal of a generation's image from whichever backend hosts it.
 // Never throws — a storage failure must not block the DB delete.
@@ -48,10 +49,15 @@ export async function GET(request: Request) {
       : 50;
     const offset = Number.isFinite(parsedOffset) ? Math.max(parsedOffset, 0) : 0;
     const categoryId = searchParams.get("category");
+    // History panels: kind = all-images | sprites | animations | edits, q = prompt search
+    const kindParam = searchParams.get("kind");
+    const kind = isHistoryFilterId(kindParam) ? kindParam : null;
+    const extra = historyWhere(kind, searchParams.get("q"));
 
-    // Build where clause
+    // Build where clause (always scoped to the signed-in user)
     const where: Prisma.GenerationWhereInput = {
       userId: user.id,
+      ...(extra.length ? { AND: extra as Prisma.GenerationWhereInput[] } : {}),
     };
 
     if (categoryId && categoryId !== "all") {

@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { deleteImageFromStorage } from "@/lib/storage";
 import { deleteFromR2, isR2Configured, isR2Url } from "@/lib/r2";
+import { findAnimationSourceId } from "@/lib/db/generations";
+import { parseAnimationPrompt } from "@/lib/workspace/history";
 
 // ===========================================
 // DELETE - Delete a generation
@@ -187,9 +189,22 @@ export async function GET(
       );
     }
 
+    // Animations: point back to the sprite they were made from, so the
+    // Animate tool can reopen both (best-effort match, see findAnimationSourceId)
+    let sourceGenerationId: string | null = null;
+    const parsed = generation.subcategoryId === "ANIMATION" ? parseAnimationPrompt(generation.prompt) : null;
+    if (parsed) {
+      sourceGenerationId = await findAnimationSourceId(user.id, {
+        sourcePrompt: parsed.sourcePrompt,
+        createdAt: generation.createdAt,
+        savedPromptLength: generation.prompt.length,
+      });
+    }
+
     return NextResponse.json({
       success: true,
       generation,
+      ...(parsed ? { sourceGenerationId } : {}),
     });
   } catch (error) {
     console.error("[Get Generation] Error:", error);

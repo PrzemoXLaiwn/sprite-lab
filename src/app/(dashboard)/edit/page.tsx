@@ -1,8 +1,16 @@
 "use client";
 
-import { useState, useRef, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import { Wand2, Info, Brush, Eraser, Check, RotateCcw } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Wand2, Info, Brush, Eraser, Check, RotateCcw, Pencil } from "lucide-react";
+import { HistoryButton, HistoryPanel, type HistoryItem } from "@/components/workspace/HistoryPanel";
+import { RestoredNote } from "@/components/workspace/ContinueBanner";
+import { fetchOwnGeneration, useStoredRaw } from "@/components/workspace/restore";
+import { classifyGeneration, cleanGenerationPrompt } from "@/lib/workspace/history";
+import {
+  buildToolHref, clearDraft, clearLastActivity, draftKey, loadDraft, parseDraft, lookupSourceLink, parseToolParams, rememberSourceLink,
+  saveDraft, saveLastActivity, withResultParam,
+} from "@/lib/workspace/session";
 import { MaskPainter, maskDataUrl, clearMask } from "@/components/tools/MaskPainter";
 import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
 import {
@@ -30,7 +38,11 @@ const BRUSHES = [
   { size: 0.18, label: "L", name: "Large brush" },
 ];
 
-function EditPageContent({ generationId }: { generationId: string | null }) {
+/** Set right before a bare /edit visit reopens the saved session, so the page can say so. */
+let reopenedFromDraft = false;
+
+function EditPageContent({ generationId, resultId }: { generationId: string | null; resultId: string | null }) {
+  const router = useRouter();
   const { source, loading: loadingSource, error: sourceError } = useSourceGeneration(generationId);
   const [loading, setLoading] = useState(false);
   const [editedImage, setEditedImage] = useState<string | null>(null);
@@ -42,6 +54,94 @@ function EditPageContent({ generationId }: { generationId: string | null }) {
   const maskRef = useRef<HTMLCanvasElement | null>(null);
   const [painted, setPainted] = useState(false);
   const [brush, setBrush] = useState(0.1);
+
+  // ── Session restore: URL (?id= sprite, ?result= edit) + draft (typed text)
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [showRestored, setShowRestored] = useState(false);
+  const [draftReady, setDraftReady] = useState(false);
+  const [restoringResult, setRestoringResult] = useState(Boolean(resultId));
+  const [shownResultId, setShownResultId] = useState<string | null>(null);
+  const [resultFromRun, setResultFromRun] = useState(false);
+  const shownResultRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (reopenedFromDraft) {
+      reopenedFromDraft = false;
+      setShowRestored(true);
+    }
+    const d = loadDraft("edit");
+    if (d && generationId && d.sourceId === generationId && d.editPrompt) setEditPrompt(d.editPrompt);
+    setDraftReady(true);
+    // Once per sprite (the page is keyed on it)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const showResultInUrl = useCallback((id: string | null) => {
+    shownResultRef.current = id;
+    setShownResultId(id);
+    const next = withResultParam(`${window.location.pathname}${window.location.search}${window.location.hash}`, id);
+    if (next) window.history.replaceState(window.history.state, "", next);
+  }, []);
+
+  // ?result= → show that edit next to the original again
+  useEffect(() => {
+    if (!resultId || resultId === shownResultRef.current) { setRestoringResult(false); return; }
+    let cancelled = false;
+    setRestoringResult(true);
+    (async () => {
+      const d = loadDraft("edit");
+      const url = d?.resultId === resultId && d.resultUrl ? d.resultUrl : (await fetchOwnGeneration(resultId))?.generation.imageUrl;
+      if (cancelled) return;
+      if (!url) {
+        setError("Couldn't open that edit. It may have been deleted.");
+        showResultInUrl(null);
+        return;
+      }
+      setEditedImage(url);
+      setView("compare");
+      setResultFromRun(false);
+      shownResultRef.current = resultId;
+      setShownResultId(resultId);
+    })().finally(() => { if (!cancelled) setRestoringResult(false); });
+    return () => { cancelled = true; };
+  }, [resultId, showResultInUrl]);
+
+  useEffect(() => {
+    if (!draftReady || !generationId || restoringResult) return;
+    saveDraft("edit", {
+      sourceId: generationId,
+      editPrompt,
+      resultId: editedImage ? shownResultId ?? undefined : undefined,
+      resultUrl: editedImage ?? undefined,
+    });
+  }, [draftReady, generationId, restoringResult, editPrompt, editedImage, shownResultId]);
+
+  useEffect(() => {
+    if (!generationId || !source?.imageUrl) return;
+    saveLastActivity({
+      tool: "edit",
+      href: buildToolHref("edit", { id: generationId, result: shownResultId }),
+      title: cleanGenerationPrompt(source.prompt) || "Your sprite",
+      thumbUrl: editedImage ?? source.imageUrl,
+      pixel: isPixelStyleId(source.styleId),
+    });
+  }, [generationId, source, shownResultId, editedImage]);
+
+  /** History: an edit opens next to its original when known, else as the sprite to keep editing. */
+  const openFromHistory = (item: HistoryItem) => {
+    if (classifyGeneration(item) === "edit") {
+      const src = lookupSourceLink(item.id);
+      router.push(src ? buildToolHref("edit", { id: src, result: item.id }) : buildToolHref("edit", { id: item.id }));
+    } else if (item.id !== generationId) {
+      router.push(buildToolHref("edit", { id: item.id }));
+    }
+  };
+
+  const startFresh = () => {
+    clearDraft("edit");
+    clearLastActivity("edit");
+    router.push("/edit");
+  };
 
   const originalImage = source?.imageUrl ?? null;
   const canSubmit = Boolean(originalImage) && editPrompt.trim().length > 0 && !loading;
@@ -73,6 +173,10 @@ function EditPageContent({ generationId }: { generationId: string | null }) {
 
       setEditedImage(data.imageUrl);
       setView("compare");
+      setResultFromRun(true);
+      const newId = typeof data.generationId === "string" ? data.generationId : null;
+      if (newId && generationId) rememberSourceLink(newId, generationId);
+      showResultInUrl(newId);
       triggerCreditsRefresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
@@ -84,6 +188,7 @@ function EditPageContent({ generationId }: { generationId: string | null }) {
   /** Back to the original to try a different edit (the result stays in Assets). */
   const startOver = () => {
     setEditedImage(null);
+    showResultInUrl(null);
     setPainted(false);
     setError("");
   };
@@ -97,6 +202,7 @@ function EditPageContent({ generationId }: { generationId: string | null }) {
         title="Edit with AI"
         cost={COST}
         backHref="/assets"
+        headerAction={<HistoryButton onClick={() => setHistoryOpen(true)} />}
         footer={
           <>
             <PrimaryButton onClick={handleEdit} disabled={!canSubmit} loading={loading}
@@ -107,6 +213,8 @@ function EditPageContent({ generationId }: { generationId: string | null }) {
           </>
         }
       >
+        {showRestored && <RestoredNote onStartFresh={startFresh} onDismiss={() => setShowRestored(false)} />}
+
         <Field label="Sprite">
           <SourceCard imageUrl={originalImage} loading={loadingSource} prompt={source?.prompt} pixel={pixel} />
         </Field>
@@ -168,9 +276,14 @@ function EditPageContent({ generationId }: { generationId: string | null }) {
           One change at a time works best. The sprite keeps its pose, colours, style and pixel size — only what you ask for changes.
         </InfoNote>
 
-        {editedImage && (
+        {editedImage && resultFromRun && (
           <InfoNote tone="success" icon={<Check className="h-3.5 w-3.5 text-emerald-300" />}>
             Edit applied and saved to your assets as a new sprite.
+          </InfoNote>
+        )}
+        {editedImage && !resultFromRun && (
+          <InfoNote icon={<Pencil className="h-3.5 w-3.5 text-[#8B93A5]" />}>
+            Opened from your history. Keep editing the result, or go back to the original and try another change.
           </InfoNote>
         )}
       </ToolPanel>
@@ -198,6 +311,11 @@ function EditPageContent({ generationId }: { generationId: string | null }) {
         actions={editedImage ? (
           <>
             <DownloadButton onClick={() => downloadImage(editedImage, `spritelab-edited-${Date.now()}.png`)} />
+            {shownResultId && (
+              <SecondaryButton onClick={() => router.push(buildToolHref("edit", { id: shownResultId }))} title="Use the edited sprite as the starting point for the next change">
+                <Pencil className="h-4 w-4" /> Keep editing result
+              </SecondaryButton>
+            )}
             <SecondaryButton onClick={startOver} title="Go back to the original and try another edit">
               <RotateCcw className="h-4 w-4" /> Edit original again
             </SecondaryButton>
@@ -207,6 +325,8 @@ function EditPageContent({ generationId }: { generationId: string | null }) {
         <CanvasFrame bg={bgMode}>
           {!generationId ? (
             <RecentAssetPicker toolPath="/edit" title="Edit a sprite" />
+          ) : restoringResult ? (
+            <ProcessingOverlay icon={<Wand2 className="h-5 w-5" />} title="Opening edit…" />
           ) : loadingSource ? (
             <ProcessingOverlay icon={<Wand2 className="h-5 w-5" />} title="Loading sprite…" />
           ) : editedImage && originalImage ? (
@@ -227,14 +347,30 @@ function EditPageContent({ generationId }: { generationId: string | null }) {
           )}
         </CanvasFrame>
       </CanvasColumn>
+
+      <HistoryPanel tool="edit" open={historyOpen} onOpenChange={setHistoryOpen} onSelect={openFromHistory}
+        activeIds={[generationId, shownResultId]} refreshKey={shownResultId} />
     </ToolShell>
   );
 }
 
 function EditPageKeyed() {
-  const generationId = useSearchParams().get("id");
+  const router = useRouter();
+  const { id, result } = parseToolParams(useSearchParams());
+  // Bare /edit (sidebar, bottom nav): reopen the last session, if any
+  // null = not readable yet (server render / hydration), "" = no draft.
+  const bare = !id;
+  const draftRaw = useStoredRaw(draftKey("edit"));
+  const draft = useMemo(() => (draftRaw ? parseDraft("edit", draftRaw) : null), [draftRaw]);
+  useEffect(() => {
+    if (!bare || !draft) return;
+    reopenedFromDraft = true;
+    router.replace(buildToolHref("edit", { id: draft.sourceId, result: draft.resultId }));
+  }, [bare, draft, router]);
+
+  if (bare && (draftRaw === null || draft)) return <PageFallback />;
   // Keyed so picking another sprite resets the tool state.
-  return <EditPageContent key={generationId ?? "none"} generationId={generationId} />;
+  return <EditPageContent key={id ?? "none"} generationId={id} resultId={id ? result : null} />;
 }
 
 export default function EditPage() {

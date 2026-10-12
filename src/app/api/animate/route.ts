@@ -118,6 +118,8 @@ export async function POST(request: Request) {
         frameWidth: anim.frameWidth,
         frameHeight: anim.frameHeight,
         generationId: saved.success && "generation" in saved && saved.generation ? saved.generation.id : undefined,
+        // Lets the client link the animation back to its sprite (no DB column for it yet)
+        sourceGenerationId: source.id,
         smoothed: false,
         fps: rotation.kind === "walk" ? 6 : 2,
         directions: DIRECTION_KEYS[rotation.directions],
@@ -218,6 +220,8 @@ export async function POST(request: Request) {
         frameWidth: anim.frameWidth,
         frameHeight: anim.frameHeight,
         generationId: saved.success && "generation" in saved && saved.generation ? saved.generation.id : undefined,
+        // Lets the client link the animation back to its sprite (no DB column for it yet)
+        sourceGenerationId: source.id,
         smoothed: false,
         rigged: true,
         fps: anim.fps ?? 12,
@@ -303,6 +307,8 @@ export async function POST(request: Request) {
       frameHeight: anim.frameHeight,
       bodyType: plan.bodyType,
       generationId: saved.success && "generation" in saved && saved.generation ? saved.generation.id : undefined,
+      // Lets the client link the animation back to its sprite (no DB column for it yet)
+      sourceGenerationId: source.id,
       smoothed,
       creditsUsed: smooth && !smoothed ? option.credits : credits,
     });
