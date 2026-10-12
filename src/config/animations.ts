@@ -86,6 +86,36 @@ export function buildWalkSetPrompt(opts: { pixel: boolean; subject: string }): s
   ].join("\n");
 }
 
+/**
+ * Redraw of one walk row that came back frozen (same pose four times). Poses
+ * are spelled out per frame so the legs visibly alternate.
+ */
+export function buildWalkRowPrompt(opts: { pixel: boolean; subject: string; view: "front" | "side" | "back" }): string {
+  const style = opts.pixel ? "pixel art" : "2D game art";
+  const facing = { front: "facing the viewer (front view)", side: "facing right (side profile)", back: "facing away from the viewer (back view)" }[opts.view];
+  const poses = opts.view === "side"
+    ? [
+        "1: contact — left leg stretched far forward with the heel on the ground, right leg stretched far back, wide stride, right arm forward",
+        "2: passing — legs together under the body, right knee lifted and bent, body slightly higher",
+        "3: contact — right leg stretched far forward with the heel on the ground, left leg stretched far back, wide stride, left arm forward",
+        "4: passing — legs together under the body, left knee lifted and bent, body slightly higher",
+      ]
+    : [
+        "1: left foot stepping forward and slightly lower, right foot back, right arm forward",
+        "2: feet together, body slightly higher",
+        "3: right foot stepping forward and slightly lower, left foot back, left arm forward",
+        "4: feet together, body slightly higher",
+      ];
+  return [
+    `Using the reference image, draw 4 frames of EXACTLY this same ${style} character (${opts.subject.slice(0, 200)}) walking in place, ${facing}.`,
+    "Identical design, colors, proportions, outline, size and art style in every frame. Held items stay in the same hand.",
+    "The four poses must be clearly different from each other — the legs must visibly move:",
+    ...poses,
+    "Layout: 2 rows of 2 figures on one blank white page, in reading order, evenly spaced with wide empty white space so no two figures touch; every figure is the same height and stands on the same invisible ground level.",
+    "Plain flat solid pure white background, like a blank sheet of paper. Do not draw any lines on the background: no grid, no guide lines, no boxes, no arrows, no labels or text of any kind, no ground, no shadows, no motion blur.",
+  ].join("\n");
+}
+
 export function buildRotationPrompt(opts: { directions: 4 | 8; cols: number; rows: number; pixel: boolean; subject: string }): string {
   const style = opts.pixel ? "pixel art" : "2D game art";
   const names = DIRECTION_NAMES[opts.directions];

@@ -31,10 +31,12 @@ import {
   buildTileAnimationPrompt,
   buildRotationPrompt,
   buildWalkSetPrompt,
+  buildWalkRowPrompt,
   type RotationOption,
   gridFor,
   type MotionAnchor,
 } from "@/config/animations";
+import { walkRowFrozen, walkRowScore } from "@/lib/image/walk-check";
 
 export interface MakeAnimationInput {
   /** The sprite on white, 512px. */
@@ -193,13 +195,82 @@ export async function makeRotation(input: { reference: Buffer; prompt: string; p
     console.warn(`[Rotate] Views look wrong (${found.length}/${expected}) — attempt ${attempt + 1}`);
   }
   if (views.length < expected) throw new Error(`only ${views.length} of ${expected} views found`);
-  if (r.kind === "walk") views = [...views, ...views.slice(r.cols, r.cols * 2).map(mirror)];
+  if (r.kind === "walk") {
+    const fixed = await fixFrozenWalkRows(views, r.cols, { pixel: input.pixel, subject: input.prompt });
+    views = fixed.views;
+    cost += fixed.cost;
+    views = [...views, ...views.slice(r.cols, r.cols * 2).map(mirror)];
+  }
   // Every view stands on the same ground line, centred (no body alignment —
   // a side view and a front view don't overlap)
   const anim = await assembleAnimation(views, { pixel: input.pixel, frameSize: 256, fps: r.kind === "walk" ? 6 : 2, anchor: "ground", alignBodies: false });
   // Walk sets: the classic RPG layout — one row per direction
   if (r.kind === "walk") anim.sheetPng = await gridSheet(anim.frames, r.cols, anim.frameWidth, anim.frameHeight);
   return { anim, prompt, cost };
+}
+
+const WALK_VIEWS = ["front", "side", "back"] as const;
+
+/**
+ * The model sometimes draws one row of a walk set as the same pose four times
+ * (the character slides instead of stepping). Such rows are redrawn on their
+ * own, from one of their frames, with every pose spelled out — in parallel,
+ * one small (1024) pass each. A redraw is only used when it walks better.
+ */
+async function fixFrozenWalkRows(views: Frame[], cols: number, opts: { pixel: boolean; subject: string }): Promise<{ views: Frame[]; cost: number }> {
+  const rows = WALK_VIEWS.map((view, r) => ({ view, r, frames: views.slice(r * cols, r * cols + cols) }));
+  const frozen = rows.filter((row) => walkRowFrozen(row.frames, row.view));
+  if (!frozen.length) return { views, cost: 0 };
+  console.warn(`[Walk] Frozen rows: ${frozen.map((f) => f.view).join(", ")} — redrawing`);
+  const out = [...views];
+  let cost = 0;
+  await Promise.all(frozen.map(async (row) => {
+    try {
+      const reference = await frameOnWhite(row.frames[0]);
+      const grid = await generateAnimationGrid({ prompt: buildWalkRowPrompt({ pixel: opts.pixel, subject: opts.subject, view: row.view }), reference, size: 1024 });
+      cost += grid.cost;
+      const found = (await extractFrames(grid.image, 2, 2)).slice(0, cols);
+      if (!framesLookRight(found, cols)) return;
+      // The redraw comes from a smaller sheet: bring it to the row's size so
+      // the figure doesn't shrink when the rows share one canvas
+      const k = median(row.frames.map((f) => f.height)) / median(found.map((f) => f.height));
+      const redrawn = await Promise.all(found.map((f) => scaleFrame(f, k, opts.pixel)));
+      if (walkRowScore(redrawn) <= walkRowScore(row.frames)) return;
+      out.splice(row.r * cols, cols, ...redrawn);
+    } catch (err) {
+      // Keep the original row — a stiff walk beats a failed request
+      console.warn(`[Walk] Redraw of the ${row.view} row failed:`, err instanceof Error ? err.message : err);
+    }
+  }));
+  return { views: out, cost };
+}
+
+const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+
+async function scaleFrame(f: Frame, k: number, pixel: boolean): Promise<Frame> {
+  if (Math.abs(k - 1) < 0.02) return f;
+  const width = Math.max(1, Math.round(f.width * k)), height = Math.max(1, Math.round(f.height * k));
+  const data = await sharp(f.data, { raw: { width: f.width, height: f.height, channels: 4 } })
+    .resize(width, height, { kernel: pixel ? "nearest" : "lanczos3", fit: "fill" })
+    .ensureAlpha()
+    .raw()
+    .toBuffer();
+  return { data, width, height };
+}
+
+/** A cut-out frame centred on white, 512px — the reference for a row redraw. */
+async function frameOnWhite(f: Frame): Promise<Buffer> {
+  const side = Math.round(Math.max(f.width, f.height) * 1.25);
+  return sharp(f.data, { raw: { width: f.width, height: f.height, channels: 4 } })
+    .extend({
+      left: Math.floor((side - f.width) / 2), right: Math.ceil((side - f.width) / 2),
+      top: Math.floor((side - f.height) / 2), bottom: Math.ceil((side - f.height) / 2),
+      background: { r: 255, g: 255, b: 255, alpha: 0 },
+    })
+    .flatten({ background: "#ffffff" })
+    .resize(512, 512, { kernel: "nearest" })
+    .png()
+    .toBuffer();
 }
 
 /** Horizontal mirror of a cut-out frame (left-facing row from the right-facing one). */
