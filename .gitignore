@@ -57,3 +57,4 @@ nul
 .claude/settings.local.json
 .claude/.verify-cache
 .playwright-cli/
+.claude/worktrees/
