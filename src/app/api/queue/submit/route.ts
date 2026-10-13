@@ -48,6 +48,11 @@ const QueueSubmitSchema = z.object({
 // Like Sora - user submits, we process in background
 
 export async function POST(request: Request) {
+  // Retired (Oct 2026): no screen uses the queue, and charging here while the
+  // work runs in another request can't be guarded like the other paid tools.
+  if (process.env.QUEUE_SUBMIT_ENABLED !== "true") {
+    return NextResponse.json({ error: "This endpoint is no longer available. Use the Create page." }, { status: 410 });
+  }
   try {
     // 🔐 Auth Check
     const supabase = await createClient();
