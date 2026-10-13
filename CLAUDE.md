@@ -23,8 +23,8 @@ Image models via Runware (FLUX.2 klein, GPT Image Mini, Nano Banana); Claude for
 - Don't claim features we don't have (marketing, landing, TikTok scripts). No fake statistics.
 
 ## UI / design
-- Dark UI, surfaces `#0B0D12` (page) / `#0E1016` (cards) / `#151922` (inputs, raised), accent orange `#FF8A3D`→`#FF9F43`, text `#ECEEF3` / `#C9CFDB` / `#8B93A5`. Fonts: Inter, Space Grotesk (display), JetBrains Mono (labels/numbers). **Never a pixel font.**
-- It must not look AI-generated: no generic gradient hero blobs, no emoji bullets, no "Unlock the power of…" copy. Real product output (sprites, GIFs, sheets) is the decoration.
+- Dark indigo UI, surfaces `#131A31` (page) / `#19223F` (cards) / `#212B4E` (inputs, raised), accent `#FFA300` (hover `#FFB733`) with dark ink `#131A31` on orange, extras `#00E436` / `#29ADFF`; text `#FFF1E8` / `#C8CCE8` / `#A7ADD4`. Fonts: Tektur (display), Atkinson Hyperlegible Next (body + labels; `font-mono` maps to it), JetBrains Mono only for code (`.font-code`). Real sprites sit on the `.checker` transparency checkerboard. **Never a pixel font.**
+- It must not look AI-generated: no generic gradient hero blobs, no emoji bullets, no "Unlock the power of…" copy, no `// label` eyebrows, tracked all-caps labels, accent-coloured headline words or gradient buttons. Real product output (sprites, GIFs, sheets) is the decoration.
 - Mobile first: works at 390px, 16px side gutter, no horizontal scroll, tap targets ≥40px. The bottom nav must keep Admin/Mod for staff.
 - Check the rendered result (playwright-cli or headless Chrome, desktop 1280 + mobile 390) before saying a visual change is done. Charts follow the dataviz skill (validated palette, one axis, legend + table view).
 
