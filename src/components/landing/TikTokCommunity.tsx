@@ -12,7 +12,7 @@ export function TikTokIcon({ className }: { className?: string }) {
 }
 
 const compact = (n: number) => new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(n);
-const CARD = "group relative aspect-[9/16] overflow-hidden rounded-2xl border border-white/[0.07] bg-[#12151C] transition-colors hover:border-white/25";
+const CARD = "group relative aspect-[9/16] overflow-hidden rounded-2xl border border-white/[0.07] bg-[#161E39] transition-colors hover:border-white/25";
 
 /**
  * Homepage community section. Shows the most-viewed TikTok videos when the
@@ -22,27 +22,24 @@ export async function TikTokCommunity() {
   const videos = await getTopTikToks(3);
 
   return (
-    <section id="community" className="relative border-y border-white/[0.05] bg-[#0E1016]">
-      <div className="mx-auto grid w-full max-w-[1200px] items-center gap-12 px-5 py-16 sm:py-20 lg:grid-cols-[minmax(0,420px)_1fr] lg:px-8">
+    <section id="community" className="relative border-y border-white/[0.05] bg-[#19223F]">
+      <div className="mx-auto grid w-full max-w-6xl items-center gap-12 px-4 py-16 sm:px-5 sm:py-20 lg:grid-cols-[minmax(0,420px)_1fr]">
         <div>
-          <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">{"// community"}</p>
-          <h2 className="mt-3 font-display text-[32px] font-semibold leading-[1.08] tracking-[-0.01em] text-white sm:text-[44px]">
-            Made by devs like you.
-            <br />
-            <span className="text-[#FF8A3D]">Shared every day.</span>
+          <h2 className="font-display text-[32px] font-semibold leading-[1.08] tracking-[-0.01em] text-white sm:text-[44px]">
+            Follow along on TikTok
           </h2>
-          <p className="mt-4 text-pretty text-[15px] leading-relaxed text-[#8B93A5] sm:text-[16px]">
+          <p className="mt-4 text-pretty text-[15px] leading-relaxed text-[#C8CCE8] sm:text-[16px]">
             We post new sprites, animations and game-dev tricks on TikTok. Made something cool? Tag it with{" "}
-            <span className="font-mono text-[#C9CFDB]">#{COMMUNITY_HASHTAG}</span> — we feature our favourites.
+            <span className="font-semibold text-[#FFF1E8]">#{COMMUNITY_HASHTAG}</span> — we feature our favourites.
           </p>
 
           <div className="mt-7 flex flex-wrap items-center gap-3">
             <a href={TIKTOK_PROFILE_URL} target="_blank" rel="noopener noreferrer"
-              className="flex h-11 items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-5 text-[14px] font-semibold text-[#ECEEF3] transition hover:bg-white/[0.08]">
+              className="flex h-11 items-center gap-2 rounded-[8px] border border-white/[0.14] px-5 text-[14px] font-semibold text-[#FFF1E8] transition hover:bg-white/[0.08]">
               <TikTokIcon className="h-4 w-4" /> Follow @{TIKTOK_HANDLE}<span className="sr-only"> on TikTok (opens in a new tab)</span>
             </a>
             <a href={`https://www.tiktok.com/tag/${COMMUNITY_HASHTAG}`} target="_blank" rel="noopener noreferrer"
-              className="flex h-11 items-center gap-1 px-2 text-[13px] text-[#A6ADBB] underline-offset-4 transition hover:text-white hover:underline">
+              className="flex h-11 items-center gap-1 px-2 text-[13px] text-[#A7ADD4] underline-offset-4 transition hover:text-white hover:underline">
               Browse #{COMMUNITY_HASHTAG} <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" /><span className="sr-only"> (opens in a new tab)</span>
             </a>
           </div>
@@ -59,7 +56,7 @@ export async function TikTokCommunity() {
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent" />
                   {i === 0 && v.views !== null && (
-                    <span className="absolute left-2 top-2 rounded-md bg-[#FF8A3D] px-1.5 py-0.5 font-mono text-[10px] font-semibold text-black">most viewed</span>
+                    <span className="absolute left-2 top-2 rounded-md bg-[#FFA300] px-1.5 py-0.5 font-mono text-[10px] font-semibold text-black">most viewed</span>
                   )}
                   <Play className="absolute left-1/2 top-1/2 h-8 w-8 -translate-x-1/2 -translate-y-1/2 fill-white/90 text-white/90 opacity-0 transition group-hover:opacity-100" />
                   <div className="absolute inset-x-0 bottom-0 p-2.5 sm:p-3">

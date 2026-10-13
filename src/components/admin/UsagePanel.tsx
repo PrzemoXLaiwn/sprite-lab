@@ -32,10 +32,10 @@ const ago = (iso: string) => {
 
 function Card({ title, sub, children, className = "" }: { title: string; sub?: string; children: React.ReactNode; className?: string }) {
   return (
-    <section className={`min-w-0 rounded-2xl border border-white/[0.06] bg-[#0E1016] p-4 sm:p-5 ${className}`}>
+    <section className={`min-w-0 rounded-2xl border border-white/[0.06] bg-[#19223F] p-4 sm:p-5 ${className}`}>
       <div className="mb-3">
         <h3 className="text-[14px] font-semibold text-white">{title}</h3>
-        {sub && <p className="mt-0.5 text-[12px] text-[#8B93A5]">{sub}</p>}
+        {sub && <p className="mt-0.5 text-[12px] text-[#9AA1CC]">{sub}</p>}
       </div>
       {children}
     </section>
@@ -45,13 +45,13 @@ function Card({ title, sub, children, className = "" }: { title: string; sub?: s
 function Tile({ label, value, hint, tone }: { label: string; value: string; hint?: React.ReactNode; tone?: "good" | "warn" | "bad" }) {
   const dot = tone === "good" ? "bg-emerald-400" : tone === "warn" ? "bg-amber-400" : tone === "bad" ? "bg-red-400" : "";
   return (
-    <div className="min-w-0 rounded-2xl border border-white/[0.06] bg-[#0E1016] p-4">
-      <p className="flex items-center gap-1.5 truncate text-[12px] text-[#8B93A5]">
+    <div className="min-w-0 rounded-2xl border border-white/[0.06] bg-[#19223F] p-4">
+      <p className="flex items-center gap-1.5 truncate text-[12px] text-[#9AA1CC]">
         {dot && <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} aria-hidden />}
         {label}
       </p>
       <p className="mt-1.5 truncate text-[22px] font-semibold leading-tight tracking-tight tabular-nums text-white sm:text-[26px]">{value}</p>
-      {hint && <div className="mt-1 truncate font-mono text-[11px] text-[#7A8294]">{hint}</div>}
+      {hint && <div className="mt-1 truncate font-mono text-[11px] text-[#8A92BF]">{hint}</div>}
     </div>
   );
 }
@@ -75,9 +75,9 @@ function LedgerSection({ ledger, dates, range, minRev }: { ledger: LedgerStats; 
   if (!ledger.available) {
     return (
       <Card title="Cost ledger" sub="Per-operation charges, refunds and provider calls">
-        <p className="text-[12.5px] text-[#8B93A5]">
-          No ledger data on this database yet. The <span className="font-mono text-[#C9CFDB]">operations</span> and <span className="font-mono text-[#C9CFDB]">provider_calls</span> tables
-          appear after <span className="font-mono text-[#C9CFDB]">prisma/sql/2026-10-13_cost_ledger.sql</span> runs (see docs/cost-guards-rollout.md).
+        <p className="text-[12.5px] text-[#9AA1CC]">
+          No ledger data on this database yet. The <span className="font-mono text-[#C8CCE8]">operations</span> and <span className="font-mono text-[#C8CCE8]">provider_calls</span> tables
+          appear after <span className="font-mono text-[#C8CCE8]">prisma/sql/2026-10-13_cost_ledger.sql</span> runs (see docs/cost-guards-rollout.md).
         </p>
       </Card>
     );
@@ -113,10 +113,10 @@ function LedgerSection({ ledger, dates, range, minRev }: { ledger: LedgerStats; 
             format={(v) => `${v < 1 && v > 0 ? v.toFixed(2) : v.toFixed(v >= 10 ? 0 : 1)}`} />
           {ledger.providers.length > 0 && (
             <table className="mt-3 w-full text-[12.5px]">
-              <thead><tr className="text-[#8B93A5]"><th className="pb-1 text-left font-medium">Provider</th><th className="pb-1 text-right font-medium">Calls</th><th className="pb-1 text-right font-medium">Not ok</th><th className="pb-1 text-right font-medium">Cost</th></tr></thead>
+              <thead><tr className="text-[#9AA1CC]"><th className="pb-1 text-left font-medium">Provider</th><th className="pb-1 text-right font-medium">Calls</th><th className="pb-1 text-right font-medium">Not ok</th><th className="pb-1 text-right font-medium">Cost</th></tr></thead>
               <tbody>
                 {ledger.providers.map((p) => (
-                  <tr key={p.provider} className="text-[#C9CFDB]">
+                  <tr key={p.provider} className="text-[#C8CCE8]">
                     <td className="py-0.5">{p.provider}</td>
                     <td className="py-0.5 text-right font-mono tabular-nums">{int(p.calls)}</td>
                     <td className="py-0.5 text-right font-mono tabular-nums">{int(p.failed)}</td>
@@ -133,7 +133,7 @@ function LedgerSection({ ledger, dates, range, minRev }: { ledger: LedgerStats; 
             <div className="-mx-1 overflow-x-auto px-1">
               <table className="w-full min-w-[480px] text-[12.5px]">
                 <thead>
-                  <tr className="text-[#8B93A5]">
+                  <tr className="text-[#9AA1CC]">
                     <th className="pb-1 text-left font-medium">Feature</th>
                     <th className="pb-1 text-right font-medium">Ops</th>
                     <th className="pb-1 text-right font-medium">Failed</th>
@@ -149,11 +149,11 @@ function LedgerSection({ ledger, dates, range, minRev }: { ledger: LedgerStats; 
                     const perCredit = kept > 0 ? f.costUsd / kept : null;
                     const losing = perCredit !== null && minRev > 0 && perCredit > minRev;
                     return (
-                      <tr key={f.feature} className="border-t border-white/[0.04] text-[#C9CFDB]">
+                      <tr key={f.feature} className="border-t border-white/[0.04] text-[#C8CCE8]">
                         <td className="py-1 font-mono text-[12px]">{f.feature}{f.incomplete > 0 && <span className="ml-1 text-amber-300" title={`${f.incomplete} with an incomplete cost log`}>*</span>}</td>
                         <td className="py-1 text-right font-mono tabular-nums text-white">{int(f.ops)}</td>
-                        <td className={`py-1 text-right font-mono tabular-nums ${f.ops && f.failed / f.ops > 0.15 ? "text-red-300" : ""}`}>{f.ops ? pct(f.failed / f.ops) : "—"}<span className="text-[#7A8294]"> ({int(f.failed)})</span></td>
-                        <td className="py-1 text-right font-mono tabular-nums">{int(f.creditsRefunded)}<span className="text-[#7A8294]"> cr</span></td>
+                        <td className={`py-1 text-right font-mono tabular-nums ${f.ops && f.failed / f.ops > 0.15 ? "text-red-300" : ""}`}>{f.ops ? pct(f.failed / f.ops) : "—"}<span className="text-[#8A92BF]"> ({int(f.failed)})</span></td>
+                        <td className="py-1 text-right font-mono tabular-nums">{int(f.creditsRefunded)}<span className="text-[#8A92BF]"> cr</span></td>
                         <td className="py-1 text-right font-mono tabular-nums text-white">{usdFine(f.ops ? f.costUsd / f.ops : 0)}</td>
                         <td className="py-1 text-right font-mono tabular-nums">{f.ops ? (kept / f.ops).toFixed(1) : "—"}</td>
                         <td className={`py-1 text-right font-mono tabular-nums ${losing ? "text-red-300" : "text-emerald-300"}`}>{perCredit === null ? "—" : usdFine(perCredit)}</td>
@@ -163,8 +163,8 @@ function LedgerSection({ ledger, dates, range, minRev }: { ledger: LedgerStats; 
                 </tbody>
               </table>
             </div>
-          ) : <p className="text-[12px] text-[#8B93A5]">No paid operations in this range yet.</p>}
-          <p className="mt-2 text-[11px] text-[#7A8294]">Red $/credit: provider cost above what one credit nets on the cheapest offer. * cost log incomplete.</p>
+          ) : <p className="text-[12px] text-[#9AA1CC]">No paid operations in this range yet.</p>}
+          <p className="mt-2 text-[11px] text-[#8A92BF]">Red $/credit: provider cost above what one credit nets on the cheapest offer. * cost log incomplete.</p>
         </Card>
       </div>
     </>
@@ -208,11 +208,11 @@ export function UsagePanel({ preview }: { preview?: UsageStats } = {}) {
 
   const header = (
     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-      <h2 className="font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">Usage {loading && stats && <Loader2 className="ml-1 inline h-3 w-3 animate-spin" />}</h2>
+      <h2 className="text-[12.5px] text-[#9AA1CC] font-semibold">Usage {loading && stats && <Loader2 className="ml-1 inline h-3 w-3 animate-spin" />}</h2>
       <div role="radiogroup" aria-label="Range" className="flex rounded-lg border border-white/[0.08] bg-white/[0.03] p-0.5">
         {([7, 30, 90] as const).map((r) => (
           <button key={r} type="button" role="radio" aria-checked={range === r} onClick={() => setRange(r)}
-            className={`h-8 rounded-md px-3 font-mono text-[12px] transition-colors ${range === r ? "bg-white/[0.1] text-white" : "text-[#8B93A5] hover:text-white"}`}>{r}d</button>
+            className={`h-8 rounded-md px-3 font-mono text-[12px] transition-colors ${range === r ? "bg-white/[0.1] text-white" : "text-[#9AA1CC] hover:text-white"}`}>{r}d</button>
         ))}
       </div>
     </div>
@@ -250,24 +250,24 @@ export function UsagePanel({ preview }: { preview?: UsageStats } = {}) {
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Tile label="Runware balance" value={rw ? usd(rw.balance) : "—"} tone={rw ? toneFor(rwDays) : undefined}
           hint={rw ? <>today {usd(rw.today)} · {rwDays !== null ? `≈${Math.floor(rwDays)}d left` : "no spend"}</> : "API unavailable"} />
-        <div className="min-w-0 rounded-2xl border border-white/[0.06] bg-[#0E1016] p-4">
-          <p className="flex items-center gap-1.5 truncate text-[12px] text-[#8B93A5]">
+        <div className="min-w-0 rounded-2xl border border-white/[0.06] bg-[#19223F] p-4">
+          <p className="flex items-center gap-1.5 truncate text-[12px] text-[#9AA1CC]">
             {cb && <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${toneFor(cDays) === "bad" ? "bg-red-400" : toneFor(cDays) === "warn" ? "bg-amber-400" : "bg-emerald-400"}`} aria-hidden />}
             Claude balance
-            <button type="button" onClick={() => setEditBal((v) => !v)} aria-label="Set Claude balance" className="ml-auto rounded p-1 text-[#7A8294] hover:text-white"><Pencil className="h-3 w-3" /></button>
+            <button type="button" onClick={() => setEditBal((v) => !v)} aria-label="Set Claude balance" className="ml-auto rounded p-1 text-[#8A92BF] hover:text-white"><Pencil className="h-3 w-3" /></button>
           </p>
           {editBal ? (
             <form onSubmit={(e) => { e.preventDefault(); saveBal(); }} className="mt-1.5 flex gap-1.5">
               <input autoFocus inputMode="decimal" value={balInput} onChange={(e) => setBalInput(e.target.value)} placeholder="19.99"
-                className="h-9 w-full min-w-0 rounded-lg border border-white/[0.1] bg-[#151922] px-2 font-mono text-[14px] text-white outline-none focus:border-[#FF8A3D]" />
-              <button type="submit" className="h-9 shrink-0 rounded-lg bg-[#FF8A3D] px-3 text-[12px] font-semibold text-black">Save</button>
+                className="h-9 w-full min-w-0 rounded-lg border border-white/[0.1] bg-[#212B4E] px-2 font-mono text-[14px] text-white outline-none focus:border-[#FFA300]" />
+              <button type="submit" className="h-9 shrink-0 rounded-lg bg-[#FFA300] px-3 text-[12px] font-semibold text-black">Save</button>
             </form>
           ) : (
             <p className="mt-1.5 truncate text-[22px] font-semibold leading-tight tracking-tight tabular-nums text-white sm:text-[26px]">{cb ? `≈${usd(cb.remaining)}` : "Set it"}</p>
           )}
-          <p className="mt-1 truncate font-mono text-[11px] text-[#7A8294]">
+          <p className="mt-1 truncate font-mono text-[11px] text-[#8A92BF]">
             {cb ? <>{cDays !== null ? `≈${Math.floor(cDays)}d left · ` : ""}set {ago(cb.setAt)} ago</> : <>type the console balance ✎</>}
-            {" · "}<a href="https://console.anthropic.com/settings/billing" target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 text-[#8B93A5] underline-offset-2 hover:text-white hover:underline">console<ExternalLink className="h-2.5 w-2.5" /></a>
+            {" · "}<a href="https://console.anthropic.com/settings/billing" target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 text-[#9AA1CC] underline-offset-2 hover:text-white hover:underline">console<ExternalLink className="h-2.5 w-2.5" /></a>
           </p>
         </div>
         <Tile label={`Provider cost (${range}d)`} value={usd(providerUsd)} hint={`Runware ${usd(sum((x) => x.runwareUsd))} · Claude ${usd(stats.claude.total)}`} />
@@ -290,8 +290,8 @@ export function UsagePanel({ preview }: { preview?: UsageStats } = {}) {
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
           {genTotals.map((k) => (
             <div key={k.key} className="rounded-lg bg-white/[0.03] px-2.5 py-2">
-              <p className="flex items-center gap-1.5 truncate text-[11.5px] text-[#8B93A5]"><span className="h-2 w-2 shrink-0 rounded-[2px]" style={{ background: KIND_COLOR[k.key] }} />{k.label}</p>
-              <p className="font-mono text-[15px] tabular-nums text-white">{int(k.n)} <span className="text-[11px] text-[#7A8294]">{totalGens ? Math.round((k.n / totalGens) * 100) : 0}%</span></p>
+              <p className="flex items-center gap-1.5 truncate text-[11.5px] text-[#9AA1CC]"><span className="h-2 w-2 shrink-0 rounded-[2px]" style={{ background: KIND_COLOR[k.key] }} />{k.label}</p>
+              <p className="font-mono text-[15px] tabular-nums text-white">{int(k.n)} <span className="text-[11px] text-[#8A92BF]">{totalGens ? Math.round((k.n / totalGens) * 100) : 0}%</span></p>
             </div>
           ))}
         </div>
@@ -326,7 +326,7 @@ export function UsagePanel({ preview }: { preview?: UsageStats } = {}) {
           <ul className="space-y-1.5">
             {stats.plans.map((p) => (
               <li key={p.plan} className="flex items-center gap-2 text-[12.5px]">
-                <span className="w-20 shrink-0 text-[#C9CFDB]">{p.plan}</span>
+                <span className="w-20 shrink-0 text-[#C8CCE8]">{p.plan}</span>
                 <span className="h-2 flex-1 overflow-hidden rounded-full bg-white/[0.05]">
                   <span className="block h-full rounded-full bg-[#3987e5]" style={{ width: `${Math.max(1.5, (p.users / Math.max(1, totalUsers)) * 100)}%` }} />
                 </span>
@@ -337,14 +337,14 @@ export function UsagePanel({ preview }: { preview?: UsageStats } = {}) {
           <div className="mt-4 border-t border-white/[0.06] pt-3">
             {stats.claude.byFeature.length ? (
               <table className="w-full text-[12.5px]">
-                <thead><tr className="text-[#8B93A5]"><th className="pb-1 text-left font-medium">Claude use</th><th className="pb-1 text-right font-medium">Calls</th><th className="pb-1 text-right font-medium">Cost</th></tr></thead>
+                <thead><tr className="text-[#9AA1CC]"><th className="pb-1 text-left font-medium">Claude use</th><th className="pb-1 text-right font-medium">Calls</th><th className="pb-1 text-right font-medium">Cost</th></tr></thead>
                 <tbody>
                   {stats.claude.byFeature.map((f) => (
-                    <tr key={f.feature} className="text-[#C9CFDB]"><td className="py-0.5">{f.feature}</td><td className="py-0.5 text-right font-mono tabular-nums">{int(f.calls)}</td><td className="py-0.5 text-right font-mono tabular-nums text-white">{usd(f.usd)}</td></tr>
+                    <tr key={f.feature} className="text-[#C8CCE8]"><td className="py-0.5">{f.feature}</td><td className="py-0.5 text-right font-mono tabular-nums">{int(f.calls)}</td><td className="py-0.5 text-right font-mono tabular-nums text-white">{usd(f.usd)}</td></tr>
                   ))}
                 </tbody>
               </table>
-            ) : <p className="text-[12px] text-[#8B93A5]">Claude calls are logged from now on — numbers appear after the next animation.</p>}
+            ) : <p className="text-[12px] text-[#9AA1CC]">Claude calls are logged from now on — numbers appear after the next animation.</p>}
           </div>
         </Card>
       </div>
@@ -355,15 +355,15 @@ export function UsagePanel({ preview }: { preview?: UsageStats } = {}) {
             <ul className="-mx-1 divide-y divide-white/[0.05]">
               {stats.topUsers.map((u) => (
                 <li key={u.email + u.lastAt} className="flex items-center gap-2 px-1 py-2 text-[12.5px]">
-                  <span className="min-w-0 flex-1 truncate text-[#ECEEF3]">{u.email}</span>
+                  <span className="min-w-0 flex-1 truncate text-[#FFF1E8]">{u.email}</span>
                   {u.plan !== "FREE" && <span className="shrink-0 rounded bg-emerald-400/10 px-1.5 py-0.5 font-mono text-[10px] text-emerald-300">{u.plan}</span>}
-                  <span className="w-14 shrink-0 text-right font-mono tabular-nums text-white">{int(u.gens)}<span className="text-[#7A8294]"> gen</span></span>
-                  <span className="w-14 shrink-0 text-right font-mono tabular-nums text-[#C9CFDB]">{int(u.credits)}<span className="text-[#7A8294]"> cr</span></span>
-                  <span className="w-8 shrink-0 text-right font-mono text-[11px] text-[#7A8294]">{ago(u.lastAt)}</span>
+                  <span className="w-14 shrink-0 text-right font-mono tabular-nums text-white">{int(u.gens)}<span className="text-[#8A92BF]"> gen</span></span>
+                  <span className="w-14 shrink-0 text-right font-mono tabular-nums text-[#C8CCE8]">{int(u.credits)}<span className="text-[#8A92BF]"> cr</span></span>
+                  <span className="w-8 shrink-0 text-right font-mono text-[11px] text-[#8A92BF]">{ago(u.lastAt)}</span>
                 </li>
               ))}
             </ul>
-          ) : <p className="text-[12px] text-[#8B93A5]">Nobody generated this week.</p>}
+          ) : <p className="text-[12px] text-[#9AA1CC]">Nobody generated this week.</p>}
         </Card>
         <Card title="Live feed" sub="Latest generations">
           <ul className="-mx-1 divide-y divide-white/[0.05]">
@@ -371,10 +371,10 @@ export function UsagePanel({ preview }: { preview?: UsageStats } = {}) {
               <li key={r.id} className="flex items-center gap-2 px-1 py-2 text-[12.5px]">
                 <span className="h-2 w-2 shrink-0 rounded-[2px]" style={{ background: KIND_COLOR[r.kind] }} aria-hidden />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[#ECEEF3]">{r.prompt || "—"}</span>
-                  <span className="block truncate font-mono text-[10.5px] text-[#7A8294]">{KIND_LABEL[r.kind]} · {r.style.toLowerCase().replace(/_/g, " ")} · {r.email}</span>
+                  <span className="block truncate text-[#FFF1E8]">{r.prompt || "—"}</span>
+                  <span className="block truncate font-mono text-[10.5px] text-[#8A92BF]">{KIND_LABEL[r.kind]} · {r.style.toLowerCase().replace(/_/g, " ")} · {r.email}</span>
                 </span>
-                <span className="shrink-0 text-right font-mono text-[11px] tabular-nums text-[#8B93A5]">{r.costUsd ? usd(r.costUsd) : ""}<span className="block text-[#7A8294]">{ago(r.at)}</span></span>
+                <span className="shrink-0 text-right font-mono text-[11px] tabular-nums text-[#9AA1CC]">{r.costUsd ? usd(r.costUsd) : ""}<span className="block text-[#8A92BF]">{ago(r.at)}</span></span>
               </li>
             ))}
           </ul>

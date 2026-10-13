@@ -112,11 +112,11 @@ function UpscalePageContent({ generationId }: { generationId: string | null }) {
               return (
                 <OptionCard key={m.id} active={active} onClick={() => selectMode(m.id)} disabled={loading} className="p-3">
                   <span className="flex items-center gap-2">
-                    <Icon className={`h-4 w-4 shrink-0 ${active ? "text-[#FF8A3D]" : "text-[#8B93A5]"}`} />
+                    <Icon className={`h-4 w-4 shrink-0 ${active ? "text-[#FFA300]" : "text-[#9AA1CC]"}`} />
                     <span className="text-[13px] font-semibold text-white">{m.name}</span>
                   </span>
-                  <span className="mt-1 block text-[11.5px] leading-snug text-[#8B93A5]">{m.desc}</span>
-                  <span className="mt-1.5 block font-mono text-[10.5px] text-[#FFB27A]">{m.badge}</span>
+                  <span className="mt-1 block text-[11.5px] leading-snug text-[#9AA1CC]">{m.desc}</span>
+                  <span className="mt-1.5 block font-mono text-[10.5px] text-[#FFC857]">{m.badge}</span>
                 </OptionCard>
               );
             })}
@@ -128,7 +128,7 @@ function UpscalePageContent({ generationId }: { generationId: string | null }) {
             {SCALES[mode].map((s) => (
               <button key={s} type="button" onClick={() => setScale(s)} disabled={loading} aria-pressed={scale === s}
                 className={`min-h-11 rounded-lg py-1.5 transition-colors disabled:cursor-not-allowed ${
-                  scale === s ? "bg-white/[0.1] text-white shadow-sm" : "text-[#8B93A5] hover:text-white"
+                  scale === s ? "bg-white/[0.1] text-white shadow-sm" : "text-[#9AA1CC] hover:text-white"
                 }`}>
                 <span className="block font-mono text-[14px] font-semibold">{s}×</span>
                 <span className="block text-[10.5px] opacity-80">{creditLabel(costFor(mode, s))}</span>
@@ -137,9 +137,9 @@ function UpscalePageContent({ generationId }: { generationId: string | null }) {
           </div>
         </Field>
 
-        <InfoNote icon={<Info className="h-3.5 w-3.5 text-[#8B93A5]" />}>
-          Use <span className="text-[#C9CFDB]">Pixel-perfect</span> for pixel art — AI upscalers blur hard pixel edges.
-          Use <span className="text-[#C9CFDB]">AI upscale</span> for painted, anime or cartoon sprites.
+        <InfoNote icon={<Info className="h-3.5 w-3.5 text-[#9AA1CC]" />}>
+          Use <span className="text-[#C8CCE8]">Pixel-perfect</span> for pixel art — AI upscalers blur hard pixel edges.
+          Use <span className="text-[#C8CCE8]">AI upscale</span> for painted, anime or cartoon sprites.
         </InfoNote>
 
         {upscaledImage && (

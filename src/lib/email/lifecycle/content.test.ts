@@ -15,7 +15,7 @@ describe("templates", () => {
     expect(html).not.toMatch(/undefined|null|NaN|\[object Object\]/);
     expect(html).toContain(msg.ctaUrl.replace(/&/g, "&amp;"));
     expect(html).toContain("utm_campaign=lifecycle");
-    expect(html).toContain("#0B0D12");
+    expect(html).toContain("#131A31");
     expect(html).not.toMatch(/press start|pixelify|silkscreen|VT323/i);
 
     expect(msg.text).toContain(SAMPLE_UNSUBSCRIBE_URL);

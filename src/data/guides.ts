@@ -110,7 +110,7 @@ const BASE_GUIDES: Guide[] = [
           "Frame count is a trade-off between smoothness, file size and cost. Classic pixel art games use surprisingly few frames: 4 for an idle breath, 6 to 8 for a walk cycle, 3 to 6 for an attack. A walk cycle needs at least the contact, down, passing and up poses for each leg to read as walking.",
           "SpriteLab's Animate tool offers idle, walk, run, attack, jump, cast, hurt, fly, a turnaround or a custom motion you describe, and it suggests motions that fit the sprite you picked. You choose 4, 6 or 9 key poses; smooth mode adds AI in-between frames for 8, 12 or 18 frames total. An idle loop costs 3 credits; a 6-frame walk costs 11 credits and a smoothed 12-frame walk costs 18.",
         ],
-        image: { src: "/showcase/anim-witch-walk.gif", alt: "Animated pixel art witch walk cycle generated from a single sprite", pixel: true },
+        image: { src: "/showcase/anim-witch-walk.webp", alt: "Animated pixel art witch walk cycle generated from a single sprite", pixel: true },
       },
       {
         heading: "Step 3: export and check the sheet",
@@ -370,7 +370,7 @@ const BASE_GUIDES: Guide[] = [
           "When you drag several sliced sprites into the Scene at once, Unity asks where to save a new Animation clip and creates a GameObject with a Sprite Renderer and an Animator. Open Window → Animation → Animation to preview it. If the sample rate field is hidden, enable 'Show Sample Rate' from the window's options menu and set 8–12 for most pixel art.",
           "To combine several animations (idle, walk, attack) on one character, add each clip to the same Animator Controller and connect them with transitions driven by parameters such as a 'Speed' float. For snappy 2D games, turn off 'Has Exit Time' and set transition duration to 0 so frames switch instantly.",
         ],
-        image: { src: "/showcase/anim-knight-idle.gif", alt: "Pixel art knight idle animation ready to slice into Unity sprites", pixel: true },
+        image: { src: "/showcase/anim-knight-idle.webp", alt: "Pixel art knight idle animation ready to slice into Unity sprites", pixel: true },
       },
       {
         heading: "Using a folder of frames instead of a sheet",

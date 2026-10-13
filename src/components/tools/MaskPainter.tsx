@@ -34,8 +34,8 @@ export function MaskPainter({ src, pixel, brush, canvasRef, onPaintedChange, dis
   const stroke = (x: number, y: number) => {
     const ctx = canvasRef.current?.getContext("2d");
     if (!ctx) return;
-    ctx.fillStyle = "rgba(255,138,61,1)";
-    ctx.strokeStyle = "rgba(255,138,61,1)";
+    ctx.fillStyle = "rgba(255,163,0,1)";
+    ctx.strokeStyle = "rgba(255,163,0,1)";
     ctx.lineCap = "round";
     ctx.lineWidth = brush * RES;
     ctx.beginPath();

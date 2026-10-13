@@ -140,7 +140,7 @@ export function saveBlobAs(blob: Blob, filename: string) {
 // =============================================================================
 
 export const TOOL_BG_MODES = [
-  { id: "checker", label: "Transparent", style: { backgroundColor: "#151922", backgroundImage: "repeating-conic-gradient(#ffffff0d 0% 25%, transparent 0% 50%)", backgroundSize: "24px 24px" } },
+  { id: "checker", label: "Transparent", style: { backgroundColor: "#212B4E", backgroundImage: "repeating-conic-gradient(#ffffff0d 0% 25%, transparent 0% 50%)", backgroundSize: "24px 24px" } },
   { id: "dark",    label: "Dark",        style: { background: "#111318" } },
   { id: "light",   label: "Light",       style: { background: "#f3f4f6" } },
   { id: "game",    label: "Game",        style: { background: "#1C2230", backgroundImage: "repeating-conic-gradient(#ffffff08 0% 25%, transparent 0% 50%)", backgroundSize: "32px 32px" } },
@@ -159,7 +159,7 @@ export function BackdropToggle({ value, onChange }: { value: ToolBgModeId; onCha
             title={`${mode.label} background`} aria-label={`${mode.label} background`} aria-pressed={active}
             className="group flex h-10 w-10 items-center justify-center rounded-lg lg:h-7 lg:w-7">
             <span aria-hidden
-              className={`block h-7 w-7 rounded-lg border-2 transition-colors ${active ? "border-[#FF8A3D]" : "border-white/[0.06] group-hover:border-white/30"}`}
+              className={`block h-7 w-7 rounded-lg border-2 transition-colors ${active ? "border-[#FFA300]" : "border-white/[0.06] group-hover:border-white/30"}`}
               style={{ ...(mode.style as React.CSSProperties), backgroundSize: "8px 8px" }} />
           </button>
         );
@@ -177,7 +177,7 @@ export const bgStyle = (id: ToolBgModeId) =>
 
 export function ToolShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-col bg-[#0B0D12] text-[#ECEEF3] lg:h-screen lg:flex-row lg:overflow-hidden">
+    <div className="flex min-h-screen flex-col bg-[#131A31] text-[#FFF1E8] lg:h-screen lg:flex-row lg:overflow-hidden">
       {children}
     </div>
   );
@@ -205,7 +205,7 @@ export function ToolTabs({ active, generationId }: { active: ToolTabId; generati
         ) : (
           <Link key={t.id}
             href={generationId && t.id !== "generate" ? `${t.href}?id=${encodeURIComponent(generationId)}` : t.href}
-            className="flex min-h-9 items-center justify-center rounded-lg px-1.5 text-center text-[#8B93A5] transition-colors hover:bg-white/[0.04] hover:text-white lg:min-h-8">
+            className="flex min-h-9 items-center justify-center rounded-lg px-1.5 text-center text-[#9AA1CC] transition-colors hover:bg-white/[0.04] hover:text-white lg:min-h-8">
             {t.label}
           </Link>
         )
@@ -217,7 +217,7 @@ export function ToolTabs({ active, generationId }: { active: ToolTabId; generati
 /** Small pill that always shows what the next run costs. */
 export function CostBadge({ cost }: { cost: number }) {
   return (
-    <span title="Cost of one run" className="shrink-0 rounded-full border border-[#FF8A3D]/25 bg-[#FF8A3D]/10 px-2.5 py-1 font-mono text-[11px] font-semibold text-[#FFB27A]">
+    <span title="Cost of one run" className="shrink-0 rounded-full border border-[#FFA300]/25 bg-[#FFA300]/10 px-2.5 py-1 font-mono text-[11px] font-semibold text-[#FFC857]">
       {creditLabel(cost)}
     </span>
   );
@@ -230,7 +230,7 @@ export function CostBadge({ cost }: { cost: number }) {
  * full-height column and the footer simply sits at its bottom.
  */
 export const PANEL_FOOTER =
-  "sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-20 border-t border-white/[0.06] bg-[#0E1016] px-4 pb-3 pt-3 shadow-[0_-16px_32px_-16px_rgba(0,0,0,0.75)] md:bottom-0 lg:static lg:p-4 lg:shadow-none";
+  "sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-20 border-t border-white/[0.06] bg-[#19223F] px-4 pb-3 pt-3 shadow-[0_-16px_32px_-16px_rgba(0,0,0,0.75)] md:bottom-0 lg:static lg:p-4 lg:shadow-none";
 
 export function ToolPanel({ title, cost, tabs, backHref, headerAction, children, footer, className }: {
   title: string;
@@ -245,10 +245,10 @@ export function ToolPanel({ title, cost, tabs, backHref, headerAction, children,
 }) {
   return (
     <section aria-label={`${title} settings`}
-      className={`flex w-full shrink-0 flex-col bg-[#0E1016] lg:w-[380px] lg:border-r lg:border-white/[0.06] ${className ?? ""}`}>
+      className={`flex w-full shrink-0 flex-col bg-[#19223F] lg:w-[380px] lg:border-r lg:border-white/[0.06] ${className ?? ""}`}>
       <div className="px-5 pb-3 pt-5">
         {backHref && (
-          <Link href={backHref} className="mb-2 inline-flex min-h-10 items-center gap-1.5 lg:mb-3 lg:min-h-8 rounded-lg text-[12px] font-medium text-[#8B93A5] transition-colors hover:text-white">
+          <Link href={backHref} className="mb-2 inline-flex min-h-10 items-center gap-1.5 lg:mb-3 lg:min-h-8 rounded-lg text-[12px] font-medium text-[#9AA1CC] transition-colors hover:text-white">
             <ArrowLeft className="h-3.5 w-3.5" /> Back to assets
           </Link>
         )}
@@ -280,7 +280,7 @@ export function Field({ label, action, hint, labelFor, children }: {
   children: React.ReactNode;
 }) {
   const id = useId();
-  const labelCls = "font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]";
+  const labelCls = "text-[12.5px] font-semibold text-[#C8CCE8]";
   return (
     <div role={labelFor ? undefined : "group"} aria-labelledby={labelFor ? undefined : id}>
       <div className="mb-2 flex min-h-5 items-center justify-between gap-3">
@@ -290,14 +290,14 @@ export function Field({ label, action, hint, labelFor, children }: {
         {action}
       </div>
       {children}
-      {hint && <p className="mt-2 text-[11.5px] leading-snug text-[#8B93A5]">{hint}</p>}
+      {hint && <p className="mt-2 text-[11.5px] leading-snug text-[#9AA1CC]">{hint}</p>}
     </div>
   );
 }
 
 /** Footer line under the main button: time estimate, output, shortcut. */
 export function FooterHint({ children }: { children: React.ReactNode }) {
-  return <p className="mt-2 text-center font-mono text-[11px] text-[#7A8294]">{children}</p>;
+  return <p className="mt-2 text-center font-mono text-[11px] text-[#8A92BF]">{children}</p>;
 }
 
 /** Centre column: top bar + canvas + optional action bar. */
@@ -332,12 +332,12 @@ export function CanvasFrame({ bg, children, className }: { bg: ToolBgModeId; chi
 }
 
 export function Chip({ children }: { children: React.ReactNode }) {
-  return <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[10.5px] leading-none text-[#C9CFDB]">{children}</span>;
+  return <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[10.5px] leading-none text-[#C8CCE8]">{children}</span>;
 }
 
 /** Placeholder text in the canvas top bar before there is a result. */
 export function TopBarHint({ children }: { children: React.ReactNode }) {
-  return <span className="text-[12px] text-[#7A8294]">{children}</span>;
+  return <span className="text-[12px] text-[#8A92BF]">{children}</span>;
 }
 
 // =============================================================================
@@ -355,7 +355,7 @@ export function PrimaryButton({ onClick, disabled, loading, loadingLabel, icon, 
 }) {
   return (
     <button type="button" onClick={onClick} disabled={disabled} aria-busy={loading || undefined}
-      className="px-corners flex h-12 w-full items-center justify-center gap-2 bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] px-4 text-[15px] font-semibold text-white transition-[filter,opacity] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:brightness-100">
+      className="px-corners flex h-12 w-full items-center justify-center gap-2 bg-[#FFA300] px-4 text-[15px] font-semibold text-[#131A31] transition-[filter,opacity] hover:bg-[#FFB733] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[#FFB733]">
       {loading ? (
         <><Loader2 className="h-4 w-4 shrink-0 animate-spin" /> {loadingLabel}</>
       ) : (
@@ -375,7 +375,7 @@ export function DownloadButton({ onClick, label = "Download PNG", busy }: { onCl
 }
 
 export const SECONDARY_BTN =
-  "flex h-10 items-center gap-1.5 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 text-[13px] font-medium text-[#C9CFDB] transition hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white/[0.04]";
+  "flex h-10 items-center gap-1.5 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 text-[13px] font-medium text-[#C8CCE8] transition hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white/[0.04]";
 
 export function SecondaryButton({ onClick, href, children, title, disabled, ariaLabel }: {
   onClick?: () => void; href?: string; children: React.ReactNode; title?: string; disabled?: boolean; ariaLabel?: string;
@@ -388,7 +388,7 @@ export function SecondaryButton({ onClick, href, children, title, disabled, aria
 export function IconButton({ label, onClick, disabled, children }: { label: string; onClick: () => void; disabled?: boolean; children: React.ReactNode }) {
   return (
     <button type="button" title={label} aria-label={label} onClick={onClick} disabled={disabled}
-      className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.1] bg-white/[0.04] text-[#C9CFDB] transition hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-40">
+      className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.1] bg-white/[0.04] text-[#C8CCE8] transition hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-40">
       {children}
     </button>
   );
@@ -405,7 +405,7 @@ export function ErrorNote({ children }: { children: React.ReactNode }) {
         {mentionsPlans && (
           <>
             {" "}
-            <Link href="/pricing" className="font-semibold text-[#FFB27A] underline-offset-2 hover:underline">See plans →</Link>
+            <Link href="/pricing" className="font-semibold text-[#FFC857] underline-offset-2 hover:underline">See plans →</Link>
           </>
         )}
       </span>
@@ -418,7 +418,7 @@ export function InfoNote({ icon, children, tone = "neutral" }: { icon?: React.Re
     ? "border-emerald-400/20 bg-emerald-400/[0.05] text-emerald-100/90"
     : tone === "warning"
     ? "border-amber-400/20 bg-amber-400/[0.05] text-amber-100/90"
-    : "border-white/[0.06] bg-white/[0.03] text-[#9BA3B4]";
+    : "border-white/[0.06] bg-white/[0.03] text-[#A7ADD4]";
   return (
     <div role={tone === "success" ? "status" : undefined}
       className={`flex items-start gap-2.5 rounded-xl border px-3 py-2.5 text-[11.5px] leading-relaxed ${toneCls}`}>
@@ -435,7 +435,7 @@ export function OptionCard({ active, onClick, disabled, title, children, classNa
   return (
     <button type="button" onClick={onClick} disabled={disabled} aria-pressed={active} title={title}
       className={`rounded-xl border text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
-        active ? "border-[#FF8A3D] bg-[#FF8A3D]/[0.07] ring-2 ring-[#FF8A3D]/25" : "border-white/[0.08] bg-[#151922] hover:border-white/20"
+        active ? "border-[#FFA300] bg-[#FFA300]/[0.07] ring-2 ring-[#FFA300]/25" : "border-white/[0.08] bg-[#212B4E] hover:border-white/20"
       } ${className ?? "px-3 py-2.5"}`}>
       {children}
     </button>
@@ -448,8 +448,8 @@ export function SuggestionChip({ active, onClick, disabled, children }: { active
     <button type="button" onClick={onClick} disabled={disabled} aria-pressed={active}
       className={`min-h-9 rounded-full border px-3 py-1.5 text-left text-[12px] font-medium leading-snug transition-colors disabled:opacity-50 lg:min-h-8 ${
         active
-          ? "border-[#FF8A3D]/60 bg-[#FF8A3D]/[0.12] text-white"
-          : "border-white/[0.08] text-[#9BA3B4] hover:border-white/20 hover:text-white"
+          ? "border-[#FFA300]/60 bg-[#FFA300]/[0.12] text-white"
+          : "border-white/[0.08] text-[#A7ADD4] hover:border-white/20 hover:text-white"
       }`}>
       {children}
     </button>
@@ -470,23 +470,23 @@ export function SourceCard({ imageUrl, loading, prompt, pixel }: {
   if (!imageUrl && !loading) {
     return (
       <Link href="/assets"
-        className="group flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-white/[0.1] bg-[#151922] px-4 py-7 text-center transition-colors hover:border-[#FF8A3D]/50">
-        <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/[0.08] bg-[#1A1F2A] text-[#C9CFDB] transition-colors group-hover:text-[#FFB27A]">
+        className="group flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-white/[0.1] bg-[#212B4E] px-4 py-7 text-center transition-colors hover:border-[#FFA300]/50">
+        <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/[0.08] bg-[#263260] text-[#C8CCE8] transition-colors group-hover:text-[#FFC857]">
           <ImageIcon className="h-5 w-5" />
         </span>
         <span>
           <span className="block text-[13px] font-medium text-white">Pick a sprite to start</span>
-          <span className="mt-1 block text-[11.5px] text-[#8B93A5]">Choose one of your recent sprites, or browse all assets</span>
+          <span className="mt-1 block text-[11.5px] text-[#9AA1CC]">Choose one of your recent sprites, or browse all assets</span>
         </span>
       </Link>
     );
   }
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-[#151922] p-2.5">
+    <div className="flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-[#212B4E] p-2.5">
       <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/[0.06]"
         style={{ backgroundImage: "repeating-conic-gradient(#ffffff0a 0% 25%, transparent 0% 50%)", backgroundSize: "10px 10px" }}>
         {loading ? (
-          <Loader2 className="absolute inset-0 m-auto h-5 w-5 animate-spin text-[#FF8A3D]" />
+          <Loader2 className="absolute inset-0 m-auto h-5 w-5 animate-spin text-[#FFA300]" />
         ) : imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={imageUrl} alt="" className={`h-full w-full object-contain p-1 ${pixel ? "pixel-perfect" : ""}`} />
@@ -494,7 +494,7 @@ export function SourceCard({ imageUrl, loading, prompt, pixel }: {
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-[13px] font-medium text-white" title={prompt}>{loading ? "Loading sprite…" : prompt || "Your sprite"}</p>
-        <Link href="/assets" className="mt-0.5 inline-flex min-h-9 items-center text-[12px] font-medium lg:min-h-7 lg:text-[11.5px] text-[#8B93A5] transition-colors hover:text-[#FFB27A]">
+        <Link href="/assets" className="mt-0.5 inline-flex min-h-9 items-center text-[12px] font-medium lg:min-h-7 lg:text-[11.5px] text-[#9AA1CC] transition-colors hover:text-[#FFC857]">
           Change sprite
         </Link>
       </div>
@@ -526,18 +526,18 @@ export function RecentAssetPicker({ toolPath, title }: { toolPath: string; title
       <div className="pixel-grid pointer-events-none absolute inset-0" aria-hidden />
       <div className="relative text-center">
         <p className="font-display text-[18px] font-semibold text-white sm:text-[20px]">{title}</p>
-        <p className="mt-1 font-mono text-[12px] text-[#8B93A5]">&gt; pick a sprite to start<span className="caret ml-1 align-middle" aria-hidden /></p>
+        <p className="mt-1 text-[13px] text-[#A7ADD4]">Pick a sprite to start</p>
       </div>
       {items === null ? (
-        <Loader2 className="relative h-6 w-6 animate-spin text-[#FF8A3D]" aria-label="Loading your sprites" />
+        <Loader2 className="relative h-6 w-6 animate-spin text-[#FFA300]" aria-label="Loading your sprites" />
       ) : items.length === 0 ? (
         <div className="relative flex flex-col items-center gap-3 text-center">
-          <p className="max-w-[260px] text-[12.5px] text-[#8B93A5]">
+          <p className="max-w-[260px] text-[12.5px] text-[#9AA1CC]">
             {failed ? "Couldn't load your sprites. Refresh the page to try again." : "You haven't made any sprites yet."}
           </p>
           {!failed && (
             <Link href="/generate"
-              className="px-corners flex h-10 items-center bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] px-4 text-[13px] font-semibold text-white hover:brightness-110">
+              className="px-corners flex h-10 items-center bg-[#FFA300] px-4 text-[13px] font-semibold text-[#131A31] hover:bg-[#FFB733]">
               Create your first sprite
             </Link>
           )}
@@ -548,14 +548,14 @@ export function RecentAssetPicker({ toolPath, title }: { toolPath: string; title
             {items.map((g, i) => (
               <button key={g.id} type="button" title={g.prompt} aria-label={`Use ${g.prompt ? `“${g.prompt}”` : "this sprite"}`}
                 onClick={() => g.id && router.push(`${toolPath}?id=${encodeURIComponent(g.id)}`)}
-                className={`group relative aspect-square overflow-hidden rounded-2xl border border-white/[0.06] bg-[#151922]/80 transition-colors hover:border-[#FF8A3D]/50 ${i >= 6 ? "max-sm:hidden" : ""}`}>
+                className={`group relative aspect-square overflow-hidden rounded-2xl border border-white/[0.06] bg-[#212B4E]/80 transition-colors hover:border-[#FFA300]/50 ${i >= 6 ? "max-sm:hidden" : ""}`}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={g.imageUrl} alt="" loading="lazy" decoding="async"
                   className={`absolute inset-0 h-full w-full object-contain p-2.5 transition-transform duration-300 group-hover:scale-110 sm:p-3 ${isPixelStyleId(g.styleId) ? "pixel-perfect" : ""}`} />
               </button>
             ))}
           </div>
-          <Link href="/assets" className="relative inline-flex min-h-8 items-center font-mono text-[12px] text-[#8B93A5] transition-colors hover:text-white">Browse all assets →</Link>
+          <Link href="/assets" className="relative inline-flex min-h-8 items-center font-mono text-[12px] text-[#9AA1CC] transition-colors hover:text-white">Browse all assets →</Link>
         </>
       )}
     </div>
@@ -572,16 +572,16 @@ export function RecentAssetPicker({ toolPath, title }: { toolPath: string; title
  */
 export function ProcessingOverlay({ icon, title, hint, timed = false }: { icon: React.ReactNode; title: string; hint?: string; timed?: boolean }) {
   return (
-    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-[#0B0D12]/55 px-6 backdrop-blur-[2px]">
+    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-[#131A31]/55 px-6 backdrop-blur-[2px]">
       <div className="relative h-14 w-14" aria-hidden>
         <div className="absolute inset-0 rounded-full border-2 border-white/10" />
-        <div className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-[#FF8A3D]" />
-        <span className="absolute inset-0 flex items-center justify-center text-[#FF8A3D]">{icon}</span>
+        <div className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-[#FFA300]" />
+        <span className="absolute inset-0 flex items-center justify-center text-[#FFA300]">{icon}</span>
       </div>
       <div className="text-center">
         <p role="status" className="text-[14px] font-medium text-white">{title}</p>
         {(timed || hint) && (
-          <p className="mt-1 font-mono text-[12px] tabular-nums text-[#8B93A5]">
+          <p className="mt-1 font-mono text-[12px] tabular-nums text-[#9AA1CC]">
             {timed && <Elapsed />}{timed && hint ? " · " : ""}{hint}
           </p>
         )}
@@ -627,10 +627,10 @@ export function BeforeAfter({ before, after, pixel, beforeLabel = "Before", afte
 export function CanvasEmptyHint({ icon, title, subtitle, action }: { icon: React.ReactNode; title: string; subtitle: string; action?: React.ReactNode }) {
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-8 text-center">
-      <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.08] bg-[#151922] text-[#C9CFDB]" aria-hidden>{icon}</span>
+      <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.08] bg-[#212B4E] text-[#C8CCE8]" aria-hidden>{icon}</span>
       <div>
         <p className="text-[15px] font-semibold text-white">{title}</p>
-        <p className="mt-1 text-[12.5px] text-[#8B93A5]">{subtitle}</p>
+        <p className="mt-1 text-[12.5px] text-[#9AA1CC]">{subtitle}</p>
       </div>
       {action}
     </div>
@@ -654,7 +654,7 @@ export function Segmented<T extends string>({ value, options, onChange, label }:
     <div role="group" aria-label={label} className="flex items-center gap-1 rounded-xl bg-white/[0.04] p-1 max-sm:mr-auto">
       {options.map((o) => (
         <button key={o.id} type="button" onClick={() => onChange(o.id)} aria-pressed={value === o.id}
-          className={`min-h-9 rounded-lg px-2.5 text-[12.5px] font-medium transition-colors sm:px-3 sm:text-[12px] lg:min-h-7 ${value === o.id ? "bg-white/[0.1] text-white shadow-sm" : "text-[#8B93A5] hover:text-white"}`}>
+          className={`min-h-9 rounded-lg px-2.5 text-[12.5px] font-medium transition-colors sm:px-3 sm:text-[12px] lg:min-h-7 ${value === o.id ? "bg-white/[0.1] text-white shadow-sm" : "text-[#9AA1CC] hover:text-white"}`}>
           {o.label}
         </button>
       ))}
@@ -664,8 +664,8 @@ export function Segmented<T extends string>({ value, options, onChange, label }:
 
 export function PageFallback() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#0B0D12]" role="status" aria-label="Loading">
-      <Loader2 className="h-8 w-8 animate-spin text-[#FF8A3D]" />
+    <div className="flex min-h-screen items-center justify-center bg-[#131A31]" role="status" aria-label="Loading">
+      <Loader2 className="h-8 w-8 animate-spin text-[#FFA300]" />
     </div>
   );
 }

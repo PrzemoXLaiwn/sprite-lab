@@ -368,7 +368,7 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
         <Field label="Sprite">
           <SourceCard imageUrl={source?.imageUrl ?? null} loading={loadingSource} prompt={source?.prompt} pixel={pixel} />
           {!generationId && result && (
-            <p className="mt-2 text-[11.5px] leading-snug text-[#8B93A5]">
+            <p className="mt-2 text-[11.5px] leading-snug text-[#9AA1CC]">
               We couldn&apos;t find the sprite this animation was made from. Pick it from your history to animate it again.
             </p>
           )}
@@ -380,19 +380,19 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
               {[...presets, { id: "custom", label: "Custom…", motion: "" }].map((p) => (
                 <OptionCard key={p.id} active={selected === p.id} onClick={() => setAction(p.id)} disabled={loading}
                   title={p.motion || "Describe your own motion"} className="min-h-11 px-3 py-2.5">
-                  <span className={`text-[13px] font-medium ${selected === p.id ? "text-white" : "text-[#C9CFDB]"}`}>{p.label}</span>
+                  <span className={`text-[13px] font-medium ${selected === p.id ? "text-white" : "text-[#C8CCE8]"}`}>{p.label}</span>
                 </OptionCard>
               ))}
             </div>
             {selectedPreset && selected !== "custom" && (
-              <p className="mt-2 rounded-lg bg-white/[0.03] px-3 py-2 text-[11.5px] leading-snug text-[#9BA3B4]">{selectedPreset.motion}</p>
+              <p className="mt-2 rounded-lg bg-white/[0.03] px-3 py-2 text-[11.5px] leading-snug text-[#A7ADD4]">{selectedPreset.motion}</p>
             )}
             {selected === "custom" && (
               <>
                 <textarea value={customMotion} onChange={(e) => setCustomMotion(e.target.value)} maxLength={300} rows={3}
                   placeholder="e.g. swings the axe overhead and slams it down"
                   aria-label="Describe the motion" disabled={loading}
-                  className="mt-2 w-full resize-none rounded-xl border border-white/[0.08] bg-[#151922] px-3 py-2.5 text-[13px] text-white outline-none placeholder:text-[#7A8294] focus:border-[#FF8A3D]/50 disabled:opacity-60" />
+                  className="mt-2 w-full resize-none rounded-xl border border-white/[0.08] bg-[#212B4E] px-3 py-2.5 text-[13px] text-white outline-none placeholder:text-[#8A92BF] focus:border-[#FFA300]/50 disabled:opacity-60" />
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {CUSTOM_EXAMPLES.map((ex) => (
                     <SuggestionChip key={ex} active={customMotion === ex} onClick={() => setCustomMotion(ex)} disabled={loading}>{ex}</SuggestionChip>
@@ -412,9 +412,9 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
                   <span className="flex items-center justify-between gap-3 min-[400px]:block">
                     <span className="min-w-0">
                       <span className="block text-[13px] font-medium text-white">{r.label}</span>
-                      <span className="block text-[11.5px] leading-snug text-[#8B93A5] min-[400px]:text-[11px]">{r.hint}</span>
+                      <span className="block text-[11.5px] leading-snug text-[#9AA1CC] min-[400px]:text-[11px]">{r.hint}</span>
                     </span>
-                    <span className="block shrink-0 font-mono text-[11px] text-[#FFB27A] min-[400px]:mt-0.5 min-[400px]:text-[10.5px]">{r.credits} credits</span>
+                    <span className="block shrink-0 font-mono text-[11px] text-[#FFC857] min-[400px]:mt-0.5 min-[400px]:text-[10.5px]">{r.credits} credits</span>
                   </span>
                 </OptionCard>
               ))}
@@ -430,7 +430,7 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
 
         {source && rotation && (
           <InfoNote icon={<Compass className="h-3.5 w-3.5 text-emerald-300" />}>
-            <span className="text-[#C9CFDB]">{rotation.label} · {rotation.frames} frames · {rotation.credits} credits.</span>{" "}
+            <span className="text-[#C8CCE8]">{rotation.label} · {rotation.frames} frames · {rotation.credits} credits.</span>{" "}
             {rotation.kind === "walk"
               ? "Your character walking in all 4 directions — a classic RPG sheet: row 1 front, row 2 right, row 3 back, row 4 left, 4 steps each. Ready for top-down movement."
               : `The same sprite seen from ${rotation.directions === 4 ? "the front, right, back and left" : "every 45°"} — same size, same ground line, one view per frame in the sheet (${rotation.directions === 4 ? "S, E, N, W" : "S, SE, E, NE, N, NW, W, SW"}).`}
@@ -439,7 +439,7 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
 
         {source && rigKind && !rotation && (
           <InfoNote icon={<Check className="h-3.5 w-3.5 text-emerald-300" />}>
-            <span className="text-[#C9CFDB]">{pixel ? "Pixel rig" : "Smooth rig"} · {rigFrames} frames · {RIG_CREDITS} credits.</span>{" "}
+            <span className="text-[#C8CCE8]">{pixel ? "Pixel rig" : "Smooth rig"} · {rigFrames} frames · {RIG_CREDITS} credits.</span>{" "}
             {rigKind === "float"
               ? "Your sprite itself hovers up and down"
               : pixel
@@ -460,12 +460,12 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
                 return (
                   <button key={o.frames} type="button" role="radio" aria-checked={active} onClick={() => { setFrames(o.frames); setFramesTouched(true); }} disabled={loading}
                     className={`rounded-xl border px-2 py-2 text-center transition-colors disabled:cursor-not-allowed ${
-                      active ? "border-[#FF8A3D] bg-[#FF8A3D]/[0.07] ring-2 ring-[#FF8A3D]/25" : "border-white/[0.08] bg-[#151922] hover:border-white/20"
+                      active ? "border-[#FFA300] bg-[#FFA300]/[0.07] ring-2 ring-[#FFA300]/25" : "border-white/[0.08] bg-[#212B4E] hover:border-white/20"
                     }`}>
                     <span className="block text-[15px] font-semibold tabular-nums text-white">{o.frames}</span>
-                    <span className="block text-[11px] leading-snug text-[#8B93A5]">{o.hint}</span>
-                    <span className="mt-0.5 block font-mono text-[10.5px] tabular-nums text-[#FFB27A]">{animationCredits(o.frames, smoothOn)} credits</span>
-                    {selectedPreset?.frames === o.frames && <span className="mt-0.5 block font-mono text-[9.5px] uppercase tracking-wide text-emerald-300/90">best fit</span>}
+                    <span className="block text-[11px] leading-snug text-[#9AA1CC]">{o.hint}</span>
+                    <span className="mt-0.5 block font-mono text-[10.5px] tabular-nums text-[#FFC857]">{animationCredits(o.frames, smoothOn)} credits</span>
+                    {selectedPreset?.frames === o.frames && <span className="mt-0.5 block text-[12.5px] text-emerald-300/90 font-semibold">best fit</span>}
                   </button>
                 );
               })}
@@ -473,16 +473,16 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
             {!isTile && (
               <button type="button" role="switch" aria-checked={smooth} onClick={() => setSmooth((v) => !v)} disabled={loading}
                 className={`mt-2 flex w-full items-start gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors disabled:cursor-not-allowed ${
-                  smooth ? "border-[#FF8A3D]/60 bg-[#FF8A3D]/[0.06]" : "border-white/[0.08] bg-[#151922] hover:border-white/20"
+                  smooth ? "border-[#FFA300]/60 bg-[#FFA300]/[0.06]" : "border-white/[0.08] bg-[#212B4E] hover:border-white/20"
                 }`}>
-                <span aria-hidden className={`mt-0.5 flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors ${smooth ? "bg-[#FF8A3D]" : "bg-white/[0.12]"}`}>
+                <span aria-hidden className={`mt-0.5 flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors ${smooth ? "bg-[#FFA300]" : "bg-white/[0.12]"}`}>
                   <span className={`h-4 w-4 rounded-full bg-white transition-transform ${smooth ? "translate-x-4" : ""}`} />
                 </span>
                 <span className="min-w-0">
                   <span className="block text-[13px] font-medium text-white">
-                    Smooth motion <span className="font-mono text-[11px] text-[#FFB27A]">· {option.frames * 2} frames</span>
+                    Smooth motion <span className="font-mono text-[11px] text-[#FFC857]">· {option.frames * 2} frames</span>
                   </span>
-                  <span className="block text-[11.5px] leading-snug text-[#8B93A5]">
+                  <span className="block text-[11.5px] leading-snug text-[#9AA1CC]">
                     Adds an in-between pose for every pair, so the animation flows instead of stepping. Doubles the frames and adds {option.smoothExtra} credits.
                   </span>
                 </span>
@@ -495,14 +495,14 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
           <Field label={`Preview speed · ${fps} fps`} labelFor="animate-fps"
             hint="Only changes the preview — the sheet is the same. Set the speed in your engine.">
             <input id="animate-fps" type="range" min={2} max={24} value={fps} onChange={(e) => setFps(Number(e.target.value))}
-              aria-valuetext={`${fps} frames per second`} className="h-6 w-full accent-[#FF8A3D]" />
+              aria-valuetext={`${fps} frames per second`} className="h-6 w-full accent-[#FFA300]" />
           </Field>
         )}
 
-        <InfoNote icon={<Info className="h-3.5 w-3.5 text-[#8B93A5]" />}>
+        <InfoNote icon={<Info className="h-3.5 w-3.5 text-[#9AA1CC]" />}>
           {rotation?.kind === "walk"
-            ? <>You get a <span className="text-[#C9CFDB]">4-row sprite sheet</span> ({outFrames} frames, transparent) plus a GIF preview.</>
-            : <>You get a <span className="text-[#C9CFDB]">sprite sheet</span> ({outFrames} frames in a row, transparent) for Unity, Godot or GameMaker, plus a GIF preview.</>}
+            ? <>You get a <span className="text-[#C8CCE8]">4-row sprite sheet</span> ({outFrames} frames, transparent) plus a GIF preview.</>
+            : <>You get a <span className="text-[#C8CCE8]">sprite sheet</span> ({outFrames} frames in a row, transparent) for Unity, Godot or GameMaker, plus a GIF preview.</>}
           {!rotation && !rigKind && " The AI studies your sprite first (outfit, wings, weapon…) and plans every pose; all frames share one baseline and palette so nothing jitters."}
         </InfoNote>
 
@@ -512,7 +512,7 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
           </InfoNote>
         )}
         {result && !resultFromRun && (
-          <InfoNote icon={<Film className="h-3.5 w-3.5 text-[#8B93A5]" />}>
+          <InfoNote icon={<Film className="h-3.5 w-3.5 text-[#9AA1CC]" />}>
             Opened from your history. Change the motion or options and press Animate to make a new version — this one stays in your assets.
           </InfoNote>
         )}

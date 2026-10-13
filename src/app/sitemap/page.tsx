@@ -68,15 +68,14 @@ function groups(): { title: string; intro: string; items: Item[] }[] {
 
 export default function SitemapPage() {
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#0B0D12] text-[#ECEEF3]">
+    <main className="min-h-screen overflow-x-hidden bg-[#131A31] text-[#FFF1E8]">
       <SiteNav />
       <section className="relative pb-24 pt-28 sm:pt-36">
         <div className="relative mx-auto max-w-3xl px-5">
-          <p className="font-mono text-[12px] text-[#FFB27A]">&gt; site map</p>
           <h1 className="mt-4 font-display text-[38px] font-semibold leading-[1.08] text-white sm:text-[54px]">Site map</h1>
-          <p className="mt-4 text-[17px] leading-relaxed text-[#A6ADBB]">
+          <p className="mt-4 text-[17px] leading-relaxed text-[#A7ADD4]">
             Every public page on SpriteLab. Search engines read the{" "}
-            <a href="/sitemap.xml" className="text-[#C9CFDB] underline decoration-white/20 underline-offset-2 hover:text-white">
+            <a href="/sitemap.xml" className="text-[#C8CCE8] underline decoration-white/20 underline-offset-2 hover:text-white">
               XML sitemap
             </a>
             ; this one is for people.
@@ -88,13 +87,13 @@ export default function SitemapPage() {
                 <h2 id={`map-${g.title.toLowerCase()}`} className="font-display text-[24px] font-semibold leading-tight text-white">
                   {g.title}
                 </h2>
-                <p className="mt-1.5 text-[14.5px] text-[#8B93A5]">{g.intro}</p>
-                <ul className="mt-4 divide-y divide-white/[0.06] rounded-2xl border border-white/[0.06] bg-[#0E1016]">
+                <p className="mt-1.5 text-[14.5px] text-[#9AA1CC]">{g.intro}</p>
+                <ul className="mt-4 divide-y divide-white/[0.06] rounded-2xl border border-white/[0.06] bg-[#19223F]">
                   {g.items.map((item) => (
                     <li key={item.href}>
                       <Link href={item.href} className="group block min-h-11 px-5 py-3 transition-colors hover:bg-white/[0.03]">
-                        <span className="text-[15px] font-medium leading-snug text-[#ECEEF3] group-hover:text-[#FFB27A]">{item.label}</span>
-                        {item.note && <span className="mt-0.5 block text-[13.5px] leading-relaxed text-[#8B93A5]">{item.note}</span>}
+                        <span className="text-[15px] font-medium leading-snug text-[#FFF1E8] group-hover:text-[#FFC857]">{item.label}</span>
+                        {item.note && <span className="mt-0.5 block text-[13.5px] leading-relaxed text-[#9AA1CC]">{item.note}</span>}
                       </Link>
                     </li>
                   ))}

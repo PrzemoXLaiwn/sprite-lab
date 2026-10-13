@@ -36,14 +36,14 @@ export function EmailFrame({ html, title }: { html: string; title: string }) {
             onClick={() => { setNarrow(n); setTimeout(fit, 50); }}
             aria-pressed={narrow === n}
             className={`h-10 rounded-lg border px-3 font-mono text-[12px] transition-colors ${
-              narrow === n ? "border-[#FF8A3D]/50 bg-[#FF8A3D]/10 text-[#FF9F43]" : "border-white/[0.08] bg-white/[0.03] text-[#8B93A5] hover:text-white"
+              narrow === n ? "border-[#FFA300]/50 bg-[#FFA300]/10 text-[#FFB733]" : "border-white/[0.08] bg-white/[0.03] text-[#9AA1CC] hover:text-white"
             }`}
           >
             {n ? "360 px" : "600 px"}
           </button>
         ))}
       </div>
-      <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-[#0B0D12]">
+      <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-[#131A31]">
         <iframe
           ref={ref}
           title={title}

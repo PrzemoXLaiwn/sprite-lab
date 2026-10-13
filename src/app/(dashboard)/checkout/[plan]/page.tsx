@@ -215,13 +215,13 @@ export default function CheckoutPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="font-display text-[18px] font-semibold text-white">{planDetails.name} plan</h2>
-                <p className="mt-0.5 text-[13px] text-[#8B93A5]">Billed monthly</p>
+                <p className="mt-0.5 text-[13px] text-[#9AA1CC]">Billed monthly</p>
               </div>
               <CreditChip>{planDetails.credits} credits/mo</CreditChip>
             </div>
             <div className="mt-5 flex items-baseline gap-1.5">
               <span className="font-sans tracking-tight tabular-nums text-[32px] font-semibold leading-none text-white">£{planDetails.price}</span>
-              <span className="font-mono text-[12px] text-[#8B93A5]">/month</span>
+              <span className="font-mono text-[12px] text-[#9AA1CC]">/month</span>
             </div>
             <div className="mt-5 border-t border-white/[0.06] pt-2">
               <SummaryRow label="Credits" value={`${planDetails.credits} / month`} />

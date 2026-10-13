@@ -136,7 +136,7 @@ export default function LoginPage() {
         </PrimaryButton>
       </form>
 
-      <p className="mt-6 text-center text-[13px] text-[#8B93A5]">
+      <p className="mt-6 text-center text-[13px] text-[#9AA1CC]">
         Don&apos;t have an account?{" "}
         <Link href="/register" className={linkCls}>
           Sign up free

@@ -8,26 +8,26 @@ import { AlertCircle, CheckCircle2, Eye, EyeOff, Info, Loader2 } from "lucide-re
  * reset/update password, email confirmed). Logic stays in the pages. */
 
 export const inputCls =
-  "h-11 w-full rounded-xl border border-white/[0.08] bg-[#151922] px-3.5 text-[14px] text-white placeholder:text-[#7A8294] outline-none transition-colors focus:border-[#FF8A3D]/50 disabled:opacity-60";
+  "h-11 w-full rounded-xl border border-white/[0.08] bg-[#212B4E] px-3.5 text-[14px] text-white placeholder:text-[#8A92BF] outline-none transition-colors focus:border-[#FFA300]/50 disabled:opacity-60";
 
 export const primaryBtnCls =
-  "inline-flex h-11 w-full items-center justify-center gap-2 px-corners bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] text-[14px] font-semibold text-white transition-[filter,opacity] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:brightness-100";
+  "inline-flex h-11 w-full items-center justify-center gap-2 px-corners bg-[#FFA300] text-[14px] font-semibold text-[#131A31] transition-[filter,opacity] hover:bg-[#FFB733] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#FFB733]";
 
 export const secondaryBtnCls =
-  "inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] text-[14px] font-medium text-[#ECEEF3] transition-colors hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] text-[14px] font-medium text-[#FFF1E8] transition-colors hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-50";
 
-export const linkCls = "font-medium text-[#FFB27A] hover:text-[#FF8A3D] transition-colors";
+export const linkCls = "font-medium text-[#FFC857] hover:text-[#FFA300] transition-colors";
 
 export function AuthHeading({ title, subtitle, icon }: { title: ReactNode; subtitle?: ReactNode; icon?: ReactNode }) {
   return (
     <div className="mb-7">
       {icon && (
-        <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl border border-white/[0.06] bg-[#151922] text-[#FF8A3D]">
+        <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl border border-white/[0.06] bg-[#212B4E] text-[#FFA300]">
           {icon}
         </div>
       )}
       <h1 className="font-display text-[24px] font-semibold leading-tight text-white">{title}</h1>
-      {subtitle && <p className="mt-2 text-[14px] leading-relaxed text-[#8B93A5]">{subtitle}</p>}
+      {subtitle && <p className="mt-2 text-[14px] leading-relaxed text-[#9AA1CC]">{subtitle}</p>}
     </div>
   );
 }
@@ -36,7 +36,7 @@ export function Field({ id, label, aside, children }: { id: string; label: strin
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <label htmlFor={id} className="font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">
+        <label htmlFor={id} className="text-[12.5px] text-[#9AA1CC] font-semibold">
           {label}
         </label>
         {aside}
@@ -68,7 +68,7 @@ export function PasswordInput({
         type="button"
         onClick={toggle}
         aria-label={shown ? "Hide password" : "Show password"}
-        className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-[#7A8294] transition-colors hover:bg-white/[0.05] hover:text-[#C9CFDB]"
+        className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-[#8A92BF] transition-colors hover:bg-white/[0.05] hover:text-[#C8CCE8]"
       >
         {shown ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
       </button>
@@ -100,7 +100,7 @@ export function PrimaryButton({
 const STATUS = {
   error: { cls: "bg-red-500/[0.06] border-red-400/20 text-red-200", Icon: AlertCircle },
   success: { cls: "bg-emerald-500/[0.06] border-emerald-400/20 text-emerald-200", Icon: CheckCircle2 },
-  info: { cls: "bg-[#FF8A3D]/[0.06] border-[#FF8A3D]/20 text-[#FFB27A]", Icon: Info },
+  info: { cls: "bg-[#FFA300]/[0.06] border-[#FFA300]/20 text-[#FFC857]", Icon: Info },
 } as const;
 
 export function StatusMessage({ tone = "error", children }: { tone?: keyof typeof STATUS; children: ReactNode }) {
@@ -117,7 +117,7 @@ export function OrDivider() {
   return (
     <div className="my-6 flex items-center gap-3">
       <div className="h-px flex-1 bg-white/[0.06]" />
-      <span className="font-mono text-[11px] text-[#7A8294]">or</span>
+      <span className="font-mono text-[11px] text-[#8A92BF]">or</span>
       <div className="h-px flex-1 bg-white/[0.06]" />
     </div>
   );
@@ -125,7 +125,7 @@ export function OrDivider() {
 
 /** Single password-rule row used by register + update-password. */
 export function RuleItem({ passed, tone, children }: { passed: boolean; tone?: "error"; children: ReactNode }) {
-  const color = tone === "error" ? "text-red-300" : passed ? "text-emerald-300" : "text-[#8B93A5]";
+  const color = tone === "error" ? "text-red-300" : passed ? "text-emerald-300" : "text-[#9AA1CC]";
   const dot =
     tone === "error"
       ? "border-red-400/50"

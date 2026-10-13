@@ -37,15 +37,15 @@ export default function GodotSpritesPage() {
         <>
           AI sprites for Godot
           <br />
-          <span className="text-[#FF8A3D]">straight into SpriteFrames</span>
+          straight into SpriteFrames
         </>
       }
       subtitle="Generate characters, creatures, items and tiles, animate them into sprite sheets, and load them into Sprite2D or AnimatedSprite2D in a minute."
       trust={["transparent png", "one-row sprite sheets", "nearest-filter ready", "commercial use"]}
       floating={[
-        { src: "/showcase/anim-witch-walk.gif", alt: "", pixel: true, cls: "left-[6%] top-[28%] w-24 animate-float" },
+        { src: "/showcase/anim-witch-walk.webp", alt: "", pixel: true, cls: "left-[6%] top-[28%] w-24 animate-float" },
         { src: "/showcase/slime.png", alt: "", pixel: true, cls: "left-[14%] top-[62%] w-16 animate-float [animation-delay:1.2s]" },
-        { src: "/showcase/anim-dragon-breath.gif", alt: "", pixel: true, cls: "right-[5%] top-[24%] w-32 animate-float [animation-delay:0.6s]" },
+        { src: "/showcase/anim-dragon-breath.webp", alt: "", pixel: true, cls: "right-[5%] top-[24%] w-32 animate-float [animation-delay:0.6s]" },
         { src: "/showcase/tile-grass.png", alt: "", pixel: true, cls: "right-[15%] top-[62%] w-16 animate-float [animation-delay:1.8s]" },
       ]}
       sections={[
@@ -55,7 +55,7 @@ export default function GodotSpritesPage() {
           eyebrow: "import guide",
           title: (
             <>
-              Use it in <span className="text-[#FF8A3D]">Godot 4</span> in five steps
+              Use it in Godot 4 in five steps
             </>
           ),
           steps: ENGINE_GUIDES.godot.map((body, i) => ({ title: `Step ${i + 1}`, body })),
@@ -65,7 +65,7 @@ export default function GodotSpritesPage() {
           eyebrow: "why it fits godot",
           title: (
             <>
-              Made for <span className="text-[#FF8A3D]">AnimatedSprite2D</span>
+              Made for AnimatedSprite2D
             </>
           ),
           cards: [
@@ -87,7 +87,7 @@ export default function GodotSpritesPage() {
       cta={{
         title: (
           <>
-            Ship your <span className="text-[#FF8A3D]">Godot</span> game faster
+            Ship your Godot game faster
           </>
         ),
         body: "Generate sprites, animations and tiles for your project.",

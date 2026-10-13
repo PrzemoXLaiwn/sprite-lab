@@ -30,7 +30,7 @@ export default async function Image() {
           justifyContent: "center",
           padding: "80px",
           background:
-            "linear-gradient(135deg, #0B0F19 0%, #121826 50%, #0B0F19 100%)",
+            "linear-gradient(135deg, #0F1529 0%, #121826 50%, #0F1529 100%)",
           fontFamily: "system-ui, sans-serif",
           position: "relative",
         }}
@@ -80,7 +80,7 @@ export default async function Image() {
               justifyContent: "center",
               fontSize: "32px",
               fontWeight: 900,
-              color: "#0B0F19",
+              color: "#0F1529",
             }}
           >
             S

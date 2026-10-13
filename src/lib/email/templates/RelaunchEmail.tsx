@@ -66,7 +66,7 @@ export function RelaunchEmail({ userName, bonus, lastPrompt, ctaUrl, retryUrl, u
               </Column>
               <Column>
                 <Text style={wordmark}>
-                  Sprite<span style={{ color: "#FF8A3D" }}>Lab</span>
+                  Sprite<span style={{ color: "#FFA300" }}>Lab</span>
                 </Text>
               </Column>
             </Row>
@@ -83,7 +83,7 @@ export function RelaunchEmail({ userName, bonus, lastPrompt, ctaUrl, retryUrl, u
             {/* Hero animation */}
             <Section style={stage}>
               <Img
-                src={`${SITE}/showcase/anim-dragon-breath.gif`}
+                src={`${SITE}/showcase/anim-dragon-breath.webp`}
                 alt="Pixel-art dragon breathing fire — made with SpriteLab"
                 width="440"
                 style={heroImg}
@@ -107,13 +107,13 @@ export function RelaunchEmail({ userName, bonus, lastPrompt, ctaUrl, retryUrl, u
             <Row style={{ margin: "8px 0 4px" }}>
               <Column style={{ width: "50%", paddingRight: "6px" }}>
                 <Section style={tile}>
-                  <Img src={`${SITE}/showcase/anim-witch-walk.gif`} alt="Animated witch walking" width="200" style={tileImg} />
+                  <Img src={`${SITE}/showcase/anim-witch-walk.webp`} alt="Animated witch walking" width="200" style={tileImg} />
                   <Text style={tileLabel}>Walk · long dress</Text>
                 </Section>
               </Column>
               <Column style={{ width: "50%", paddingLeft: "6px" }}>
                 <Section style={tile}>
-                  <Img src={`${SITE}/showcase/anim-knight-idle.gif`} alt="Animated knight idle" width="200" style={tileImg} />
+                  <Img src={`${SITE}/showcase/anim-knight-idle.webp`} alt="Animated knight idle" width="200" style={tileImg} />
                   <Text style={tileLabel}>Idle · smooth, 8 frames</Text>
                 </Section>
               </Column>
@@ -160,41 +160,41 @@ export function RelaunchEmail({ userName, bonus, lastPrompt, ctaUrl, retryUrl, u
 }
 
 const main = {
-  backgroundColor: "#0B0D12",
+  backgroundColor: "#131A31",
   fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif',
   margin: "0",
 };
 const container = { margin: "0 auto", padding: "24px 12px 40px", maxWidth: "560px" };
 const wordmark = { color: "#ffffff", fontSize: "20px", fontWeight: "bold", margin: "0", lineHeight: "32px" };
 const card = { backgroundColor: "#11141B", borderRadius: "16px", padding: "32px 28px", border: "1px solid rgba(255,255,255,0.08)" };
-const eyebrow = { color: "#FFB27A", fontSize: "11px", letterSpacing: "1.5px", fontFamily: "Menlo,Consolas,monospace", margin: "0 0 8px" };
+const eyebrow = { color: "#FFC857", fontSize: "11px", letterSpacing: "1.5px", fontFamily: "Menlo,Consolas,monospace", margin: "0 0 8px" };
 const h1 = { color: "#ffffff", fontSize: "28px", lineHeight: "34px", fontWeight: "bold", margin: "0 0 14px" };
 const p = { color: "#B4BAC6", fontSize: "15px", lineHeight: "24px", margin: "0 0 20px" };
-const stage = { backgroundColor: "#0B0D12", borderRadius: "14px", padding: "20px 12px 10px", margin: "0 0 24px", border: "1px solid rgba(255,255,255,0.06)", textAlign: "center" as const };
+const stage = { backgroundColor: "#131A31", borderRadius: "14px", padding: "20px 12px 10px", margin: "0 0 24px", border: "1px solid rgba(255,255,255,0.06)", textAlign: "center" as const };
 const heroImg = { display: "block", width: "100%", maxWidth: "440px", height: "auto", margin: "0 auto" };
-const caption = { color: "#7A8294", fontSize: "11px", fontFamily: "Menlo,Consolas,monospace", margin: "10px 0 0" };
-const featureIcon = { display: "block", backgroundColor: "#0B0D12", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.06)", padding: "4px" };
+const caption = { color: "#8A92BF", fontSize: "11px", fontFamily: "Menlo,Consolas,monospace", margin: "10px 0 0" };
+const featureIcon = { display: "block", backgroundColor: "#131A31", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.06)", padding: "4px" };
 const featureTitle = { color: "#ffffff", fontSize: "15px", fontWeight: "bold", margin: "2px 0 2px" };
-const featureText = { color: "#A6ADBB", fontSize: "13.5px", lineHeight: "20px", margin: "0" };
-const tile = { backgroundColor: "#0B0D12", borderRadius: "12px", padding: "12px 8px 8px", border: "1px solid rgba(255,255,255,0.06)", textAlign: "center" as const };
+const featureText = { color: "#A7ADD4", fontSize: "13.5px", lineHeight: "20px", margin: "0" };
+const tile = { backgroundColor: "#131A31", borderRadius: "12px", padding: "12px 8px 8px", border: "1px solid rgba(255,255,255,0.06)", textAlign: "center" as const };
 const tileImg = { display: "block", width: "100%", maxWidth: "200px", height: "auto", margin: "0 auto" };
-const tileLabel = { color: "#7A8294", fontSize: "11px", fontFamily: "Menlo,Consolas,monospace", margin: "6px 0 0" };
-const bonusBox = { backgroundColor: "#FF8A3D", borderRadius: "14px", padding: "20px", margin: "24px 0 0", textAlign: "center" as const };
-const bonusAmount = { color: "#0B0D12", fontSize: "40px", lineHeight: "44px", fontWeight: "bold", margin: "0" };
-const bonusTitle = { color: "#0B0D12", fontSize: "17px", fontWeight: "bold", margin: "0 0 6px" };
+const tileLabel = { color: "#8A92BF", fontSize: "11px", fontFamily: "Menlo,Consolas,monospace", margin: "6px 0 0" };
+const bonusBox = { backgroundColor: "#FFA300", borderRadius: "14px", padding: "20px", margin: "24px 0 0", textAlign: "center" as const };
+const bonusAmount = { color: "#131A31", fontSize: "40px", lineHeight: "44px", fontWeight: "bold", margin: "0" };
+const bonusTitle = { color: "#131A31", fontSize: "17px", fontWeight: "bold", margin: "0 0 6px" };
 const bonusText = { color: "#3A2414", fontSize: "13px", margin: "0" };
 const button = {
-  backgroundColor: "#ffffff", borderRadius: "10px", color: "#0B0D12", fontSize: "16px", fontWeight: "bold",
+  backgroundColor: "#ffffff", borderRadius: "10px", color: "#131A31", fontSize: "16px", fontWeight: "bold",
   textDecoration: "none", display: "inline-block", padding: "15px 34px",
 };
 const retryBox = { borderTop: "1px solid rgba(255,255,255,0.08)", marginTop: "24px", paddingTop: "18px", textAlign: "center" as const };
-const retryLabel = { color: "#7A8294", fontSize: "11px", letterSpacing: "1.5px", fontFamily: "Menlo,Consolas,monospace", margin: "0 0 4px" };
-const retryPrompt = { color: "#ECEEF3", fontSize: "15px", fontStyle: "italic", margin: "0 0 8px" };
-const link = { color: "#FF8A3D", fontSize: "14px", textDecoration: "underline" };
-const signoff = { color: "#A6ADBB", fontSize: "14px", lineHeight: "22px", margin: "28px 0 4px" };
-const signature = { color: "#ECEEF3", fontSize: "14px", fontWeight: "bold", margin: "0" };
+const retryLabel = { color: "#8A92BF", fontSize: "11px", letterSpacing: "1.5px", fontFamily: "Menlo,Consolas,monospace", margin: "0 0 4px" };
+const retryPrompt = { color: "#FFF1E8", fontSize: "15px", fontStyle: "italic", margin: "0 0 8px" };
+const link = { color: "#FFA300", fontSize: "14px", textDecoration: "underline" };
+const signoff = { color: "#A7ADD4", fontSize: "14px", lineHeight: "22px", margin: "28px 0 4px" };
+const signature = { color: "#FFF1E8", fontSize: "14px", fontWeight: "bold", margin: "0" };
 const footer = { textAlign: "center" as const, padding: "20px 0 0" };
-const footerText = { color: "#7A8294", fontSize: "12px", lineHeight: "18px", margin: "0" };
-const footerLink = { color: "#A6ADBB", textDecoration: "underline" };
+const footerText = { color: "#8A92BF", fontSize: "12px", lineHeight: "18px", margin: "0" };
+const footerLink = { color: "#A7ADD4", textDecoration: "underline" };
 
 export default RelaunchEmail;

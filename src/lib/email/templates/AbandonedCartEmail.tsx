@@ -118,7 +118,7 @@ export function AbandonedCartEmail({
 
 // Styles
 const main = {
-  backgroundColor: "#0a0c10",
+  backgroundColor: "#0F1529",
   fontFamily:
     '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif',
 };
@@ -142,11 +142,11 @@ const logo = {
 };
 
 const logoAccent = {
-  color: "#FF6B2C",
+  color: "#FF9500",
 };
 
 const content = {
-  backgroundColor: "#11151b",
+  backgroundColor: "#161E39",
   borderRadius: "16px",
   padding: "32px",
   border: "1px solid rgba(255,255,255,0.06)",
@@ -167,7 +167,7 @@ const heading = {
 };
 
 const paragraph = {
-  color: "#a0a0b0",
+  color: "#A7ADD4",
   fontSize: "16px",
   lineHeight: "24px",
   margin: "0 0 24px",
@@ -204,19 +204,19 @@ const planDetails = {
 };
 
 const planCreditsStyle = {
-  color: "#FF6B2C",
+  color: "#FF9500",
   fontSize: "16px",
   fontWeight: "bold",
   marginRight: "12px",
 };
 
 const planPriceStyle = {
-  color: "#a0a0b0",
+  color: "#A7ADD4",
   fontSize: "16px",
 };
 
 const benefitsBox = {
-  backgroundColor: "#0f0f15",
+  backgroundColor: "#0F1529",
   borderRadius: "12px",
   padding: "20px",
   margin: "0 0 24px",
@@ -231,7 +231,7 @@ const benefitsTitle = {
 };
 
 const benefitItem = {
-  color: "#a0a0b0",
+  color: "#A7ADD4",
   fontSize: "14px",
   margin: "0 0 8px",
   lineHeight: "20px",
@@ -243,7 +243,7 @@ const buttonContainer = {
 };
 
 const button = {
-  background: "linear-gradient(135deg, #8b5cf6 0%, #FF6B2C 100%)",
+  background: "linear-gradient(135deg, #8b5cf6 0%, #FF9500 100%)",
   borderRadius: "8px",
   color: "#ffffff",
   fontSize: "16px",
@@ -255,7 +255,7 @@ const button = {
 };
 
 const smallText = {
-  color: "#606070",
+  color: "#8A92BF",
   fontSize: "14px",
   textAlign: "center" as const,
   margin: "0 0 24px",
@@ -281,13 +281,13 @@ const footer = {
 };
 
 const footerText = {
-  color: "#606070",
+  color: "#8A92BF",
   fontSize: "12px",
   margin: "0 0 8px",
 };
 
 const link = {
-  color: "#FF6B2C",
+  color: "#FF9500",
   textDecoration: "underline",
 };
 

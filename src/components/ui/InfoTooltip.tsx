@@ -18,40 +18,40 @@ export function InfoTooltip({ title, content, tips, example }: InfoTooltipProps)
       {/* Info button */}
       <button
         onClick={() => setIsOpen(true)}
-        className="w-5 h-5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#FF6B2C]/50 flex items-center justify-center transition-all group"
+        className="w-5 h-5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#FF9500]/50 flex items-center justify-center transition-all group"
         title={`Info about ${title}`}
       >
-        <Info className="w-3 h-3 text-[#606070] group-hover:text-[#FF6B2C] transition-colors" />
+        <Info className="w-3 h-3 text-[#8A92BF] group-hover:text-[#FF9500] transition-colors" />
       </button>
 
       {/* Modal overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0c10]/80 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F1529]/80 backdrop-blur-sm p-4"
           onClick={() => setIsOpen(false)}
         >
           <div
-            className="relative w-full max-w-md bg-[#11151b] border border-[rgba(255,255,255,0.06)] rounded-2xl p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+            className="relative w-full max-w-md bg-[#161E39] border border-[rgba(255,255,255,0.06)] rounded-2xl p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close button */}
             <button
               onClick={() => setIsOpen(false)}
-              className="absolute top-4 right-4 p-1 text-[#606070] hover:text-white hover:bg-white/10 rounded-lg transition-all"
+              className="absolute top-4 right-4 p-1 text-[#8A92BF] hover:text-white hover:bg-white/10 rounded-lg transition-all"
             >
               <X className="w-4 h-4" />
             </button>
 
             {/* Header */}
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-[#FF6B2C]/10 flex items-center justify-center">
-                <Info className="w-5 h-5 text-[#FF6B2C]" />
+              <div className="w-10 h-10 rounded-xl bg-[#FF9500]/10 flex items-center justify-center">
+                <Info className="w-5 h-5 text-[#FF9500]" />
               </div>
               <h3 className="text-lg font-display font-bold text-white">{title}</h3>
             </div>
 
             {/* Content */}
-            <p className="text-[#a0a0b0] mb-4">{content}</p>
+            <p className="text-[#A7ADD4] mb-4">{content}</p>
 
             {/* Tips */}
             {tips && tips.length > 0 && (
@@ -59,8 +59,8 @@ export function InfoTooltip({ title, content, tips, example }: InfoTooltipProps)
                 <h4 className="text-sm font-semibold text-white mb-2">Tips:</h4>
                 <ul className="space-y-1.5">
                   {tips.map((tip, index) => (
-                    <li key={index} className="flex items-start gap-2 text-sm text-[#a0a0b0]">
-                      <span className="text-[#FF6B2C] mt-1">•</span>
+                    <li key={index} className="flex items-start gap-2 text-sm text-[#A7ADD4]">
+                      <span className="text-[#FF9500] mt-1">•</span>
                       <span>{tip}</span>
                     </li>
                   ))}
@@ -70,8 +70,8 @@ export function InfoTooltip({ title, content, tips, example }: InfoTooltipProps)
 
             {/* Example */}
             {example && (
-              <div className="p-3 rounded-xl bg-[#FF6B2C]/5 border border-[#FF6B2C]/20">
-                <h4 className="text-xs font-semibold text-[#FF6B2C] mb-1">Example:</h4>
+              <div className="p-3 rounded-xl bg-[#FF9500]/5 border border-[#FF9500]/20">
+                <h4 className="text-xs font-semibold text-[#FF9500] mb-1">Example:</h4>
                 <p className="text-sm text-white font-mono">{example}</p>
               </div>
             )}

@@ -284,7 +284,7 @@ export function buildLifecycleMessage(input: BuildInput): LifecycleMessage {
       const sprite = item?.imageUrl ? item : null;
       const heroImg: HeroImage = sprite
         ? hero(sprite, cleanPrompt(sprite.prompt, 60))
-        : { imageUrl: `${SITE}/showcase/anim-knight-idle.gif`, alt: "Animated pixel-art knight made with SpriteLab", pixel: true, caption: "Made with SpriteLab · Animate → Idle" };
+        : { imageUrl: `${SITE}/showcase/anim-knight-idle.webp`, alt: "Animated pixel-art knight made with SpriteLab", pixel: true, caption: "Made with SpriteLab · Animate → Idle" };
       const headline = sprite
         ? `${name ? `Hi ${name}, your` : "Your"} ${shortName(sprite.prompt)} is still here.`
         : `${name ? `Hi ${name}, a` : "A"} few things changed on SpriteLab.`;

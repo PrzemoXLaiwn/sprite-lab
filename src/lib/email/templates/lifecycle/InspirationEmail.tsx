@@ -66,7 +66,7 @@ export function InspirationEmail(props: InspirationEmailProps) {
 
 const tile = { backgroundColor: color.raised, border: `1px solid ${color.line}`, borderRadius: "10px", padding: "8px 6px 6px" };
 const caption = { color: color.muted, fontFamily: mono, fontSize: "10px", lineHeight: "14px", margin: "6px 0 0", textAlign: "center" as const, overflow: "hidden" };
-const promptBox = { backgroundColor: color.raised, border: `1px dashed rgba(255,138,61,0.45)`, borderRadius: "12px", padding: "12px 14px", margin: "6px 0 0", textAlign: "center" as const };
+const promptBox = { backgroundColor: color.raised, border: `1px dashed rgba(255,163,0,0.45)`, borderRadius: "12px", padding: "12px 14px", margin: "6px 0 0", textAlign: "center" as const };
 const promptLabel = { color: color.accent, fontFamily: mono, fontSize: "11px", letterSpacing: "1.2px", textTransform: "uppercase" as const, margin: "0 0 4px" };
 const promptText = { color: color.text, fontSize: "15px", lineHeight: "22px", margin: "0" };
 const more = { textAlign: "center" as const, fontSize: "13px", margin: "6px 0 0" };

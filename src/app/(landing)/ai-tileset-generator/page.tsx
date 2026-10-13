@@ -34,7 +34,7 @@ export default function TileGeneratorPage() {
         <>
           Seamless game tiles
           <br />
-          <span className="text-[#FF8A3D]">from a sentence</span>
+          from a sentence
         </>
       }
       subtitle="Floors, walls, water and lava as square tiles that repeat without visible seams — on a pixel grid for pixel-art games. Animate surfaces into looping frames."
@@ -52,7 +52,7 @@ export default function TileGeneratorPage() {
           eyebrow: "made with spritelab",
           title: (
             <>
-              Tiles that <span className="text-[#FF8A3D]">repeat cleanly</span>
+              Tiles that repeat cleanly
             </>
           ),
           intro: "Each tile wraps on all four edges, so a grid of copies shows no seam lines.",
@@ -69,7 +69,7 @@ export default function TileGeneratorPage() {
           eyebrow: "how tiles differ",
           title: (
             <>
-              Made to <span className="text-[#FF8A3D]">tile</span>, not to be framed
+              Made to tile, not to be framed
             </>
           ),
           cards: [
@@ -84,7 +84,7 @@ export default function TileGeneratorPage() {
           eyebrow: "how it works",
           title: (
             <>
-              Make a tile in <span className="text-[#FF8A3D]">three steps</span>
+              Make a tile in three steps
             </>
           ),
           steps: [
@@ -98,7 +98,7 @@ export default function TileGeneratorPage() {
           eyebrow: "example prompts",
           title: (
             <>
-              Tile <span className="text-[#FF8A3D]">ideas</span>
+              Tile ideas
             </>
           ),
           prompts: [
@@ -121,7 +121,7 @@ export default function TileGeneratorPage() {
       cta={{
         title: (
           <>
-            Build your <span className="text-[#FF8A3D]">levels</span> faster
+            Build your levels faster
           </>
         ),
         body: "Generate seamless floors and walls that match your sprites.",

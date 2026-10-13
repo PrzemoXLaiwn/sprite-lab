@@ -23,13 +23,13 @@ import { PostalAddressLine } from "../PostalAddressLine";
 export const SITE = "https://www.sprite-lab.com";
 
 export const color = {
-  page: "#0B0D12",
-  card: "#0E1016",
-  raised: "#151922",
-  accent: "#FF8A3D",
-  text: "#ECEEF3",
-  body: "#C9CFDB",
-  muted: "#8B93A5",
+  page: "#131A31",
+  card: "#19223F",
+  raised: "#212B4E",
+  accent: "#FFA300",
+  text: "#FFF1E8",
+  body: "#C8CCE8",
+  muted: "#9AA1CC",
   line: "rgba(255,255,255,0.07)",
 };
 
@@ -143,7 +143,7 @@ const p = { color: color.body, fontSize: "15px", lineHeight: "24px", margin: "0 
 const button = {
   backgroundColor: color.accent,
   borderRadius: "10px",
-  color: "#0B0D12",
+  color: "#131A31",
   fontFamily: sans,
   fontSize: "16px",
   fontWeight: "bold",

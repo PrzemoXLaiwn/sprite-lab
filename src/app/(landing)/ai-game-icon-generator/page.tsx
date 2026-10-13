@@ -34,7 +34,7 @@ export default function GameIconGeneratorPage() {
         <>
           Game icons
           <br />
-          <span className="text-[#FF8A3D]">for every slot in your UI</span>
+          for every slot in your UI
         </>
       }
       subtitle="Inventory items, skills, spells and status effects — framed, readable at thumbnail size and in the same style as the rest of your game."
@@ -52,7 +52,7 @@ export default function GameIconGeneratorPage() {
           eyebrow: "made with spritelab",
           title: (
             <>
-              Icons that read at <span className="text-[#FF8A3D]">48 pixels</span>
+              Icons that read at 48 pixels
             </>
           ),
           cols: 4,
@@ -68,7 +68,7 @@ export default function GameIconGeneratorPage() {
           eyebrow: "icon types",
           title: (
             <>
-              Every <span className="text-[#FF8A3D]">icon set</span> a game needs
+              Every icon set a game needs
             </>
           ),
           cols: 3,
@@ -83,7 +83,7 @@ export default function GameIconGeneratorPage() {
           eyebrow: "made for ui",
           title: (
             <>
-              Built for <span className="text-[#FF8A3D]">inventories and HUDs</span>
+              Built for inventories and HUDs
             </>
           ),
           cards: [
@@ -98,7 +98,7 @@ export default function GameIconGeneratorPage() {
           eyebrow: "example prompts",
           title: (
             <>
-              Icon <span className="text-[#FF8A3D]">prompts</span>
+              Icon prompts
             </>
           ),
           prompts: [
@@ -121,7 +121,7 @@ export default function GameIconGeneratorPage() {
       cta={{
         title: (
           <>
-            Fill your <span className="text-[#FF8A3D]">hotbar</span>
+            Fill your hotbar
           </>
         ),
         body: "Generate a full icon set in minutes.",

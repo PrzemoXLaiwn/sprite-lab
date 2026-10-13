@@ -53,7 +53,7 @@ export default function GameWeaponGeneratorPage() {
         <>
           AI Game Weapon Generator
           <br />
-          <span className="text-[#FF8A3D]">forge epic weapons</span>
+          forge epic weapons
         </>
       }
       subtitle="Create unique swords, guns, staffs, shields and more for your game. Any style, any fantasy — just describe your weapon."
@@ -71,7 +71,7 @@ export default function GameWeaponGeneratorPage() {
           eyebrow: "weapon types",
           title: (
             <>
-              Every <span className="text-[#FF8A3D]">weapon type</span> you need
+              Every weapon type you need
             </>
           ),
           intro: "From medieval swords to futuristic laser guns — fantasy weapons, sci-fi weapons and all the equipment in between.",
@@ -106,7 +106,7 @@ export default function GameWeaponGeneratorPage() {
           eyebrow: "art styles",
           title: (
             <>
-              Multiple <span className="text-[#FF8A3D]">art styles</span>
+              Multiple art styles
             </>
           ),
           intro: "Match your game's aesthetic perfectly — the same sword-and-shield prompt, rendered in each style.",
@@ -124,7 +124,7 @@ export default function GameWeaponGeneratorPage() {
           eyebrow: "how it works",
           title: (
             <>
-              How it <span className="text-[#FF8A3D]">works</span>
+              How it works
             </>
           ),
           steps: [
@@ -138,7 +138,7 @@ export default function GameWeaponGeneratorPage() {
           eyebrow: "example prompts",
           title: (
             <>
-              Weapon <span className="text-[#FF8A3D]">prompt ideas</span>
+              Weapon prompt ideas
             </>
           ),
           intro: "A few starting points for RPGs, action games and MMOs.",
@@ -174,7 +174,7 @@ export default function GameWeaponGeneratorPage() {
       cta={{
         title: (
           <>
-            Forge your <span className="text-[#FF8A3D]">arsenal</span> today
+            Forge your arsenal today
           </>
         ),
         body: "Stop searching for weapon assets. Generate exactly what you need in seconds.",

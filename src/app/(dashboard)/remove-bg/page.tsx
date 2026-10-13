@@ -83,13 +83,13 @@ function RemoveBgPageContent({ generationId }: { generationId: string | null }) 
           <SourceCard imageUrl={originalImage} loading={loadingSource} prompt={source?.prompt} pixel={pixel} />
         </Field>
 
-        <InfoNote icon={<Info className="h-3.5 w-3.5 text-[#8B93A5]" />}>
+        <InfoNote icon={<Info className="h-3.5 w-3.5 text-[#9AA1CC]" />}>
           Cuts the sprite out and makes everything behind it transparent, ready to drop into any engine.
           New sprites already come without a background — use this for older ones or when a background slipped in.
         </InfoNote>
 
-        <InfoNote icon={<Lock className="h-3.5 w-3.5 text-[#8B93A5]" />}>
-          Available on the <span className="text-[#C9CFDB]">Starter plan and up</span>.
+        <InfoNote icon={<Lock className="h-3.5 w-3.5 text-[#9AA1CC]" />}>
+          Available on the <span className="text-[#C8CCE8]">Starter plan and up</span>.
         </InfoNote>
 
         {processedImage && (

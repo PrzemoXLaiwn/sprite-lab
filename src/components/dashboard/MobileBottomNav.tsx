@@ -31,7 +31,7 @@ export function MobileBottomNav({ role = "USER" }: { role?: string }) {
 
   return (
     <nav aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/[0.06] bg-[#0E1016]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm md:hidden">
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/[0.06] bg-[#19223F]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm md:hidden">
       <ul className="flex h-14 items-stretch justify-around">
         {items.map((item) => {
           const active = isActive(item.href);
@@ -39,9 +39,9 @@ export function MobileBottomNav({ role = "USER" }: { role?: string }) {
             <li key={item.href} className="flex flex-1">
               <Link href={item.href} aria-current={active ? "page" : undefined}
                 className={`flex flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors ${
-                  active ? "text-white" : "text-[#8B93A5] hover:text-white"
+                  active ? "text-white" : "text-[#9AA1CC] hover:text-white"
                 }`}>
-                <item.icon className={`h-[18px] w-[18px] ${active ? "text-[#FF8A3D]" : ""}`} strokeWidth={active ? 2.2 : 1.8} aria-hidden />
+                <item.icon className={`h-[18px] w-[18px] ${active ? "text-[#FFA300]" : ""}`} strokeWidth={active ? 2.2 : 1.8} aria-hidden />
                 {item.label}
               </Link>
             </li>

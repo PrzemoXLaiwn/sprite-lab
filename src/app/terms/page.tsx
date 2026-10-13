@@ -22,10 +22,9 @@ export default function TermsPage() {
   return (
     <div className="relative">
       <div className="mx-auto max-w-3xl px-5 pb-24 pt-14 sm:pt-20">
-        <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">{"// legal"}</p>
         <h1 className="mt-3 font-display text-[36px] font-semibold leading-[1.06] tracking-[-0.015em] text-white sm:text-[48px]">Terms of Service</h1>
         {/* Fixed date: only change it when the text below changes. */}
-        <p className="mt-4 mb-12 font-mono text-[12px] text-[#7A8294]">Last updated: 12 October 2026</p>
+        <p className="mt-4 mb-12 font-mono text-[12px] text-[#8A92BF]">Last updated: 12 October 2026</p>
 
         <div className="max-w-none space-y-10 text-[15px] leading-relaxed">
           <section>
@@ -56,7 +55,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="mb-3 scroll-mt-24 font-display text-[22px] font-semibold leading-snug text-white">4. License to Generated Assets</h2>
-            <div className="mb-4 rounded-2xl border border-[#FF8A3D]/25 bg-[#FF8A3D]/[0.06] p-4">
+            <div className="mb-4 rounded-2xl border border-[#FFA300]/25 bg-[#FFA300]/[0.06] p-4">
               <p className="text-foreground font-medium">
                 You own all assets you generate using SpriteLab. You receive a perpetual, worldwide, royalty-free license to use generated assets for any purpose, including commercial use.
               </p>
@@ -164,7 +163,7 @@ export default function TermsPage() {
             <h2 className="mb-3 scroll-mt-24 font-display text-[22px] font-semibold leading-snug text-white">14. Contact</h2>
             <p className="text-muted-foreground">
               For questions about these Terms, please contact us at:{" "}
-              <a href="mailto:spritelab.contact@gmail.com" className="text-[#FFB27A] underline-offset-4 hover:underline">
+              <a href="mailto:spritelab.contact@gmail.com" className="text-[#FFC857] underline-offset-4 hover:underline">
                 spritelab.contact@gmail.com
               </a>
             </p>

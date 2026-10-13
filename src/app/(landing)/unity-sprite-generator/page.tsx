@@ -37,13 +37,13 @@ export default function UnitySpritesPage() {
         <>
           AI sprites for Unity
           <br />
-          <span className="text-[#FF8A3D]">prompt → PNG → scene</span>
+          prompt → PNG → scene
         </>
       }
       subtitle="Generate characters, items and tiles, animate them into sprite sheets, and import them into Unity 2D with the usual Sprite Editor workflow — no plugins needed."
       trust={["transparent png", "equal-size frames", "point-filter ready", "commercial use"]}
       floating={[
-        { src: "/showcase/anim-knight-idle.gif", alt: "", pixel: true, cls: "left-[6%] top-[28%] w-28 animate-float" },
+        { src: "/showcase/anim-knight-idle.webp", alt: "", pixel: true, cls: "left-[6%] top-[28%] w-28 animate-float" },
         { src: "/showcase/fire-sword.png", alt: "", pixel: true, cls: "left-[14%] top-[62%] w-16 animate-float [animation-delay:1.2s]" },
         { src: "/showcase/anim-dog-jump.gif", alt: "", pixel: true, cls: "right-[6%] top-[24%] w-28 animate-float [animation-delay:0.6s]" },
         { src: "/showcase/health-potion.png", alt: "", pixel: true, cls: "right-[15%] top-[60%] w-14 animate-float [animation-delay:1.8s]" },
@@ -55,7 +55,7 @@ export default function UnitySpritesPage() {
           eyebrow: "import guide",
           title: (
             <>
-              Import into <span className="text-[#FF8A3D]">Unity</span> in five steps
+              Import into Unity in five steps
             </>
           ),
           intro: "Works in Unity 2021 LTS and newer with the 2D Sprite package.",
@@ -66,7 +66,7 @@ export default function UnitySpritesPage() {
           eyebrow: "why it fits unity",
           title: (
             <>
-              Assets shaped for the <span className="text-[#FF8A3D]">Sprite Editor</span>
+              Assets shaped for the Sprite Editor
             </>
           ),
           cards: [
@@ -87,7 +87,7 @@ export default function UnitySpritesPage() {
       cta={{
         title: (
           <>
-            Fill your <span className="text-[#FF8A3D]">Assets</span> folder
+            Fill your Assets folder
           </>
         ),
         body: "Generate sprites and animations for your Unity project.",

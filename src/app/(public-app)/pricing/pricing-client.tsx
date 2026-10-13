@@ -16,9 +16,9 @@ import { PLAN_CHECKOUT_SLUG, TOTAL_LIFETIME_SLOTS, type LifetimeCard, type Lifet
 import { track, FUNNEL } from "@/lib/analytics";
 
 export const BTN_PRIMARY =
-  "px-corners bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] text-white font-semibold hover:brightness-110 transition disabled:opacity-60 disabled:hover:brightness-100";
+  "px-corners bg-[#FFA300] text-[#131A31] font-semibold hover:bg-[#FFB733] transition disabled:opacity-60 disabled:hover:bg-[#FFB733]";
 export const BTN_SECONDARY =
-  "rounded-xl border border-white/[0.1] bg-white/[0.04] text-[#C9CFDB] hover:bg-white/[0.08] hover:text-white transition-colors disabled:opacity-60";
+  "rounded-xl border border-white/[0.1] bg-white/[0.04] text-[#C8CCE8] hover:bg-white/[0.08] hover:text-white transition-colors disabled:opacity-60";
 
 interface PricingState {
   /** null = visitor (not signed in) or not loaded yet. */
@@ -63,7 +63,7 @@ export function CurrentPlanPill({ planNames }: { planNames: Record<string, strin
   const name = currentPlan ? planNames[currentPlan] : undefined;
   if (!name) return null;
   return (
-    <span className="rounded-full border border-[#FF8A3D]/25 bg-[#FF8A3D]/10 px-2.5 py-1 font-mono text-[11px] text-[#FFB27A]">
+    <span className="rounded-full border border-[#FFA300]/25 bg-[#FFA300]/10 px-2.5 py-1 font-mono text-[11px] text-[#FFC857]">
       Current: {name}
     </span>
   );
@@ -85,7 +85,7 @@ export function PlanAction({ planId, cta, featured }: { planId: string; cta: str
 
   if (signedIn && currentPlan === planId) {
     return (
-      <div className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] text-[13px] font-medium text-[#8B93A5]">
+      <div className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] text-[13px] font-medium text-[#9AA1CC]">
         <Check className="h-4 w-4" aria-hidden="true" /> Current plan
       </div>
     );
@@ -144,14 +144,14 @@ export function PricingStats() {
   return (
     <>
       {stats.users > 0 && (
-        <span className="flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] text-[#C9CFDB]">
-          <Users className="h-3 w-3 text-[#8B93A5]" aria-hidden="true" />
+        <span className="flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] text-[#C8CCE8]">
+          <Users className="h-3 w-3 text-[#9AA1CC]" aria-hidden="true" />
           {stats.users.toLocaleString()}+ users
         </span>
       )}
       {stats.assets > 0 && (
-        <span className="flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] text-[#C9CFDB]">
-          <ImageIcon className="h-3 w-3 text-[#8B93A5]" aria-hidden="true" />
+        <span className="flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] text-[#C8CCE8]">
+          <ImageIcon className="h-3 w-3 text-[#9AA1CC]" aria-hidden="true" />
           {stats.assets.toLocaleString()} assets created
         </span>
       )}
@@ -181,9 +181,9 @@ export function LifetimeSection({ deals }: { deals: readonly LifetimeCard[] }) {
     <section id="lifetime" aria-labelledby="lifetime-heading" className="mt-14 scroll-mt-24">
       <div className="mb-5 flex flex-col gap-1">
         <h2 id="lifetime-heading" className="flex items-center gap-2 text-[17px] font-semibold tracking-tight text-white">
-          <InfinityIcon className="h-4 w-4 text-[#FF8A3D]" aria-hidden="true" /> Pay once, use forever
+          <InfinityIcon className="h-4 w-4 text-[#FFA300]" aria-hidden="true" /> Pay once, use forever
         </h2>
-        <p className="text-[13px] text-[#8B93A5]">{TOTAL_LIFETIME_SLOTS} lifetime slots in total. One payment, monthly credits forever.</p>
+        <p className="text-[13px] text-[#9AA1CC]">{TOTAL_LIFETIME_SLOTS} lifetime slots in total. One payment, monthly credits forever.</p>
       </div>
       <div className="grid grid-cols-1 gap-4 pt-3 md:grid-cols-3">
         {deals.map((deal) => {
@@ -192,23 +192,23 @@ export function LifetimeSection({ deals }: { deals: readonly LifetimeCard[] }) {
           return (
             <div
               key={deal.key}
-              className={`relative flex flex-col rounded-2xl border bg-[#151922] p-5 transition-colors ${
-                soldOut ? "border-white/[0.06] opacity-60" : deal.featured ? "border-[#FF8A3D]/60" : "border-white/[0.08] hover:border-white/20"
+              className={`relative flex flex-col rounded-2xl border bg-[#212B4E] p-5 transition-colors ${
+                soldOut ? "border-white/[0.06] opacity-60" : deal.featured ? "border-[#FFA300]/60" : "border-white/[0.08] hover:border-white/20"
               }`}
             >
               {deal.featured && !soldOut && (
-                <span className="px-corners absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap bg-[#FF8A3D] px-3 py-1 font-mono text-[11px] font-semibold text-black">
+                <span className="px-corners absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap bg-[#FFA300] px-3 py-1 font-mono text-[11px] font-semibold text-black">
                   Best value
                 </span>
               )}
               <h3 className="font-display text-[18px] font-semibold text-white">{deal.name}</h3>
               <div className="mt-5 flex items-baseline gap-2">
                 <span className="font-sans text-[32px] font-semibold leading-none tracking-tight text-white tabular-nums">£{deal.price}</span>
-                <span className="font-mono text-[12px] text-[#7A8294] line-through">£{deal.originalPrice}</span>
-                <span className="font-mono text-[12px] text-[#8B93A5]">one-time</span>
+                <span className="font-mono text-[12px] text-[#8A92BF] line-through">£{deal.originalPrice}</span>
+                <span className="font-mono text-[12px] text-[#9AA1CC]">one-time</span>
               </div>
               <div className="mt-4 flex flex-wrap items-center gap-1.5">
-                <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] text-[#ECEEF3]">
+                <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] text-[#FFF1E8]">
                   {deal.credits.toLocaleString()} credits/mo, forever
                 </span>
               </div>
@@ -216,21 +216,21 @@ export function LifetimeSection({ deals }: { deals: readonly LifetimeCard[] }) {
                 {slot ? (
                   <>
                     <div className="mb-1.5 flex justify-between font-mono text-[11px]">
-                      <span className="text-[#7A8294]">{slot.sold} claimed</span>
-                      <span className={soldOut ? "text-red-200" : "text-[#C9CFDB]"}>{soldOut ? "Sold out" : `${slot.available} of ${slot.max} left`}</span>
+                      <span className="text-[#8A92BF]">{slot.sold} claimed</span>
+                      <span className={soldOut ? "text-red-200" : "text-[#C8CCE8]"}>{soldOut ? "Sold out" : `${slot.available} of ${slot.max} left`}</span>
                     </div>
                     <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
-                      <div className="h-full rounded-full bg-[#FF8A3D]" style={{ width: `${Math.min(100, (slot.sold / slot.max) * 100)}%` }} />
+                      <div className="h-full rounded-full bg-[#FFA300]" style={{ width: `${Math.min(100, (slot.sold / slot.max) * 100)}%` }} />
                     </div>
                   </>
                 ) : (
-                  <p className="font-mono text-[11px] text-[#8B93A5]">
+                  <p className="font-mono text-[11px] text-[#9AA1CC]">
                     {deal.maxSlots} slot{deal.maxSlots === 1 ? "" : "s"} total
                   </p>
                 )}
               </div>
               {soldOut ? (
-                <div className="mt-6 flex h-11 w-full items-center justify-center rounded-xl border border-white/[0.06] bg-white/[0.02] text-[13px] font-medium text-[#7A8294]">
+                <div className="mt-6 flex h-11 w-full items-center justify-center rounded-xl border border-white/[0.06] bg-white/[0.02] text-[13px] font-medium text-[#8A92BF]">
                   Sold out
                 </div>
               ) : (
@@ -249,7 +249,7 @@ export function LifetimeSection({ deals }: { deals: readonly LifetimeCard[] }) {
           );
         })}
       </div>
-      <p className="mt-4 text-center text-[12px] text-[#7A8294]">Lifetime deals are early-adopter pricing — not available forever.</p>
+      <p className="mt-4 text-center text-[12px] text-[#8A92BF]">Lifetime deals are early-adopter pricing — not available forever.</p>
     </section>
   );
 }

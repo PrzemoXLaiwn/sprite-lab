@@ -191,12 +191,12 @@ export default function RegisterPage() {
           title="Check your email"
           subtitle={
             <>
-              We&apos;ve sent a confirmation link to <span className="font-medium text-[#ECEEF3]">{email}</span>.
+              We&apos;ve sent a confirmation link to <span className="font-medium text-[#FFF1E8]">{email}</span>.
               Click the link to activate your account.
             </>
           }
         />
-        <p className="text-[13px] text-[#8B93A5]">
+        <p className="text-[13px] text-[#9AA1CC]">
           Didn&apos;t receive the email? Check your spam folder or{" "}
           <button
             type="button"
@@ -225,14 +225,14 @@ export default function RegisterPage() {
 
       {/* Referral Code Banner */}
       {referralCode && (
-        <div className="mb-6 flex items-center gap-3 rounded-xl border border-[#FF8A3D]/20 bg-[#FF8A3D]/[0.06] px-3.5 py-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#FF8A3D]/[0.12] text-[#FF8A3D]">
+        <div className="mb-6 flex items-center gap-3 rounded-xl border border-[#FFA300]/20 bg-[#FFA300]/[0.06] px-3.5 py-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#FFA300]/[0.12] text-[#FFA300]">
             <Gift className="h-4 w-4" />
           </div>
           <div className="min-w-0">
             <p className="text-[13px] font-medium text-white">You&apos;ve been invited</p>
-            <p className="text-[12px] text-[#8B93A5]">
-              Code <span className="font-mono text-[#FFB27A]">{referralCode}</span> will be applied after signup
+            <p className="text-[12px] text-[#9AA1CC]">
+              Code <span className="font-mono text-[#FFC857]">{referralCode}</span> will be applied after signup
             </p>
           </div>
         </div>
@@ -307,18 +307,18 @@ export default function RegisterPage() {
         </PrimaryButton>
       </form>
 
-      <p className="mt-5 text-center font-mono text-[11px] leading-relaxed text-[#7A8294]">
+      <p className="mt-5 text-center font-mono text-[11px] leading-relaxed text-[#8A92BF]">
         By creating an account, you agree to our{" "}
-        <Link href="/terms" className="text-[#C9CFDB] underline underline-offset-2 hover:text-white">
+        <Link href="/terms" className="text-[#C8CCE8] underline underline-offset-2 hover:text-white">
           Terms of Service
         </Link>{" "}
         and{" "}
-        <Link href="/privacy" className="text-[#C9CFDB] underline underline-offset-2 hover:text-white">
+        <Link href="/privacy" className="text-[#C8CCE8] underline underline-offset-2 hover:text-white">
           Privacy Policy
         </Link>
       </p>
 
-      <p className="mt-4 text-center text-[13px] text-[#8B93A5]">
+      <p className="mt-4 text-center text-[13px] text-[#9AA1CC]">
         Already have an account?{" "}
         <Link href="/login" className={linkCls}>
           Sign in

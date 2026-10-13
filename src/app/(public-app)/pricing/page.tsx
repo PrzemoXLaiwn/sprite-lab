@@ -24,7 +24,7 @@ import {
   PricingStats,
 } from "./pricing-client";
 
-const SECTION_LABEL = "font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]";
+
 
 /** Display cards with the numbers taken from the config Stripe charges from. */
 function plans(): PlanCard[] {
@@ -116,7 +116,7 @@ export default function PricingPage() {
 
   return (
     <PricingProvider>
-      <div className="min-h-screen bg-[#0B0D12] text-[#ECEEF3]">
+      <div className="min-h-screen bg-[#131A31] text-[#FFF1E8]">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
 
         {/* ═══ HEADER ═══════════════════════════════════════════ */}
@@ -125,11 +125,10 @@ export default function PricingPage() {
           <div className="relative mx-auto max-w-[1200px] px-5 pb-8 pt-10 sm:pt-14 lg:px-8">
             <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className={SECTION_LABEL}>{"// pricing"}</p>
                 <h1 className="mt-3 font-display text-[34px] font-semibold leading-[1.06] tracking-[-0.015em] text-white sm:text-[44px]">
                   Plans &amp; credits
                 </h1>
-                <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-[#8B93A5]">
+                <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-[#9AA1CC]">
                   Every plan gets all 12 styles in Standard and HD; plans differ in monthly credits and a few extra tools. Cancel anytime. New
                   accounts start with 10 free credits, no card required.
                 </p>
@@ -146,7 +145,7 @@ export default function PricingPage() {
                 ["#credit-packs", "Credit packs"],
                 ["#costs", "Costs"],
               ].map(([href, label]) => (
-                <a key={href} href={href} className="flex h-10 flex-1 items-center justify-center rounded-lg px-3 text-[#C9CFDB] transition-colors hover:bg-white/[0.08] hover:text-white sm:flex-none sm:px-5">
+                <a key={href} href={href} className="flex h-10 flex-1 items-center justify-center rounded-lg px-3 text-[#C8CCE8] transition-colors hover:bg-white/[0.08] hover:text-white sm:flex-none sm:px-5">
                   {label}
                 </a>
               ))}
@@ -160,13 +159,13 @@ export default function PricingPage() {
             <h2 id="subscriptions-heading" className="text-[17px] font-semibold tracking-tight text-white">
               Monthly plans
             </h2>
-            <p className="mt-1 text-[13px] text-[#8B93A5]">Credits refresh every month. Prices in GBP.</p>
+            <p className="mt-1 text-[13px] text-[#9AA1CC]">Credits refresh every month. Prices in GBP.</p>
             <div className="mt-2 grid grid-cols-1 gap-4 pt-3 sm:grid-cols-2 lg:grid-cols-4">
               {planCards.map((plan) => (
                 <div
                   key={plan.id}
-                  className={`relative flex flex-col rounded-2xl border bg-[#151922] p-5 transition-colors ${
-                    plan.featured ? "border-[#FF8A3D]/60" : "border-white/[0.08] hover:border-white/20"
+                  className={`relative flex flex-col rounded-2xl border bg-[#212B4E] p-5 transition-colors ${
+                    plan.featured ? "border-[#FFA300]/60" : "border-white/[0.08] hover:border-white/20"
                   }`}
                 >
                   {plan.featured && <PopularPill>Most popular</PopularPill>}
@@ -174,17 +173,17 @@ export default function PricingPage() {
                     <h3 className="font-display text-[18px] font-semibold text-white">{plan.name}</h3>
                     <CurrentPlanBadge planId={plan.id} />
                   </div>
-                  <p className="mt-1 text-[13px] text-[#8B93A5]">{plan.description}</p>
+                  <p className="mt-1 text-[13px] text-[#9AA1CC]">{plan.description}</p>
                   <div className="mt-5 flex items-baseline gap-1.5">
                     <span className="font-sans text-[32px] font-semibold leading-none tracking-tight text-white tabular-nums">£{plan.price}</span>
-                    <span className="font-mono text-[12px] text-[#8B93A5]">/month</span>
+                    <span className="font-mono text-[12px] text-[#9AA1CC]">/month</span>
                   </div>
                   <div className="mt-4 flex flex-wrap items-center gap-1.5">
-                    <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] text-[#ECEEF3]">
+                    <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] text-[#FFF1E8]">
                       {plan.price > 0 ? `${plan.credits.toLocaleString("en-GB")} credits/mo` : `${plan.credits} credits to start`}
                     </span>
                     {plan.price > 0 && (
-                      <span className="font-mono text-[11px] text-[#7A8294]">{((plan.price / plan.credits) * 100).toFixed(1)}p/credit</span>
+                      <span className="font-mono text-[11px] text-[#8A92BF]">{((plan.price / plan.credits) * 100).toFixed(1)}p/credit</span>
                     )}
                   </div>
                   <ul className="mt-5 flex-1 space-y-2.5">
@@ -205,7 +204,7 @@ export default function PricingPage() {
             <h2 id="packs-heading" className="text-[17px] font-semibold tracking-tight text-white">
               One-time credit packs
             </h2>
-            <p className="mt-1 text-[13px] text-[#8B93A5]">
+            <p className="mt-1 text-[13px] text-[#9AA1CC]">
               Pay once, no subscription. Credits never expire.
               {promoActive && " Launch bonus credits are included while the promo runs."}
             </p>
@@ -216,21 +215,21 @@ export default function PricingPage() {
                 return (
                   <div
                     key={pack.key}
-                    className={`relative flex flex-col rounded-2xl border bg-[#151922] p-5 transition-colors ${
-                      pack.featured ? "border-[#FF8A3D]/60" : "border-white/[0.08] hover:border-white/20"
+                    className={`relative flex flex-col rounded-2xl border bg-[#212B4E] p-5 transition-colors ${
+                      pack.featured ? "border-[#FFA300]/60" : "border-white/[0.08] hover:border-white/20"
                     }`}
                   >
                     {pack.featured && <PopularPill>Most popular</PopularPill>}
                     <div className="flex items-center gap-2">
-                      <Coins className="h-4 w-4 text-[#FF8A3D]" aria-hidden="true" />
+                      <Coins className="h-4 w-4 text-[#FFA300]" aria-hidden="true" />
                       <h3 className="font-display text-[18px] font-semibold text-white">{pack.name}</h3>
                     </div>
                     <div className="mt-5 flex items-baseline gap-1.5">
                       <span className="font-sans text-[32px] font-semibold leading-none tracking-tight text-white tabular-nums">{formatPence(pack.price)}</span>
-                      <span className="font-mono text-[12px] text-[#8B93A5]">one-time</span>
+                      <span className="font-mono text-[12px] text-[#9AA1CC]">one-time</span>
                     </div>
                     <div className="mt-4 flex flex-wrap items-center gap-1.5">
-                      <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] text-[#ECEEF3]">
+                      <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] text-[#FFF1E8]">
                         {total.toLocaleString("en-GB")} credits
                       </span>
                       {bonus > 0 && (
@@ -239,7 +238,7 @@ export default function PricingPage() {
                         </span>
                       )}
                     </div>
-                    <p className="mt-3 flex-1 font-mono text-[11px] text-[#7A8294]">{(pack.price / total).toFixed(1)}p/credit</p>
+                    <p className="mt-3 flex-1 font-mono text-[11px] text-[#8A92BF]">{(pack.price / total).toFixed(1)}p/credit</p>
                     <PackBuyButton packKey={pack.key} slug={pack.slug} name={pack.name} featured={Boolean(pack.featured)} />
                   </div>
                 );
@@ -251,20 +250,19 @@ export default function PricingPage() {
 
           {/* ═══ COSTS ══════════════════════════════════════════ */}
           <section id="costs" aria-labelledby="costs-heading" className="mt-14 scroll-mt-24">
-            <p className={SECTION_LABEL}>{"// credits per action"}</p>
             <h2 id="costs-heading" className="mt-3 font-display text-[26px] font-semibold leading-[1.1] tracking-[-0.01em] text-white sm:text-[32px]">
               What things cost
             </h2>
-            <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-[#8B93A5]">
+            <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-[#9AA1CC]">
               Every action has a fixed price in credits, shown on the button before you spend anything. If a generation fails, the credits
               go back to your balance.
             </p>
             <div className="mt-5 overflow-x-auto rounded-2xl border border-white/[0.08]">
               <table className="w-full min-w-[560px] border-collapse text-left text-[14px] leading-snug">
-                <thead className="bg-[#151922]">
+                <thead className="bg-[#212B4E]">
                   <tr>
                     {["Action", "Credits", "What you get"].map((h) => (
-                      <th key={h} scope="col" className="px-4 py-3 font-mono text-[11.5px] font-medium uppercase tracking-[0.04em] text-[#8B93A5]">
+                      <th key={h} scope="col" className="px-4 py-3 text-[11.5px] font-medium text-[#9AA1CC]">
                         {h}
                       </th>
                     ))}
@@ -273,23 +271,23 @@ export default function PricingPage() {
                 <tbody>
                   {costRows().map(([action, credits, what]) => (
                     <tr key={action} className="border-t border-white/[0.06]">
-                      <th scope="row" className="px-4 py-3 align-top font-medium text-[#ECEEF3]">
+                      <th scope="row" className="px-4 py-3 align-top font-medium text-[#FFF1E8]">
                         {action}
                       </th>
-                      <td className="px-4 py-3 align-top font-mono text-[13px] text-[#FFB27A]">{credits}</td>
-                      <td className="px-4 py-3 align-top text-[#A6ADBB]">{what}</td>
+                      <td className="px-4 py-3 align-top font-mono text-[13px] text-[#FFC857]">{credits}</td>
+                      <td className="px-4 py-3 align-top text-[#A7ADD4]">{what}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <p className="mt-3 text-[13px] text-[#8B93A5]">
+            <p className="mt-3 text-[13px] text-[#9AA1CC]">
               New to SpriteLab?{" "}
-              <Link href="/how-it-works" className="text-[#FFB27A] underline-offset-4 hover:underline">
+              <Link href="/how-it-works" className="text-[#FFC857] underline-offset-4 hover:underline">
                 See how it works
               </Link>{" "}
               or try a sprite on the{" "}
-              <Link href="/ai-sprite-generator" className="text-[#FFB27A] underline-offset-4 hover:underline">
+              <Link href="/ai-sprite-generator" className="text-[#FFC857] underline-offset-4 hover:underline">
                 AI sprite generator
               </Link>{" "}
               without an account.
@@ -298,26 +296,25 @@ export default function PricingPage() {
 
           {/* ═══ VALUE COMPARISON ═══════════════════════════════ */}
           <section className="mt-14">
-            <p className={SECTION_LABEL}>{"// why it's worth it"}</p>
             <h2 className="mt-3 font-display text-[26px] font-semibold leading-[1.1] tracking-[-0.01em] text-white sm:text-[32px]">Artist vs. SpriteLab</h2>
-            <p className="mt-2 text-[15px] text-[#8B93A5]">Two ways to get a full set of game assets.</p>
+            <p className="mt-2 text-[15px] text-[#9AA1CC]">Two ways to get a full set of game assets.</p>
             <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <div className="rounded-2xl border border-white/[0.08] bg-[#151922] p-5">
+              <div className="rounded-2xl border border-white/[0.08] bg-[#212B4E] p-5">
                 <h3 className="text-[15px] font-semibold text-white">Traditional artist</h3>
                 <ul className="mt-4 space-y-2.5">
                   {["Quoted and paid per asset", "Days to weeks turnaround", "Each revision is another round", "Hand-crafted, unique style"].map((t) => (
-                    <li key={t} className="flex items-start gap-2.5 text-[13px] text-[#C9CFDB]">
-                      <X className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#7A8294]" strokeWidth={2.5} aria-hidden="true" />
+                    <li key={t} className="flex items-start gap-2.5 text-[13px] text-[#C8CCE8]">
+                      <X className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#8A92BF]" strokeWidth={2.5} aria-hidden="true" />
                       {t}
                     </li>
                   ))}
                 </ul>
                 <div className="mt-6 border-t border-white/[0.06] pt-4">
-                  <span className="font-sans text-[20px] font-semibold tracking-tight text-[#C9CFDB]">Best for final, signature art</span>
-                  <p className="font-mono text-[11px] text-[#7A8294]">prices vary by artist</p>
+                  <span className="font-sans text-[20px] font-semibold tracking-tight text-[#C8CCE8]">Best for final, signature art</span>
+                  <p className="font-mono text-[11px] text-[#8A92BF]">prices vary by artist</p>
                 </div>
               </div>
-              <div className="rounded-2xl border border-[#FF8A3D]/60 bg-[#151922] p-5">
+              <div className="rounded-2xl border border-[#FFA300]/60 bg-[#212B4E] p-5">
                 <h3 className="text-[15px] font-semibold text-white">With SpriteLab Pro</h3>
                 <ul className="mt-4 space-y-2.5">
                   <FeatureItem>{proPence}p per credit</FeatureItem>
@@ -329,23 +326,23 @@ export default function PricingPage() {
                 </ul>
                 <div className="mt-6 border-t border-white/[0.06] pt-4">
                   <span className="font-sans text-[28px] font-semibold tracking-tight text-white tabular-nums">£{proPrice}</span>
-                  <span className="ml-1 font-mono text-[12px] text-[#8B93A5]">/month</span>
-                  <p className="font-mono text-[11px] text-[#7A8294]">{proCredits} credits every month</p>
+                  <span className="ml-1 font-mono text-[12px] text-[#9AA1CC]">/month</span>
+                  <p className="font-mono text-[11px] text-[#8A92BF]">{proCredits} credits every month</p>
                 </div>
               </div>
             </div>
           </section>
 
           {/* ═══ GUARANTEE ══════════════════════════════════════ */}
-          <section className="mt-6 flex flex-col items-start gap-4 rounded-2xl border border-white/[0.08] bg-[#0E1016] p-5 sm:flex-row sm:items-center">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#FF8A3D]/20 bg-[#FF8A3D]/[0.08]">
-              <Shield className="h-5 w-5 text-[#FF8A3D]" aria-hidden="true" />
+          <section className="mt-6 flex flex-col items-start gap-4 rounded-2xl border border-white/[0.08] bg-[#19223F] p-5 sm:flex-row sm:items-center">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#FFA300]/20 bg-[#FFA300]/[0.08]">
+              <Shield className="h-5 w-5 text-[#FFA300]" aria-hidden="true" />
             </div>
             <div>
               <h2 className="text-[15px] font-semibold text-white">7-day refund</h2>
-              <p className="mt-0.5 text-[13px] leading-relaxed text-[#8B93A5]">
+              <p className="mt-0.5 text-[13px] leading-relaxed text-[#9AA1CC]">
                 Not happy? Ask for a refund within 7 days of purchase if you&apos;ve used less than 10% of your credits.{" "}
-                <Link href="/terms" className="text-[#FFB27A] underline-offset-4 hover:underline">
+                <Link href="/terms" className="text-[#FFC857] underline-offset-4 hover:underline">
                   See the terms
                 </Link>
                 .
@@ -355,16 +352,15 @@ export default function PricingPage() {
 
           {/* ═══ FAQ ════════════════════════════════════════════ */}
           <section className="mx-auto mt-14 max-w-3xl">
-            <p className={SECTION_LABEL}>{"// faq"}</p>
             <h2 className="mt-3 font-display text-[26px] font-semibold leading-[1.1] tracking-[-0.01em] text-white sm:text-[32px]">Pricing questions</h2>
             <div className="mt-5 space-y-2">
               {FAQS.map((f) => (
-                <details key={f.q} className="group overflow-hidden rounded-2xl border border-white/[0.08] bg-[#151922]">
-                  <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-left transition-colors hover:bg-[#1A1F2A] [&::-webkit-details-marker]:hidden">
+                <details key={f.q} className="group overflow-hidden rounded-2xl border border-white/[0.08] bg-[#212B4E]">
+                  <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-left transition-colors hover:bg-[#263260] [&::-webkit-details-marker]:hidden">
                     <span className="text-[15px] font-medium leading-snug text-white">{f.q}</span>
-                    <ChevronDown className="h-4 w-4 shrink-0 text-[#8B93A5] transition-transform group-open:rotate-180" aria-hidden="true" />
+                    <ChevronDown className="h-4 w-4 shrink-0 text-[#9AA1CC] transition-transform group-open:rotate-180" aria-hidden="true" />
                   </summary>
-                  <p className="px-5 pb-5 text-[14px] leading-relaxed text-[#8B93A5]">{f.a}</p>
+                  <p className="px-5 pb-5 text-[14px] leading-relaxed text-[#9AA1CC]">{f.a}</p>
                 </details>
               ))}
             </div>
@@ -381,8 +377,8 @@ export default function PricingPage() {
 
 function FeatureItem({ children }: { children: React.ReactNode }) {
   return (
-    <li className="flex items-start gap-2.5 text-[13px] text-[#C9CFDB]">
-      <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#FF8A3D]" strokeWidth={2.5} aria-hidden="true" />
+    <li className="flex items-start gap-2.5 text-[13px] text-[#C8CCE8]">
+      <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#FFA300]" strokeWidth={2.5} aria-hidden="true" />
       <span>{children}</span>
     </li>
   );
@@ -390,7 +386,7 @@ function FeatureItem({ children }: { children: React.ReactNode }) {
 
 function PopularPill({ children }: { children: React.ReactNode }) {
   return (
-    <span className="px-corners absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap bg-[#FF8A3D] px-3 py-1 font-mono text-[11px] font-semibold text-black">
+    <span className="px-corners absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap bg-[#FFA300] px-3 py-1 font-mono text-[11px] font-semibold text-black">
       {children}
     </span>
   );

@@ -38,14 +38,14 @@ const MOODS = ["Dark Fantasy", "Colorful", "Gritty", "Whimsical", "Sci-Fi", "Hor
 const FOLDER_PREVIEW = 6;
 
 const inputClass =
-  "h-10 w-full rounded-xl border border-white/[0.08] bg-[#151922] px-3 text-[13px] text-white outline-none transition-colors placeholder:text-[#7A8294] focus:border-[#FF8A3D]/50";
+  "h-10 w-full rounded-xl border border-white/[0.08] bg-[#212B4E] px-3 text-[13px] text-white outline-none transition-colors placeholder:text-[#8A92BF] focus:border-[#FFA300]/50";
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[12px] font-medium text-[#C9CFDB]">
+      <span className="mb-1.5 block text-[12px] font-medium text-[#C8CCE8]">
         {label}
-        {required && <span className="ml-0.5 text-[#FF8A3D]">*</span>}
+        {required && <span className="ml-0.5 text-[#FFA300]">*</span>}
       </span>
       {children}
     </label>
@@ -72,7 +72,7 @@ function SelectField({
             <option key={o}>{o}</option>
           ))}
         </select>
-        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7A8294]" />
+        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A92BF]" />
       </div>
     </Field>
   );
@@ -177,21 +177,21 @@ export default function ProjectsPage() {
   const totalAssets = projects.reduce((sum, p) => sum + p._count.generations, 0);
 
   return (
-    <div className="min-h-screen bg-[#0B0D12] text-[#ECEEF3]">
+    <div className="min-h-screen bg-[#131A31] text-[#FFF1E8]">
       <div className="mx-auto max-w-[1400px] px-5 py-6 lg:px-8">
 
         {/* Header */}
         <div className="mb-6 flex items-center justify-between gap-4 sm:items-end">
           <div className="min-w-0">
             <h1 className="font-display text-[24px] font-semibold leading-tight tracking-tight text-white">Projects</h1>
-            <p className="mt-1 text-[13px] text-[#8B93A5]">
+            <p className="mt-1 text-[13px] text-[#9AA1CC]">
               <span className="max-sm:block">Organize assets by game project</span>
               {!loading && projects.length > 0 && (
                 <>
-                  <span className="mx-1.5 text-[#7A8294] max-sm:hidden">·</span>
-                  <span className="font-mono text-[#C9CFDB]">{projects.length}</span> project{projects.length === 1 ? "" : "s"}
-                  <span className="mx-1.5 text-[#7A8294]">·</span>
-                  <span className="font-mono text-[#C9CFDB]">{totalAssets}</span> assets
+                  <span className="mx-1.5 text-[#8A92BF] max-sm:hidden">·</span>
+                  <span className="font-mono text-[#C8CCE8]">{projects.length}</span> project{projects.length === 1 ? "" : "s"}
+                  <span className="mx-1.5 text-[#8A92BF]">·</span>
+                  <span className="font-mono text-[#C8CCE8]">{totalAssets}</span> assets
                 </>
               )}
             </p>
@@ -199,7 +199,7 @@ export default function ProjectsPage() {
           <button
             type="button"
             onClick={openForm}
-            className="px-corners inline-flex h-10 shrink-0 items-center gap-2 bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] px-4 text-[13px] font-semibold text-white transition hover:brightness-110"
+            className="px-corners inline-flex h-10 shrink-0 items-center gap-2 bg-[#FFA300] px-4 text-[13px] font-semibold text-[#131A31] transition hover:bg-[#FFB733]"
           >
             <Plus className="h-4 w-4" />
             New project
@@ -226,27 +226,27 @@ export default function ProjectsPage() {
         ) : loadFailed ? (
           <div role="alert" className="flex flex-col items-center justify-center rounded-3xl border border-white/[0.06] px-6 py-20 text-center">
             <h2 className="font-display text-[18px] font-semibold text-white">Couldn&apos;t load your projects</h2>
-            <p className="mt-1 text-[13px] text-[#8B93A5]">Check your connection and try again.</p>
+            <p className="mt-1 text-[13px] text-[#9AA1CC]">Check your connection and try again.</p>
             <button type="button" onClick={() => { setLoading(true); loadProjects(); }}
-              className="mt-5 inline-flex h-10 items-center rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 text-[13px] font-medium text-[#C9CFDB] transition-colors hover:bg-white/[0.08] hover:text-white">
+              className="mt-5 inline-flex h-10 items-center rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 text-[13px] font-medium text-[#C8CCE8] transition-colors hover:bg-white/[0.08] hover:text-white">
               Try again
             </button>
           </div>
         ) : projects.length === 0 ? (
           <div className="pixel-grid flex flex-col items-center justify-center rounded-3xl border border-white/[0.06] px-6 py-20 text-center sm:py-24">
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.04]">
-              <FolderOpen className="h-5 w-5 text-[#FF8A3D]" aria-hidden />
+              <FolderOpen className="h-5 w-5 text-[#FFA300]" aria-hidden />
             </div>
             <h2 className="text-[15px] font-semibold text-white">
-              No projects yet<span className="caret" aria-hidden />
+              No projects yet
             </h2>
-            <p className="mt-1 max-w-sm text-[13px] text-[#8B93A5]">
+            <p className="mt-1 max-w-sm text-[13px] text-[#9AA1CC]">
               Describe your game and we&apos;ll set up folders for everything it needs — heroes, enemies, items, tiles. Then generate straight into them.
             </p>
             <button
               type="button"
               onClick={openForm}
-              className="px-corners mt-5 inline-flex h-10 items-center gap-2 bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] px-4 text-[13px] font-semibold text-white transition hover:brightness-110"
+              className="px-corners mt-5 inline-flex h-10 items-center gap-2 bg-[#FFA300] px-4 text-[13px] font-semibold text-[#131A31] transition hover:bg-[#FFB733]"
             >
               <Plus className="h-4 w-4" aria-hidden /> Create your first project
             </button>
@@ -262,22 +262,22 @@ export default function ProjectsPage() {
               return (
                 <div
                   key={project.id}
-                  className="group flex flex-col rounded-2xl border border-white/[0.08] bg-[#151922] p-4 transition-colors hover:border-white/20"
+                  className="group flex flex-col rounded-2xl border border-white/[0.08] bg-[#212B4E] p-4 transition-colors hover:border-white/20"
                 >
                   <div className="flex items-start gap-3">
                     <Link
                       href={`/projects/${project.id}`}
-                      className="group/open -m-1 flex min-w-0 flex-1 items-start gap-3 rounded-xl p-1 outline-none focus-visible:ring-2 focus-visible:ring-[#FF8A3D]/60"
+                      className="group/open -m-1 flex min-w-0 flex-1 items-start gap-3 rounded-xl p-1 outline-none focus-visible:ring-2 focus-visible:ring-[#FFA300]/60"
                     >
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.04]">
-                        <FolderOpen className="h-[18px] w-[18px] text-[#FF8A3D]" />
+                        <FolderOpen className="h-[18px] w-[18px] text-[#FFA300]" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <h3 className="flex items-center gap-1 text-[14px] font-semibold text-white" title={project.name}>
-                          <span className="truncate group-hover/open:text-[#FFB27A]">{project.name}</span>
-                          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[#7A8294] transition-transform group-hover/open:translate-x-0.5 group-hover/open:text-[#FFB27A]" />
+                          <span className="truncate group-hover/open:text-[#FFC857]">{project.name}</span>
+                          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[#8A92BF] transition-transform group-hover/open:translate-x-0.5 group-hover/open:text-[#FFC857]" />
                         </h3>
-                        <p className="mt-0.5 font-mono text-[11px] text-[#8B93A5]">
+                        <p className="mt-0.5 font-mono text-[11px] text-[#9AA1CC]">
                           {project._count.generations} assets · {project.folders.length} folders
                         </p>
                       </div>
@@ -288,7 +288,7 @@ export default function ProjectsPage() {
                       disabled={deletingId === project.id}
                       title="Delete project"
                       aria-label={`Delete project ${project.name}`}
-                      className="-mr-1.5 -mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[#7A8294] transition-colors hover:bg-red-500/10 hover:text-red-300 disabled:opacity-100 lg:opacity-0 lg:focus-visible:opacity-100 lg:group-hover:opacity-100"
+                      className="-mr-1.5 -mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[#8A92BF] transition-colors hover:bg-red-500/10 hover:text-red-300 disabled:opacity-100 lg:opacity-0 lg:focus-visible:opacity-100 lg:group-hover:opacity-100"
                     >
                       {deletingId === project.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                     </button>
@@ -299,7 +299,7 @@ export default function ProjectsPage() {
                       {chips.map((c, i) => (
                         <span
                           key={`${c}-${i}`}
-                          className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] leading-none text-[#C9CFDB]"
+                          className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] leading-none text-[#C8CCE8]"
                         >
                           {c}
                         </span>
@@ -310,7 +310,7 @@ export default function ProjectsPage() {
                   {/* Folders */}
                   {project.folders.length > 0 ? (
                     <div className="mt-4 border-t border-white/[0.06] pt-3">
-                      <span className="mb-2 block font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">Folders</span>
+                      <span className="mb-2 block text-[12.5px] text-[#9AA1CC] font-semibold">Folders</span>
                       <div className="grid grid-cols-2 gap-1">
                         {folders.map((folder) => (
                           <Link
@@ -324,11 +324,11 @@ export default function ProjectsPage() {
                               view: folder.defaultView || "DEFAULT",
                             }).toString()}`}
                             title={folder.description || `Generate sprites for ${folder.name}`}
-                            className="group/folder flex min-h-10 min-w-0 items-center gap-2 rounded-lg border border-transparent px-2 transition-colors hover:border-white/[0.08] hover:bg-[#1A1F2A]"
+                            className="group/folder flex min-h-10 min-w-0 items-center gap-2 rounded-lg border border-transparent px-2 transition-colors hover:border-white/[0.08] hover:bg-[#263260]"
                           >
-                            <FolderOpen className="h-3.5 w-3.5 shrink-0 text-[#7A8294] transition-colors group-hover/folder:text-[#FF8A3D]" />
-                            <span className="truncate text-[12.5px] text-[#C9CFDB] group-hover/folder:text-white">{folder.name}</span>
-                            <ChevronRight className="ml-auto h-3.5 w-3.5 shrink-0 text-[#7A8294] opacity-0 transition-opacity group-hover/folder:opacity-100" />
+                            <FolderOpen className="h-3.5 w-3.5 shrink-0 text-[#8A92BF] transition-colors group-hover/folder:text-[#FFA300]" />
+                            <span className="truncate text-[12.5px] text-[#C8CCE8] group-hover/folder:text-white">{folder.name}</span>
+                            <ChevronRight className="ml-auto h-3.5 w-3.5 shrink-0 text-[#8A92BF] opacity-0 transition-opacity group-hover/folder:opacity-100" />
                           </Link>
                         ))}
                       </div>
@@ -337,7 +337,7 @@ export default function ProjectsPage() {
                           type="button"
                           onClick={() => toggleExpanded(project.id)}
                           aria-expanded={isExpanded}
-                          className="mt-1 flex min-h-9 items-center gap-1 rounded-lg px-2.5 text-[12px] font-medium text-[#8B93A5] transition-colors hover:text-white"
+                          className="mt-1 flex min-h-9 items-center gap-1 rounded-lg px-2.5 text-[12px] font-medium text-[#9AA1CC] transition-colors hover:text-white"
                         >
                           <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
                           {isExpanded ? "Show less" : `Show all ${project.folders.length}`}
@@ -345,7 +345,7 @@ export default function ProjectsPage() {
                       )}
                     </div>
                   ) : (
-                    <p className="mt-4 border-t border-white/[0.06] pt-3 text-[12px] text-[#7A8294]">No folders in this project.</p>
+                    <p className="mt-4 border-t border-white/[0.06] pt-3 text-[12px] text-[#8A92BF]">No folders in this project.</p>
                   )}
                 </div>
               );
@@ -369,19 +369,19 @@ export default function ProjectsPage() {
               e.preventDefault();
               handleCreate();
             }}
-            className="max-h-[92vh] max-h-[92dvh] w-full max-w-[560px] overflow-y-auto overscroll-contain rounded-t-3xl border border-white/[0.08] bg-[#0E1016] shadow-2xl sm:rounded-3xl"
+            className="max-h-[92vh] max-h-[92dvh] w-full max-w-[560px] overflow-y-auto overscroll-contain rounded-t-3xl border border-white/[0.08] bg-[#19223F] shadow-2xl sm:rounded-3xl"
           >
             <div className="flex items-start justify-between gap-4 px-5 pb-2 pt-5 sm:px-6">
               <div>
                 <h2 id="new-project-title" className="font-display text-[18px] font-semibold tracking-tight text-white">Describe your game</h2>
-                <p className="mt-1 text-[13px] text-[#8B93A5]">We&apos;ll plan a folder for each kind of asset your game needs. Only the name is required — it&apos;s free.</p>
+                <p className="mt-1 text-[13px] text-[#9AA1CC]">We&apos;ll plan a folder for each kind of asset your game needs. Only the name is required — it&apos;s free.</p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
                 disabled={creating}
                 aria-label="Close"
-                className="-mr-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[#8B93A5] transition-colors hover:bg-white/[0.06] hover:text-white disabled:opacity-40"
+                className="-mr-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[#9AA1CC] transition-colors hover:bg-white/[0.06] hover:text-white disabled:opacity-40"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -421,19 +421,19 @@ export default function ProjectsPage() {
               </p>
             )}
 
-            <div className="sticky bottom-0 flex items-center justify-end gap-2 border-t border-white/[0.06] bg-[#0E1016] px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 sm:px-6">
+            <div className="sticky bottom-0 flex items-center justify-end gap-2 border-t border-white/[0.06] bg-[#19223F] px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 sm:px-6">
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
                 disabled={creating}
-                className="inline-flex h-10 items-center rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 text-[13px] font-medium text-[#C9CFDB] transition-colors hover:bg-white/[0.08] disabled:opacity-40"
+                className="inline-flex h-10 items-center rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 text-[13px] font-medium text-[#C8CCE8] transition-colors hover:bg-white/[0.08] disabled:opacity-40"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={!name.trim() || creating}
-                className="px-corners inline-flex h-10 items-center gap-2 bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] px-4 text-[13px] font-semibold text-white transition hover:brightness-110 disabled:opacity-50 disabled:hover:brightness-100"
+                className="px-corners inline-flex h-10 items-center gap-2 bg-[#FFA300] px-4 text-[13px] font-semibold text-[#131A31] transition hover:bg-[#FFB733] disabled:opacity-50 disabled:hover:bg-[#FFB733]"
               >
                 {creating ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Sparkles className="h-4 w-4" aria-hidden />}
                 {creating ? "Planning folders…" : "Create project"}

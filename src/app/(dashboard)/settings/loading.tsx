@@ -20,14 +20,14 @@ export default function SettingsLoading() {
           {Array.from({ length: 3 }).map((_, i) => (
             <div
               key={i}
-              className="rounded-2xl border border-white/[0.06] bg-[#0E1016] p-6"
+              className="rounded-2xl border border-white/[0.06] bg-[#19223F] p-6"
               style={{ animationDelay: `${i * 100}ms` }}
             >
               <div className="mb-2 h-4 w-36 animate-pulse rounded bg-white/[0.06]" />
               <div className="mb-6 h-3 w-60 animate-pulse rounded bg-white/[0.04]" />
               <div className="space-y-3">
-                <div className="h-10 animate-pulse rounded-xl bg-[#151922]" />
-                <div className="h-10 animate-pulse rounded-xl bg-[#151922]" />
+                <div className="h-10 animate-pulse rounded-xl bg-[#212B4E]" />
+                <div className="h-10 animate-pulse rounded-xl bg-[#212B4E]" />
               </div>
             </div>
           ))}

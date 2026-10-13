@@ -81,27 +81,26 @@ export default async function ComparePage({ params }: { params: Promise<Params> 
   ];
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#0B0D12] text-white">
+    <main className="min-h-screen overflow-x-hidden bg-[#131A31] text-white">
       <JsonLd data={jsonLd} />
       <SiteNav />
 
       {/* ═══ HERO ═══ */}
       <section className="relative overflow-hidden pb-12 pt-28 sm:pt-36">
         <div className="pixel-grid pointer-events-none absolute inset-0 [mask-image:radial-gradient(ellipse_at_top,black_20%,transparent_70%)]" />
-        <div className="pointer-events-none absolute left-1/2 top-0 h-[520px] w-[960px] -translate-x-1/2 bg-[radial-gradient(ellipse_at_center,rgba(255,138,61,0.13)_0%,transparent_70%)]" />
         <div className="relative z-10 mx-auto max-w-4xl px-5 text-center">
-          <nav aria-label="Breadcrumb" className="font-mono text-[12px] text-[#8B93A5]">
+          <nav aria-label="Breadcrumb" className="font-mono text-[12px] text-[#9AA1CC]">
             <Link href="/" className="hover:text-white">home</Link>
             <span className="px-1.5">/</span>
             <Link href="/compare" className="hover:text-white">compare</Link>
             <span className="px-1.5">/</span>
-            <span className="text-[#FFB27A]">{c.slug}</span>
+            <span className="text-[#FFC857]">{c.slug}</span>
           </nav>
           <h1 className="mt-5 font-display text-[38px] font-semibold leading-[1.06] text-white sm:text-[56px]">
-            SpriteLab vs <span className="text-[#FF8A3D]">{c.competitor}</span>
+            SpriteLab vs <span className="text-[#FFA300]">{c.competitor}</span>
           </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-[16px] leading-relaxed text-[#8B93A5]">{c.summary}</p>
-          <p className="mt-4 font-mono text-[11.5px] text-[#7A8294]">
+          <p className="mx-auto mt-5 max-w-2xl text-[16px] leading-relaxed text-[#9AA1CC]">{c.summary}</p>
+          <p className="mt-4 font-mono text-[11.5px] text-[#8A92BF]">
             {`checked on ${COMPARE_CHECKED_ON_LABEL} · written by the SpriteLab team`}
           </p>
         </div>
@@ -111,36 +110,36 @@ export default async function ComparePage({ params }: { params: Promise<Params> 
       <section className="pb-16">
         <div className={CONTAINER}>
           <SectionHead eyebrow="side by side" title="Feature comparison" />
-          <div className="overflow-x-auto rounded-2xl border border-white/[0.06] bg-[#151922]">
+          <div className="overflow-x-auto rounded-2xl border border-white/[0.06] bg-[#212B4E]">
             <table className="w-full min-w-[640px] border-collapse text-left text-[14px]">
               <thead>
-                <tr className="border-b border-white/[0.08] bg-[#0E1016]">
-                  <th scope="col" className="w-[22%] px-4 py-3 font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">
+                <tr className="border-b border-white/[0.08] bg-[#19223F]">
+                  <th scope="col" className="w-[22%] px-4 py-3 text-[12.5px] text-[#9AA1CC] font-semibold">
                     Feature
                   </th>
-                  <th scope="col" className="w-[39%] px-4 py-3 font-semibold text-[#FF8A3D]">SpriteLab</th>
+                  <th scope="col" className="w-[39%] px-4 py-3 font-semibold text-[#FFA300]">SpriteLab</th>
                   <th scope="col" className="w-[39%] px-4 py-3 font-semibold text-white">{c.competitor}</th>
                 </tr>
               </thead>
               <tbody>
                 {c.rows.map((r) => (
                   <tr key={r.feature} className="border-b border-white/[0.05] last:border-0 align-top">
-                    <th scope="row" className="px-4 py-3 font-medium text-[#ECEEF3]">{r.feature}</th>
-                    <td className="px-4 py-3 leading-relaxed text-[#C9CFDB]">{r.spritelab}</td>
-                    <td className="px-4 py-3 leading-relaxed text-[#C9CFDB]">{r.competitor}</td>
+                    <th scope="row" className="px-4 py-3 font-medium text-[#FFF1E8]">{r.feature}</th>
+                    <td className="px-4 py-3 leading-relaxed text-[#C8CCE8]">{r.spritelab}</td>
+                    <td className="px-4 py-3 leading-relaxed text-[#C8CCE8]">{r.competitor}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <p className="mt-3 font-mono text-[11.5px] text-[#7A8294]">
-            {`// "Not listed on their site" means we could not find it on ${c.competitor}'s official pages — not that it definitely doesn't exist.`}
+          <p className="mt-3 font-mono text-[11.5px] text-[#8A92BF]">
+            {`"Not listed on their site" means we could not find it on ${c.competitor}'s official pages — not that it definitely doesn't exist.`}
           </p>
         </div>
       </section>
 
       {/* ═══ WHO SHOULD CHOOSE WHAT ═══ */}
-      <section className="border-y border-white/[0.06] bg-[#0E1016] py-20">
+      <section className="border-y border-white/[0.06] bg-[#19223F] py-20">
         <div className={CONTAINER}>
           <SectionHead eyebrow="which one" title="Which should you choose?" />
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -158,13 +157,13 @@ export default async function ComparePage({ params }: { params: Promise<Params> 
             {c.faq.map((f) => (
               <details
                 key={f.q}
-                className="group rounded-2xl border border-white/[0.06] bg-[#151922] px-5 py-4 open:border-white/[0.1]"
+                className="group rounded-2xl border border-white/[0.06] bg-[#212B4E] px-5 py-4 open:border-white/[0.1]"
               >
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-[15px] font-semibold text-[#ECEEF3] [&::-webkit-details-marker]:hidden">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-[15px] font-semibold text-[#FFF1E8] [&::-webkit-details-marker]:hidden">
                   <h3>{f.q}</h3>
-                  <span className="font-mono text-[14px] text-[#FF8A3D] transition-transform group-open:rotate-45">+</span>
+                  <span className="font-mono text-[14px] text-[#FFA300] transition-transform group-open:rotate-45">+</span>
                 </summary>
-                <p className="mt-2.5 text-[14px] leading-relaxed text-[#8B93A5]">{f.a}</p>
+                <p className="mt-2.5 text-[14px] leading-relaxed text-[#9AA1CC]">{f.a}</p>
               </details>
             ))}
           </div>
@@ -177,29 +176,29 @@ export default async function ComparePage({ params }: { params: Promise<Params> 
           <SectionHead eyebrow="sources" title="Sources" intro={`Checked on ${COMPARE_CHECKED_ON_LABEL}.`} />
           <ul className="space-y-2">
             {c.sources.map((s) => (
-              <li key={s.url} className="text-[14px] text-[#C9CFDB]">
+              <li key={s.url} className="text-[14px] text-[#C8CCE8]">
                 <a href={s.url} target="_blank" rel="noopener noreferrer nofollow" className="hover:text-white hover:underline">
                   {s.label}
                 </a>
-                <span className="ml-2 break-all font-mono text-[11.5px] text-[#7A8294]">{s.url}</span>
+                <span className="ml-2 break-all font-mono text-[11.5px] text-[#8A92BF]">{s.url}</span>
               </li>
             ))}
           </ul>
           <div className="mt-6">
             <Disclaimer checked={COMPARE_CHECKED_ON_LABEL} />
           </div>
-          <p className="mt-6 text-[14px] text-[#8B93A5]">
+          <p className="mt-6 text-[14px] text-[#9AA1CC]">
             More comparisons:{" "}
             {others.map((o, i) => (
               <span key={o.slug}>
-                <Link href={`/compare/${o.slug}`} className="text-[#FF8A3D] hover:underline">
+                <Link href={`/compare/${o.slug}`} className="text-[#FFA300] hover:underline">
                   SpriteLab vs {o.competitor}
                 </Link>
                 {i < others.length - 1 ? " · " : ""}
               </span>
             ))}
             {" · "}
-            <Link href="/compare" className="text-[#FF8A3D] hover:underline">
+            <Link href="/compare" className="text-[#FFA300] hover:underline">
               all AI sprite generators
             </Link>
           </p>
@@ -215,13 +214,13 @@ export default async function ComparePage({ params }: { params: Promise<Params> 
 function ChooseCard({ title, items, accent = false }: { title: string; items: string[]; accent?: boolean }) {
   return (
     <div
-      className={`rounded-2xl border bg-[#151922] p-6 ${accent ? "border-[#FF8A3D]/25" : "border-white/[0.06]"}`}
+      className={`rounded-2xl border bg-[#212B4E] p-6 ${accent ? "border-[#FFA300]/25" : "border-white/[0.06]"}`}
     >
       <h3 className="font-display text-[20px] font-semibold leading-tight text-white">{title}</h3>
       <ul className="mt-4 space-y-2.5">
         {items.map((it) => (
-          <li key={it} className="flex items-start gap-3 text-[14px] leading-relaxed text-[#C9CFDB]">
-            <Check className={`mt-1 h-4 w-4 shrink-0 ${accent ? "text-[#FF8A3D]" : "text-[#8B93A5]"}`} />
+          <li key={it} className="flex items-start gap-3 text-[14px] leading-relaxed text-[#C8CCE8]">
+            <Check className={`mt-1 h-4 w-4 shrink-0 ${accent ? "text-[#FFA300]" : "text-[#9AA1CC]"}`} />
             {it}
           </li>
         ))}

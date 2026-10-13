@@ -35,7 +35,7 @@ export function CommunityAvatar({
   return (
     <span
       style={style}
-      className={`flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#FF8A3D] to-[#E0562A] font-semibold leading-none text-white ${className}`}
+      className={`flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#FFA300] to-[#E08600] font-semibold leading-none text-white ${className}`}
     >
       {(name?.trim()?.[0] || "?").toUpperCase()}
     </span>

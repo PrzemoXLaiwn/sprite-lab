@@ -1,6 +1,6 @@
 export default function DashboardLoading() {
   return (
-    <div className="min-h-screen bg-[#0B0D12] px-4 py-6 sm:px-6" role="status" aria-label="Loading">
+    <div className="min-h-screen bg-[#131A31] px-4 py-6 sm:px-6" role="status" aria-label="Loading">
       {/* Header skeleton */}
       <div className="mb-8">
         <div className="mb-2.5 h-7 w-48 animate-pulse rounded-lg bg-white/[0.05]" />
@@ -12,7 +12,7 @@ export default function DashboardLoading() {
         {Array.from({ length: 8 }).map((_, i) => (
           <div
             key={i}
-            className="aspect-square animate-pulse rounded-xl border border-white/[0.06] bg-[#0E1016]"
+            className="aspect-square animate-pulse rounded-xl border border-white/[0.06] bg-[#19223F]"
             style={{ animationDelay: `${i * 80}ms` }}
           />
         ))}

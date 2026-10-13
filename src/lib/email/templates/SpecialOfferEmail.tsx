@@ -147,7 +147,7 @@ export function SpecialOfferEmail({
 
 // Styles
 const main = {
-  backgroundColor: "#0a0c10",
+  backgroundColor: "#0F1529",
   fontFamily:
     '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif',
 };
@@ -171,11 +171,11 @@ const logo = {
 };
 
 const logoAccent = {
-  color: "#FF6B2C",
+  color: "#FF9500",
 };
 
 const content = {
-  backgroundColor: "#11151b",
+  backgroundColor: "#161E39",
   borderRadius: "16px",
   padding: "32px",
   border: "1px solid rgba(255,255,255,0.06)",
@@ -196,7 +196,7 @@ const heading = {
 };
 
 const paragraph = {
-  color: "#a0a0b0",
+  color: "#A7ADD4",
   fontSize: "16px",
   lineHeight: "24px",
   margin: "0 0 24px",
@@ -226,7 +226,7 @@ const offerSubtext = {
 };
 
 const promoCodeBox = {
-  backgroundColor: "#0a0c10",
+  backgroundColor: "#0F1529",
   borderRadius: "8px",
   padding: "12px 20px",
   margin: "0 auto 12px",
@@ -234,13 +234,13 @@ const promoCodeBox = {
 };
 
 const promoCodeLabel = {
-  color: "#a0a0b0",
+  color: "#A7ADD4",
   fontSize: "12px",
   margin: "0 0 4px",
 };
 
 const promoCodeValue = {
-  color: "#FF6B2C",
+  color: "#FF9500",
   fontSize: "24px",
   fontWeight: "bold",
   fontFamily: "monospace",
@@ -256,7 +256,7 @@ const expiryText = {
 };
 
 const whatsNewBox = {
-  backgroundColor: "#0f0f15",
+  backgroundColor: "#0F1529",
   borderRadius: "12px",
   padding: "20px",
   margin: "0 0 24px",
@@ -271,7 +271,7 @@ const whatsNewTitle = {
 };
 
 const whatsNewItem = {
-  color: "#a0a0b0",
+  color: "#A7ADD4",
   fontSize: "14px",
   margin: "0 0 10px",
   lineHeight: "20px",
@@ -294,10 +294,10 @@ const popularGrid = {
 };
 
 const popularItem = {
-  backgroundColor: "#0f0f15",
+  backgroundColor: "#0F1529",
   borderRadius: "8px",
   padding: "12px 16px",
-  color: "#a0a0b0",
+  color: "#A7ADD4",
   fontSize: "14px",
   margin: "0 0 8px",
   border: "1px solid rgba(255,255,255,0.06)",
@@ -311,7 +311,7 @@ const buttonContainer = {
 const button = {
   background: "linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)",
   borderRadius: "8px",
-  color: "#0a0c10",
+  color: "#0F1529",
   fontSize: "16px",
   fontWeight: "bold",
   textDecoration: "none",
@@ -321,7 +321,7 @@ const button = {
 };
 
 const smallText = {
-  color: "#606070",
+  color: "#8A92BF",
   fontSize: "14px",
   textAlign: "center" as const,
   margin: "0 0 24px",
@@ -335,14 +335,14 @@ const valueBox = {
 };
 
 const valueTitle = {
-  color: "#FF6B2C",
+  color: "#FF9500",
   fontSize: "14px",
   fontWeight: "bold",
   margin: "0 0 12px",
 };
 
 const valueItem = {
-  color: "#a0a0b0",
+  color: "#A7ADD4",
   fontSize: "14px",
   margin: "0 0 8px",
   lineHeight: "20px",
@@ -354,13 +354,13 @@ const footer = {
 };
 
 const footerText = {
-  color: "#606070",
+  color: "#8A92BF",
   fontSize: "12px",
   margin: "0 0 8px",
 };
 
 const link = {
-  color: "#FF6B2C",
+  color: "#FF9500",
   textDecoration: "underline",
 };
 

@@ -37,26 +37,26 @@ export function ContinueBanner({ current }: { current: WorkspaceTool }) {
   };
 
   return (
-    <div className="mb-4 flex items-center gap-2 rounded-xl border border-white/[0.08] bg-[#151922] p-1.5 pr-1">
+    <div className="mb-4 flex items-center gap-2 rounded-xl border border-white/[0.08] bg-[#212B4E] p-1.5 pr-1">
       <Link href={last.href}
         className="group flex min-h-11 min-w-0 flex-1 items-center gap-2.5 rounded-lg px-1.5 transition-colors hover:bg-white/[0.04]">
-        <span className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/[0.06] bg-[#0E1016]"
+        <span className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/[0.06] bg-[#19223F]"
           style={{ backgroundImage: "repeating-conic-gradient(#ffffff08 0% 25%, transparent 0% 50%)", backgroundSize: "8px 8px" }}>
           {last.thumbUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={last.thumbUrl} alt="" className={`h-full w-full object-contain p-0.5 ${last.pixel ? "pixel-perfect" : ""}`} />
           ) : (
-            <History className="h-4 w-4 text-[#8B93A5]" aria-hidden />
+            <History className="h-4 w-4 text-[#9AA1CC]" aria-hidden />
           )}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block font-mono text-[10.5px] uppercase tracking-[0.08em] text-[#FFB27A]">{VERB[last.tool]}</span>
-          <span className="block truncate text-[12.5px] text-[#C9CFDB]" title={last.title}>{last.title || "Your last session"}</span>
+          <span className="block text-[12.5px] text-[#FFC857] font-semibold">{VERB[last.tool]}</span>
+          <span className="block truncate text-[12.5px] text-[#C8CCE8]" title={last.title}>{last.title || "Your last session"}</span>
         </span>
-        <ArrowRight className="h-4 w-4 shrink-0 text-[#8B93A5] transition-colors group-hover:text-white" aria-hidden />
+        <ArrowRight className="h-4 w-4 shrink-0 text-[#9AA1CC] transition-colors group-hover:text-white" aria-hidden />
       </Link>
       <button type="button" onClick={dismiss} aria-label="Dismiss"
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[#8B93A5] transition-colors hover:bg-white/[0.06] hover:text-white">
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[#9AA1CC] transition-colors hover:bg-white/[0.06] hover:text-white">
         <X className="h-4 w-4" />
       </button>
     </div>
@@ -66,15 +66,15 @@ export function ContinueBanner({ current }: { current: WorkspaceTool }) {
 /** "Picked up where you left off · Start fresh" after an automatic restore. */
 export function RestoredNote({ onStartFresh, onDismiss }: { onStartFresh: () => void; onDismiss: () => void }) {
   return (
-    <div role="status" className="flex items-center gap-2 rounded-xl border border-[#FF8A3D]/25 bg-[#FF8A3D]/[0.06] py-1 pl-3 pr-1 text-[12px] text-[#ECEEF3]">
-      <History className="h-3.5 w-3.5 shrink-0 text-[#FFB27A]" aria-hidden />
+    <div role="status" className="flex items-center gap-2 rounded-xl border border-[#FFA300]/25 bg-[#FFA300]/[0.06] py-1 pl-3 pr-1 text-[12px] text-[#FFF1E8]">
+      <History className="h-3.5 w-3.5 shrink-0 text-[#FFC857]" aria-hidden />
       <span className="min-w-0 flex-1 leading-snug">Picked up where you left off.</span>
       <button type="button" onClick={onStartFresh}
-        className="min-h-10 shrink-0 rounded-lg px-2.5 font-semibold text-[#FFB27A] transition-colors hover:bg-white/[0.04] hover:text-white lg:min-h-8">
+        className="min-h-10 shrink-0 rounded-lg px-2.5 font-semibold text-[#FFC857] transition-colors hover:bg-white/[0.04] hover:text-white lg:min-h-8">
         Start fresh
       </button>
       <button type="button" onClick={onDismiss} aria-label="Dismiss"
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[#8B93A5] transition-colors hover:bg-white/[0.06] hover:text-white lg:h-8 lg:w-8">
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[#9AA1CC] transition-colors hover:bg-white/[0.06] hover:text-white lg:h-8 lg:w-8">
         <X className="h-3.5 w-3.5" />
       </button>
     </div>

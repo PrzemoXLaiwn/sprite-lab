@@ -42,7 +42,7 @@ const createGameConfig = (
   parent,
   width: 800,
   height: 500,
-  backgroundColor: "#141821",
+  backgroundColor: "#1B2446",
   physics: {
     default: "arcade",
     arcade: {
@@ -200,7 +200,7 @@ const createGameConfig = (
       this.add
         .text(10, 10, "WASD / Arrow Keys to move\nSPACE to jump", {
           fontSize: "12px",
-          color: "#a0a0b0",
+          color: "#A7ADD4",
           backgroundColor: "#14182100",
           padding: { x: 8, y: 4 },
         })
@@ -372,12 +372,12 @@ export function SpritePlayground({
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-[rgba(255,255,255,0.06)]">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-[#FF6B2C] to-[#FF6B2C] flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-[#FFA300] flex items-center justify-center">
             <span className="text-xl">🎮</span>
           </div>
           <div>
             <h2 className="text-lg font-bold text-white">Sprite Playground</h2>
-            <p className="text-xs text-[#a0a0b0]">
+            <p className="text-xs text-[#A7ADD4]">
               Test your sprite in action!
             </p>
           </div>
@@ -421,7 +421,7 @@ export function SpritePlayground({
             variant="outline"
             size="sm"
             onClick={handleDownload}
-            className="border-[#FF6B2C] text-[#FF6B2C]"
+            className="border-[#FF9500] text-[#FF9500]"
           >
             <Download className="w-4 h-4 mr-1" />
             Download
@@ -431,7 +431,7 @@ export function SpritePlayground({
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="text-[#a0a0b0] hover:text-white"
+            className="text-[#A7ADD4] hover:text-white"
           >
             <X className="w-5 h-5" />
           </Button>
@@ -467,10 +467,10 @@ export function SpritePlayground({
                     D
                   </kbd>
                 </div>
-                <span className="text-[10px] text-[#a0a0b0] mt-1">Move</span>
+                <span className="text-[10px] text-[#A7ADD4] mt-1">Move</span>
               </div>
 
-              <div className="text-[#a0a0b0]">or</div>
+              <div className="text-[#A7ADD4]">or</div>
 
               <div className="flex flex-col items-center gap-1">
                 <div className="flex gap-1">
@@ -489,7 +489,7 @@ export function SpritePlayground({
                     →
                   </kbd>
                 </div>
-                <span className="text-[10px] text-[#a0a0b0] mt-1">Move</span>
+                <span className="text-[10px] text-[#A7ADD4] mt-1">Move</span>
               </div>
 
               <div className="h-12 w-px bg-[rgba(255,255,255,0.06)]" />
@@ -498,7 +498,7 @@ export function SpritePlayground({
                 <kbd className="px-4 py-1 rounded bg-[rgba(255,255,255,0.06)] text-white text-sm">
                   SPACE
                 </kbd>
-                <span className="text-[10px] text-[#a0a0b0] mt-1">
+                <span className="text-[10px] text-[#A7ADD4] mt-1">
                   Jump (2x)
                 </span>
               </div>

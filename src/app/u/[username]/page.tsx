@@ -83,7 +83,7 @@ export async function generateMetadata({ params }: ProfilePageProps) {
 }
 
 const SOCIAL_LINK =
-  "inline-flex h-8 items-center gap-1.5 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 text-[12px] text-[#C9CFDB] transition hover:bg-white/[0.08] hover:text-white";
+  "inline-flex h-8 items-center gap-1.5 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 text-[12px] text-[#C8CCE8] transition hover:bg-white/[0.08] hover:text-white";
 
 export default async function ProfilePage({ params }: ProfilePageProps) {
   const { username } = await params;
@@ -103,13 +103,13 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   const getPlanBadgeColor = (plan: string) => {
     switch (plan) {
       case "PRO":
-        return "border-[#FF8A3D]/25 bg-[#FF8A3D]/10 text-[#FFB27A]";
+        return "border-[#FFA300]/25 bg-[#FFA300]/10 text-[#FFC857]";
       case "UNLIMITED":
         return "border-amber-400/20 bg-amber-500/[0.06] text-amber-200";
       case "STARTER":
         return "border-sky-400/20 bg-sky-500/[0.06] text-sky-200";
       default:
-        return "border-white/[0.08] bg-white/[0.04] text-[#C9CFDB]";
+        return "border-white/[0.08] bg-white/[0.04] text-[#C8CCE8]";
     }
   };
 
@@ -119,19 +119,19 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0B0D12] text-[#ECEEF3]">
+    <div className="min-h-screen bg-[#131A31] text-[#FFF1E8]">
       {/* Top bar */}
-      <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-[#0E1016]/90 backdrop-blur-xl">
+      <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-[#19223F]/90 backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-[1400px] items-center justify-between px-5 lg:px-8">
           <Link href="/" className="flex items-center gap-2">
             <Image src="/logo.png" alt="SpriteLab" width={26} height={26} />
             <span className="font-display text-[16px] font-semibold tracking-normal text-white">
-              Sprite<span className="text-[#FF8A3D]">Lab</span>
+              Sprite<span className="text-[#FFA300]">Lab</span>
             </span>
           </Link>
           <Link
             href="/community"
-            className="flex h-9 items-center gap-1.5 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 text-[13px] text-[#C9CFDB] transition hover:bg-white/[0.08] hover:text-white"
+            className="flex h-9 items-center gap-1.5 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 text-[13px] text-[#C8CCE8] transition hover:bg-white/[0.08] hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Explore
@@ -141,14 +141,14 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
 
       <main className="mx-auto max-w-[1400px] px-5 py-6 lg:px-8">
         {/* Profile header */}
-        <section className="pixel-grid rounded-2xl border border-white/[0.06] bg-[#0E1016] p-5 sm:p-6">
+        <section className="pixel-grid rounded-2xl border border-white/[0.06] bg-[#19223F] p-5 sm:p-6">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
-            <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/[0.08] bg-[#151922]">
+            <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/[0.08] bg-[#212B4E]">
               {user.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={user.avatarUrl} alt={user.name || user.username || ""} className="h-full w-full object-cover" />
               ) : (
-                <User className="h-10 w-10 text-[#7A8294]" />
+                <User className="h-10 w-10 text-[#8A92BF]" />
               )}
             </div>
 
@@ -163,10 +163,10 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
                   </span>
                 )}
               </div>
-              <p className="mt-0.5 font-mono text-[12px] text-[#8B93A5]">@{user.username}</p>
+              <p className="mt-0.5 font-mono text-[12px] text-[#9AA1CC]">@{user.username}</p>
 
               {user.bio && (
-                <p className="mt-3 max-w-2xl text-[14px] leading-relaxed text-[#C9CFDB]">{user.bio}</p>
+                <p className="mt-3 max-w-2xl text-[14px] leading-relaxed text-[#C8CCE8]">{user.bio}</p>
               )}
 
               {/* Stats */}
@@ -174,13 +174,13 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
                 {stats.map((s) => (
                   <div key={s.label} className="flex items-baseline gap-2">
                     <span className="font-sans tracking-tight text-[22px] font-semibold leading-none tracking-normal text-white tabular-nums">{s.value}</span>
-                    <span className="flex items-center gap-1 font-mono text-[11px] text-[#8B93A5]">
-                      <s.icon className="h-3 w-3 text-[#FF8A3D]" />
+                    <span className="flex items-center gap-1 font-mono text-[11px] text-[#9AA1CC]">
+                      <s.icon className="h-3 w-3 text-[#FFA300]" />
                       {s.label}
                     </span>
                   </div>
                 ))}
-                <span className="flex items-center gap-1.5 font-mono text-[11px] text-[#8B93A5]">
+                <span className="flex items-center gap-1.5 font-mono text-[11px] text-[#9AA1CC]">
                   <Calendar className="h-3 w-3" />
                   Joined {formatDate(user.createdAt)}
                 </span>
@@ -228,7 +228,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
 
             <Link
               href="/generate"
-              className="px-corners flex h-10 shrink-0 items-center justify-center gap-2 self-start bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] px-4 text-[13px] font-semibold text-white transition hover:brightness-110"
+              className="px-corners flex h-10 shrink-0 items-center justify-center gap-2 self-start bg-[#FFA300] px-4 text-[13px] font-semibold text-[#131A31] transition hover:bg-[#FFB733]"
             >
               <Sparkles className="h-4 w-4" />
               Create your own
@@ -239,9 +239,9 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
         {/* Public gallery */}
         <section className="mt-8">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">Public gallery</h2>
+            <h2 className="text-[12.5px] text-[#9AA1CC] font-semibold">Public gallery</h2>
             {user._count.generations > user.generations.length && (
-              <span className="font-mono text-[11px] text-[#7A8294]">
+              <span className="font-mono text-[11px] text-[#8A92BF]">
                 latest {user.generations.length} of {user._count.generations}
               </span>
             )}
@@ -253,7 +253,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
                 <div
                   key={gen.id}
                   title={gen.prompt}
-                  className="group relative aspect-square overflow-hidden rounded-2xl border border-white/[0.06] bg-[#151922] transition-colors hover:border-white/20"
+                  className="group relative aspect-square overflow-hidden rounded-2xl border border-white/[0.06] bg-[#212B4E] transition-colors hover:border-white/20"
                   style={CHECKERBOARD}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -265,7 +265,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
                   />
                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent px-3 pb-2.5 pt-8">
                     <p className="line-clamp-1 text-[12px] font-medium text-white">{gen.prompt}</p>
-                    <div className="mt-1 flex items-center gap-1 text-[#C9CFDB]">
+                    <div className="mt-1 flex items-center gap-1 text-[#C8CCE8]">
                       <Heart className={`h-3 w-3 ${gen.likes > 0 ? "fill-rose-400 text-rose-400" : ""}`} />
                       <span className="font-mono text-[11px] tabular-nums">{gen.likes}</span>
                     </div>
@@ -274,23 +274,23 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-white/[0.06] bg-[#0E1016] px-6 py-16 text-center">
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-white/[0.06] bg-[#19223F] px-6 py-16 text-center">
               <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.04]">
-                <Images className="h-5 w-5 text-[#8B93A5]" />
+                <Images className="h-5 w-5 text-[#9AA1CC]" />
               </div>
               <p className="text-[15px] font-semibold text-white">No public assets yet</p>
-              <p className="mt-1 text-[13px] text-[#8B93A5]">Shared sprites will show up here.</p>
+              <p className="mt-1 text-[13px] text-[#9AA1CC]">Shared sprites will show up here.</p>
             </div>
           )}
         </section>
 
         {/* CTA */}
-        <section className="mt-12 flex flex-col items-center rounded-2xl border border-white/[0.06] bg-[#0E1016] px-6 py-10 text-center">
+        <section className="mt-12 flex flex-col items-center rounded-2xl border border-white/[0.06] bg-[#19223F] px-6 py-10 text-center">
           <p className="text-[15px] font-semibold text-white">Want to create your own game assets?</p>
-          <p className="mt-1 text-[13px] text-[#8B93A5]">Generate sprites from a text prompt in seconds.</p>
+          <p className="mt-1 text-[13px] text-[#9AA1CC]">Generate sprites from a text prompt in seconds.</p>
           <Link
             href="/generate"
-            className="px-corners mt-5 flex h-10 items-center gap-2 bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] px-5 text-[13px] font-semibold text-white transition hover:brightness-110"
+            className="px-corners mt-5 flex h-10 items-center gap-2 bg-[#FFA300] px-5 text-[13px] font-semibold text-[#131A31] transition hover:bg-[#FFB733]"
           >
             <Sparkles className="h-4 w-4" />
             Start creating for free

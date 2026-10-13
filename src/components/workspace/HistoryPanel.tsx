@@ -63,7 +63,7 @@ const PANEL_TITLE: Record<WorkspaceTool, string> = {
 export function HistoryButton({ onClick, className }: { onClick: () => void; className?: string }) {
   return (
     <button type="button" onClick={onClick} aria-haspopup="dialog"
-      className={`flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 text-[13px] font-medium text-[#C9CFDB] transition hover:bg-white/[0.08] hover:text-white xl:hidden ${className ?? ""}`}>
+      className={`flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 text-[13px] font-medium text-[#C8CCE8] transition hover:bg-white/[0.08] hover:text-white xl:hidden ${className ?? ""}`}>
       <History className="h-4 w-4" aria-hidden /> History
     </button>
   );
@@ -209,8 +209,8 @@ function HistoryTile({ item, active, onSelect }: { item: HistoryItem; active: bo
       aria-label={`Open ${badge ? `${badge.toLowerCase()} ` : ""}“${title}”`} aria-current={active || undefined}
       onPointerEnter={() => setHover(true)} onPointerLeave={() => setHover(false)}
       onFocus={() => setHover(true)} onBlur={() => setHover(false)}
-      className={`group relative aspect-square w-full overflow-hidden rounded-xl border bg-[#151922] transition-colors ${
-        active ? "border-[#FF8A3D] ring-2 ring-[#FF8A3D]/25" : "border-white/[0.06] hover:border-[#FF8A3D]/50"
+      className={`group relative aspect-square w-full overflow-hidden rounded-xl border bg-[#212B4E] transition-colors ${
+        active ? "border-[#FFA300] ring-2 ring-[#FFA300]/25" : "border-white/[0.06] hover:border-[#FFA300]/50"
       }`}
       style={{ backgroundImage: "repeating-conic-gradient(#ffffff08 0% 25%, transparent 0% 50%)", backgroundSize: "12px 12px" }}>
       {kind === "animation" ? (
@@ -221,7 +221,7 @@ function HistoryTile({ item, active, onSelect }: { item: HistoryItem; active: bo
           className={`absolute inset-0 h-full w-full object-contain p-2 transition-transform duration-300 group-hover:scale-105 ${isPixel(item.styleId) ? "pixel-perfect" : ""}`} />
       )}
       {badge && (
-        <span className="pointer-events-none absolute bottom-1.5 left-1.5 max-w-[calc(100%-12px)] truncate rounded-md bg-black/70 px-1.5 py-0.5 font-mono text-[10px] leading-tight text-[#ECEEF3]">
+        <span className="pointer-events-none absolute bottom-1.5 left-1.5 max-w-[calc(100%-12px)] truncate rounded-md bg-black/70 px-1.5 py-0.5 font-mono text-[10px] leading-tight text-[#FFF1E8]">
           {badge}
         </span>
       )}
@@ -251,14 +251,14 @@ function PanelBody({ tool, filter, setFilter, query, setQuery, data, activeIds, 
     <>
       <div className="space-y-2 px-4 pb-3">
         <label htmlFor={searchId} className="sr-only">Search my generations</label>
-        <div className="flex h-10 items-center gap-2 rounded-xl border border-white/[0.08] bg-[#151922] px-3 focus-within:border-[#FF8A3D]/50">
-          <Search className="h-4 w-4 shrink-0 text-[#7A8294]" aria-hidden />
+        <div className="flex h-10 items-center gap-2 rounded-xl border border-white/[0.08] bg-[#212B4E] px-3 focus-within:border-[#FFA300]/50">
+          <Search className="h-4 w-4 shrink-0 text-[#8A92BF]" aria-hidden />
           <input id={searchId} type="text" role="searchbox" enterKeyHint="search" value={query} onChange={(e) => setQuery(e.target.value)} maxLength={80}
             placeholder="Search my generations" autoComplete="off"
-            className="min-w-0 flex-1 bg-transparent text-[13px] text-white outline-none placeholder:text-[#7A8294]" />
+            className="min-w-0 flex-1 bg-transparent text-[13px] text-white outline-none placeholder:text-[#8A92BF]" />
           {query && (
             <button type="button" onClick={() => setQuery("")} aria-label="Clear search"
-              className="-mr-2 flex h-9 w-9 items-center justify-center rounded-lg text-[#8B93A5] hover:text-white">
+              className="-mr-2 flex h-9 w-9 items-center justify-center rounded-lg text-[#9AA1CC] hover:text-white">
               <X className="h-3.5 w-3.5" />
             </button>
           )}
@@ -268,7 +268,7 @@ function PanelBody({ tool, filter, setFilter, query, setQuery, data, activeIds, 
             {filters.map((f) => (
               <button key={f.id} type="button" onClick={() => setFilter(f.id)} aria-pressed={filter === f.id}
                 className={`min-h-9 flex-1 rounded-lg px-2 text-[12.5px] font-medium transition-colors lg:min-h-8 lg:text-[12px] ${
-                  filter === f.id ? "bg-white/[0.1] text-white shadow-sm" : "text-[#8B93A5] hover:text-white"
+                  filter === f.id ? "bg-white/[0.1] text-white shadow-sm" : "text-[#9AA1CC] hover:text-white"
                 }`}>
                 {f.label}
               </button>
@@ -283,17 +283,17 @@ function PanelBody({ tool, filter, setFilter, query, setQuery, data, activeIds, 
             {Array.from({ length: 6 }, (_, i) => <div key={i} className="aspect-square animate-pulse rounded-xl bg-white/[0.04]" />)}
           </div>
         ) : state === "signed-out" ? (
-          <p className="py-6 text-center text-[12.5px] text-[#8B93A5]">Sign in to see your generations.</p>
+          <p className="py-6 text-center text-[12.5px] text-[#9AA1CC]">Sign in to see your generations.</p>
         ) : state === "error" ? (
           <div className="flex flex-col items-center gap-2 py-6 text-center">
-            <p className="text-[12.5px] text-[#8B93A5]">Couldn&apos;t load your history.</p>
+            <p className="text-[12.5px] text-[#9AA1CC]">Couldn&apos;t load your history.</p>
             <button type="button" onClick={reload}
-              className="flex h-10 items-center rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 text-[13px] font-medium text-[#C9CFDB] hover:text-white">
+              className="flex h-10 items-center rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 text-[13px] font-medium text-[#C8CCE8] hover:text-white">
               Try again
             </button>
           </div>
         ) : items.length === 0 && state === "ready" ? (
-          <p className="py-6 text-center text-[12.5px] leading-relaxed text-[#8B93A5]">
+          <p className="py-6 text-center text-[12.5px] leading-relaxed text-[#9AA1CC]">
             {normalizeHistoryQuery(query) ? <>Nothing matches “{normalizeHistoryQuery(query)}”.</> : EMPTY_TEXT[filter]}
           </p>
         ) : (
@@ -305,7 +305,7 @@ function PanelBody({ tool, filter, setFilter, query, setQuery, data, activeIds, 
             </div>
             {items.length < total && (
               <button type="button" onClick={loadMore} disabled={loadingMore}
-                className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] text-[13px] font-medium text-[#C9CFDB] hover:text-white disabled:opacity-60">
+                className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] text-[13px] font-medium text-[#C8CCE8] hover:text-white disabled:opacity-60">
                 {loadingMore && <Loader2 className="h-4 w-4 animate-spin" />} Load more
               </button>
             )}
@@ -364,10 +364,10 @@ export function HistoryPanel({ tool, activeIds = [], open, onOpenChange, onSelec
 
   return (
     <>
-      <aside aria-label={title} className="hidden w-[288px] shrink-0 flex-col border-l border-white/[0.06] bg-[#0E1016] xl:flex xl:min-h-0">
+      <aside aria-label={title} className="hidden w-[288px] shrink-0 flex-col border-l border-white/[0.06] bg-[#19223F] xl:flex xl:min-h-0">
         <div className="flex items-center justify-between px-4 pb-3 pt-5">
           <p className="font-display text-[15px] font-semibold text-white">{title}</p>
-          <Link href="/assets" className="inline-flex min-h-8 items-center text-[11.5px] text-[#8B93A5] hover:text-white">All assets →</Link>
+          <Link href="/assets" className="inline-flex min-h-8 items-center text-[11.5px] text-[#9AA1CC] hover:text-white">All assets →</Link>
         </div>
         {wide && <PanelBody {...bodyProps} columns="two" />}
       </aside>
@@ -376,14 +376,14 @@ export function HistoryPanel({ tool, activeIds = [], open, onOpenChange, onSelec
         <div className="fixed inset-0 z-50 xl:hidden" role="dialog" aria-modal="true" aria-label={title}>
           <button type="button" aria-label="Close history" tabIndex={-1} onClick={() => onOpenChange(false)}
             className="absolute inset-0 h-full w-full cursor-default bg-black/60 backdrop-blur-[2px]" />
-          <div className="absolute inset-x-0 bottom-0 flex max-h-[85dvh] flex-col rounded-t-3xl border-t border-white/[0.08] bg-[#0E1016] pb-[env(safe-area-inset-bottom)] shadow-[0_-24px_60px_-20px_rgba(0,0,0,0.8)] md:inset-x-auto md:right-4 md:bottom-4 md:w-[420px] md:rounded-3xl md:border">
+          <div className="absolute inset-x-0 bottom-0 flex max-h-[85dvh] flex-col rounded-t-3xl border-t border-white/[0.08] bg-[#19223F] pb-[env(safe-area-inset-bottom)] shadow-[0_-24px_60px_-20px_rgba(0,0,0,0.8)] md:inset-x-auto md:right-4 md:bottom-4 md:w-[420px] md:rounded-3xl md:border">
             <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-white/[0.12] md:hidden" aria-hidden />
             <div className="flex items-center justify-between gap-3 px-4 pb-3 pt-2 md:pt-4">
               <p className="font-display text-[16px] font-semibold text-white">{title}</p>
               <div className="flex items-center gap-1">
-                <Link href="/assets" className="inline-flex min-h-10 items-center px-2 text-[12px] text-[#8B93A5] hover:text-white">All assets →</Link>
+                <Link href="/assets" className="inline-flex min-h-10 items-center px-2 text-[12px] text-[#9AA1CC] hover:text-white">All assets →</Link>
                 <button ref={closeRef} type="button" onClick={() => onOpenChange(false)} aria-label="Close history"
-                  className="flex h-10 w-10 items-center justify-center rounded-xl text-[#C9CFDB] hover:bg-white/[0.06] hover:text-white">
+                  className="flex h-10 w-10 items-center justify-center rounded-xl text-[#C8CCE8] hover:bg-white/[0.06] hover:text-white">
                   <X className="h-5 w-5" />
                 </button>
               </div>

@@ -17,13 +17,13 @@ export default function DashboardError({
 
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-4 py-10">
-      <div className="w-full max-w-[420px] rounded-2xl border border-white/[0.06] bg-[#0E1016] p-7 text-center">
+      <div className="w-full max-w-[420px] rounded-2xl border border-white/[0.06] bg-[#19223F] p-7 text-center">
         <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-xl border border-red-400/20 bg-red-500/[0.06] text-red-200">
           <AlertTriangle className="h-5 w-5" />
         </div>
 
         <h2 className="font-display text-[22px] font-semibold text-white">Something went wrong</h2>
-        <p className="mt-2 text-[14px] leading-relaxed text-[#8B93A5]">
+        <p className="mt-2 text-[14px] leading-relaxed text-[#9AA1CC]">
           We couldn&apos;t load this page. Try again, or go back to the generator.
         </p>
 
@@ -31,14 +31,14 @@ export default function DashboardError({
           <button
             type="button"
             onClick={reset}
-            className="px-corners inline-flex h-11 items-center justify-center gap-2 bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] px-5 text-[14px] font-semibold text-white transition-[filter] hover:brightness-110"
+            className="px-corners inline-flex h-11 items-center justify-center gap-2 bg-[#FFA300] px-5 text-[14px] font-semibold text-[#131A31] transition-[filter] hover:bg-[#FFB733]"
           >
             <RefreshCw className="h-4 w-4" />
             Try again
           </button>
           <Link
             href="/generate"
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-5 text-[14px] font-medium text-[#ECEEF3] transition-colors hover:bg-white/[0.08]"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-5 text-[14px] font-medium text-[#FFF1E8] transition-colors hover:bg-white/[0.08]"
           >
             <LayoutDashboard className="h-4 w-4" />
             Back to generator
@@ -46,7 +46,7 @@ export default function DashboardError({
         </div>
 
         {error.digest && (
-          <p className="mt-6 font-mono text-[11px] text-[#7A8294]">Error ID: {error.digest}</p>
+          <p className="mt-6 font-mono text-[11px] text-[#8A92BF]">Error ID: {error.digest}</p>
         )}
       </div>
     </div>

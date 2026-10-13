@@ -102,7 +102,7 @@ function SuccessContent() {
       <p>
         <CreditChip>+{credits} credits</CreditChip>
       </p>
-      <p className="text-[#8B93A5]">Your {packName} pack has been added to your account.</p>
+      <p className="text-[#9AA1CC]">Your {packName} pack has been added to your account.</p>
     </SuccessShell>
   );
 }

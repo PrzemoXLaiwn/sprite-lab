@@ -13,7 +13,7 @@ const CHECKER = {
 };
 
 const iconBtn =
-  "flex h-9 w-9 items-center justify-center rounded-lg border sm:h-8 sm:w-8 border-white/[0.08] bg-[#0E1016]/90 text-[#C9CFDB] backdrop-blur transition-colors hover:bg-[#1A1F2A] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8A3D]/60";
+  "flex h-9 w-9 items-center justify-center rounded-lg border sm:h-8 sm:w-8 border-white/[0.08] bg-[#19223F]/90 text-[#C8CCE8] backdrop-blur transition-colors hover:bg-[#263260] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFA300]/60";
 
 export function ProjectSpriteCard({
   asset,
@@ -71,7 +71,7 @@ export function ProjectSpriteCard({
     <div
       tabIndex={0}
       aria-label={asset.prompt}
-      className={`group relative aspect-square rounded-xl border border-white/[0.08] bg-[#151922] transition-colors hover:border-white/20 focus-visible:border-[#FF8A3D]/60 focus-visible:outline-none ${menuOpen ? "z-20" : ""}`}
+      className={`group relative aspect-square rounded-xl border border-white/[0.08] bg-[#212B4E] transition-colors hover:border-white/20 focus-visible:border-[#FFA300]/60 focus-visible:outline-none ${menuOpen ? "z-20" : ""}`}
     >
       <div className="absolute inset-0 overflow-hidden rounded-xl" style={CHECKER}>
         <Image
@@ -84,7 +84,7 @@ export function ProjectSpriteCard({
           className={`object-contain p-2 ${pixel ? "pixel-perfect" : ""}`}
         />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-2 pb-1.5 pt-6 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-          <p className="line-clamp-2 text-[11px] leading-snug text-[#ECEEF3]">{asset.prompt}</p>
+          <p className="line-clamp-2 text-[11px] leading-snug text-[#FFF1E8]">{asset.prompt}</p>
         </div>
       </div>
 
@@ -124,9 +124,9 @@ export function ProjectSpriteCard({
           ref={menuRef}
           role="menu"
           aria-label="Move to folder"
-          className="absolute right-1.5 top-12 z-30 max-h-64 w-44 sm:top-11 sm:w-52 overflow-y-auto rounded-xl border border-white/[0.08] bg-[#0E1016] p-1 shadow-2xl"
+          className="absolute right-1.5 top-12 z-30 max-h-64 w-44 sm:top-11 sm:w-52 overflow-y-auto rounded-xl border border-white/[0.08] bg-[#19223F] p-1 shadow-2xl"
         >
-          <p className="px-2.5 pb-1 pt-1.5 font-mono text-[10.5px] uppercase tracking-[0.08em] text-[#8B93A5]">Move to</p>
+          <p className="px-2.5 pb-1 pt-1.5 text-[12.5px] text-[#9AA1CC] font-semibold">Move to</p>
           {folders.map((f) => {
             const current = f.id === asset.folderId;
             const firstEnabled = folders.find((x) => x.id !== asset.folderId)?.id;
@@ -141,10 +141,10 @@ export function ProjectSpriteCard({
                   setMenuOpen(false);
                   onMove(asset, f.id);
                 }}
-                className="flex min-h-10 w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[13px] sm:min-h-0 sm:text-[12.5px] text-[#C9CFDB] transition-colors hover:bg-white/[0.06] hover:text-white focus-visible:bg-white/[0.06] focus-visible:outline-none disabled:cursor-default disabled:text-[#7A8294] disabled:hover:bg-transparent"
+                className="flex min-h-10 w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[13px] sm:min-h-0 sm:text-[12.5px] text-[#C8CCE8] transition-colors hover:bg-white/[0.06] hover:text-white focus-visible:bg-white/[0.06] focus-visible:outline-none disabled:cursor-default disabled:text-[#8A92BF] disabled:hover:bg-transparent"
               >
                 <span className="truncate">{f.name}</span>
-                {current && <Check className="ml-auto h-3.5 w-3.5 shrink-0 text-[#FF8A3D]" />}
+                {current && <Check className="ml-auto h-3.5 w-3.5 shrink-0 text-[#FFA300]" />}
               </button>
             );
           })}

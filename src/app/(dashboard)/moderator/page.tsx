@@ -64,7 +64,7 @@ const CHIP = "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 tex
 // Skeleton components
 function StatSkeleton() {
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-[#0E1016] p-5">
+    <div className="rounded-2xl border border-white/[0.06] bg-[#19223F] p-5">
       <div className="mb-3 h-3 w-24 animate-pulse rounded bg-white/[0.06]" />
       <div className="h-8 w-14 animate-pulse rounded bg-white/[0.06]" />
     </div>
@@ -73,7 +73,7 @@ function StatSkeleton() {
 
 function ReportSkeleton() {
   return (
-    <div className="space-y-3 rounded-xl border border-white/[0.08] bg-[#151922] p-4">
+    <div className="space-y-3 rounded-xl border border-white/[0.08] bg-[#212B4E] p-4">
       <div className="flex items-center gap-2">
         <div className="h-5 w-20 animate-pulse rounded-full bg-white/[0.06]" />
         <div className="h-5 w-20 animate-pulse rounded-full bg-white/[0.06]" />
@@ -98,12 +98,12 @@ function ModStat({
   return (
     <div
       className={`rounded-2xl border p-4 sm:p-5 ${
-        highlight ? "border-amber-400/20 bg-amber-500/[0.06]" : "border-white/[0.06] bg-[#0E1016]"
+        highlight ? "border-amber-400/20 bg-amber-500/[0.06]" : "border-white/[0.06] bg-[#19223F]"
       }`}
     >
       <div className="mb-2 flex items-center justify-between gap-2">
-        <p className={`truncate text-[12px] ${highlight ? "text-amber-200" : "text-[#8B93A5]"}`}>{label}</p>
-        <Icon className={`h-4 w-4 ${highlight ? "text-amber-300" : "text-[#7A8294]"}`} />
+        <p className={`truncate text-[12px] ${highlight ? "text-amber-200" : "text-[#9AA1CC]"}`}>{label}</p>
+        <Icon className={`h-4 w-4 ${highlight ? "text-amber-300" : "text-[#8A92BF]"}`} />
       </div>
       <p className="truncate font-sans text-[24px] font-semibold leading-tight tracking-tight tabular-nums text-white sm:text-[28px]">{new Intl.NumberFormat("en-GB").format(value)}</p>
     </div>
@@ -202,12 +202,12 @@ export default function ModeratorPage() {
         );
       case "DISMISSED":
         return (
-          <span className={`${CHIP} border-white/[0.08] bg-white/[0.04] text-[#8B93A5]`}>
+          <span className={`${CHIP} border-white/[0.08] bg-white/[0.04] text-[#9AA1CC]`}>
             <XCircle className="h-3 w-3" /> Dismissed
           </span>
         );
       default:
-        return <span className={`${CHIP} border-white/[0.08] bg-white/[0.04] text-[#C9CFDB]`}>{status}</span>;
+        return <span className={`${CHIP} border-white/[0.08] bg-white/[0.04] text-[#C8CCE8]`}>{status}</span>;
     }
   };
 
@@ -217,7 +217,7 @@ export default function ModeratorPage() {
       INAPPROPRIATE: "border-red-400/20 bg-red-500/[0.06] text-red-200",
       HARASSMENT: "border-rose-400/20 bg-rose-500/[0.06] text-rose-200",
       COPYRIGHT: "border-sky-400/20 bg-sky-500/[0.06] text-sky-200",
-      OTHER: "border-white/[0.08] bg-white/[0.04] text-[#C9CFDB]",
+      OTHER: "border-white/[0.08] bg-white/[0.04] text-[#C8CCE8]",
     };
     return (
       <span className={`${CHIP} font-mono ${colors[reason] || colors.OTHER}`}>
@@ -230,8 +230,8 @@ export default function ModeratorPage() {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="text-center">
-          <Loader2 className="mx-auto mb-3 h-6 w-6 animate-spin text-[#FF8A3D]" />
-          <p className="text-[13px] text-[#8B93A5]">Checking access...</p>
+          <Loader2 className="mx-auto mb-3 h-6 w-6 animate-spin text-[#FFA300]" />
+          <p className="text-[13px] text-[#9AA1CC]">Checking access...</p>
         </div>
       </div>
     );
@@ -253,19 +253,19 @@ export default function ModeratorPage() {
   });
 
   return (
-    <div className="mx-auto max-w-[1100px] px-4 py-5 text-[#ECEEF3] sm:px-5 sm:py-6 lg:px-8">
+    <div className="mx-auto max-w-[1100px] px-4 py-5 text-[#FFF1E8] sm:px-5 sm:py-6 lg:px-8">
       {/* Header */}
       <div className="mb-6 flex items-start justify-between gap-3 sm:mb-8">
         <div>
           <div className="flex items-center gap-2.5">
-            <Shield className="h-5 w-5 text-[#FF8A3D]" />
+            <Shield className="h-5 w-5 text-[#FFA300]" />
             <h1 className="font-display text-[22px] font-semibold tracking-tight text-white">Moderator</h1>
           </div>
-          <p className="mt-1 text-[13px] text-[#8B93A5]">Manage reports and community content</p>
+          <p className="mt-1 text-[13px] text-[#9AA1CC]">Manage reports and community content</p>
         </div>
         <div className="flex items-center gap-2">
           {role && (
-            <span className="hidden rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] text-[#C9CFDB] sm:inline">
+            <span className="hidden rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] text-[#C8CCE8] sm:inline">
               {role.toLowerCase()}
             </span>
           )}
@@ -276,7 +276,7 @@ export default function ModeratorPage() {
               loadReports();
             }}
             aria-label="Refresh"
-            className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3.5 text-[13px] font-medium text-[#C9CFDB] transition-colors hover:bg-white/[0.08] hover:text-white"
+            className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3.5 text-[13px] font-medium text-[#C8CCE8] transition-colors hover:bg-white/[0.08] hover:text-white"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${statsLoading || reportsLoading ? "animate-spin" : ""}`} />
             <span className="hidden sm:inline">Refresh</span>
@@ -304,23 +304,23 @@ export default function ModeratorPage() {
       </div>
 
       {/* Reports Section */}
-      <section className="rounded-2xl border border-white/[0.06] bg-[#0E1016] p-4 sm:p-6">
+      <section className="rounded-2xl border border-white/[0.06] bg-[#19223F] p-4 sm:p-6">
         <div className="mb-5 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
           <div>
             <h2 className="text-[15px] font-semibold text-white">Reports</h2>
-            <p className="mt-1 text-[13px] text-[#8B93A5]">Review flagged posts and users</p>
+            <p className="mt-1 text-[13px] text-[#9AA1CC]">Review flagged posts and users</p>
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row">
             {/* Search */}
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7A8294]" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A92BF]" />
               <input
                 placeholder="Search reports…"
                 aria-label="Search reports"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-10 w-full rounded-xl border border-white/[0.08] bg-[#151922] pl-9 pr-3 text-[16px] sm:text-[13px] text-white outline-none placeholder:text-[#7A8294] focus:border-[#FF8A3D]/50 sm:w-60"
+                className="h-10 w-full rounded-xl border border-white/[0.08] bg-[#212B4E] pl-9 pr-3 text-[16px] sm:text-[13px] text-white outline-none placeholder:text-[#8A92BF] focus:border-[#FFA300]/50 sm:w-60"
               />
             </div>
 
@@ -336,7 +336,7 @@ export default function ModeratorPage() {
                     className={`h-10 shrink-0 rounded-lg px-3 text-[12.5px] font-medium capitalize sm:h-9 sm:text-[12px] transition-colors ${
                       statusFilter === status
                         ? "bg-white/[0.09] text-white shadow-sm"
-                        : "text-[#8B93A5] hover:text-white"
+                        : "text-[#9AA1CC] hover:text-white"
                     }`}
                   >
                     {status ? status.toLowerCase() : "All"}
@@ -357,7 +357,7 @@ export default function ModeratorPage() {
           <div className="flex flex-col items-center rounded-xl border border-dashed border-white/[0.08] py-12 text-center">
             <CheckCircle2 className="mb-3 h-6 w-6 text-emerald-300/70" />
             <p className="text-[14px] font-medium text-white">No reports found</p>
-            <p className="mt-1 text-[12px] text-[#8B93A5]">
+            <p className="mt-1 text-[12px] text-[#9AA1CC]">
               {statusFilter === "PENDING"
                 ? "All pending reports have been handled."
                 : "Try changing the filter"}
@@ -368,7 +368,7 @@ export default function ModeratorPage() {
             {filteredReports.map((report) => (
               <div
                 key={report.id}
-                className="rounded-xl border border-white/[0.08] bg-[#151922] p-4 transition-colors hover:border-white/20"
+                className="rounded-xl border border-white/[0.08] bg-[#212B4E] p-4 transition-colors hover:border-white/20"
               >
                 <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
                   <div className="min-w-0 flex-1">
@@ -376,14 +376,14 @@ export default function ModeratorPage() {
                     <div className="mb-2 flex flex-wrap items-center gap-2">
                       {getReasonBadge(report.reason)}
                       {getStatusBadge(report.status)}
-                      <span className="font-mono text-[11px] text-[#7A8294]">
+                      <span className="font-mono text-[11px] text-[#8A92BF]">
                         {new Date(report.createdAt).toLocaleDateString()}
                       </span>
                     </div>
 
                     {/* Description */}
                     {report.description && (
-                      <p className="mb-3 break-words text-[13px] text-[#ECEEF3]">
+                      <p className="mb-3 break-words text-[13px] text-[#FFF1E8]">
                         {report.description}
                       </p>
                     )}
@@ -391,7 +391,7 @@ export default function ModeratorPage() {
                     {/* Reporter & Reported */}
                     <div className="flex flex-wrap gap-x-5 gap-y-2 text-[12px]">
                       <div className="flex items-center gap-2">
-                        <span className="text-[#7A8294]">Reporter</span>
+                        <span className="text-[#8A92BF]">Reporter</span>
                         <div className="flex items-center gap-1.5">
                           {report.reporter.avatarUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
@@ -401,9 +401,9 @@ export default function ModeratorPage() {
                               className="h-5 w-5 rounded-full"
                             />
                           ) : (
-                            <User className="h-4 w-4 text-[#7A8294]" />
+                            <User className="h-4 w-4 text-[#8A92BF]" />
                           )}
-                          <span className="min-w-0 max-w-[180px] truncate text-[#C9CFDB]">
+                          <span className="min-w-0 max-w-[180px] truncate text-[#C8CCE8]">
                             {report.reporter.name || report.reporter.email}
                           </span>
                         </div>
@@ -411,7 +411,7 @@ export default function ModeratorPage() {
 
                       {report.reportedUser && (
                         <div className="flex items-center gap-2">
-                          <span className="text-[#7A8294]">Reported</span>
+                          <span className="text-[#8A92BF]">Reported</span>
                           <div className="flex items-center gap-1.5">
                             {report.reportedUser.avatarUrl ? (
                               // eslint-disable-next-line @next/next/no-img-element
@@ -421,9 +421,9 @@ export default function ModeratorPage() {
                                 className="h-5 w-5 rounded-full"
                               />
                             ) : (
-                              <User className="h-4 w-4 text-[#7A8294]" />
+                              <User className="h-4 w-4 text-[#8A92BF]" />
                             )}
-                            <span className="max-w-[180px] truncate text-[#C9CFDB]">
+                            <span className="max-w-[180px] truncate text-[#C8CCE8]">
                               {report.reportedUser.name ||
                                 report.reportedUser.email}
                             </span>
@@ -434,15 +434,15 @@ export default function ModeratorPage() {
 
                     {/* Post preview if any */}
                     {report.post && (
-                      <div className="mt-3 rounded-lg border border-white/[0.06] bg-[#0E1016] p-3">
-                        <p className="mb-1 font-mono text-[11px] text-[#7A8294]">
+                      <div className="mt-3 rounded-lg border border-white/[0.06] bg-[#19223F] p-3">
+                        <p className="mb-1 font-mono text-[11px] text-[#8A92BF]">
                           reported content
                         </p>
                         <p className="text-[13px] font-medium text-white">
                           {report.post.title}
                         </p>
                         {report.post.content && (
-                          <p className="mt-1 line-clamp-2 text-[13px] text-[#8B93A5]">
+                          <p className="mt-1 line-clamp-2 text-[13px] text-[#9AA1CC]">
                             {report.post.content}
                           </p>
                         )}
@@ -476,7 +476,7 @@ export default function ModeratorPage() {
                           handleReportAction(report.id, "DISMISSED")
                         }
                         disabled={processingReport === report.id}
-                        className="inline-flex h-11 min-w-[96px] items-center justify-center gap-1.5 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 py-2 text-[13px] font-medium text-[#C9CFDB] transition-colors hover:bg-white/[0.08] hover:text-white disabled:opacity-60"
+                        className="inline-flex h-11 min-w-[96px] items-center justify-center gap-1.5 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 py-2 text-[13px] font-medium text-[#C8CCE8] transition-colors hover:bg-white/[0.08] hover:text-white disabled:opacity-60"
                       >
                         <XCircle className="h-4 w-4" />
                         Dismiss

@@ -67,8 +67,8 @@ export function EmailSwitchboardPanel({ s }: { s: EmailSwitchboard }) {
   const l = s.limits;
 
   return (
-    <section className="mb-8 rounded-2xl border border-white/[0.06] bg-[#0E1016] p-4 sm:p-5">
-      <h2 className="mb-4 font-mono text-[11px] uppercase tracking-[0.14em] text-[#8B93A5]">Switches · read-only</h2>
+    <section className="mb-8 rounded-2xl border border-white/[0.06] bg-[#19223F] p-4 sm:p-5">
+      <h2 className="mb-4 text-[12.5px] text-[#9AA1CC] font-semibold">Switches · read-only</h2>
 
       {!s.postalAddress && (
         <p role="alert" className="mb-4 flex items-start gap-2 rounded-xl border border-amber-400/25 bg-amber-500/[0.07] px-4 py-3 text-[13px] text-amber-200">
@@ -84,12 +84,12 @@ export function EmailSwitchboardPanel({ s }: { s: EmailSwitchboard }) {
             <li key={sw.key} className="flex min-w-0 items-start justify-between gap-3 py-2.5">
               <div className="min-w-0">
                 <p className="text-[13px] font-semibold text-white">{sw.name}</p>
-                <p className="break-all font-mono text-[11px] text-[#8B93A5]">{sw.env}</p>
-                <p className="mt-0.5 text-[12px] text-[#8B93A5]">{sw.note}</p>
+                <p className="break-all font-mono text-[11px] text-[#9AA1CC]">{sw.env}</p>
+                <p className="mt-0.5 text-[12px] text-[#9AA1CC]">{sw.note}</p>
               </div>
               <span
                 className={`shrink-0 rounded-full border px-2.5 py-1 font-mono text-[11px] ${
-                  on ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-300" : "border-white/[0.1] bg-white/[0.04] text-[#C9CFDB]"
+                  on ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-300" : "border-white/[0.1] bg-white/[0.04] text-[#C8CCE8]"
                 }`}
               >
                 {on ? "on" : "off"}
@@ -114,17 +114,17 @@ export function EmailSwitchboardPanel({ s }: { s: EmailSwitchboard }) {
       <h3 className="mb-2 text-[13px] font-semibold text-white">Before you enable marketing</h3>
       <ul className="space-y-2">
         {checklist.map((c) => (
-          <li key={c.label} className="flex min-w-0 items-start gap-2.5 rounded-xl border border-white/[0.06] bg-[#151922] px-3 py-2.5">
+          <li key={c.label} className="flex min-w-0 items-start gap-2.5 rounded-xl border border-white/[0.06] bg-[#212B4E] px-3 py-2.5">
             {c.state === "done" ? (
               <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" aria-label="done" />
             ) : c.state === "missing" ? (
               <X className="mt-0.5 h-4 w-4 shrink-0 text-red-300" aria-label="missing" />
             ) : (
-              <CircleDashed className="mt-0.5 h-4 w-4 shrink-0 text-[#FF9F43]" aria-label="manual" />
+              <CircleDashed className="mt-0.5 h-4 w-4 shrink-0 text-[#FFB733]" aria-label="manual" />
             )}
             <div className="min-w-0">
               <p className="text-[13px] text-white">{c.label}</p>
-              <p className="break-words text-[12px] text-[#8B93A5]">{c.detail}</p>
+              <p className="break-words text-[12px] text-[#9AA1CC]">{c.detail}</p>
             </div>
           </li>
         ))}
@@ -135,10 +135,10 @@ export function EmailSwitchboardPanel({ s }: { s: EmailSwitchboard }) {
 
 function Tile({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="min-w-0 rounded-xl border border-white/[0.06] bg-[#151922] p-3">
-      <p className="truncate text-[12px] text-[#8B93A5]">{label}</p>
+    <div className="min-w-0 rounded-xl border border-white/[0.06] bg-[#212B4E] p-3">
+      <p className="truncate text-[12px] text-[#9AA1CC]">{label}</p>
       <p className="mt-1 font-mono text-[22px] font-semibold tabular-nums text-white">{value}</p>
-      {hint && <p className="mt-0.5 truncate font-mono text-[11px] text-[#8B93A5]">{hint}</p>}
+      {hint && <p className="mt-0.5 truncate font-mono text-[11px] text-[#9AA1CC]">{hint}</p>}
     </div>
   );
 }

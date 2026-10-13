@@ -142,7 +142,7 @@ if (is_struct(_box)) {
           "SpriteLab does not make GameMaker projects or objects; it makes the art and a predictable file layout. When you animate a sprite in SpriteLab and download the engine pack, the gamemaker folder contains one strip per animation already named with the frame count, such as attack_strip6.png. A 4-direction walk comes out as four strips: walk_down_strip4, walk_right_strip4, walk_up_strip4 and walk_left_strip4. Import them as above; you still set the origin, the mask and the code yourself.",
           "Animation frames are delivered at 256 pixels tall. For pixel art that is a 128-pixel grid scaled 2× with nearest-neighbour, so if your game uses a smaller sprite size, scale the strip down by a whole number in a pixel editor before importing rather than scaling the instance in GameMaker.",
         ],
-        image: { src: "/showcase/anim-knight-idle.gif", alt: "Pixel art knight idle animation exported as an equal-width strip", pixel: true },
+        image: { src: "/showcase/anim-knight-idle.webp", alt: "Pixel art knight idle animation exported as an equal-width strip", pixel: true },
       },
     ],
     faq: [
@@ -395,7 +395,7 @@ func _physics_process(_delta: float) -> void:
           "In SpriteLab's Animate tool you choose 4, 6 or 9 key poses for an AI animation (7, 11 or 12 credits). Smooth mode adds AI in-between frames, giving 8, 12 or 18 frames for 5 or 7 extra credits. The preview sets a starting speed — 8 fps for 4 poses, 10 fps for 6 and 12 fps for 9; smooth mode doubles it so the loop keeps the same length — which you can change before downloading. Idle breathing and hovering are done differently: the original sprite is gently deformed over 24 frames instead of redrawn, which avoids flicker and costs 3 credits.",
           "What SpriteLab does not do is time the frames for you: every frame in the exported strip is shown for the same time. Holding wind-up frames, adding hit-stop and matching walk speed to movement all happen in your engine, as described above.",
         ],
-        image: { src: "/showcase/anim-witch-walk.gif", alt: "Pixel art witch walk cycle with evenly spaced frames", pixel: true },
+        image: { src: "/showcase/anim-witch-walk.webp", alt: "Pixel art witch walk cycle with evenly spaced frames", pixel: true },
       },
     ],
     faq: [
@@ -830,7 +830,7 @@ func _apply(shape: CollisionShape2D, box, frame_size: Vector2) -> void:
           "A predictable naming scheme saves more time than any packing trick. Name files by character, animation and, where relevant, direction and frame count: knight_attack_strip6.png, knight_walk_down_strip4.png. Keep one folder per character, keep the source sheets out of the build folder if your engine packs atlases from separate frames, and write the frame size, fps, pivot and row order into a small readme or data file next to the art.",
           "SpriteLab's engine pack follows this pattern for one character: a godot folder with a SpriteFrames .tres and one strip per animation in godot/sheets, a unity folder with one subfolder of numbered frames per animation, a gamemaker folder with _stripN files, a hitboxes.json with per-frame boxes, fps and loop flags, and a README.txt. A 4-direction walk is split into one strip per direction.",
         ],
-        image: { src: "/showcase/anim-witch-walk.gif", alt: "Pixel art witch walk animation exported as equal-size frames", pixel: true },
+        image: { src: "/showcase/anim-witch-walk.webp", alt: "Pixel art witch walk animation exported as equal-size frames", pixel: true },
       },
       {
         heading: "A layout checklist",

@@ -220,7 +220,7 @@ function EditPageContent({ generationId, resultId }: { generationId: string | nu
         </Field>
 
         <Field label="What should change?" labelFor="edit-prompt">
-          <div className="rounded-2xl border border-white/[0.08] bg-[#151922] transition-colors focus-within:border-[#FF8A3D]/50">
+          <div className="rounded-2xl border border-white/[0.08] bg-[#212B4E] transition-colors focus-within:border-[#FFA300]/50">
             <textarea
               id="edit-prompt"
               value={editPrompt}
@@ -235,7 +235,7 @@ function EditPageContent({ generationId, resultId }: { generationId: string | nu
               disabled={loading || !originalImage}
               maxLength={400}
               rows={3}
-              className="w-full resize-none bg-transparent px-4 py-3 text-[14px] leading-relaxed text-white outline-none placeholder:text-[#7A8294] disabled:opacity-60"
+              className="w-full resize-none bg-transparent px-4 py-3 text-[14px] leading-relaxed text-white outline-none placeholder:text-[#8A92BF] disabled:opacity-60"
             />
           </div>
           <div className="mt-2.5 flex flex-wrap gap-1.5">
@@ -254,25 +254,25 @@ function EditPageContent({ generationId, resultId }: { generationId: string | nu
               ? "Only the painted area will change — everything else stays exactly as it is."
               : "Paint over the part you want changed (e.g. the sword), or skip this and the AI decides."}>
             <div className="flex items-center gap-1.5">
-              <span className="mr-0.5 flex items-center gap-1 text-[12px] text-[#9BA3B4]"><Brush className="h-3.5 w-3.5" aria-hidden /> Brush</span>
+              <span className="mr-0.5 flex items-center gap-1 text-[12px] text-[#A7ADD4]"><Brush className="h-3.5 w-3.5" aria-hidden /> Brush</span>
               {BRUSHES.map((b) => (
                 <button key={b.label} type="button" onClick={() => setBrush(b.size)} disabled={loading}
                   aria-label={b.name} aria-pressed={brush === b.size} title={b.name}
                   className={`h-10 w-10 rounded-lg border text-[12px] font-medium transition-colors lg:h-8 lg:w-8 ${
-                    brush === b.size ? "border-[#FF8A3D] bg-[#FF8A3D]/10 text-white" : "border-white/[0.08] text-[#9BA3B4] hover:text-white"
+                    brush === b.size ? "border-[#FFA300] bg-[#FFA300]/10 text-white" : "border-white/[0.08] text-[#A7ADD4] hover:text-white"
                   }`}>
                   {b.label}
                 </button>
               ))}
               <button type="button" onClick={() => { clearMask(maskRef.current); setPainted(false); }} disabled={!painted || loading}
-                className="ml-auto flex h-10 items-center gap-1 rounded-lg border border-white/[0.08] px-3 text-[12px] text-[#9BA3B4] transition-colors hover:text-white disabled:opacity-40 lg:h-8 lg:px-2.5">
+                className="ml-auto flex h-10 items-center gap-1 rounded-lg border border-white/[0.08] px-3 text-[12px] text-[#A7ADD4] transition-colors hover:text-white disabled:opacity-40 lg:h-8 lg:px-2.5">
                 <Eraser className="h-3.5 w-3.5" aria-hidden /> Clear
               </button>
             </div>
           </Field>
         )}
 
-        <InfoNote icon={<Info className="h-3.5 w-3.5 text-[#8B93A5]" />}>
+        <InfoNote icon={<Info className="h-3.5 w-3.5 text-[#9AA1CC]" />}>
           One change at a time works best. The sprite keeps its pose, colours, style and pixel size — only what you ask for changes.
         </InfoNote>
 
@@ -282,7 +282,7 @@ function EditPageContent({ generationId, resultId }: { generationId: string | nu
           </InfoNote>
         )}
         {editedImage && !resultFromRun && (
-          <InfoNote icon={<Pencil className="h-3.5 w-3.5 text-[#8B93A5]" />}>
+          <InfoNote icon={<Pencil className="h-3.5 w-3.5 text-[#9AA1CC]" />}>
             Opened from your history. Keep editing the result, or go back to the original and try another change.
           </InfoNote>
         )}

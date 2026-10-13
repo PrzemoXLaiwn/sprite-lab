@@ -90,7 +90,7 @@ function LifetimeSuccessContent() {
 
   return (
     <SuccessShell
-      icon={<InfinityIcon className="h-7 w-7 text-[#FF8A3D]" />}
+      icon={<InfinityIcon className="h-7 w-7 text-[#FFA300]" />}
       title={`Welcome to ${deal}`}
       countdown={countdown}
       secondaryLinks={[
@@ -101,10 +101,10 @@ function LifetimeSuccessContent() {
       <p>Your lifetime access is now active.</p>
       <p>
         <CreditChip>+{credits} credits</CreditChip>
-        <span className="ml-2 text-[#8B93A5]">added to your account</span>
+        <span className="ml-2 text-[#9AA1CC]">added to your account</span>
       </p>
-      <p className="text-[#8B93A5]">
-        You&apos;ll receive <span className="font-mono text-[#C9CFDB]">{credits}</span> credits every month, forever.
+      <p className="text-[#9AA1CC]">
+        You&apos;ll receive <span className="font-mono text-[#C8CCE8]">{credits}</span> credits every month, forever.
       </p>
     </SuccessShell>
   );

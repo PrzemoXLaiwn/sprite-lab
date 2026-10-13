@@ -50,7 +50,7 @@ export default function PixelArtGeneratorPage() {
         <>
           AI Pixel Art Generator
           <br />
-          <span className="text-[#FF8A3D]">sprites in seconds</span>
+          sprites in seconds
         </>
       }
       subtitle="Generate 8-bit, 16-bit and 32-bit pixel art sprites for your games. No art skills required — just describe what you want."
@@ -68,7 +68,7 @@ export default function PixelArtGeneratorPage() {
           eyebrow: "styles",
           title: (
             <>
-              Choose your <span className="text-[#FF8A3D]">pixel style</span>
+              Choose your pixel style
             </>
           ),
           intro:
@@ -101,7 +101,7 @@ export default function PixelArtGeneratorPage() {
           eyebrow: "features",
           title: (
             <>
-              Built for <span className="text-[#FF8A3D]">game-ready</span> pixel art
+              Built for game-ready pixel art
             </>
           ),
           cards: [
@@ -119,7 +119,7 @@ export default function PixelArtGeneratorPage() {
           eyebrow: "use cases",
           title: (
             <>
-              Perfect for <span className="text-[#FF8A3D]">any game</span>
+              Perfect for any game
             </>
           ),
           intro: "Generate any type of pixel art asset you need — retro game sprites for platformers, RPGs, roguelikes and more.",
@@ -137,7 +137,7 @@ export default function PixelArtGeneratorPage() {
           eyebrow: "how it works",
           title: (
             <>
-              Three steps. <span className="text-[#FF8A3D]">That&apos;s it.</span>
+              Three steps. That&apos;s it.
             </>
           ),
           steps: [
@@ -169,7 +169,7 @@ export default function PixelArtGeneratorPage() {
       cta={{
         title: (
           <>
-            Start creating <span className="text-[#FF8A3D]">pixel art</span> today
+            Start creating pixel art today
           </>
         ),
         body: "Build your game faster with AI-generated pixel art — no artists needed.",

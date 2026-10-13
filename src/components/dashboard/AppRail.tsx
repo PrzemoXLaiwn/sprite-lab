@@ -89,7 +89,7 @@ export function AppRail({ email }: { email: string }) {
   const low = credits !== null && credits <= 2;
 
   return (
-    <aside className="hidden md:flex fixed inset-y-0 left-0 z-40 w-[76px] flex-col items-center border-r border-white/[0.06] bg-[#0E1016] py-3">
+    <aside className="hidden md:flex fixed inset-y-0 left-0 z-40 w-[76px] flex-col items-center border-r border-white/[0.06] bg-[#19223F] py-3">
       <Link href="/" className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl hover:bg-white/[0.05] transition-colors" title="Home" aria-label="SpriteLab home">
         <Image src="/logo.png" alt="" width={26} height={26} />
       </Link>
@@ -103,10 +103,10 @@ export function AppRail({ email }: { email: string }) {
               href={item.href}
               aria-current={active ? "page" : undefined}
               className={`group flex w-full flex-col items-center gap-1 rounded-xl py-2.5 transition-colors ${
-                active ? "bg-white/[0.07] text-white" : "text-[#8B93A5] hover:bg-white/[0.04] hover:text-white"
+                active ? "bg-white/[0.07] text-white" : "text-[#9AA1CC] hover:bg-white/[0.04] hover:text-white"
               }`}
             >
-              <item.icon className={`h-[19px] w-[19px] ${active ? "text-[#FF8A3D]" : ""}`} strokeWidth={active ? 2.2 : 1.8} aria-hidden />
+              <item.icon className={`h-[19px] w-[19px] ${active ? "text-[#FFA300]" : ""}`} strokeWidth={active ? 2.2 : 1.8} aria-hidden />
               <span className="text-[10px] font-medium leading-none">{item.label}</span>
             </Link>
           );
@@ -121,7 +121,7 @@ export function AppRail({ email }: { email: string }) {
           className={`flex w-full flex-col items-center gap-0.5 rounded-xl border py-2 transition-colors ${
             low
               ? "border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/15"
-              : "border-[#FF8A3D]/20 bg-[#FF8A3D]/[0.08] text-[#FFB27A] hover:bg-[#FF8A3D]/[0.14]"
+              : "border-[#FFA300]/20 bg-[#FFA300]/[0.08] text-[#FFC857] hover:bg-[#FFA300]/[0.14]"
           }`}
         >
           <Zap className="h-3.5 w-3.5" />
@@ -137,27 +137,27 @@ export function AppRail({ email }: { email: string }) {
             onClick={() => setMenuOpen((v) => !v)}
             aria-label={`Account menu (${email})`}
             aria-expanded={menuOpen}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#FF8A3D] to-[#E0562A] text-[13px] font-bold text-white ring-2 ring-transparent hover:ring-white/20 transition"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#FFA300] to-[#E08600] text-[13px] font-bold text-white ring-2 ring-transparent hover:ring-white/20 transition"
             title={email}
           >
             {email?.[0]?.toUpperCase()}
           </button>
           {menuOpen && (
-            <div className="absolute bottom-0 left-12 w-60 rounded-xl border border-white/[0.08] bg-[#161A22] p-1.5 shadow-2xl">
+            <div className="absolute bottom-0 left-12 w-60 rounded-xl border border-white/[0.08] bg-[#1B2446] p-1.5 shadow-2xl">
               <div className="px-3 py-2.5">
                 <p className="truncate text-[13px] font-medium text-white">{email}</p>
-                <p className="text-[11px] text-[#8B93A5]">{planName || "…"} plan · {credits ?? "…"} credits</p>
+                <p className="text-[11px] text-[#9AA1CC]">{planName || "…"} plan · {credits ?? "…"} credits</p>
               </div>
               <Link href="/pricing" onClick={() => setMenuOpen(false)}
-                className="flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-[#FFB27A] hover:bg-white/[0.05]">
+                className="flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-[#FFC857] hover:bg-white/[0.05]">
                 <Sparkles className="h-4 w-4" /> Get more credits
               </Link>
               <Link href="/settings" onClick={() => setMenuOpen(false)}
-                className="flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-[#C9CFDB] hover:bg-white/[0.05]">
+                className="flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-[#C8CCE8] hover:bg-white/[0.05]">
                 <Settings className="h-4 w-4" /> Settings
               </Link>
               <form action="/auth/signout" method="post">
-                <button type="submit" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-[#C9CFDB] hover:bg-white/[0.05]">
+                <button type="submit" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-[#C8CCE8] hover:bg-white/[0.05]">
                   <LogOut className="h-4 w-4" /> Sign out
                 </button>
               </form>

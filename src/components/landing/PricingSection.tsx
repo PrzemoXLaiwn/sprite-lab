@@ -29,15 +29,15 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 const BTN_PRIMARY =
-  "px-corners bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] text-white font-semibold hover:brightness-110 transition";
+  "px-corners bg-[#FFA300] text-[#131A31] font-semibold hover:bg-[#FFB733] transition";
 const BTN_SECONDARY =
-  "rounded-xl border border-white/[0.1] bg-white/[0.04] text-[#C9CFDB] font-semibold hover:bg-white/[0.08] hover:text-white transition-colors";
-const CARD = "relative flex flex-col rounded-2xl border bg-[#151922] p-5 transition-colors";
-const CHIP = "rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] text-[#ECEEF3]";
+  "rounded-xl border border-white/[0.1] bg-white/[0.04] text-[#C8CCE8] font-semibold hover:bg-white/[0.08] hover:text-white transition-colors";
+const CARD = "relative flex flex-col rounded-2xl border bg-[#212B4E] p-5 transition-colors";
+const CHIP = "rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] text-[#FFF1E8]";
 
 function PopularPill({ children }: { children: React.ReactNode }) {
   return (
-    <span className="px-corners absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap bg-[#FF8A3D] px-3 py-1 font-mono text-[11px] font-semibold text-black">
+    <span className="px-corners absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap bg-[#FFA300] px-3 py-1 font-mono text-[11px] font-semibold text-black">
       {children}
     </span>
   );
@@ -45,8 +45,8 @@ function PopularPill({ children }: { children: React.ReactNode }) {
 
 function FeatureItem({ children }: { children: React.ReactNode }) {
   return (
-    <li className="flex items-start gap-2.5 text-[13px] text-[#C9CFDB]">
-      <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#FF8A3D]" strokeWidth={2.5} aria-hidden="true" />
+    <li className="flex items-start gap-2.5 text-[13px] text-[#C8CCE8]">
+      <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#FFA300]" strokeWidth={2.5} aria-hidden="true" />
       <span>{children}</span>
     </li>
   );
@@ -98,7 +98,7 @@ export function PricingSection() {
                 aria-selected={tab === t.id}
                 onClick={() => setTab(t.id)}
                 className={`h-10 rounded-lg px-3 transition-colors sm:px-5 ${
-                  tab === t.id ? "bg-white/[0.1] text-white shadow-sm" : "text-[#8B93A5] hover:text-white"
+                  tab === t.id ? "bg-white/[0.1] text-white shadow-sm" : "text-[#9AA1CC] hover:text-white"
                 }`}
               >
                 {t.label}
@@ -114,14 +114,14 @@ export function PricingSection() {
               {PLAN_CARDS.map((plan) => (
                 <div
                   key={plan.id}
-                  className={`${CARD} ${plan.featured ? "border-[#FF8A3D]/60" : "border-white/[0.08] hover:border-white/20"}`}
+                  className={`${CARD} ${plan.featured ? "border-[#FFA300]/60" : "border-white/[0.08] hover:border-white/20"}`}
                 >
                   {plan.featured && <PopularPill>Most popular</PopularPill>}
                   <h3 className="font-display text-[18px] font-semibold text-white">{plan.name}</h3>
-                  <p className="mt-1 text-[13px] text-[#8B93A5]">{plan.description}</p>
+                  <p className="mt-1 text-[13px] text-[#9AA1CC]">{plan.description}</p>
                   <div className="mt-5 flex items-baseline gap-1.5">
                     <span className="font-sans tracking-tight tabular-nums text-[32px] font-semibold leading-none text-white">£{plan.price}</span>
-                    <span className="font-mono text-[12px] text-[#8B93A5]">{plan.price === 0 ? "forever" : "/month"}</span>
+                    <span className="font-mono text-[12px] text-[#9AA1CC]">{plan.price === 0 ? "forever" : "/month"}</span>
                   </div>
                   <div className="mt-4">
                     <span className={CHIP}>
@@ -153,7 +153,7 @@ export function PricingSection() {
           {/* Credit packs */}
           {tab === "packs" && (
             <>
-              <p className="mb-5 text-center text-[13px] text-[#8B93A5]">
+              <p className="mb-5 text-center text-[13px] text-[#9AA1CC]">
                 One-time purchase. Credits never expire.
                 {promoActive && " Launch bonus credits included while the promo runs."}
               </p>
@@ -163,16 +163,16 @@ export function PricingSection() {
                   return (
                     <div
                       key={pack.key}
-                      className={`${CARD} ${pack.featured ? "border-[#FF8A3D]/60" : "border-white/[0.08] hover:border-white/20"}`}
+                      className={`${CARD} ${pack.featured ? "border-[#FFA300]/60" : "border-white/[0.08] hover:border-white/20"}`}
                     >
                       {pack.featured && <PopularPill>Most popular</PopularPill>}
                       <div className="flex items-center gap-2">
-                        <Coins className="h-4 w-4 text-[#FF8A3D]" />
+                        <Coins className="h-4 w-4 text-[#FFA300]" />
                         <h3 className="font-display text-[18px] font-semibold text-white">{pack.name}</h3>
                       </div>
                       <div className="mt-5 flex items-baseline gap-1.5">
                         <span className="font-sans tracking-tight tabular-nums text-[32px] font-semibold leading-none text-white">{formatPence(pack.price)}</span>
-                        <span className="font-mono text-[12px] text-[#8B93A5]">one-time</span>
+                        <span className="font-mono text-[12px] text-[#9AA1CC]">one-time</span>
                       </div>
                       <div className="mt-4 flex flex-1 flex-wrap items-start gap-1.5">
                         <span className={CHIP}>{(pack.credits + bonus).toLocaleString()} credits</span>
@@ -198,8 +198,8 @@ export function PricingSection() {
           {/* Lifetime */}
           {tab === "lifetime" && lifetimeOn && (
             <>
-              <p className="mb-5 flex items-center justify-center gap-1.5 text-center text-[13px] text-[#8B93A5]">
-                <InfinityIcon className="h-4 w-4 text-[#FF8A3D]" />
+              <p className="mb-5 flex items-center justify-center gap-1.5 text-center text-[13px] text-[#9AA1CC]">
+                <InfinityIcon className="h-4 w-4 text-[#FFA300]" />
                 Pay once, credits every month forever — {TOTAL_LIFETIME_SLOTS} lifetime slots in total.
               </p>
               <div className="mx-auto grid max-w-[960px] grid-cols-1 gap-4 pt-3 md:grid-cols-3">
@@ -214,7 +214,7 @@ export function PricingSection() {
                         soldOut
                           ? "border-white/[0.06] opacity-60"
                           : deal.featured
-                            ? "border-[#FF8A3D]/60"
+                            ? "border-[#FFA300]/60"
                             : "border-white/[0.08] hover:border-white/20"
                       }`}
                     >
@@ -229,8 +229,8 @@ export function PricingSection() {
                       </div>
                       <div className="mt-5 flex items-baseline gap-2">
                         <span className="font-sans tracking-tight tabular-nums text-[32px] font-semibold leading-none text-white">£{deal.price}</span>
-                        <span className="font-mono text-[12px] text-[#7A8294] line-through">£{deal.originalPrice}</span>
-                        <span className="font-mono text-[12px] text-[#8B93A5]">one-time</span>
+                        <span className="font-mono text-[12px] text-[#8A92BF] line-through">£{deal.originalPrice}</span>
+                        <span className="font-mono text-[12px] text-[#9AA1CC]">one-time</span>
                       </div>
                       <div className="mt-4">
                         <span className={CHIP}>{deal.credits.toLocaleString()} credits/mo, forever</span>
@@ -239,24 +239,24 @@ export function PricingSection() {
                         {slot ? (
                           <>
                             <div className="mb-1.5 flex justify-between font-mono text-[11px]">
-                              <span className="text-[#7A8294]">{slot.sold} claimed</span>
-                              <span className={soldOut ? "text-red-200" : "text-[#C9CFDB]"}>
+                              <span className="text-[#8A92BF]">{slot.sold} claimed</span>
+                              <span className={soldOut ? "text-red-200" : "text-[#C8CCE8]"}>
                                 {soldOut ? "Sold out" : `${slot.available} of ${slot.max} left`}
                               </span>
                             </div>
                             <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
                               <div
-                                className="h-full rounded-full bg-[#FF8A3D] transition-all"
+                                className="h-full rounded-full bg-[#FFA300] transition-all"
                                 style={{ width: `${Math.min(100, (slot.sold / slot.max) * 100)}%` }}
                               />
                             </div>
                           </>
                         ) : (
-                          <p className="font-mono text-[11px] text-[#8B93A5]">{deal.maxSlots} slots total</p>
+                          <p className="font-mono text-[11px] text-[#9AA1CC]">{deal.maxSlots} slots total</p>
                         )}
                       </div>
                       {soldOut ? (
-                        <div className="mt-6 flex h-11 w-full items-center justify-center rounded-xl border border-white/[0.06] bg-white/[0.02] text-[13px] font-medium text-[#7A8294]">
+                        <div className="mt-6 flex h-11 w-full items-center justify-center rounded-xl border border-white/[0.06] bg-white/[0.02] text-[13px] font-medium text-[#8A92BF]">
                           Sold out
                         </div>
                       ) : (
@@ -276,34 +276,34 @@ export function PricingSection() {
         </div>
 
         {/* Cost comparison */}
-        <div className="mx-auto mt-14 max-w-[960px] rounded-2xl border border-white/[0.08] bg-[#0E1016] p-5 sm:p-6">
+        <div className="mx-auto mt-14 max-w-[960px] rounded-2xl border border-white/[0.08] bg-[#19223F] p-5 sm:p-6">
           <h3 className="text-center font-display text-[18px] font-semibold text-white">Compare the cost</h3>
           <div className="mt-5 grid grid-cols-1 gap-3 text-center sm:grid-cols-3">
-            <div className="rounded-xl border border-white/[0.06] bg-[#151922] p-4">
-              <p className="font-sans tracking-tight tabular-nums text-[22px] font-semibold text-[#C9CFDB]">£40–160</p>
-              <p className="mt-1 text-[12px] text-[#8B93A5]">per asset from a freelancer</p>
+            <div className="rounded-xl border border-white/[0.06] bg-[#212B4E] p-4">
+              <p className="font-sans tracking-tight tabular-nums text-[22px] font-semibold text-[#C8CCE8]">£40–160</p>
+              <p className="mt-1 text-[12px] text-[#9AA1CC]">per asset from a freelancer</p>
             </div>
-            <div className="rounded-xl border border-white/[0.06] bg-[#151922] p-4">
-              <p className="font-sans tracking-tight tabular-nums text-[22px] font-semibold text-[#C9CFDB]">2–8 hours</p>
-              <p className="mt-1 text-[12px] text-[#8B93A5]">if you create it yourself</p>
+            <div className="rounded-xl border border-white/[0.06] bg-[#212B4E] p-4">
+              <p className="font-sans tracking-tight tabular-nums text-[22px] font-semibold text-[#C8CCE8]">2–8 hours</p>
+              <p className="mt-1 text-[12px] text-[#9AA1CC]">if you create it yourself</p>
             </div>
             {studioPerCredit && (
-              <div className="rounded-xl border border-[#FF8A3D]/40 bg-[#FF8A3D]/[0.06] p-4">
+              <div className="rounded-xl border border-[#FFA300]/40 bg-[#FFA300]/[0.06] p-4">
                 <p className="font-sans tracking-tight tabular-nums text-[22px] font-semibold text-white">£{studioPerCredit}</p>
-                <p className="mt-1 text-[12px] text-[#8B93A5]">per credit with SpriteLab Studio</p>
+                <p className="mt-1 text-[12px] text-[#9AA1CC]">per credit with SpriteLab Studio</p>
               </div>
             )}
           </div>
         </div>
 
         {/* FAQ teaser */}
-        <p className="mt-8 text-center text-[13px] text-[#8B93A5]">
+        <p className="mt-8 text-center text-[13px] text-[#9AA1CC]">
           Have questions?{" "}
-          <a href="#faq" className="text-[#FFB27A] underline-offset-4 hover:underline">
+          <a href="#faq" className="text-[#FFC857] underline-offset-4 hover:underline">
             Check our FAQ
           </a>{" "}
           or{" "}
-          <a href="mailto:spritelab.contact@gmail.com" className="text-[#FFB27A] underline-offset-4 hover:underline">
+          <a href="mailto:spritelab.contact@gmail.com" className="text-[#FFC857] underline-offset-4 hover:underline">
             contact us
           </a>
           .

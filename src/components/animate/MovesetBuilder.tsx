@@ -83,27 +83,27 @@ export function MovesetBuilder({ generationId, characterName, disabled }: { gene
           return (
             <button key={s.id} type="button" role="radio" aria-checked={active} disabled={running || disabled}
               onClick={() => { setSetId(s.id); setResults({}); setError(""); }}
-              className={`min-h-[56px] rounded-xl border px-2 py-2 text-left transition-colors disabled:cursor-not-allowed ${active ? "border-[#FF8A3D] bg-[#FF8A3D]/[0.06] ring-2 ring-[#FF8A3D]/25" : "border-white/[0.08] bg-[#151922] hover:border-white/20"}`}>
+              className={`min-h-[56px] rounded-xl border px-2 py-2 text-left transition-colors disabled:cursor-not-allowed ${active ? "border-[#FFA300] bg-[#FFA300]/[0.06] ring-2 ring-[#FFA300]/25" : "border-white/[0.08] bg-[#212B4E] hover:border-white/20"}`}>
               <span className="block text-[12.5px] font-medium leading-tight text-white">{s.label}</span>
-              <span className="mt-0.5 block text-[11px] leading-tight text-[#8B93A5]">{s.hint}</span>
+              <span className="mt-0.5 block text-[11px] leading-tight text-[#9AA1CC]">{s.hint}</span>
             </button>
           );
         })}
       </div>
 
-      <ul className="divide-y divide-white/[0.05] rounded-xl border border-white/[0.08] bg-[#12151C]">
+      <ul className="divide-y divide-white/[0.05] rounded-xl border border-white/[0.08] bg-[#161E39]">
         {set.moves.map((m) => {
           const r = results[m.name];
           return (
             <li key={m.name} className="flex items-center gap-2.5 px-3 py-2 text-[12.5px]">
               <span className="flex h-5 w-5 shrink-0 items-center justify-center">
-                {r?.status === "running" ? <Loader2 className="h-4 w-4 animate-spin text-[#FF8A3D]" />
+                {r?.status === "running" ? <Loader2 className="h-4 w-4 animate-spin text-[#FFA300]" />
                   : r?.status === "done" ? <Check className="h-4 w-4 text-emerald-300" />
                   : r?.status === "failed" ? <X className="h-4 w-4 text-red-300" />
                   : <span className="h-1.5 w-1.5 rounded-full bg-white/25" />}
               </span>
-              <span className={`flex-1 ${r?.status === "done" ? "text-white" : "text-[#C9CFDB]"}`}>{m.label}</span>
-              <span className="font-mono text-[11px] text-[#8B93A5]">{moveCredits(m)} cr</span>
+              <span className={`flex-1 ${r?.status === "done" ? "text-white" : "text-[#C8CCE8]"}`}>{m.label}</span>
+              <span className="font-mono text-[11px] text-[#9AA1CC]">{moveCredits(m)} cr</span>
             </li>
           );
         })}
@@ -111,16 +111,16 @@ export function MovesetBuilder({ generationId, characterName, disabled }: { gene
 
       {!finished ? (
         <button type="button" onClick={run} disabled={running || disabled}
-          className="px-corners flex h-11 w-full items-center justify-center gap-2 bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] text-[14px] font-semibold text-white transition hover:brightness-110 disabled:opacity-60">
+          className="px-corners flex h-11 w-full items-center justify-center gap-2 bg-[#FFA300] text-[14px] font-semibold text-[#131A31] transition hover:bg-[#FFB733] disabled:opacity-60">
           {running ? <><Loader2 className="h-4 w-4 animate-spin" /> Making move {Math.min(done.length + 1, set.moves.length)} of {set.moves.length}…</> : <>Make the whole set · {total} credits</>}
         </button>
       ) : (
         <button type="button" onClick={download} disabled={packing || done.length === 0}
-          className="px-corners flex h-11 w-full items-center justify-center gap-2 bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] text-[14px] font-semibold text-white transition hover:brightness-110 disabled:opacity-60">
+          className="px-corners flex h-11 w-full items-center justify-center gap-2 bg-[#FFA300] text-[14px] font-semibold text-[#131A31] transition hover:bg-[#FFB733] disabled:opacity-60">
           {packing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Package className="h-4 w-4" />} Download engine pack ({done.length} moves)
         </button>
       )}
-      <p className="text-[11.5px] leading-snug text-[#8B93A5]">
+      <p className="text-[11.5px] leading-snug text-[#9AA1CC]">
         {running ? "Keep this tab open — each move takes about 30–60 s and is saved to your assets as it finishes. You're only charged for moves that succeed."
           : "Makes every move of the set one after another, then gives you one pack for Godot (SpriteFrames), Unity, GameMaker — with hitboxes."}
       </p>

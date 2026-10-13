@@ -85,20 +85,20 @@ export function ReferralCard() {
     }).toString();
 
   return (
-    <section className="rounded-2xl border border-white/[0.06] bg-[#0E1016] p-6">
+    <section className="rounded-2xl border border-white/[0.06] bg-[#19223F] p-6">
       <div className="mb-5">
         <h2 className="text-[15px] font-semibold text-white">Refer a friend</h2>
-        <p className="mt-1 text-[13px] text-[#8B93A5]">
+        <p className="mt-1 text-[13px] text-[#9AA1CC]">
           Both of you get bonus credits when they make their first purchase.
         </p>
       </div>
 
       {loading ? (
         <div className="space-y-3">
-          <div className="h-10 w-full animate-pulse rounded-xl bg-[#151922]" />
+          <div className="h-10 w-full animate-pulse rounded-xl bg-[#212B4E]" />
           <div className="grid grid-cols-2 gap-3">
-            <div className="h-[76px] animate-pulse rounded-xl bg-[#151922]" />
-            <div className="h-[76px] animate-pulse rounded-xl bg-[#151922]" />
+            <div className="h-[76px] animate-pulse rounded-xl bg-[#212B4E]" />
+            <div className="h-[76px] animate-pulse rounded-xl bg-[#212B4E]" />
           </div>
         </div>
       ) : !data ? (
@@ -109,7 +109,7 @@ export function ReferralCard() {
         <div className="space-y-5">
           {/* Share link */}
           <div>
-            <label htmlFor="referral-link" className="mb-1.5 block font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">
+            <label htmlFor="referral-link" className="mb-1.5 block text-[12.5px] text-[#9AA1CC] font-semibold">
               Your share link
             </label>
             <div className="flex gap-2">
@@ -118,7 +118,7 @@ export function ReferralCard() {
                 readOnly
                 value={shareUrl}
                 onClick={(e) => (e.currentTarget as HTMLInputElement).select()}
-                className="min-w-0 flex-1 rounded-xl border border-white/[0.08] bg-[#151922] px-3 py-2.5 font-mono text-[12px] text-white outline-none transition-colors focus:border-[#FF8A3D]/50"
+                className="min-w-0 flex-1 rounded-xl border border-white/[0.08] bg-[#212B4E] px-3 py-2.5 font-mono text-[12px] text-white outline-none transition-colors focus:border-[#FFA300]/50"
               />
               <button
                 type="button"
@@ -127,48 +127,48 @@ export function ReferralCard() {
                 className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl border px-3.5 text-[13px] font-medium transition-colors ${
                   copied
                     ? "border-emerald-400/20 bg-emerald-500/[0.06] text-emerald-200"
-                    : "border-white/[0.1] bg-white/[0.04] text-[#C9CFDB] hover:bg-white/[0.08] hover:text-white"
+                    : "border-white/[0.1] bg-white/[0.04] text-[#C8CCE8] hover:bg-white/[0.08] hover:text-white"
                 }`}
               >
                 {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 <span className="hidden sm:inline">{copied ? "Copied" : "Copy"}</span>
               </button>
             </div>
-            <p className="mt-2 text-[12px] text-[#8B93A5]">
-              Code: <span className="rounded-md border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 font-mono text-[11px] text-[#C9CFDB]">{data.referralCode}</span>
+            <p className="mt-2 text-[12px] text-[#9AA1CC]">
+              Code: <span className="rounded-md border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 font-mono text-[11px] text-[#C8CCE8]">{data.referralCode}</span>
             </p>
           </div>
 
           {/* Stats */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl border border-white/[0.08] bg-[#151922] p-4">
-              <p className="flex items-center gap-1.5 text-[12px] text-[#8B93A5]">
+            <div className="rounded-xl border border-white/[0.08] bg-[#212B4E] p-4">
+              <p className="flex items-center gap-1.5 text-[12px] text-[#9AA1CC]">
                 <Users className="h-3.5 w-3.5" />
                 Referred
               </p>
               <p className="mt-1 font-sans tracking-tight text-[24px] font-semibold tabular-nums text-white">{data.referralCount}</p>
             </div>
-            <div className="rounded-xl border border-white/[0.08] bg-[#151922] p-4">
-              <p className="flex items-center gap-1.5 text-[12px] text-[#8B93A5]">
-                <Coins className="h-3.5 w-3.5 text-[#FF8A3D]" />
+            <div className="rounded-xl border border-white/[0.08] bg-[#212B4E] p-4">
+              <p className="flex items-center gap-1.5 text-[12px] text-[#9AA1CC]">
+                <Coins className="h-3.5 w-3.5 text-[#FFA300]" />
                 Credits earned
               </p>
-              <p className="mt-1 font-sans tracking-tight text-[24px] font-semibold tabular-nums text-[#FFB27A]">
+              <p className="mt-1 font-sans tracking-tight text-[24px] font-semibold tabular-nums text-[#FFC857]">
                 {data.referralEarnings}
               </p>
             </div>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-[12px] leading-relaxed text-[#8B93A5]">
-              You earn <span className="font-mono text-[#FFB27A]">{REFERRAL_REWARD} credits</span> the first time a friend
+            <p className="text-[12px] leading-relaxed text-[#9AA1CC]">
+              You earn <span className="font-mono text-[#FFC857]">{REFERRAL_REWARD} credits</span> the first time a friend
               you referred makes a purchase. They get bonus credits at signup too.
             </p>
             <a
               href={tweetUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 py-2 text-[13px] font-medium text-[#C9CFDB] transition-colors hover:bg-white/[0.08] hover:text-white"
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 py-2 text-[13px] font-medium text-[#C8CCE8] transition-colors hover:bg-white/[0.08] hover:text-white"
             >
               <Share2 className="h-4 w-4" />
               Share on X

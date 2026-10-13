@@ -35,7 +35,7 @@ export default function AiSpriteGeneratorPage() {
         <>
           AI Sprite Generator
           <br />
-          <span className="text-[#FF8A3D]">game-ready in one sentence</span>
+          game-ready in one sentence
         </>
       }
       subtitle="Describe a character, monster, weapon or item and get a clean sprite with a transparent background — on a real pixel grid for pixel art, ready for your engine."
@@ -53,7 +53,7 @@ export default function AiSpriteGeneratorPage() {
           eyebrow: "why it's game-ready",
           title: (
             <>
-              Sprites, not <span className="text-[#FF8A3D]">illustrations</span>
+              Sprites, not illustrations
             </>
           ),
           intro: "General image generators give you a picture on a background. SpriteLab cleans every result up so it drops straight into a game.",
@@ -71,7 +71,7 @@ export default function AiSpriteGeneratorPage() {
           eyebrow: "what you can make",
           title: (
             <>
-              Every <span className="text-[#FF8A3D]">asset type</span> a 2D game needs
+              Every asset type a 2D game needs
             </>
           ),
           cols: 4,
@@ -87,7 +87,7 @@ export default function AiSpriteGeneratorPage() {
           eyebrow: "how it works",
           title: (
             <>
-              From prompt to <span className="text-[#FF8A3D]">game asset</span>
+              From prompt to game asset
             </>
           ),
           steps: [
@@ -101,7 +101,7 @@ export default function AiSpriteGeneratorPage() {
           eyebrow: "example prompts",
           title: (
             <>
-              Try these <span className="text-[#FF8A3D]">prompts</span>
+              Try these prompts
             </>
           ),
           prompts: [
@@ -124,7 +124,7 @@ export default function AiSpriteGeneratorPage() {
       cta={{
         title: (
           <>
-            Make your first <span className="text-[#FF8A3D]">sprite</span>
+            Make your first sprite
           </>
         ),
         body: "Three free tries without an account, 10 free credits when you sign up.",

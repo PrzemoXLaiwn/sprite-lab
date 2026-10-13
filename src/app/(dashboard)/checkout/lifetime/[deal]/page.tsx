@@ -118,7 +118,7 @@ function LifetimeCheckoutForm({ deal, dealDetails }: { deal: string; dealDetails
   if (success) {
     return (
       <InlineSuccess title="Welcome to Lifetime access">
-        <span className="font-mono text-[#FFB27A]">{dealDetails.credits} credits/month</span>, forever
+        <span className="font-mono text-[#FFC857]">{dealDetails.credits} credits/month</span>, forever
       </InlineSuccess>
     );
   }
@@ -220,7 +220,7 @@ export default function LifetimeCheckoutPage() {
           <SummaryCard highlight>
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2">
-                <InfinityIcon className="h-4 w-4 text-[#FF8A3D]" />
+                <InfinityIcon className="h-4 w-4 text-[#FFA300]" />
                 <h2 className="font-display text-[18px] font-semibold text-white">{dealDetails.name}</h2>
               </div>
               <div className="flex flex-wrap justify-end gap-1.5">
@@ -233,10 +233,10 @@ export default function LifetimeCheckoutPage() {
               <span className="font-sans tracking-tight tabular-nums text-[32px] font-semibold leading-none text-white">
                 £{(dealDetails.price / 100).toFixed(0)}
               </span>
-              <span className="font-mono text-[12px] text-[#7A8294] line-through">
+              <span className="font-mono text-[12px] text-[#8A92BF] line-through">
                 £{(dealDetails.originalPrice / 100).toFixed(0)}
               </span>
-              <span className="font-mono text-[12px] text-[#8B93A5]">one-time</span>
+              <span className="font-mono text-[12px] text-[#9AA1CC]">one-time</span>
             </div>
             <div className="mt-3">
               <CreditChip>{dealDetails.credits} credits every month, forever</CreditChip>

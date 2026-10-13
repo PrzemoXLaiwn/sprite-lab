@@ -118,7 +118,7 @@ function VariationsPageContent({ generationId }: { generationId: string | null }
               <button key={num} type="button" onClick={() => setNumVariations(num)} disabled={loading}
                 aria-pressed={numVariations === num} aria-label={`${num} variation${num > 1 ? "s" : ""}`}
                 className={`min-h-10 rounded-lg font-mono text-[13px] font-semibold transition-colors disabled:cursor-not-allowed lg:min-h-8 ${
-                  numVariations === num ? "bg-white/[0.1] text-white shadow-sm" : "text-[#8B93A5] hover:text-white"
+                  numVariations === num ? "bg-white/[0.1] text-white shadow-sm" : "text-[#9AA1CC] hover:text-white"
                 }`}>
                 {num}
               </button>
@@ -131,7 +131,7 @@ function VariationsPageContent({ generationId }: { generationId: string | null }
             {SIMILARITY_LEVELS.map((l) => (
               <button key={l.id} type="button" onClick={() => setSimilarity(l.id)} disabled={loading} aria-pressed={similarity === l.id}
                 className={`min-h-10 rounded-lg text-[12px] font-medium transition-colors disabled:cursor-not-allowed lg:min-h-8 ${
-                  similarity === l.id ? "bg-white/[0.1] text-white shadow-sm" : "text-[#8B93A5] hover:text-white"
+                  similarity === l.id ? "bg-white/[0.1] text-white shadow-sm" : "text-[#9AA1CC] hover:text-white"
                 }`}>
                 {l.name}
               </button>
@@ -140,7 +140,7 @@ function VariationsPageContent({ generationId }: { generationId: string | null }
         </Field>
 
         <Field label="What to change · optional" labelFor="variation-guide">
-          <div className="rounded-2xl border border-white/[0.08] bg-[#151922] transition-colors focus-within:border-[#FF8A3D]/50">
+          <div className="rounded-2xl border border-white/[0.08] bg-[#212B4E] transition-colors focus-within:border-[#FFA300]/50">
             <textarea
               id="variation-guide"
               value={prompt}
@@ -149,12 +149,12 @@ function VariationsPageContent({ generationId }: { generationId: string | null }
               disabled={loading}
               maxLength={300}
               rows={3}
-              className="w-full resize-none bg-transparent px-4 py-3 text-[14px] leading-relaxed text-white outline-none placeholder:text-[#7A8294] disabled:opacity-60"
+              className="w-full resize-none bg-transparent px-4 py-3 text-[14px] leading-relaxed text-white outline-none placeholder:text-[#8A92BF] disabled:opacity-60"
             />
           </div>
         </Field>
 
-        <InfoNote icon={<Info className="h-3.5 w-3.5 text-[#8B93A5]" />}>
+        <InfoNote icon={<Info className="h-3.5 w-3.5 text-[#9AA1CC]" />}>
           Each variation is a new take on your sprite in the same style. Any that fail are refunded automatically.
         </InfoNote>
 
@@ -185,7 +185,7 @@ function VariationsPageContent({ generationId }: { generationId: string | null }
               )}
               {variationImages.length > 1 && (
                 <SecondaryButton onClick={handleDownloadAll} disabled={downloadingAll}>
-                  <Download className="h-4 w-4" /> Download all <span className="font-mono text-[12px] text-[#8B93A5]">({variationImages.length})</span>
+                  <Download className="h-4 w-4" /> Download all <span className="font-mono text-[12px] text-[#9AA1CC]">({variationImages.length})</span>
                 </SecondaryButton>
               )}
             </>
@@ -201,8 +201,8 @@ function VariationsPageContent({ generationId }: { generationId: string | null }
                 return (
                   <button key={`${url}-${i}`} type="button" onClick={() => setSelected(idx)}
                     title={name} aria-label={name} aria-pressed={active}
-                    className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border bg-[#151922] transition-all ${
-                      active ? "border-[#FF8A3D] ring-2 ring-[#FF8A3D]/25" : "border-white/[0.06] opacity-70 hover:opacity-100"
+                    className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border bg-[#212B4E] transition-all ${
+                      active ? "border-[#FFA300] ring-2 ring-[#FFA300]/25" : "border-white/[0.06] opacity-70 hover:opacity-100"
                     }`}
                     style={{ backgroundImage: "repeating-conic-gradient(#ffffff08 0% 25%, transparent 0% 50%)", backgroundSize: "10px 10px" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -45,25 +45,25 @@ export function EmailPreviewPanel({
 }) {
   const sequences = previews.map((p) => p.sequence);
   return (
-    <div className="mx-auto max-w-[1100px] px-4 py-5 text-[#ECEEF3] sm:px-5 sm:py-6 lg:px-8">
+    <div className="mx-auto max-w-[1100px] px-4 py-5 text-[#FFF1E8] sm:px-5 sm:py-6 lg:px-8">
       <div className="mb-6">
         <div className="flex items-center gap-2.5">
-          <Mail className="h-5 w-5 text-[#FF8A3D]" />
+          <Mail className="h-5 w-5 text-[#FFA300]" />
           <h1 className="font-display text-[22px] font-semibold tracking-tight text-white">Lifecycle emails</h1>
         </div>
-        <p className="mt-1 text-[13px] text-[#8B93A5]">
+        <p className="mt-1 text-[13px] text-[#9AA1CC]">
           Preview with sample data and today&apos;s dry run. Nothing on this page sends email.
         </p>
       </div>
 
       <EmailSwitchboardPanel s={switchboard} />
 
-      <section className="mb-8 rounded-2xl border border-white/[0.06] bg-[#0E1016] p-4 sm:p-5">
+      <section className="mb-8 rounded-2xl border border-white/[0.06] bg-[#19223F] p-4 sm:p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#8B93A5]">Dry run · today</h2>
+          <h2 className="text-[12.5px] text-[#9AA1CC] font-semibold">Dry run · today</h2>
           <span
             className={`rounded-full border px-2.5 py-1 font-mono text-[11px] ${
-              sendingEnabled ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-300" : "border-white/[0.1] bg-white/[0.04] text-[#C9CFDB]"
+              sendingEnabled ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-300" : "border-white/[0.1] bg-white/[0.04] text-[#C8CCE8]"
             }`}
           >
             MARKETING_EMAILS_ENABLED {sendingEnabled ? "on" : "off"}
@@ -94,7 +94,7 @@ export function EmailPreviewPanel({
                 <h3 className="mb-2 text-[13px] font-semibold text-white">By sequence</h3>
                 <table className="w-full text-left text-[13px]">
                   <thead>
-                    <tr className="font-mono text-[11px] text-[#8B93A5]">
+                    <tr className="font-mono text-[11px] text-[#9AA1CC]">
                       <th className="py-1.5 pr-2 font-normal">Sequence</th>
                       <th className="py-1.5 pr-2 text-right font-normal">Qualify</th>
                       <th className="py-1.5 text-right font-normal">Today</th>
@@ -103,9 +103,9 @@ export function EmailPreviewPanel({
                   <tbody>
                     {sequences.map((s) => (
                       <tr key={s} className="border-t border-white/[0.05]">
-                        <td className="py-2 pr-2 text-[#C9CFDB]">{SEQUENCE_INFO[s].name}</td>
+                        <td className="py-2 pr-2 text-[#C8CCE8]">{SEQUENCE_INFO[s].name}</td>
                         <td className="py-2 pr-2 text-right font-mono tabular-nums">{dryRun.eligible[s]}</td>
-                        <td className="py-2 text-right font-mono tabular-nums text-[#FF9F43]">{dryRun.planned[s]}</td>
+                        <td className="py-2 text-right font-mono tabular-nums text-[#FFB733]">{dryRun.planned[s]}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -117,7 +117,7 @@ export function EmailPreviewPanel({
                   <tbody>
                     {(Object.keys(SKIP_LABELS) as SkipReason[]).map((r) => (
                       <tr key={r} className="border-t border-white/[0.05] first:border-t-0">
-                        <td className="py-2 pr-2 text-[#C9CFDB]">{SKIP_LABELS[r]}</td>
+                        <td className="py-2 pr-2 text-[#C8CCE8]">{SKIP_LABELS[r]}</td>
                         <td className="py-2 text-right font-mono tabular-nums">{dryRun.skipped[r] ?? 0}</td>
                       </tr>
                     ))}
@@ -134,7 +134,7 @@ export function EmailPreviewPanel({
           <a
             key={p.sequence}
             href={`#${p.sequence}`}
-            className="inline-flex h-10 items-center rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-[13px] text-[#C9CFDB] hover:text-white"
+            className="inline-flex h-10 items-center rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-[13px] text-[#C8CCE8] hover:text-white"
           >
             {SEQUENCE_INFO[p.sequence].name}
           </a>
@@ -144,21 +144,21 @@ export function EmailPreviewPanel({
       {previews.map((p) => (
         <section key={p.sequence} id={p.sequence} className="mb-10 scroll-mt-6">
           <h2 className="font-display text-[18px] font-semibold text-white">{SEQUENCE_INFO[p.sequence].name}</h2>
-          <p className="mt-1 text-[13px] text-[#8B93A5]">{SEQUENCE_INFO[p.sequence].rule}</p>
-          <dl className="my-3 grid gap-1 rounded-xl border border-white/[0.06] bg-[#151922] p-3 text-[13px]">
+          <p className="mt-1 text-[13px] text-[#9AA1CC]">{SEQUENCE_INFO[p.sequence].rule}</p>
+          <dl className="my-3 grid gap-1 rounded-xl border border-white/[0.06] bg-[#212B4E] p-3 text-[13px]">
             <div className="flex min-w-0 gap-2">
-              <dt className="w-16 shrink-0 font-mono text-[11px] leading-5 text-[#8B93A5]">Subject</dt>
+              <dt className="w-16 shrink-0 font-mono text-[11px] leading-5 text-[#9AA1CC]">Subject</dt>
               <dd className="min-w-0 break-words text-white">{p.subject}</dd>
             </div>
             <div className="flex min-w-0 gap-2">
-              <dt className="w-16 shrink-0 font-mono text-[11px] leading-5 text-[#8B93A5]">Preview</dt>
-              <dd className="min-w-0 break-words text-[#C9CFDB]">{p.preview}</dd>
+              <dt className="w-16 shrink-0 font-mono text-[11px] leading-5 text-[#9AA1CC]">Preview</dt>
+              <dd className="min-w-0 break-words text-[#C8CCE8]">{p.preview}</dd>
             </div>
           </dl>
           <EmailFrame html={p.html} title={`${SEQUENCE_INFO[p.sequence].name} email preview`} />
-          <details className="mt-3 rounded-xl border border-white/[0.06] bg-[#0E1016] p-3">
-            <summary className="cursor-pointer text-[13px] text-[#C9CFDB]">Plain-text version</summary>
-            <pre className="mt-3 whitespace-pre-wrap break-words font-mono text-[12px] leading-5 text-[#C9CFDB]">{p.text}</pre>
+          <details className="mt-3 rounded-xl border border-white/[0.06] bg-[#19223F] p-3">
+            <summary className="cursor-pointer text-[13px] text-[#C8CCE8]">Plain-text version</summary>
+            <pre className="mt-3 whitespace-pre-wrap break-words font-mono text-[12px] leading-5 text-[#C8CCE8]">{p.text}</pre>
           </details>
         </section>
       ))}
@@ -168,10 +168,10 @@ export function EmailPreviewPanel({
 
 function Stat({ label, value, hint }: { label: string; value: number; hint?: string }) {
   return (
-    <div className="min-w-0 rounded-xl border border-white/[0.06] bg-[#151922] p-3">
-      <p className="truncate text-[12px] text-[#8B93A5]">{label}</p>
+    <div className="min-w-0 rounded-xl border border-white/[0.06] bg-[#212B4E] p-3">
+      <p className="truncate text-[12px] text-[#9AA1CC]">{label}</p>
       <p className="mt-1 font-mono text-[22px] font-semibold tabular-nums text-white">{value.toLocaleString("en-US")}</p>
-      {hint && <p className="mt-0.5 font-mono text-[11px] text-[#8B93A5]">{hint}</p>}
+      {hint && <p className="mt-0.5 font-mono text-[11px] text-[#9AA1CC]">{hint}</p>}
     </div>
   );
 }

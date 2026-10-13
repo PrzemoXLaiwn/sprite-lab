@@ -819,21 +819,21 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
   const advancedSet = [palette !== "auto", isCreature && pose !== "auto", seed.trim() !== "", selectedSubcategoryId !== defaultSubId].filter(Boolean).length;
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#0B0D12] text-[#ECEEF3] lg:h-screen lg:flex-row lg:overflow-hidden">
+    <div className="flex min-h-screen flex-col bg-[#131A31] text-[#FFF1E8] lg:h-screen lg:flex-row lg:overflow-hidden">
 
       {/* ═══ LEFT — controls ═══════════════════════════════════════════ */}
-      <section aria-label="Sprite settings" className="flex w-full shrink-0 flex-col bg-[#0E1016] lg:w-[380px] lg:border-r lg:border-white/[0.06]">
+      <section aria-label="Sprite settings" className="flex w-full shrink-0 flex-col bg-[#19223F] lg:w-[380px] lg:border-r lg:border-white/[0.06]">
         <div className="px-5 pb-3 pt-5">
           {showWelcomeBanner && (
-            <div role="status" className="mb-4 flex items-start gap-2.5 rounded-xl border border-[#FF8A3D]/30 bg-[#FF8A3D]/[0.08] py-2.5 pl-3 pr-1.5">
-              <PartyPopper className="mt-0.5 h-4 w-4 shrink-0 text-[#FF8A3D]" aria-hidden />
-              <p className="min-w-0 flex-1 text-[12.5px] leading-snug text-[#ECEEF3]">
+            <div role="status" className="mb-4 flex items-start gap-2.5 rounded-xl border border-[#FFA300]/30 bg-[#FFA300]/[0.08] py-2.5 pl-3 pr-1.5">
+              <PartyPopper className="mt-0.5 h-4 w-4 shrink-0 text-[#FFA300]" aria-hidden />
+              <p className="min-w-0 flex-1 text-[12.5px] leading-snug text-[#FFF1E8]">
                 {checkoutSuccess
                   ? <>Payment confirmed{planName ? ` — your ${planName} plan is active` : ""}. Your credits are ready to use.</>
                   : <>Welcome to SpriteLab! Your free credits are ready — we filled in an example, so just press <b className="font-semibold text-white">Generate</b>.</>}
               </p>
               <button type="button" aria-label="Dismiss message" onClick={() => setShowWelcomeBanner(false)}
-                className="-my-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#C9CFDB] transition-colors hover:bg-white/[0.06] hover:text-white">
+                className="-my-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#C8CCE8] transition-colors hover:bg-white/[0.06] hover:text-white">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -849,33 +849,33 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
 
           {/* Project mode banner — results get Accept / Decline */}
           {projectId && (
-            <div className="mt-4 rounded-xl border border-[#FF8A3D]/30 bg-[#FF8A3D]/[0.06] p-3">
+            <div className="mt-4 rounded-xl border border-[#FFA300]/30 bg-[#FFA300]/[0.06] p-3">
               {projectError ? (
                 <p role="alert" className="text-[12px] text-red-200">
                   {projectError}{" "}
-                  <Link href="/projects" className="font-semibold text-[#FFB27A] hover:text-white">Open projects →</Link>
+                  <Link href="/projects" className="font-semibold text-[#FFC857] hover:text-white">Open projects →</Link>
                 </p>
               ) : (
                 <>
                   <div className="flex items-center justify-between gap-2">
-                    <p className="min-w-0 truncate text-[12px] text-[#C9CFDB]">
-                      <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-[#FFB27A]">project</span>{" "}
+                    <p className="min-w-0 truncate text-[12px] text-[#C8CCE8]">
+                      <span className="text-[12.5px] text-[#FFC857] font-semibold">project</span>{" "}
                       <span className="font-semibold text-white">{project?.name ?? "Loading…"}</span>
                     </p>
-                    <Link href={`/projects/${encodeURIComponent(projectId)}`} className="inline-flex min-h-8 shrink-0 items-center text-[11.5px] font-medium text-[#FFB27A] hover:text-white">
+                    <Link href={`/projects/${encodeURIComponent(projectId)}`} className="inline-flex min-h-8 shrink-0 items-center text-[11.5px] font-medium text-[#FFC857] hover:text-white">
                       Open →
                     </Link>
                   </div>
                   <label className="mt-2 block">
-                    <span className="mb-1 block font-mono text-[10.5px] uppercase tracking-[0.08em] text-[#9BA3B4]">Accept into</span>
+                    <span className="mb-1 block text-[12.5px] text-[#A7ADD4] font-semibold">Accept into</span>
                     <select value={targetFolderId} onChange={(e) => setTargetFolderId(e.target.value)} disabled={!project}
-                      className="h-10 w-full rounded-lg border border-white/[0.08] bg-[#151922] px-2.5 text-[12.5px] text-white outline-none focus:border-[#FF8A3D]/50 disabled:opacity-60">
+                      className="h-10 w-full rounded-lg border border-white/[0.08] bg-[#212B4E] px-2.5 text-[12.5px] text-white outline-none focus:border-[#FFA300]/50 disabled:opacity-60">
                       <option value="">Auto-sort by type (recommended)</option>
                       {project?.folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
                     </select>
                   </label>
-                  <p className="mt-1.5 text-[11.5px] leading-snug text-[#9BA3B4]">
-                    Review each sprite: <b className="font-semibold text-emerald-300">Accept</b> files it into the matching folder (a new folder is made if needed), <b className="font-semibold text-[#C9CFDB]">Decline</b> keeps it out of the project.
+                  <p className="mt-1.5 text-[11.5px] leading-snug text-[#A7ADD4]">
+                    Review each sprite: <b className="font-semibold text-emerald-300">Accept</b> files it into the matching folder (a new folder is made if needed), <b className="font-semibold text-[#C8CCE8]">Decline</b> keeps it out of the project.
                   </p>
                 </>
               )}
@@ -888,20 +888,20 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
           {/* Prompt */}
           <Field label="Describe your sprite" labelFor="generate-prompt">
             {styleRef && (
-              <div className="mb-2 flex items-center gap-2.5 rounded-xl border border-[#FF8A3D]/40 bg-[#FF8A3D]/[0.06] p-2">
+              <div className="mb-2 flex items-center gap-2.5 rounded-xl border border-[#FFA300]/40 bg-[#FFA300]/[0.06] p-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={styleRef.imageUrl} alt="" className="pixel-perfect h-10 w-10 shrink-0 rounded-lg bg-[#0B0D12] object-contain p-0.5" />
+                <img src={styleRef.imageUrl} alt="" className="pixel-perfect h-10 w-10 shrink-0 rounded-lg bg-[#131A31] object-contain p-0.5" />
                 <span className="min-w-0 flex-1">
                   <span className="block text-[12.5px] font-medium text-white">Matching this sprite&apos;s style</span>
-                  <span className="block text-[11px] text-[#9BA3B4]">Same look &amp; pixel size · {STYLE_MATCH_CREDITS} credits per sprite</span>
+                  <span className="block text-[11px] text-[#A7ADD4]">Same look &amp; pixel size · {STYLE_MATCH_CREDITS} credits per sprite</span>
                 </span>
                 <button type="button" onClick={() => setStyleRef(null)} title="Stop matching this style" aria-label="Stop matching this style"
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#9BA3B4] transition-colors hover:bg-white/[0.06] hover:text-white">
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#A7ADD4] transition-colors hover:bg-white/[0.06] hover:text-white">
                   <X className="h-4 w-4" />
                 </button>
               </div>
             )}
-            <div className="rounded-2xl border border-white/[0.08] bg-[#151922] transition-colors focus-within:border-[#FF8A3D]/50">
+            <div className="rounded-2xl border border-white/[0.08] bg-[#212B4E] transition-colors focus-within:border-[#FFA300]/50">
               <textarea
                 id="generate-prompt"
                 value={prompt}
@@ -913,14 +913,14 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                 maxLength={500}
                 rows={4}
                 aria-describedby={promptQuality && promptQuality.level !== "good" ? "generate-prompt-hint" : undefined}
-                className="w-full resize-none bg-transparent px-4 pt-3.5 text-[14px] leading-relaxed text-white outline-none placeholder:text-[#7A8294]"
+                className="w-full resize-none bg-transparent px-4 pt-3.5 text-[14px] leading-relaxed text-white outline-none placeholder:text-[#8A92BF]"
               />
               <div className="flex items-center justify-between px-2 pb-2">
                 <button type="button" onClick={surpriseMe} title="Fill in a random idea for this asset type"
-                  className="flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 text-[12px] font-medium text-[#9BA3B4] transition-colors hover:bg-white/[0.05] hover:text-white">
+                  className="flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 text-[12px] font-medium text-[#A7ADD4] transition-colors hover:bg-white/[0.05] hover:text-white">
                   <Dices className="h-3.5 w-3.5" aria-hidden /> Surprise me
                 </button>
-                <span className="pr-2 font-mono text-[11px] tabular-nums text-[#7A8294]" aria-hidden>{prompt.length}/500</span>
+                <span className="pr-2 font-mono text-[11px] tabular-nums text-[#8A92BF]" aria-hidden>{prompt.length}/500</span>
               </div>
             </div>
             {promptQuality && promptQuality.level !== "good" && (
@@ -942,7 +942,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
           {/* Style */}
           <Field label={<>Style<AutoBadge show={auto.isAuto("style")} /></>} hint={selectedStyle ? `${selectedStyle.name} — ${selectedStyle.description}` : undefined} action={
             <button type="button" onClick={() => setShowAllStyles((v) => !v)} aria-expanded={showAllStyles}
-              className="-my-1 inline-flex min-h-10 items-center text-[12px] font-medium text-[#9BA3B4] transition-colors hover:text-white lg:min-h-8 lg:text-[11.5px]">
+              className="-my-1 inline-flex min-h-10 items-center text-[12px] font-medium text-[#A7ADD4] transition-colors hover:text-white lg:min-h-8 lg:text-[11.5px]">
               {showAllStyles ? "Show fewer" : `All ${GENERATE_STYLES.length} styles`}
             </button>
           }>
@@ -952,8 +952,8 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                 return (
                   <button key={s.id} type="button" onClick={() => setStyleId(s.id)} title={s.description}
                     aria-pressed={active} aria-label={s.name}
-                    className={`group relative aspect-square overflow-hidden rounded-xl border bg-[#151922] transition-colors ${
-                      active ? "border-[#FF8A3D] ring-2 ring-[#FF8A3D]/25" : "border-white/[0.06] hover:border-white/20"
+                    className={`group relative aspect-square overflow-hidden rounded-xl border bg-[#212B4E] transition-colors ${
+                      active ? "border-[#FFA300] ring-2 ring-[#FFA300]/25" : "border-white/[0.06] hover:border-white/20"
                     }`}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={`/styles/${s.id.toLowerCase()}.png`} alt="" loading="lazy" decoding="async"
@@ -961,7 +961,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                     <span aria-hidden className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/50 to-transparent px-1.5 pb-1.5 pt-4 text-center text-[11.5px] font-medium leading-tight text-white lg:text-[10.5px]">
                       {s.name}
                     </span>
-                    {active && <span aria-hidden className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#FF8A3D]"><Check className="h-2.5 w-2.5 text-black" strokeWidth={3} /></span>}
+                    {active && <span aria-hidden className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#FFA300]"><Check className="h-2.5 w-2.5 text-black" strokeWidth={3} /></span>}
                   </button>
                 );
               })}
@@ -977,9 +977,9 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                 return (
                   <button key={c.id} type="button" onClick={() => handleCategoryChange(c)} aria-pressed={active}
                     className={`flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[12px] font-medium transition-colors lg:min-h-8 ${
-                      active ? "border-[#FF8A3D]/60 bg-[#FF8A3D]/[0.12] text-white" : "border-white/[0.08] text-[#9BA3B4] hover:border-white/20 hover:text-white"
+                      active ? "border-[#FFA300]/60 bg-[#FFA300]/[0.12] text-white" : "border-white/[0.08] text-[#A7ADD4] hover:border-white/20 hover:text-white"
                     }`}>
-                    <Icon className={`h-3.5 w-3.5 ${active ? "text-[#FF8A3D]" : ""}`} aria-hidden /> {c.label}
+                    <Icon className={`h-3.5 w-3.5 ${active ? "text-[#FFA300]" : ""}`} aria-hidden /> {c.label}
                   </button>
                 );
               })}
@@ -993,7 +993,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                 {VIEW_OPTIONS.map((v) => (
                   <button key={v.id} type="button" onClick={() => setView(v.id)} title={v.desc} aria-pressed={view === v.id}
                     className={`min-h-9 rounded-lg text-[12px] font-medium transition-colors lg:min-h-8 ${
-                      view === v.id ? "bg-white/[0.1] text-white shadow-sm" : "text-[#8B93A5] hover:text-white"
+                      view === v.id ? "bg-white/[0.1] text-white shadow-sm" : "text-[#9AA1CC] hover:text-white"
                     }`}>
                     {v.label}
                   </button>
@@ -1010,15 +1010,15 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                 return (
                   <button key={d.id} type="button" onClick={() => setDetail(d.id)} aria-pressed={active}
                     className={`rounded-xl border p-3 text-left transition-colors ${
-                      active ? "border-[#FF8A3D]/70 bg-[#FF8A3D]/[0.08]" : "border-white/[0.08] hover:border-white/20"
+                      active ? "border-[#FFA300]/70 bg-[#FFA300]/[0.08]" : "border-white/[0.08] hover:border-white/20"
                     }`}>
                     <span className="flex items-center justify-between gap-2">
                       <span className="text-[13px] font-semibold text-white">{d.label}</span>
-                      <span className={`font-mono text-[11px] font-semibold ${active ? "text-[#FFB27A]" : "text-[#8B93A5]"} ${styleRef ? "line-through opacity-60" : ""}`}>
+                      <span className={`font-mono text-[11px] font-semibold ${active ? "text-[#FFC857]" : "text-[#9AA1CC]"} ${styleRef ? "line-through opacity-60" : ""}`}>
                         {creditLabel(DETAIL_CREDITS[d.id])}
                       </span>
                     </span>
-                    <span className="mt-1 block text-[11.5px] leading-snug text-[#8B93A5]">{d.description}</span>
+                    <span className="mt-1 block text-[11.5px] leading-snug text-[#9AA1CC]">{d.description}</span>
                   </button>
                 );
               })}
@@ -1028,10 +1028,10 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
           {/* More options */}
           <div className="rounded-2xl border border-white/[0.06]">
             <button type="button" onClick={() => setShowAdvanced((v) => !v)} aria-expanded={showAdvanced} aria-controls="generate-more-options"
-              className="flex min-h-11 w-full items-center justify-between gap-2 rounded-2xl px-4 text-[12.5px] font-medium text-[#9BA3B4] transition-colors hover:text-white">
+              className="flex min-h-11 w-full items-center justify-between gap-2 rounded-2xl px-4 text-[12.5px] font-medium text-[#A7ADD4] transition-colors hover:text-white">
               <span>
                 More options
-                <span className="ml-1.5 font-normal text-[#7A8294]">
+                <span className="ml-1.5 font-normal text-[#8A92BF]">
                   {advancedSet > 0 ? `· ${advancedSet} changed` : "· palette, type, pose, seed"}
                 </span>
               </span>
@@ -1045,7 +1045,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                       const active = p.id === palette;
                       return p.id === "auto" ? (
                         <button key={p.id} type="button" onClick={() => setPalette(p.id)} aria-pressed={active}
-                          className={`flex h-10 items-center rounded-full border-2 px-3 text-[11.5px] font-medium text-[#C9CFDB] transition-colors lg:h-8 ${
+                          className={`flex h-10 items-center rounded-full border-2 px-3 text-[11.5px] font-medium text-[#C8CCE8] transition-colors lg:h-8 ${
                             active ? "border-white bg-white/[0.08]" : "border-transparent bg-white/[0.06] hover:border-white/40"
                           }`}>
                           Auto
@@ -1064,7 +1064,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                 <Field label={<>Exact type<AutoBadge show={auto.isAuto("type")} /></>} labelFor="generate-type" hint="Narrows the asset type, e.g. sword vs. axe.">
                   <select id="generate-type" value={selectedSubcategoryId}
                     onChange={(e) => { const s = selectedCategory.subcategories.find((x) => x.subcategoryId === e.target.value); if (s) handleSubcategoryChange(s); }}
-                    className={`h-10 w-full rounded-xl border border-white/[0.08] bg-[#151922] px-3 text-[13px] text-white outline-none focus:border-[#FF8A3D]/50${autoFlash(auto.isFlashing("type"))}`}>
+                    className={`h-10 w-full rounded-xl border border-white/[0.08] bg-[#212B4E] px-3 text-[13px] text-white outline-none focus:border-[#FFA300]/50${autoFlash(auto.isFlashing("type"))}`}>
                     {selectedCategory.subcategories.map((s) => <option key={s.subcategoryId} value={s.subcategoryId}>{s.label}</option>)}
                   </select>
                 </Field>
@@ -1075,7 +1075,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                       {POSE_OPTIONS.map((p) => (
                         <button key={p.id} type="button" onClick={() => setPose(p.id)} title={p.desc} aria-pressed={pose === p.id}
                           className={`min-h-9 rounded-lg text-[11.5px] font-medium transition-colors lg:min-h-8 ${
-                            pose === p.id ? "bg-white/[0.1] text-white shadow-sm" : "text-[#8B93A5] hover:text-white"
+                            pose === p.id ? "bg-white/[0.1] text-white shadow-sm" : "text-[#9AA1CC] hover:text-white"
                           }`}>
                           {p.label}
                         </button>
@@ -1091,12 +1091,12 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                   <div className="flex gap-2">
                     <input id="generate-seed" type="number" inputMode="numeric" min={0} max={2147483647} placeholder="Random" value={seed}
                       onChange={(e) => { setSeed(e.target.value); seedRef.current = e.target.value; setSeedLocked(false); }}
-                      className="h-10 min-w-0 flex-1 rounded-xl border border-white/[0.08] bg-[#151922] px-3 text-[13px] text-white outline-none placeholder:text-[#7A8294] focus:border-[#FF8A3D]/50" />
+                      className="h-10 min-w-0 flex-1 rounded-xl border border-white/[0.08] bg-[#212B4E] px-3 text-[13px] text-white outline-none placeholder:text-[#8A92BF] focus:border-[#FFA300]/50" />
                     {activeResult && (
                       <button type="button" onClick={handleLockSeed} aria-pressed={seedLocked}
                         title={seedLocked ? "Unlock the seed" : "Reuse the seed of the current sprite"}
                         aria-label={seedLocked ? "Unlock the seed" : "Reuse the seed of the current sprite"}
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-colors ${seedLocked ? "border-[#FF8A3D]/50 bg-[#FF8A3D]/10 text-[#FFB27A]" : "border-white/[0.08] text-[#8B93A5] hover:text-white"}`}>
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-colors ${seedLocked ? "border-[#FFA300]/50 bg-[#FFA300]/10 text-[#FFC857]" : "border-white/[0.08] text-[#9AA1CC] hover:text-white"}`}>
                         {seedLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
                       </button>
                     )}
@@ -1150,15 +1150,15 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                       <Check className="h-4 w-4 shrink-0" aria-hidden /> Added to {activeResult.acceptedFolderName ?? "the project"}
                     </span>
                     <button type="button" onClick={() => declineResult(activeResult)}
-                      className="h-10 rounded-xl px-3 text-[12.5px] font-medium text-[#9BA3B4] transition-colors hover:bg-white/[0.04] hover:text-white">Undo</button>
+                      className="h-10 rounded-xl px-3 text-[12.5px] font-medium text-[#A7ADD4] transition-colors hover:bg-white/[0.04] hover:text-white">Undo</button>
                   </>
                 ) : activeResult.projectStatus === "declined" ? (
                   <>
-                    <span className="flex min-h-10 items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-[13px] text-[#9BA3B4]">
+                    <span className="flex min-h-10 items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-[13px] text-[#A7ADD4]">
                       <X className="h-4 w-4 shrink-0" aria-hidden /> Declined — not added to the project
                     </span>
                     <button type="button" onClick={() => acceptResult(activeResult)}
-                      className="h-10 rounded-xl px-3 text-[12.5px] font-medium text-[#FFB27A] transition-colors hover:bg-white/[0.04] hover:text-white">Accept instead</button>
+                      className="h-10 rounded-xl px-3 text-[12.5px] font-medium text-[#FFC857] transition-colors hover:bg-white/[0.04] hover:text-white">Accept instead</button>
                   </>
                 ) : (
                   <>
@@ -1167,12 +1167,12 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                       {activeResult.projectStatus === "accepting" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Check className="h-4 w-4" aria-hidden />} Accept
                     </button>
                     <button type="button" onClick={() => declineResult(activeResult)} disabled={activeResult.projectStatus === "accepting"}
-                      className="flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.04] px-5 text-[14px] font-medium text-[#C9CFDB] transition hover:bg-white/[0.08] disabled:opacity-60">
+                      className="flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.04] px-5 text-[14px] font-medium text-[#C8CCE8] transition hover:bg-white/[0.08] disabled:opacity-60">
                       <X className="h-4 w-4" aria-hidden /> Decline
                     </button>
                     {pendingResults.length > 1 && (
                       <button type="button" onClick={acceptAllPending}
-                        className="h-11 rounded-xl px-3 text-[12.5px] font-medium text-[#9BA3B4] transition-colors hover:bg-white/[0.04] hover:text-white">
+                        className="h-11 rounded-xl px-3 text-[12.5px] font-medium text-[#A7ADD4] transition-colors hover:bg-white/[0.04] hover:text-white">
                         Accept all ({pendingResults.length})
                       </button>
                     )}
@@ -1196,7 +1196,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                   </button>
                   {sizesOpen && (
                     <div role="menu" aria-label="Download sizes"
-                      className="absolute bottom-12 left-1/2 z-20 w-56 -translate-x-1/2 rounded-xl border border-white/[0.08] bg-[#161A22] p-1.5 shadow-2xl">
+                      className="absolute bottom-12 left-1/2 z-20 w-56 -translate-x-1/2 rounded-xl border border-white/[0.08] bg-[#1B2446] p-1.5 shadow-2xl">
                       {isPixelStyle(activeResult.styleId) && (
                         <button type="button" role="menuitem" onClick={() => { setSizesOpen(false); downloadNative(); }}
                           className="flex min-h-9 w-full items-center justify-between rounded-lg px-3 text-[12.5px] text-white hover:bg-white/[0.06]">
@@ -1205,13 +1205,13 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                       )}
                       {[32, 64, 128, 256, 512, 1024].map((size) => (
                         <button key={size} type="button" role="menuitem" onClick={() => { setSizesOpen(false); downloadAtSize(size); }}
-                          className="flex min-h-9 w-full items-center justify-between rounded-lg px-3 font-mono text-[12px] text-[#C9CFDB] hover:bg-white/[0.06] hover:text-white">
+                          className="flex min-h-9 w-full items-center justify-between rounded-lg px-3 font-mono text-[12px] text-[#C8CCE8] hover:bg-white/[0.06] hover:text-white">
                           {size} × {size} px
                         </button>
                       ))}
                       <button type="button" role="menuitem" onClick={() => { setSizesOpen(false); handleDownloadMetadata(); }}
                         title="Prompt, seed, style and settings — to recreate this sprite later"
-                        className="mt-1 flex min-h-9 w-full items-center rounded-lg border-t border-white/[0.06] px-3 text-[12px] text-[#9BA3B4] hover:bg-white/[0.06] hover:text-white">
+                        className="mt-1 flex min-h-9 w-full items-center rounded-lg border-t border-white/[0.06] px-3 text-[12px] text-[#A7ADD4] hover:bg-white/[0.06] hover:text-white">
                         Settings file (.json)
                       </button>
                     </div>
@@ -1219,7 +1219,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                 </div>
                 {activeResult.generationId && (
                   <Link href={`/animate?id=${encodeURIComponent(activeResult.generationId)}`}
-                    className="flex h-10 items-center gap-1.5 rounded-xl border border-[#FF8A3D]/40 bg-[#FF8A3D]/10 px-3 text-[13px] font-medium text-[#FFB27A] transition hover:bg-[#FF8A3D]/20">
+                    className="flex h-10 items-center gap-1.5 rounded-xl border border-[#FFA300]/40 bg-[#FFA300]/10 px-3 text-[13px] font-medium text-[#FFC857] transition hover:bg-[#FFA300]/20">
                     <Film className="h-4 w-4" aria-hidden /> Animate
                   </Link>
                 )}
@@ -1246,17 +1246,17 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                   <p key={i} className="flex items-start gap-2 rounded-xl border border-amber-400/20 bg-amber-400/[0.05] px-3 py-2 text-[11.5px] text-amber-100/90">
                     <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" aria-hidden /> <span className="flex-1">{w}</span>
                     {/use Animate/i.test(w) && activeResult.generationId && (
-                      <Link href={`/animate?id=${encodeURIComponent(activeResult.generationId)}`} className="-my-2 inline-flex min-h-9 shrink-0 items-center font-semibold text-[#FFB27A] hover:text-[#FFD0A8]">Animate it →</Link>
+                      <Link href={`/animate?id=${encodeURIComponent(activeResult.generationId)}`} className="-my-2 inline-flex min-h-9 shrink-0 items-center font-semibold text-[#FFC857] hover:text-[#FFD0A8]">Animate it →</Link>
                     )}
                   </p>
                 ))}
                 {activeResult.translatedPrompt && (
-                  <p className="flex items-center gap-2 rounded-xl bg-white/[0.04] py-1 pl-3 pr-1 text-[11.5px] text-[#9BA3B4]">
-                    <span className="font-mono font-semibold text-[#C9CFDB]" title="Translated to English">EN</span>
+                  <p className="flex items-center gap-2 rounded-xl bg-white/[0.04] py-1 pl-3 pr-1 text-[11.5px] text-[#A7ADD4]">
+                    <span className="font-mono font-semibold text-[#C8CCE8]" title="Translated to English">EN</span>
                     <span className="min-w-0 flex-1 truncate" title={activeResult.translatedPrompt}>{activeResult.translatedPrompt}</span>
                     <button type="button" onClick={() => activeResult.translatedPrompt && setPrompt(activeResult.translatedPrompt)}
                       title="Put the English version in the prompt box"
-                      className="min-h-10 shrink-0 rounded-lg px-3 font-semibold text-[#FFB27A] lg:min-h-8 lg:px-2.5 hover:bg-white/[0.04] hover:text-[#FFD0A8]">Use</button>
+                      className="min-h-10 shrink-0 rounded-lg px-3 font-semibold text-[#FFC857] lg:min-h-8 lg:px-2.5 hover:bg-white/[0.04] hover:text-[#FFD0A8]">Use</button>
                   </p>
                 )}
               </div>
@@ -1285,15 +1285,15 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
           {!activeResult && !isGenerating && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-5 sm:gap-6 sm:p-8">
               <div className="text-center">
-                <p className="font-display text-[20px] font-semibold text-white sm:text-[24px]">What will you create?<span className="caret" aria-hidden /></p>
-                <p className="mt-1.5 text-[13px] text-[#8B93A5]">
+                <p className="font-display text-[20px] font-semibold text-white sm:text-[24px]">What will you create?</p>
+                <p className="mt-1.5 text-[13px] text-[#9AA1CC]">
                   <span className="lg:hidden">Describe it above</span><span className="max-lg:hidden">Describe it on the left</span>, or start from an example
                 </p>
               </div>
               <div className="grid w-full max-w-[280px] grid-cols-3 gap-2 sm:max-w-md sm:gap-2.5">
                 {SHOWCASE.slice(0, 6).map((ex) => (
                   <button key={ex.id} type="button" onClick={() => applyExample(ex)} title={`Use: ${ex.prompt}`} aria-label={`Use example: ${ex.prompt}`}
-                    className="group relative aspect-square overflow-hidden rounded-2xl border border-white/[0.06] bg-[#151922]/80 transition-colors hover:border-[#FF8A3D]/50">
+                    className="group relative aspect-square overflow-hidden rounded-2xl border border-white/[0.06] bg-[#212B4E]/80 transition-colors hover:border-[#FFA300]/50">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={ex.imageUrl} alt="" decoding="async"
                       className={`absolute inset-0 h-full w-full object-contain p-3 transition-transform duration-300 group-hover:scale-110 ${isPixelShowcase(ex) ? "pixel-perfect" : ""}`} />
@@ -1343,18 +1343,18 @@ function GenerateProgress({ expectedSeconds }: { expectedSeconds: number }) {
   const seconds = Math.floor(ms / 1000);
   const stage = PROGRESS_STAGES.find(([until]) => seconds < until)?.[1] ?? "Hang tight — this one is taking a while…";
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-[#0B0D12]/40 px-6 backdrop-blur-[2px]">
+    <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-[#131A31]/40 px-6 backdrop-blur-[2px]">
       <div className="relative h-14 w-14" aria-hidden>
         <div className="absolute inset-0 rounded-full border-2 border-white/10" />
-        <div className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-[#FF8A3D]" />
-        <Sparkles className="absolute inset-0 m-auto h-5 w-5 text-[#FF8A3D]" />
+        <div className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-[#FFA300]" />
+        <Sparkles className="absolute inset-0 m-auto h-5 w-5 text-[#FFA300]" />
       </div>
       <div className="text-center">
         <p role="status" className="text-[14px] font-medium text-white">{stage}</p>
-        <p className="mt-1 font-mono text-[12px] tabular-nums text-[#8B93A5]">{seconds}s · usually ~{expectedSeconds}s</p>
+        <p className="mt-1 font-mono text-[12px] tabular-nums text-[#9AA1CC]">{seconds}s · usually ~{expectedSeconds}s</p>
       </div>
       <div className="h-1 w-48 overflow-hidden rounded-full bg-white/[0.08]" aria-hidden>
-        <div className="h-full bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] transition-[width] duration-300 ease-linear"
+        <div className="h-full bg-[#FFA300] transition-[width] duration-300 ease-linear"
           style={{ width: `${Math.min(95, (ms / (expectedSeconds * 1000)) * 90)}%` }} />
       </div>
     </div>
@@ -1367,8 +1367,8 @@ function HistoryThumb({ item, active, pixel, onClick, className }: {
   const reviewState = item.projectStatus === "accepted" ? " (accepted)" : item.projectStatus === "pending" ? " (awaiting review)" : item.projectStatus === "declined" ? " (declined)" : "";
   return (
     <button type="button" onClick={onClick} title={item.prompt} aria-label={`${item.prompt}${reviewState}`} aria-pressed={active}
-      className={`relative overflow-hidden rounded-xl border bg-[#151922] transition-all ${
-        active ? "border-[#FF8A3D] ring-2 ring-[#FF8A3D]/25" : "border-white/[0.06] opacity-70 hover:opacity-100"
+      className={`relative overflow-hidden rounded-xl border bg-[#212B4E] transition-all ${
+        active ? "border-[#FFA300] ring-2 ring-[#FFA300]/25" : "border-white/[0.06] opacity-70 hover:opacity-100"
       } ${className ?? ""}`}
       style={{ backgroundImage: "repeating-conic-gradient(#ffffff08 0% 25%, transparent 0% 50%)", backgroundSize: "10px 10px" }}>
       <Image src={item.imageUrl} alt="" fill unoptimized loading="lazy" sizes="120px" className={`object-contain p-1.5 ${pixel ? "pixel-perfect" : ""} ${item.projectStatus === "declined" ? "opacity-30" : ""}`} />
@@ -1378,7 +1378,7 @@ function HistoryThumb({ item, active, pixel, onClick, className }: {
         </span>
       )}
       {item.projectStatus === "pending" && (
-        <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-[#FF8A3D]" aria-hidden />
+        <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-[#FFA300]" aria-hidden />
       )}
     </button>
   );

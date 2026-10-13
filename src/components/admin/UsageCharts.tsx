@@ -3,7 +3,7 @@
 // =============================================================================
 // Admin usage charts — tiny dependency-free SVG (stacked bars + lines)
 // =============================================================================
-// Dark categorical palette validated for CVD + contrast on #0E1016 (fixed
+// Dark categorical palette validated for CVD + contrast on #19223F (fixed
 // order, never cycled). Recessive grid, one y-axis per chart, hover tooltip
 // per day, legend always shown for ≥2 series, table view under each chart.
 // =============================================================================
@@ -49,7 +49,7 @@ export function Legend({ series }: { series: Series[] }) {
   return (
     <ul className="flex flex-wrap gap-x-4 gap-y-1.5">
       {series.map((s) => (
-        <li key={s.key} className="flex items-center gap-1.5 text-[12px] text-[#C9CFDB]">
+        <li key={s.key} className="flex items-center gap-1.5 text-[12px] text-[#C8CCE8]">
           <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: s.color }} aria-hidden />
           {s.label}
         </li>
@@ -94,11 +94,11 @@ export function UsageChart({ dates, series, format = (v) => String(Math.round(v)
           {[0, 0.5, 1].map((t) => (
             <g key={t}>
               <line x1={padL} x2={width - padR} y1={y(max * t)} y2={y(max * t)} stroke="rgba(255,255,255,0.07)" />
-              <text x={padL - 6} y={y(max * t) + 3.5} textAnchor="end" className="fill-[#7A8294] font-mono text-[10px]">{format(max * t)}</text>
+              <text x={padL - 6} y={y(max * t) + 3.5} textAnchor="end" className="fill-[#8A92BF] font-mono text-[10px]">{format(max * t)}</text>
             </g>
           ))}
           {dates.map((d, i) => (i % labelEvery === 0 ? (
-            <text key={d} x={padL + i * step + step / 2} y={height - 6} textAnchor="middle" className="fill-[#7A8294] font-mono text-[10px]">{shortDate(d)}</text>
+            <text key={d} x={padL + i * step + step / 2} y={height - 6} textAnchor="middle" className="fill-[#8A92BF] font-mono text-[10px]">{shortDate(d)}</text>
           ) : null))}
           {hover !== null && <rect x={padL + hover * step} y={padT} width={step} height={innerH} fill="rgba(255,255,255,0.04)" />}
 
@@ -126,30 +126,30 @@ export function UsageChart({ dates, series, format = (v) => String(Math.round(v)
             );
           })}
           {kind === "bars" && totals[peak] > 0 && (
-            <text x={padL + peak * step + step / 2} y={y(totals[peak]) - 4} textAnchor="middle" className="fill-[#C9CFDB] font-mono text-[10px]">{format(totals[peak])}</text>
+            <text x={padL + peak * step + step / 2} y={y(totals[peak]) - 4} textAnchor="middle" className="fill-[#C8CCE8] font-mono text-[10px]">{format(totals[peak])}</text>
           )}
 
           {kind === "lines" && series.map((s) => (
             <g key={s.key}>
               <polyline fill="none" stroke={s.color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round"
                 points={s.values.map((v, i) => `${padL + i * step + step / 2},${y(v)}`).join(" ")} />
-              {hover !== null && <circle cx={padL + hover * step + step / 2} cy={y(s.values[hover] ?? 0)} r={4} fill={s.color} stroke="#0E1016" strokeWidth={2} />}
+              {hover !== null && <circle cx={padL + hover * step + step / 2} cy={y(s.values[hover] ?? 0)} r={4} fill={s.color} stroke="#19223F" strokeWidth={2} />}
             </g>
           ))}
         </svg>
 
         {hover !== null && (
-          <div className="pointer-events-none absolute top-1 z-10 min-w-[140px] rounded-lg border border-white/[0.1] bg-[#151922]/95 px-3 py-2 shadow-xl"
+          <div className="pointer-events-none absolute top-1 z-10 min-w-[140px] rounded-lg border border-white/[0.1] bg-[#212B4E]/95 px-3 py-2 shadow-xl"
             style={{ left: Math.min(Math.max(0, padL + hover * step + step / 2 - 70), width - 150) }}>
-            <p className="mb-1 font-mono text-[11px] text-[#8B93A5]">{shortDate(dates[hover])}</p>
+            <p className="mb-1 font-mono text-[11px] text-[#9AA1CC]">{shortDate(dates[hover])}</p>
             {series.map((s) => (
-              <p key={s.key} className="flex items-center justify-between gap-3 text-[12px] text-[#C9CFDB]">
+              <p key={s.key} className="flex items-center justify-between gap-3 text-[12px] text-[#C8CCE8]">
                 <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-[2px]" style={{ background: s.color }} />{s.label}</span>
                 <span className="font-mono tabular-nums text-white">{format(s.values[hover] ?? 0)}</span>
               </p>
             ))}
             {kind === "bars" && series.length > 1 && (
-              <p className="mt-1 flex justify-between border-t border-white/[0.08] pt-1 text-[12px] text-[#8B93A5]">
+              <p className="mt-1 flex justify-between border-t border-white/[0.08] pt-1 text-[12px] text-[#9AA1CC]">
                 <span>Total</span><span className="font-mono tabular-nums text-white">{format(totals[hover])}</span>
               </p>
             )}
@@ -158,15 +158,15 @@ export function UsageChart({ dates, series, format = (v) => String(Math.round(v)
       </div>
 
       <details className="mt-2">
-        <summary className="cursor-pointer select-none text-[11.5px] text-[#7A8294] hover:text-[#C9CFDB]">Show as table</summary>
+        <summary className="cursor-pointer select-none text-[11.5px] text-[#8A92BF] hover:text-[#C8CCE8]">Show as table</summary>
         <div className="mt-2 max-h-56 overflow-auto rounded-lg border border-white/[0.06]">
           <table className="w-full text-left text-[12px]">
-            <thead className="sticky top-0 bg-[#12151C] text-[#8B93A5]">
+            <thead className="sticky top-0 bg-[#161E39] text-[#9AA1CC]">
               <tr><th className="px-2.5 py-1.5 font-medium">Day</th>{series.map((s) => <th key={s.key} className="px-2.5 py-1.5 text-right font-medium">{s.label}</th>)}</tr>
             </thead>
             <tbody>
               {dates.map((d, i) => ({ d, i })).reverse().map(({ d, i }) => (
-                <tr key={d} className="border-t border-white/[0.04] text-[#C9CFDB]">
+                <tr key={d} className="border-t border-white/[0.04] text-[#C8CCE8]">
                   <td className="px-2.5 py-1 font-mono">{d}</td>
                   {series.map((s) => <td key={s.key} className="px-2.5 py-1 text-right font-mono tabular-nums">{format(s.values[i] ?? 0)}</td>)}
                 </tr>

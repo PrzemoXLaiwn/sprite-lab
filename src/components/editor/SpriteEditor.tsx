@@ -489,23 +489,23 @@ export function SpriteEditor({
   const toolBtn = (active: boolean) =>
     `flex aspect-square w-full items-center justify-center rounded-xl border transition-all ${
       active
-        ? "border-[#FF8A3D] bg-[#FF8A3D]/10 text-[#FFB27A] ring-2 ring-[#FF8A3D]/25"
-        : "border-white/[0.06] bg-[#151922] text-[#8B93A5] hover:border-white/20 hover:bg-[#1A1F2A] hover:text-white"
+        ? "border-[#FFA300] bg-[#FFA300]/10 text-[#FFC857] ring-2 ring-[#FFA300]/25"
+        : "border-white/[0.06] bg-[#212B4E] text-[#9AA1CC] hover:border-white/20 hover:bg-[#263260] hover:text-white"
     }`;
   const actionBtn =
-    "flex aspect-square w-full items-center justify-center rounded-xl border border-white/[0.06] bg-[#151922] text-[#8B93A5] transition-all hover:border-white/20 hover:bg-[#1A1F2A] hover:text-white disabled:cursor-not-allowed disabled:opacity-30";
+    "flex aspect-square w-full items-center justify-center rounded-xl border border-white/[0.06] bg-[#212B4E] text-[#9AA1CC] transition-all hover:border-white/20 hover:bg-[#263260] hover:text-white disabled:cursor-not-allowed disabled:opacity-30";
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#0B0D12] text-[#ECEEF3]">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[#131A31] text-[#FFF1E8]">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-white/[0.06] bg-[#0E1016] px-4 py-3">
+      <div className="flex items-center justify-between border-b border-white/[0.06] bg-[#19223F] px-4 py-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/[0.08] bg-[#151922]">
-            <Paintbrush className="h-4 w-4 text-[#FF8A3D]" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/[0.08] bg-[#212B4E]">
+            <Paintbrush className="h-4 w-4 text-[#FFA300]" />
           </div>
           <div>
             <h2 className="font-display text-[18px] font-semibold leading-tight text-white">Inpainting editor</h2>
-            <p className="text-[12px] text-[#8B93A5]">Paint the area you want to change</p>
+            <p className="text-[12px] text-[#9AA1CC]">Paint the area you want to change</p>
           </div>
         </div>
 
@@ -513,7 +513,7 @@ export function SpriteEditor({
           type="button"
           onClick={onClose}
           aria-label="Close editor"
-          className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/[0.1] bg-white/[0.04] text-[#C9CFDB] transition hover:bg-white/[0.08] hover:text-white"
+          className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/[0.1] bg-white/[0.04] text-[#C8CCE8] transition hover:bg-white/[0.08] hover:text-white"
         >
           <X className="h-4 w-4" />
         </button>
@@ -521,7 +521,7 @@ export function SpriteEditor({
 
       <div className="flex flex-1 overflow-hidden">
         {/* Toolbar */}
-        <div className="flex w-[68px] flex-col gap-1.5 border-r border-white/[0.06] bg-[#0E1016] p-2.5">
+        <div className="flex w-[68px] flex-col gap-1.5 border-r border-white/[0.06] bg-[#19223F] p-2.5">
           {/* Tools */}
           <button type="button" onClick={() => setTool("brush")} className={toolBtn(tool === "brush")} title="Brush (B)">
             <Paintbrush className="h-[18px] w-[18px]" />
@@ -558,7 +558,7 @@ export function SpriteEditor({
         <div className="flex flex-1 flex-col">
           {/* Brush Size Slider */}
           <div className="flex items-center gap-4 border-b border-white/[0.06] px-4 py-3">
-            <span className="w-24 font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">Brush size</span>
+            <span className="w-24 text-[12.5px] text-[#9AA1CC] font-semibold">Brush size</span>
             <Slider
               value={[brushSize]}
               onValueChange={([value]) => setBrushSize(value)}
@@ -567,19 +567,19 @@ export function SpriteEditor({
               step={1}
               className="max-w-xs flex-1"
             />
-            <span className="w-12 font-mono text-[12px] text-[#C9CFDB]">{brushSize}px</span>
+            <span className="w-12 font-mono text-[12px] text-[#C8CCE8]">{brushSize}px</span>
           </div>
 
           {/* Canvas Container */}
           <div
             ref={containerRef}
-            className="flex flex-1 items-center justify-center overflow-auto bg-[#0B0D12] p-6"
+            className="flex flex-1 items-center justify-center overflow-auto bg-[#131A31] p-6"
             style={{ backgroundImage: "repeating-conic-gradient(#ffffff06 0% 25%, transparent 0% 50%)", backgroundSize: "24px 24px" }}
           >
             {loadingImage ? (
               <div className="text-center">
-                <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-[#FF8A3D]" />
-                <p className="text-[13px] text-[#8B93A5]">Loading image…</p>
+                <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-[#FFA300]" />
+                <p className="text-[13px] text-[#9AA1CC]">Loading image…</p>
               </div>
             ) : showResult && result ? (
               /* Result Preview */
@@ -604,7 +604,7 @@ export function SpriteEditor({
                   <button
                     type="button"
                     onClick={handleRejectResult}
-                    className="flex h-10 items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 text-[13px] text-[#C9CFDB] transition hover:bg-white/[0.08] hover:text-white"
+                    className="flex h-10 items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 text-[13px] text-[#C8CCE8] transition hover:bg-white/[0.08] hover:text-white"
                   >
                     <RotateCcw className="h-4 w-4" />
                     Try again
@@ -638,15 +638,15 @@ export function SpriteEditor({
 
                 {/* Loading Overlay */}
                 {loading && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 rounded-2xl bg-[#0B0D12]/70 backdrop-blur-[2px]">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 rounded-2xl bg-[#131A31]/70 backdrop-blur-[2px]">
                     <div className="relative h-14 w-14">
                       <div className="absolute inset-0 rounded-full border-2 border-white/10" />
-                      <div className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-[#FF8A3D]" />
-                      <Wand2 className="absolute inset-0 m-auto h-5 w-5 text-[#FF8A3D]" />
+                      <div className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-[#FFA300]" />
+                      <Wand2 className="absolute inset-0 m-auto h-5 w-5 text-[#FFA300]" />
                     </div>
                     <div className="text-center">
                       <p className="text-[14px] font-medium text-white">Regenerating area…</p>
-                      <p className="mt-1 font-mono text-[12px] text-[#8B93A5]">usually 15–30s</p>
+                      <p className="mt-1 font-mono text-[12px] text-[#9AA1CC]">usually 15–30s</p>
                     </div>
                   </div>
                 )}
@@ -656,17 +656,17 @@ export function SpriteEditor({
         </div>
 
         {/* Right Panel - Prompt Input */}
-        <div className="flex w-80 flex-col border-l border-white/[0.06] bg-[#0E1016]">
+        <div className="flex w-80 flex-col border-l border-white/[0.06] bg-[#19223F]">
           <div className="flex-1 space-y-5 overflow-y-auto p-5">
             <div>
-              <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">What should appear here?</p>
-              <div className="rounded-2xl border border-white/[0.08] bg-[#151922] transition-colors focus-within:border-[#FF8A3D]/50">
+              <p className="mb-2 text-[12.5px] text-[#9AA1CC] font-semibold">What should appear here?</p>
+              <div className="rounded-2xl border border-white/[0.08] bg-[#212B4E] transition-colors focus-within:border-[#FFA300]/50">
                 <textarea
                   placeholder="Describe what you want in the selected area…"
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   rows={4}
-                  className="w-full resize-none bg-transparent px-4 py-3 text-[14px] leading-relaxed text-white outline-none placeholder:text-[#7A8294] disabled:opacity-60"
+                  className="w-full resize-none bg-transparent px-4 py-3 text-[14px] leading-relaxed text-white outline-none placeholder:text-[#8A92BF] disabled:opacity-60"
                   disabled={loading}
                 />
               </div>
@@ -677,17 +677,17 @@ export function SpriteEditor({
               <button
                 type="button"
                 onClick={() => setShowQuickActions(!showQuickActions)}
-                className="flex w-full items-center justify-between rounded-xl border border-white/[0.08] bg-[#151922] px-3 py-2.5 text-[13px] text-[#C9CFDB] transition-colors hover:border-white/20 hover:text-white"
+                className="flex w-full items-center justify-between rounded-xl border border-white/[0.08] bg-[#212B4E] px-3 py-2.5 text-[13px] text-[#C8CCE8] transition-colors hover:border-white/20 hover:text-white"
               >
                 <span className="flex items-center gap-2">
-                  <Palette className="h-4 w-4 text-[#8B93A5]" />
+                  <Palette className="h-4 w-4 text-[#9AA1CC]" />
                   Quick actions
                 </span>
                 <ChevronDown className={`h-4 w-4 transition-transform ${showQuickActions ? "rotate-180" : ""}`} />
               </button>
 
               {showQuickActions && (
-                <div className="absolute left-0 right-0 top-full z-10 mt-1 space-y-0.5 rounded-xl border border-white/[0.08] bg-[#151922] p-1.5 shadow-2xl">
+                <div className="absolute left-0 right-0 top-full z-10 mt-1 space-y-0.5 rounded-xl border border-white/[0.08] bg-[#212B4E] p-1.5 shadow-2xl">
                   {quickActions.map((action) => (
                     <button
                       type="button"
@@ -696,7 +696,7 @@ export function SpriteEditor({
                         setPrompt(action.prompt);
                         setShowQuickActions(false);
                       }}
-                      className="w-full rounded-lg px-3 py-2 text-left text-[13px] text-[#C9CFDB] transition-colors hover:bg-[#1A1F2A] hover:text-white"
+                      className="w-full rounded-lg px-3 py-2 text-left text-[13px] text-[#C8CCE8] transition-colors hover:bg-[#263260] hover:text-white"
                     >
                       {action.label}
                     </button>
@@ -706,12 +706,12 @@ export function SpriteEditor({
             </div>
 
             {/* Instructions */}
-            <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2.5 text-[11.5px] leading-relaxed text-[#8B93A5]">
-              <p className="mb-1 font-medium text-[#C9CFDB]">How to use</p>
+            <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2.5 text-[11.5px] leading-relaxed text-[#9AA1CC]">
+              <p className="mb-1 font-medium text-[#C8CCE8]">How to use</p>
               <ol className="space-y-1">
-                <li><span className="font-mono text-[#FFB27A]">1</span> Paint the area you want to change (red overlay)</li>
-                <li><span className="font-mono text-[#FFB27A]">2</span> Describe what should appear there</li>
-                <li><span className="font-mono text-[#FFB27A]">3</span> Click &ldquo;Regenerate area&rdquo;</li>
+                <li><span className="font-mono text-[#FFC857]">1</span> Paint the area you want to change (red overlay)</li>
+                <li><span className="font-mono text-[#FFC857]">2</span> Describe what should appear there</li>
+                <li><span className="font-mono text-[#FFC857]">3</span> Click &ldquo;Regenerate area&rdquo;</li>
               </ol>
             </div>
 
@@ -728,7 +728,7 @@ export function SpriteEditor({
               type="button"
               onClick={handleInpaint}
               disabled={loading || !prompt.trim()}
-              className="px-corners flex h-12 w-full items-center justify-center gap-2 bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] text-[15px] font-semibold text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+              className="px-corners flex h-12 w-full items-center justify-center gap-2 bg-[#FFA300] text-[15px] font-semibold text-[#131A31] transition-all hover:bg-[#FFB733] disabled:cursor-not-allowed disabled:opacity-40"
             >
               {loading ? (
                 <>

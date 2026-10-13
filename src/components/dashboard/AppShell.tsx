@@ -33,10 +33,10 @@ export async function AppShell({ user, children }: { user: User; children: React
   ]).catch(() => [null, null, null] as const);
 
   return (
-    <div className="min-h-screen bg-[#0B0D12]">
+    <div className="min-h-screen bg-[#131A31]">
 
       <a href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[200] focus:rounded-lg focus:bg-[#FF8A3D] focus:px-3 focus:py-2 focus:text-[13px] focus:font-semibold focus:text-black">
+        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[200] focus:rounded-lg focus:bg-[#FFA300] focus:px-3 focus:py-2 focus:text-[13px] focus:font-semibold focus:text-black">
         Skip to content
       </a>
 
@@ -44,12 +44,12 @@ export async function AppShell({ user, children }: { user: User; children: React
       <AppRail email={user.email!} />
 
       {/* ═══ MOBILE HEADER ═══════════════════════════════════ */}
-      <header className="md:hidden fixed top-0 left-0 right-0 h-12 border-b border-white/[0.06] bg-[#0B0D12]/95 backdrop-blur-sm z-40">
+      <header className="md:hidden fixed top-0 left-0 right-0 h-12 border-b border-white/[0.06] bg-[#131A31]/95 backdrop-blur-sm z-40">
         <div className="flex items-center justify-between h-full px-4">
           <Link href="/" aria-label="SpriteLab home" className="flex min-h-10 items-center gap-2">
             <Image src="/logo.png" alt="" width={22} height={22} />
             <span className="font-display font-bold text-[13px] tracking-tight">
-              Sprite<span className="text-[#FF8A3D]">Lab</span>
+              Sprite<span className="text-[#FFA300]">Lab</span>
             </span>
           </Link>
           <MobileMenu
@@ -65,7 +65,7 @@ export async function AppShell({ user, children }: { user: User; children: React
 
       {/* ═══ MAIN CONTENT ═══════════════════════════════════ */}
       <main id="main-content" className="md:pl-[76px] min-h-screen">
-        <div className="app-main pt-12 md:pt-0 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 bg-[#0B0D12]">
+        <div className="app-main pt-12 md:pt-0 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 bg-[#131A31]">
           {children}
         </div>
       </main>

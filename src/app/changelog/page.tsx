@@ -84,11 +84,10 @@ export default function ChangelogPage() {
     <div className="relative">
       <div className="pixel-grid pointer-events-none absolute inset-x-0 top-0 h-[360px] [mask-image:radial-gradient(ellipse_at_top,black_15%,transparent_70%)]" />
       <div className="relative mx-auto max-w-3xl px-5 pb-24 pt-14 sm:pt-20">
-        <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">{"// changelog"}</p>
         <h1 className="mt-3 font-display text-[36px] font-semibold leading-[1.06] tracking-[-0.015em] text-white sm:text-[48px]">
           What&apos;s new in SpriteLab
         </h1>
-        <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-[#8B93A5]">
+        <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-[#9AA1CC]">
           Every release, newest first.
         </p>
 
@@ -101,23 +100,23 @@ export default function ChangelogPage() {
               )}
               <div className="flex items-center gap-3 pl-6 sm:block sm:pl-0 sm:pt-0.5 sm:text-right">
                 <span aria-hidden="true" className={`absolute left-0 top-1.5 h-[11px] w-[11px] rounded-[2px] border sm:left-[160px] ${
-                  index === 0 ? "border-[#FF8A3D] bg-[#FF8A3D]" : "border-white/20 bg-[#0B0D12]"
+                  index === 0 ? "border-[#FFA300] bg-[#FFA300]" : "border-white/20 bg-[#131A31]"
                 }`} />
-                <p className="font-mono text-[12px] text-[#FFB27A]">v{release.version}</p>
-                <p className="font-mono text-[12px] text-[#7A8294] sm:mt-1">{release.date}</p>
+                <p className="font-mono text-[12px] text-[#FFC857]">v{release.version}</p>
+                <p className="font-mono text-[12px] text-[#8A92BF] sm:mt-1">{release.date}</p>
               </div>
 
               <div className="pl-6 sm:pl-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="font-display text-[22px] font-semibold leading-snug text-white">{release.title}</h2>
-                  <span className="rounded-full border border-white/[0.08] px-2 py-0.5 font-mono text-[10.5px] text-[#8B93A5]">
+                  <span className="rounded-full border border-white/[0.08] px-2 py-0.5 font-mono text-[10.5px] text-[#9AA1CC]">
                     {TYPE_LABEL[release.type]}
                   </span>
                 </div>
                 <ul className="mt-4 space-y-2.5">
                   {release.changes.map((change) => (
-                    <li key={change} className="flex items-start gap-3 text-[15px] leading-relaxed text-[#A6ADBB]">
-                      <span aria-hidden="true" className="mt-[10px] h-1.5 w-1.5 shrink-0 rounded-[1px] bg-[#FF8A3D]/70" />
+                    <li key={change} className="flex items-start gap-3 text-[15px] leading-relaxed text-[#A7ADD4]">
+                      <span aria-hidden="true" className="mt-[10px] h-1.5 w-1.5 shrink-0 rounded-[1px] bg-[#FFA300]/70" />
                       {change}
                     </li>
                   ))}
@@ -128,14 +127,14 @@ export default function ChangelogPage() {
         </ol>
 
         {/* Feedback */}
-        <div className="mt-20 rounded-3xl border border-white/[0.07] bg-[#0E1016] p-8 text-center sm:p-10">
+        <div className="mt-20 rounded-3xl border border-white/[0.07] bg-[#19223F] p-8 text-center sm:p-10">
           <h2 className="font-display text-[24px] font-semibold leading-tight text-white sm:text-[28px]">Missing something?</h2>
-          <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-[#8B93A5]">
+          <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-[#9AA1CC]">
             Feature requests and bug reports go straight to the developer.
           </p>
           <a
             href="mailto:spritelab.contact@gmail.com"
-            className="mt-6 inline-flex h-11 items-center justify-center rounded-xl border border-white/[0.1] bg-white/[0.04] px-6 text-[14px] font-semibold text-[#ECEEF3] transition hover:bg-white/[0.08]"
+            className="mt-6 inline-flex h-11 items-center justify-center rounded-xl border border-white/[0.1] bg-white/[0.04] px-6 text-[14px] font-semibold text-[#FFF1E8] transition hover:bg-white/[0.08]"
           >
             Email spritelab.contact@gmail.com
           </a>

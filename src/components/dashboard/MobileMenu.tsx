@@ -115,7 +115,7 @@ export function MobileMenu({ userEmail, userPlan = "FREE", userRole = "USER" }: 
       {/* Menu Button */}
       <button
         type="button"
-        className="-mr-1.5 flex h-10 w-10 items-center justify-center rounded-xl text-[#8B93A5] transition-colors hover:bg-white/[0.05] hover:text-white"
+        className="-mr-1.5 flex h-10 w-10 items-center justify-center rounded-xl text-[#9AA1CC] transition-colors hover:bg-white/[0.05] hover:text-white"
         onClick={openMenu}
         aria-label="Open menu"
         aria-expanded={isOpen}
@@ -134,7 +134,7 @@ export function MobileMenu({ userEmail, userPlan = "FREE", userRole = "USER" }: 
 
       {/* Slide-out Menu */}
       <div
-        className={`fixed right-0 top-0 z-50 flex h-full w-[284px] flex-col border-l border-white/[0.06] bg-[#0E1016] transition-transform duration-300 ease-out md:hidden ${
+        className={`fixed right-0 top-0 z-50 flex h-full w-[284px] flex-col border-l border-white/[0.06] bg-[#19223F] transition-transform duration-300 ease-out md:hidden ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
         role="dialog"
@@ -147,12 +147,12 @@ export function MobileMenu({ userEmail, userPlan = "FREE", userRole = "USER" }: 
           <Link href="/" className="flex items-center gap-2" onClick={() => setIsOpen(false)}>
             <Image src="/logo.png" alt="" width={22} height={22} />
             <span className="font-display text-[14px] font-semibold tracking-tight text-white">
-              Sprite<span className="text-[#FF8A3D]">Lab</span>
+              Sprite<span className="text-[#FFA300]">Lab</span>
             </span>
           </Link>
           <button
             type="button"
-            className="-mr-1.5 flex h-10 w-10 items-center justify-center rounded-lg text-[#8B93A5] transition-colors hover:bg-white/[0.05] hover:text-white"
+            className="-mr-1.5 flex h-10 w-10 items-center justify-center rounded-lg text-[#9AA1CC] transition-colors hover:bg-white/[0.05] hover:text-white"
             onClick={() => setIsOpen(false)}
             ref={closeBtnRef}
             aria-label="Close menu"
@@ -164,12 +164,12 @@ export function MobileMenu({ userEmail, userPlan = "FREE", userRole = "USER" }: 
         {/* User Info */}
         <div className="border-b border-white/[0.06] p-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#FF8A3D] to-[#E0562A] text-[13px] font-bold text-white">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#FFA300] to-[#E08600] text-[13px] font-bold text-white">
               {userEmail.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-[13px] font-medium text-white">{userEmail}</p>
-              <p className="font-mono text-[11px] text-[#8B93A5]">{displayPlan} plan</p>
+              <p className="font-mono text-[11px] text-[#9AA1CC]">{displayPlan} plan</p>
             </div>
           </div>
 
@@ -179,7 +179,7 @@ export function MobileMenu({ userEmail, userPlan = "FREE", userRole = "USER" }: 
             className={`mt-3 flex items-center gap-2.5 rounded-xl border px-3 py-2.5 transition-colors ${
               low
                 ? "border-red-400/20 bg-red-500/[0.06] text-red-200 hover:bg-red-500/[0.1]"
-                : "border-[#FF8A3D]/20 bg-[#FF8A3D]/[0.08] text-[#FFB27A] hover:bg-[#FF8A3D]/[0.14]"
+                : "border-[#FFA300]/20 bg-[#FFA300]/[0.08] text-[#FFC857] hover:bg-[#FFA300]/[0.14]"
             }`}
           >
             <Zap className="h-4 w-4 shrink-0" />
@@ -206,11 +206,11 @@ export function MobileMenu({ userEmail, userPlan = "FREE", userRole = "USER" }: 
                 className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-colors ${
                   isActive
                     ? "bg-white/[0.07] text-white"
-                    : "text-[#8B93A5] hover:bg-white/[0.04] hover:text-white"
+                    : "text-[#9AA1CC] hover:bg-white/[0.04] hover:text-white"
                 }`}
               >
                 <item.icon
-                  className={`h-[18px] w-[18px] ${isActive ? "text-[#FF8A3D]" : ""}`}
+                  className={`h-[18px] w-[18px] ${isActive ? "text-[#FFA300]" : ""}`}
                   strokeWidth={isActive ? 2.2 : 1.8}
                 />
                 {item.label}
@@ -224,7 +224,7 @@ export function MobileMenu({ userEmail, userPlan = "FREE", userRole = "USER" }: 
           <form action="/auth/signout" method="post">
             <button
               type="submit"
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-[#8B93A5] transition-colors hover:bg-white/[0.04] hover:text-white"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-[#9AA1CC] transition-colors hover:bg-white/[0.04] hover:text-white"
             >
               <LogOut className="h-[18px] w-[18px]" strokeWidth={1.8} />
               Sign out

@@ -25,15 +25,15 @@ export function MobileMenu({ links }: { links: { href: string; label: string }[]
     <details ref={ref} className="group relative lg:hidden">
       <summary
         aria-label="Menu"
-        className="ml-1 flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-xl border border-white/[0.08] text-[#C9CFDB] transition-colors hover:text-white [&::-webkit-details-marker]:hidden"
+        className="ml-1 flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-xl border border-white/[0.08] text-[#C8CCE8] transition-colors hover:text-white [&::-webkit-details-marker]:hidden"
       >
         <Menu className="h-[18px] w-[18px] group-open:hidden" aria-hidden="true" />
         <X className="hidden h-[18px] w-[18px] group-open:block" aria-hidden="true" />
       </summary>
-      <div className="absolute right-0 top-[calc(100%+12px)] w-56 rounded-2xl border border-white/[0.08] bg-[#0E1016] p-2 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.8)]">
+      <div className="absolute right-0 top-[calc(100%+12px)] w-56 rounded-2xl border border-white/[0.08] bg-[#19223F] p-2 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.8)]">
         {links.map((l) => (
           <a key={l.label} href={l.href} onClick={() => { if (ref.current) ref.current.open = false; }}
-            className="flex h-11 items-center rounded-xl px-3 font-mono text-[13px] text-[#C9CFDB] transition-colors hover:bg-white/[0.05] hover:text-white">
+            className="flex h-11 items-center rounded-xl px-3 font-mono text-[13px] text-[#C8CCE8] transition-colors hover:bg-white/[0.05] hover:text-white">
             {l.label}
           </a>
         ))}

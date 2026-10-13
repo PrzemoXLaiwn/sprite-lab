@@ -1,15 +1,18 @@
 import Link from "next/link";
-import { Check, ArrowRight, Download, Folder, FolderOpen } from "lucide-react";
+import { Download, Folder, FolderOpen } from "lucide-react";
 import { CREDIT_COSTS } from "@/lib/services/generation";
 import { SectionHeader } from "./SectionHeader";
 
 const CHECKER = {
-  backgroundImage: "repeating-conic-gradient(#ffffff07 0% 25%, transparent 0% 50%)",
+  backgroundColor: "#1B2446",
+  backgroundImage:
+    "linear-gradient(45deg, #212B4E 25%, transparent 25%, transparent 75%, #212B4E 75%), linear-gradient(45deg, #212B4E 25%, transparent 25%, transparent 75%, #212B4E 75%)",
   backgroundSize: "16px 16px",
+  backgroundPosition: "0 0, 8px 8px",
 };
 
-function Row({ eyebrow, title, body, points, link, visual, flip = false }: {
-  eyebrow: string;
+function Row({ title, body, points, link, visual, flip = false }: {
+  eyebrow?: string;
   title: React.ReactNode;
   body: string;
   points: string[];
@@ -20,19 +23,18 @@ function Row({ eyebrow, title, body, points, link, visual, flip = false }: {
   return (
     <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
       <div className={flip ? "lg:order-2" : ""}>
-        <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[#FF8A3D]">{eyebrow}</p>
-        <h3 className="mt-3 font-display text-[28px] font-semibold leading-[1.1] tracking-[-0.01em] text-white sm:text-[34px]">{title}</h3>
-        <p className="mt-4 max-w-[460px] text-pretty text-[15px] leading-relaxed text-[#8B93A5]">{body}</p>
+        <h3 className="font-display text-[28px] font-semibold leading-[1.1] tracking-[-0.01em] text-white sm:text-[34px]">{title}</h3>
+        <p className="mt-4 max-w-[460px] text-pretty text-[15px] leading-relaxed text-[#C8CCE8]">{body}</p>
         <ul className="mt-6 space-y-2.5">
           {points.map((p) => (
-            <li key={p} className="flex items-start gap-2.5 text-[14px] text-[#C9CFDB]">
-              <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#FF8A3D]" aria-hidden="true" />{p}
+            <li key={p} className="flex items-start gap-2.5 text-[14px] text-[#C8CCE8]">
+              <span aria-hidden="true" className="mt-[7px] h-1.5 w-1.5 shrink-0 bg-[#00E436]" />{p}
             </li>
           ))}
         </ul>
         {link && (
-          <Link href={link.href} className="group mt-6 inline-flex min-h-10 items-center gap-1.5 text-[14px] font-medium text-white transition-colors hover:text-[#FFB27A]">
-            {link.label} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+          <Link href={link.href} className="mt-6 inline-flex min-h-10 items-center text-[14px] font-medium text-[#FFC857] underline decoration-[#FFC857]/40 underline-offset-4 transition-colors hover:decoration-[#FFC857]">
+            {link.label}
           </Link>
         )}
       </div>
@@ -42,7 +44,7 @@ function Row({ eyebrow, title, body, points, link, visual, flip = false }: {
 }
 
 const Panel = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
-  <div className={`relative overflow-hidden rounded-3xl border border-white/[0.07] bg-[#0E1016] p-4 shadow-[0_40px_100px_-40px_rgba(0,0,0,0.8)] sm:p-5 ${className}`}>
+  <div className={`relative overflow-hidden rounded-[10px] border border-white/[0.07] bg-[#19223F] p-4 shadow-[0_40px_100px_-40px_rgba(0,0,0,0.8)] sm:p-5 ${className}`}>
     {children}
   </div>
 );
@@ -56,18 +58,18 @@ function CreateVisual() {
   ];
   return (
     <Panel>
-      <div className="rounded-2xl border border-white/[0.08] bg-[#0B0D12] px-4 py-3.5">
-        <p className="font-mono text-[11px] text-[#7A8294]">prompt</p>
+      <div className="rounded-[8px] border border-white/[0.08] bg-[#131A31] px-4 py-3.5">
+        <p className="font-mono text-[11px] text-[#8A92BF]">prompt</p>
         <p className="mt-1 text-[15px] text-white">a flaming sword with a glowing orange blade<span className="caret" /></p>
         <div className="mt-3 flex flex-wrap gap-1.5 font-mono text-[11px]">
-          <span className="rounded-md border border-[#FF8A3D]/50 bg-[#FF8A3D]/10 px-2 py-1 text-white">Pixel 16-bit</span>
-          <span className="rounded-md border border-white/[0.08] px-2 py-1 text-[#8B93A5]">Weapons</span>
-          <span className="rounded-md border border-white/[0.08] px-2 py-1 text-[#8B93A5]">Standard · {CREDIT_COSTS.normal} credit</span>
+          <span className="rounded-md border border-[#FFA300]/50 bg-[#FFA300]/10 px-2 py-1 text-white">Pixel 16-bit</span>
+          <span className="rounded-md border border-white/[0.08] px-2 py-1 text-[#9AA1CC]">Weapons</span>
+          <span className="rounded-md border border-white/[0.08] px-2 py-1 text-[#9AA1CC]">Standard · {CREDIT_COSTS.normal} credit</span>
         </div>
       </div>
       <div className="mt-3 grid grid-cols-3 gap-3">
         {outs.map((o, i) => (
-          <div key={o.src} className={`relative aspect-square rounded-2xl border ${i === 0 ? "border-[#FF8A3D]/50" : "border-white/[0.06]"}`} style={CHECKER}>
+          <div key={o.src} className={`relative aspect-square rounded-[8px] border ${i === 0 ? "border-[#FFA300]/50" : "border-white/[0.06]"}`} style={CHECKER}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={o.src} alt={o.alt} loading="lazy" className="pixel-perfect absolute inset-0 h-full w-full object-contain p-[14%]" />
             {i === 0 && <span className="absolute bottom-2 left-2 whitespace-nowrap rounded-md bg-black/70 px-1.5 py-0.5 font-mono text-[10px] text-white">PNG<span className="hidden sm:inline"> · transparent</span></span>}
@@ -81,26 +83,26 @@ function CreateVisual() {
 /* ── Visual 2: animations ───────────────────────────────────────────────── */
 function AnimateVisual() {
   const anims = [
-    { src: "/showcase/anim-dragon-breath.gif", label: "dragon", motion: "breathes fire", wide: true },
+    { src: "/showcase/anim-dragon-breath.webp", label: "dragon", motion: "breathes fire", wide: true },
     { src: "/showcase/anim-dog-jump.gif", label: "dog", motion: "jumps" },
     { src: "/showcase/anim-car-drive.gif", label: "car", motion: "drives", wide: true },
-    { src: "/showcase/anim-witch-walk.gif", label: "witch", motion: "walks" },
-    { src: "/showcase/anim-knight-idle.gif", label: "knight", motion: "idle" },
+    { src: "/showcase/anim-witch-walk.webp", label: "witch", motion: "walks" },
+    { src: "/showcase/anim-knight-idle.webp", label: "knight", motion: "idle" },
     { src: "/showcase/anim-water.gif", label: "water tile", motion: "loops" },
   ];
   return (
     <Panel>
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
         {anims.map((a) => (
-          <figure key={a.src} className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#0B0D12]">
+          <figure key={a.src} className="overflow-hidden rounded-[8px] border border-white/[0.06] bg-[#131A31]">
             <div className="relative aspect-[4/3]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={a.src} alt={`Animated pixel art ${a.label} that ${a.motion}`} loading="lazy"
                 className={`pixel-perfect absolute inset-0 h-full w-full object-contain ${"wide" in a ? "p-1" : "scale-[1.35]"}`} />
             </div>
             <figcaption className="flex items-center justify-between border-t border-white/[0.05] px-2.5 py-1.5 font-mono text-[10.5px]">
-              <span className="text-[#8B93A5]">{a.label}</span>
-              <span className="text-[#FFB27A]">{a.motion}</span>
+              <span className="text-[#9AA1CC]">{a.label}</span>
+              <span className="text-[#FFC857]">{a.motion}</span>
             </figcaption>
           </figure>
         ))}
@@ -116,10 +118,10 @@ function DirectionsVisual() {
     <Panel>
       <div className="grid grid-cols-4 gap-2.5">
         {dirs.map((d, i) => (
-          <figure key={d} className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#0B0D12]">
+          <figure key={d} className="overflow-hidden rounded-[8px] border border-white/[0.06] bg-[#131A31]">
             <div role="img" aria-label={`Lizard warrior facing ${d}`} className="aspect-square"
               style={{ backgroundImage: "url(/showcase/rotate-lizard.png)", backgroundSize: "800% 100%", backgroundPosition: `${(i / 7) * 100}% 0`, backgroundRepeat: "no-repeat" }} />
-            <figcaption className="border-t border-white/[0.05] py-1 text-center font-mono text-[10.5px] text-[#FFB27A]">{d}</figcaption>
+            <figcaption className="border-t border-white/[0.05] py-1 text-center font-mono text-[10.5px] text-[#FFC857]">{d}</figcaption>
           </figure>
         ))}
       </div>
@@ -140,13 +142,13 @@ function TilesVisual() {
         {tiles.map((t) => (
           <figure key={t.src}>
             <div role="img" aria-label={`Seamless ${t.label} tile repeated 2 by 2`}
-              className="aspect-square rounded-2xl border border-white/[0.06]"
+              className="aspect-square rounded-[8px] border border-white/[0.06]"
               style={{ backgroundImage: `url(${t.src})`, backgroundSize: "50% 50%", backgroundRepeat: "repeat", imageRendering: "pixelated" }} />
-            <figcaption className="mt-2 text-center font-mono text-[11px] text-[#8B93A5]">{t.label}</figcaption>
+            <figcaption className="mt-2 text-center font-mono text-[11px] text-[#9AA1CC]">{t.label}</figcaption>
           </figure>
         ))}
       </div>
-      <p className="mt-3 text-center font-mono text-[11px] text-[#7A8294]">one tile, repeated 2 × 2 — no visible seams</p>
+      <p className="mt-3 text-center font-mono text-[11px] text-[#8A92BF]">one tile, repeated 2 × 2 — no visible seams</p>
     </Panel>
   );
 }
@@ -166,7 +168,7 @@ function ProjectsVisual() {
       <div className="flex items-center justify-between gap-3 border-b border-white/[0.06] pb-3">
         <div>
           <p className="text-[14px] font-semibold text-white">Dungeon crawler</p>
-          <p className="font-mono text-[11px] text-[#7A8294]">7 assets · 4 folders</p>
+          <p className="font-mono text-[11px] text-[#8A92BF]">7 assets · 4 folders</p>
         </div>
         <span className="flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-[12px] font-semibold text-black">
           <Download className="h-3.5 w-3.5" /> Download ZIP
@@ -175,9 +177,9 @@ function ProjectsVisual() {
       <div className="mt-3 grid grid-cols-[130px_1fr] gap-3 sm:grid-cols-[150px_1fr]">
         <ul className="space-y-1 font-mono text-[12px]">
           {folders.map((f) => (
-            <li key={f.name} className={`flex items-center justify-between rounded-lg px-2 py-1.5 ${f.open ? "bg-white/[0.06] text-white" : "text-[#8B93A5]"}`}>
-              <span className="flex items-center gap-1.5">{f.open ? <FolderOpen className="h-3.5 w-3.5 text-[#FF8A3D]" /> : <Folder className="h-3.5 w-3.5" />}{f.name}</span>
-              <span className="text-[#7A8294]">{f.n}</span>
+            <li key={f.name} className={`flex items-center justify-between rounded-lg px-2 py-1.5 ${f.open ? "bg-white/[0.06] text-white" : "text-[#9AA1CC]"}`}>
+              <span className="flex items-center gap-1.5">{f.open ? <FolderOpen className="h-3.5 w-3.5 text-[#FFA300]" /> : <Folder className="h-3.5 w-3.5" />}{f.name}</span>
+              <span className="text-[#8A92BF]">{f.n}</span>
             </li>
           ))}
         </ul>
@@ -199,13 +201,11 @@ export function ShowcaseRows() {
   return (
     <section id="features" className="relative mx-auto w-full max-w-[1200px] scroll-mt-16 space-y-20 px-5 py-16 sm:space-y-28 sm:py-20 lg:px-8">
       <SectionHeader
-        eyebrow="what you get"
         title="Assets you can drop straight into your game"
         intro="Not pretty pictures — cleaned-up, game-ready files. Everything below was made with SpriteLab."
       />
 
       <Row
-        eyebrow="01 · create"
         title={<>Type a sentence.<br />Get a game-ready sprite.</>}
         body="Pick what you need — a hero, an enemy, a weapon, a potion — describe it, and get a clean sprite in seconds."
         points={[
@@ -219,7 +219,6 @@ export function ShowcaseRows() {
 
       <Row
         flip
-        eyebrow="02 · animate"
         title={<>Animate anything —<br />not just people.</>}
         body="SpriteLab looks at your sprite before it animates it. Dragons breathe fire, dogs jump, cars drive, water flows."
         points={[
@@ -232,7 +231,6 @@ export function ShowcaseRows() {
       />
 
       <Row
-        eyebrow="03 · directions"
         title={<>Every side of your<br />character, in one click.</>}
         body="Top-down or isometric game? Turn any character or creature into a 4- or 8-direction sheet — same size, same ground line, ready to slice."
         points={["4 directions (front, right, back, left) or all 8", "The same sprite from every angle — nothing redrawn off-model", "One view per frame, named S · E · N · W"]}
@@ -242,7 +240,6 @@ export function ShowcaseRows() {
 
       <Row
         flip
-        eyebrow="04 · tiles"
         title={<>Tiles that repeat<br />without seams.</>}
         body="Floors, walls, grass and water that line up edge to edge — paint whole levels from one tile."
         points={["Square, seamless tiles for top-down and side-view levels", "Water and lava animate into perfect loops"]}
@@ -251,7 +248,6 @@ export function ShowcaseRows() {
       />
 
       <Row
-        eyebrow="05 · projects"
         title={<>Your game&apos;s assets,<br />sorted for you.</>}
         body="Make a project for your game. Keep the sprites you like — they file themselves into folders — and download the whole pack at once."
         points={["Accept or decline every result", "Auto-sorted into characters, enemies, weapons, items…", "One ZIP for the whole project, free"]}

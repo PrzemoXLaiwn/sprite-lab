@@ -15,7 +15,7 @@ export default async function PublicAppLayout({ children }: { children: React.Re
   if (user) return <AppShell user={user}>{children}</AppShell>;
 
   return (
-    <div className="min-h-screen bg-[#0B0D12] text-white">
+    <div className="min-h-screen bg-[#131A31] text-white">
       <SiteNav />
       <main className="pt-16">{children}</main>
       <Footer />

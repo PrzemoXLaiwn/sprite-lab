@@ -9,7 +9,7 @@ export default function PrivacyLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-[#0B0D12] text-[#ECEEF3]">
+    <div className="min-h-screen bg-[#131A31] text-[#FFF1E8]">
       <SiteNav />
       <main className="pt-16">{children}</main>
       <Footer />

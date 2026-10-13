@@ -45,34 +45,34 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
 /** Public marketing footer. Pixel × dev styling, matches SiteNav. */
 export function Footer() {
   return (
-    <footer className="border-t border-white/[0.06] bg-[#0B0D12]">
+    <footer className="border-t border-white/[0.06] bg-[#131A31]">
       <div className="mx-auto max-w-[1200px] px-5 py-12 lg:px-8">
         <div className="grid grid-cols-2 gap-x-8 gap-y-10 md:grid-cols-4 lg:grid-cols-[1.3fr_1fr_1.2fr_1fr_1fr]">
           <div className="col-span-2 md:col-span-4 lg:col-span-1">
             <Link href="/" aria-label="SpriteLab home" className="inline-flex h-10 items-center gap-2.5">
               <Image src="/logo.png" alt="" width={24} height={24} />
               <span className="font-display text-[18px] font-semibold text-white">
-                Sprite<span className="text-[#FF8A3D]">Lab</span>
+                Sprite<span className="text-[#FFA300]">Lab</span>
               </span>
             </Link>
-            <p className="mt-3 max-w-xs text-[13px] leading-relaxed text-[#8B93A5]">
+            <p className="mt-3 max-w-xs text-[13px] leading-relaxed text-[#9AA1CC]">
               AI game sprite generator for indie developers. Transparent PNG, ready for your engine.
             </p>
           </div>
 
           {COLUMNS.map((col) => (
             <div key={col.title}>
-              <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[#7A8294]">{`// ${col.title}`}</p>
+              <p className="text-[12.5px] text-[#8A92BF] font-semibold">{col.title}</p>
               <ul className="mt-2 text-[13px] sm:mt-3 sm:space-y-1">
                 {col.links.map((l) => (
                   <li key={l.href}>
                     {l.href.startsWith("mailto:") || l.href.startsWith("https://") ? (
-                      <a href={l.href} className="inline-flex min-h-10 items-center py-2 leading-snug text-[#8B93A5] transition-colors hover:text-white sm:min-h-0 sm:py-1"
+                      <a href={l.href} className="inline-flex min-h-10 items-center py-2 leading-snug text-[#9AA1CC] transition-colors hover:text-white sm:min-h-0 sm:py-1"
                         {...(l.href.startsWith("https://") ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
                         {l.label}{l.href.startsWith("https://") && <span className="sr-only"> (opens in a new tab)</span>}
                       </a>
                     ) : (
-                      <Link href={l.href} className="inline-flex min-h-10 items-center py-2 leading-snug text-[#8B93A5] transition-colors hover:text-white sm:min-h-0 sm:py-1">
+                      <Link href={l.href} className="inline-flex min-h-10 items-center py-2 leading-snug text-[#9AA1CC] transition-colors hover:text-white sm:min-h-0 sm:py-1">
                         {l.label}
                       </Link>
                     )}
@@ -83,7 +83,7 @@ export function Footer() {
           ))}
         </div>
 
-        <div className="mt-10 flex flex-col items-center justify-between gap-2 border-t border-white/[0.06] pt-6 font-mono text-[11px] text-[#7A8294] sm:flex-row">
+        <div className="mt-10 flex flex-col items-center justify-between gap-2 border-t border-white/[0.06] pt-6 font-mono text-[11px] text-[#8A92BF] sm:flex-row">
           <p>&copy; {new Date().getFullYear()} SpriteLab. All rights reserved.</p>
           <p>Made for indie game devs</p>
         </div>

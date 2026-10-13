@@ -72,25 +72,25 @@ export function GettingStarted({ done }: { done: { generate: boolean; animate: b
   return (
     <aside aria-label="Getting started"
       className={`fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-3 right-3 z-30 md:bottom-5 md:left-[92px] md:right-auto md:w-[300px] ${onTool ? "max-md:hidden" : ""}`}>
-      <div className="overflow-hidden rounded-2xl border border-white/[0.09] bg-[#12151C]/95 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.7)] backdrop-blur">
+      <div className="overflow-hidden rounded-2xl border border-white/[0.09] bg-[#161E39]/95 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.7)] backdrop-blur">
         <div className="flex items-center gap-2 py-1.5 pl-3.5 pr-2.5">
           <button type="button" onClick={toggle} aria-expanded={open} aria-controls="getting-started-steps" className="flex min-h-10 flex-1 items-center gap-2.5 rounded-lg text-left">
             <span className="relative h-7 w-7 shrink-0" aria-hidden>
               <svg viewBox="0 0 36 36" className="h-7 w-7 -rotate-90">
                 <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="4" />
-                <circle cx="18" cy="18" r="15" fill="none" stroke="#FF8A3D" strokeWidth="4" strokeLinecap="round"
+                <circle cx="18" cy="18" r="15" fill="none" stroke="#FFA300" strokeWidth="4" strokeLinecap="round"
                   strokeDasharray={`${(count / steps.length) * 94.2} 94.2`} />
               </svg>
               <span className="absolute inset-0 flex items-center justify-center font-mono text-[10px] text-white">{count}/{steps.length}</span>
             </span>
             <span className="flex-1">
               <span className="block text-[13px] font-semibold text-white">Getting started</span>
-              <span className="block text-[11.5px] text-[#8B93A5]">{steps.length - count} quick step{steps.length - count === 1 ? "" : "s"} left</span>
+              <span className="block text-[11.5px] text-[#9AA1CC]">{steps.length - count} quick step{steps.length - count === 1 ? "" : "s"} left</span>
             </span>
-            <ChevronDown className={`h-4 w-4 text-[#8B93A5] transition-transform ${open ? "" : "rotate-180"}`} />
+            <ChevronDown className={`h-4 w-4 text-[#9AA1CC] transition-transform ${open ? "" : "rotate-180"}`} />
           </button>
           <button type="button" onClick={dismiss} title="Hide" aria-label="Hide getting started"
-            className="-mr-1.5 flex h-10 w-10 items-center justify-center rounded-lg text-[#8B93A5] transition hover:bg-white/[0.06] hover:text-white">
+            className="-mr-1.5 flex h-10 w-10 items-center justify-center rounded-lg text-[#9AA1CC] transition hover:bg-white/[0.06] hover:text-white">
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
@@ -103,13 +103,13 @@ export function GettingStarted({ done }: { done: { generate: boolean; animate: b
                   onClick={() => { if (s.id === "costs") { setCostsSeen(true); write(COSTS_KEY, "1"); } }}
                   className="group flex min-h-11 items-center gap-3 rounded-xl px-2.5 py-2 transition hover:bg-white/[0.05]">
                   <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${
-                    s.ok ? "border-emerald-400/40 bg-emerald-400/15 text-emerald-300" : "border-white/[0.1] text-[#8B93A5] group-hover:text-white"
+                    s.ok ? "border-emerald-400/40 bg-emerald-400/15 text-emerald-300" : "border-white/[0.1] text-[#9AA1CC] group-hover:text-white"
                   }`}>
                     {s.ok ? <Check className="h-3.5 w-3.5" /> : <s.icon className="h-3.5 w-3.5" />}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className={`block text-[13px] ${s.ok ? "text-[#7A8294] line-through" : "text-white"}`}>{s.label}</span>
-                    {!s.ok && <span className="block truncate text-[11.5px] text-[#7A8294]">{s.hint}</span>}
+                    <span className={`block text-[13px] ${s.ok ? "text-[#8A92BF] line-through" : "text-white"}`}>{s.label}</span>
+                    {!s.ok && <span className="block truncate text-[11.5px] text-[#8A92BF]">{s.hint}</span>}
                   </span>
                 </Link>
               </li>

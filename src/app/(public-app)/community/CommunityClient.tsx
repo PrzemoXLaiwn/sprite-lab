@@ -97,7 +97,7 @@ const getPlanBadge = (plan: string) => {
     case "UNLIMITED":
       return { label: "Studio", icon: Crown, color: "border-amber-400/20 bg-amber-500/[0.06] text-amber-200" };
     case "PRO":
-      return { label: "Pro", icon: Zap, color: "border-[#FF8A3D]/25 bg-[#FF8A3D]/10 text-[#FFB27A]" };
+      return { label: "Pro", icon: Zap, color: "border-[#FFA300]/25 bg-[#FFA300]/10 text-[#FFC857]" };
     case "STARTER":
       return { label: "Starter", icon: Star, color: "border-sky-400/20 bg-sky-500/[0.06] text-sky-200" };
     default:
@@ -502,24 +502,24 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
   ];
 
   return (
-    <div className="min-h-screen bg-[#0B0D12] text-[#ECEEF3]">
+    <div className="min-h-screen bg-[#131A31] text-[#FFF1E8]">
       <div className={`transition-[padding] duration-300 ${chatOpen ? "lg:pr-[320px]" : ""}`}>
         <div className="mx-auto max-w-[1400px] px-5 py-6 lg:px-8">
           {/* ═══ Header ═══════════════════════════════════════════════ */}
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div className="min-w-0">
               <h1 className="font-display text-[24px] font-semibold leading-tight tracking-tight text-white">Community gallery</h1>
-              <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-[#8B93A5]">
+              <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-[#9AA1CC]">
                 Sprites, pixel art and animations made with SpriteLab and shared by the people who made them. Open any piece to see its full
                 prompt and style, like it or leave a comment.
               </p>
-              <p className="mt-1.5 font-mono text-[11.5px] text-[#8B93A5]">
-                <span className="mr-1.5 text-[#FF8A3D]">&gt;</span>
-                <span className="font-mono tabular-nums text-[#C9CFDB]">{total}</span> creations
-                <span className="mx-1.5 text-[#7A8294]">·</span>
-                <span className="font-mono tabular-nums text-[#C9CFDB]">{total2D}</span> 2D
-                <span className="mx-1.5 text-[#7A8294]">·</span>
-                <span className="font-mono tabular-nums text-[#C9CFDB]">{total3D}</span> 3D
+              <p className="mt-1.5 font-mono text-[11.5px] text-[#9AA1CC]">
+                <span className="mr-1.5 text-[#FFA300]">&gt;</span>
+                <span className="font-mono tabular-nums text-[#C8CCE8]">{total}</span> creations
+                <span className="mx-1.5 text-[#8A92BF]">·</span>
+                <span className="font-mono tabular-nums text-[#C8CCE8]">{total2D}</span> 2D
+                <span className="mx-1.5 text-[#8A92BF]">·</span>
+                <span className="font-mono tabular-nums text-[#C8CCE8]">{total3D}</span> 3D
                 <span className="caret ml-1.5 align-[-2px]" aria-hidden="true" />
               </p>
             </div>
@@ -529,7 +529,7 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                 onClick={loadCommunityGallery}
                 title="Refresh"
                 aria-label="Refresh gallery"
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.1] bg-white/[0.04] text-[#C9CFDB] transition hover:bg-white/[0.08] hover:text-white"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.1] bg-white/[0.04] text-[#C8CCE8] transition hover:bg-white/[0.08] hover:text-white"
               >
                 <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
               </button>
@@ -539,21 +539,21 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                 aria-pressed={chatOpen}
                 className={`flex h-10 items-center gap-2 rounded-xl border px-3.5 text-[13px] font-medium transition ${
                   chatOpen
-                    ? "border-[#FF8A3D]/40 bg-[#FF8A3D]/10 text-white"
-                    : "border-white/[0.1] bg-white/[0.04] text-[#C9CFDB] hover:bg-white/[0.08] hover:text-white"
+                    ? "border-[#FFA300]/40 bg-[#FFA300]/10 text-white"
+                    : "border-white/[0.1] bg-white/[0.04] text-[#C8CCE8] hover:bg-white/[0.08] hover:text-white"
                 }`}
               >
-                <MessageSquare className={`h-4 w-4 ${chatOpen ? "text-[#FF8A3D]" : ""}`} />
+                <MessageSquare className={`h-4 w-4 ${chatOpen ? "text-[#FFA300]" : ""}`} />
                 <span className="hidden sm:inline">Live chat</span>
                 {chatMessages.length > 0 && (
-                  <span className="rounded-full bg-white/[0.08] px-1.5 py-0.5 text-[10px] font-semibold font-mono tabular-nums text-[#C9CFDB]">
+                  <span className="rounded-full bg-white/[0.08] px-1.5 py-0.5 text-[10px] font-semibold font-mono tabular-nums text-[#C8CCE8]">
                     {chatMessages.length > 99 ? "99+" : chatMessages.length}
                   </span>
                 )}
               </button>
               <Link
                 href="/generate"
-                className="flex h-10 items-center gap-2 px-corners bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] px-4 text-[13px] font-semibold text-white transition hover:brightness-110"
+                className="flex h-10 items-center gap-2 px-corners bg-[#FFA300] px-4 text-[13px] font-semibold text-[#131A31] transition hover:bg-[#FFB733]"
               >
                 <Plus className="h-4 w-4" strokeWidth={2.4} />
                 Create
@@ -565,8 +565,8 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
           {featuredAssets.length > 0 && featuredAssets[0].likes > 0 && (
             <section className="mt-6">
               <div className="mb-2.5 flex items-center gap-1.5">
-                <Flame className="h-3.5 w-3.5 text-[#FF8A3D]" />
-                <h2 className="font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">Trending now</h2>
+                <Flame className="h-3.5 w-3.5 text-[#FFA300]" />
+                <h2 className="text-[12.5px] text-[#9AA1CC] font-semibold">Trending now</h2>
               </div>
               <div className="grid grid-cols-1 gap-2.5 md:grid-cols-3">
                 {featuredAssets.map((gen, index) => {
@@ -576,14 +576,14 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                       key={gen.id}
                       type="button"
                       onClick={() => setSelectedGen(gen)}
-                      className="group flex items-center gap-3 rounded-2xl border border-white/[0.06] bg-[#0E1016] p-2 pr-3 text-left transition-colors hover:border-white/20 hover:bg-[#151922]"
+                      className="group flex items-center gap-3 rounded-2xl border border-white/[0.06] bg-[#19223F] p-2 pr-3 text-left transition-colors hover:border-white/20 hover:bg-[#212B4E]"
                     >
                       <div
-                        className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/[0.06] bg-[#151922]"
+                        className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/[0.06] bg-[#212B4E]"
                         style={CHECKERBOARD}
                       >
                         {is3D ? (
-                          <FileBox className="absolute inset-0 m-auto h-6 w-6 text-[#FF8A3D]" />
+                          <FileBox className="absolute inset-0 m-auto h-6 w-6 text-[#FFA300]" />
                         ) : (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
@@ -596,11 +596,11 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[13px] font-medium text-white">{cleanPrompt(gen.prompt)}</p>
-                        <p className="mt-0.5 truncate text-[12px] text-[#8B93A5]">by {gen.user?.name || "Anonymous"}</p>
+                        <p className="mt-0.5 truncate text-[12px] text-[#9AA1CC]">by {gen.user?.name || "Anonymous"}</p>
                       </div>
                       <div className="flex shrink-0 flex-col items-end gap-1">
-                        <span className="text-[11px] font-semibold font-mono tabular-nums text-[#7A8294]">#{index + 1}</span>
-                        <span className="flex items-center gap-1 text-[12px] font-mono tabular-nums text-[#C9CFDB]">
+                        <span className="text-[11px] font-semibold font-mono tabular-nums text-[#8A92BF]">#{index + 1}</span>
+                        <span className="flex items-center gap-1 text-[12px] font-mono tabular-nums text-[#C8CCE8]">
                           <Heart className="h-3 w-3 fill-rose-400 text-rose-400" />
                           {gen.likes}
                         </span>
@@ -615,21 +615,21 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
           {/* ═══ Toolbar ══════════════════════════════════════════════ */}
           <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center">
             <div className="relative flex-1 lg:max-w-md">
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7A8294]" />
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A92BF]" />
               <input
                 type="text"
                 placeholder="Search prompts…"
                 aria-label="Search shared sprites by prompt"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-10 w-full rounded-xl border border-white/[0.08] bg-[#151922] pl-10 pr-9 text-[13px] text-white outline-none transition-colors placeholder:text-[#7A8294] focus:border-[#FF8A3D]/50"
+                className="h-10 w-full rounded-xl border border-white/[0.08] bg-[#212B4E] pl-10 pr-9 text-[13px] text-white outline-none transition-colors placeholder:text-[#8A92BF] focus:border-[#FFA300]/50"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery("")}
                   aria-label="Clear search"
-                  className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-[#8B93A5] hover:bg-white/[0.06] hover:text-white"
+                  className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-[#9AA1CC] hover:bg-white/[0.06] hover:text-white"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -648,13 +648,13 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                       onClick={() => setFilterType(tab.id)}
                       aria-pressed={active}
                       className={`flex min-h-10 items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12.5px] font-medium transition-colors lg:min-h-0 lg:text-[12px] ${
-                        active ? "bg-white/[0.1] text-white shadow-sm" : "text-[#8B93A5] hover:text-white"
+                        active ? "bg-white/[0.1] text-white shadow-sm" : "text-[#9AA1CC] hover:text-white"
                       }`}
                     >
-                      {Icon && <Icon className={`h-3.5 w-3.5 ${active ? "text-[#FF8A3D]" : ""}`} />}
+                      {Icon && <Icon className={`h-3.5 w-3.5 ${active ? "text-[#FFA300]" : ""}`} />}
                       {tab.label}
                       {tab.count !== undefined && (
-                        <span className={`font-mono tabular-nums ${active ? "text-[#C9CFDB]" : "text-[#7A8294]"}`}>{tab.count}</span>
+                        <span className={`font-mono tabular-nums ${active ? "text-[#C8CCE8]" : "text-[#8A92BF]"}`}>{tab.count}</span>
                       )}
                     </button>
                   );
@@ -671,10 +671,10 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                       onClick={() => setSortBy(tab.id)}
                       aria-pressed={active}
                       className={`flex min-h-10 items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12.5px] font-medium transition-colors lg:min-h-0 lg:text-[12px] ${
-                        active ? "bg-white/[0.1] text-white shadow-sm" : "text-[#8B93A5] hover:text-white"
+                        active ? "bg-white/[0.1] text-white shadow-sm" : "text-[#9AA1CC] hover:text-white"
                       }`}
                     >
-                      <tab.icon className={`h-3.5 w-3.5 ${active ? "text-[#FF8A3D]" : ""}`} />
+                      <tab.icon className={`h-3.5 w-3.5 ${active ? "text-[#FFA300]" : ""}`} />
                       {tab.label}
                     </button>
                   );
@@ -697,14 +697,14 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                   aria-pressed={active}
                   className={`flex min-h-10 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] font-medium transition-colors lg:min-h-0 lg:text-[12px] ${
                     active
-                      ? "border-[#FF8A3D]/60 bg-[#FF8A3D]/12 text-white"
-                      : "border-white/[0.08] text-[#9BA3B4] hover:border-white/20 hover:text-white"
+                      ? "border-[#FFA300]/60 bg-[#FFA300]/12 text-white"
+                      : "border-white/[0.08] text-[#A7ADD4] hover:border-white/20 hover:text-white"
                   }`}
                 >
-                  <Icon className={`h-3.5 w-3.5 ${active ? "text-[#FF8A3D]" : ""}`} />
+                  <Icon className={`h-3.5 w-3.5 ${active ? "text-[#FFA300]" : ""}`} />
                   {cat.label}
                   {count > 0 && (
-                    <span className={`font-mono tabular-nums ${active ? "text-[#FFB27A]" : "text-[#7A8294]"}`}>{count}</span>
+                    <span className={`font-mono tabular-nums ${active ? "text-[#FFC857]" : "text-[#8A92BF]"}`}>{count}</span>
                   )}
                 </button>
               );
@@ -714,9 +714,9 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
           {/* ═══ Gallery ══════════════════════════════════════════════ */}
           <div className="mt-5">
             {!loading && searchQuery && filteredGenerations.length > 0 && (
-              <p className="mb-3 text-[12px] text-[#8B93A5]">
+              <p className="mb-3 text-[12px] text-[#9AA1CC]">
                 {filteredGenerations.length} result{filteredGenerations.length === 1 ? "" : "s"} for{" "}
-                <span className="text-[#C9CFDB]">&ldquo;{searchQuery}&rdquo;</span>
+                <span className="text-[#C8CCE8]">&ldquo;{searchQuery}&rdquo;</span>
               </p>
             )}
 
@@ -731,21 +731,21 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                 ))}
               </div>
             ) : filteredGenerations.length === 0 ? (
-              <div className="flex flex-col items-center justify-center pixel-grid rounded-2xl border border-white/[0.06] bg-[#0E1016] px-6 py-20 text-center">
+              <div className="flex flex-col items-center justify-center pixel-grid rounded-2xl border border-white/[0.06] bg-[#19223F] px-6 py-20 text-center">
                 <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.04]">
-                  {hasFilters ? <Search className="h-5 w-5 text-[#8B93A5]" /> : <Users className="h-5 w-5 text-[#8B93A5]" />}
+                  {hasFilters ? <Search className="h-5 w-5 text-[#9AA1CC]" /> : <Users className="h-5 w-5 text-[#9AA1CC]" />}
                 </div>
                 <h3 className="text-[15px] font-semibold text-white">
                   {hasFilters ? "No matches" : "Nothing shared yet"}
                 </h3>
-                <p className="mt-1 max-w-sm text-[13px] text-[#8B93A5]">
+                <p className="mt-1 max-w-sm text-[13px] text-[#9AA1CC]">
                   {hasFilters
                     ? "Nothing matches these filters. Try another word or a different category."
                     : "Nothing has been shared yet. Share a sprite from your assets and it shows up here."}
                 </p>
                 <Link
                   href="/generate"
-                  className="mt-5 flex h-10 items-center gap-2 px-corners bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] px-4 text-[13px] font-semibold text-white transition hover:brightness-110"
+                  className="mt-5 flex h-10 items-center gap-2 px-corners bg-[#FFA300] px-4 text-[13px] font-semibold text-[#131A31] transition hover:bg-[#FFB733]"
                 >
                   <Sparkles className="h-4 w-4" />
                   Create a sprite
@@ -771,15 +771,15 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                         }
                       }}
                       title={`${cleanPrompt(gen.prompt)} · ${new Date(gen.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`}
-                      className="group relative aspect-square cursor-pointer overflow-hidden rounded-2xl border border-white/[0.06] bg-[#151922] outline-none transition-colors hover:border-white/20 focus-visible:border-[#FF8A3D] focus-visible:ring-2 focus-visible:ring-[#FF8A3D]/25"
+                      className="group relative aspect-square cursor-pointer overflow-hidden rounded-2xl border border-white/[0.06] bg-[#212B4E] outline-none transition-colors hover:border-white/20 focus-visible:border-[#FFA300] focus-visible:ring-2 focus-visible:ring-[#FFA300]/25"
                       style={CHECKERBOARD}
                     >
                       {is3D ? (
                         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 pb-8">
                           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.04]">
-                            <FileBox className="h-7 w-7 text-[#FF8A3D]" />
+                            <FileBox className="h-7 w-7 text-[#FFA300]" />
                           </div>
-                          <span className="text-[11px] text-[#8B93A5]">{getModelName(gen.styleId)}</span>
+                          <span className="text-[11px] text-[#9AA1CC]">{getModelName(gen.styleId)}</span>
                         </div>
                       ) : (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -793,8 +793,8 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
 
                       {/* Type chip — only 3D is called out; 2D is the default */}
                       {is3D && (
-                        <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full border border-white/[0.08] bg-black/45 px-2 py-0.5 font-mono text-[10px] font-medium text-[#C9CFDB] backdrop-blur-sm">
-                          <Cuboid className="h-3 w-3 text-[#FF8A3D]" />
+                        <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full border border-white/[0.08] bg-black/45 px-2 py-0.5 font-mono text-[10px] font-medium text-[#C8CCE8] backdrop-blur-sm">
+                          <Cuboid className="h-3 w-3 text-[#FFA300]" />
                           {format3D}
                         </span>
                       )}
@@ -830,13 +830,13 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                       {/* Bottom info */}
                       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent px-3 pb-2.5 pt-8">
                         <p className="line-clamp-1 text-[12px] font-medium text-white">{cleanPrompt(gen.prompt)}</p>
-                        <p className="mt-0.5 truncate font-mono text-[10.5px] text-[#9BA3B4]">{styleName(gen.styleId)}</p>
+                        <p className="mt-0.5 truncate font-mono text-[10.5px] text-[#A7ADD4]">{styleName(gen.styleId)}</p>
                         <div className="mt-1.5 flex items-center justify-between gap-2">
                           <div className="flex min-w-0 items-center gap-1.5">
                             <CommunityAvatar src={gen.user?.avatarUrl} name={gen.user?.name} size={16} />
-                            <span className="truncate text-[11px] text-[#C9CFDB]">{gen.user?.name || "Anonymous"}</span>
+                            <span className="truncate text-[11px] text-[#C8CCE8]">{gen.user?.name || "Anonymous"}</span>
                           </div>
-                          <span className={`flex shrink-0 items-center gap-1 text-[11px] font-mono tabular-nums ${gen.likes > 0 ? "text-[#ECEEF3]" : "text-[#8B93A5]"}`}>
+                          <span className={`flex shrink-0 items-center gap-1 text-[11px] font-mono tabular-nums ${gen.likes > 0 ? "text-[#FFF1E8]" : "text-[#9AA1CC]"}`}>
                             <Heart className={`h-3 w-3 ${gen.likes > 0 ? "fill-rose-400 text-rose-400" : ""}`} />
                             {gen.likes}
                           </span>
@@ -855,7 +855,7 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                   type="button"
                   onClick={loadMore}
                   disabled={loadingMore}
-                  className="flex h-10 items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 text-[13px] font-medium text-[#C9CFDB] transition hover:bg-white/[0.08] hover:text-white disabled:opacity-60"
+                  className="flex h-10 items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 text-[13px] font-medium text-[#C8CCE8] transition hover:bg-white/[0.08] hover:text-white disabled:opacity-60"
                 >
                   {loadingMore ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
                   {loadingMore ? "Loading…" : "Load more"}
@@ -870,18 +870,18 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
       <aside
         aria-label="Live chat"
         inert={!chatOpen}
-        className={`fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] right-0 top-12 z-30 flex w-full max-w-[320px] flex-col border-l border-white/[0.06] bg-[#0E1016] shadow-[-20px_0_40px_-20px_rgba(0,0,0,0.6)] transition-transform duration-300 md:bottom-0 md:top-0 ${
+        className={`fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] right-0 top-12 z-30 flex w-full max-w-[320px] flex-col border-l border-white/[0.06] bg-[#19223F] shadow-[-20px_0_40px_-20px_rgba(0,0,0,0.6)] transition-transform duration-300 md:bottom-0 md:top-0 ${
           chatOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
         <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3.5">
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.04]">
-              <MessageSquare className="h-4 w-4 text-[#FF8A3D]" />
+              <MessageSquare className="h-4 w-4 text-[#FFA300]" />
             </div>
             <div>
               <h3 className="text-[14px] font-semibold text-white">Live chat</h3>
-              <p className="flex items-center gap-1.5 font-mono text-[10.5px] text-[#8B93A5]">
+              <p className="flex items-center gap-1.5 font-mono text-[10.5px] text-[#9AA1CC]">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                 {chatMessages.length} messages
               </p>
@@ -892,7 +892,7 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
             onClick={() => setChatOpen(false)}
             aria-label="Collapse chat"
             title="Collapse chat"
-            className="flex h-10 w-10 items-center justify-center rounded-lg text-[#8B93A5] transition-colors hover:bg-white/[0.06] hover:text-white"
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-[#9AA1CC] transition-colors hover:bg-white/[0.06] hover:text-white"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -914,10 +914,10 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
           ) : chatMessages.length === 0 ? (
             <div className="flex flex-col items-center py-10 text-center">
               <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.04]">
-                <MessageSquare className="h-5 w-5 text-[#8B93A5]" />
+                <MessageSquare className="h-5 w-5 text-[#9AA1CC]" />
               </div>
               <p className="text-[13px] font-medium text-white">No messages yet</p>
-              <p className="mt-1 text-[12px] text-[#8B93A5]">Be the first to say hello!</p>
+              <p className="mt-1 text-[12px] text-[#9AA1CC]">Be the first to say hello!</p>
             </div>
           ) : (
             chatMessages.map((msg) => {
@@ -936,12 +936,12 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                           {planBadge.label}
                         </span>
                       )}
-                      <span className="ml-auto shrink-0 text-[10px] font-mono tabular-nums text-[#7A8294] opacity-0 transition-opacity group-hover:opacity-100">
+                      <span className="ml-auto shrink-0 text-[10px] font-mono tabular-nums text-[#8A92BF] opacity-0 transition-opacity group-hover:opacity-100">
                         {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </span>
                     </div>
                     <div className="rounded-xl rounded-tl-sm bg-white/[0.04] px-3 py-2">
-                      <p className="break-words text-[13px] leading-snug text-[#ECEEF3]">{msg.message}</p>
+                      <p className="break-words text-[13px] leading-snug text-[#FFF1E8]">{msg.message}</p>
                     </div>
                   </div>
                 </div>
@@ -965,20 +965,20 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
               onChange={(e) => setNewChatMessage(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendChatMessage()}
               maxLength={500}
-              className="h-10 min-w-0 flex-1 rounded-xl border border-white/[0.08] bg-[#151922] px-3 text-[13px] text-white outline-none transition-colors placeholder:text-[#7A8294] focus:border-[#FF8A3D]/50"
+              className="h-10 min-w-0 flex-1 rounded-xl border border-white/[0.08] bg-[#212B4E] px-3 text-[13px] text-white outline-none transition-colors placeholder:text-[#8A92BF] focus:border-[#FFA300]/50"
             />
             <button
               type="button"
               onClick={handleSendChatMessage}
               disabled={!newChatMessage.trim() || sendingChat}
               aria-label="Send message"
-              className="flex h-10 w-10 shrink-0 items-center justify-center px-corners bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex h-10 w-10 shrink-0 items-center justify-center px-corners bg-[#FFA300] text-[#131A31] transition hover:bg-[#FFB733] disabled:cursor-not-allowed disabled:opacity-40"
             >
               {sendingChat ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </button>
           </div>
           )}
-          <p className="mt-2 text-center font-mono text-[10px] text-[#7A8294]">Be kind · Max 10 messages/min</p>
+          <p className="mt-2 text-center font-mono text-[10px] text-[#8A92BF]">Be kind · Max 10 messages/min</p>
         </div>
       </aside>
 
@@ -992,7 +992,7 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
             role="dialog"
             aria-modal="true"
             aria-label={cleanPrompt(selectedGen.prompt)}
-            className="relative flex max-h-[90vh] max-h-[90dvh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0E1016] shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)] animate-in zoom-in-95 duration-200 md:flex-row"
+            className="relative flex max-h-[90vh] max-h-[90dvh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#19223F] shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)] animate-in zoom-in-95 duration-200 md:flex-row"
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -1006,16 +1006,16 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
 
             {/* Preview */}
             <div
-              className="relative h-[38vh] shrink-0 bg-[#151922] md:h-auto md:w-[56%] md:aspect-square"
+              className="relative h-[38vh] shrink-0 bg-[#212B4E] md:h-auto md:w-[56%] md:aspect-square"
               style={CHECKERBOARD}
             >
               {is3DFormat(selectedGen.imageUrl) || is3DStyle(selectedGen.styleId) ? (
                 <div className="flex h-full w-full flex-col items-center justify-center gap-3 p-4">
                   <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-white/[0.04]">
-                    <FileBox className="h-10 w-10 text-[#FF8A3D]" />
+                    <FileBox className="h-10 w-10 text-[#FFA300]" />
                   </div>
                   <span className="text-[15px] font-semibold text-white">3D Model</span>
-                  <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] text-[#C9CFDB]">
+                  <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] text-[#C8CCE8]">
                     {get3DFormat(selectedGen.imageUrl)}
                   </span>
                 </div>
@@ -1036,21 +1036,21 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                   <CommunityAvatar src={selectedGen.user?.avatarUrl} name={selectedGen.user?.name} size={36} />
                   <div className="min-w-0">
                     <p className="truncate text-[14px] font-medium text-white">{selectedGen.user?.name || "Anonymous"}</p>
-                    <p className="font-mono text-[11px] text-[#8B93A5]">{new Date(selectedGen.createdAt).toLocaleDateString()}</p>
+                    <p className="font-mono text-[11px] text-[#9AA1CC]">{new Date(selectedGen.createdAt).toLocaleDateString()}</p>
                   </div>
                 </div>
 
-                <p className="mt-4 text-[14px] leading-relaxed text-[#ECEEF3]">{cleanPrompt(selectedGen.prompt)}</p>
+                <p className="mt-4 text-[14px] leading-relaxed text-[#FFF1E8]">{cleanPrompt(selectedGen.prompt)}</p>
 
                 <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                  <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-[11px] text-[#C9CFDB]">
+                  <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-[11px] text-[#C8CCE8]">
                     {selectedGen.categoryId}
                   </span>
-                  <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-[11px] text-[#C9CFDB]">
+                  <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-[11px] text-[#C8CCE8]">
                     {styleName(selectedGen.styleId)}
                   </span>
                   {selectedGen.seed !== undefined && selectedGen.seed !== null && (
-                    <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-[11px] font-mono tabular-nums text-[#8B93A5]">
+                    <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-[11px] font-mono tabular-nums text-[#9AA1CC]">
                       seed {selectedGen.seed}
                     </span>
                   )}
@@ -1073,7 +1073,7 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                     className={`flex h-10 items-center gap-1.5 rounded-xl border px-3.5 text-[13px] font-medium font-mono tabular-nums transition disabled:opacity-60 ${
                       userLiked
                         ? "border-rose-400/20 bg-rose-500/[0.06] text-rose-200 hover:bg-rose-500/[0.1]"
-                        : "border-white/[0.1] bg-white/[0.04] text-[#C9CFDB] hover:bg-white/[0.08]"
+                        : "border-white/[0.1] bg-white/[0.04] text-[#C8CCE8] hover:bg-white/[0.08]"
                     }`}
                   >
                     <Heart className={`h-4 w-4 ${userLiked ? "fill-rose-400 text-rose-400" : ""}`} />
@@ -1084,7 +1084,7 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                     onClick={() => window.open(selectedGen.imageUrl, "_blank")}
                     title="Open original"
                     aria-label="Open original"
-                    className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.1] bg-white/[0.04] text-[#C9CFDB] transition hover:bg-white/[0.08]"
+                    className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.1] bg-white/[0.04] text-[#C8CCE8] transition hover:bg-white/[0.08]"
                   >
                     <ExternalLink className="h-4 w-4" />
                   </button>
@@ -1093,18 +1093,18 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
 
               {/* Comments */}
               <div className="min-h-[120px] flex-1 overflow-y-auto p-5">
-                <h4 className="mb-4 flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">
+                <h4 className="mb-4 flex items-center gap-1.5 text-[12.5px] text-[#9AA1CC] font-semibold">
                   <MessageCircle className="h-3.5 w-3.5" />
                   Comments
-                  <span className="font-mono tabular-nums text-[#7A8294]">{comments.length}</span>
+                  <span className="font-mono tabular-nums text-[#8A92BF]">{comments.length}</span>
                 </h4>
 
                 {loadingComments ? (
                   <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-5 w-5 animate-spin text-[#FF8A3D]" />
+                    <Loader2 className="h-5 w-5 animate-spin text-[#FFA300]" />
                   </div>
                 ) : comments.length === 0 ? (
-                  <p className="py-6 text-center text-[13px] text-[#8B93A5]">
+                  <p className="py-6 text-center text-[13px] text-[#9AA1CC]">
                     No comments yet. Be the first!
                   </p>
                 ) : (
@@ -1115,9 +1115,9 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                         <div className="min-w-0 flex-1">
                           <div className="mb-0.5 flex items-center gap-2">
                             <span className="truncate text-[12.5px] font-medium text-white">{comment.userName || "Anonymous"}</span>
-                            <span className="shrink-0 font-mono text-[10.5px] text-[#7A8294]">{new Date(comment.createdAt).toLocaleDateString()}</span>
+                            <span className="shrink-0 font-mono text-[10.5px] text-[#8A92BF]">{new Date(comment.createdAt).toLocaleDateString()}</span>
                           </div>
-                          <p className="break-words text-[13px] leading-snug text-[#C9CFDB]">{comment.message}</p>
+                          <p className="break-words text-[13px] leading-snug text-[#C8CCE8]">{comment.message}</p>
                         </div>
                       </div>
                     ))}
@@ -1135,14 +1135,14 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                     onChange={(e) => setNewComment(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handlePostComment()}
                     maxLength={500}
-                    className="h-10 min-w-0 flex-1 rounded-xl border border-white/[0.08] bg-[#151922] px-3 text-[13px] text-white outline-none transition-colors placeholder:text-[#7A8294] focus:border-[#FF8A3D]/50"
+                    className="h-10 min-w-0 flex-1 rounded-xl border border-white/[0.08] bg-[#212B4E] px-3 text-[13px] text-white outline-none transition-colors placeholder:text-[#8A92BF] focus:border-[#FFA300]/50"
                   />
                   <button
                     type="button"
                     onClick={handlePostComment}
                     disabled={!newComment.trim() || submittingComment}
                     aria-label="Post comment"
-                    className="flex h-10 w-10 shrink-0 items-center justify-center px-corners bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center px-corners bg-[#FFA300] text-[#131A31] transition hover:bg-[#FFB733] disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {submittingComment ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                   </button>
