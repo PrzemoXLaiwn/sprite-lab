@@ -37,6 +37,7 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
       { label: "TikTok", href: TIKTOK_PROFILE_URL },
       { label: "Privacy", href: "/privacy" },
       { label: "Terms", href: "/terms" },
+      { label: "Site map", href: "/sitemap" },
     ],
   },
 ];

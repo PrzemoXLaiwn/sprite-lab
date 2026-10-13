@@ -17,7 +17,7 @@ import { HOME_FAQ } from "@/data/geo-content";
 
 export const metadata: Metadata = {
   title: { absolute: "SpriteLab — AI Game Asset Generator for Indie Developers" },
-  description: "Generate game-ready sprites, pixel art, sprite-sheet animations and seamless tiles with AI. Transparent PNG for Unity, Godot and GameMaker. 10 free credits, no card required.",
+  description: "Generate game-ready sprites, pixel art, sprite sheets and seamless tiles with AI. Transparent PNGs for Unity, Godot and GameMaker. 10 free credits.",
   keywords: ["AI game asset generator", "AI sprite generator", "AI pixel art generator", "sprite sheet generator", "sprite animation", "indie game development", "Unity sprites", "Godot sprites", "RPG sprites"],
   openGraph: {
     title: "SpriteLab — AI Game Asset Generator",

@@ -141,3 +141,41 @@ pixel grid. Images are only from `public/showcase`.
    Sites → sprite-lab.com tick "I confirm I have fixed the issues" and **Request review**.
 4. Reviews usually take from a few days up to 2–4 weeks. If it is rejected again, keep adding long-form guides for a
    few weeks before the next request rather than re-submitting immediately.
+
+## Second pass — SEO polish (branch `feat/seo-polish`, 13 Oct 2026)
+
+### Ads rule, now enforced in code
+
+`src/lib/ads-policy.ts` (unit-tested) and `src/components/ads/AdSense.tsx`, mounted by the `guides` and `compare`
+layouts. The script loads only when **all** hold: path is `/guides/<slug>`, `/compare` or `/compare/<slug>`; the
+visitor is signed out; the `<main>` text, without nav, footer and `[data-ads-ignore]` blocks (CTAs, related links),
+is at least **800 words**. Measured on a dev server: every guide qualifies (1,100–1,673 words), `/compare` qualifies
+(833), the five comparison pages do **not** (493–629), so they no longer load ads. `/guides` index (502) never.
+
+### Older guides (prose + tables + FAQ, code excluded)
+
+| Guide | Before | After |
+| --- | ---: | ---: |
+| How to Make a Sprite Sheet with AI | 1092 | 1626 |
+| How to Make Pixel Art Sprites for Games | 940 | 1422 |
+| How to Make Seamless Tiles for 2D Games | 883 | 1499 |
+| How to Keep AI Game Art Consistent | 894 | 1353 |
+
+Each got a "Common mistakes" section plus practical sections (frame/fps/credit table, resolution table, tile file
+format and TileMapLayer / Tile Palette setup, consistency check). All guides now have a "What you'll learn / you'll
+need" box (`src/data/guide-intros.ts`) and a reading time computed from the text.
+
+### Server rendering
+
+- `/pricing` is a server component reading `src/lib/stripe.ts` and `src/config/animations.ts`: plans, packs, a
+  credit-cost table and the FAQ (`<details>`, FAQPage JSON-LD) are in the HTML. Client islands: current plan,
+  checkout buttons, lifetime deals, live stats, mobile CTA. `pricing-data.ts` is tested to mirror `stripe.ts`.
+- `/community` renders the first 48 public works on the server (prompt, style name, likes, descriptive alt text);
+  filters, search, infinite scroll, likes, comments and chat stay client-side.
+
+### Other
+
+- HTML `/sitemap`, OG images for guides, guide index, comparisons, how-it-works, about, contact, sitemap.
+- Guides ↔ tool pages ↔ `/how-it-works` cross-links. Titles, descriptions and canonicals checked unique and correct
+  on 38 public URLs.
+- `/api/stats` no longer returns invented numbers (1,000 assets / 100 users) when the database is down.

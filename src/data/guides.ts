@@ -56,7 +56,6 @@ export interface Guide {
   updated: string;
   /** ISO date first published (defaults to the site's first guide batch). */
   published?: string;
-  readingMinutes: number;
   /** Slugs of the guides to suggest next (falls back to the newest others). */
   related?: string[];
   /** SpriteLab tool pages relevant to the guide (paths, e.g. "/pixel-art-generator"). */
@@ -65,7 +64,6 @@ export interface Guide {
   faq: GuideFaq[];
 }
 
-const UPDATED = "2026-10-08";
 
 const BASE_GUIDES: Guide[] = [
   // ───────────────────────────────────────────────────────────────────────────
@@ -75,7 +73,6 @@ const BASE_GUIDES: Guide[] = [
     description:
       "Turn one AI-generated sprite into a game-ready sprite sheet: pick a motion, choose frame count, export equal-size frames and import them into your engine.",
     updated: "2026-10-13",
-    readingMinutes: 7,
     related: ["how-many-frames-per-sprite-animation","sprite-sheet-layout-and-texture-atlases","how-to-keep-ai-game-art-consistent"],
     tools: ["/ai-sprite-animation-generator","/ai-sprite-generator"],
     sections: [
@@ -123,6 +120,27 @@ const BASE_GUIDES: Guide[] = [
         ],
       },
       {
+        heading: "Know your numbers before you slice",
+        body: [
+          "Slicing goes wrong when you guess the frame size, so write it down before you open the engine. SpriteLab animation frames are 256 pixels tall. The width is the same for every frame of one animation but depends on how much room the motion needs, so a sword swing is usually wider than an idle. Divide the strip width by the number of frames to get the cell width: a 6-frame strip that is 1,536 pixels wide has 256-pixel cells, and one that is 1,920 pixels wide has 320-pixel cells.",
+          "The frame count and the default playback speed follow from the option you pick. Use the speed below as the starting point in your engine and adjust it to match how fast the character moves in the game:",
+        ],
+        table: {
+          head: ["Option", "Frames in the strip", "Default speed", "Credits"],
+          rows: [
+            ["4 key poses", "4", "8 fps", "6"],
+            ["6 key poses", "6", "10 fps", "8"],
+            ["9 key poses", "9", "12 fps", "10"],
+            ["4 poses, smooth", "8", "16 fps", "11"],
+            ["6 poses, smooth", "12", "20 fps", "15"],
+            ["9 poses, smooth", "18", "24 fps", "17"],
+          ],
+        },
+        after: [
+          "Smooth mode doubles both the frame count and the speed, so one loop takes the same time as the key-pose version; it just has twice as many drawings in it. Pixel art frames sit on one shared 128-pixel grid scaled 2× with nearest-neighbour, which means you can halve the strip in a pixel editor without losing a single art pixel if your game uses smaller sprites.",
+        ],
+      },
+      {
         heading: "Step 4: import it into your engine",
         body: [
           "Because every frame is the same size, slicing is mechanical. In Unity you slice by cell size in the Sprite Editor; in Godot 4 you add the sheet to an AnimatedSprite2D with 'Add frames from sprite sheet'. The Unity workflow looks like this:",
@@ -136,8 +154,27 @@ const BASE_GUIDES: Guide[] = [
           "For pixel art, always turn off texture filtering (Point in Unity, Nearest in Godot) and scale by whole numbers. Smoothing filters blur the pixel edges and make a crisp sheet look like a low-quality JPEG.",
         ],
       },
+      {
+        heading: "Common mistakes",
+        body: [
+          "Most broken sprite sheets fail for one of a handful of reasons, and almost all of them are cheaper to prevent than to repair frame by frame:",
+        ],
+        list: [
+          "Asking an image model for the whole sheet in one prompt. Every figure is drawn from scratch, so the face, the armour and the height change between frames. Make one base sprite, then animate that sprite.",
+          "A base sprite that touches the edge of the canvas. A cape or a spear that is already cropped cannot move without being cut off; leave empty space around the character.",
+          "Automatic slicing. Unity's Automatic mode and similar tools trim every frame to its visible pixels, so frames end up with different sizes and pivots and the animation jitters. Slice by cell size or by count.",
+          "Looping one-shot animations. Attacks, hurt and death should play once and return to idle; looping them makes the character attack forever.",
+          "Moving the character at a speed that does not match the stride, so the feet slide over the ground. Change the movement speed or the fps until a foot that touches the ground stays put.",
+          "Saving the sheet as JPEG or with a white background. JPEG has no transparency and adds blocky artefacts around every edge; keep the PNG.",
+          "Fixing one frame by hand without looking at its neighbours. Check edits with onion skinning (Aseprite shows the previous and next frame) so the pose still flows.",
+        ],
+      },
     ],
     faq: [
+      {
+        q: "What frame rate should a SpriteLab sprite sheet play at?",
+        a: "Start with the default for the option you chose: 8 fps for 4 frames, 10 for 6, 12 for 9, and twice that in smooth mode. Then adjust in the engine until the feet stop sliding.",
+      },
       {
         q: "Can AI make a sprite sheet from one image?",
         a: "Yes. The reliable approach is to generate one base sprite first and then animate that same sprite into frames, rather than prompting for a whole sheet at once. SpriteLab's Animate tool does this and exports a horizontal sprite sheet, a frames ZIP and a GIF.",
@@ -163,8 +200,7 @@ const BASE_GUIDES: Guide[] = [
     title: "How to Make Pixel Art Sprites for Games",
     description:
       "Pick a sprite resolution, limit your palette, use clean outlines and scale with nearest-neighbour. A practical pixel art checklist for game developers.",
-    updated: UPDATED,
-    readingMinutes: 7,
+    updated: "2026-10-13",
     related: ["pixel-art-sprite-sizes-for-games","how-to-keep-ai-game-art-consistent","how-to-make-seamless-tiles-for-2d-games"],
     tools: ["/pixel-art-generator","/ai-sprite-generator"],
     sections: [
@@ -179,6 +215,19 @@ const BASE_GUIDES: Guide[] = [
         body: [
           "Pixel art is defined by its grid. Pick a base sprite size that fits your game's camera: 16×16 suits retro and tile-based games, 32×32 is the most common middle ground, and 48×48 or 64×64 gives room for facial expressions and detailed weapons.",
           "Then pick a low internal game resolution that scales cleanly to common screens. 320×180 and 640×360 both scale by whole numbers to 1920×1080 (6× and 3×). Rendering at a low resolution and scaling the whole frame up keeps every pixel the same size on screen, which is the single biggest visual tell of professional pixel art.",
+          "The table shows how much of the world fits on screen at common 16:9 internal resolutions. All of them scale by a whole number to 1920×1080, and 320×180 and 640×360 also scale exactly to 2560×1440 (8× and 4×):",
+        ],
+        table: {
+          head: ["Internal resolution", "Scale to 1080p", "Screen in 16 px tiles", "Screen in 32 px tiles"],
+          rows: [
+            ["320×180", "6×", "20 × 11.25", "10 × 5.6"],
+            ["384×216", "5×", "24 × 13.5", "12 × 6.75"],
+            ["480×270", "4×", "30 × 16.9", "15 × 8.4"],
+            ["640×360", "3×", "40 × 22.5", "20 × 11.25"],
+          ],
+        },
+        after: [
+          "Read the table backwards when you design: if your top-down game needs the player to see about 20 tiles across, 320×180 with 16-pixel tiles or 640×360 with 32-pixel tiles both work, and the choice then decides how big every character and item has to be.",
         ],
         list: [
           "16×16: very readable, tiny palettes, fast to produce.",
@@ -218,6 +267,26 @@ const BASE_GUIDES: Guide[] = [
         image: { src: "/showcase/fire-sword.png", alt: "Pixel art flaming sword snapped to a clean pixel grid", pixel: true },
       },
       {
+        heading: "Fitting generated sprites to your grid",
+        body: [
+          "Know what a generated file contains before you put it in a scene. A SpriteLab pixel sprite is a 1024-pixel PNG built from a grid of about 128 art pixels across, with at most 32 colours, and every art pixel is an exact 8×8 block. Shrinking the file to one eighth with nearest-neighbour gives you the native sprite with nothing lost.",
+          "128 art pixels is a high-detail sprite, comparable to large modern pixel art characters. If your game is built on 16- or 32-pixel sprites, do not shrink it by another 4× and hope: nearest-neighbour throws away three of every four rows and columns and the eyes, outline and hands break. Either design the game around larger sprites, or use the generated sprite as a reference and redraw it on your smaller grid, which is fast when the colours, shapes and pose are already decided.",
+        ],
+      },
+      {
+        heading: "Common mistakes",
+        body: ["These are the problems that make pixel art look amateur even when each sprite is carefully drawn:"],
+        list: [
+          "Pillow shading: shading from the outline inwards so the sprite looks puffed up. Shade from one light direction instead.",
+          "Banding: lines of different shades running parallel to each other along an edge, which make the edge look thicker and blurry. Break up the steps.",
+          "Too many colours. Twenty near-identical greens add noise, not detail; merge them into a ramp of three to five.",
+          "Anti-aliasing against transparency. Soft outer edges look fine on one background and leave a light or dark halo on every other one. Keep outer edges hard.",
+          "Mixing sprite sizes at the same scale, such as a 16-pixel sword in a 64-pixel hero's hand.",
+          "Rotating or scaling sprites in the engine by arbitrary amounts, which creates mixels at runtime even when the source files are clean.",
+          "Saving as JPEG, which adds compression blocks and new colours to every edge. Use PNG.",
+        ],
+      },
+      {
         heading: "A practical workflow",
         body: ["Whether you draw by hand, generate with AI, or mix both, this order keeps things consistent:"],
         steps: [
@@ -246,6 +315,10 @@ const BASE_GUIDES: Guide[] = [
         q: "Can AI generate real pixel art?",
         a: "Raw AI images usually only imitate pixel art. Tools that post-process the output onto a real pixel grid with a limited palette, as SpriteLab does for its pixel styles, produce sprites you can edit pixel by pixel.",
       },
+      {
+        q: "What resolution should a pixel art game render at?",
+        a: "Pick an internal resolution that scales by a whole number to the screens you target. 320×180 (6× to 1080p) and 640×360 (3× to 1080p) are the most common 16:9 choices.",
+      },
     ],
   },
 
@@ -256,7 +329,6 @@ const BASE_GUIDES: Guide[] = [
     description:
       "Import a sprite sheet into Unity 2D: set Sprite Mode to Multiple, slice by cell size, fix pixel art blur with Point filtering and build an Animation clip.",
     updated: "2026-10-13",
-    readingMinutes: 6,
     related: ["sprite-sheet-layout-and-texture-atlases","hitboxes-and-hurtboxes-from-sprite-sheets","pixel-art-sprite-sizes-for-games"],
     tools: ["/unity-sprite-generator","/ai-sprite-animation-generator"],
     sections: [
@@ -348,7 +420,6 @@ const BASE_GUIDES: Guide[] = [
     description:
       "Use sprite sheets in Godot 4 with AnimatedSprite2D and SpriteFrames, or Sprite2D hframes with AnimationPlayer. Includes pixel-perfect settings.",
     updated: "2026-10-13",
-    readingMinutes: 6,
     related: ["hitboxes-and-hurtboxes-from-sprite-sheets","how-to-make-a-4-direction-top-down-rpg-character","how-many-frames-per-sprite-animation"],
     tools: ["/godot-sprite-generator","/ai-sprite-animation-generator"],
     sections: [
@@ -456,8 +527,7 @@ func attack() -> void:
     title: "How to Make Seamless Tiles for 2D Games",
     description:
       "Make seamless floor and wall tiles: match opposite edges, test in a 3×3 grid, break repetition with variants and set up tilemaps in Unity and Godot.",
-    updated: UPDATED,
-    readingMinutes: 7,
+    updated: "2026-10-13",
     related: ["pixel-art-sprite-sizes-for-games","sprite-sheet-layout-and-texture-atlases","how-to-make-pixel-art-sprites-for-games"],
     tools: ["/ai-tileset-generator"],
     sections: [
@@ -502,6 +572,26 @@ func attack() -> void:
         image: { src: "/showcase/tile-stone-wall.png", alt: "Seamless pixel art stone wall tile", pixel: true },
       },
       {
+        heading: "What a generated tile file contains",
+        body: [
+          "SpriteLab does the offset trick for you. After a tile is generated it measures the colour jump across the wrap-around edges; if the tile does not already wrap, it blends a half-offset copy of the tile into a band around the outer edge, so the left edge continues into the right and the top into the bottom. Pixel styles are then snapped to one grid and palette in a way that keeps the wrap intact.",
+          "The tile arrives as a 1024×1024 PNG. In a pixel style that is 128×128 art pixels, each one an 8×8 block, so shrink the file to 128×128 with nearest-neighbour to get the native tile. 128 pixels is large for a single grid cell in a 16- or 32-pixel game, but you do not have to shrink it further. Treat it as a block of cells: with a 32-pixel grid, the native tile is a 4×4 block of tiles that still repeats seamlessly as a whole.",
+        ],
+      },
+      {
+        heading: "Setting the tiles up in Godot 4 and Unity",
+        body: ["In Godot 4.3 and later, tilemaps are built from TileMapLayer nodes:"],
+        steps: [
+          "Add a TileMapLayer node, create a new TileSet in its Inspector and set Tile Size to your grid, for example 32×32.",
+          "Open the TileSet panel at the bottom of the editor and drag the native 128×128 tile into it; accept the prompt to create tiles automatically. A 128-pixel tile on a 32-pixel grid becomes 16 atlas tiles.",
+          "Open the TileMap panel, select the whole 4×4 block in the atlas and paint with it, so the pieces are always placed in their original order.",
+          "For variants, add each variant to the same TileSet, set its Probability in the tile properties and enable the dice button (Place Random Tile) while painting.",
+        ],
+        after: [
+          "In Unity, open Window → 2D → Tile Palette, create a palette and drag the sprite into it; Unity creates a Tile asset for it. Add a tilemap with GameObject → 2D Object → Tilemap → Rectangular and paint. Set the texture's Pixels Per Unit so one tile fills exactly the grid cell size you want; a 128-pixel tile with a PPU of 128 covers one Unity unit. For a 32-pixel grid, set Sprite Mode to Multiple and slice the tile into 32×32 pieces first, then drag the pieces into the palette.",
+        ],
+      },
+      {
         heading: "Transitions and autotiles: know the limit",
         body: [
           "A single seamless tile covers a whole area of one material. Where grass meets dirt, or a wall meets the floor, you need transition tiles: edges, outer corners and inner corners. A full set for automatic terrain painting is commonly 16 tiles (simple corners) or 47 tiles (the 'blob' set that covers every neighbour combination). Godot 4's Terrains and Unity's Rule Tiles use these sets to choose the right piece automatically.",
@@ -515,6 +605,18 @@ func attack() -> void:
           "In Godot 4, set up animation directly in the TileSet editor by adding animation columns and a frame duration to the tile. In Unity, use the Animated Tile from 2D Tilemap Extras and assign the frames and speed.",
         ],
         image: { src: "/showcase/anim-water.gif", alt: "Animated seamless pixel art water tile looping", pixel: true },
+      },
+      {
+        heading: "Common mistakes",
+        body: ["A tile that looked perfect in the editor can still fail in the level. These are the usual causes:"],
+        list: [
+          "Testing a single copy. Seams and repeats only show in a grid; always look at 3×3 or more before approving a tile.",
+          "Directional light baked into a floor. A highlight on the top-left of every tile turns into a visible pattern across the floor. Keep floor lighting flat and let walls and props carry the shadows.",
+          "One eye-catching detail in the base tile, such as a skull or a single big rock, repeating every few metres.",
+          "Thin lines between tiles in the engine even though the image wraps. That is filtering or texture bleeding, not the art: use Point or Nearest filtering, keep the camera on whole pixels, and in Godot leave Use Texture Padding on in the atlas source.",
+          "Tiles at a different pixel density from the characters, which makes the hero look pasted onto the level.",
+          "Variants painted by hand in a regular rhythm. Let the engine pick them randomly with probabilities, or the variety becomes its own pattern.",
+        ],
       },
     ],
     faq: [
@@ -534,6 +636,10 @@ func attack() -> void:
         q: "Why can I still see a grid pattern in my seamless tile?",
         a: "The tile probably has a distinctive feature or uneven lighting that repeats. Flatten the lighting, spread detail evenly, and add variant tiles or decorations.",
       },
+      {
+        q: "Why are there thin lines between my tiles in Unity or Godot?",
+        a: "Usually texture filtering or bleeding from neighbouring pixels in the atlas, not the tile itself. Switch to Point (Unity) or Nearest (Godot) filtering, keep the camera at whole-pixel positions and add padding to the atlas.",
+      },
     ],
   },
 
@@ -543,8 +649,7 @@ func attack() -> void:
     title: "How to Keep AI Game Art Consistent",
     description:
       "Keep AI game art consistent: lock one style, palette, outline, perspective and pixel density, reuse a prompt template and curate assets in projects.",
-    updated: UPDATED,
-    readingMinutes: 7,
+    updated: "2026-10-13",
     related: ["how-to-make-pixel-art-sprites-for-games","how-to-make-a-sprite-sheet-with-ai","pixel-art-sprite-sizes-for-games"],
     tools: ["/ai-sprite-generator","/rpg-character-creator","/ai-game-icon-generator"],
     sections: [
@@ -578,6 +683,19 @@ func attack() -> void:
         body: [
           "Keep the style words fixed and change only the subject. A template like '[subject], side view, full body, [two or three colour words], simple shapes' keeps the framing constant while you swap 'goblin archer' for 'armoured knight'. Describe the subject's colours with the same small vocabulary every time instead of inventing new adjectives per asset.",
           "In SpriteLab the style is a setting rather than prompt wording: pick one of the 12 art styles once and leave it alone. Pixel styles (Pixel 16-bit, Pixel HD, Isometric Pixel) are snapped to a real pixel grid with a limited palette and a consistent outline, which removes the biggest sources of drift — uneven pixel size and stray colours — automatically.",
+          "Here is the template filled in for a small fantasy set. Only the subject and its colours change; the view, framing and shape words stay identical:",
+        ],
+        table: {
+          head: ["Asset", "Prompt (style chosen in the settings)"],
+          rows: [
+            ["Hero", "armoured knight, side view, full body, steel grey and blue cloth, simple shapes"],
+            ["Enemy", "goblin archer, side view, full body, green skin and brown leather, simple shapes"],
+            ["Enemy", "fire slime, side view, full body, orange and yellow, simple shapes"],
+            ["Item", "health potion, side view, red liquid and grey glass, simple shapes"],
+          ],
+        },
+        after: [
+          "Keep the quality setting fixed as well. Standard and HD are drawn by different image models, so a set that mixes them can differ in line work and shading even with identical prompts. Decide on one for the in-game sprites and use the other only for things that are allowed to look different, such as a store capsule or a title screen.",
         ],
         image: { src: "/showcase/goblin-archer.png", alt: "Pixel art goblin archer generated in the same style as the knight sprite", pixel: true },
       },
@@ -609,6 +727,29 @@ func attack() -> void:
           "Be honest about limits: AI is excellent for producing a large, coherent first pass of characters, items, icons and tiles, but a handful of hero assets — the player character, key bosses, the title screen — usually benefit from extra hand polish.",
         ],
       },
+      {
+        heading: "A ten-minute consistency check",
+        body: ["Run this every time a batch of new assets is ready, before they go into the game:"],
+        steps: [
+          "Place every sprite on one canvas at game scale, once on mid grey and once on your darkest level background. Anything that disappears or glows on one of them needs work.",
+          "Line the characters up on one baseline and compare heights in pixels. Creatures that should be the same size should be within a few pixels of each other.",
+          "Compare palettes. In Aseprite, Sprite → Color Mode → Indexed converts a sprite to a palette you can compare and merge; near-duplicate colours are the first thing to remove.",
+          "Zoom to 400% and check the outline: same colour, same thickness, same treatment of inner lines on every sprite.",
+          "Check where the highlights are. If your light comes from the top left, no sprite should have its brightest pixels on the right.",
+        ],
+      },
+      {
+        heading: "Common mistakes",
+        body: ["The same few habits cause most inconsistent AI asset sets:"],
+        list: [
+          "Changing the style setting halfway through a project because a different style looked nice on one asset.",
+          "Mixing perspectives: a side-view hero next to top-down enemies or three-quarter view items.",
+          "Inventing new colour words for every prompt. 'Crimson', 'scarlet' and 'blood red' produce three different reds; pick one word per colour.",
+          "Judging results zoomed in. Details that look great at 800% are invisible at game scale, while a heavier outline or a different light direction jumps out.",
+          "Getting new poses by re-prompting. Every new prompt redraws the character; animate the approved sprite instead.",
+          "Keeping 'almost right' sprites in the pack. One off-style asset makes everything around it look off; decline it and regenerate.",
+        ],
+      },
     ],
     faq: [
       {
@@ -627,6 +768,10 @@ func attack() -> void:
         q: "Can I use SpriteLab assets commercially?",
         a: "Yes. Assets generated with SpriteLab can be used in commercial games, with no attribution required.",
       },
+      {
+        q: "Should I use Standard or HD quality for a whole game?",
+        a: "Pick one for all in-game sprites. Standard and HD use different image models, so mixing them in one set can change line work and shading.",
+      },
     ],
   },
 ];
@@ -638,4 +783,28 @@ export const GUIDES: Guide[] = [...BASE_GUIDES, ...ENGINE_CRAFT_GUIDES];
 
 export function getGuide(slug: string): Guide | undefined {
   return GUIDES.find((g) => g.slug === slug);
+}
+
+function countWords(text: string): number {
+  return text.split(/\s+/).filter(Boolean).length;
+}
+
+/** Words a reader reads: headings, paragraphs, lists, steps, tables and FAQ (code excluded). */
+export function guideWordCount(guide: Guide): number {
+  const texts = guide.sections.flatMap((s) => [
+    s.heading,
+    ...s.body,
+    ...(s.list ?? []),
+    ...(s.steps ?? []),
+    ...(s.after ?? []),
+    ...(s.table ? [...s.table.head, ...s.table.rows.flat()] : []),
+  ]);
+  texts.push(guide.description, ...guide.faq.flatMap((f) => [f.q, f.a]));
+  return texts.reduce((n, t) => n + countWords(t), 0);
+}
+
+/** Reading time at 220 words a minute, plus a minute per code sample. */
+export function guideReadingMinutes(guide: Guide): number {
+  const code = guide.sections.filter((s) => s.code).length;
+  return Math.max(1, Math.round(guideWordCount(guide) / 220) + code);
 }

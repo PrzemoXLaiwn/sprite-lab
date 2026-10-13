@@ -18,7 +18,6 @@ export const ENGINE_CRAFT_GUIDES: Guide[] = [
       "Import sprite strips into GameMaker with the _stripN naming rule, set the origin, pick a collision mask that does not snag on walls, and keep pixel art sharp.",
     updated: UPDATED,
     published: UPDATED,
-    readingMinutes: 7,
     related: ["how-many-frames-per-sprite-animation", "hitboxes-and-hurtboxes-from-sprite-sheets", "pixel-art-sprite-sizes-for-games"],
     tools: ["/ai-sprite-animation-generator", "/pixel-art-generator"],
     sections: [
@@ -174,7 +173,6 @@ if (is_struct(_box)) {
       "How to choose a pixel art sprite size: 16×16 vs 32×32 vs 64×64, how many tiles fit on screen, integer scaling to 1080p and how to set it up in your engine.",
     updated: UPDATED,
     published: UPDATED,
-    readingMinutes: 7,
     related: ["how-to-make-pixel-art-sprites-for-games", "how-many-frames-per-sprite-animation", "sprite-sheet-layout-and-texture-atlases"],
     tools: ["/pixel-art-generator", "/ai-tileset-generator"],
     sections: [
@@ -297,7 +295,6 @@ if (is_struct(_box)) {
       "Frame counts and fps for idle, walk, run, attack, jump, hurt and death animations, how to time frames unevenly, and how to match walk speed to movement.",
     updated: UPDATED,
     published: UPDATED,
-    readingMinutes: 7,
     related: ["how-to-make-a-sprite-sheet-with-ai", "hitboxes-and-hurtboxes-from-sprite-sheets", "how-to-make-a-4-direction-top-down-rpg-character"],
     tools: ["/ai-sprite-animation-generator"],
     sections: [
@@ -429,7 +426,6 @@ func _physics_process(_delta: float) -> void:
       "Build a 4-direction RPG character sheet: row order conventions, when mirroring left from right works, standing frames, input handling and the usual pitfalls.",
     updated: UPDATED,
     published: UPDATED,
-    readingMinutes: 7,
     related: ["how-many-frames-per-sprite-animation", "how-to-use-sprite-sheets-in-godot-4", "sprite-sheet-layout-and-texture-atlases"],
     tools: ["/rpg-character-creator", "/ai-sprite-animation-generator"],
     sections: [
@@ -572,7 +568,6 @@ func _physics_process(_delta: float) -> void:
       "Hitboxes, hurtboxes and pushboxes for 2D sprites: active frames, per-frame boxes from a sprite sheet, and code for Godot 4, Unity and GameMaker.",
     updated: UPDATED,
     published: UPDATED,
-    readingMinutes: 8,
     related: ["how-many-frames-per-sprite-animation", "how-to-import-sprite-strips-into-gamemaker", "how-to-use-sprite-sheets-in-godot-4"],
     tools: ["/ai-sprite-animation-generator", "/game-weapon-generator"],
     sections: [
@@ -755,10 +750,9 @@ func _apply(shape: CollisionShape2D, box, frame_size: Vector2) -> void:
     slug: "sprite-sheet-layout-and-texture-atlases",
     title: "Sprite Sheet Layout: Strips, Grids and Texture Atlases",
     description:
-      "Strips, grid sheets and packed atlases compared: frame padding, texture bleeding, maximum texture sizes and memory, with settings for Unity, Godot and GameMaker.",
+      "Strips, grid sheets and packed atlases compared: frame padding, texture bleeding, texture size limits and memory, with settings for Unity, Godot and GameMaker.",
     updated: UPDATED,
     published: UPDATED,
-    readingMinutes: 7,
     related: ["how-to-import-sprite-sheets-into-unity", "how-to-use-sprite-sheets-in-godot-4", "pixel-art-sprite-sizes-for-games"],
     tools: ["/ai-sprite-animation-generator", "/ai-sprite-generator"],
     sections: [

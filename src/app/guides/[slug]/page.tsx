@@ -4,8 +4,8 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { SiteNav } from "@/components/layout/SiteNav";
 import { Footer } from "@/components/layout/Footer";
-import { AdSense } from "@/components/ads/AdSense";
-import { FIRST_PUBLISHED, GUIDES, getGuide, type Guide } from "@/data/guides";
+import { FIRST_PUBLISHED, GUIDES, getGuide, guideReadingMinutes, guideWordCount, type Guide } from "@/data/guides";
+import { GUIDE_INTROS } from "@/data/guide-intros";
 
 const SITE = "https://www.sprite-lab.com";
 
@@ -83,10 +83,7 @@ function buildJsonLd(guide: Guide) {
   const url = `${SITE}/guides/${guide.slug}`;
   const publisher = { "@type": "Organization", name: "SpriteLab", url: SITE, logo: `${SITE}/logo.png` };
   const author = { "@type": "Organization", name: AUTHOR.name, url: `${SITE}${AUTHOR.href}` };
-  const words = guide.sections
-    .flatMap((s) => [s.heading, ...s.body, ...(s.list ?? []), ...(s.steps ?? []), ...(s.after ?? [])])
-    .join(" ")
-    .split(/s+/).length;
+  const words = guideWordCount(guide);
   const firstImage = guide.sections.find((s) => s.image)?.image;
   const data: Record<string, unknown>[] = [
     {
@@ -101,6 +98,7 @@ function buildJsonLd(guide: Guide) {
       author,
       publisher,
       wordCount: words,
+      timeRequired: `PT${guideReadingMinutes(guide)}M`,
       inLanguage: "en",
       isPartOf: { "@type": "CollectionPage", name: "Game Dev Guides", url: `${SITE}/guides` },
       image: firstImage ? `${SITE}${firstImage.src}` : undefined,
@@ -161,6 +159,7 @@ export default async function GuidePage({ params }: Props) {
   const tools = toolsFor(guide);
   const related = relatedFor(guide);
   const published = guide.published ?? FIRST_PUBLISHED;
+  const intro = GUIDE_INTROS[guide.slug];
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#0B0D12] text-[#ECEEF3]">
@@ -174,13 +173,13 @@ export default async function GuidePage({ params }: Props) {
           <nav aria-label="Breadcrumb" className="font-mono text-[12px] text-[#8B93A5]">
             <ol className="flex flex-wrap items-center gap-1.5">
               <li>
-                <Link href="/" className="hover:text-[#ECEEF3]">
+                <Link href="/" className="inline-flex min-h-10 items-center hover:text-[#ECEEF3]">
                   home
                 </Link>
               </li>
               <li aria-hidden="true">/</li>
               <li>
-                <Link href="/guides" className="hover:text-[#ECEEF3]">
+                <Link href="/guides" className="inline-flex min-h-10 items-center hover:text-[#ECEEF3]">
                   guides
                 </Link>
               </li>
@@ -212,9 +211,35 @@ export default async function GuidePage({ params }: Props) {
                 </>
               )}
               <span aria-hidden="true">·</span>
-              <span>{guide.readingMinutes} min read</span>
+              <span>{guideReadingMinutes(guide)} min read</span>
             </p>
           </header>
+
+          {intro && (
+            <aside aria-label="What you'll learn" className="mt-8 grid gap-5 rounded-2xl border border-[#FF8A3D]/20 bg-[#FF8A3D]/[0.04] px-5 py-5 sm:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] sm:gap-8">
+              <div>
+                <h2 className="font-mono text-[11px] uppercase tracking-[0.08em] text-[#FFB27A]">{"// what you'll learn"}</h2>
+                <ul className="mt-3 space-y-2">
+                  {intro.learn.map((item) => (
+                    <li key={item} className="flex gap-2.5 text-[14.5px] leading-snug text-[#ECEEF3]">
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#FF8A3D]" aria-hidden="true" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <h2 className="font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">{"// you'll need"}</h2>
+                <ul className="mt-3 space-y-2">
+                  {intro.needs.map((item) => (
+                    <li key={item} className="text-[14px] leading-snug text-[#C9CFDB]">
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </aside>
+          )}
 
           <nav aria-label="In this guide" className="mt-8 rounded-2xl border border-white/[0.06] bg-[#0E1016] px-5 py-4">
             <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">{"// in this guide"}</p>
@@ -336,7 +361,7 @@ export default async function GuidePage({ params }: Props) {
           </div>
 
           {/* ─── CTA ─── */}
-          <aside className="mt-14 rounded-2xl border border-[#FF8A3D]/20 bg-[#FF8A3D]/[0.05] p-6 sm:p-8">
+          <aside data-ads-ignore className="mt-14 rounded-2xl border border-[#FF8A3D]/20 bg-[#FF8A3D]/[0.05] p-6 sm:p-8">
             <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[#FFB27A]">{"// try it in spritelab"}</p>
             <h2 className="mt-2 text-balance font-display text-[22px] font-semibold leading-tight text-white sm:text-[26px]">
               Generate game-ready sprites from a sentence
@@ -368,7 +393,7 @@ export default async function GuidePage({ params }: Props) {
           </section>
 
           {/* ─── Related ─── */}
-          <section className="mt-14 grid gap-8 sm:grid-cols-2">
+          <section data-ads-ignore className="mt-14 grid gap-8 sm:grid-cols-2">
             <div>
               <h2 className="font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">{"// related tools"}</h2>
               <ul className="mt-2">
@@ -379,6 +404,11 @@ export default async function GuidePage({ params }: Props) {
                     </Link>
                   </li>
                 ))}
+                <li>
+                  <Link href="/how-it-works" className="group inline-flex min-h-10 items-center gap-1.5 py-1.5 text-[14.5px] leading-snug text-[#C9CFDB] transition-colors hover:text-[#FFB27A]">
+                    How SpriteLab works, step by step <ArrowRight className="h-3.5 w-3.5 shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                  </Link>
+                </li>
               </ul>
             </div>
             <div>
@@ -406,7 +436,6 @@ export default async function GuidePage({ params }: Props) {
       </article>
 
       <Footer />
-      <AdSense />
     </main>
   );
 }
