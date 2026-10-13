@@ -16,6 +16,9 @@ export interface InspirationEmailProps {
   unsubscribeUrl: string;
   items: InspirationItem[];
   title: string;
+  /** "From the community", or "Examples" for the curated showcase fallback. */
+  eyebrow: string;
+  intro: string;
   tryPrompt: string;
   tryUrl: string;
   communityUrl: string;
@@ -27,9 +30,9 @@ export function InspirationEmail(props: InspirationEmailProps) {
   const rows = [items.slice(0, 3), items.slice(3, 6)].filter((r) => r.length > 0);
   return (
     <LifecycleFrame preview={props.preview} reason={props.reason} unsubscribeUrl={props.unsubscribeUrl}>
-      <Eyebrow>From the community</Eyebrow>
+      <Eyebrow>{props.eyebrow}</Eyebrow>
       <Title>{props.title}</Title>
-      <P>{items.length} sprites other people shared to the community gallery, and one prompt worth trying yourself.</P>
+      <P>{props.intro}</P>
       <Section style={{ margin: "0 0 10px" }}>
         {rows.map((row, r) => (
           <Row key={r}>

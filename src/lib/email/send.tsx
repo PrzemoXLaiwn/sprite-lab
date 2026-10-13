@@ -9,6 +9,7 @@ import { WeeklyDigestEmail } from "./templates/WeeklyDigestEmail";
 import { NewFeaturesEmail } from "./templates/NewFeaturesEmail";
 import { RelaunchEmail, type RelaunchEmailProps } from "./templates/RelaunchEmail";
 import { unsubscribeHeaders } from "./unsubscribe";
+import { marketingSuppressionReason } from "./suppression";
 import { prisma } from "@/lib/prisma";
 import { render } from "@react-email/render";
 
@@ -151,6 +152,8 @@ export async function sendReEngagementEmail(
     );
 
     if (!resend) return { success: false, error: "RESEND_API_KEY not configured" };
+    const suppressed = await marketingSuppressionReason(email, userId);
+    if (suppressed) return { success: false, error: suppressed };
     const { data, error } = await resend.emails.send({
       from: EMAIL_FROM,
       to: email,
@@ -229,6 +232,8 @@ export async function sendPromoEmail(
     const html = await render(<PromoEmail userName={userName} {...options} />);
 
     if (!resend) return { success: false, error: "RESEND_API_KEY not configured" };
+    const suppressed = await marketingSuppressionReason(email, userId);
+    if (suppressed) return { success: false, error: suppressed };
     const { data, error } = await resend.emails.send({
       from: EMAIL_FROM,
       to: email,
@@ -306,6 +311,8 @@ export async function sendAbandonedCartEmail(
     );
 
     if (!resend) return { success: false, error: "RESEND_API_KEY not configured" };
+    const suppressed = await marketingSuppressionReason(email, userId);
+    if (suppressed) return { success: false, error: suppressed };
     const { data, error } = await resend.emails.send({
       from: EMAIL_FROM,
       to: email,
@@ -387,6 +394,8 @@ export async function sendSpecialOfferEmail(
     );
 
     if (!resend) return { success: false, error: "RESEND_API_KEY not configured" };
+    const suppressed = await marketingSuppressionReason(email, userId);
+    if (suppressed) return { success: false, error: suppressed };
     const { data, error } = await resend.emails.send({
       from: EMAIL_FROM,
       to: email,
@@ -468,6 +477,8 @@ export async function sendDailyReminderEmail(
     );
 
     if (!resend) return { success: false, error: "RESEND_API_KEY not configured" };
+    const suppressed = await marketingSuppressionReason(email, userId);
+    if (suppressed) return { success: false, error: suppressed };
     const { data, error } = await resend.emails.send({
       from: EMAIL_FROM,
       to: email,
@@ -554,6 +565,8 @@ export async function sendWeeklyDigestEmail(
     );
 
     if (!resend) return { success: false, error: "RESEND_API_KEY not configured" };
+    const suppressed = await marketingSuppressionReason(email, userId);
+    if (suppressed) return { success: false, error: suppressed };
     const { data, error } = await resend.emails.send({
       from: EMAIL_FROM,
       to: email,
@@ -634,6 +647,8 @@ export async function sendNewFeaturesEmail(
     );
 
     if (!resend) return { success: false, error: "RESEND_API_KEY not configured" };
+    const suppressed = await marketingSuppressionReason(email, userId);
+    if (suppressed) return { success: false, error: suppressed };
     const { data, error } = await resend.emails.send({
       from: EMAIL_FROM,
       to: email,
@@ -697,6 +712,8 @@ export async function sendRelaunchEmail(
   try {
     const html = await render(<RelaunchEmail {...props} />);
     if (!resend) return { success: false, error: "RESEND_API_KEY not configured" };
+    const suppressed = await marketingSuppressionReason(email, userId);
+    if (suppressed) return { success: false, error: suppressed };
     const { data, error } = await resend.emails.send({
       from: EMAIL_FROM,
       to: email,

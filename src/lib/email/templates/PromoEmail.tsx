@@ -12,6 +12,7 @@ import {
   Text,
 } from "@react-email/components";
 import * as React from "react";
+import { PostalAddressLine } from "./PostalAddressLine";
 
 interface PromoEmailProps {
   userName?: string;
@@ -90,7 +91,7 @@ export function PromoEmail({
             </Section>
 
             {/* What You Get */}
-            <Heading style={subheading}>What You'll Get</Heading>
+            <Heading style={subheading}>What You&apos;ll Get</Heading>
 
             <Section style={benefitsList}>
               <Text style={benefitItem}>
@@ -118,7 +119,7 @@ export function PromoEmail({
             </Section>
 
             <Text style={urgencyText}>
-              Offer expires in {expiresIn}. Don't miss out!
+              Offer expires in {expiresIn}. Don&apos;t miss out!
             </Text>
 
             <Hr style={hr} />
@@ -143,6 +144,7 @@ export function PromoEmail({
             <Text style={footerText}>
               SpriteLab - AI Game Asset Generator
             </Text>
+            <PostalAddressLine style={footerText} />
           </Section>
         </Container>
       </Body>

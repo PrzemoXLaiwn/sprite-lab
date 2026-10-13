@@ -4,7 +4,6 @@ import {
   Container,
   Head,
   Heading,
-  Hr,
   Html,
   Link,
   Preview,
@@ -12,6 +11,7 @@ import {
   Text,
 } from "@react-email/components";
 import * as React from "react";
+import { PostalAddressLine } from "./PostalAddressLine";
 
 interface ReEngagementEmailProps {
   userName?: string;
@@ -53,7 +53,7 @@ export function ReEngagementEmail({
               {daysSinceLastVisit > 0 && daysSinceLastVisit < 1000
                 ? `It's been ${daysSinceLastVisit} days since your last visit. `
                 : "It's been a while since your last visit. "}
-              Your creative journey doesn't have to stop!
+              Your creative journey doesn&apos;t have to stop!
             </Text>
 
             {credits > 0 && (
@@ -62,14 +62,14 @@ export function ReEngagementEmail({
                   You still have {credits} credits!
                 </Text>
                 <Text style={creditsAlertText}>
-                  That's {credits} unique game assets waiting to be created.
+                  That&apos;s {credits} unique game assets waiting to be created.
                 </Text>
               </Section>
             )}
 
             {/* What's New Section */}
             <Section style={whatsNewBox}>
-              <Text style={whatsNewTitle}>What's New</Text>
+              <Text style={whatsNewTitle}>What&apos;s New</Text>
               <Text style={whatsNewItem}>
                 ✨ <strong>Improved AI</strong> - Better quality assets
               </Text>
@@ -97,19 +97,19 @@ export function ReEngagementEmail({
               <Section style={inspirationItem}>
                 <Text style={inspirationEmoji}>⚔️</Text>
                 <Text style={inspirationText}>
-                  "legendary dragon slayer sword with fire enchantment"
+                  &quot;legendary dragon slayer sword with fire enchantment&quot;
                 </Text>
               </Section>
               <Section style={inspirationItem}>
                 <Text style={inspirationEmoji}>🧪</Text>
                 <Text style={inspirationText}>
-                  "bubbling poison potion with skull cork"
+                  &quot;bubbling poison potion with skull cork&quot;
                 </Text>
               </Section>
               <Section style={inspirationItem}>
                 <Text style={inspirationEmoji}>👹</Text>
                 <Text style={inspirationText}>
-                  "forest goblin warrior with bone armor"
+                  &quot;forest goblin warrior with bone armor&quot;
                 </Text>
               </Section>
             </Section>
@@ -122,14 +122,14 @@ export function ReEngagementEmail({
             </Section>
 
             <Text style={smallText}>
-              One click and you're back in the game.
+              One click and you&apos;re back in the game.
             </Text>
           </Section>
 
           {/* Footer */}
           <Section style={footer}>
             <Text style={footerText}>
-              Don't want these emails?{" "}
+              Don&apos;t want these emails?{" "}
               <Link href="https://sprite-lab.com/settings" style={link}>
                 Update your preferences
               </Link>
@@ -137,6 +137,7 @@ export function ReEngagementEmail({
             <Text style={footerText}>
               SpriteLab - AI Game Asset Generator
             </Text>
+            <PostalAddressLine style={footerText} />
           </Section>
         </Container>
       </Body>

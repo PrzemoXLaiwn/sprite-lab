@@ -51,6 +51,7 @@ export const SAMPLE_INSPIRATION: InspirationPick = {
   ],
   tryPrompt: "fox mage in a blue cloak casting a frost spell",
   thisWeek: true,
+  source: "community",
 };
 
 export const SAMPLE_UNSUBSCRIBE_URL = `${SITE}/api/email/unsubscribe?u=sample-user&t=sample-token-not-valid-0000000000`;

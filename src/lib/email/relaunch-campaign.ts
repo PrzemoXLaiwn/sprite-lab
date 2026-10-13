@@ -4,12 +4,13 @@
 // Sent in daily batches (Resend's free plan allows 100 emails/day) by
 // /api/cron/relaunch, most engaged users first. Each account is emailed at
 // most once: anyone with a sent RELAUNCH row in email_logs is skipped.
-// Users who turned marketing off or unsubscribed are never emailed.
+// Users who turned marketing off, unsubscribed, bounced or complained are never emailed.
 // =============================================================================
 
 import { prisma } from "@/lib/prisma";
 import { RELAUNCH } from "@/config/relaunch";
 import { sendRelaunchEmail } from "./send";
+import { marketingBlockedByPrefs } from "./suppression";
 import { unsubscribeUrl } from "./unsubscribe";
 
 const SITE = "https://www.sprite-lab.com";
@@ -25,7 +26,8 @@ interface Recipient {
 /** Existing accounts that can still receive the relaunch email, best first. */
 export async function relaunchRecipients(limit: number): Promise<Recipient[]> {
   const alreadySent = await prisma.emailLog.findMany({
-    where: { type: "RELAUNCH", status: "sent" },
+    // Anything that left us (the webhook may have turned "sent" into bounced / delayed)
+    where: { type: "RELAUNCH", status: { not: "failed" } },
     select: { userId: true, email: true },
   });
   const sentIds = new Set(alreadySent.map((e) => e.userId).filter(Boolean));
@@ -44,8 +46,7 @@ export async function relaunchRecipients(limit: number): Promise<Recipient[]> {
   });
 
   const eligible = users.filter((u) => {
-    const prefs = u.emailPreferences as { marketing?: boolean; unsubscribedAt?: string } | null;
-    if (prefs?.marketing === false || prefs?.unsubscribedAt) return false;
+    if (marketingBlockedByPrefs(u.emailPreferences)) return false; // opted out, bounced or complained
     if (!u.email || !u.email.includes("@")) return false;
     return !sentIds.has(u.id) && !sentEmails.has(u.email.toLowerCase());
   });

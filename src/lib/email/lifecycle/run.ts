@@ -3,7 +3,8 @@
 // =============================================================================
 // Dry run (the default whenever MARKETING_EMAILS_ENABLED isn't "true"): load,
 // select, count, return. No claim, no send, no preference write.
-// Live run: for each picked user, in priority order and up to the daily cap:
+// Live run: for each picked user, in priority order and up to today's cap
+// (warm-up ramp and the Resend daily limit, see limits.ts):
 //   claim the day (atomic) → render → send → merge the sent markers.
 // A user whose claim fails was already handled today and is skipped.
 // =============================================================================
@@ -13,12 +14,15 @@ import { SEQUENCE_PRIORITY, lastActivity, selectLifecycleEmail, sentPatch, utcDa
 import type { LifecycleAudience } from "./data";
 import type { OutgoingLifecycleEmail } from "./send";
 import type { EmailResult } from "../send";
+import { DEFAULT_BASE_CAP, DEFAULT_RESEND_DAILY_LIMIT, computeDailyCap, type DailyCap, type SendStats } from "./limits";
 
-/** Resend's free plan allows 100 emails a day across everything we send. */
-export const DEFAULT_DAILY_CAP = 80;
+/** Warm-up starting cap (LIFECYCLE_DAILY_CAP); see limits.ts for the ramp and the provider limit. */
+export const DEFAULT_DAILY_CAP = DEFAULT_BASE_CAP;
 
 export interface LifecycleDeps {
   loadAudience(now: Date): Promise<LifecycleAudience>;
+  /** Today's sends across all senders + the first live lifecycle send (read-only). */
+  loadSendStats(now: Date): Promise<SendStats>;
   unsubscribeUrl(userId: string): string;
   claimDay(userId: string, day: string): Promise<boolean>;
   send(msg: OutgoingLifecycleEmail): Promise<EmailResult>;
@@ -29,7 +33,10 @@ export interface LifecycleDeps {
 export interface LifecycleRunOptions {
   dryRun: boolean;
   now?: Date;
+  /** Warm-up starting cap (LIFECYCLE_DAILY_CAP, default 20). */
   dailyCap?: number;
+  /** Emails per UTC day across every sender (RESEND_DAILY_LIMIT, default 100). */
+  providerLimit?: number;
   /** Shown in the response so it's obvious why nothing was sent. */
   dryRunReason?: string;
 }
@@ -43,11 +50,15 @@ export interface LifecycleRunResult {
   eligible: Record<SequenceId, number>;
   /** Would be (dry run) or were attempted (live) today, after the daily cap. */
   planned: Record<SequenceId, number>;
+  /** Effective cap for this run: min(warm-up cap, what's left of the provider limit). */
   dailyCap: number;
+  limits: DailyCap;
   /** Qualified but over today's cap — they're picked up on a later day. */
   deferred: number;
   skipped: Partial<Record<SkipReason, number>>;
   inspirationItems: number;
+  /** "showcase" when there were too few public works and the curated examples are used. */
+  inspirationSource: "community" | "showcase" | null;
   /** First few picks for eyeballing: user id, sequence and subject — no addresses. */
   sample: { userId: string; sequence: SequenceId; subject: string }[];
   sent: number;
@@ -68,8 +79,14 @@ interface Pick {
 export async function runLifecycle(opts: LifecycleRunOptions, deps: LifecycleDeps): Promise<LifecycleRunResult> {
   const now = opts.now ?? new Date();
   const day = utcDay(now);
-  const dailyCap = Math.max(0, Math.floor(opts.dailyCap ?? DEFAULT_DAILY_CAP));
-  const audience = await deps.loadAudience(now);
+  const [audience, stats] = await Promise.all([deps.loadAudience(now), deps.loadSendStats(now)]);
+  const limits = computeDailyCap({
+    baseCap: opts.dailyCap ?? DEFAULT_DAILY_CAP,
+    providerLimit: opts.providerLimit ?? DEFAULT_RESEND_DAILY_LIMIT,
+    stats,
+    now,
+  });
+  const dailyCap = limits.cap;
   const inspiration: InspirationPick | null = audience.inspiration;
 
   const result: LifecycleRunResult = {
@@ -80,9 +97,11 @@ export async function runLifecycle(opts: LifecycleRunOptions, deps: LifecycleDep
     eligible: zero(),
     planned: zero(),
     dailyCap,
+    limits,
     deferred: 0,
     skipped: { ...audience.gated },
     inspirationItems: inspiration?.items.length ?? 0,
+    inspirationSource: inspiration?.source ?? null,
     sample: [],
     sent: 0,
     failed: 0,

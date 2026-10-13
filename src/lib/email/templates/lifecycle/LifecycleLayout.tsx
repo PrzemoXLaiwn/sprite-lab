@@ -14,6 +14,7 @@ import {
   Text,
 } from "@react-email/components";
 import * as React from "react";
+import { PostalAddressLine } from "../PostalAddressLine";
 
 // Shared frame for the lifecycle emails: dark SpriteLab surfaces, one orange
 // CTA, footer with the reason + one-click unsubscribe. Inline styles only
@@ -76,6 +77,7 @@ export function LifecycleFrame({ preview, reason, unsubscribeUrl, children }: Fr
               {"  ·  "}
               <Link href={`${SITE}/settings`} style={footerLink}>Email settings</Link>
             </Text>
+            <PostalAddressLine style={footerText} />
           </Section>
         </Container>
       </Body>

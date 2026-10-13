@@ -2,17 +2,16 @@
 
 import { claimLifecycleDay, mergeEmailPreferences } from "@/app/api/_lib/email-prefs";
 import { unsubscribeUrl } from "../unsubscribe";
-import { loadLifecycleAudience } from "./data";
+import { loadLifecycleAudience, loadSendStats } from "./data";
 import { sendLifecycleEmail } from "./send";
 import type { LifecycleDeps } from "./run";
 
-/** Master switch for every lifecycle email. Off unless exactly "true". */
-export function marketingEmailsEnabled(): boolean {
-  return process.env.MARKETING_EMAILS_ENABLED === "true";
-}
+/** Master switch for every marketing email (see ../flags.ts). Off unless exactly "true". */
+export { marketingEmailsEnabled } from "../flags";
 
 export const lifecycleDeps: LifecycleDeps = {
   loadAudience: loadLifecycleAudience,
+  loadSendStats,
   unsubscribeUrl,
   claimDay: claimLifecycleDay,
   send: sendLifecycleEmail,

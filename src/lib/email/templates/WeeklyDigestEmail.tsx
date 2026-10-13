@@ -12,6 +12,7 @@ import {
   Text,
 } from "@react-email/components";
 import * as React from "react";
+import { PostalAddressLine } from "./PostalAddressLine";
 
 interface WeeklyDigestEmailProps {
   userName?: string;
@@ -95,7 +96,7 @@ export function WeeklyDigestEmail({
               {communityStats.popularPrompt && (
                 <Section style={popularPromptBox}>
                   <Text style={popularLabel}>Most Popular Prompt:</Text>
-                  <Text style={popularPrompt}>"{communityStats.popularPrompt}"</Text>
+                  <Text style={popularPrompt}>&quot;{communityStats.popularPrompt}&quot;</Text>
                 </Section>
               )}
             </Section>
@@ -120,7 +121,7 @@ export function WeeklyDigestEmail({
               <>
                 <Hr style={hr} />
                 <Section style={featuresSection}>
-                  <Text style={sectionTitle}>✨ What's New</Text>
+                  <Text style={sectionTitle}>✨ What&apos;s New</Text>
                   {newFeatures.map((feature, i) => (
                     <Text key={i} style={featureItem}>• {feature}</Text>
                   ))}
@@ -160,6 +161,7 @@ export function WeeklyDigestEmail({
                 Unsubscribe
               </Link>
             </Text>
+            <PostalAddressLine style={footerText} />
           </Section>
         </Container>
       </Body>

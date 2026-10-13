@@ -7,13 +7,16 @@
 //    touch `generations`
 // 3. for the rest, their 12 most recent generations in batches (one window
 //    query per batch) and whether they ever made an animation
-// 4. one query for the community picks shared by everyone today
+// 4. one query for the community picks shared by everyone today (fewer than
+//    3 usable → the curated /showcase examples, see showcase.ts)
 // =============================================================================
 
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { InspirationPick } from "./content";
-import { DAY, MARKETING_LOG_TYPES, gate, parseLifecyclePrefs, type SkipReason, type UserSnapshot } from "./rules";
+import type { SendStats } from "./limits";
+import { DAY, LIFECYCLE_LOG_TYPES, MARKETING_LOG_TYPES, gate, parseLifecyclePrefs, type SkipReason, type UserSnapshot } from "./rules";
+import { showcaseInspiration } from "./showcase";
 import { pickInspiration, summarizeWork, type CommunityRow, type GenerationRow } from "./snapshot";
 
 const BATCH = 300;
@@ -36,7 +39,8 @@ export async function loadLifecycleAudience(now: Date): Promise<LifecycleAudienc
       select: { id: true, email: true, name: true, credits: true, createdAt: true, lastActiveAt: true, emailPreferences: true },
     }),
     prisma.emailLog.findMany({
-      where: { createdAt: { gte: weekAgo }, status: "sent", type: { in: [...MARKETING_LOG_TYPES] } },
+      // Anything that left us counts (the webhook later turns "sent" into delivery_delayed / bounced / complained)
+      where: { createdAt: { gte: weekAgo }, status: { not: "failed" }, type: { in: [...MARKETING_LOG_TYPES] } },
       select: { userId: true, email: true, createdAt: true },
     }),
     prisma.emailLog.findMany({
@@ -128,6 +132,21 @@ export async function loadLifecycleAudience(now: Date): Promise<LifecycleAudienc
     users: candidates,
     gated,
     scanned: users.length,
-    inspiration: pickInspiration(community as CommunityRow[], now),
+    // Too few public works → curated examples, labelled as such
+    inspiration: pickInspiration(community as CommunityRow[], now) ?? showcaseInspiration(now),
   };
+}
+
+/** Today's (UTC) sends across every sender, and when lifecycle sending first went live. */
+export async function loadSendStats(now: Date): Promise<SendStats> {
+  const dayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const [sentToday, first] = await Promise.all([
+    prisma.emailLog.count({ where: { createdAt: { gte: dayStart }, status: { not: "failed" } } }),
+    prisma.emailLog.findFirst({
+      where: { type: { in: Object.values(LIFECYCLE_LOG_TYPES) }, status: { not: "failed" } },
+      orderBy: { createdAt: "asc" },
+      select: { createdAt: true },
+    }),
+  ]);
+  return { sentToday, firstLiveSendAt: first?.createdAt ?? null };
 }

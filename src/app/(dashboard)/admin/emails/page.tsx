@@ -1,13 +1,17 @@
 import { redirect } from "next/navigation";
 import { checkAdminAccess } from "../page.actions";
 import { EmailPreviewPanel, type EmailPreview } from "@/components/admin/EmailPreviewPanel";
+import type { EmailSwitchboard } from "@/components/admin/EmailSwitchboardPanel";
+import { marketingEmailsEnabled, postalAddress, relaunchEmailsEnabled, webhookSecretConfigured, weeklyDigestEnabled } from "@/lib/email/flags";
 import { renderLifecycleHtml } from "@/lib/email/lifecycle/content";
-import { lifecycleDeps, marketingEmailsEnabled } from "@/lib/email/lifecycle/deps";
-import { DEFAULT_DAILY_CAP, runLifecycle, type LifecycleDeps, type LifecycleRunResult } from "@/lib/email/lifecycle/run";
+import { lifecycleDeps } from "@/lib/email/lifecycle/deps";
+import { lifecycleBaseCap, resendDailyLimit } from "@/lib/email/lifecycle/limits";
+import { runLifecycle, type LifecycleDeps, type LifecycleRunResult } from "@/lib/email/lifecycle/run";
 import { sampleLifecycleMessages } from "@/lib/email/lifecycle/samples";
 
-// Admin-only: every lifecycle template rendered with sample data, plus the
-// dry-run counts for today. Read-only — the deps below refuse to write.
+// Admin-only: every lifecycle template rendered with sample data, the email
+// switches (read-only, from env), today's send budget and the dry-run counts.
+// Read-only — the deps below refuse to write.
 
 export const dynamic = "force-dynamic";
 
@@ -30,11 +34,33 @@ export default async function AdminEmailsPage() {
   let dryRun: LifecycleRunResult | null = null;
   let dryRunError: string | null = null;
   try {
-    const dailyCap = Math.min(Math.max(Number(process.env.LIFECYCLE_DAILY_CAP) || DEFAULT_DAILY_CAP, 1), 1000);
-    dryRun = await runLifecycle({ dryRun: true, dryRunReason: "admin preview", dailyCap }, readOnlyDeps);
+    dryRun = await runLifecycle(
+      { dryRun: true, dryRunReason: "admin preview", dailyCap: lifecycleBaseCap(), providerLimit: resendDailyLimit() },
+      readOnlyDeps
+    );
   } catch (err) {
     dryRunError = err instanceof Error ? err.message : "Unknown error";
   }
 
-  return <EmailPreviewPanel previews={previews} dryRun={dryRun} dryRunError={dryRunError} sendingEnabled={marketingEmailsEnabled()} />;
+  const switchboard: EmailSwitchboard = {
+    marketing: marketingEmailsEnabled(),
+    weeklyDigest: weeklyDigestEnabled(),
+    relaunch: relaunchEmailsEnabled(),
+    resendKey: Boolean(process.env.RESEND_API_KEY),
+    postalAddress: postalAddress(),
+    webhookSecret: webhookSecretConfigured(),
+    baseCap: lifecycleBaseCap(),
+    resendDailyLimit: resendDailyLimit(),
+    limits: dryRun?.limits ?? null,
+  };
+
+  return (
+    <EmailPreviewPanel
+      previews={previews}
+      dryRun={dryRun}
+      dryRunError={dryRunError}
+      sendingEnabled={switchboard.marketing}
+      switchboard={switchboard}
+    />
+  );
 }

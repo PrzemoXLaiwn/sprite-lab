@@ -4,7 +4,6 @@ import {
   Container,
   Head,
   Heading,
-  Hr,
   Html,
   Link,
   Preview,
@@ -12,6 +11,7 @@ import {
   Text,
 } from "@react-email/components";
 import * as React from "react";
+import { PostalAddressLine } from "./PostalAddressLine";
 
 interface AbandonedCartEmailProps {
   userName?: string;
@@ -52,7 +52,7 @@ export function AbandonedCartEmail({
             </Heading>
 
             <Text style={paragraph}>
-              We noticed you didn't complete your purchase. No worries - your selection is still waiting for you!
+              We noticed you didn&apos;t complete your purchase. No worries - your selection is still waiting for you!
             </Text>
 
             {/* Plan Summary */}
@@ -67,7 +67,7 @@ export function AbandonedCartEmail({
 
             {/* Benefits reminder */}
             <Section style={benefitsBox}>
-              <Text style={benefitsTitle}>What you'll get:</Text>
+              <Text style={benefitsTitle}>What you&apos;ll get:</Text>
               <Text style={benefitItem}>✓ Instant access to credits</Text>
               <Text style={benefitItem}>✓ All art styles unlocked</Text>
               <Text style={benefitItem}>✓ Commercial usage rights</Text>
@@ -97,10 +97,10 @@ export function AbandonedCartEmail({
           {/* Footer */}
           <Section style={footer}>
             <Text style={footerText}>
-              Having trouble? Reply to this email and we'll help you out.
+              Having trouble? Reply to this email and we&apos;ll help you out.
             </Text>
             <Text style={footerText}>
-              Don't want these emails?{" "}
+              Don&apos;t want these emails?{" "}
               <Link href="https://sprite-lab.com/settings" style={link}>
                 Update your preferences
               </Link>
@@ -108,6 +108,7 @@ export function AbandonedCartEmail({
             <Text style={footerText}>
               SpriteLab - AI Game Asset Generator
             </Text>
+            <PostalAddressLine style={footerText} />
           </Section>
         </Container>
       </Body>

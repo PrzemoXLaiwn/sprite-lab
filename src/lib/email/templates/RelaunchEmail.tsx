@@ -14,6 +14,7 @@ import {
   Text,
 } from "@react-email/components";
 import * as React from "react";
+import { PostalAddressLine } from "./PostalAddressLine";
 
 const SITE = "https://www.sprite-lab.com";
 
@@ -150,6 +151,7 @@ export function RelaunchEmail({ userName, bonus, lastPrompt, ctaUrl, retryUrl, u
               {" · "}
               <Link href={`${SITE}/settings`} style={footerLink}>Email settings</Link>
             </Text>
+            <PostalAddressLine style={footerText} />
           </Section>
         </Container>
       </Body>

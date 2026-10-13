@@ -17,6 +17,7 @@ import { UnusedCreditsEmail, type CreditIdea } from "../templates/lifecycle/Unus
 import { WinbackEmail } from "../templates/lifecycle/WinbackEmail";
 import { InspirationEmail, type InspirationItem } from "../templates/lifecycle/InspirationEmail";
 import { SITE, type HeroImage } from "../templates/lifecycle/LifecycleLayout";
+import { postalAddress } from "../flags";
 import type { SequenceId, UserSnapshot, WorkItem } from "./rules";
 
 /** Standard-quality sprite (CREDIT_COSTS.normal in src/lib/services/generation.ts). */
@@ -30,6 +31,12 @@ export interface InspirationPick {
   tryPrompt: string;
   /** All picks are from the last 7 days ("this week"); otherwise the copy says "recently". */
   thisWeek: boolean;
+  /**
+   * "community": public works by users. "showcase": our curated examples from
+   * /public/showcase, used when there are too few public works — the copy then
+   * says "examples", never "from the community".
+   */
+  source: "community" | "showcase";
 }
 
 export interface LifecycleMessage {
@@ -98,7 +105,8 @@ function hero(item: WorkItem, caption?: string): HeroImage {
 }
 
 function footerText(reason: string, unsubscribeUrl: string): string {
-  return ["--", reason, `Unsubscribe: ${unsubscribeUrl}`, `Email settings: ${SITE}/settings`].join("\n");
+  const address = postalAddress();
+  return ["--", reason, `Unsubscribe: ${unsubscribeUrl}`, `Email settings: ${SITE}/settings`, ...(address ? [address] : [])].join("\n");
 }
 
 // -----------------------------------------------------------------------------
@@ -303,16 +311,25 @@ export function buildLifecycleMessage(input: BuildInput): LifecycleMessage {
 
     case "inspiration": {
       const pick = input.inspiration;
-      if (!pick || pick.items.length < 3) throw new Error("inspiration needs at least 3 community items");
+      if (!pick || pick.items.length < 3) throw new Error("inspiration needs at least 3 items");
       const count = pick.items.length >= 6 ? 6 : 3;
       const ctaUrl = withUtm(`/generate?prompt=${encodeURIComponent(pick.tryPrompt)}`, sequence);
       const communityUrl = withUtm("/community", sequence);
       const when = pick.thisWeek ? "this week" : "recently";
-      const subject = `${count} sprites from the community ${when}`;
-      const preview = "Made and shared by other SpriteLab users, plus a prompt to try yourself.";
+      const examples = pick.source === "showcase";
+      // Curated examples are never presented as community work
+      const subject = examples ? `${count} example sprites made with SpriteLab` : `${count} sprites from the community ${when}`;
+      const preview = examples
+        ? "Example sprites made with SpriteLab, plus a prompt to try yourself."
+        : "Made and shared by other SpriteLab users, plus a prompt to try yourself.";
+      const title = examples ? "Examples made with SpriteLab" : `Made on SpriteLab ${when}`;
+      const eyebrow = examples ? "Examples" : "From the community";
+      const intro = examples
+        ? `${count} example sprites made with SpriteLab, and one prompt worth trying yourself.`
+        : `${count} sprites other people shared to the community gallery, and one prompt worth trying yourself.`;
       const reason = "You're getting this because you've used SpriteLab recently. At most one of these a week, and only when we haven't emailed you otherwise.";
       const text = [
-        hi, "", `${count} sprites other people shared to the SpriteLab community ${when}:`,
+        hi, "", examples ? `${count} example sprites made with SpriteLab:` : `${count} sprites other people shared to the SpriteLab community ${when}:`,
         ...pick.items.slice(0, count).map((i) => `- ${i.caption}`),
         "", `Try this prompt: "${pick.tryPrompt}"`, ctaUrl, "", `See more on Community: ${communityUrl}`, "", footerText(reason, unsubscribeUrl),
       ].join("\n");
@@ -321,7 +338,7 @@ export function buildLifecycleMessage(input: BuildInput): LifecycleMessage {
         element: (
           <InspirationEmail
             preview={preview} reason={reason} unsubscribeUrl={unsubscribeUrl}
-            title={`Made on SpriteLab ${when}`} items={pick.items} tryPrompt={pick.tryPrompt} tryUrl={ctaUrl} communityUrl={communityUrl}
+            title={title} eyebrow={eyebrow} intro={intro} items={pick.items} tryPrompt={pick.tryPrompt} tryUrl={ctaUrl} communityUrl={communityUrl}
           />
         ),
       };

@@ -19,6 +19,7 @@ function user(id: string, over: Partial<UserSnapshot> = {}): UserSnapshot {
 function deps(users: UserSnapshot[]) {
   return {
     loadAudience: vi.fn(async () => ({ users, gated: { opted_out: 4 }, scanned: users.length + 4, inspiration: SAMPLE_INSPIRATION })),
+    loadSendStats: vi.fn<LifecycleDeps["loadSendStats"]>(async () => ({ sentToday: 0, firstLiveSendAt: null })),
     unsubscribeUrl: vi.fn<LifecycleDeps["unsubscribeUrl"]>((id) => `https://www.sprite-lab.com/api/email/unsubscribe?u=${id}&t=x`),
     claimDay: vi.fn<LifecycleDeps["claimDay"]>(async () => true),
     send: vi.fn<LifecycleDeps["send"]>(async () => ({ success: true, messageId: "m" })),
@@ -79,5 +80,39 @@ describe("runLifecycle", () => {
     expect(r.failed).toBe(1);
     expect(d.send).toHaveBeenCalledTimes(1);
     expect(d.markSent).not.toHaveBeenCalled();
+  });
+
+  it("warm-up: 1x the base cap on days 0-2, 2x on days 3-6, 4x from day 7", async () => {
+    const many = Array.from({ length: 200 }, (_, i) => user(`u${i}`));
+    const capOn = async (firstLiveSendAt: Date | null) => {
+      const dd = deps(many);
+      dd.loadSendStats.mockResolvedValue({ sentToday: 0, firstLiveSendAt });
+      return (await runLifecycle({ dryRun: true, now: NOW, dailyCap: 20, providerLimit: 1000 }, dd)).dailyCap;
+    };
+    expect(await capOn(null)).toBe(20);
+    expect(await capOn(ago(2 * DAY))).toBe(20);
+    expect(await capOn(ago(3 * DAY))).toBe(40);
+    expect(await capOn(ago(6 * DAY))).toBe(40);
+    expect(await capOn(ago(7 * DAY))).toBe(80);
+    expect(await capOn(ago(90 * DAY))).toBe(80);
+  });
+
+  it("never pushes today's total (all senders) above the provider limit", async () => {
+    const many = Array.from({ length: 50 }, (_, i) => user(`u${i}`));
+    const dd = deps(many);
+    dd.loadSendStats.mockResolvedValue({ sentToday: 93, firstLiveSendAt: ago(30 * DAY) });
+    const r = await runLifecycle({ dryRun: false, now: NOW, dailyCap: 20, providerLimit: 100 }, dd);
+    expect(r.limits).toMatchObject({ warmupCap: 80, providerRemaining: 7, limitedBy: "provider" });
+    expect(r.dailyCap).toBe(7);
+    expect(dd.send).toHaveBeenCalledTimes(7);
+    expect(r.deferred).toBe(43);
+  });
+
+  it("sends nothing once the provider limit is used up", async () => {
+    d.loadSendStats.mockResolvedValue({ sentToday: 120, firstLiveSendAt: null });
+    const r = await runLifecycle({ dryRun: false, now: NOW, providerLimit: 100 }, d);
+    expect(r.dailyCap).toBe(0);
+    expect(d.send).not.toHaveBeenCalled();
+    expect(d.claimDay).not.toHaveBeenCalled();
   });
 });

@@ -6,10 +6,13 @@ import { sendReEngagementEmail, sendAbandonedCartEmail, sendSpecialOfferEmail } 
 import { stripe, PLANS, CREDIT_PACKS } from "@/lib/stripe";
 import { Prisma } from "@prisma/client";
 import { relaunchActive } from "@/config/relaunch";
+import { MARKETING_OFF_RESPONSE, marketingEmailsEnabled } from "@/lib/email/flags";
+import { marketingBlockedByPrefs } from "@/lib/email/suppression";
 
 // Vercel Cron Job - Automated email campaigns
 // Runs daily at 10:00 AM UTC
 // Schedule in vercel.json: "0 10 * * *"
+// Off unless MARKETING_EMAILS_ENABLED=true (the one switch for all marketing).
 
 export const maxDuration = 300; // Max 5 minutes
 export const dynamic = "force-dynamic";
@@ -49,6 +52,10 @@ export async function GET(request: NextRequest) {
     if (!isAuthorizedCronRequest(request)) {
       console.log("[CRON:Email] Unauthorized request");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!marketingEmailsEnabled()) {
+      return NextResponse.json(MARKETING_OFF_RESPONSE);
     }
 
     // Check if Resend is configured
@@ -115,6 +122,7 @@ export async function GET(request: NextRequest) {
 
     // Filter users who received re-engagement recently
     const eligibleUsers = inactiveUsers.filter((u) => {
+      if (marketingBlockedByPrefs(u.emailPreferences)) return false; // bounced / complained / opted out
       const prefs = u.emailPreferences as { lastReEngagementAt?: string } | null;
       if (!prefs?.lastReEngagementAt) return true;
       return new Date(prefs.lastReEngagementAt) < sevenDaysAgo;
@@ -202,7 +210,7 @@ export async function GET(request: NextRequest) {
         });
 
         const prefs = user?.emailPreferences as { marketing?: boolean; lastAbandonedCartAt?: string } | null;
-        if (prefs?.marketing === false) { results.abandonedCart.skipped++; continue; }
+        if (marketingBlockedByPrefs(prefs)) { results.abandonedCart.skipped++; continue; }
         if (prefs?.lastAbandonedCartAt && new Date(prefs.lastAbandonedCartAt) > sevenDaysAgoCart) {
           results.abandonedCart.skipped++;
           continue;
@@ -260,6 +268,7 @@ export async function GET(request: NextRequest) {
     });
 
     const filteredOfferUsers = zeroCreditsUsers.filter((u) => {
+      if (marketingBlockedByPrefs(u.emailPreferences)) return false;
       const prefs = u.emailPreferences as { lastSpecialOfferAt?: string } | null;
       if (!prefs?.lastSpecialOfferAt) return true;
       return new Date(prefs.lastSpecialOfferAt) < fourteenDaysAgo;
