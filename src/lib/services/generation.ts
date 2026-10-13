@@ -46,6 +46,7 @@ import { saveGeneration, type SaveGenerationParams } from "@/lib/db/generations"
 import { COLOR_PALETTES } from "@/config/features/premium-features";
 import { postprocessSprite, postprocessTile } from "@/lib/image/sprite-postprocess";
 import { buildSpritePrompt, isPixelStyle, isTileCategory, normalizeStyleId } from "@/config/prompts/sprite-prompt";
+import { interpretSubject } from "@/lib/prompt-interpret";
 
 // =============================================================================
 // SECTION 1 — TYPES
@@ -321,7 +322,8 @@ export async function generateGuestAsset(
   // Same sprite pipeline as signed-in users (standard model) so the demo
   // shows exactly the quality people get after signing up.
   const styleId = request.style === "pixel" ? "PIXEL_ART_16" : "CARTOON_WESTERN";
-  const finalPrompt = buildSpritePrompt({ subject: request.prompt, styleId });
+  const { subject } = await interpretSubject(request.prompt, "");
+  const finalPrompt = buildSpritePrompt({ subject, styleId });
 
   let generated: Awaited<ReturnType<typeof generateSpriteImage>>;
   try {
@@ -489,8 +491,13 @@ async function generateSingle2D(request: GenerationRequest): Promise<{ asset: Ge
   const palette = request.colorPaletteId
     ? COLOR_PALETTES.find((p) => p.id === request.colorPaletteId)
     : undefined;
+  // Abstract ideas ("a keyboard as an enemy") → what to actually draw. Not
+  // for style match: the reference sets the look and the margin is thinner.
+  const { subject } = request.styleReference
+    ? { subject: request.prompt }
+    : await interpretSubject(request.prompt, request.categoryId);
   const finalPrompt = buildSpritePrompt({
-    subject: request.prompt,
+    subject,
     styleId,
     categoryId: request.categoryId,
     view,

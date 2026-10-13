@@ -46,4 +46,15 @@ describe("keySpriteBackground", () => {
     expect(c.alpha(100, 240)).toBe(255); // trousers stay
     expect(c.alpha(30, 287)).toBe(0); // shadow goes
   });
+
+  it("painted styles: removes a flat key-colour gap fenced by mid tones, keeps a white highlight on cream", () => {
+    const c = canvas(200, 300);
+    c.rect(40, 40, 160, 260, SKIN);
+    c.rect(60, 60, 90, 120, [255, 255, 255]); // background seen between arm and body
+    c.rect(110, 60, 150, 120, CREAM);
+    c.rect(118, 70, 142, 110, WHITE); // highlight on cream cloth
+    keySpriteBackground(c.raw, { flatGaps: true });
+    expect(c.alpha(75, 90)).toBe(0);
+    expect(c.alpha(130, 90)).toBe(255);
+  });
 });

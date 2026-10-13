@@ -47,7 +47,7 @@ const STYLE_LINES: Record<string, string> = {
 };
 
 const CATEGORY_FRAMING: Record<string, string> = {
-  CHARACTERS: "full body character, whole figure visible from head to feet",
+  CHARACTERS: "full body character, the whole character visible",
   CREATURES: "full body creature, whole creature visible",
   WEAPONS: "single weapon item shown whole, diagonal orientation, nothing else",
   ARMOR: "single armor item shown whole, nothing else",
@@ -65,7 +65,7 @@ const VIEW_LINES: Record<string, string> = {
 };
 
 const POSE_LINES: Record<string, string> = {
-  auto: "standing in a neutral idle pose",
+  auto: "in a neutral idle stance",
   "a-pose": "standing in an A-pose with arms angled slightly away from the body",
   "t-pose": "standing in a T-pose with both arms stretched out horizontally",
   dynamic: "in a dynamic action pose",

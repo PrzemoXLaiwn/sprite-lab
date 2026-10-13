@@ -80,7 +80,10 @@ export async function postprocessSprite(
     backgroundRemoved = true;
   } else {
     // 32: tight enough to keep pale glows/highlights touching the background
-    backgroundRemoved = keyOutBackground(raw, options.bgTolerance ?? 32);
+    // Painted styles: an enclosed patch of perfectly flat key colour is
+    // background even without a dark outline around it (pixel art can use
+    // flat white for cloth, so it keeps the outline rule only).
+    backgroundRemoved = keyOutBackground(raw, options.bgTolerance ?? 32, 1, 1, !options.pixelGrid);
   }
 
   // 2. Crop to subject
@@ -339,9 +342,16 @@ function thresholdAlpha(raw: Raw, cutoff: number): void {
  */
 export function keySpriteBackground(
   raw: Raw,
-  opts: { tolerance?: number; fringePasses?: number; /** Image area one sprite occupies (1/frames for a sheet). */ areaScale?: number } = {}
+  opts: {
+    tolerance?: number;
+    fringePasses?: number;
+    /** Image area one sprite occupies (1/frames for a sheet). */
+    areaScale?: number;
+    /** Treat enclosed patches of perfectly flat key colour as background (painted styles). */
+    flatGaps?: boolean;
+  } = {}
 ): boolean {
-  return keyOutBackground(raw, opts.tolerance ?? 32, opts.fringePasses ?? 1, opts.areaScale ?? 1);
+  return keyOutBackground(raw, opts.tolerance ?? 32, opts.fringePasses ?? 1, opts.areaScale ?? 1, opts.flatGaps ?? false);
 }
 
 /**
@@ -350,7 +360,7 @@ export function keySpriteBackground(
  * the image untouched) when the border is not a flat colour — e.g. the model
  * ignored the instruction and drew a scene.
  */
-function keyOutBackground(raw: Raw, tolerance: number, fringePasses = 1, areaScale = 1): boolean {
+function keyOutBackground(raw: Raw, tolerance: number, fringePasses = 1, areaScale = 1, flatGaps = false): boolean {
   const { width, height, data } = raw;
   const border: number[] = [];
   for (let x = 0; x < width; x++) border.push(x, (height - 1) * width + x);
@@ -414,7 +424,7 @@ function keyOutBackground(raw: Raw, tolerance: number, fringePasses = 1, areaSca
     for (const p of clear) data[p * 4 + 3] = 0;
   }
 
-  removeEnclosedBackground(raw, br, bg, bb, areaScale);
+  removeEnclosedBackground(raw, br, bg, bb, areaScale, flatGaps);
   removeGroundShadow(raw);
   return true;
 }
@@ -439,8 +449,19 @@ function removeGroundShadow(raw: Raw): void {
     const r = data[i], g = data[i + 1], bl = data[i + 2];
     const max = Math.max(r, g, bl), min = Math.min(r, g, bl);
     const luma = 0.299 * r + 0.587 * g + 0.114 * bl;
-    // Grey band only: near-white (≥233) is subject (ghost, cloth) not shadow
-    return luma >= 150 && luma <= 232 && max - min <= 28;
+    // Grey only, from the pale outer ring of a soft shadow (it fades into the
+    // white key) down to its mid-grey core. White cloth or a ghost reached
+    // here is part of a tall region and is kept by the flat/small check below.
+    if (luma < 95 || max - min > 28) return false;
+    // Soft: a shadow is a smooth gradient. Textured grey (scaly legs, chain
+    // mail, stone) next to it must not join the region and make it "tall".
+    const x = p % width;
+    for (const q of [x > 0 ? p - 1 : -1, x < width - 1 ? p + 1 : -1, p - width, p + width]) {
+      if (q < 0 || q >= width * height || data[q * 4 + 3] === 0) continue;
+      const j = q * 4;
+      if (Math.abs(data[j] - r) > 14 || Math.abs(data[j + 1] - g) > 14 || Math.abs(data[j + 2] - bl) > 14) return false;
+    }
+    return true;
   };
   const stack: number[] = [];
   const seen = new Uint8Array(width * height);
@@ -495,12 +516,13 @@ function removeGroundShadow(raw: Raw): void {
  * regions that are almost exactly the key colour and large enough not to be
  * a highlight or an eye.
  */
-function removeEnclosedBackground(raw: Raw, br: number, bg: number, bb: number, areaScale = 1): void {
+function removeEnclosedBackground(raw: Raw, br: number, bg: number, bb: number, areaScale = 1, flatGaps = false): void {
   const { width, height, data } = raw;
   const tight2 = 18 * 18;
   // 0.4% of the canvas: large gaps go, glints on glass/crystal/eyes stay
   const minArea = Math.round(width * height * areaScale * 0.004);
   const minOutlinedArea = Math.round(width * height * areaScale * 0.0002);
+  const minFlatArea = Math.round(width * height * areaScale * 0.00008);
   const seen = new Uint8Array(width * height);
   const near = (p: number) => {
     const i = p * 4;
@@ -526,18 +548,37 @@ function removeEnclosedBackground(raw: Raw, br: number, bg: number, bb: number, 
     // White cloth, fur or highlights are bordered by the subject's own light
     // shades; a real gap shows dark outline or mid/dark colours around it.
     const border = borderStats(raw, region);
+    // The key background is perfectly flat; painted highlights (metal, glass,
+    // eyes) always carry some shading. Measured on a painted parrot: the gap
+    // between arm and body was 96% exact key colour, armour glints 2-4%. A
+    // white highlight on cream cloth is fenced by near-white shades (pale);
+    // the gap was fenced by red feathers and silver armour (32% pale).
+    const flat = flatGaps && region.length >= minFlatArea && border.pale < 0.6 && flatShare(raw, region, br, bg, bb) >= 0.8;
     const isGap =
+      flat ||
       (region.length >= minArea && border.light < 0.5) ||
       (region.length >= minOutlinedArea && border.dark >= 0.6);
     if (isGap) for (const p of region) data[p * 4 + 3] = 0;
   }
 }
 
+/** Share of the region's pixels within a few levels of the key colour. */
+function flatShare(raw: Raw, region: number[], br: number, bg: number, bb: number): number {
+  const { data } = raw;
+  let n = 0;
+  for (const p of region) {
+    const i = p * 4;
+    const dr = data[i] - br, dg = data[i + 1] - bg, db = data[i + 2] - bb;
+    if (dr * dr + dg * dg + db * db <= 10 * 10) n++;
+  }
+  return region.length ? n / region.length : 0;
+}
+
 /** Shares of the region's outer boundary pixels that are dark (outline-like) and light (cloth, fur). */
-function borderStats(raw: Raw, region: number[]): { dark: number; light: number } {
+function borderStats(raw: Raw, region: number[]): { dark: number; light: number; pale: number } {
   const { width, height, data } = raw;
   const member = new Set(region);
-  let dark = 0, light = 0, total = 0;
+  let dark = 0, light = 0, pale = 0, total = 0;
   for (const p of region) {
     const x = p % width, y = (p - x) / width;
     const next = [x > 0 ? p - 1 : -1, x < width - 1 ? p + 1 : -1, y > 0 ? p - width : -1, y < height - 1 ? p + width : -1];
@@ -549,9 +590,10 @@ function borderStats(raw: Raw, region: number[]): { dark: number; light: number 
       const luma = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
       if (luma < 70) dark++;
       else if (luma >= 185) light++;
+      if (luma >= 225) pale++;
     }
   }
-  return total === 0 ? { dark: 0, light: 0 } : { dark: dark / total, light: light / total };
+  return total === 0 ? { dark: 0, light: 0, pale: 0 } : { dark: dark / total, light: light / total, pale: pale / total };
 }
 
 // -----------------------------------------------------------------------------

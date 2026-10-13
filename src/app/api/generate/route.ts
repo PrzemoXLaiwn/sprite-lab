@@ -21,7 +21,7 @@ import {
   CREDIT_COSTS, STYLE_MATCH_CREDITS,
   type GenerationRequest,
 } from "@/lib/services/generation";
-import { enhanceUserPrompt, translatePromptIfNeeded } from "@/lib/prompt-enhance";
+import { translatePromptIfNeeded } from "@/lib/prompt-enhance";
 import { rateLimitUserGeneration } from "@/lib/rate-limit";
 import { cleanUserPrompt } from "@/lib/prompt-clean";
 
@@ -220,7 +220,6 @@ export async function POST(request: Request) {
     // FLUX is English-trained; Cyrillic/Polish/etc. pass through as garbage
     // and produce unrelated images. Translate first, then optionally enhance.
     let finalUserPrompt = prompt;
-    let promptWasEnhanced = false;
     let promptWasTranslated = false;
 
     try {
@@ -245,28 +244,10 @@ export async function POST(request: Request) {
       // Should not happen — translatePromptIfNeeded swallows its errors.
     }
 
-    // ── 4c. AI Prompt Enhancement (Pro/Studio only) ─────────────────────────
-    // Expands short prompts like "iron sword magic" into detailed visual
-    // descriptions while preserving the user's exact intent. Operates on the
-    // (already-translated) English prompt so the safety check works correctly.
-    const userPlan = dbUser?.user?.plan ?? "FREE";
-    const isPaidPlan = ["PRO", "UNLIMITED", "STARTER"].includes(userPlan);
-
-    if (isPaidPlan && finalUserPrompt.split(/\s+/).length < 7) {
-      try {
-        const { enhanced, wasEnhanced } = await enhanceUserPrompt(
-          finalUserPrompt,
-          categoryId,
-          subcategoryId
-        );
-        if (wasEnhanced) {
-          finalUserPrompt = enhanced;
-          promptWasEnhanced = true;
-        }
-      } catch {
-        // Enhancement failed — use translated prompt, don't block generation
-      }
-    }
+    // ── 4c. Prompt interpretation ───────────────────────────────────────────
+    // Replaced by the subject interpreter inside the generation service, which
+    // runs for every plan and turns abstract ideas into what to draw. The
+    // user's own words stay the saved prompt.
 
     // ── 5. Resolve seed ───────────────────────────────────────────────────────
     // Service accepts seed as number | undefined. Convert here before dispatch.
@@ -321,7 +302,6 @@ export async function POST(request: Request) {
       transparentBackground: true,
       prompt: prompt.trim(),
       translatedPrompt: promptWasTranslated ? finalUserPrompt : undefined,
-      enhancedPrompt: promptWasEnhanced ? finalUserPrompt : undefined,
       fullPrompt: asset.finalPrompt,
       seed: asset.seed,
       modelUsed: asset.model,
