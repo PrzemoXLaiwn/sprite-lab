@@ -238,6 +238,9 @@ export async function generateImage(
     }
 
     // FLUX-optimized defaults: guidance 2-4, steps 20-28
+    const taskUUID = crypto.randomUUID();
+    const started = Date.now();
+    const listPrice = cost * (options.numberOfImages || 1);
     const result = await withTimeout(runware.imageInference({
       positivePrompt: safePrompt,
       negativePrompt: safeNegative || undefined,
@@ -251,7 +254,13 @@ export async function generateImage(
       outputType: "URL",
       outputFormat: "PNG",
       lora: safeLoras.length > 0 ? safeLoras : undefined,
-    }), RUNWARE_INFERENCE_TIMEOUT_MS, "Runware imageInference");
+      includeCost: true,
+      customTaskUUID: taskUUID,
+    }), RUNWARE_INFERENCE_TIMEOUT_MS, "Runware imageInference").catch((err: unknown) => {
+      logRunware({ task: "image", model: modelAIR, size: options.width || 1024, started, taskUUID, listPrice, err: sdkError(err) });
+      throw err;
+    });
+    logRunware({ task: "image", model: modelAIR, size: options.width || 1024, started, taskUUID, listPrice, reported: reportedCost(result) });
 
     if (!result || result.length === 0) {
       return { success: false, error: "No images generated" };
@@ -444,9 +453,9 @@ const gridPrice = (size?: number) => ((size ?? 1024) > 1024 ? PRICE.grid2048 : P
  * the full list price because the task may have run anyway. Reconciliation
  * against Runware's usage counter shows whether that assumption holds.
  */
-function logRunware(o: { task: string; model: string; size?: number; started: number; taskUUID: string; listPrice: number; reported?: number | null; err?: unknown }) {
+function logRunware(o: { task: string; model: string; size?: number | string; started: number; taskUUID: string; listPrice: number; reported?: number | null; err?: unknown }) {
   const msg = o.err instanceof Error ? o.err.message : o.err ? String(o.err) : undefined;
-  const timeout = !!msg && /abort|timeout|ECONNRESET|fetch failed|socket/i.test(msg);
+  const timeout = !!msg && /abort|timeout|timed out|ECONNRESET|fetch failed|socket/i.test(msg);
   const moderated = !!msg && /invalidProviderContent|moderation|flagged/i.test(msg);
   const providerError = !!msg && /^Runware /.test(msg) && !/download failed/.test(msg);
   recordProviderCall({
@@ -461,6 +470,30 @@ function logRunware(o: { task: string; model: string; size?: number; started: nu
     providerTaskId: o.taskUUID,
     error: msg,
   });
+}
+
+/**
+ * Runware SDK rejections are plain objects, not Errors: give them the
+ * "Runware <code>: <message>" shape logRunware treats as an explicit API error.
+ */
+function sdkError(err: unknown): unknown {
+  if (err instanceof Error || !err || typeof err !== "object") return err;
+  const e = err as { errors?: Array<{ code?: string; message?: string }>; error?: unknown; code?: string; message?: string };
+  const nested = typeof e.error === "object" && e.error ? (e.error as { code?: string; message?: string }) : undefined;
+  const first = e.errors?.[0] ?? nested;
+  const code = first?.code ?? e.code ?? "error";
+  let message = first?.message ?? e.message ?? (typeof e.error === "string" ? e.error : undefined);
+  if (!message) {
+    try { message = JSON.stringify(err).slice(0, 300); } catch { message = "unknown error"; }
+  }
+  return new Error(`Runware ${code}: ${message}`);
+}
+
+/** Sum of the cost fields Runware returns with includeCost (null when none). */
+function reportedCost(result: unknown): number | null {
+  const items = (Array.isArray(result) ? result : [result]) as Array<{ cost?: unknown } | null | undefined>;
+  const costs = items.map((i) => i?.cost).filter((c): c is number => typeof c === "number" && Number.isFinite(c));
+  return costs.length ? costs.reduce((a, c) => a + c, 0) : null;
 }
 
 type AnimationGridOpts = {
@@ -553,12 +586,21 @@ export async function upscaleImage(
 
     console.log(`[Runware] 🔍 Upscaling image ${upscaleFactor}x`);
 
+    const taskUUID = crypto.randomUUID();
+    const started = Date.now();
+    const log = { task: "upscale", model: "runware-upscale", size: `${upscaleFactor}x`, started, taskUUID, listPrice: PRICE.upscale };
     const result = await withTimeout(runware.upscale({
       inputImage: imageUrl,
       upscaleFactor: upscaleFactor as 2 | 4,
       outputType: "URL",
       outputFormat: "PNG",
-    }), RUNWARE_UPSCALE_TIMEOUT_MS, "Runware upscale");
+      includeCost: true,
+      customTaskUUID: taskUUID,
+    }), RUNWARE_UPSCALE_TIMEOUT_MS, "Runware upscale").catch((err: unknown) => {
+      logRunware({ ...log, err: sdkError(err) });
+      throw err;
+    });
+    logRunware({ ...log, reported: reportedCost(result) });
 
     // Handle result - can be single object or array
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -602,6 +644,9 @@ export async function removeBackground(
     console.log(`[Runware] ✂️ Removing background...`);
 
     // Timeout so a hung socket can't stall the caller (timer is cleared on settle)
+    const taskUUID = crypto.randomUUID();
+    const started = Date.now();
+    const log = { task: "remove_bg", model: "runware-remove-bg", started, taskUUID, listPrice: PRICE.removeBg };
     let result;
     try {
       result = await withTimeout(
@@ -610,11 +655,15 @@ export async function removeBackground(
           inputImage: imageUrl,
           outputType: "URL",
           outputFormat: "PNG",
+          includeCost: true,
+          customTaskUUID: taskUUID,
         }) as Promise<unknown>,
         BG_REMOVAL_TIMEOUT,
-        "Background removal"
+        "Runware background removal"
       );
+      logRunware({ ...log, reported: reportedCost(result) });
     } catch (innerError) {
+      logRunware({ ...log, err: sdkError(innerError) });
       // Check for network errors - return gracefully instead of throwing
       const errorMsg = innerError instanceof Error ? innerError.message : String(innerError);
       if (errorMsg.includes("timeout") || errorMsg.includes("timed out") || errorMsg.includes("ENOTFOUND") ||

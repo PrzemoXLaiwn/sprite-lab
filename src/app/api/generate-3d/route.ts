@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import Replicate from "replicate";
 import { getCategoryById, getSubcategoryById } from "@/lib/categories";
-import { getOrCreateUser, checkAndDeductCredits, refundCredits, saveGeneration } from "@/lib/database";
+import { getOrCreateUser, saveGeneration } from "@/lib/database";
+import { prisma } from "@/lib/prisma";
+import { budgetPlan, requestIp, startOperation, type OpHandle } from "@/lib/billing/operations";
+import { PRICE } from "@/lib/billing/features";
+import { replicateCall } from "@/lib/billing/replicate";
 import { rateLimit3DGeneration } from "@/lib/rate-limit";
 import { parseJsonBody, validateBody } from "@/lib/validation/common";
 import { generate3DSchema } from "@/lib/validations";
@@ -744,10 +748,10 @@ async function generateReferenceImage(
       try {
         console.log(`[Reference Image] Trying ${model.name}...`);
         const output = await runWithRetry(async () => {
-          return await replicate.run(model.identifier, {
+          return await replicateCall({ model: model.identifier, task: "3d_reference", estCostUsd: PRICE.replicateRef }, () => replicate.run(model.identifier, {
             input: model.buildInput(enhancedPrompt, negativePrompt, usedSeed),
             signal,
-          });
+          }));
         }, 3, 5000, signal);
 
         const imageUrl = await extractImageUrl(output);
@@ -810,10 +814,10 @@ async function generate3DFromImage(
     console.log(`[3D Gen] Input params:`, JSON.stringify(input, null, 2));
 
     const output = await runWithRetry(async () => {
-      return await replicate.run(
+      return await replicateCall({ model: config.replicateModel, task: "3d_model", estCostUsd: PRICE.replicate3d }, () => replicate.run(
         config.replicateModel as `${string}/${string}`,
         { input, signal }
-      );
+      ));
     }, 3, 5000, signal);
 
     console.log(`[3D Gen] Raw output received`);
@@ -884,10 +888,8 @@ async function generate3DFromImage(
 // ===========================================
 export async function POST(request: Request) {
   const startTime = Date.now();
-  // Set while credits are held and the provider has not yet delivered;
-  // cleared before every refund so a refund happens at most once.
-  let chargedUserId: string | null = null;
-  let chargedAmount = 0;
+  // Paid operation; null once the result is stored (no refund from then on)
+  let pendingOp: OpHandle | null = null;
 
   try {
     const supabase = await createClient();
@@ -952,26 +954,19 @@ export async function POST(request: Request) {
     const CREDITS_REQUIRED = modelConfig.credits;
     await getOrCreateUser(user.id, user.email!);
 
-    const creditResult = await checkAndDeductCredits(user.id, CREDITS_REQUIRED);
-
-    if (!creditResult.success) {
-      if (creditResult.error !== "Not enough credits") {
-        console.error("[3D Gen] Credit deduction failed:", creditResult.error);
-        return NextResponse.json(
-          { error: "Failed to process credits. Please try again." },
-          { status: 500 }
-        );
-      }
-      return NextResponse.json(
-        {
-          error: `Not enough credits. You need ${CREDITS_REQUIRED} credits for 3D generation.`,
-          noCredits: true,
-        },
-        { status: 402 }
-      );
+    const account = await prisma.user.findUnique({ where: { id: user.id }, select: { plan: true, totalSpent: true, stripeCustomerId: true } });
+    const started = await startOperation({
+      userId: user.id, feature: "model_3d", credits: CREDITS_REQUIRED, plan: budgetPlan(account), ip: requestIp(request),
+      input: { prompt, categoryId, subcategoryId, modelId, qualityPreset },
+    });
+    if (!started.ok) {
+      const body = started.status === 402
+        ? { ...started.body, error: `Not enough credits. You need ${CREDITS_REQUIRED} credits for 3D generation.` }
+        : started.body;
+      return NextResponse.json(body, { status: started.status });
     }
-    chargedUserId = user.id;
-    chargedAmount = CREDITS_REQUIRED;
+    const op = started.op;
+    pendingOp = op;
 
     let validSeed: number | undefined;
     if (seed !== undefined && seed !== null && seed !== "") {
@@ -990,20 +985,20 @@ export async function POST(request: Request) {
     // prediction can never outlive maxDuration (refund must still run).
     const pipelineSignal = AbortSignal.timeout(PIPELINE_BUDGET_MS);
 
-    const referenceResult = await generateReferenceImage(
+    const referenceResult = await op.run(() => generateReferenceImage(
       prompt,
       categoryId,
       subcategoryId,
       style,
       validSeed,
       pipelineSignal
-    );
+    ));
 
     if (!referenceResult.success || !referenceResult.imageUrl) {
       // Refund credits on failure
       console.error("[3D Gen] Reference image failed, refunding credits:", referenceResult.error);
-      chargedUserId = null;
-      await refundCredits(user.id, CREDITS_REQUIRED);
+      pendingOp = null;
+      await op.fail("REFERENCE_FAILED");
       return NextResponse.json(
         { error: "Reference image generation failed. Credits refunded — please try again." },
         { status: 500 }
@@ -1017,25 +1012,24 @@ export async function POST(request: Request) {
     // ===========================================
     console.log(`\n[Step 2/2] Converting to 3D with ${modelConfig.name}...`);
 
-    const model3DResult = await generate3DFromImage(modelId, referenceResult.imageUrl, qualityPreset, pipelineSignal);
+    const referenceUrl = referenceResult.imageUrl;
+    const model3DResult = await op.run(() => generate3DFromImage(modelId, referenceUrl, qualityPreset, pipelineSignal));
 
     if (!model3DResult.success || !model3DResult.modelUrl) {
       // Refund credits on failure
       console.error("[3D Gen] 3D conversion failed, refunding credits:", model3DResult.error);
-      chargedUserId = null;
-      await refundCredits(user.id, CREDITS_REQUIRED);
+      pendingOp = null;
+      await op.fail("MODEL_FAILED");
       return NextResponse.json(
         { error: "3D conversion failed. Credits refunded — please try again." },
         { status: 500 }
       );
     }
-    // Provider delivered — no refund past this point.
-    chargedUserId = null;
-
     console.log("[Step 2/2] ✓ COMPLETE");
 
-    // Save to database
-    await saveGeneration({
+    // Save to database — delivered once the gallery row exists. (The model
+    // URL itself is Replicate's temporary delivery URL; it is not re-hosted.)
+    const saved = await saveGeneration({
       userId: user.id,
       prompt: prompt.trim(),
       fullPrompt: referenceResult.fullPrompt || `[3D] ${prompt.trim()}`,
@@ -1045,6 +1039,16 @@ export async function POST(request: Request) {
       imageUrl: model3DResult.modelUrl,
       seed: referenceResult.seed,
     });
+    if (!saved.success) {
+      pendingOp = null;
+      await op.fail("STORE_FAILED");
+      return NextResponse.json(
+        { error: "Couldn't save the 3D model. Credits refunded — please try again." },
+        { status: 500 }
+      );
+    }
+    pendingOp = null;
+    await op.succeed(saved.generation?.id ?? null);
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
 
@@ -1078,10 +1082,10 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error("[3D Gen] Unexpected error:", error);
-    if (chargedUserId) {
-      const uid = chargedUserId;
-      chargedUserId = null;
-      await refundCredits(uid, chargedAmount);
+    if (pendingOp) {
+      const op = pendingOp;
+      pendingOp = null;
+      await op.fail("UNEXPECTED");
     }
     return NextResponse.json(
       { error: "Something went wrong. Please try again." },

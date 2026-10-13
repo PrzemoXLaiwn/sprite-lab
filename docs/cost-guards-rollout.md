@@ -37,7 +37,13 @@ Redeploy the previous build. The new tables can stay; nothing else reads them.
 | Parallel requests at the budget edge | The budget check and reservation run under one Postgres advisory lock. |
 | Duplicate or late Lifetime webhook | Paid intents are fulfilled once (unique PaymentIntent id). Abandoned intents are never fulfilled. |
 
+## Tools on operations (feat/costs-everywhere)
+- `remove-bg` (`remove_bg`), `upscale` (AI only; pixel-perfect stays free), `variations` and the two 3D routes (`model_3d`) now charge through `startOperation`, refund with `op.fail` on every failure path, and count as delivered only once the result is stored (a re-host failure now refunds instead of saving a temporary provider URL).
+- Their provider calls are in `provider_calls`: Runware upscale / background removal / legacy imageInference send `includeCost`, Replicate calls carry our list-price estimate (Replicate reports no price).
+- Their prices in `src/lib/billing/features.ts` are estimates until the ledger has data. **Variations lose money at 1 credit per $0.04 Replicate image** (listed in `economics-known.ts`); that needs a price decision.
+- Claude calls that throw (planner, rig joints, suggest, translate, enhance) are written as `error` / `timeout` rows with $0.
+- The admin usage panel shows the ledger (spend per day, operations per feature, the latest Runware gap, stuck operations and pending refunds) and an empty state before the migration runs.
+
 ## Not covered yet
-- remove-bg, upscale, variations, queue/submit and 3D use the old charge plus a now-transactional refund and the DB-backed rate limit. They do not use operations or the ledger yet.
-- Claude errors (as opposed to successful calls) are not written to the ledger.
+- `queue/submit` + `queue/process` keep the old charge/refund: the charge and the work happen in two invocations and `queue/status` refunds cancelled jobs on its own, so moving them needs the operation id stored on the job (a schema change). Nothing in the UI submits to the queue; retiring it is the simpler fix. Its provider calls are logged (outside any operation).
 - The migration and the exact spend / guard / refund SQL are tested against a real Postgres engine (PGlite, in memory: `src/lib/billing/sql.pglite.test.ts`). PGlite has a single connection, so lock contention between two servers is only covered by the in-memory model test.

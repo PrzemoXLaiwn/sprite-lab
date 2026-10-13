@@ -56,3 +56,37 @@ export function trackClaude(feature: string, response: { model?: string; usage?:
     .create({ data: { generationId: "claude", userId, eventType: CLAUDE_USAGE_EVENT, metadata: JSON.stringify(meta) } })
     .catch(() => {});
 }
+
+/**
+ * Records a Claude call that threw (API error, overload, timeout) as an
+ * `error` / `timeout` row with no estimated cost — a failed response reports
+ * no usage to price. Never throws.
+ */
+export function trackClaudeError(feature: string, model: string, err: unknown): void {
+  try {
+    const msg = err instanceof Error ? err.message : String(err);
+    const name = err instanceof Error ? err.name : "";
+    const timeout = /timeout/i.test(name) || /timed? ?out|abort/i.test(msg);
+    recordProviderCall({
+      provider: "anthropic",
+      model,
+      task: feature,
+      outcome: timeout ? "timeout" : "error",
+      costUsd: null,
+      estCostUsd: 0,
+      error: (msg || name || "unknown error").slice(0, 500),
+    });
+  } catch {
+    /* logging must never break the caller */
+  }
+}
+
+/** Wraps one messages.create call: a rejection is logged, then re-thrown unchanged. */
+export async function claudeCall<T>(feature: string, model: string, call: () => Promise<T>): Promise<T> {
+  try {
+    return await call();
+  } catch (err) {
+    trackClaudeError(feature, model, err);
+    throw err;
+  }
+}

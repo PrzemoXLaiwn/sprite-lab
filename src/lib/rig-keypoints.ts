@@ -9,7 +9,7 @@
 // =============================================================================
 
 import Anthropic from "@anthropic-ai/sdk";
-import { trackClaude } from "@/lib/claude-usage";
+import { claudeCall, trackClaude } from "@/lib/claude-usage";
 
 const MODEL = "claude-opus-5-5";
 
@@ -90,7 +90,7 @@ export async function findRigPoints(image: Buffer, width: number, height: number
         ],
       }],
     };
-    const res = await anthropic.messages.create(params as unknown as Anthropic.MessageCreateParamsNonStreaming);
+    const res = await claudeCall("rig", MODEL, () => anthropic.messages.create(params as unknown as Anthropic.MessageCreateParamsNonStreaming));
     trackClaude("rig", res);
     const text = res.content.find((b) => b.type === "text");
     if (!text || text.type !== "text") return null;
