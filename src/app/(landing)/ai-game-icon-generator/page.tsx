@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SeoLanding } from "@/components/landing/SeoLanding";
+import { LANDING_SPECS } from "@/data/landing-specs";
 
 const URL = "https://www.sprite-lab.com/ai-game-icon-generator";
 
@@ -109,6 +110,7 @@ export default function GameIconGeneratorPage() {
             "buff icon of a glowing shield, golden frame",
           ],
         },
+        LANDING_SPECS["ai-game-icon-generator"],
       ]}
       faq={[
         { q: "Which asset type should I choose for icons?", a: "Pick Icons in the generator, then Item Icons, Skill Icons, Status Icons or UI Icons. The framing is tuned for square, readable icons." },

@@ -14,6 +14,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { CHECKERBOARD, isPixelStyleId } from "@/components/community/shared";
+import { shouldIndexProfile } from "@/lib/profile-indexing";
 
 interface ProfilePageProps {
   params: Promise<{ username: string }>;
@@ -77,6 +78,7 @@ export async function generateMetadata({ params }: ProfilePageProps) {
     title: { absolute: `${display} — game assets made with SpriteLab` },
     description: user.bio || `Sprites and game assets ${display} made with SpriteLab, the AI game asset generator.`,
     alternates: { canonical: `https://www.sprite-lab.com/u/${encodeURIComponent(user.username ?? username)}` },
+    ...(shouldIndexProfile(user._count.generations) ? {} : { robots: { index: false, follow: true } }),
   };
 }
 

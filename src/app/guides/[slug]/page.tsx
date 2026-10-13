@@ -4,11 +4,12 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { SiteNav } from "@/components/layout/SiteNav";
 import { Footer } from "@/components/layout/Footer";
-import { GUIDES, getGuide, type Guide } from "@/data/guides";
+import { AdSense } from "@/components/ads/AdSense";
+import { FIRST_PUBLISHED, GUIDES, getGuide, type Guide } from "@/data/guides";
 
 const SITE = "https://www.sprite-lab.com";
 
-const RELATED_TOOLS: { label: string; href: string }[] = [
+const ALL_TOOLS: { label: string; href: string }[] = [
   { label: "AI sprite generator", href: "/ai-sprite-generator" },
   { label: "AI sprite animation generator", href: "/ai-sprite-animation-generator" },
   { label: "Pixel art generator", href: "/pixel-art-generator" },
@@ -16,7 +17,25 @@ const RELATED_TOOLS: { label: string; href: string }[] = [
   { label: "AI game icon generator", href: "/ai-game-icon-generator" },
   { label: "Sprites for Unity", href: "/unity-sprite-generator" },
   { label: "Sprites for Godot", href: "/godot-sprite-generator" },
+  { label: "RPG character creator", href: "/rpg-character-creator" },
+  { label: "Game weapon generator", href: "/game-weapon-generator" },
 ];
+
+const AUTHOR = { name: "SpriteLab team", href: "/about" };
+
+/** The guide's own tools first, then the general ones, at most five. */
+function toolsFor(guide: Guide) {
+  const own = (guide.tools ?? []).map((href) => ALL_TOOLS.find((t) => t.href === href)).filter((t) => t !== undefined);
+  const rest = ALL_TOOLS.filter((t) => !own.includes(t));
+  return [...own, ...rest].slice(0, 5);
+}
+
+/** Curated related guides first, then the rest, at most five. */
+function relatedFor(guide: Guide) {
+  const own = (guide.related ?? []).map(getGuide).filter((g) => g !== undefined);
+  const rest = GUIDES.filter((g) => g.slug !== guide.slug && !own.includes(g));
+  return [...own, ...rest].slice(0, 5);
+}
 
 const CHECKER = {
   backgroundImage: "repeating-conic-gradient(#ffffff06 0% 25%, transparent 0% 50%)",
@@ -45,7 +64,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: guide.description,
       url,
       type: "article",
+      publishedTime: guide.published ?? FIRST_PUBLISHED,
       modifiedTime: guide.updated,
+      authors: [`${SITE}${AUTHOR.href}`],
       siteName: "SpriteLab",
     },
   };
@@ -60,7 +81,12 @@ function headingId(heading: string) {
 
 function buildJsonLd(guide: Guide) {
   const url = `${SITE}/guides/${guide.slug}`;
-  const publisher = { "@type": "Organization", name: "SpriteLab", url: SITE };
+  const publisher = { "@type": "Organization", name: "SpriteLab", url: SITE, logo: `${SITE}/logo.png` };
+  const author = { "@type": "Organization", name: AUTHOR.name, url: `${SITE}${AUTHOR.href}` };
+  const words = guide.sections
+    .flatMap((s) => [s.heading, ...s.body, ...(s.list ?? []), ...(s.steps ?? []), ...(s.after ?? [])])
+    .join(" ")
+    .split(/s+/).length;
   const firstImage = guide.sections.find((s) => s.image)?.image;
   const data: Record<string, unknown>[] = [
     {
@@ -70,10 +96,13 @@ function buildJsonLd(guide: Guide) {
       description: guide.description,
       url,
       mainEntityOfPage: url,
-      datePublished: guide.updated,
+      datePublished: guide.published ?? FIRST_PUBLISHED,
       dateModified: guide.updated,
-      author: publisher,
+      author,
       publisher,
+      wordCount: words,
+      inLanguage: "en",
+      isPartOf: { "@type": "CollectionPage", name: "Game Dev Guides", url: `${SITE}/guides` },
       image: firstImage ? `${SITE}${firstImage.src}` : undefined,
     },
     {
@@ -129,7 +158,9 @@ export default async function GuidePage({ params }: Props) {
   const guide = getGuide(slug);
   if (!guide) notFound();
 
-  const others = GUIDES.filter((g) => g.slug !== guide.slug);
+  const tools = toolsFor(guide);
+  const related = relatedFor(guide);
+  const published = guide.published ?? FIRST_PUBLISHED;
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#0B0D12] text-[#ECEEF3]">
@@ -163,12 +194,45 @@ export default async function GuidePage({ params }: Props) {
               {guide.title}
             </h1>
             <p className="mt-4 text-[17px] leading-relaxed text-[#A6ADBB]">{guide.description}</p>
-            <p className="mt-4 font-mono text-[12px] text-[#7A8294]">
+            <p className="mt-4 flex flex-wrap gap-x-2 gap-y-1 font-mono text-[12px] leading-relaxed text-[#7A8294]">
+              <span>
+                By{" "}
+                <Link href={AUTHOR.href} rel="author" className="text-[#C9CFDB] underline decoration-white/20 underline-offset-2 hover:text-white">
+                  {AUTHOR.name}
+                </Link>
+              </span>
+              <span aria-hidden="true">·</span>
               <time dateTime={guide.updated}>Updated {formatDate(guide.updated)}</time>
-              {" · "}
-              {guide.readingMinutes} min read
+              {published !== guide.updated && (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span>
+                    First published <time dateTime={published}>{formatDate(published)}</time>
+                  </span>
+                </>
+              )}
+              <span aria-hidden="true">·</span>
+              <span>{guide.readingMinutes} min read</span>
             </p>
           </header>
+
+          <nav aria-label="In this guide" className="mt-8 rounded-2xl border border-white/[0.06] bg-[#0E1016] px-5 py-4">
+            <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">{"// in this guide"}</p>
+            <ol className="mt-1.5 grid gap-x-6 sm:grid-cols-2">
+              {guide.sections.map((s) => (
+                <li key={s.heading}>
+                  <a href={`#${headingId(s.heading)}`} className="flex min-h-10 items-center py-1 text-[14px] leading-snug text-[#C9CFDB] hover:text-[#FFB27A]">
+                    {s.heading}
+                  </a>
+                </li>
+              ))}
+              <li>
+                <a href="#faq" className="flex min-h-10 items-center py-1 text-[14px] leading-snug text-[#C9CFDB] hover:text-[#FFB27A]">
+                  Frequently asked questions
+                </a>
+              </li>
+            </ol>
+          </nav>
 
           <div className="mt-10 space-y-12">
             {guide.sections.map((s) => (
@@ -181,6 +245,32 @@ export default async function GuidePage({ params }: Props) {
                     {p}
                   </p>
                 ))}
+                {s.table && (
+                  <div className="mt-5 overflow-x-auto rounded-xl border border-white/[0.06]">
+                    <table className="w-full min-w-[480px] border-collapse text-left text-[14px] leading-snug">
+                      <thead className="bg-[#151922]">
+                        <tr>
+                          {s.table.head.map((h) => (
+                            <th key={h} scope="col" className="px-3.5 py-2.5 font-mono text-[11.5px] font-medium uppercase tracking-[0.04em] text-[#8B93A5]">
+                              {h}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {s.table.rows.map((row) => (
+                          <tr key={row.join("|")} className="border-t border-white/[0.06]">
+                            {row.map((cell, ci) => (
+                              <td key={ci} className={`px-3.5 py-2.5 align-top ${ci === 0 ? "font-medium text-[#ECEEF3]" : "text-[#A6ADBB]"}`}>
+                                {cell}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
                 {s.list && (
                   <ul className="mt-5 space-y-2.5">
                     {s.list.map((item) => (
@@ -206,6 +296,22 @@ export default async function GuidePage({ params }: Props) {
                     ))}
                   </ol>
                 )}
+                {s.code && (
+                  <figure className="mt-5 overflow-hidden rounded-xl border border-white/[0.06] bg-[#0E1016]">
+                    <figcaption className="flex items-center justify-between gap-3 border-b border-white/[0.06] px-4 py-2 font-mono text-[11.5px] text-[#8B93A5]">
+                      <span className="min-w-0 truncate">{s.code.caption}</span>
+                      <span className="shrink-0 text-[#FFB27A]">{s.code.lang}</span>
+                    </figcaption>
+                    <pre className="overflow-x-auto px-4 py-3.5 font-mono text-[12.5px] leading-[1.65] text-[#C9CFDB]">
+                      <code>{s.code.text}</code>
+                    </pre>
+                  </figure>
+                )}
+                {s.after?.map((p, i) => (
+                  <p key={i} className="mt-4 text-[16px] leading-[1.75] text-[#A6ADBB]">
+                    {p}
+                  </p>
+                ))}
                 {s.image && (
                   <figure className="mt-6">
                     <div
@@ -266,7 +372,7 @@ export default async function GuidePage({ params }: Props) {
             <div>
               <h2 className="font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">{"// related tools"}</h2>
               <ul className="mt-2">
-                {RELATED_TOOLS.map((t) => (
+                {tools.map((t) => (
                   <li key={t.href}>
                     <Link href={t.href} className="group inline-flex min-h-10 items-center gap-1.5 py-1.5 text-[14.5px] leading-snug text-[#C9CFDB] transition-colors hover:text-[#FFB27A]">
                       {t.label} <ArrowRight className="h-3.5 w-3.5 shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
@@ -276,9 +382,9 @@ export default async function GuidePage({ params }: Props) {
               </ul>
             </div>
             <div>
-              <h2 className="font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">{"// more guides"}</h2>
+              <h2 className="font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">{"// related guides"}</h2>
               <ul className="mt-2">
-                {others.map((g) => (
+                {related.map((g) => (
                   <li key={g.slug}>
                     <Link href={`/guides/${g.slug}`} className="group inline-flex min-h-10 items-center gap-1.5 py-1.5 text-[14.5px] leading-snug text-[#C9CFDB] transition-colors hover:text-[#FFB27A]">
                       {g.title} <ArrowRight className="h-3.5 w-3.5 shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
@@ -300,6 +406,7 @@ export default async function GuidePage({ params }: Props) {
       </article>
 
       <Footer />
+      <AdSense />
     </main>
   );
 }

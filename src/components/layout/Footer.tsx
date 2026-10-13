@@ -31,8 +31,9 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
   {
     title: "company",
     links: [
+      { label: "About", href: "/about" },
+      { label: "Contact", href: "/contact" },
       { label: "Get started", href: "/register" },
-      { label: "Contact", href: "mailto:support@sprite-lab.com" },
       { label: "TikTok", href: TIKTOK_PROFILE_URL },
       { label: "Privacy", href: "/privacy" },
       { label: "Terms", href: "/terms" },

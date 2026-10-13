@@ -25,7 +25,7 @@ export default function PrivacyPage() {
         <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">{"// legal"}</p>
         <h1 className="mt-3 font-display text-[36px] font-semibold leading-[1.06] tracking-[-0.015em] text-white sm:text-[48px]">Privacy Policy</h1>
         {/* Fixed date: only change it when the text below changes. */}
-        <p className="mt-4 mb-12 font-mono text-[12px] text-[#7A8294]">Last updated: 12 October 2026</p>
+        <p className="mt-4 mb-12 font-mono text-[12px] text-[#7A8294]">Last updated: 13 October 2026</p>
 
         <div className="max-w-none space-y-10 text-[15px] leading-relaxed">
           <section>
@@ -93,7 +93,7 @@ export default function PrivacyPage() {
               <li><strong>Cloudflare:</strong> image storage (R2) and backup AI generation</li>
               <li><strong>Resend:</strong> transactional and account emails</li>
               <li><strong>Vercel:</strong> website hosting and anonymous analytics</li>
-              <li><strong>Google AdSense:</strong> ads on some public pages for signed-out visitors (see Cookies)</li>
+              <li><strong>Google AdSense:</strong> ads on guide articles and comparisons for signed-out visitors (see Cookies)</li>
             </ul>
             <p className="text-muted-foreground mt-4">
               Each of these services has their own privacy policy governing their use of your data.
@@ -106,7 +106,7 @@ export default function PrivacyPage() {
               We use essential cookies to maintain your session and preferences, and privacy-friendly analytics to understand how the service is used.
             </p>
             <p className="text-muted-foreground mt-4">
-              Some public pages (guides, comparisons and tool pages) show ads from Google AdSense to visitors who are not signed in. Google and its partners use cookies to serve ads based on your visits to this and other websites. You can opt out of personalised advertising in <a href="https://adssettings.google.com" className="text-[#FFB27A] underline underline-offset-2" target="_blank" rel="noopener noreferrer">Google Ads Settings</a>; see also <a href="https://policies.google.com/technologies/ads" className="text-[#FFB27A] underline underline-offset-2" target="_blank" rel="noopener noreferrer">how Google uses data from partner sites</a>. Visitors in the UK and EEA are asked for consent before personalised ads are shown. Signed-in members never see ads. You can control cookies in your browser settings.
+              Guide articles and comparison pages show ads from Google AdSense to visitors who are not signed in. Google and its partners use cookies to serve ads based on your visits to this and other websites. You can opt out of personalised advertising in <a href="https://adssettings.google.com" className="text-[#FFB27A] underline underline-offset-2" target="_blank" rel="noopener noreferrer">Google Ads Settings</a>; see also <a href="https://policies.google.com/technologies/ads" className="text-[#FFB27A] underline underline-offset-2" target="_blank" rel="noopener noreferrer">how Google uses data from partner sites</a>. Visitors in the UK and EEA are asked for consent before personalised ads are shown. Signed-in members never see ads. You can control cookies in your browser settings.
             </p>
           </section>
 

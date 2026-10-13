@@ -22,6 +22,8 @@ export const metadata: Metadata = {
     description: "Generate 2D sprites and sprite-sheet animations for Unity with AI, then import them: Point filter for pixel art, Sprite Mode Multiple, slice by cell size.",
   },
   alternates: { canonical: URL },
+  // The full workflow lives in the Unity/Godot guide; this page stays out of the index (docs/adsense-content-audit.md).
+  robots: { index: false, follow: true },
 };
 
 export default function UnitySpritesPage() {
@@ -71,7 +73,7 @@ export default function UnitySpritesPage() {
             { title: "Equal-size frames", body: "Sprite sheets are one row of identical cells, so Slice → Grid By Cell Size cuts them perfectly every time." },
             { title: "Stable pivots", body: "Frames are aligned on the body with feet on one baseline, so a bottom-centre pivot doesn't jitter between frames." },
             { title: "Crisp pixel art", body: "Pixel art is on a real grid — with Point filtering and no compression it stays sharp at any zoom." },
-            { title: "Organised packs", body: "Generate a whole project, let it sort into folders, and download a ZIP that mirrors a tidy Assets folder." },
+            { title: "Engine pack", body: "Animations download with a unity folder of numbered frames per animation — drag one folder onto the Scene and Unity builds the clip — plus per-frame hitboxes in hitboxes.json." },
           ],
         },
         { kind: "gallery", items: SHOWCASE },

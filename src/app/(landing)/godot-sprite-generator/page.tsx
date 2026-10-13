@@ -22,6 +22,8 @@ export const metadata: Metadata = {
     description: "Generate 2D sprites and sprite-sheet animations for Godot 4 with AI. Use them in Sprite2D or load sheets into AnimatedSprite2D in a few clicks.",
   },
   alternates: { canonical: URL },
+  // The full workflow lives in the Unity/Godot guide; this page stays out of the index (docs/adsense-content-audit.md).
+  robots: { index: false, follow: true },
 };
 
 export default function GodotSpritesPage() {
@@ -71,6 +73,7 @@ export default function GodotSpritesPage() {
             { title: "Feet on one baseline", body: "Frames are aligned on the body, so the sprite doesn't slide or bob unintentionally while it plays." },
             { title: "Seamless tiles", body: "Floor and wall tiles repeat without seams — use them as a TileSet atlas source or a repeating texture." },
             { title: "Crisp at any scale", body: "Pixel art is on a real grid; with the Nearest texture filter it stays sharp in a pixel-perfect viewport." },
+            { title: "Ready SpriteFrames", body: "The engine pack includes a SpriteFrames .tres with every animation, its fps and loop flag — load it into an AnimatedSprite2D and press play." },
           ],
         },
         { kind: "gallery", items: SHOWCASE },

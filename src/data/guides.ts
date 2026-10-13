@@ -6,6 +6,7 @@
 // =============================================================================
 
 import { ENGINE_GUIDES } from "@/data/geo-content";
+import { ENGINE_CRAFT_GUIDES } from "@/data/guides-engine";
 
 export interface GuideImage {
   src: string;
@@ -14,13 +15,30 @@ export interface GuideImage {
   pixel?: boolean;
 }
 
+export interface GuideCode {
+  /** Language label shown above the block, e.g. "gdscript", "gml", "csharp". */
+  lang: string;
+  caption?: string;
+  text: string;
+}
+
+export interface GuideTable {
+  head: string[];
+  rows: string[][];
+}
+
+/** Rendered in this order: body, table, list, steps, code, after, image. */
 export interface GuideSection {
   heading: string;
   /** Paragraphs. */
   body: string[];
+  table?: GuideTable;
   list?: string[];
   /** Ordered steps — sections with steps feed the HowTo JSON-LD. */
   steps?: string[];
+  code?: GuideCode;
+  /** Paragraphs after the list / steps / code. */
+  after?: string[];
   image?: GuideImage;
 }
 
@@ -34,24 +52,32 @@ export interface Guide {
   title: string;
   /** ≤155 characters. */
   description: string;
-  /** ISO date. */
+  /** ISO date of the last substantive edit. */
   updated: string;
+  /** ISO date first published (defaults to the site's first guide batch). */
+  published?: string;
   readingMinutes: number;
+  /** Slugs of the guides to suggest next (falls back to the newest others). */
+  related?: string[];
+  /** SpriteLab tool pages relevant to the guide (paths, e.g. "/pixel-art-generator"). */
+  tools?: string[];
   sections: GuideSection[];
   faq: GuideFaq[];
 }
 
 const UPDATED = "2026-10-08";
 
-export const GUIDES: Guide[] = [
+const BASE_GUIDES: Guide[] = [
   // ───────────────────────────────────────────────────────────────────────────
   {
     slug: "how-to-make-a-sprite-sheet-with-ai",
     title: "How to Make a Sprite Sheet with AI",
     description:
       "Turn one AI-generated sprite into a game-ready sprite sheet: pick a motion, choose frame count, export equal-size frames and import them into your engine.",
-    updated: UPDATED,
+    updated: "2026-10-13",
     readingMinutes: 7,
+    related: ["how-many-frames-per-sprite-animation","sprite-sheet-layout-and-texture-atlases","how-to-keep-ai-game-art-consistent"],
+    tools: ["/ai-sprite-animation-generator","/ai-sprite-generator"],
     sections: [
       {
         heading: "The short answer",
@@ -126,7 +152,7 @@ export const GUIDES: Guide[] = [
       },
       {
         q: "Does SpriteLab make 8-direction sprites?",
-        a: "Partly. The Animate tool turns a character or creature into a 4-direction (front, right, back, left) or 8-direction rotation sheet — the same sprite at the same size from every angle. It does not yet animate each direction separately, so walk cycles are made in the sprite's original view.",
+        a: "Partly. The Animate tool turns a character or creature into a 4-direction (front, right, back, left) or 8-direction rotation sheet — the same sprite at the same size from every angle — and can make a 4-direction walk sheet (4 steps per direction, the left row mirrored from the right). Other animations, such as attacks, are made in the sprite's original view.",
       },
     ],
   },
@@ -139,6 +165,8 @@ export const GUIDES: Guide[] = [
       "Pick a sprite resolution, limit your palette, use clean outlines and scale with nearest-neighbour. A practical pixel art checklist for game developers.",
     updated: UPDATED,
     readingMinutes: 7,
+    related: ["pixel-art-sprite-sizes-for-games","how-to-keep-ai-game-art-consistent","how-to-make-seamless-tiles-for-2d-games"],
+    tools: ["/pixel-art-generator","/ai-sprite-generator"],
     sections: [
       {
         heading: "The short answer",
@@ -227,8 +255,10 @@ export const GUIDES: Guide[] = [
     title: "How to Import Sprite Sheets into Unity",
     description:
       "Import a sprite sheet into Unity 2D: set Sprite Mode to Multiple, slice by cell size, fix pixel art blur with Point filtering and build an Animation clip.",
-    updated: UPDATED,
+    updated: "2026-10-13",
     readingMinutes: 6,
+    related: ["sprite-sheet-layout-and-texture-atlases","hitboxes-and-hurtboxes-from-sprite-sheets","pixel-art-sprite-sizes-for-games"],
+    tools: ["/unity-sprite-generator","/ai-sprite-animation-generator"],
     sections: [
       {
         heading: "The short answer",
@@ -271,6 +301,16 @@ export const GUIDES: Guide[] = [
         image: { src: "/showcase/anim-knight-idle.gif", alt: "Pixel art knight idle animation ready to slice into Unity sprites", pixel: true },
       },
       {
+        heading: "Using a folder of frames instead of a sheet",
+        body: [
+          "You do not have to slice at all if the frames arrive as separate files. Select every PNG of one animation in the Project window — they must be named in order, such as walk_00.png to walk_05.png — and drag them onto the Scene or Hierarchy together. Unity asks where to save the new Animation clip, creates an Animator Controller, and adds a GameObject that plays it. Set the import settings on all the frames at once by multi-selecting them first.",
+          "SpriteLab's engine pack is laid out for this: its unity folder holds one subfolder per animation (idle, walk, attack, or walk_down, walk_right, walk_up and walk_left for a 4-direction walk), each with zero-padded frame numbers. A separate hitboxes.json lists a body box and an attack box for every frame, which you can apply to BoxCollider2D components; the hitbox guide shows the conversion from frame pixels to Unity units.",
+        ],
+        after: [
+          "Long strips need one extra check. Unity's default Max Size is 2048, and an 18-frame animation at 256 pixels per frame is 4608 pixels wide; Unity silently scales it down on import, which blurs pixel art and makes Grid By Cell Size slice at the wrong size. Raise Max Size to 8192 for that texture, or use the separate frames.",
+        ],
+      },
+      {
         heading: "Fixing common problems",
         body: [],
         list: [
@@ -296,7 +336,7 @@ export const GUIDES: Guide[] = [
       },
       {
         q: "Can SpriteLab export a Unity project or prefab?",
-        a: "No. SpriteLab exports standard PNG sprites, horizontal sprite sheets, frame ZIPs and GIFs, which you import with the normal Unity workflow above.",
+        a: "No. SpriteLab exports PNG sprites, horizontal sprite sheets, frame ZIPs, GIFs and an engine pack whose unity folder holds one folder of numbered frames per animation. You build the clips, Animator and prefab in Unity with the workflow above.",
       },
     ],
   },
@@ -307,8 +347,10 @@ export const GUIDES: Guide[] = [
     title: "How to Use Sprite Sheets in Godot 4",
     description:
       "Use sprite sheets in Godot 4 with AnimatedSprite2D and SpriteFrames, or Sprite2D hframes with AnimationPlayer. Includes pixel-perfect settings.",
-    updated: UPDATED,
+    updated: "2026-10-13",
     readingMinutes: 6,
+    related: ["hitboxes-and-hurtboxes-from-sprite-sheets","how-to-make-a-4-direction-top-down-rpg-character","how-many-frames-per-sprite-animation"],
+    tools: ["/godot-sprite-generator","/ai-sprite-animation-generator"],
     sections: [
       {
         heading: "The short answer",
@@ -363,9 +405,28 @@ export const GUIDES: Guide[] = [
         ],
       },
       {
+        heading: "Loading a ready-made SpriteFrames .tres",
+        body: [
+          "A SpriteFrames resource is a plain text .tres file: a list of animations, each with a name, a speed in FPS, a loop flag and frames that point at regions of a texture through AtlasTexture sub-resources. Because it is text, it can be generated outside Godot and simply loaded. The frames reference their sheets by res:// path, so the files must sit exactly where the paths say.",
+          "SpriteLab's engine pack contains one: copy the whole spritelab_<name> folder into the root of your project, then on the AnimatedSprite2D choose Sprite Frames → Load and pick godot/<name>.tres. Every animation you exported appears with its fps and loop setting already filled in — a 4-direction walk shows up as walk_down, walk_right, walk_up and walk_left. Moving the folder later breaks the paths; if you need it elsewhere, move it inside the Godot FileSystem dock so Godot updates the references.",
+        ],
+        code: {
+          lang: "gdscript",
+          caption: "Play an animation from the loaded SpriteFrames",
+          text: `@onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
+
+func _ready() -> void:
+    sprite.play("idle")
+    sprite.animation_finished.connect(func(): sprite.play("idle"))
+
+func attack() -> void:
+    sprite.play("attack")  # loop is off for attacks, so animation_finished fires`,
+        },
+      },
+      {
         heading: "Where the sheet comes from",
         body: [
-          "Godot's sheet import is easiest when every frame is the same size and the sheet is a single row, because Horizontal equals the frame count and Vertical is 1. SpriteLab's Animate tool exports exactly that — a transparent horizontal strip of equal-size frames, plus a frames ZIP if you prefer to drag individual images into SpriteFrames, and a GIF to preview.",
+          "Godot's sheet import is easiest when every frame is the same size and the sheet is a single row, because Horizontal equals the frame count and Vertical is 1. SpriteLab's Animate tool exports exactly that — a transparent horizontal strip of equal-size frames — plus a frames ZIP, a GIF to preview and the engine pack described above. SpriteLab makes the art and the resource file; the scene, the script and the game logic are yours.",
         ],
       },
     ],
@@ -384,7 +445,7 @@ export const GUIDES: Guide[] = [
       },
       {
         q: "Is there a SpriteLab Godot plugin?",
-        a: "No. SpriteLab exports standard PNG files and sprite sheets that you import with Godot's built-in tools; no plugin is required.",
+        a: "No. SpriteLab exports standard PNG files and sprite sheets, plus an engine pack with a ready SpriteFrames .tres file, all of which Godot opens with its built-in tools; no plugin is required.",
       },
     ],
   },
@@ -397,6 +458,8 @@ export const GUIDES: Guide[] = [
       "Make seamless floor and wall tiles: match opposite edges, test in a 3×3 grid, break repetition with variants and set up tilemaps in Unity and Godot.",
     updated: UPDATED,
     readingMinutes: 7,
+    related: ["pixel-art-sprite-sizes-for-games","sprite-sheet-layout-and-texture-atlases","how-to-make-pixel-art-sprites-for-games"],
+    tools: ["/ai-tileset-generator"],
     sections: [
       {
         heading: "The short answer",
@@ -482,6 +545,8 @@ export const GUIDES: Guide[] = [
       "Keep AI game art consistent: lock one style, palette, outline, perspective and pixel density, reuse a prompt template and curate assets in projects.",
     updated: UPDATED,
     readingMinutes: 7,
+    related: ["how-to-make-pixel-art-sprites-for-games","how-to-make-a-sprite-sheet-with-ai","pixel-art-sprite-sizes-for-games"],
+    tools: ["/ai-sprite-generator","/rpg-character-creator","/ai-game-icon-generator"],
     sections: [
       {
         heading: "The short answer",
@@ -565,6 +630,11 @@ export const GUIDES: Guide[] = [
     ],
   },
 ];
+
+/** First batch of guides went live on this date. */
+export const FIRST_PUBLISHED = "2026-10-08";
+
+export const GUIDES: Guide[] = [...BASE_GUIDES, ...ENGINE_CRAFT_GUIDES];
 
 export function getGuide(slug: string): Guide | undefined {
   return GUIDES.find((g) => g.slug === slug);

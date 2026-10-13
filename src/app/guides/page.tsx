@@ -8,7 +8,7 @@ import { GUIDES } from "@/data/guides";
 const SITE = "https://www.sprite-lab.com";
 const URL = `${SITE}/guides`;
 const DESCRIPTION =
-  "Practical guides for indie game developers: sprite sheets, pixel art, Unity and Godot 4 import, seamless tiles and keeping AI game art consistent.";
+  "Practical guides for indie game developers: sprite sheets, pixel art sizes, frame counts, Godot 4, Unity and GameMaker import, hitboxes and 4-direction characters.";
 
 export const metadata: Metadata = {
   title: { absolute: "Game Dev Guides — Sprites, Sprite Sheets & Tiles | SpriteLab" },
@@ -63,9 +63,10 @@ export default function GuidesIndexPage() {
             Game Dev Guides
           </h1>
           <p className="mt-4 text-[17px] leading-relaxed text-[#A6ADBB]">
-            Short, practical answers to the questions indie developers ask about 2D game art: making sprite sheets,
-            pixel art that stays crisp, importing into Unity and Godot 4, seamless tiles, and keeping a whole set of
-            assets consistent.
+            Practical, engine-level answers to the questions indie developers ask about 2D game art: sprite sizes and
+            frame counts, sprite sheet layout, importing into Godot 4, Unity and GameMaker, hitboxes, 4-direction
+            characters, seamless tiles and keeping a whole set of assets consistent. Written and kept up to date by
+            the <Link href="/about" className="text-[#C9CFDB] underline decoration-white/20 underline-offset-2 hover:text-white">SpriteLab team</Link>.
           </p>
 
           <ul className="mt-12 space-y-4">
@@ -80,7 +81,7 @@ export default function GuidesIndexPage() {
                   </h2>
                   <p className="mt-2 text-[14.5px] leading-relaxed text-[#A6ADBB]">{g.description}</p>
                   <p className="mt-3 flex items-center gap-1.5 font-mono text-[11.5px] text-[#7A8294]">
-                    {g.readingMinutes} min read
+                    {g.readingMinutes} min read · updated {g.updated}
                     <ArrowRight className="h-3.5 w-3.5 text-[#FF8A3D] transition-transform group-hover:translate-x-0.5" />
                   </p>
                 </Link>
