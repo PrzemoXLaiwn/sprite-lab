@@ -454,16 +454,38 @@ function removeGroundShadow(raw: Raw): void {
       if (touchesClear) { seen[p] = 1; stack.push(p); }
     }
   }
-  while (stack.length) {
-    const p = stack.pop()!;
-    data[p * 4 + 3] = 0;
-    const x = p % width;
-    const next = [x > 0 ? p - 1 : -1, x < width - 1 ? p + 1 : -1, p - width, p + width];
-    for (const q of next) {
-      if (q < 0 || q >= width * height || seen[q] || !isShadow(q)) continue;
-      seen[q] = 1;
-      stack.push(q);
+  // Grow each connected candidate first: a contact shadow is a flat, small
+  // smear at the feet. A tall or large light-grey region is clothing (cream
+  // trousers, silver armour) reached through a gap — leave it alone.
+  const subjectH = b.y1 - b.y0 + 1;
+  const subjectArea = subjectH * (b.x1 - b.x0 + 1);
+  const owner = new Int32Array(width * height).fill(-1);
+  const regions: number[][] = [];
+  for (const seed of stack) {
+    if (owner[seed] >= 0) continue;
+    const id = regions.length;
+    const region: number[] = [];
+    const queue = [seed];
+    owner[seed] = id;
+    while (queue.length) {
+      const p = queue.pop()!;
+      region.push(p);
+      const x = p % width;
+      const next = [x > 0 ? p - 1 : -1, x < width - 1 ? p + 1 : -1, p - width, p + width];
+      for (const q of next) {
+        if (q < 0 || q >= width * height || owner[q] >= 0 || !isShadow(q)) continue;
+        owner[q] = id;
+        queue.push(q);
+      }
     }
+    regions.push(region);
+  }
+  for (const region of regions) {
+    let top = height, bottom = -1;
+    for (const p of region) { const y = Math.floor(p / width); if (y < top) top = y; if (y > bottom) bottom = y; }
+    const flat = bottom - top + 1 <= subjectH * 0.14;
+    const small = region.length <= subjectArea * 0.08;
+    if (flat && small) for (const p of region) data[p * 4 + 3] = 0;
   }
 }
 
@@ -501,18 +523,21 @@ function removeEnclosedBackground(raw: Raw, br: number, bg: number, bb: number, 
     // Large regions are background gaps. Small ones are background only when
     // they are fenced by the subject's dark outline (a gap between arm and
     // staff); highlights on glass/metal border on mid-tones instead.
+    // White cloth, fur or highlights are bordered by the subject's own light
+    // shades; a real gap shows dark outline or mid/dark colours around it.
+    const border = borderStats(raw, region);
     const isGap =
-      region.length >= minArea ||
-      (region.length >= minOutlinedArea && darkBorderRatio(raw, region) >= 0.6);
+      (region.length >= minArea && border.light < 0.5) ||
+      (region.length >= minOutlinedArea && border.dark >= 0.6);
     if (isGap) for (const p of region) data[p * 4 + 3] = 0;
   }
 }
 
-/** Share of the region's outer boundary pixels that are dark (outline-like). */
-function darkBorderRatio(raw: Raw, region: number[]): number {
+/** Shares of the region's outer boundary pixels that are dark (outline-like) and light (cloth, fur). */
+function borderStats(raw: Raw, region: number[]): { dark: number; light: number } {
   const { width, height, data } = raw;
   const member = new Set(region);
-  let dark = 0, total = 0;
+  let dark = 0, light = 0, total = 0;
   for (const p of region) {
     const x = p % width, y = (p - x) / width;
     const next = [x > 0 ? p - 1 : -1, x < width - 1 ? p + 1 : -1, y > 0 ? p - width : -1, y < height - 1 ? p + width : -1];
@@ -523,9 +548,10 @@ function darkBorderRatio(raw: Raw, region: number[]): number {
       total++;
       const luma = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
       if (luma < 70) dark++;
+      else if (luma >= 185) light++;
     }
   }
-  return total === 0 ? 0 : dark / total;
+  return total === 0 ? { dark: 0, light: 0 } : { dark: dark / total, light: light / total };
 }
 
 // -----------------------------------------------------------------------------
