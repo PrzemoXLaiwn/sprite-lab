@@ -31,6 +31,29 @@ const EXTRA_TOC = [
   { id: "words", label: "Words you'll see" },
 ];
 
+/** Guides and tool pages that expand on each step. */
+const SECTION_GUIDES: Partial<Record<string, { label: string; href: string }[]>> = {
+  generate: [
+    { label: "keeping AI game art consistent", href: "/guides/how-to-keep-ai-game-art-consistent" },
+    { label: "pixel art sprites for games", href: "/guides/how-to-make-pixel-art-sprites-for-games" },
+    { label: "AI sprite generator", href: "/ai-sprite-generator" },
+  ],
+  animate: [
+    { label: "making a sprite sheet with AI", href: "/guides/how-to-make-a-sprite-sheet-with-ai" },
+    { label: "how many frames an animation needs", href: "/guides/how-many-frames-per-sprite-animation" },
+    { label: "sprite animation generator", href: "/ai-sprite-animation-generator" },
+  ],
+  projects: [{ label: "sprite sheet layout and atlases", href: "/guides/sprite-sheet-layout-and-texture-atlases" }],
+  credits: [{ label: "full price list", href: "/pricing#costs" }],
+};
+
+const ENGINE_GUIDE_LINKS = [
+  { label: "Unity: import and slice a sprite sheet", href: "/guides/how-to-import-sprite-sheets-into-unity" },
+  { label: "Godot 4: AnimatedSprite2D and SpriteFrames", href: "/guides/how-to-use-sprite-sheets-in-godot-4" },
+  { label: "GameMaker: import sprite strips", href: "/guides/how-to-import-sprite-strips-into-gamemaker" },
+  { label: "All guides", href: "/guides" },
+];
+
 const GLOSSARY: [string, string][] = [
   ["Sprite", "A single game image with a transparent background — a character, an enemy, a sword."],
   ["Sprite sheet", "All frames of an animation side by side in one PNG. Game engines cut it into frames."],
@@ -168,6 +191,19 @@ export default function HowItWorksPage() {
               <Link href={s.href} className="group mt-5 inline-flex min-h-10 items-center gap-1.5 text-[14px] font-medium text-white transition-colors hover:text-[#FFB27A]">
                 {s.cta} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
               </Link>
+              {SECTION_GUIDES[s.id] && (
+                <p className="mt-2 text-[13.5px] leading-relaxed text-[#8B93A5]">
+                  Go deeper:{" "}
+                  {SECTION_GUIDES[s.id]?.map((l, i) => (
+                    <span key={l.href}>
+                      {i > 0 && " · "}
+                      <Link href={l.href} className="text-[#FFB27A] underline-offset-4 hover:underline">
+                        {l.label}
+                      </Link>
+                    </span>
+                  ))}
+                </p>
+              )}
             </section>
           ))}
 
@@ -204,11 +240,19 @@ export default function HowItWorksPage() {
           <section id="export" className="scroll-mt-24">
             <SectionHead n="07" title="Use it in your engine" lead="Sprites are standard transparent PNGs and sprite sheets are equal-size frames in a row — every engine understands them." />
             <div className="mt-7 grid gap-3 sm:grid-cols-2">
-              <Link href="/guides" className="group rounded-2xl border border-white/[0.07] bg-[#0E1016] p-5 transition-colors hover:border-white/20">
-                <p className="text-[15px] font-semibold text-white">Unity & Godot step by step</p>
+              <div className="rounded-2xl border border-white/[0.07] bg-[#0E1016] p-5">
+                <p className="text-[15px] font-semibold text-white">Engine guides, step by step</p>
                 <p className="mt-1 text-[14px] leading-relaxed text-[#8B93A5]">Import settings, slicing sprite sheets and pixel-perfect filtering.</p>
-                <span className="mt-3 inline-flex items-center gap-1 text-[13px] text-[#FFB27A]">Read the guides <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></span>
-              </Link>
+                <ul className="mt-2">
+                  {ENGINE_GUIDE_LINKS.map((l) => (
+                    <li key={l.href}>
+                      <Link href={l.href} className="group inline-flex min-h-10 items-center gap-1 text-[13.5px] text-[#FFB27A] hover:text-white">
+                        {l.label} <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
               <div className="rounded-2xl border border-white/[0.07] bg-[#0E1016] p-5">
                 <p className="text-[15px] font-semibold text-white">Yours to use commercially</p>
                 <p className="mt-1 text-[14px] leading-relaxed text-[#8B93A5]">Use everything you generate in free or paid games. No attribution required.</p>

@@ -228,7 +228,7 @@ function Section({ section }: { section: SeoSection }) {
             ))}
             {section.links && section.links.length > 0 && (
               <ul className="mt-5">
-                {section.links.map((l) => (
+                {[...section.links, { label: "How SpriteLab works, step by step", href: "/how-it-works" }].map((l) => (
                   <li key={l.href}>
                     <Link href={l.href} className="group inline-flex min-h-10 items-center gap-1.5 py-1.5 text-[14.5px] leading-snug text-[#FFB27A] transition-colors hover:text-white">
                       {l.label}

@@ -3,12 +3,12 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { SiteNav } from "@/components/layout/SiteNav";
 import { Footer } from "@/components/layout/Footer";
-import { GUIDES } from "@/data/guides";
+import { GUIDES, guideReadingMinutes } from "@/data/guides";
 
 const SITE = "https://www.sprite-lab.com";
 const URL = `${SITE}/guides`;
 const DESCRIPTION =
-  "Practical guides for indie game developers: sprite sheets, pixel art sizes, frame counts, Godot 4, Unity and GameMaker import, hitboxes and 4-direction characters.";
+  "Practical guides for indie game devs: sprite sheets, pixel art sizes, frame counts, Godot 4, Unity and GameMaker import, hitboxes and tiles.";
 
 export const metadata: Metadata = {
   title: { absolute: "Game Dev Guides — Sprites, Sprite Sheets & Tiles | SpriteLab" },
@@ -67,6 +67,8 @@ export default function GuidesIndexPage() {
             frame counts, sprite sheet layout, importing into Godot 4, Unity and GameMaker, hitboxes, 4-direction
             characters, seamless tiles and keeping a whole set of assets consistent. Written and kept up to date by
             the <Link href="/about" className="text-[#C9CFDB] underline decoration-white/20 underline-offset-2 hover:text-white">SpriteLab team</Link>.
+            New to the app itself? Start with{" "}
+            <Link href="/how-it-works" className="text-[#C9CFDB] underline decoration-white/20 underline-offset-2 hover:text-white">how SpriteLab works</Link>.
           </p>
 
           <ul className="mt-12 space-y-4">
@@ -81,7 +83,7 @@ export default function GuidesIndexPage() {
                   </h2>
                   <p className="mt-2 text-[14.5px] leading-relaxed text-[#A6ADBB]">{g.description}</p>
                   <p className="mt-3 flex items-center gap-1.5 font-mono text-[11.5px] text-[#7A8294]">
-                    {g.readingMinutes} min read · updated {g.updated}
+                    {guideReadingMinutes(g)} min read · updated {g.updated}
                     <ArrowRight className="h-3.5 w-3.5 text-[#FF8A3D] transition-transform group-hover:translate-x-0.5" />
                   </p>
                 </Link>
