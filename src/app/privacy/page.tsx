@@ -123,7 +123,7 @@ export default function PrivacyPage() {
               <li>Withdraw consent at any time</li>
             </ul>
             <p className="text-muted-foreground mt-4">
-              To exercise these rights, contact us at support@sprite-lab.com.
+              To exercise these rights, contact us at spritelab.contact@gmail.com.
             </p>
           </section>
 
@@ -152,8 +152,8 @@ export default function PrivacyPage() {
             <h2 className="mb-3 scroll-mt-24 font-display text-[22px] font-semibold leading-snug text-white">11. Contact Us</h2>
             <p className="text-muted-foreground">
               If you have questions about this Privacy Policy, please contact us at:{" "}
-              <a href="mailto:support@sprite-lab.com" className="text-[#FFB27A] underline-offset-4 hover:underline">
-                support@sprite-lab.com
+              <a href="mailto:spritelab.contact@gmail.com" className="text-[#FFB27A] underline-offset-4 hover:underline">
+                spritelab.contact@gmail.com
               </a>
             </p>
           </section>

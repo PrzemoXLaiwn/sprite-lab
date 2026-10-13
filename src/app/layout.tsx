@@ -133,7 +133,7 @@ const jsonLd = {
       sameAs: ["https://github.com/PrzemoXLaiwn/sprite-lab", "https://www.tiktok.com/@spritelab1"],
       contactPoint: {
         "@type": "ContactPoint",
-        email: "support@sprite-lab.com",
+        email: "spritelab.contact@gmail.com",
         contactType: "Customer Support",
         availableLanguage: ["English", "Polish"],
       },

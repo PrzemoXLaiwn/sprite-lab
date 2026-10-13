@@ -134,10 +134,10 @@ export default function ChangelogPage() {
             Feature requests and bug reports go straight to the developer.
           </p>
           <a
-            href="mailto:support@sprite-lab.com"
+            href="mailto:spritelab.contact@gmail.com"
             className="mt-6 inline-flex h-11 items-center justify-center rounded-xl border border-white/[0.1] bg-white/[0.04] px-6 text-[14px] font-semibold text-[#ECEEF3] transition hover:bg-white/[0.08]"
           >
-            Email support@sprite-lab.com
+            Email spritelab.contact@gmail.com
           </a>
         </div>
       </div>

@@ -900,10 +900,10 @@ export default function SettingsPage() {
                   className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-400/20 bg-red-500/[0.06] px-4 py-2 text-[13px] font-medium text-red-200 transition-colors hover:bg-red-500/[0.12]"
                   onClick={() => {
                     const ok = window.confirm(
-                      "Request account deletion?\n\nThis opens an email to support@sprite-lab.com. Once we delete the account, all your sprites and projects are gone for good — it can't be undone.\n\nWant a refund or have feedback? Mention it in the same email."
+                      "Request account deletion?\n\nThis opens an email to spritelab.contact@gmail.com. Once we delete the account, all your sprites and projects are gone for good — it can't be undone.\n\nWant a refund or have feedback? Mention it in the same email."
                     );
                     if (!ok) return;
-                    window.location.href = "mailto:support@sprite-lab.com?subject=Delete%20my%20SpriteLab%20account&body=Please%20delete%20my%20account.";
+                    window.location.href = "mailto:spritelab.contact@gmail.com?subject=Delete%20my%20SpriteLab%20account&body=Please%20delete%20my%20account.";
                   }}
                 >
                   Request deletion

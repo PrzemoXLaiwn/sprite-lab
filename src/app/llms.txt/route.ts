@@ -66,7 +66,7 @@ ${COMPARISONS.map((c) => `- [SpriteLab vs ${c.competitor}](${SITE}/compare/${c.s
 - [Changelog](${SITE}/changelog)
 
 ## Contact
-support@sprite-lab.com
+spritelab.contact@gmail.com
 `;
   return new Response(body, {
     headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=3600" },

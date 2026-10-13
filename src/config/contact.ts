@@ -1,2 +1,2 @@
-/** The one public support inbox (also used in privacy, terms and llms.txt). */
-export const SUPPORT_EMAIL = "support@sprite-lab.com";
+/** The one public support inbox (also used in privacy, terms, llms.txt and as the email reply-to). */
+export const SUPPORT_EMAIL = "spritelab.contact@gmail.com";

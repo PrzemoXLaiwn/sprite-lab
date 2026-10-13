@@ -104,7 +104,7 @@ export default function TermsPage() {
 
             <h3 className="mb-2 text-[16px] font-semibold text-white">6.3 Refunds</h3>
             <p className="text-muted-foreground">
-              We offer refunds within 7 days of purchase if you have not used more than 10% of your credits. Contact support@sprite-lab.com for refund requests.
+              We offer refunds within 7 days of purchase if you have not used more than 10% of your credits. Contact spritelab.contact@gmail.com for refund requests.
             </p>
           </section>
 
@@ -164,8 +164,8 @@ export default function TermsPage() {
             <h2 className="mb-3 scroll-mt-24 font-display text-[22px] font-semibold leading-snug text-white">14. Contact</h2>
             <p className="text-muted-foreground">
               For questions about these Terms, please contact us at:{" "}
-              <a href="mailto:support@sprite-lab.com" className="text-[#FFB27A] underline-offset-4 hover:underline">
-                support@sprite-lab.com
+              <a href="mailto:spritelab.contact@gmail.com" className="text-[#FFB27A] underline-offset-4 hover:underline">
+                spritelab.contact@gmail.com
               </a>
             </p>
           </section>
