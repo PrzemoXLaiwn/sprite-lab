@@ -94,6 +94,7 @@ export default function PrivacyPage() {
               <li><strong>Resend:</strong> transactional and account emails</li>
               <li><strong>Vercel:</strong> website hosting and anonymous analytics</li>
               <li><strong>Google AdSense:</strong> ads on guide articles and comparisons for signed-out visitors (see Cookies)</li>
+              <li><strong>Google Analytics:</strong> anonymous usage statistics (pages visited, device type); in the UK and EEA only after you accept cookies</li>
             </ul>
             <p className="text-muted-foreground mt-4">
               Each of these services has their own privacy policy governing their use of your data.

@@ -3,6 +3,7 @@
 // storage, auth and Prisma are mocked; the billing store is the in-memory
 // model of the real SQL (src/lib/billing/test-utils/memory-store.ts).
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { VARIATION_CREDITS } from "@/config/tool-prices";
 import { MemoryStore } from "@/lib/billing/test-utils/memory-store";
 import { setLedgerSink } from "@/lib/billing/ledger";
 
@@ -168,7 +169,7 @@ describe("POST /api/upscale (AI 4× = 2 credits)", () => {
   });
 });
 
-describe("POST /api/variations (1 credit each, Replicate)", () => {
+describe(`POST /api/variations (${VARIATION_CREDITS} credits each, Replicate)`, () => {
   const req = (n = 2) => post("variations", { imageUrl: "https://cdn.sprite-lab.com/u1/in.png", numVariations: n, similarity: "medium" });
   const ok = (id: string) => ({ id, status: "succeeded", output: [`https://replicate.delivery/${id}.png`] });
 
@@ -181,8 +182,8 @@ describe("POST /api/variations (1 credit each, Replicate)", () => {
     M.predGet.mockImplementation(async (id: string) => ok(id));
     const res = await variations.POST(req(2));
     expect(res.status).toBe(200);
-    expect((await res.json()).creditsUsed).toBe(2);
-    expectChargedNoRefund(2);
+    expect((await res.json()).creditsUsed).toBe(2 * VARIATION_CREDITS);
+    expectChargedNoRefund(2 * VARIATION_CREDITS);
     const rows = store.calls.filter((c) => c.provider === "replicate");
     expect(rows).toHaveLength(2);
     expect(rows.every((r) => r.outcome === "ok" && r.estCostUsd === 0.04 && r.operationId === store.ops[0].id)).toBe(true);
@@ -191,7 +192,7 @@ describe("POST /api/variations (1 credit each, Replicate)", () => {
   it("every prediction fails: full refund once", async () => {
     M.predGet.mockImplementation(async (id: string) => ({ id, status: "failed", error: "NSFW" }));
     expect((await variations.POST(req(2))).status).toBe(500);
-    expectFullRefundOnce(2);
+    expectFullRefundOnce(2 * VARIATION_CREDITS);
     // failed per-image predictions aren't billed
     expect(store.calls.filter((c) => c.provider === "replicate").map((c) => [c.outcome, c.estCostUsd])).toEqual([["error", 0], ["error", 0]]);
   });
@@ -199,26 +200,26 @@ describe("POST /api/variations (1 credit each, Replicate)", () => {
   it("create throws: full refund once, the call is in the ledger", async () => {
     M.predCreate.mockRejectedValue(new Error("Request to https://api.replicate.com/v1/models failed with status 401 Unauthorized"));
     expect((await variations.POST(req(3))).status).toBe(500);
-    expectFullRefundOnce(3);
+    expectFullRefundOnce(3 * VARIATION_CREDITS);
     expect(store.calls).toEqual([expect.objectContaining({ provider: "replicate", outcome: "error", estCostUsd: 0 })]);
   });
 
-  it("one of two delivered: refunds only the missing credit, closes PARTIAL", async () => {
+  it("one of two delivered: refunds only the missing variation, closes PARTIAL", async () => {
     M.predGet.mockImplementation(async (id: string) => (id === "p1" ? ok(id) : { id, status: "failed", error: "x" }));
     const res = await variations.POST(req(2));
     expect(res.status).toBe(200);
     const op = onlyOp();
     expect(op.status).toBe("PARTIAL");
-    expect(op.creditsRefunded).toBe(1);
+    expect(op.creditsRefunded).toBe(VARIATION_CREDITS);
     expect(refunds()).toHaveLength(1);
-    expect(store.credits("u1")).toBe(99);
+    expect(store.credits("u1")).toBe(100 - VARIATION_CREDITS);
   });
 
   it("nothing could be stored: full refund once", async () => {
     M.predGet.mockImplementation(async (id: string) => ok(id));
     M.persistImage.mockResolvedValue(null);
     expect((await variations.POST(req(2))).status).toBe(500);
-    expectFullRefundOnce(2);
+    expectFullRefundOnce(2 * VARIATION_CREDITS);
   });
 });
 

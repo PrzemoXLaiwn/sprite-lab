@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
 import Script from "next/script";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
@@ -240,6 +241,7 @@ export default function RootLayout({
         <Toaster />
         <Analytics />
         <SpeedInsights />
+        <GoogleAnalytics />
 
       </body>
     </html>

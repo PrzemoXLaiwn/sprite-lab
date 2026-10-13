@@ -11,9 +11,9 @@
  * for the second image pass that draws the in-betweens.
  */
 export const ANIMATION_FRAME_OPTIONS = [
-  { frames: 4, cols: 2, rows: 2, size: 1024, credits: 6, smoothExtra: 5, label: "4 frames", hint: "Classic retro loop" },
-  { frames: 6, cols: 3, rows: 2, size: 2048, credits: 8, smoothExtra: 7, label: "6 frames", hint: "Smoother" },
-  { frames: 9, cols: 3, rows: 3, size: 2048, credits: 10, smoothExtra: 7, label: "9 frames", hint: "Most detail" },
+  { frames: 4, cols: 2, rows: 2, size: 1024, credits: 7, smoothExtra: 5, label: "4 frames", hint: "Classic retro loop" },
+  { frames: 6, cols: 3, rows: 2, size: 2048, credits: 11, smoothExtra: 7, label: "6 frames", hint: "Smoother" },
+  { frames: 9, cols: 3, rows: 3, size: 2048, credits: 12, smoothExtra: 7, label: "9 frames", hint: "Most detail" },
 ] as const;
 export type AnimationFrameOption = (typeof ANIMATION_FRAME_OPTIONS)[number];
 
@@ -27,7 +27,7 @@ export function animationFrameOption(frames: number | null | undefined): Animati
  * Rigged idles: the original sprite is deformed (breathing / hovering)
  * instead of redrawn per frame, so nothing flickers. Flat price, no AI cost.
  */
-export const RIG_CREDITS = 2;
+export const RIG_CREDITS = 3;
 export const RIG_FRAMES = 24;
 
 /** Motions that are better as a rig than as redrawn frames. */

@@ -15,7 +15,7 @@
 import { PLANS, CREDIT_PACKS } from "@/lib/stripe";
 import { ANIMATION_FRAME_OPTIONS, RIG_CREDITS, ROTATIONS, animationCredits } from "./animations";
 import { FAILURE_OVERHEAD, FEATURE_COSTS, type CostStatus } from "./provider-costs";
-import { REMOVE_BG_CREDITS, VARIATION_CREDITS, upscaleCredits } from "./tool-prices";
+import {REMOVE_BG_CREDITS, VARIATION_CREDITS, upscaleCredits, STYLE_MATCH_CREDITS, EDIT_CREDITS } from "./tool-prices";
 
 export const FX_GBP_PER_USD = 0.757225;
 export const FEE_PCT = 0.0525;
@@ -39,7 +39,7 @@ export function netPerCreditGbp(o: Pick<Offer, "priceUsd" | "credits">, vat: boo
 
 /** Feature → credits charged today (read from the same config the routes use). */
 export function featureCredits(): Record<string, number> {
-  const out: Record<string, number> = { sprite: 1, sprite_hd: 3, style_match: 4, edit: 4, rig: RIG_CREDITS };
+  const out: Record<string, number> = { sprite: 1, sprite_hd: 3, style_match: STYLE_MATCH_CREDITS, edit: EDIT_CREDITS, rig: RIG_CREDITS };
   for (const o of ANIMATION_FRAME_OPTIONS) {
     out[`anim_${o.frames}`] = animationCredits(o.frames, false);
     out[`anim_smooth_${o.frames}`] = animationCredits(o.frames, true);

@@ -49,7 +49,7 @@ export const HOME_FAQ: Faq[] = [
   },
   {
     q: "How much does it cost?",
-    a: "You can try it 3 times without an account and get 10 free credits when you sign up — no credit card needed. A standard sprite costs 1 credit, HD quality 3 credits an idle loop 2 credits and other animations 6–10 credits. Monthly plans start at £5 for 250 credits, and one-off credit packs are available.",
+    a: "You can try it 3 times without an account and get 10 free credits when you sign up — no credit card needed. A standard sprite costs 1 credit, HD quality 3 credits an idle loop 3 credits and other animations 7–12 credits. Monthly plans start at £5 for 250 credits, and one-off credit packs are available.",
   },
   {
     q: "Do credits expire?",

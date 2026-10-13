@@ -119,7 +119,7 @@ export default function SpriteAnimationPage() {
       faq={[
         { q: "What does the animation export look like?", a: "A horizontal sprite sheet: one row of equal-size frames with a transparent background, plus the frames as separate PNGs in a ZIP and an animated GIF preview." },
         { q: "How many frames do I get?", a: "4, 6 or 9 key poses. Smooth mode adds an AI-drawn in-between for every pair, giving 8, 12 or 18 frames." },
-        { q: "How much does an animation cost?", a: "An idle loop costs 2 credits. Other motions cost 6 credits for 4 frames, 8 for 6 and 10 for 9; smooth mode (twice the frames) adds 5–7 credits." },
+        { q: "How much does an animation cost?", a: "An idle loop costs 3 credits. Other motions cost 7 credits for 4 frames, 11 for 6 and 12 for 9; smooth mode (twice the frames) adds 5–7 credits." },
         { q: "Can it animate things that aren't characters?", a: "Yes — creatures, weapons, items, vehicles, effects, icons and seamless tiles. The motions are suggested for the specific sprite." },
       ]}
       cta={{

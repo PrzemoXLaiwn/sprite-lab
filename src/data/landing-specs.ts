@@ -67,10 +67,10 @@ export const LANDING_SPECS: Record<string, Specs> = {
     title: "What you get, and what you set in the engine",
     intro: "Typical frame counts for each motion, and exactly which files an animation downloads as.",
     rows: [
-      { label: "Idle", value: "2–6 frames at 4–8 fps. SpriteLab's idle breathing is a 24-frame deformation of the original sprite (2 credits)." },
+      { label: "Idle", value: "2–6 frames at 4–8 fps. SpriteLab's idle breathing is a 24-frame deformation of the original sprite (3 credits)." },
       { label: "Walk / run", value: "4–8 frames at 8–12 fps (walk) or 10–14 fps (run)." },
       { label: "Attack", value: "3–8 frames, timed unevenly: long wind-up, very short strike, held follow-through." },
-      { label: "AI key poses", value: "4, 6 or 9 poses (6, 8 or 10 credits); smooth mode adds in-betweens for 8, 12 or 18 frames." },
+      { label: "AI key poses", value: "4, 6 or 9 poses (7, 11 or 12 credits); smooth mode adds in-betweens for 8, 12 or 18 frames." },
       { label: "Downloads", value: "Horizontal sprite sheet PNG, every frame as its own PNG in a ZIP, and a GIF preview." },
       { label: "Engine pack", value: "Godot SpriteFrames .tres, Unity frame folders, GameMaker _stripN strips and per-frame hitboxes.json." },
     ],

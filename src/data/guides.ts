@@ -108,7 +108,7 @@ const BASE_GUIDES: Guide[] = [
         heading: "Step 2: choose the motion and frame count",
         body: [
           "Frame count is a trade-off between smoothness, file size and cost. Classic pixel art games use surprisingly few frames: 4 for an idle breath, 6 to 8 for a walk cycle, 3 to 6 for an attack. A walk cycle needs at least the contact, down, passing and up poses for each leg to read as walking.",
-          "SpriteLab's Animate tool offers idle, walk, run, attack, jump, cast, hurt, fly, a turnaround or a custom motion you describe, and it suggests motions that fit the sprite you picked. You choose 4, 6 or 9 key poses; smooth mode adds AI in-between frames for 8, 12 or 18 frames total. An idle loop costs 2 credits; a 6-frame walk costs 8 credits and a smoothed 12-frame walk costs 15.",
+          "SpriteLab's Animate tool offers idle, walk, run, attack, jump, cast, hurt, fly, a turnaround or a custom motion you describe, and it suggests motions that fit the sprite you picked. You choose 4, 6 or 9 key poses; smooth mode adds AI in-between frames for 8, 12 or 18 frames total. An idle loop costs 3 credits; a 6-frame walk costs 11 credits and a smoothed 12-frame walk costs 18.",
         ],
         image: { src: "/showcase/anim-witch-walk.gif", alt: "Animated pixel art witch walk cycle generated from a single sprite", pixel: true },
       },

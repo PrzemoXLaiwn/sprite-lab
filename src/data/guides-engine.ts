@@ -392,7 +392,7 @@ func _physics_process(_delta: float) -> void:
       {
         heading: "How SpriteLab's frame options map to this",
         body: [
-          "In SpriteLab's Animate tool you choose 4, 6 or 9 key poses for an AI animation (6, 8 or 10 credits). Smooth mode adds AI in-between frames, giving 8, 12 or 18 frames for 5 or 7 extra credits. The preview sets a starting speed — 8 fps for 4 poses, 10 fps for 6 and 12 fps for 9; smooth mode doubles it so the loop keeps the same length — which you can change before downloading. Idle breathing and hovering are done differently: the original sprite is gently deformed over 24 frames instead of redrawn, which avoids flicker and costs 2 credits.",
+          "In SpriteLab's Animate tool you choose 4, 6 or 9 key poses for an AI animation (7, 11 or 12 credits). Smooth mode adds AI in-between frames, giving 8, 12 or 18 frames for 5 or 7 extra credits. The preview sets a starting speed — 8 fps for 4 poses, 10 fps for 6 and 12 fps for 9; smooth mode doubles it so the loop keeps the same length — which you can change before downloading. Idle breathing and hovering are done differently: the original sprite is gently deformed over 24 frames instead of redrawn, which avoids flicker and costs 3 credits.",
           "What SpriteLab does not do is time the frames for you: every frame in the exported strip is shown for the same time. Holding wind-up frames, adding hit-stop and matching walk speed to movement all happen in your engine, as described above.",
         ],
         image: { src: "/showcase/anim-witch-walk.gif", alt: "Pixel art witch walk cycle with evenly spaced frames", pixel: true },

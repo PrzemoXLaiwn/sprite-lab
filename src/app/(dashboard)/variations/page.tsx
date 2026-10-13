@@ -103,7 +103,7 @@ function VariationsPageContent({ generationId }: { generationId: string | null }
               loadingLabel={<>Creating variations… <Elapsed /></>}
               icon={<Shuffle className="h-4 w-4" />}
               label={`Create ${numVariations} variation${plural}`} cost={numVariations} />
-            <FooterHint>~60–120s · 1 credit per variation</FooterHint>
+            <FooterHint>~60–120s · 3 credits per variation</FooterHint>
             {shownError && <ErrorNote>{shownError}</ErrorNote>}
           </>
         }

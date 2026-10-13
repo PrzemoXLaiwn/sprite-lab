@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { EDIT_CREDITS } from "@/config/tool-prices";
 import { Slider } from "@/components/ui/slider";
 import {
   Paintbrush,
@@ -438,19 +439,16 @@ export function SpriteEditor({
 
       bwCtx.putImageData(bwMaskData, 0, 0);
 
-      // Get base64 data
-      const imageBase64 = imageCanvas.toDataURL("image/png").split(",")[1];
-      const maskBase64 = bwMaskCanvas.toDataURL("image/png").split(",")[1];
-
-      // Call inpaint API
-      const response = await fetch("/api/inpaint", {
+      // Painted area → the brush edit (same model, price and refunds as /edit).
+      // The mask's alpha marks what may change.
+      const response = await fetch("/api/edit-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          imageBase64,
-          maskBase64,
-          prompt: prompt.trim(),
-          originalData,
+          imageUrl,
+          editPrompt: prompt.trim(),
+          mask: maskCanvas.toDataURL("image/png"),
+          originalGeneration: originalData,
         }),
       });
 
@@ -740,7 +738,7 @@ export function SpriteEditor({
               ) : (
                 <>
                   <Wand2 className="h-4 w-4" />
-                  Regenerate area <span className="font-mono text-[13px] font-normal opacity-80">· 2 credits</span>
+                  Regenerate area <span className="font-mono text-[13px] font-normal opacity-80">· {EDIT_CREDITS} credits</span>
                 </>
               )}
             </button>

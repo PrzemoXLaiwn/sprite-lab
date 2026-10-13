@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useRef, Suspense } from "react";
+import { EDIT_CREDITS } from "@/config/tool-prices";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Wand2, Info, Brush, Eraser, Check, RotateCcw, Pencil } from "lucide-react";
 import { HistoryButton, HistoryPanel, type HistoryItem } from "@/components/workspace/HistoryPanel";
@@ -20,8 +21,7 @@ import {
   isPixelStyleId, useSourceGeneration, toolErrorMessage, downloadImage, type ToolBgModeId,
 } from "@/components/tools/ToolWorkspace";
 
-// Must match EDIT_CREDITS in src/lib/image/sprite-edit.ts
-const COST = 4;
+const COST = EDIT_CREDITS;
 
 const SUGGESTIONS = [
   "replace the sword with an axe",

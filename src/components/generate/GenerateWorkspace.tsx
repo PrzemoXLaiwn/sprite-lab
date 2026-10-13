@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useMemo, useEffect, Suspense } from "react";
+import { STYLE_MATCH_CREDITS } from "@/config/tool-prices";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -73,8 +74,6 @@ function detectViewInText(text: string): Exclude<ViewId, "none"> | null {
   return null;
 }
 
-// Must match STYLE_MATCH_CREDITS in src/lib/services/generation.ts
-const STYLE_MATCH_CREDITS = 4;
 // Must match CREDIT_COSTS in src/lib/services/generation.ts
 const DETAIL_OPTIONS = [
   { id: "normal", label: "Standard", description: "Fast & clean · ~8s" },

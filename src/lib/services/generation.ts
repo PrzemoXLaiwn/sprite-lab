@@ -76,7 +76,8 @@ export const CREDIT_COSTS: Record<QualityPreset, number> = {
 };
 
 /** Matching a reference sprite's style runs on the image-edit model (~$0.07). */
-export const STYLE_MATCH_CREDITS = 4;
+import { STYLE_MATCH_CREDITS } from "@/config/tool-prices";
+export { STYLE_MATCH_CREDITS };
 
 export function creditsForPreset(preset?: QualityPreset): number {
   return CREDIT_COSTS[preset ?? "normal"] ?? CREDIT_COSTS.normal;

@@ -14,7 +14,8 @@ import { generateAnimationGrid } from "@/lib/runware";
 import { postprocessSprite, pixelCanvasOf } from "./sprite-postprocess";
 
 /** Instruction edit on the image-edit model (~$0.07). */
-export const EDIT_CREDITS = 4;
+import { EDIT_CREDITS } from "@/config/tool-prices";
+export { EDIT_CREDITS };
 
 const SIZE = 1024;
 
