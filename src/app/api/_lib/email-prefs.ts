@@ -17,3 +17,19 @@ export async function mergeEmailPreferences(
         updated_at = now()
     WHERE id = ${userId}`;
 }
+
+/**
+ * Claim today's lifecycle-email slot for a user: the same jsonb `||` merge as
+ * above, but only when `lifecycleDay` isn't already `day`. Returns false when
+ * another run already claimed it, so a retried or doubled cron never emails
+ * anyone twice on the same day.
+ */
+export async function claimLifecycleDay(userId: string, day: string): Promise<boolean> {
+  const updated = await prisma.$executeRaw`
+    UPDATE users
+    SET email_preferences = COALESCE(email_preferences::jsonb, '{}'::jsonb) || ${JSON.stringify({ lifecycleDay: day })}::jsonb,
+        updated_at = now()
+    WHERE id = ${userId}
+      AND COALESCE(email_preferences::jsonb ->> 'lifecycleDay', '') <> ${day}`;
+  return updated === 1;
+}
