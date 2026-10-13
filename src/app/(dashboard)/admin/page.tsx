@@ -14,6 +14,7 @@
 // =============================================================================
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Shield,
@@ -27,6 +28,7 @@ import {
   TrendingDown,
   RefreshCw,
   Loader2,
+  Mail,
 } from "lucide-react";
 import { checkAdminAccess, fetchAdminStats } from "./page.actions";
 import { UsagePanel } from "@/components/admin/UsagePanel";
@@ -218,6 +220,14 @@ export default function AdminPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Link
+            href="/admin/emails"
+            aria-label="Email previews"
+            className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3.5 text-[13px] font-medium text-[#C9CFDB] transition-colors hover:bg-white/[0.08] hover:text-white"
+          >
+            <Mail className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Emails</span>
+          </Link>
           {lastUpdated && (
             <span className="hidden font-mono text-[11px] text-[#7A8294] sm:inline">
               updated {formatRelative(lastUpdated)}

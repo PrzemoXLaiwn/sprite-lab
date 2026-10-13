@@ -28,12 +28,17 @@ export type EmailType =
   | "DAILY_REMINDER"
   | "WEEKLY_DIGEST"
   | "NEW_FEATURES"
-  | "RELAUNCH";
+  | "RELAUNCH"
+  | "LIFECYCLE_BRING_TO_LIFE"
+  | "LIFECYCLE_UNFINISHED"
+  | "LIFECYCLE_UNUSED_CREDITS"
+  | "LIFECYCLE_WINBACK"
+  | "LIFECYCLE_INSPIRATION";
 
 /**
  * Log email to database for tracking
  */
-async function logEmail(params: {
+export async function logEmail(params: {
   email: string;
   userId?: string;
   type: EmailType;
