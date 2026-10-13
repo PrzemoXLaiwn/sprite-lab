@@ -21,6 +21,7 @@ Rules:
 1. Keep EVERY element the user asked for: the subject, objects, colours, materials, accessories, mood. Never drop, soften or swap anything, and reuse the user's own key nouns word for word ("health potion", "cheese", "keyboard") — add detail around them, don't replace them with synonyms.
 2. Start by stating what the subject's BODY is:
    - An object, food, furniture, vehicle, device or plant "as a character / enemy / boss", or "a character that is a X": the creature's body IS that object, still clearly recognisable (its real shape, parts and details), brought to life with eyes, a mouth and small limbs. Never a human wearing or holding it, never a person in a costume.
+     Keep the object's REAL silhouette and proportions — the first thing a viewer must recognise is the object itself. A keyboard stays a long, low, flat rectangle seen from the front at a slight top-down angle with its rows of keys clearly visible (never a square box standing on end); a sofa stays a sofa; a bottle stays tall and thin. Put the legs under it or at its sides, put the face where it fits naturally (eyes in the top row of keys, the mouth as a gap in the keys). Name the object's most recognisable details (key rows, space bar, cable, RGB backlight, wrist rest, brand look).
    - A real animal: the true anatomy and proportions of that species with its signature features (name them). It may stand, wear or hold things when asked, but it stays clearly that animal — not a human with animal ears, hair or a mask. Make it humanoid only when the user says humanoid, anthro, -folk or a warrior race.
    - People and fantasy races: describe them normally.
 3. "enemy", "monster", "boss", "villain": menacing — angry glowing eyes, hostile stance, sharp details. "cute", "friendly", "pet": the opposite.
@@ -31,7 +32,7 @@ Rules:
 
 Examples:
 Request: gaming keyboard as an enemy wearing a plastic helmet with a fire sword
-Output: a living black RGB gaming keyboard monster: its body is a wide mechanical keyboard standing upright on two short metal legs, rows of glowing keycaps, angry red eyes and a jagged mouth among the keys, small arms, a cheap plastic toy helmet on top, gripping a flaming sword
+Output: a living black RGB gaming keyboard monster: its body is a long, low, full-size mechanical keyboard seen from the front at a slight top-down angle, rows of rainbow-backlit keycaps and a long space bar clearly visible, angry red glowing eyes in the top row of keys, a jagged mouth where keys are missing, four short clawed legs underneath, its cable lashing like a tail, a cheap plastic toy helmet on its left end, one small arm gripping a flaming sword
 
 Request: character that is a corner sofa blue color holding magic wand
 Output: a living blue L-shaped corner sofa creature: its cushioned seat and backrest form the body, two button eyes and a stitched grin on the backrest, stubby wooden sofa legs as feet, a small fabric arm raising a sparkling magic wand
@@ -86,7 +87,9 @@ export async function interpretSubject(prompt: string, categoryId?: string): Pro
     const block = response.content[0];
     if (block?.type !== "text") return keep;
     const out = block.text.trim().replace(/^output:\s*/i, "").replace(/^["']|["']$/g, "").replace(/\.$/, "").trim();
-    if (!out || looksLikeChatReply(out, original) || !keepsIntent(original, out)) { if (process.env.DEBUG_PROMPTS === "1") console.warn("[Interpret] rejected:", out); return keep; }
+    // Descriptions here are meant to be long (up to 80 words), so only the
+    // chatbot-phrasing checks apply, not the shared length limit.
+    if (!out || looksLikeChatReply(out.slice(0, 400), original) || !keepsIntent(original, out)) { if (process.env.DEBUG_PROMPTS === "1") console.warn("[Interpret] rejected:", out); return keep; }
     return { subject: out.split(/\s+/).slice(0, 80).join(" "), interpreted: true };
   } catch (err) {
     console.warn("[Interpret] skipped:", err instanceof Error ? err.message : err);
