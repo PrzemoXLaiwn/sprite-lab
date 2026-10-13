@@ -19,7 +19,7 @@ import {
   assembleTileAnimation,
   extractFrames,
   extractTileFrames,
-  hasCutEdge,
+  isSlicedFrame,
   interleave,
   referenceGrid,
   type AnimationResult,
@@ -211,7 +211,10 @@ export async function makeRotation(input: { reference: Buffer; prompt: string; p
   // Never ship a direction sheet with a sliced or missing figure — fail and refund instead
   if (!framesLookRight(views, expected)) throw new Error("direction views came back broken (sliced or merged figures)");
   if (r.kind === "walk") {
-    const fixed = await fixFrozenWalkRows(views, r.cols, { pixel: input.pixel, subject: input.prompt });
+    // Row redraws only while there's time left before the route's 300 s limit
+    const fixed = Date.now() - startedAt < WALK_FIX_BUDGET_MS
+      ? await fixFrozenWalkRows(views, r.cols, { pixel: input.pixel, subject: input.prompt })
+      : { views, cost: 0 };
     views = fixed.views;
     cost += fixed.cost;
     views = [...views, ...views.slice(r.cols, r.cols * 2).map(mirror)];
@@ -225,6 +228,8 @@ export async function makeRotation(input: { reference: Buffer; prompt: string; p
 }
 
 const WALK_VIEWS = ["front", "side", "back"] as const;
+/** Latest point (ms into the request) at which a frozen-row redraw (≤150 s) may still start. */
+const WALK_FIX_BUDGET_MS = 120_000;
 
 /**
  * The model sometimes draws one row of a walk set as the same pose four times
@@ -338,8 +343,8 @@ function framesLookRight(frames: Frame[], expected: number): boolean {
   if (frames.length !== expected) return false;
   const med = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
   const mh = med(frames.map((f) => f.height)), mw = med(frames.map((f) => f.width));
-  // …and no figure sliced in half by a fallback grid cut
-  return frames.every((f) => f.height >= mh * 0.5 && f.width >= mw * 0.35 && !hasCutEdge(f));
+  // …and no figure sliced in half by one of our cuts (a crate's straight edge is fine)
+  return frames.every((f) => f.height >= mh * 0.5 && f.width >= mw * 0.35 && !isSlicedFrame(f));
 }
 
 /** For picking the better of two attempts. */

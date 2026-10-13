@@ -14,7 +14,7 @@ import {
 import { safeFetchImage, safeFetchErrorResponse } from "@/lib/safe-fetch";
 import { rateLimitUserGeneration } from "@/lib/rate-limit";
 import { prisma } from "@/lib/prisma";
-import { startOperation, requestIp, type OpHandle } from "@/lib/billing/operations";
+import { startOperation, requestIp, budgetPlan, type OpHandle } from "@/lib/billing/operations";
 import { parseJsonBody, validateBody } from "@/lib/validation/common";
 import { editImageSchema } from "@/lib/validations";
 import { editSprite, EDIT_CREDITS } from "@/lib/image/sprite-edit";
@@ -22,7 +22,9 @@ import { uploadGenerationBufferToR2 } from "@/lib/r2";
 
 // Runware edit is capped at RUNWARE_INFERENCE_TIMEOUT_MS (75s); leaves
 // headroom for input validation, re-hosting and refunds.
-export const maxDuration = 120;
+// One image pass can take up to 150 s (plus a moderation retry) — the refund
+// path must still run before the platform stops the function
+export const maxDuration = 300;
 
 const MAX_INPUT_IMAGE_MB = 10;
 
@@ -684,9 +686,9 @@ export async function POST(request: Request) {
     }
     const pixel = (originalGeneration?.styleId ?? "").toUpperCase().includes("PIXEL");
 
-    const account = await prisma.user.findUnique({ where: { id: user.id }, select: { plan: true } });
+    const account = await prisma.user.findUnique({ where: { id: user.id }, select: { plan: true, totalSpent: true, stripeCustomerId: true } });
     const started = await startOperation({
-      userId: user.id, feature: "edit", credits: EDIT_CREDITS, plan: account?.plan ?? "FREE", ip: requestIp(request),
+      userId: user.id, feature: "edit", credits: EDIT_CREDITS, plan: budgetPlan(account), ip: requestIp(request),
       input: { imageUrl, instruction, masked: Boolean(mask) },
     });
     if (!started.ok) {
@@ -697,10 +699,10 @@ export async function POST(request: Request) {
     pendingOp = op;
 
     const result = await op.run(() => editSprite({ sprite, instruction, pixel, mask }));
-    pendingOp = null; // delivered — no refund from here on
 
     const upload = await uploadGenerationBufferToR2(result.png, user.id, "png");
     if (!upload.success || !upload.url) throw new Error(`upload failed: ${upload.error}`);
+    pendingOp = null; // delivered (stored) — no refund from here on
 
     const saveResult = await saveGeneration({
       userId: user.id,

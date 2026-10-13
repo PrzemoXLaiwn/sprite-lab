@@ -438,8 +438,8 @@ async function generateSinglePipeline(
   // Case C: save to DB. If this fails, log for manual recovery.
   // The image was generated and provider was paid — no refund issued.
   await saveGeneratedAssets(request.userId, request, [asset]);
-  if (creditsUsed < creditsRequired) await op.partial(null, "downgraded");
-  else await op.succeed(null);
+  if (creditsUsed < creditsRequired) await op.partial(asset.generationId ?? null, "downgraded");
+  else await op.succeed(asset.generationId ?? null);
 
   // Case D: safe to return. DB record exists.
   log("generation:result", {

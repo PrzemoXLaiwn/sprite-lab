@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { startOperation } from "./operations";
+import { budgetPlan, startOperation } from "./operations";
 import { FEATURES, LIMITS } from "./features";
 import { canSpend, recordProviderCall, setLedgerSink } from "./ledger";
 import { MemoryStore } from "./test-utils/memory-store";
@@ -90,13 +90,25 @@ describe("refunds are idempotent", () => {
 });
 
 describe("guards", () => {
-  it("rate-limits after the hourly cap", async () => {
+  it("rate-limits expensive work after the hourly cap", async () => {
+    store.users.set("u1", { credits: 1000 });
     for (let i = 0; i < LIMITS.opsPerHour; i++) {
-      const r = await START({ feature: "sprite", credits: 1, input: i }); if (r.ok) await r.op.succeed(null);
+      const r = await START({ input: i }); if (r.ok) await r.op.succeed(null);
     }
-    const r = await START({ feature: "sprite", credits: 1 });
+    const r = await START({ input: "one more" });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.status).toBe(429);
+  });
+
+  it("never rate-limits 1-credit sprites by the expensive-work cap (bulk sprite makers)", async () => {
+    store.users.set("u1", { credits: 1000 });
+    for (let i = 0; i < LIMITS.opsPerHour + 5; i++) {
+      const r = await START({ feature: "sprite", credits: 1, input: i });
+      expect(r.ok).toBe(true);
+      if (r.ok) await r.op.succeed(null);
+    }
+    const anim = await START({ input: "anim" });
+    expect(anim.ok).toBe(true); // sprites don't use up the animation allowance
   });
 
   it("pauses expensive features after repeated failures, not cheap ones", async () => {
@@ -137,7 +149,46 @@ describe("guards", () => {
   });
 });
 
+describe("cancel and pending refunds", () => {
+  it("cancel refunds everything and doesn't count as a failure", async () => {
+    for (let i = 0; i < LIMITS.failedPerHour + 1; i++) {
+      const r = await START({ feature: "rig", credits: 2, input: i }); if (!r.ok) throw new Error();
+      expect(await r.op.cancel("NO_PIXEL_WALK")).toBe(2);
+    }
+    expect(store.credits("u1")).toBe(100);
+    const next = await START({ input: "after cancels" });
+    expect(next.ok).toBe(true); // no failure cooldown from cancels
+  });
+
+  it("a partial refund that fails to write is recorded as pending on the operation", async () => {
+    const r = await START({ feature: "sprite_hd", credits: 3 }); if (!r.ok) throw new Error();
+    store.failNext.refund = 1;
+    expect(await r.op.refund(2, "single:downgrade")).toBe(0);
+    await r.op.partial("gen1", "downgraded");
+    expect(store.op(r.op.id).status).toBe("PARTIAL");
+    expect(store.op(r.op.id).errorCode).toBe("refund_pending:2");
+  });
+});
+
+describe("budget tier", () => {
+  it("anyone who has paid draws from the paid budget", () => {
+    expect(budgetPlan(null)).toBe("FREE");
+    expect(budgetPlan({ plan: "FREE", totalSpent: 0 })).toBe("FREE");
+    expect(budgetPlan({ plan: "FREE", totalSpent: 1.19 })).toBe("PAID"); // bought a pack
+    expect(budgetPlan({ plan: "FREE", stripeCustomerId: "cus_1" })).toBe("PAID");
+    expect(budgetPlan({ plan: "PRO" })).toBe("PRO");
+  });
+});
+
 describe("daily spend guard", () => {
+  it("calls made outside any operation (guest sprites, helpers) don't block paid work", async () => {
+    process.env.DAILY_SPEND_LIMIT_USD = String(FEATURES.anim_6.estCostUsd + 0.01);
+    for (let i = 0; i < 50; i++) recordProviderCall({ provider: "anthropic", model: "m", task: "suggest", outcome: "ok", estCostUsd: 0.05 });
+    await new Promise((r) => setTimeout(r, 5));
+    const r = await START();
+    expect(r.ok).toBe(true);
+  });
+
   it("never lets parallel requests overshoot the budget", async () => {
     process.env.DAILY_SPEND_LIMIT_USD = String(FEATURES.anim_6.estCostUsd * 3 + 0.01);
     const results = await Promise.all(Array.from({ length: 10 }, (_, i) => START({ input: i, userId: i % 2 ? "u1" : "u2" })));

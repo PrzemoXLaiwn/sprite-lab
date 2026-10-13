@@ -17,7 +17,7 @@
 import { createHash } from "node:crypto";
 import { FEATURES, LIMITS, spendLimits, type FeatureKey } from "./features";
 import { flushOperation, runInOperation, type OperationContext } from "./ledger";
-import { prismaStore, type BillingStore } from "./store";
+import { prismaStore, type BillingStore, type FinalStatus } from "./store";
 
 export interface StartInput {
   userId: string;
@@ -46,6 +46,8 @@ export interface OpHandle {
   partial(generationId: string | null, reason: string): Promise<void>;
   /** Refunds everything still due and closes the operation as FAILED. */
   fail(errorCode: string): Promise<number>;
+  /** Refunds everything and closes as CANCELLED — not a failure (a fallback path takes over). */
+  cancel(reason: string): Promise<number>;
   readonly context: OperationContext;
 }
 
@@ -73,7 +75,7 @@ export async function startOperation(input: StartInput): Promise<StartResult> {
     stats = null;
   }
   if (stats) {
-    if (stats.opsLastHour >= LIMITS.opsPerHour) {
+    if (spec.expensive && stats.opsLastHour >= LIMITS.opsPerHour) {
       return refuse(429, "RATE_LIMITED", "You've made a lot of requests this hour — please wait a few minutes.", { retryAfterSec: 600 });
     }
     if (spec.expensive && stats.sameInputFailed >= LIMITS.sameInputFailures) {
@@ -113,20 +115,25 @@ export async function startOperation(input: StartInput): Promise<StartResult> {
 
 function makeHandle(store: BillingStore, id: string, userId: string, credits: number, capUsd: number): OpHandle {
   const context: OperationContext = { operationId: id, userId, capUsd, spentUsd: 0, calls: 0, incomplete: false, pending: [] };
+  // Credits a partial refund owed but couldn't write — settled later by the cron
+  let pendingRefund = 0;
   const safeRefund = async (amount: number | null, reason: string) => {
     try {
       return await store.refund(id, amount, reason);
     } catch (err) {
+      if (amount !== null) pendingRefund += amount;
       // Not retried here: the operation keeps its "due" balance and the
       // reconcile job (or an admin) refunds it later — never twice.
       console.error(`[billing] refund failed for ${id}:`, err instanceof Error ? err.message : err);
       return 0;
     }
   };
-  const safeFinish = async (status: "SUCCEEDED" | "PARTIAL" | "FAILED", data: { generationId?: string | null; errorCode?: string | null }) => {
+  const safeFinish = async (status: FinalStatus, data: { generationId?: string | null; errorCode?: string | null }) => {
     const complete = await flushOperation(context);
+    // A delivered operation that still owes a partial refund records it for the cron
+    const errorCode = status === "PARTIAL" && pendingRefund > 0 ? `refund_pending:${pendingRefund}` : data.errorCode;
     try {
-      await store.finish(id, status, { ...data, costLogIncomplete: !complete });
+      await store.finish(id, status, { ...data, errorCode, costLogIncomplete: !complete });
     } catch (err) {
       console.error(`[billing] finish failed for ${id}:`, err instanceof Error ? err.message : err);
     }
@@ -144,7 +151,23 @@ function makeHandle(store: BillingStore, id: string, userId: string, credits: nu
       await safeFinish("FAILED", { errorCode });
       return refunded;
     },
+    async cancel(reason) {
+      const refunded = await safeRefund(null, reason);
+      // If the refund didn't land, FAILED lets the cron settle it; otherwise it's a clean cancel
+      await safeFinish(refunded > 0 || credits === 0 ? "CANCELLED" : "FAILED", { errorCode: reason });
+      return refunded;
+    },
   };
+}
+
+/**
+ * Which budget an account draws from. Anyone who has paid (subscription or
+ * credit pack) is "PAID" — the free-tier cap only applies to people who never paid.
+ */
+export function budgetPlan(user: { plan?: string | null; totalSpent?: number | null; stripeCustomerId?: string | null } | null | undefined): string {
+  if (!user) return "FREE";
+  if (user.plan && user.plan !== "FREE") return user.plan;
+  return (user.totalSpent ?? 0) > 0 || user.stripeCustomerId ? "PAID" : "FREE";
 }
 
 /** Client IP from proxy headers (first hop). */

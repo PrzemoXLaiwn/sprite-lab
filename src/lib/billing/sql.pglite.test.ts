@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { beforeEach, describe, expect, it } from "vitest";
-import { REFUND_SQL, SPEND_LOCK, SPEND_SQL, STATS_SQL } from "./store";
+import { REFUND_SQL, SETTLE_PENDING_SQL, SPEND_LOCK, SPEND_SQL, STALE_RUNNING_SQL, STATS_SQL } from "./store";
 
 const MIGRATION = readFileSync(join(process.cwd(), "prisma/sql/2026-10-13_cost_ledger.sql"), "utf8");
 let db: PGlite;
@@ -20,13 +20,13 @@ async function op(id: string, o: Partial<{ user: string; status: string; charged
 }
 const call = (id: string, opId: string | null, cost: number | null, est: number, created = at(10)) =>
   db.query(`INSERT INTO provider_calls (id, operation_id, provider, model, task, outcome, cost_usd, est_cost_usd, created_at) VALUES ($1,$2,'runware','m','grid','ok',$3,$4,$5)`, [id, opId, cost, est, created]);
-const spend = async () => (await db.query<{ total: number; free: number }>(SPEND_SQL, [day])).rows[0];
+const spend = async () => (await db.query<{ total: number; free: number; outside: number }>(SPEND_SQL, [day])).rows[0];
 const refund = async (id: string, amount: number | null) => (await db.query<{ due: number; user_id: string }>(REFUND_SQL, [id, amount ?? 2147483647])).rows[0]?.due ?? 0;
 
 beforeEach(async () => {
   db = new PGlite();
   // A stand-in for the existing generations table (the migration adds one column to it)
-  await db.exec(`CREATE TABLE generations (id TEXT PRIMARY KEY, prompt TEXT NOT NULL); INSERT INTO generations VALUES ('g_old', 'a knight');`);
+  await db.exec(`CREATE TABLE generations (id TEXT PRIMARY KEY, prompt TEXT NOT NULL, user_id TEXT, created_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP); INSERT INTO generations (id, prompt) VALUES ('g_old', 'a knight');`);
   await db.exec(MIGRATION);
 });
 
@@ -38,7 +38,7 @@ describe("migration", () => {
   });
 
   it("adds a nullable source_generation_id to generations without touching existing rows", async () => {
-    const r = await db.query<{ id: string; prompt: string; source_generation_id: string | null }>(`SELECT * FROM generations`);
+    const r = await db.query<{ id: string; prompt: string; source_generation_id: string | null }>(`SELECT id, prompt, source_generation_id FROM generations`);
     expect(r.rows).toEqual([{ id: "g_old", prompt: "a knight", source_generation_id: null }]);
     await db.query(`INSERT INTO generations (id, prompt, source_generation_id) VALUES ('anim1', '[Animation: walk, 4f] a knight', 'g_old')`);
     const idx = await db.query<{ indexname: string }>(`SELECT indexname FROM pg_indexes WHERE tablename = 'generations'`);
@@ -70,12 +70,13 @@ describe("spend query (daily budget)", () => {
     expect((await spend()).total).toBeCloseTo(0.25);
   });
 
-  it("adds calls made outside an operation and reports free-tier spend separately", async () => {
+  it("reports calls outside an operation separately (they don't block) and free-tier spend apart", async () => {
     await op("f", { status: "SUCCEEDED", plan: "FREE", est: 0.2 });
     await call("c1", "f", 0.0692, 0.0692);
     await call("orphan", null, null, 0.05);
     const s = await spend();
-    expect(s.total).toBeCloseTo(0.0692 + 0.05);
+    expect(s.total).toBeCloseTo(0.0692);
+    expect(s.outside).toBeCloseTo(0.05);
     expect(s.free).toBeCloseTo(0.0692);
   });
 
@@ -105,6 +106,38 @@ describe("guard counters", () => {
     const r = (await db.query<Record<string, number>>(STATS_SQL, ["u1", null, null, at(9.5)])).rows[0];
     expect(r.failedLastHour).toBe(1);
     expect(r.ipFailedLastHour).toBe(0);
+  });
+});
+
+describe("recovery queries (cron)", () => {
+  const ago = (min: number) => new Date(Date.now() - min * 60_000);
+
+  it("fails stuck operations that delivered nothing, leaves ones that saved a generation", async () => {
+    await op("stuck", { user: "u1", status: "RUNNING", created: ago(30) });
+    await op("delivered", { user: "u2", status: "RUNNING", created: ago(30) });
+    await db.query(`INSERT INTO generations (id, prompt, user_id, created_at) VALUES ('g2', 'x', 'u2', $1)`, [ago(28)]);
+    await op("fresh", { user: "u3", status: "RUNNING", created: ago(2) });
+    const r = await db.query<{ id: string }>(STALE_RUNNING_SQL);
+    expect(r.rows.map((x) => x.id)).toEqual(["stuck"]);
+    expect(await refund("stuck", null)).toBe(8); // then refunded by the next step
+    expect(await refund("delivered", null)).toBe(8); // still RUNNING → refundable only by its own request path
+  });
+
+  it("settles a pending partial refund exactly once, capped at what's left", async () => {
+    await op("p", { status: "PARTIAL", charged: 15, refunded: 0 });
+    await db.query(`UPDATE operations SET error_code = 'refund_pending:7' WHERE id = 'p'`);
+    const first = await db.query<{ due: number; user_id: string }>(SETTLE_PENDING_SQL, ["p"]);
+    expect(first.rows[0]).toEqual({ due: 7, user_id: "u1" });
+    const again = await db.query(SETTLE_PENDING_SQL, ["p"]);
+    expect(again.rows).toHaveLength(0);
+    const row = (await db.query<{ credits_refunded: number; error_code: string }>(`SELECT credits_refunded, error_code FROM operations WHERE id='p'`)).rows[0];
+    expect(row).toEqual({ credits_refunded: 7, error_code: "refund_settled:7" });
+  });
+
+  it("never settles more than was charged", async () => {
+    await op("p", { status: "PARTIAL", charged: 8, refunded: 6 });
+    await db.query(`UPDATE operations SET error_code = 'refund_pending:5' WHERE id = 'p'`);
+    expect((await db.query<{ due: number }>(SETTLE_PENDING_SQL, ["p"])).rows[0].due).toBe(2);
   });
 });
 

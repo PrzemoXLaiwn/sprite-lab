@@ -326,8 +326,37 @@ export async function rateLimitGuestGeneration(
 export async function rateLimitUserGeneration(
   userId: string
 ): Promise<RateLimitResult> {
-  if (getRedis()) return check("user:gen", 30, 3600, userId, true);
-  return dbChargeLimit(userId, 30, 3600);
+  // Generous: this is an abuse brake. Expensive work has its own per-user
+  // guards in src/lib/billing/operations.ts; 1-credit sprites in bulk are fine.
+  const requests = 120;
+  const limiter = getLimiter("user:gen", requests, 3600);
+  if (limiter) {
+    try {
+      const result = await limiter.limit(userId);
+      if (result.success) return { blocked: null };
+      const retryAfter = Math.max(1, Math.ceil((result.reset - Date.now()) / 1000));
+      return {
+        blocked: Response.json(
+          { success: false, error: "Too many requests. Please wait before trying again.", code: "RATE_LIMITED", retryAfter },
+          { status: 429, headers: { "Retry-After": String(retryAfter) } },
+        ),
+      };
+    } catch (err) {
+      console.warn("[RateLimit] Upstash failed — counting charges in the database instead:", err);
+    }
+  }
+  return dbChargeLimit(userId, requests, 3600);
+}
+
+/**
+ * Non-paid user actions (comments, uploads): per-user limit when Upstash is
+ * configured, open otherwise — they cost us nothing per call.
+ */
+export async function rateLimitUserAction(
+  scope: "comment" | "upload",
+  userId: string
+): Promise<RateLimitResult> {
+  return check(`user:${scope}`, 30, 3600, userId);
 }
 
 async function dbChargeLimit(userId: string, requests: number, windowSeconds: number): Promise<RateLimitResult> {
@@ -386,7 +415,8 @@ export async function rateLimitEmail(
 export async function rateLimitAiHelper(
   userId: string
 ): Promise<RateLimitResult> {
-  return check("user:ai-helper", 60, 3600, userId);
+  // Each call is a paid Claude request: never unlimited, even without Upstash
+  return check("user:ai-helper", 60, 3600, userId, true);
 }
 
 /**

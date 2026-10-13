@@ -12,7 +12,7 @@ import {
 } from "@/config";
 import { RUNWARE_MODELS, MODEL_COSTS, type RunwareModelId } from "@/lib/runware";
 import { getOrCreateUser } from "@/lib/database";
-import { requestIp } from "@/lib/billing/operations";
+import { requestIp, budgetPlan } from "@/lib/billing/operations";
 import { z } from "zod";
 import { parseJsonBody, validateBody } from "@/lib/validation/common";
 import {
@@ -294,7 +294,7 @@ export async function POST(request: Request) {
       pose,
       styleReference,
       styleReferenceGrid,
-      plan: userPlan,
+      plan: budgetPlan(dbUser?.user),
       ip: requestIp(request),
     };
 

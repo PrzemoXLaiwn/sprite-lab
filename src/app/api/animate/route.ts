@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import sharp from "sharp";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { startOperation, requestIp } from "@/lib/billing/operations";
+import { startOperation, requestIp, budgetPlan } from "@/lib/billing/operations";
 import { animationFeature } from "@/lib/billing/features";
 import { saveGeneration } from "@/lib/db/generations";
 import { rateLimitUserGeneration } from "@/lib/rate-limit";
@@ -69,8 +69,8 @@ export async function POST(request: Request) {
     select: { id: true, imageUrl: true, prompt: true, styleId: true, categoryId: true, subcategoryId: true, projectId: true, folderId: true },
   });
   if (!source) return NextResponse.json({ error: "Sprite not found." }, { status: 404 });
-  const account = await prisma.user.findUnique({ where: { id: user.id }, select: { plan: true } });
-  const plan = account?.plan ?? "FREE";
+  const account = await prisma.user.findUnique({ where: { id: user.id }, select: { plan: true, totalSpent: true, stripeCustomerId: true } });
+  const plan = budgetPlan(account);
   const ip = requestIp(request);
   const opInput = { generationId, action, customMotion, frames: option.frames, smooth };
   if (source.subcategoryId === "ANIMATION") {
@@ -178,64 +178,65 @@ export async function POST(request: Request) {
   const rig = !isTile && action !== "custom" ? rigMotionFor(action, typeof body?.label === "string" ? body.label : undefined) : null;
   // Pixel-art bipeds also walk as a whole-pixel cut-out from the original
   // sprite (no per-frame redraw); anything that can't be rigged uses the AI
-  let pixelWalk: Awaited<ReturnType<typeof makeSkeletonAnimation>> = null;
-  if (!rig && pixel && !isTile && action !== "custom" && /walk/i.test(`${action} ${typeof body?.label === "string" ? body.label : ""}`)) {
-    try {
-      const { buffer } = await safeFetchImage(source.imageUrl, { maxBytes: 10 * 1024 * 1024 });
-      pixelWalk = await makeSkeletonAnimation(buffer, { pixel: true, motion: "walk" });
-    } catch { /* fall through to the AI walk */ }
-  }
-  if (rig || pixelWalk) {
+  // (Claude marks the joints — that call runs inside the paid operation, so it
+  // is charged, rate-limited and counted like everything else)
+  const wantsPixelWalk = !rig && pixel && !isTile && action !== "custom" && /walk/i.test(action + " " + (typeof body?.label === "string" ? body.label : ""));
+  if (rig || wantsPixelWalk) {
     const started = await startOperation({ userId: user.id, feature: "rig", credits: RIG_CREDITS, plan, input: opInput, ip });
     if (!started.ok) return NextResponse.json(started.body, { status: started.status });
     const op = started.op;
     try {
       const { buffer } = await safeFetchImage(source.imageUrl, { maxBytes: 10 * 1024 * 1024 });
-      // Bipeds get a real skeleton (weight shift, arms, head, tail); anything the
-      // rigger can't read falls back to gentle breathing / hovering
-      const anim = await op.run(async () => pixelWalk
-        ?? (rig === "breathe" ? await makeSkeletonIdle(buffer, { pixel, frames: RIG_FRAMES }) : null)
-        ?? await makeRigAnimation(buffer, { kind: rig ?? "breathe", pixel, frames: RIG_FRAMES }));
-      const [sheet, gif] = await Promise.all([
-        uploadGenerationBufferToR2(anim.sheetPng, user.id, "png"),
-        uploadGenerationBufferToR2(anim.gif, user.id, "gif"),
-      ]);
-      if (!sheet.success || !sheet.url) throw new Error(`sheet upload failed: ${sheet.error}`);
-      const saved = await saveGeneration({
-        userId: user.id,
-        prompt: `[Animation: ${label}, ${anim.frameCount}f] ${source.prompt}`.slice(0, 1000),
-        fullPrompt: `rig:${rig}`,
-        categoryId: source.categoryId,
-        subcategoryId: "ANIMATION",
-        styleId: source.styleId,
-        imageUrl: sheet.url,
-        replicateCost: 0,
-        projectId: source.projectId ?? undefined,
-        folderId: source.folderId ?? undefined,
-        sourceGenerationId: source.id,
-      });
-      const savedId = saved.success && "generation" in saved && saved.generation ? saved.generation.id : undefined;
-      await op.succeed(savedId);
-      return NextResponse.json({
-        success: true,
-        sheetUrl: sheet.url,
-        gifUrl: gif.success ? gif.url : null,
-        frameCount: anim.frameCount,
-        frameWidth: anim.frameWidth,
-        frameHeight: anim.frameHeight,
-        generationId: savedId,
-        // Lets the client link the animation back to its sprite
-        sourceGenerationId: source.id,
-        smoothed: false,
-        rigged: true,
-        fps: anim.fps ?? 12,
-        creditsUsed: RIG_CREDITS,
-      });
+      const anim = await op.run(async () => wantsPixelWalk
+        ? await makeSkeletonAnimation(buffer, { pixel: true, motion: "walk" }).catch(() => null)
+        // Bipeds get a real skeleton (weight shift, arms, head, tail); anything the
+        // rigger can't read falls back to gentle breathing / hovering
+        : (rig === "breathe" ? await makeSkeletonIdle(buffer, { pixel, frames: RIG_FRAMES }) : null)
+          ?? await makeRigAnimation(buffer, { kind: rig ?? "breathe", pixel, frames: RIG_FRAMES }));
+      if (anim) {
+        const [sheet, gif] = await Promise.all([
+          uploadGenerationBufferToR2(anim.sheetPng, user.id, "png"),
+          uploadGenerationBufferToR2(anim.gif, user.id, "gif"),
+        ]);
+        if (!sheet.success || !sheet.url) throw new Error(`sheet upload failed: ${sheet.error}`);
+        const saved = await saveGeneration({
+          userId: user.id,
+          prompt: `[Animation: ${label}, ${anim.frameCount}f] ${source.prompt}`.slice(0, 1000),
+          fullPrompt: `rig:${rig ?? "walk"}`,
+          categoryId: source.categoryId,
+          subcategoryId: "ANIMATION",
+          styleId: source.styleId,
+          imageUrl: sheet.url,
+          replicateCost: 0,
+          projectId: source.projectId ?? undefined,
+          folderId: source.folderId ?? undefined,
+          sourceGenerationId: source.id,
+        });
+        const savedId = saved.success && "generation" in saved && saved.generation ? saved.generation.id : undefined;
+        await op.succeed(savedId);
+        return NextResponse.json({
+          success: true,
+          sheetUrl: sheet.url,
+          gifUrl: gif.success ? gif.url : null,
+          frameCount: anim.frameCount,
+          frameWidth: anim.frameWidth,
+          frameHeight: anim.frameHeight,
+          generationId: savedId,
+          // Lets the client link the animation back to its sprite
+          sourceGenerationId: source.id,
+          smoothed: false,
+          rigged: true,
+          fps: anim.fps ?? 12,
+          creditsUsed: RIG_CREDITS,
+        });
+      }
     } catch (err) {
       console.error("[Animate] Rig failed:", err instanceof Error ? err.message : err);
       await op.fail("RIG_FAILED");
       return NextResponse.json({ error: "Animation failed — your credits were refunded. Please try again." }, { status: 502 });
     }
+    // This sprite can't walk as a cut-out: refund the rig price and use the AI walk below
+    await op.cancel("NO_PIXEL_WALK");
   }
 
   // Reference: the sprite flattened onto white (the model draws on white too)

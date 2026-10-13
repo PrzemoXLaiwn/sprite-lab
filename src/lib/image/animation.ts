@@ -61,9 +61,11 @@ export interface AssembleOptions {
  */
 export interface Frame extends Raw {
   cell?: { x: number; y: number };
+  /** Some edge of this piece was cut by us (not a natural white gap) — it may slice a figure. */
+  cut?: boolean;
 }
 
-interface Piece { raw: Raw; x: number; y: number }
+interface Piece { raw: Raw; x: number; y: number; cut?: boolean }
 
 /** Grid image → finished animation (extract + assemble). */
 export async function buildAnimation(
@@ -101,7 +103,7 @@ export async function extractFrames(gridImage: Buffer, cols: number, rows: numbe
       for (let c = 0; c < cols; c++) {
         const w = xs[c + 1] - xs[c], h = ys[r + 1] - ys[r];
         if (w <= 0 || h <= 0) continue; // degenerate cut on a tiny sheet
-        pieces.push({ raw: crop(full, xs[c], ys[r], w, h), x: xs[c], y: ys[r] });
+        pieces.push({ raw: crop(full, xs[c], ys[r], w, h), x: xs[c], y: ys[r], cut: true });
       }
     }
   }
@@ -111,7 +113,7 @@ export async function extractFrames(gridImage: Buffer, cols: number, rows: numbe
     const b = bounds(piece.raw);
     if (!b) continue; // the model left a cell empty — skip it rather than flash a blank frame
     const sprite = crop(piece.raw, b.x0, b.y0, b.x1 - b.x0 + 1, b.y1 - b.y0 + 1);
-    out.push({ ...sprite, absX: piece.x + b.x0, absY: piece.y + b.y0 });
+    out.push({ ...sprite, absX: piece.x + b.x0, absY: piece.y + b.y0, cut: piece.cut });
   }
 
   // Record where each sprite sits in its nominal grid cell — only trustworthy
@@ -123,11 +125,17 @@ export async function extractFrames(gridImage: Buffer, cols: number, rows: numbe
   });
   return out.map((f, i) => {
     const frame: Frame = { data: f.data, width: f.width, height: f.height };
+    if (f.cut) frame.cut = true;
     if (matches) {
       frame.cell = { x: ((i % cols) + 0.5) * cw - f.absX, y: (Math.floor(i / cols) + 1) * ch - f.absY };
     }
     return frame;
   });
+}
+
+/** A frame we cut out ourselves whose edge runs straight through solid pixels — half a figure. */
+export function isSlicedFrame(f: Frame): boolean {
+  return f.cut === true && hasCutEdge(f);
 }
 
 /**
@@ -381,6 +389,8 @@ function detectFrames(full: Raw, cols: number, rows: number): Piece[] {
   // empty band of ≥3px separates them; then cut over-tall bands when the
   // model clearly drew more rows than we found.
   let bands = runs(rowProfile, Math.max(3, Math.round(height * 0.004)), height * 0.08);
+  // Edges at real white gaps; anything else was cut by us (and may slice a figure)
+  const naturalRows = new Set(bands.flat());
   if (bands.length < rows) bands = splitOversized(bands, rowProfile, height / rows, rows);
   const frames: Piece[] = [];
   for (const [y0, y1] of bands) {
@@ -389,6 +399,7 @@ function detectFrames(full: Raw, cols: number, rows: number): Piece[] {
       for (let x = 0; x < width; x++) if (full.data[(y * width + x) * 4 + 3] >= 128) ink[x]++;
     }
     let segs = runs(ink, Math.max(3, Math.round(width * 0.004)), 0);
+    const naturalCols = new Set(segs.flat());
     if (segs.length < cols) {
       // Two touching sprites are both full height; a sprite plus its breath
       // of fire is not — leave those together
@@ -452,7 +463,10 @@ function detectFrames(full: Raw, cols: number, rows: number): Piece[] {
       if (!whole) { out.push([a, b]); continue; }
       for (let k = 0; k < edges.length - 1; k++) out.push([edges[k], edges[k + 1]]);
     }
-    for (const [a, b] of out) frames.push({ raw: crop(full, a, y0, b - a, y1 - y0), x: a, y: y0 });
+    const bandCut = !naturalRows.has(y0) || !naturalRows.has(y1);
+    for (const [a, b] of out) {
+      frames.push({ raw: crop(full, a, y0, b - a, y1 - y0), x: a, y: y0, cut: bandCut || !naturalCols.has(a) || !naturalCols.has(b) });
+    }
   }
   return frames;
 }

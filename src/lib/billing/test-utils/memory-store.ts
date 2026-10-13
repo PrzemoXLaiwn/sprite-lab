@@ -1,12 +1,12 @@
 // In-memory BillingStore for tests. Mirrors the SQL semantics of store.ts:
 // conditional charge, refund capped at the charge, first-finish-wins, and the
 // spend guard serialised by one lock (like pg_advisory_xact_lock).
-import type { BillingStore, OpenInput, OpenResult, UserStats } from "../store";
+import type { BillingStore, FinalStatus, OpenInput, OpenResult, UserStats } from "../store";
 import type { LedgerRow } from "../ledger";
 
 interface Op {
   id: string; userId: string; feature: string; status: string; creditsCharged: number; creditsRefunded: number;
-  estCostUsd: number; inputHash: string | null; ipHash: string | null; plan: string | null; createdAt: Date; costLogIncomplete: boolean;
+  estCostUsd: number; errorCode?: string | null; inputHash: string | null; ipHash: string | null; plan: string | null; createdAt: Date; costLogIncomplete: boolean;
 }
 
 export class MemoryStore implements BillingStore {
@@ -35,9 +35,10 @@ export class MemoryStore implements BillingStore {
       return has ? logged : o.estCostUsd;
     };
     const today = this.ops.filter((o) => o.createdAt >= dayStart);
-    const orphan = this.calls.filter((c) => !c.operationId).reduce((a, c) => a + (c.costUsd ?? c.estCostUsd), 0);
+    const outside = this.calls.filter((c) => !c.operationId).reduce((a, c) => a + (c.costUsd ?? c.estCostUsd), 0);
     return {
-      total: today.reduce((a, o) => a + costOf(o), 0) + orphan,
+      outside,
+      total: today.reduce((a, o) => a + costOf(o), 0),
       free: today.filter((o) => o.plan === "FREE").reduce((a, o) => a + costOf(o), 0),
     };
   }
@@ -47,7 +48,7 @@ export class MemoryStore implements BillingStore {
     const recent = this.ops.filter((o) => o.createdAt >= since);
     const mine = recent.filter((o) => o.userId === userId);
     return {
-      opsLastHour: mine.length,
+      opsLastHour: mine.filter((o) => o.feature !== "sprite").length,
       failedLastHour: mine.filter((o) => o.status === "FAILED").length,
       sameInputFailed: mine.filter((o) => o.status === "FAILED" && o.inputHash === inputHash).length,
       ipFailedLastHour: ipHash ? recent.filter((o) => o.ipHash === ipHash && o.status === "FAILED").length : 0,
@@ -94,11 +95,12 @@ export class MemoryStore implements BillingStore {
     return due;
   }
 
-  async finish(operationId: string, status: "SUCCEEDED" | "PARTIAL" | "FAILED", data: { costLogIncomplete?: boolean }): Promise<void> {
+  async finish(operationId: string, status: FinalStatus, data: { costLogIncomplete?: boolean; errorCode?: string | null }): Promise<void> {
     this.maybeFail("finish");
     const o = this.ops.find((x) => x.id === operationId);
     if (!o || o.status !== "RUNNING") return;
     o.status = status;
+    o.errorCode = data.errorCode ?? null;
     if (data.costLogIncomplete !== undefined) o.costLogIncomplete = data.costLogIncomplete;
   }
 

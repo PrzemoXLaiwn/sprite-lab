@@ -13,6 +13,7 @@
 // =============================================================================
 
 import { AsyncLocalStorage } from "node:async_hooks";
+import { after } from "next/server";
 
 export type Outcome = "ok" | "error" | "timeout" | "moderated" | "discarded";
 
@@ -121,7 +122,12 @@ export function recordProviderCall(input: ProviderCallInput): void {
     console.error("[ledger] could not record provider call:", err instanceof Error ? err.message : err);
     return;
   }
-  ctx?.pending.push(write);
+  if (ctx) ctx.pending.push(write);
+  else {
+    // Outside an operation nothing awaits the write: keep the function alive
+    // until it lands (no-op outside a request, e.g. scripts and tests)
+    try { after(write); } catch { /* not in a request scope */ }
+  }
 }
 
 /** Waits (bounded) for this operation's ledger writes; true when all landed. */

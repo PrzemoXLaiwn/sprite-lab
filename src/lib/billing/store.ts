@@ -30,12 +30,15 @@ export interface UserStats {
   ipFailedLastHour: number;
 }
 
+/** CANCELLED = refunded and not counted as a failure (e.g. a fallback path took over). */
+export type FinalStatus = "SUCCEEDED" | "PARTIAL" | "FAILED" | "CANCELLED";
+
 export interface BillingStore {
   stats(userId: string, ipHash: string | null, inputHash: string | null, since: Date): Promise<UserStats>;
   open(input: OpenInput): Promise<OpenResult>;
   /** Refunds up to `amount` (or everything still due when null); returns credits actually refunded. */
   refund(operationId: string, amount: number | null, reason: string): Promise<number>;
-  finish(operationId: string, status: "SUCCEEDED" | "PARTIAL" | "FAILED", data: { generationId?: string | null; errorCode?: string | null; costLogIncomplete?: boolean }): Promise<void>;
+  finish(operationId: string, status: FinalStatus, data: { generationId?: string | null; errorCode?: string | null; costLogIncomplete?: boolean }): Promise<void>;
 }
 
 // Advisory lock id for the daily spend check (any constant works; one lock for all instances)
@@ -54,12 +57,16 @@ WITH calls AS (
   WHERE o.created_at >= $1
 )
 SELECT
-  coalesce((SELECT sum(cost) FROM ops), 0)::float + coalesce((SELECT c FROM calls WHERE operation_id IS NULL), 0)::float AS total,
-  coalesce((SELECT sum(cost) FROM ops WHERE plan = 'FREE'), 0)::float AS free`;
+  coalesce((SELECT sum(cost) FROM ops), 0)::float AS total,
+  coalesce((SELECT sum(cost) FROM ops WHERE plan = 'FREE'), 0)::float AS free,
+  coalesce((SELECT c FROM calls WHERE operation_id IS NULL), 0)::float AS outside`;
+// "outside" (guest sprites, helper calls) is reported but doesn't block paid
+// work: free endpoints have their own rate limits, and counting them here
+// would let anyone without credits exhaust the budget for everyone.
 
 /** Rolling-hour counters for the guards. $1 user, $2 ip hash, $3 input hash, $4 since. */
 export const STATS_SQL = `SELECT
-  count(*) FILTER (WHERE user_id = $1)::int AS "opsLastHour",
+  count(*) FILTER (WHERE user_id = $1 AND feature <> 'sprite')::int AS "opsLastHour",
   count(*) FILTER (WHERE user_id = $1 AND status = 'FAILED')::int AS "failedLastHour",
   count(*) FILTER (WHERE user_id = $1 AND status = 'FAILED' AND input_hash = $3)::int AS "sameInputFailed",
   count(*) FILTER (WHERE ip_hash = $2 AND status = 'FAILED')::int AS "ipFailedLastHour"
@@ -80,6 +87,30 @@ WITH o AS (
 UPDATE operations SET credits_refunded = credits_refunded + d.due
 FROM d WHERE operations.id = d.id AND d.due > 0
 RETURNING d.due AS due, d.user_id AS user_id`;
+
+/** A PARTIAL operation whose refund couldn't be written records "refund_pending:<n>"; this settles it once. */
+export const SETTLE_PENDING_SQL = `
+WITH o AS (
+  SELECT id, user_id, LEAST(split_part(error_code, ':', 2)::int, credits_charged - credits_refunded) AS due
+  FROM operations
+  WHERE id = $1 AND status = 'PARTIAL' AND error_code LIKE 'refund_pending:%' FOR UPDATE
+)
+UPDATE operations SET credits_refunded = credits_refunded + o.due, error_code = 'refund_settled:' || o.due
+FROM o WHERE operations.id = o.id AND o.due > 0
+RETURNING o.due AS due, o.user_id AS user_id`;
+
+/**
+ * Operations stuck RUNNING (the platform killed the function, or every write
+ * failed) with no generation saved for that user around that time: nothing
+ * was delivered, so they become FAILED and get refunded by the cron.
+ */
+export const STALE_RUNNING_SQL = `
+UPDATE operations o SET status = 'FAILED', error_code = 'stuck_no_output', finished_at = now()
+WHERE o.status = 'RUNNING' AND o.created_at < now() - interval '15 minutes'
+  AND NOT EXISTS (
+    SELECT 1 FROM generations g
+    WHERE g.user_id = o.user_id AND g.created_at BETWEEN o.created_at AND o.created_at + interval '10 minutes')
+RETURNING o.id`;
 
 export function prismaStore(): BillingStore {
   const db = async () => (await import("@/lib/prisma")).prisma;
@@ -122,7 +153,7 @@ export function prismaStore(): BillingStore {
           });
           const user = await tx.user.findUniqueOrThrow({ where: { id: input.userId }, select: { credits: true } });
           return { ok: true as const, operationId: op.id, credits: user.credits };
-        });
+        }, { maxWait: 10_000, timeout: 20_000 });
       } catch (err) {
         throw err instanceof Error ? err : new Error(String(err));
       }
