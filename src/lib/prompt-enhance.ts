@@ -1,6 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { trackClaude } from "@/lib/claude-usage";
+import { claudeCall, trackClaude } from "@/lib/claude-usage";
 import { translateWithCloudflare } from "@/lib/cloudflare-ai";
+
+const HAIKU = "claude-haiku-4-5-20251001";
 
 /**
  * AI Prompt Enhancer — Pro/Studio feature
@@ -127,12 +129,12 @@ export async function translatePromptIfNeeded(
   try {
     const anthropic = new Anthropic({ apiKey, timeout: 15_000, maxRetries: 1 });
 
-    const response = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
+    const response = await claudeCall("translate", HAIKU, () => anthropic.messages.create({
+      model: HAIKU,
       max_tokens: 200,
       system: TRANSLATE_SYSTEM_PROMPT,
       messages: [{ role: "user", content: original }],
-    });
+    }));
     trackClaude("translate", response);
 
     const text = response.content[0];
@@ -183,8 +185,8 @@ export async function enhanceUserPrompt(
   try {
     const anthropic = new Anthropic({ apiKey, timeout: 15_000, maxRetries: 1 });
 
-    const response = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
+    const response = await claudeCall("enhance", HAIKU, () => anthropic.messages.create({
+      model: HAIKU,
       max_tokens: 100,
       system: SYSTEM_PROMPT,
       messages: [
@@ -193,7 +195,7 @@ export async function enhanceUserPrompt(
           content: `Category: ${categoryId}/${subcategoryId}\nUser prompt: "${original}"`,
         },
       ],
-    });
+    }));
     trackClaude("enhance", response);
 
     const text = response.content[0];

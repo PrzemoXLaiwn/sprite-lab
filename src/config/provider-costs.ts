@@ -9,6 +9,8 @@
 // cost ledger has ≥14 days of data (provider_calls).
 // =============================================================================
 
+import { PRICE } from "@/lib/billing/features";
+
 export type CostStatus = "measured" | "derived" | "estimate";
 
 export interface FeatureCost {
@@ -40,6 +42,13 @@ export const FEATURE_COSTS: Record<string, FeatureCost> = {
   rotate4: { runwareUsd: 0.0692, runwareMaxUsd: 2 * P1024, n: 1, status: "measured", claudeUsd: 0, claudeMaxUsd: 0 },
   rotate8: { runwareUsd: P2048, runwareMaxUsd: 2 * P2048, n: 0, status: "derived", claudeUsd: 0, claudeMaxUsd: 0 },
   walk4dir: { runwareUsd: P2048 + P1024 * 0.5, runwareMaxUsd: 2 * P2048 + 2 * P1024, n: 2, status: "derived", claudeUsd: 0, claudeMaxUsd: 0 },
+  // Image tools: list-price estimates, not measured (see PRICE in
+  // src/lib/billing/features.ts). "variation" is a Replicate cost (FLUX 1.1
+  // Pro, $0.04/image) kept in the image-provider column.
+  remove_bg: { runwareUsd: PRICE.removeBg, runwareMaxUsd: PRICE.removeBg, n: 0, status: "estimate", claudeUsd: 0, claudeMaxUsd: 0 },
+  upscale_2x: { runwareUsd: PRICE.upscale, runwareMaxUsd: PRICE.upscale, n: 0, status: "estimate", claudeUsd: 0, claudeMaxUsd: 0 },
+  upscale_4x: { runwareUsd: PRICE.upscale, runwareMaxUsd: PRICE.upscale, n: 0, status: "estimate", claudeUsd: 0, claudeMaxUsd: 0 },
+  variation: { runwareUsd: PRICE.fluxPro, runwareMaxUsd: PRICE.fluxPro, n: 0, status: "estimate", claudeUsd: 0, claudeMaxUsd: 0 },
 };
 
 /** Share of extra spend on failed / refunded attempts (not in the success averages). */

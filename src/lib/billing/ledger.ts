@@ -18,7 +18,7 @@ import { after } from "next/server";
 export type Outcome = "ok" | "error" | "timeout" | "moderated" | "discarded";
 
 export interface ProviderCallInput {
-  provider: "runware" | "anthropic" | "cloudflare";
+  provider: "runware" | "anthropic" | "cloudflare" | "replicate";
   model: string;
   task: string;
   size?: string;

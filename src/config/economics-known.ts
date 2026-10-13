@@ -45,4 +45,21 @@ export const KNOWN_MARGIN_VIOLATIONS: readonly string[] = [
   "anim_9@STARTER+VAT",
   "anim_smooth_9@STARTER",
   "anim_smooth_9@STARTER+VAT",
+  // /api/variations (added 2026-10-13 with the cost ledger): 1 credit buys a
+  // Replicate FLUX 1.1 Pro image at $0.04 — below cost on every offer, even
+  // the credit packs. Needs a price (or model) decision from the owner.
+  "variation@STARTER",
+  "variation@STARTER+VAT",
+  "variation@PRO",
+  "variation@PRO+VAT",
+  "variation@UNLIMITED",
+  "variation@UNLIMITED+VAT",
+  "variation@PACK_25",
+  "variation@PACK_25+VAT",
+  "variation@PACK_75",
+  "variation@PACK_75+VAT",
+  "variation@PACK_200",
+  "variation@PACK_200+VAT",
+  "variation@PACK_500",
+  "variation@PACK_500+VAT",
 ];

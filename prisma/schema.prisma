@@ -843,7 +843,7 @@ model ProviderCall {
   id             String   @id @default(cuid())
   operationId    String?  @map("operation_id")
   userId         String?  @map("user_id")
-  provider       String   // runware | anthropic | cloudflare
+  provider       String   // runware | anthropic | cloudflare | replicate
   model          String
   task           String   // sprite | grid | edit | plan | rig | translate | enhance ...
   size           String?

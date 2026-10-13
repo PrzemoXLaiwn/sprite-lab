@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ExternalLink, Loader2, Pencil } from "lucide-react";
 import { fetchUsageStats, saveClaudeBalance, type GenKind, type UsageStats } from "@/app/(dashboard)/admin/usage.actions";
 import { Legend, SERIES_COLORS, UsageChart, type Series } from "./UsageCharts";
+import type { LedgerStats } from "@/lib/billing/ledger-report";
 
 const KINDS: { key: GenKind; label: string }[] = [
   { key: "sprite", label: "Sprites" },
@@ -61,6 +62,114 @@ function runway(balance: number, burn7: number) {
   return balance / (burn7 / 7);
 }
 const toneFor = (days: number | null) => (days === null ? "good" : days < 3 ? "bad" : days < 10 ? "warn" : "good");
+
+const pct = (v: number) => `${(v * 100).toFixed(v > 0 && v < 0.1 ? 1 : 0)}%`;
+const usdFine = (v: number) => (v === 0 ? "$0" : v < 0.01 ? `${v.toFixed(4)}` : usd(v));
+const LEDGER_SERIES = [
+  { key: "rep", label: "Reported by provider", color: SERIES_COLORS[0] },
+  { key: "est", label: "Our estimate (not reported)", color: SERIES_COLORS[1] },
+];
+
+/** Cost ledger: paid operations, provider calls and the Runware reconciliation. */
+function LedgerSection({ ledger, dates, range, minRev }: { ledger: LedgerStats; dates: string[]; range: number; minRev: number }) {
+  if (!ledger.available) {
+    return (
+      <Card title="Cost ledger" sub="Per-operation charges, refunds and provider calls">
+        <p className="text-[12.5px] text-[#8B93A5]">
+          No ledger data on this database yet. The <span className="font-mono text-[#C9CFDB]">operations</span> and <span className="font-mono text-[#C9CFDB]">provider_calls</span> tables
+          appear after <span className="font-mono text-[#C9CFDB]">prisma/sql/2026-10-13_cost_ledger.sql</span> runs (see docs/cost-guards-rollout.md).
+        </p>
+      </Card>
+    );
+  }
+  const reported = ledger.days.reduce((a, x) => a + x.reportedUsd, 0);
+  const estimated = ledger.days.reduce((a, x) => a + x.estimatedUsd, 0);
+  const rc = ledger.reconciliation;
+  const gap = rc?.gapUsd ?? null;
+  // A gap within 10% of what Runware reported (or under $0.50) is timing noise
+  const gapTone = gap === null ? undefined : Math.abs(gap) <= Math.max(0.5, Math.abs(rc?.reportedDeltaUsd ?? 0) * 0.1) ? "good" : "warn";
+  const h = ledger.health;
+  const series: Series[] = [
+    { ...LEDGER_SERIES[0], values: ledger.days.map((x) => x.reportedUsd) },
+    { ...LEDGER_SERIES[1], values: ledger.days.map((x) => x.estimatedUsd) },
+  ];
+
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <Tile label={`Logged cost (${range}d)`} value={usd(reported + estimated)} hint={`rep. ${usd(reported)} · est. ${usd(estimated)}`} />
+        <Tile label="Runware gap" value={gap === null ? "—" : `${gap < 0 ? "−" : ""}${usd(Math.abs(gap))}`} tone={gapTone}
+          hint={rc ? <>unlogged · {ago(rc.checkedAt)} ago</> : "no snapshot yet"} />
+        <Tile label="Stuck > 15 min" value={h ? int(h.stuckRunning) : "—"} tone={h ? (h.stuckRunning > 0 ? "bad" : "good") : undefined}
+          hint={h ? "still running" : "unavailable"} />
+        <Tile label="Refunds pending" value={h ? int(h.refundsPending) : "—"} tone={h ? (h.refundsPending > 0 ? "warn" : "good") : undefined}
+          hint={h ? `${int(h.creditsDue)} cr owed back` : "unavailable"} />
+      </div>
+
+      <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">
+        <Card title="Provider spend (ledger)" sub="USD per day from logged provider calls · the price the provider reported, or our list-price estimate when it reported none">
+          <div className="mb-3"><Legend series={series} /></div>
+          <UsageChart title="Ledger provider spend per day" dates={dates} series={series}
+            format={(v) => `${v < 1 && v > 0 ? v.toFixed(2) : v.toFixed(v >= 10 ? 0 : 1)}`} />
+          {ledger.providers.length > 0 && (
+            <table className="mt-3 w-full text-[12.5px]">
+              <thead><tr className="text-[#8B93A5]"><th className="pb-1 text-left font-medium">Provider</th><th className="pb-1 text-right font-medium">Calls</th><th className="pb-1 text-right font-medium">Not ok</th><th className="pb-1 text-right font-medium">Cost</th></tr></thead>
+              <tbody>
+                {ledger.providers.map((p) => (
+                  <tr key={p.provider} className="text-[#C9CFDB]">
+                    <td className="py-0.5">{p.provider}</td>
+                    <td className="py-0.5 text-right font-mono tabular-nums">{int(p.calls)}</td>
+                    <td className="py-0.5 text-right font-mono tabular-nums">{int(p.failed)}</td>
+                    <td className="py-0.5 text-right font-mono tabular-nums text-white">{usd(p.reportedUsd + p.estimatedUsd)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+
+        <Card title="Operations by feature" sub={`Paid operations, last ${range}d · provider cost per credit kept vs. ${usdFine(minRev)}, what one credit nets on the cheapest offer`}>
+          {ledger.features.length ? (
+            <div className="-mx-1 overflow-x-auto px-1">
+              <table className="w-full min-w-[480px] text-[12.5px]">
+                <thead>
+                  <tr className="text-[#8B93A5]">
+                    <th className="pb-1 text-left font-medium">Feature</th>
+                    <th className="pb-1 text-right font-medium">Ops</th>
+                    <th className="pb-1 text-right font-medium">Failed</th>
+                    <th className="pb-1 text-right font-medium">Refunded</th>
+                    <th className="pb-1 text-right font-medium">Avg cost</th>
+                    <th className="pb-1 text-right font-medium">Avg credits</th>
+                    <th className="pb-1 text-right font-medium">$/credit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ledger.features.map((f) => {
+                    const kept = f.creditsCharged - f.creditsRefunded;
+                    const perCredit = kept > 0 ? f.costUsd / kept : null;
+                    const losing = perCredit !== null && minRev > 0 && perCredit > minRev;
+                    return (
+                      <tr key={f.feature} className="border-t border-white/[0.04] text-[#C9CFDB]">
+                        <td className="py-1 font-mono text-[12px]">{f.feature}{f.incomplete > 0 && <span className="ml-1 text-amber-300" title={`${f.incomplete} with an incomplete cost log`}>*</span>}</td>
+                        <td className="py-1 text-right font-mono tabular-nums text-white">{int(f.ops)}</td>
+                        <td className={`py-1 text-right font-mono tabular-nums ${f.ops && f.failed / f.ops > 0.15 ? "text-red-300" : ""}`}>{f.ops ? pct(f.failed / f.ops) : "—"}<span className="text-[#7A8294]"> ({int(f.failed)})</span></td>
+                        <td className="py-1 text-right font-mono tabular-nums">{int(f.creditsRefunded)}<span className="text-[#7A8294]"> cr</span></td>
+                        <td className="py-1 text-right font-mono tabular-nums text-white">{usdFine(f.ops ? f.costUsd / f.ops : 0)}</td>
+                        <td className="py-1 text-right font-mono tabular-nums">{f.ops ? (kept / f.ops).toFixed(1) : "—"}</td>
+                        <td className={`py-1 text-right font-mono tabular-nums ${losing ? "text-red-300" : "text-emerald-300"}`}>{perCredit === null ? "—" : usdFine(perCredit)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : <p className="text-[12px] text-[#8B93A5]">No paid operations in this range yet.</p>}
+          <p className="mt-2 text-[11px] text-[#7A8294]">Red $/credit: provider cost above what one credit nets on the cheapest offer. * cost log incomplete.</p>
+        </Card>
+      </div>
+    </>
+  );
+}
 
 /** `preview` renders fixed data without fetching (design checks only). */
 export function UsagePanel({ preview }: { preview?: UsageStats } = {}) {
@@ -201,6 +310,8 @@ export function UsagePanel({ preview }: { preview?: UsageStats } = {}) {
           <UsageChart title="Credits spent per day" dates={dates} series={[{ key: "cr", label: "Credits", color: SERIES_COLORS[0], values: d.map((x) => x.credits) }]} />
         </Card>
       </div>
+
+      <LedgerSection ledger={stats.ledger} dates={dates} range={range} minRev={stats.minRevenuePerCreditUsd} />
 
       <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">
         <Card title="People" sub="New signups vs. people who generated something">

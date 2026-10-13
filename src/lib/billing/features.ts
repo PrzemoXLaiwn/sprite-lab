@@ -11,6 +11,20 @@
 // Per-call prices are list prices seen in Runware responses (Oct 2026):
 // Nano Banana 1024 $0.0692, 2048 $0.1029, GPT Image Mini $0.036, FLUX.2 klein
 // $0.0008; Claude planner/rig ≈ $0.02–0.07 (estimate until the ledger has data).
+//
+// Older tools — ESTIMATES, not measured (no samples in the repo). The Runware
+// calls send includeCost, so provider_calls holds the real price after the
+// first requests; update these from it.
+//   removeBg      Runware background removal: a fraction of a cent at list
+//                 price; $0.002 reserved so an underestimate can't hide spend.
+//   upscale       Runware upscaler (2×/4×), priced by output size; $0.01
+//                 reserved per call (covers 4× of a 1024 px input).
+//   fluxPro       Replicate black-forest-labs/flux-1.1-pro: $0.04 per image
+//                 (Replicate list price) — /api/variations.
+//   replicateRef  Replicate flux-dev reference image: $0.025 per image.
+//   replicate3d   Replicate image→3D (Rodin / TRELLIS / Hunyuan3D / Wonder3D),
+//                 billed per run or GPU time. No invoice data here, so $0.40 is
+//                 a deliberately high reservation (Rodin is the priciest).
 // =============================================================================
 
 export const PRICE = {
@@ -20,6 +34,11 @@ export const PRICE = {
   standard: 0.0008,
   claudePlan: 0.05,
   claudeRig: 0.07,
+  removeBg: 0.002,
+  upscale: 0.01,
+  fluxPro: 0.04,
+  replicateRef: 0.025,
+  replicate3d: 0.4,
 } as const;
 
 export interface FeatureSpec {
@@ -48,6 +67,13 @@ export const FEATURES = {
   rotate8: spec(PRICE.grid2048 * 2, PRICE.grid2048 * 2),
   // main sheet (+1 redraw) and up to two frozen rows redrawn
   walk4dir: spec(PRICE.grid2048 * 2 + PRICE.grid1024 * 2, PRICE.grid2048 * 2 + PRICE.grid1024 * 2),
+  // one provider call each; cheap, so they fail open like sprites
+  remove_bg: spec(PRICE.removeBg, PRICE.removeBg * 2, false),
+  upscale: spec(PRICE.upscale, PRICE.upscale * 2, false),
+  // up to 4 images, one Replicate prediction each (reservation = the maximum)
+  variations: spec(PRICE.fluxPro * 4, PRICE.fluxPro * 4),
+  // reference image + one 3D step; the cap leaves room for one retry/fallback of each
+  model_3d: spec(PRICE.replicateRef + PRICE.replicate3d, (PRICE.replicateRef + PRICE.replicate3d) * 2),
 } satisfies Record<string, FeatureSpec>;
 
 export type FeatureKey = keyof typeof FEATURES;

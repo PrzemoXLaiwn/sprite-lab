@@ -8,6 +8,9 @@
 //   credit_transactions  → credits spent / refunded / bought
 //   generation_events    → Claude calls (eventType "claude_usage", see claude-usage.ts)
 //   users                → signups, plans
+//   operations / provider_calls / cost_reconciliations → the cost ledger
+//                          (src/lib/billing/ledger-report.ts; empty until the
+//                          ledger migration has run)
 // Plus the live Runware wallet (accountManagement API). Anthropic has no
 // balance API: the admin types the console balance once, we subtract the
 // Claude spend we logged since then.
@@ -17,6 +20,8 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { isAdmin } from "@/lib/admin";
 import { CLAUDE_BALANCE_EVENT, CLAUDE_USAGE_EVENT } from "@/lib/claude-usage";
+import { loadLedgerStats, type LedgerStats } from "@/lib/billing/ledger-report";
+import { FX_GBP_PER_USD, netPerCreditGbp, offers } from "@/config/economics";
 
 export type GenKind = "sprite" | "anim" | "rig" | "dirs" | "edit";
 
@@ -39,6 +44,17 @@ export interface UsageStats {
   topUsers: { email: string; plan: string; gens: number; credits: number; lastAt: string }[];
   recent: { id: string; kind: GenKind; prompt: string; style: string; email: string; costUsd: number; at: string }[];
   totals: { revenue30: number; creditsHeld: number; failedRate: number };
+  ledger: LedgerStats;
+  /** Lowest net revenue one credit brings (cheapest offer, no VAT), USD — the bar for cost per credit. */
+  minRevenuePerCreditUsd: number;
+}
+
+function minRevenuePerCreditUsd(): number {
+  try {
+    return Math.min(...offers().map((o) => netPerCreditGbp(o, false))) / FX_GBP_PER_USD;
+  } catch {
+    return 0;
+  }
 }
 
 const KIND_SQL = `case
@@ -90,12 +106,13 @@ export async function fetchUsageStats(range: 7 | 30 | 90 = 30): Promise<{ succes
   start.setUTCHours(0, 0, 0, 0);
   start.setUTCDate(start.getUTCDate() - (days - 1));
   const since7 = new Date(Date.now() - 7 * 864e5);
+  const dates = Array.from({ length: days }, (_, i) => new Date(start.getTime() + i * 864e5).toISOString().slice(0, 10));
 
   type Row = Record<string, unknown>;
   const q = <T = Row>(sql: string, ...args: unknown[]) => prisma.$queryRawUnsafe<T[]>(sql, ...args);
   const day = (col: string) => `to_char(date_trunc('day', ${col} at time zone 'UTC'), 'YYYY-MM-DD')`;
 
-  const [gens, credits, signups, active, claudeDays, claudeFeat, plans, top, recent, balanceRow, revenue, held, wallet] = await Promise.all([
+  const [gens, credits, signups, active, claudeDays, claudeFeat, plans, top, recent, balanceRow, revenue, held, wallet, ledger] = await Promise.all([
     q<{ d: string; k: GenKind; n: number; cost: number }>(`select ${day("created_at")} d, ${KIND_SQL} k, count(*)::int n, coalesce(sum(replicate_cost),0)::float cost from generations where created_at >= $1 group by 1,2`, start),
     q<{ d: string; spent: number; refunded: number; refunds: number }>(`select ${day("created_at")} d,
         coalesce(sum(case when type='GENERATION' then -amount end),0)::int spent,
@@ -117,6 +134,7 @@ export async function fetchUsageStats(range: 7 | 30 | 90 = 30): Promise<{ succes
     q<{ s: number }>(`select coalesce(sum(money_amount),0)::float s from credit_transactions where type='PURCHASE' and created_at >= $1`, start),
     q<{ s: number }>(`select coalesce(sum(credits),0)::int s from users`),
     runwareWallet(),
+    loadLedgerStats(q, start, dates),
   ]);
 
   // Claude balance = what the admin typed − logged spend since then
@@ -128,9 +146,8 @@ export async function fetchUsageStats(range: 7 | 30 | 90 = 30): Promise<{ succes
   }
 
   const series: UsageDay[] = [];
-  for (let i = 0; i < days; i++) {
-    const dt = new Date(start.getTime() + i * 864e5);
-    series.push({ date: dt.toISOString().slice(0, 10), gens: { sprite: 0, anim: 0, rig: 0, dirs: 0, edit: 0 }, credits: 0, refunds: 0, runwareUsd: 0, claudeUsd: 0, signups: 0, activeUsers: 0 });
+  for (const date of dates) {
+    series.push({ date, gens: { sprite: 0, anim: 0, rig: 0, dirs: 0, edit: 0 }, credits: 0, refunds: 0, runwareUsd: 0, claudeUsd: 0, signups: 0, activeUsers: 0 });
   }
   const at = new Map(series.map((s) => [s.date, s]));
   for (const r of gens) { const s = at.get(r.d); if (s) { s.gens[r.k] += r.n; s.runwareUsd += r.cost; } }
@@ -152,6 +169,8 @@ export async function fetchUsageStats(range: 7 | 30 | 90 = 30): Promise<{ succes
       topUsers: top.map((t) => ({ email: maskEmail(t.email), plan: t.plan, gens: t.gens, credits: t.credits, lastAt: new Date(t.last_at).toISOString() })),
       recent: recent.map((r) => ({ id: r.id, kind: r.k, prompt: r.prompt.replace(/^\[[^\]]*\]\s*/, "").slice(0, 80), style: r.style_id, email: r.email ? maskEmail(r.email) : "—", costUsd: r.cost ?? 0, at: new Date(r.created_at).toISOString() })),
       totals: { revenue30: revenue[0]?.s ?? 0, creditsHeld: held[0]?.s ?? 0, failedRate: totalGens + totalRefunds > 0 ? totalRefunds / (totalGens + totalRefunds) : 0 },
+      ledger,
+      minRevenuePerCreditUsd: minRevenuePerCreditUsd(),
     },
   };
 }

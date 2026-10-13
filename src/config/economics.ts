@@ -15,6 +15,7 @@
 import { PLANS, CREDIT_PACKS } from "@/lib/stripe";
 import { ANIMATION_FRAME_OPTIONS, RIG_CREDITS, ROTATIONS, animationCredits } from "./animations";
 import { FAILURE_OVERHEAD, FEATURE_COSTS, type CostStatus } from "./provider-costs";
+import { REMOVE_BG_CREDITS, VARIATION_CREDITS, upscaleCredits } from "./tool-prices";
 
 export const FX_GBP_PER_USD = 0.757225;
 export const FEE_PCT = 0.0525;
@@ -44,6 +45,10 @@ export function featureCredits(): Record<string, number> {
     out[`anim_smooth_${o.frames}`] = animationCredits(o.frames, true);
   }
   for (const r of ROTATIONS) out[r.id] = r.credits;
+  out.remove_bg = REMOVE_BG_CREDITS;
+  out.upscale_2x = upscaleCredits(2);
+  out.upscale_4x = upscaleCredits(4);
+  out.variation = VARIATION_CREDITS;
   return out;
 }
 

@@ -11,7 +11,7 @@
 // =============================================================================
 
 import Anthropic from "@anthropic-ai/sdk";
-import { trackClaude } from "@/lib/claude-usage";
+import { claudeCall, trackClaude } from "@/lib/claude-usage";
 
 const PLANNER_MODEL = "claude-opus-5-5";
 const PLANNER_TIMEOUT_MS = 45_000;
@@ -137,7 +137,7 @@ export async function planAnimation(opts: {
 
   try {
     const anthropic = new Anthropic({ apiKey, timeout: PLANNER_TIMEOUT_MS, maxRetries: 1 });
-    const response = await anthropic.messages.create(params as unknown as Anthropic.MessageCreateParamsNonStreaming);
+    const response = await claudeCall("planner", PLANNER_MODEL, () => anthropic.messages.create(params as unknown as Anthropic.MessageCreateParamsNonStreaming));
     trackClaude("planner", response);
     const text = response.content.find((b) => b.type === "text");
     if (!text || text.type !== "text") return fallback;
