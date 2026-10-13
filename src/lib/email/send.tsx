@@ -8,7 +8,7 @@ import { DailyReminderEmail } from "./templates/DailyReminderEmail";
 import { WeeklyDigestEmail } from "./templates/WeeklyDigestEmail";
 import { NewFeaturesEmail } from "./templates/NewFeaturesEmail";
 import { RelaunchEmail, type RelaunchEmailProps } from "./templates/RelaunchEmail";
-import { unsubscribeHeaders } from "./unsubscribe";
+import { unsubscribeHeaders, unsubscribeUrl } from "./unsubscribe";
 import { marketingSuppressionReason } from "./suppression";
 import { prisma } from "@/lib/prisma";
 import { render } from "@react-email/render";
@@ -561,6 +561,7 @@ export async function sendWeeklyDigestEmail(
         communityStats={options.communityStats}
         newFeatures={options.newFeatures}
         topCreators={options.topCreators}
+        unsubscribeHref={userId ? unsubscribeUrl(userId) : undefined}
       />
     );
 
@@ -573,6 +574,8 @@ export async function sendWeeklyDigestEmail(
       replyTo: EMAIL_REPLY_TO,
       subject,
       html,
+      // One-click unsubscribe in Gmail / Apple Mail
+      ...(userId ? { headers: unsubscribeHeaders(userId) } : {}),
     });
 
     if (error) {

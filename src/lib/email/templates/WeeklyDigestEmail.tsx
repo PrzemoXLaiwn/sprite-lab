@@ -28,6 +28,8 @@ interface WeeklyDigestEmailProps {
   };
   newFeatures?: string[];
   topCreators?: Array<{ name: string; count: number }>;
+  /** One-click unsubscribe link for this recipient. */
+  unsubscribeHref?: string;
 }
 
 export function WeeklyDigestEmail({
@@ -37,6 +39,7 @@ export function WeeklyDigestEmail({
   communityStats = { totalAssetsThisWeek: 0 },
   newFeatures = [],
   topCreators = [],
+  unsubscribeHref = "https://www.sprite-lab.com/settings",
 }: WeeklyDigestEmailProps) {
   const previewText = `Your weekly SpriteLab digest - ${weeklyStats.assetsCreated} assets created!`;
 
@@ -157,7 +160,7 @@ export function WeeklyDigestEmail({
                 Email Preferences
               </Link>
               {" | "}
-              <Link href="https://sprite-lab.com/privacy" style={link}>
+              <Link href={unsubscribeHref} style={link}>
                 Unsubscribe
               </Link>
             </Text>
