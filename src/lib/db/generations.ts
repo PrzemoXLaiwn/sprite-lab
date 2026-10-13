@@ -24,6 +24,8 @@ export interface SaveGenerationParams {
   replicateCost?: number;
   projectId?: string;
   folderId?: string;
+  /** The sprite this animation / edit was made from. */
+  sourceGenerationId?: string;
 }
 
 // -----------------------------------------------------------------------------
@@ -145,6 +147,7 @@ export async function saveGeneration(params: SaveGenerationParams) {
           replicateCost: params.replicateCost,
           projectId: placement.projectId,
           folderId: placement.folderId,
+          sourceGenerationId: params.sourceGenerationId,
         },
       }),
       prisma.user.update({

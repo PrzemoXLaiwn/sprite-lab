@@ -3,7 +3,6 @@
 // paid requests. Everything that must be atomic is one SQL transaction here.
 // =============================================================================
 
-import { Prisma } from "@prisma/client";
 
 export interface OpenInput {
   userId: string;
@@ -40,10 +39,10 @@ export interface BillingStore {
 }
 
 // Advisory lock id for the daily spend check (any constant works; one lock for all instances)
-const SPEND_LOCK = 734_201_913;
+export const SPEND_LOCK = 734_201_913;
 
 /** Today's spend: reported/estimated call costs; running or badly-logged operations count at least their reservation. */
-const SPEND_SQL = `
+export const SPEND_SQL = `
 WITH calls AS (
   SELECT operation_id, sum(coalesce(cost_usd, est_cost_usd)) AS c
   FROM provider_calls WHERE created_at >= $1 GROUP BY operation_id
@@ -58,20 +57,36 @@ SELECT
   coalesce((SELECT sum(cost) FROM ops), 0)::float + coalesce((SELECT c FROM calls WHERE operation_id IS NULL), 0)::float AS total,
   coalesce((SELECT sum(cost) FROM ops WHERE plan = 'FREE'), 0)::float AS free`;
 
+/** Rolling-hour counters for the guards. $1 user, $2 ip hash, $3 input hash, $4 since. */
+export const STATS_SQL = `SELECT
+  count(*) FILTER (WHERE user_id = $1)::int AS "opsLastHour",
+  count(*) FILTER (WHERE user_id = $1 AND status = 'FAILED')::int AS "failedLastHour",
+  count(*) FILTER (WHERE user_id = $1 AND status = 'FAILED' AND input_hash = $3)::int AS "sameInputFailed",
+  count(*) FILTER (WHERE ip_hash = $2 AND status = 'FAILED')::int AS "ipFailedLastHour"
+FROM operations WHERE created_at >= $4 AND (user_id = $1 OR ($2::text IS NOT NULL AND ip_hash = $2))`;
+
+/**
+ * Conditional refund — the idempotency guard. $1 operation id, $2 max credits.
+ * Refunded can never exceed charged, and a delivered (SUCCEEDED/PARTIAL)
+ * operation is never refunded. Returns the credits granted and the owner.
+ */
+export const REFUND_SQL = `
+WITH o AS (
+  SELECT id, user_id, credits_charged - credits_refunded AS left_
+  FROM operations WHERE id = $1 AND status IN ('RUNNING', 'FAILED') FOR UPDATE
+), d AS (
+  SELECT id, user_id, LEAST(left_, $2::int) AS due FROM o WHERE left_ > 0
+)
+UPDATE operations SET credits_refunded = credits_refunded + d.due
+FROM d WHERE operations.id = d.id AND d.due > 0
+RETURNING d.due AS due, d.user_id AS user_id`;
+
 export function prismaStore(): BillingStore {
   const db = async () => (await import("@/lib/prisma")).prisma;
   return {
     async stats(userId, ipHash, inputHash, since) {
       const prisma = await db();
-      const rows = await prisma.$queryRawUnsafe<UserStats[]>(
-        `SELECT
-           count(*) FILTER (WHERE user_id = $1)::int AS "opsLastHour",
-           count(*) FILTER (WHERE user_id = $1 AND status = 'FAILED')::int AS "failedLastHour",
-           count(*) FILTER (WHERE user_id = $1 AND status = 'FAILED' AND input_hash = $3)::int AS "sameInputFailed",
-           count(*) FILTER (WHERE ip_hash = $2 AND status = 'FAILED')::int AS "ipFailedLastHour"
-         FROM operations WHERE created_at >= $4 AND (user_id = $1 OR ($2::text IS NOT NULL AND ip_hash = $2))`,
-        userId, ipHash, inputHash, since,
-      );
+      const rows = await prisma.$queryRawUnsafe<UserStats[]>(STATS_SQL, userId, ipHash, inputHash, since);
       return rows[0] ?? { opsLastHour: 0, failedLastHour: 0, sameInputFailed: 0, ipFailedLastHour: 0 };
     },
 
@@ -116,18 +131,7 @@ export function prismaStore(): BillingStore {
     async refund(operationId, amount, reason) {
       const prisma = await db();
       return prisma.$transaction(async (tx) => {
-        // The conditional UPDATE is the idempotency guard: refunded can never exceed
-        // charged, and a delivered (SUCCEEDED/PARTIAL) operation is never refunded
-        const rows = await tx.$queryRaw<{ due: number; user_id: string }[]>(Prisma.sql`
-          WITH o AS (
-            SELECT id, user_id, credits_charged - credits_refunded AS left_
-            FROM operations WHERE id = ${operationId} AND status IN ('RUNNING', 'FAILED') FOR UPDATE
-          ), d AS (
-            SELECT id, user_id, LEAST(left_, ${amount ?? 2147483647}::int) AS due FROM o WHERE left_ > 0
-          )
-          UPDATE operations SET credits_refunded = credits_refunded + d.due
-          FROM d WHERE operations.id = d.id AND d.due > 0
-          RETURNING d.due AS due, d.user_id AS user_id`);
+        const rows = await tx.$queryRawUnsafe<{ due: number; user_id: string }[]>(REFUND_SQL, operationId, amount ?? 2147483647);
         const r = rows[0];
         if (!r || r.due <= 0) return 0;
         await tx.user.update({ where: { id: r.user_id }, data: { credits: { increment: r.due } } });

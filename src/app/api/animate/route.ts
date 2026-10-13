@@ -112,6 +112,7 @@ export async function POST(request: Request) {
         replicateCost: cost,
         projectId: source.projectId ?? undefined,
         folderId: source.folderId ?? undefined,
+        sourceGenerationId: source.id,
       });
       const savedId = saved.success && "generation" in saved && saved.generation ? saved.generation.id : undefined;
       await op.succeed(savedId);
@@ -211,6 +212,7 @@ export async function POST(request: Request) {
         replicateCost: 0,
         projectId: source.projectId ?? undefined,
         folderId: source.folderId ?? undefined,
+        sourceGenerationId: source.id,
       });
       const savedId = saved.success && "generation" in saved && saved.generation ? saved.generation.id : undefined;
       await op.succeed(savedId);
@@ -289,6 +291,7 @@ export async function POST(request: Request) {
       replicateCost: cost,
       projectId: source.projectId ?? undefined,
       folderId: source.folderId ?? undefined,
+      sourceGenerationId: source.id,
     });
     const savedId = saved.success && "generation" in saved && saved.generation ? saved.generation.id : undefined;
     if (smooth && !smoothed) await op.partial(savedId ?? null, "smooth_pass_unavailable");

@@ -88,6 +88,8 @@ model Generation {
   likes         Int      @default(0) // Community likes count
   projectId     String?  @map("project_id")
   folderId      String?  @map("folder_id")
+  /// The sprite an animation / edit was made from (null for originals and rows before Oct 2026)
+  sourceGenerationId String? @map("source_generation_id")
   createdAt     DateTime @default(now()) @map("created_at")
 
   user                User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -103,6 +105,7 @@ model Generation {
   @@index([createdAt])
   @@index([projectId])
   @@index([folderId])
+  @@index([sourceGenerationId])
   @@map("generations")
 }
 

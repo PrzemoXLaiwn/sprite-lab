@@ -3,7 +3,7 @@
 Branch `stage2/cost-guards`. Nothing here is deployed or applied to any database yet. Each step below needs the owner's go-ahead.
 
 ## Order matters
-The new code writes to three new tables. **If the code ships before the tables exist, every paid feature returns 503 "paused"** (it fails safe and nothing is charged, but nothing works). So the order is: tables first, then code.
+The new code writes to three new tables and reads a new column on `generations` (`source_generation_id`). **If the code ships before the SQL runs, paid features return 503 "paused" and every query on `generations` fails** — so the order is strictly: SQL first, then code.
 
 1. **Non-production database.** Apply `prisma/sql/2026-10-13_cost_ledger.sql`, then:
    - run `npm test` and `npm run economics` against it;
@@ -40,4 +40,4 @@ Redeploy the previous build. The new tables can stay; nothing else reads them.
 ## Not covered yet
 - remove-bg, upscale, variations, queue/submit and 3D use the old charge plus a now-transactional refund and the DB-backed rate limit. They do not use operations or the ledger yet.
 - Claude errors (as opposed to successful calls) are not written to the ledger.
-- The SQL paths (advisory lock, conditional refund) were verified by review and by an in-memory model in tests, not against a real Postgres. A non-production database is needed for that.
+- The migration and the exact spend / guard / refund SQL are tested against a real Postgres engine (PGlite, in memory: `src/lib/billing/sql.pglite.test.ts`). PGlite has a single connection, so lock contention between two servers is only covered by the in-memory model test.

@@ -1,4 +1,7 @@
--- Cost ledger (additive only). Safe to run more than once; touches no existing table.
+-- Cost ledger (additive only). Safe to run more than once.
+-- New tables, plus ONE nullable column + index on generations (no data rewritten).
+-- Must run BEFORE the matching code is deployed: Prisma selects every column of
+-- generations, so code without this column in the database would fail queries.
 -- Apply on a non-production database first. Production: owner approval required.
 
 CREATE TABLE IF NOT EXISTS operations (
@@ -60,3 +63,7 @@ CREATE TABLE IF NOT EXISTS cost_reconciliations (
   note               TEXT
 );
 CREATE INDEX IF NOT EXISTS cost_reconciliations_provider_checked_at_idx ON cost_reconciliations (provider, checked_at);
+
+-- Animation / edit → the sprite it was made from (nullable; old rows stay NULL)
+ALTER TABLE generations ADD COLUMN IF NOT EXISTS source_generation_id TEXT;
+CREATE INDEX IF NOT EXISTS generations_source_generation_id_idx ON generations (source_generation_id);

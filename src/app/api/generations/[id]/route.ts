@@ -193,7 +193,9 @@ export async function GET(
     // Animate tool can reopen both (best-effort match, see findAnimationSourceId)
     let sourceGenerationId: string | null = null;
     const parsed = generation.subcategoryId === "ANIMATION" ? parseAnimationPrompt(generation.prompt) : null;
-    if (parsed) {
+    if (parsed && generation.sourceGenerationId) {
+      sourceGenerationId = generation.sourceGenerationId; // stored link (Oct 2026+)
+    } else if (parsed) {
       sourceGenerationId = await findAnimationSourceId(user.id, {
         sourcePrompt: parsed.sourcePrompt,
         createdAt: generation.createdAt,
