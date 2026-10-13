@@ -8,9 +8,11 @@ const SRC = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?clie
 
 /**
  * Loads Google AdSense (Auto ads) — only for signed-out visitors and only on
- * the pages that render this component (guides, comparisons, tool landing
- * pages). The homepage, pricing and the app stay ad-free so ads never get in
- * the way of trying or buying, and members never see ads.
+ * the pages that render this component: long-form guide articles
+ * (guides/[slug]) and comparisons (compare layout). Tool landing pages, the
+ * guides index, the homepage, pricing, legal pages and the app stay ad-free —
+ * ads belong next to substantial original text, never on thin or transactional
+ * pages (docs/adsense-content-audit.md). Members never see ads.
  */
 export function AdSense() {
   useEffect(() => {

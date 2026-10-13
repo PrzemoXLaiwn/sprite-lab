@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SeoLanding } from "@/components/landing/SeoLanding";
+import { LANDING_SPECS } from "@/data/landing-specs";
 import { SHOWCASE } from "@/data/showcase";
 
 export const metadata: Metadata = {
@@ -174,6 +175,7 @@ export default function RPGCharacterCreatorPage() {
             "Dark knight in cursed black armor, red glowing eyes",
           ],
         },
+        LANDING_SPECS["rpg-character-creator"],
       ]}
       faq={[
         {

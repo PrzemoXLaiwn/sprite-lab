@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Zap, Palette, Download, Grid3x3, Shield, Layers } from "lucide-react";
 import { SeoLanding } from "@/components/landing/SeoLanding";
+import { LANDING_SPECS } from "@/data/landing-specs";
 import { SHOWCASE, isPixelShowcase } from "@/data/showcase";
 
 export const metadata: Metadata = {
@@ -145,6 +146,7 @@ export default function PixelArtGeneratorPage() {
             { title: "Download the PNG", body: "Get a transparent pixel art PNG, ready for your game engine." },
           ],
         },
+        LANDING_SPECS["pixel-art-generator"],
       ]}
       faq={[
         {

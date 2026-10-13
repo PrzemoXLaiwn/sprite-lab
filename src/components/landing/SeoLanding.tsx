@@ -46,6 +46,13 @@ export type SeoSection =
   | (SectionHead & { kind: "checklist"; items: string[] })
   | (SectionHead & { kind: "steps"; steps: { title: string; body: string }[] })
   | (SectionHead & { kind: "prompts"; prompts: string[] })
+  /** Practical, asset-specific game-dev notes: a spec table, paragraphs and guide links. */
+  | (SectionHead & {
+      kind: "specs";
+      rows: { label: string; value: string }[];
+      notes: string[];
+      links?: { label: string; href: string }[];
+    })
   | { kind: "gallery"; items: FeaturedGeneration[] };
 
 export type SeoFaq = { q: string; a: string };
@@ -200,6 +207,39 @@ function Section({ section }: { section: SeoSection }) {
           ))}
         </ol>,
         true
+      );
+
+    case "specs":
+      return wrap(
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-12">
+          <dl className="divide-y divide-white/[0.06] self-start rounded-2xl border border-white/[0.06] bg-[#151922]">
+            {section.rows.map((r) => (
+              <div key={r.label} className="grid grid-cols-1 gap-1 px-5 py-3.5 sm:grid-cols-[150px_minmax(0,1fr)] sm:gap-4">
+                <dt className="font-mono text-[11.5px] uppercase tracking-[0.04em] text-[#8B93A5]">{r.label}</dt>
+                <dd className="text-[14px] leading-relaxed text-[#C9CFDB]">{r.value}</dd>
+              </div>
+            ))}
+          </dl>
+          <div>
+            {section.notes.map((n, i) => (
+              <p key={i} className={`${i ? "mt-4" : ""} text-[15px] leading-[1.75] text-[#A6ADBB]`}>
+                {n}
+              </p>
+            ))}
+            {section.links && section.links.length > 0 && (
+              <ul className="mt-5">
+                {section.links.map((l) => (
+                  <li key={l.href}>
+                    <Link href={l.href} className="group inline-flex min-h-10 items-center gap-1.5 py-1.5 text-[14.5px] leading-snug text-[#FFB27A] transition-colors hover:text-white">
+                      {l.label}
+                      <ArrowRight className="h-3.5 w-3.5 shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
       );
 
     case "prompts":

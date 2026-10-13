@@ -29,6 +29,8 @@ const PUBLIC = [
   "/community",
   "/u/",
   "/changelog",
+  "/about",
+  "/contact",
   "/llms.txt",
   "/llms-full.txt",
   "/privacy",

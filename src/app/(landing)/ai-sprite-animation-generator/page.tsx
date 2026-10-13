@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SeoLanding } from "@/components/landing/SeoLanding";
+import { LANDING_SPECS } from "@/data/landing-specs";
 
 const URL = "https://www.sprite-lab.com/ai-sprite-animation-generator";
 
@@ -113,6 +114,7 @@ export default function SpriteAnimationPage() {
             { title: "Download", body: "Sprite sheet PNG, frames ZIP and GIF — slice the sheet by cell size in Unity or load it into Godot's SpriteFrames." },
           ],
         },
+        LANDING_SPECS["ai-sprite-animation-generator"],
       ]}
       faq={[
         { q: "What does the animation export look like?", a: "A horizontal sprite sheet: one row of equal-size frames with a transparent background, plus the frames as separate PNGs in a ZIP and an animated GIF preview." },

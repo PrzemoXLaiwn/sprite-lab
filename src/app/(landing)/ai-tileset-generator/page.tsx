@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SeoLanding } from "@/components/landing/SeoLanding";
+import { LANDING_SPECS } from "@/data/landing-specs";
 
 const URL = "https://www.sprite-lab.com/ai-tileset-generator";
 
@@ -109,6 +110,7 @@ export default function TileGeneratorPage() {
             "desert sand with small pebbles",
           ],
         },
+        LANDING_SPECS["ai-tileset-generator"],
       ]}
       faq={[
         { q: "Are the tiles really seamless?", a: "Yes. Every tile is checked at its edges; if it doesn't wrap, the edges are blended with a half-offset copy so copies line up without a visible seam." },

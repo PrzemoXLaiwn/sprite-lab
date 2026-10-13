@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SeoLanding } from "@/components/landing/SeoLanding";
+import { LANDING_SPECS } from "@/data/landing-specs";
 import { SHOWCASE } from "@/data/showcase";
 
 export const metadata: Metadata = {
@@ -150,6 +151,7 @@ export default function GameWeaponGeneratorPage() {
             "a round wooden shield with an iron rim",
           ],
         },
+        LANDING_SPECS["game-weapon-generator"],
       ]}
       faq={[
         {

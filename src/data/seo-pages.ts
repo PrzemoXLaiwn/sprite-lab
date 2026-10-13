@@ -7,6 +7,11 @@ export interface SeoPage {
   label: string;
   /** One-line summary for llms.txt. */
   summary: string;
+  /**
+   * false = noindex,follow and left out of the sitemap. Used for pages whose
+   * content is covered in more depth by a guide (see docs/adsense-content-audit.md).
+   */
+  index?: boolean;
 }
 
 export const SEO_PAGES: SeoPage[] = [
@@ -17,6 +22,9 @@ export const SEO_PAGES: SeoPage[] = [
   { slug: "game-weapon-generator", label: "Game Weapon Generator", summary: "Swords, axes, bows, staffs, guns and shields as game-ready sprites." },
   { slug: "ai-tileset-generator", label: "AI Tile Generator", summary: "Seamless floor and wall tiles that repeat without visible seams, plus animated water and lava tiles." },
   { slug: "ai-game-icon-generator", label: "AI Game Icon Generator", summary: "Item, skill and status icons for inventories, hotbars and HUDs." },
-  { slug: "unity-sprite-generator", label: "AI Sprites for Unity", summary: "Generate sprites and sprite sheets and import them into Unity 2D, with step-by-step slicing instructions." },
-  { slug: "godot-sprite-generator", label: "AI Sprites for Godot", summary: "Generate sprites and sprite sheets and use them in Godot 4 with Sprite2D and AnimatedSprite2D." },
+  { slug: "unity-sprite-generator", label: "AI Sprites for Unity", summary: "Generate sprites and sprite sheets and import them into Unity 2D, with step-by-step slicing instructions.", index: false },
+  { slug: "godot-sprite-generator", label: "AI Sprites for Godot", summary: "Generate sprites and sprite sheets and use them in Godot 4 with Sprite2D and AnimatedSprite2D.", index: false },
 ];
+
+/** Landing pages that search engines should index (sitemap). */
+export const INDEXED_SEO_PAGES = SEO_PAGES.filter((p) => p.index !== false);

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SeoLanding } from "@/components/landing/SeoLanding";
+import { LANDING_SPECS } from "@/data/landing-specs";
 import { SHOWCASE } from "@/data/showcase";
 
 const URL = "https://www.sprite-lab.com/ai-sprite-generator";
@@ -112,6 +113,7 @@ export default function AiSpriteGeneratorPage() {
             "a fox mage holding a glowing staff",
           ],
         },
+        LANDING_SPECS["ai-sprite-generator"],
       ]}
       faq={[
         { q: "What is an AI sprite generator?", a: "It is a tool that creates game sprites — characters, items, weapons and props — from a text description. SpriteLab is built for game developers: results come out as transparent PNGs, and pixel art is snapped to a real pixel grid." },
