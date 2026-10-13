@@ -1,6 +1,6 @@
 # Cost guards, cost ledger, Lifetime pause — rollout
 
-Branch `stage2/cost-guards`. Nothing here is deployed or applied to any database yet. Each step below needs the owner's go-ahead.
+Branch `integration/all` (stage 2 + animation fixes + auto-settings + resume work). Nothing here is deployed or applied to any database yet. Each step below needs the owner's go-ahead.
 
 ## Order matters
 The new code writes to three new tables and reads a new column on `generations` (`source_generation_id`). **If the code ships before the SQL runs, paid features return 503 "paused" and every query on `generations` fails** — so the order is strictly: SQL first, then code.
@@ -8,7 +8,7 @@ The new code writes to three new tables and reads a new column on `generations` 
 1. **Non-production database.** Apply `prisma/sql/2026-10-13_cost_ledger.sql`, then:
    - run `npm test` and `npm run economics` against it;
    - smoke-test one paid request with `DATABASE_URL` pointing at it.
-   The SQL only creates tables and indexes, uses `IF NOT EXISTS`, and touches no existing table.
+   The SQL creates tables and indexes and adds one nullable column to `generations` (no existing data changes). Everything uses `IF NOT EXISTS`.
 2. **Production database (owner approval).** Run the same SQL in the Supabase SQL editor. It is safe to run twice. Check that `operations`, `provider_calls` and `cost_reconciliations` exist.
 3. **Optional environment variables (Vercel).** The defaults apply when these are unset:
    - `DAILY_SPEND_LIMIT_USD`: default 20;
