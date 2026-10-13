@@ -15,6 +15,8 @@ export interface GenerationRow {
   styleId: string;
   imageUrl: string;
   createdAt: Date;
+  /** Stored link animation → sprite (Oct 2026+); older rows fall back to prompt matching. */
+  sourceGenerationId?: string | null;
 }
 
 /** Only absolute https images can be shown in an email (no data: URLs, no .glb models). */
@@ -50,12 +52,12 @@ export function summarizeWork(rows: GenerationRow[]): WorkSummary {
     if (kind === "animation") {
       if (!latestItem) {
         const parsed = parseAnimationPrompt(r.prompt);
-        // The row doesn't store its source sprite: the newest older sprite with the same prompt
+        // Older rows don't store their source sprite: the newest older sprite with the same prompt
         const src = sorted.find(
           (s) => s.createdAt.getTime() <= r.createdAt.getTime() && classifyGeneration(s) !== "animation" && classifyGeneration(s) !== "model" &&
             parsed && cleanGenerationPrompt(s.prompt) === parsed.sourcePrompt
         );
-        latestItem = { ...base, kind: "animation", motionLabel: parsed?.label, sourceSpriteId: src?.id ?? null };
+        latestItem = { ...base, kind: "animation", motionLabel: parsed?.label, sourceSpriteId: r.sourceGenerationId ?? src?.id ?? null };
       }
       continue;
     }

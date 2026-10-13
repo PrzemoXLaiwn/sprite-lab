@@ -88,9 +88,10 @@ export async function loadLifecycleAudience(now: Date): Promise<LifecycleAudienc
     const [rows, animated] = await Promise.all([
       prisma.$queryRaw<GenerationRow[]>(Prisma.sql`
         SELECT id, user_id AS "userId", prompt, category_id AS "categoryId", subcategory_id AS "subcategoryId",
-               style_id AS "styleId", image_url AS "imageUrl", created_at AS "createdAt"
+               style_id AS "styleId", image_url AS "imageUrl", created_at AS "createdAt",
+               source_generation_id AS "sourceGenerationId"
         FROM (
-          SELECT id, user_id, prompt, category_id, subcategory_id, style_id, image_url, created_at,
+          SELECT id, user_id, prompt, category_id, subcategory_id, style_id, image_url, created_at, source_generation_id,
                  row_number() OVER (PARTITION BY user_id ORDER BY created_at DESC) AS rn
           FROM generations
           WHERE user_id = ANY(${ids})
