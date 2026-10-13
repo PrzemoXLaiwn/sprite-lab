@@ -300,12 +300,12 @@ export default function PricingPage() {
           <section className="mt-14">
             <p className={SECTION_LABEL}>{"// why it's worth it"}</p>
             <h2 className="mt-3 font-display text-[26px] font-semibold leading-[1.1] tracking-[-0.01em] text-white sm:text-[32px]">Artist vs. SpriteLab</h2>
-            <p className="mt-2 text-[15px] text-[#8B93A5]">What 800 game assets cost either way.</p>
+            <p className="mt-2 text-[15px] text-[#8B93A5]">Two ways to get a full set of game assets.</p>
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <div className="rounded-2xl border border-white/[0.08] bg-[#151922] p-5">
                 <h3 className="text-[15px] font-semibold text-white">Traditional artist</h3>
                 <ul className="mt-4 space-y-2.5">
-                  {["£50–200 per sprite", "Days to weeks turnaround", "Limited revisions", "800 sprites = £40,000+"].map((t) => (
+                  {["Quoted and paid per asset", "Days to weeks turnaround", "Each revision is another round", "Hand-crafted, unique style"].map((t) => (
                     <li key={t} className="flex items-start gap-2.5 text-[13px] text-[#C9CFDB]">
                       <X className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#7A8294]" strokeWidth={2.5} aria-hidden="true" />
                       {t}
@@ -313,8 +313,8 @@ export default function PricingPage() {
                   ))}
                 </ul>
                 <div className="mt-6 border-t border-white/[0.06] pt-4">
-                  <span className="font-sans text-[28px] font-semibold tracking-tight text-[#C9CFDB] tabular-nums">£40,000+</span>
-                  <p className="font-mono text-[11px] text-[#7A8294]">for 800 game assets</p>
+                  <span className="font-sans text-[20px] font-semibold tracking-tight text-[#C9CFDB]">Best for final, signature art</span>
+                  <p className="font-mono text-[11px] text-[#7A8294]">prices vary by artist</p>
                 </div>
               </div>
               <div className="rounded-2xl border border-[#FF8A3D]/60 bg-[#151922] p-5">
