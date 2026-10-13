@@ -6,6 +6,7 @@ import { NextRequest } from "next/server";
 const sendLifecycleEmail = vi.fn(async () => ({ success: true }));
 const claimLifecycleDay = vi.fn(async () => true);
 const mergeEmailPreferences = vi.fn(async () => {});
+const loadSendStats = vi.fn(async () => ({ sentToday: 0, firstLiveSendAt: null as Date | null }));
 
 vi.mock("@/lib/email/lifecycle/send", () => ({ sendLifecycleEmail }));
 vi.mock("@/app/api/_lib/email-prefs", () => ({ claimLifecycleDay, mergeEmailPreferences }));
@@ -14,6 +15,7 @@ vi.mock("@/lib/email/lifecycle/data", async () => {
   const now = Date.now();
   const sprite = { id: "s1", kind: "sprite", imageUrl: "https://cdn.x/s.png", prompt: "knight", categoryId: "CHARACTERS", styleId: "PIXEL", createdAt: new Date(now - 30 * 3600e3) };
   return {
+    loadSendStats,
     loadLifecycleAudience: vi.fn(async () => ({
       scanned: 1,
       gated: {},
@@ -40,6 +42,8 @@ describe("GET /api/cron/lifecycle", () => {
     sendLifecycleEmail.mockClear();
     claimLifecycleDay.mockClear();
     mergeEmailPreferences.mockClear();
+    loadSendStats.mockReset();
+    loadSendStats.mockResolvedValue({ sentToday: 0, firstLiveSendAt: null });
   });
   afterEach(() => vi.unstubAllEnvs());
 
@@ -82,5 +86,21 @@ describe("GET /api/cron/lifecycle", () => {
     expect(body).toMatchObject({ dryRun: false, sent: 1 });
     expect(sendLifecycleEmail).toHaveBeenCalledTimes(1);
     expect(claimLifecycleDay).toHaveBeenCalledTimes(1);
+  });
+
+  it("never pushes the day over RESEND_DAILY_LIMIT (all senders count)", async () => {
+    vi.stubEnv("MARKETING_EMAILS_ENABLED", "true");
+    vi.stubEnv("RESEND_DAILY_LIMIT", "100");
+    loadSendStats.mockResolvedValue({ sentToday: 100, firstLiveSendAt: null });
+    const body = await (await GET(req())).json();
+    expect(body).toMatchObject({ dryRun: false, dailyCap: 0, deferred: 1, sent: 0 });
+    expect(body.limits).toMatchObject({ providerLimit: 100, sentToday: 100, providerRemaining: 0, limitedBy: "provider" });
+    expect(sendLifecycleEmail).toHaveBeenCalledTimes(0);
+  });
+
+  it("defaults to a cap of 20 before the first live send", async () => {
+    vi.stubEnv("LIFECYCLE_DAILY_CAP", "");
+    const body = await (await GET(req())).json();
+    expect(body.limits).toMatchObject({ baseCap: 20, warmupDay: 0, warmupCap: 20, providerLimit: 100 });
   });
 });

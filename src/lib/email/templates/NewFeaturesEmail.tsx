@@ -12,6 +12,7 @@ import {
   Text,
 } from "@react-email/components";
 import * as React from "react";
+import { PostalAddressLine } from "./PostalAddressLine";
 
 interface NewFeaturesEmailProps {
   userName?: string;
@@ -56,7 +57,7 @@ export function NewFeaturesEmail({
             </Heading>
 
             <Text style={introText}>
-              We've been working hard to make SpriteLab even better. Here's what's new:
+              We&apos;ve been working hard to make SpriteLab even better. Here&apos;s what&apos;s new:
             </Text>
 
             {/* Features List */}
@@ -96,6 +97,7 @@ export function NewFeaturesEmail({
                 Full Changelog
               </Link>
             </Text>
+            <PostalAddressLine style={footerText} />
           </Section>
         </Container>
       </Body>

@@ -2,6 +2,7 @@ import { Mail } from "lucide-react";
 import type { LifecycleRunResult } from "@/lib/email/lifecycle/run";
 import type { SequenceId, SkipReason } from "@/lib/email/lifecycle/rules";
 import { EmailFrame } from "./EmailFrame";
+import { EmailSwitchboardPanel, type EmailSwitchboard } from "./EmailSwitchboardPanel";
 
 export interface EmailPreview {
   sequence: SequenceId;
@@ -16,7 +17,7 @@ export const SEQUENCE_INFO: Record<SequenceId, { name: string; rule: string }> =
   unfinished: { name: "Unfinished work", rule: "Made something in the last 7 days, nothing for 2+ days. Max once a week, never the same item twice." },
   unused_credits: { name: "Unused credits", rule: "Away 5–20 days with credits left. Once per absence." },
   winback: { name: "Win-back", rule: "Away 21+ days. Once per absence." },
-  inspiration: { name: "Weekly inspiration", rule: "Active in the last 60 days and no other marketing email in 7 days. Needs 3+ community picks." },
+  inspiration: { name: "Weekly inspiration", rule: "Active in the last 60 days and no other marketing email in 7 days. 3+ community picks, otherwise curated examples from /showcase labelled as examples." },
 };
 
 const SKIP_LABELS: Record<SkipReason, string> = {
@@ -34,11 +35,13 @@ export function EmailPreviewPanel({
   dryRun,
   dryRunError,
   sendingEnabled,
+  switchboard,
 }: {
   previews: EmailPreview[];
   dryRun: LifecycleRunResult | null;
   dryRunError: string | null;
   sendingEnabled: boolean;
+  switchboard: EmailSwitchboard;
 }) {
   const sequences = previews.map((p) => p.sequence);
   return (
@@ -52,6 +55,8 @@ export function EmailPreviewPanel({
           Preview with sample data and today&apos;s dry run. Nothing on this page sends email.
         </p>
       </div>
+
+      <EmailSwitchboardPanel s={switchboard} />
 
       <section className="mb-8 rounded-2xl border border-white/[0.06] bg-[#0E1016] p-4 sm:p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
@@ -77,7 +82,11 @@ export function EmailPreviewPanel({
               <Stat label="Users scanned" value={dryRun.scanned} />
               <Stat label="Would get one today" value={Object.values(dryRun.planned).reduce((a, b) => a + b, 0)} />
               <Stat label="Over daily cap" value={dryRun.deferred} hint={`cap ${dryRun.dailyCap}/day`} />
-              <Stat label="Community picks" value={dryRun.inspirationItems} />
+              <Stat
+                label={dryRun.inspirationSource === "showcase" ? "Inspiration examples" : "Community picks"}
+                value={dryRun.inspirationItems}
+                hint={dryRun.inspirationSource === "showcase" ? "curated /showcase fallback" : undefined}
+              />
             </div>
 
             <div className="grid gap-5 lg:grid-cols-2">

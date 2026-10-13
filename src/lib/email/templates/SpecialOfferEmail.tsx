@@ -4,7 +4,6 @@ import {
   Container,
   Head,
   Heading,
-  Hr,
   Html,
   Link,
   Preview,
@@ -12,6 +11,7 @@ import {
   Text,
 } from "@react-email/components";
 import * as React from "react";
+import { PostalAddressLine } from "./PostalAddressLine";
 
 interface SpecialOfferEmailProps {
   userName?: string;
@@ -129,7 +129,7 @@ export function SpecialOfferEmail({
               Questions? Just reply to this email!
             </Text>
             <Text style={footerText}>
-              Don't want promotional emails?{" "}
+              Don&apos;t want promotional emails?{" "}
               <Link href="https://sprite-lab.com/settings" style={link}>
                 Update your preferences
               </Link>
@@ -137,6 +137,7 @@ export function SpecialOfferEmail({
             <Text style={footerText}>
               SpriteLab - AI Game Asset Generator
             </Text>
+            <PostalAddressLine style={footerText} />
           </Section>
         </Container>
       </Body>

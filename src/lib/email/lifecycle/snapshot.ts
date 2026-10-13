@@ -110,5 +110,6 @@ export function pickInspiration(rows: CommunityRow[], now: Date): InspirationPic
     })),
     tryPrompt: cleanPrompt(cleanGenerationPrompt(shown[0].prompt), 90)!,
     thisWeek: shown.every((r) => r.createdAt.getTime() >= weekAgo),
+    source: "community",
   };
 }

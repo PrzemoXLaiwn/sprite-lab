@@ -101,6 +101,8 @@ export interface LifecyclePrefs {
   marketing?: boolean;
   unsubscribedAt?: string;
   bouncedAt?: string;
+  /** Spam complaint reported by Resend (set by /api/webhooks/resend). */
+  complainedAt?: string;
   lastMarketingEmailAt?: string;
   /** UTC day ("2026-10-13") claimed by the lifecycle cron. */
   lifecycleDay?: string;
@@ -176,6 +178,7 @@ export function parseLifecyclePrefs(raw: unknown): LifecyclePrefs {
     marketing: typeof o.marketing === "boolean" ? o.marketing : undefined,
     unsubscribedAt: str(o.unsubscribedAt),
     bouncedAt: str(o.bouncedAt),
+    complainedAt: str(o.complainedAt),
     lastMarketingEmailAt: str(o.lastMarketingEmailAt),
     lifecycleDay: str(o.lifecycleDay),
     lifecycleLastItemId: str(o.lifecycleLastItemId),
@@ -203,8 +206,9 @@ const sentAt = (u: UserSnapshot, seq: SequenceId) => date(u.prefs.sentAt[seq]);
 
 export function gate(u: Pick<UserSnapshot, "email" | "prefs" | "suppressed" | "createdAt" | "marketingSends">, now: Date): SkipReason | null {
   if (!isUsableEmail(u.email)) return "invalid_email";
+  // Bounce/complaint before opt-out: the webhook also sets marketing: false, but the count should say why
+  if (u.suppressed || u.prefs.bouncedAt || u.prefs.complainedAt) return "suppressed";
   if (u.prefs.marketing === false || u.prefs.unsubscribedAt) return "opted_out";
-  if (u.suppressed || u.prefs.bouncedAt) return "suppressed";
   if (now.getTime() - u.createdAt.getTime() < RULES.quietPeriodMs) return "quiet_period";
 
   const today = utcDay(now);

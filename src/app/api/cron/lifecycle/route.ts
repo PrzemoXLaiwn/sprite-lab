@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAuthorizedCronRequest } from "@/lib/cron-auth";
 import { lifecycleDeps, marketingEmailsEnabled } from "@/lib/email/lifecycle/deps";
-import { DEFAULT_DAILY_CAP, runLifecycle } from "@/lib/email/lifecycle/run";
+import { lifecycleBaseCap, resendDailyLimit } from "@/lib/email/lifecycle/limits";
+import { runLifecycle } from "@/lib/email/lifecycle/run";
 
 // Daily lifecycle emails (vercel.json cron). Picks at most ONE email per user
 // per day (see src/lib/email/lifecycle/rules.ts).
@@ -9,7 +10,9 @@ import { DEFAULT_DAILY_CAP, runLifecycle } from "@/lib/email/lifecycle/run";
 // Sends NOTHING unless MARKETING_EMAILS_ENABLED=true AND RESEND_API_KEY is set
 // AND the request isn't ?dryRun=1. Otherwise it's a dry run: it returns who
 // would get what and touches neither Resend nor email_preferences.
-// LIFECYCLE_DAILY_CAP (default 80) limits sends per run.
+// LIFECYCLE_DAILY_CAP (default 20) is the warm-up starting cap: x2 from day 3
+// and x4 from day 7 after the first live send. RESEND_DAILY_LIMIT (default
+// 100) caps the whole day across every sender, read from email_logs.
 
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
@@ -26,10 +29,12 @@ export async function GET(request: NextRequest) {
       : q === "1" || q === "true"
         ? "dryRun=1"
         : undefined;
-  const dailyCap = Math.min(Math.max(Number(process.env.LIFECYCLE_DAILY_CAP) || DEFAULT_DAILY_CAP, 1), 1000);
 
   try {
-    const result = await runLifecycle({ dryRun: Boolean(dryRunReason), dryRunReason, dailyCap }, lifecycleDeps);
+    const result = await runLifecycle(
+      { dryRun: Boolean(dryRunReason), dryRunReason, dailyCap: lifecycleBaseCap(), providerLimit: resendDailyLimit() },
+      lifecycleDeps
+    );
     console.log("[CRON:Lifecycle]", { ...result, sample: undefined, errors: result.errors.slice(0, 5) });
     return NextResponse.json({ success: true, ...result });
   } catch (error) {

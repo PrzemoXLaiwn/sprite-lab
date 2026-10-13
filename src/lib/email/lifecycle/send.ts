@@ -9,6 +9,7 @@
 
 import { resend, EMAIL_FROM, EMAIL_REPLY_TO } from "../resend";
 import { logEmail, type EmailResult, type EmailType } from "../send";
+import { marketingSuppressionReason } from "../suppression";
 import { unsubscribeHeaders } from "../unsubscribe";
 import { LIFECYCLE_LOG_TYPES, type SequenceId } from "./rules";
 
@@ -27,6 +28,9 @@ export async function sendLifecycleEmail(msg: OutgoingLifecycleEmail): Promise<E
   const base = { email: msg.to, userId: msg.userId, type, subject: msg.subject, metadata: { sequence: msg.sequence, ...msg.metadata } };
   if (!resend) return { success: false, error: "RESEND_API_KEY not configured" };
   try {
+    // Last-line guard: a bounce/complaint may have arrived after the audience was loaded
+    const suppressed = await marketingSuppressionReason(msg.to, msg.userId);
+    if (suppressed) return { success: false, error: suppressed };
     const { data, error } = await resend.emails.send({
       from: EMAIL_FROM,
       to: msg.to,

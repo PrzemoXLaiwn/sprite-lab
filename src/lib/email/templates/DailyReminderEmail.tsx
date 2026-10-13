@@ -12,6 +12,7 @@ import {
   Text,
 } from "@react-email/components";
 import * as React from "react";
+import { PostalAddressLine } from "./PostalAddressLine";
 
 interface DailyReminderEmailProps {
   userName?: string;
@@ -58,7 +59,8 @@ export function DailyReminderEmail({
   totalAssetsCreated = 0,
   tipOfTheDay,
 }: DailyReminderEmailProps) {
-  const tip = tipOfTheDay || TIPS[Math.floor(Math.random() * TIPS.length)];
+  // Deterministic (render must be pure): rotates with the streak
+  const tip = tipOfTheDay || TIPS[Math.abs(loginStreak + credits) % TIPS.length];
   const previewText = loginStreak > 0
     ? `Day ${loginStreak} streak! ${streakBonus > 0 ? `+${streakBonus} bonus credits` : "Keep it going!"}`
     : `Your daily SpriteLab update - ${credits} credits ready`;
@@ -141,7 +143,7 @@ export function DailyReminderEmail({
                 <Hr style={hr} />
                 <Section style={statsSection}>
                   <Text style={statsText}>
-                    You've created <strong>{totalAssetsCreated}</strong> assets so far!
+                    You&apos;ve created <strong>{totalAssetsCreated}</strong> assets so far!
                   </Text>
                   <Button style={linkButton} href="https://sprite-lab.com/gallery">
                     View Your Gallery →
@@ -165,6 +167,7 @@ export function DailyReminderEmail({
                 Unsubscribe
               </Link>
             </Text>
+            <PostalAddressLine style={footerText} />
           </Section>
         </Container>
       </Body>
