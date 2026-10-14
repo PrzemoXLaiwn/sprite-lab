@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 import { SectionHeader } from "@/components/landing/SectionHeader";
 import { PricingSection } from "@/components/landing/PricingSection";
 import { HeroPrompt } from "@/components/landing/HeroPrompt";
+import { GoogleOneTap } from "@/components/landing/GoogleOneTap";
 import { SiteNav } from "@/components/layout/SiteNav";
 import { CommunityWall } from "@/components/landing/CommunityWall";
 import { TikTokCommunity } from "@/components/landing/TikTokCommunity";
@@ -60,6 +61,7 @@ export default async function Home({
 
       {/* ═══ NAV ═════════════════════════════════════════════ */}
       <SiteNav registerUrl={registerUrl} anchorsOnHome signedIn={signedIn} />
+      {!signedIn && <GoogleOneTap />}
 
       {/* ═══ HERO — prompt on the left, a real sprite on the workbench ═══ */}
       <section className="relative overflow-hidden border-b border-white/[0.06] pb-14 pt-24 sm:pt-32 lg:pb-20">

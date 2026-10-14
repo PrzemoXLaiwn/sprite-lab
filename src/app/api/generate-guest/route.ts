@@ -92,6 +92,8 @@ export async function POST(request: Request) {
       success: true,
       imageUrl: asset.imageUrl,
       seed: asset.seed,
+      // Bearer token for /api/guest/claim after signup (null when storage was unavailable).
+      claimToken: result.claimToken,
       style: STYLE_LABELS[style],
       duration: `${duration}s`,
     });

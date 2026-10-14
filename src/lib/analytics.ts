@@ -49,4 +49,10 @@ export const FUNNEL = {
   checkoutStart: "checkout_start",
   checkoutComplete: "checkout_complete",
   upgradeModalShown: "upgrade_modal_shown",
+  // Landing-page guest funnel (no personal data in payloads)
+  guestGenerateSuccess: "guest_generate_success",
+  guestLimitReached: "guest_limit_reached",
+  guestSignupClick: "guest_signup_click",
+  guestSpriteClaimed: "guest_sprite_claimed",
+  oneTapSignIn: "one_tap_sign_in",
 } as const;
