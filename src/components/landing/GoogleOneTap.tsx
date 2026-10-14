@@ -84,8 +84,14 @@ export function GoogleOneTap() {
               nonce: nonce.raw,
             });
             if (error || !data.user) throw error ?? new Error("No user");
+            // Same account setup as the normal Google button (/auth/callback):
+            // profile row, referral code from ?ref=, welcome email for new accounts.
+            const ref = new URLSearchParams(window.location.search).get("ref");
+            const sync = await fetch("/api/auth/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ref }) })
+              .then((r) => (r.ok ? r.json() : null))
+              .catch(() => null);
             const createdAt = Date.parse(data.user.created_at);
-            const isNew = Number.isFinite(createdAt) && Date.now() - createdAt < NEW_ACCOUNT_WINDOW_MS;
+            const isNew = sync?.isNewUser === true || (Number.isFinite(createdAt) && Date.now() - createdAt < NEW_ACCOUNT_WINDOW_MS);
             track(FUNNEL.oneTapSignIn, { isNew });
             if (isNew && window.gtag) {
               window.gtag("event", "sign_up", { method: "google_one_tap", send_to: "AW-17802754923" });
