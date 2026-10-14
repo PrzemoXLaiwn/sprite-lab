@@ -47,6 +47,7 @@ import { COLOR_PALETTES } from "@/config/features/premium-features";
 import { postprocessSprite, postprocessTile } from "@/lib/image/sprite-postprocess";
 import { buildSpritePrompt, isPixelStyle, isTileCategory, normalizeStyleId } from "@/config/prompts/sprite-prompt";
 import { interpretSubject } from "@/lib/prompt-interpret";
+import { storeGuestSprite } from "@/lib/guest-claim/server";
 
 // =============================================================================
 // SECTION 1 — TYPES
@@ -304,13 +305,14 @@ export async function generateAssets(
 
 /**
  * Guest generation (no auth, no credits, no DB save).
- * Returns a single asset with a temporary URL — no persistence.
+ * The PNG is stored under a guest claim token (48 h) so it can be moved into
+ * the account the visitor creates; no DB row until it is claimed.
  *
  * Throws GenerationError on provider failure.
  */
 export async function generateGuestAsset(
   request: GuestGenerationRequest
-): Promise<Omit<GenerationResult, "creditsUsed"> & { creditsUsed: 0 }> {
+): Promise<Omit<GenerationResult, "creditsUsed"> & { creditsUsed: 0; claimToken: string | null }> {
   const startMs = Date.now();
 
   log("generation:start", {
@@ -353,10 +355,19 @@ export async function generateGuestAsset(
     log("generation:error", { mode: "guest", stage: "postprocess", error: err instanceof Error ? err.message : String(err) });
   }
 
-  // Persist so the URL outlives the provider's temporary link; fall back to
-  // an inline data URL if storage is unavailable.
-  const upload = await uploadGenerationBufferToR2(png, "guest");
-  const imageUrl = upload.success && upload.url ? upload.url : `data:image/png;base64,${png.toString("base64")}`;
+  // Persist under a claim token so the sprite can move into the account the
+  // visitor creates next (src/lib/guest-claim). Fall back to an inline data
+  // URL (no claim) if storage is unavailable.
+  const stored = await storeGuestSprite(png, {
+    prompt: request.prompt,
+    style: request.style,
+    styleId,
+    finalPrompt,
+    seed: generated.seed,
+    model: generated.model,
+    providerCost: generated.cost,
+  }).catch(() => null);
+  const imageUrl = stored?.imageUrl ?? `data:image/png;base64,${png.toString("base64")}`;
 
   log("generation:result", {
     mode: "guest",
@@ -379,6 +390,7 @@ export async function generateGuestAsset(
       },
     ],
     creditsUsed: 0,
+    claimToken: stored?.token ?? null,
     durationMs: Date.now() - startMs,
   };
 }

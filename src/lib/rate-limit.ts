@@ -353,7 +353,7 @@ export async function rateLimitUserGeneration(
  * configured, open otherwise — they cost us nothing per call.
  */
 export async function rateLimitUserAction(
-  scope: "comment" | "upload" | "quest",
+  scope: "comment" | "upload" | "quest" | "claim",
   userId: string
 ): Promise<RateLimitResult> {
   return check(`user:${scope}`, 30, 3600, userId);

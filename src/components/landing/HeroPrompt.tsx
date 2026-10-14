@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Dices, Download, Loader2, Sparkles, ArrowRight } from "lucide-react";
+import { track, FUNNEL } from "@/lib/analytics";
+import { readGuestTokens, rememberGuestToken } from "@/lib/guest-claim/local-tokens";
 
 const IDEAS = [
   "a knight with a flaming sword",
@@ -39,6 +41,8 @@ export function HeroPrompt({ registerUrl, signedIn = false }: { registerUrl: str
   const [image, setImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [limitReached, setLimitReached] = useState(false);
+  /** True when at least one guest sprite is waiting in localStorage to be claimed after signup. */
+  const [hasKeepable, setHasKeepable] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -85,15 +89,27 @@ export function HeroPrompt({ registerUrl, signedIn = false }: { registerUrl: str
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        if (res.status === 429 || data.code === "RATE_LIMITED") setLimitReached(true);
+        const limited = res.status === 429 || data.code === "RATE_LIMITED";
+        const keepable = readGuestTokens().length > 0;
+        if (limited) {
+          setLimitReached(true);
+          setHasKeepable(keepable);
+          track(FUNNEL.guestLimitReached, { style, keepable });
+        }
         setError(
           res.status === 429
-            ? "You've used your free tries for now — sign up to keep creating (10 free credits)."
+            ? keepable
+              ? "You've used your free tries for now. Sign up to keep your sprites and get 10 free credits."
+              : "You've used your free tries for now. Sign up to keep creating (10 free credits)."
             : data.error || "Generation failed. Please try again."
         );
         return;
       }
       setImage(data.imageUrl);
+      const keepable = typeof data.claimToken === "string";
+      if (keepable) rememberGuestToken(data.claimToken);
+      setHasKeepable(keepable);
+      track(FUNNEL.guestGenerateSuccess, { style, keepable });
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -149,8 +165,9 @@ export function HeroPrompt({ registerUrl, signedIn = false }: { registerUrl: str
           <div className="flex-1" />
           {limitReached ? (
             <Link href={registerUrl}
+              onClick={() => track(FUNNEL.guestSignupClick, { source: "limit", keepable: hasKeepable })}
               className="px-corners flex h-11 w-full items-center justify-center gap-2 bg-[#FFA300] px-5 text-[14px] font-semibold text-[#131A31] transition hover:bg-[#FFB733] sm:w-auto">
-              Sign up free <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              {hasKeepable ? "Sign up to keep this sprite" : "Sign up free"} <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
           ) : (
             <button type="button" onClick={() => void generate()} disabled={isGenerating}
@@ -200,7 +217,9 @@ export function HeroPrompt({ registerUrl, signedIn = false }: { registerUrl: str
           <div className="flex-1 text-center sm:text-left">
             <p className="text-[15px] font-semibold text-white">{isGenerating ? "Generating…" : "Here's your sprite"}</p>
             <p className="mt-1 text-[13px] leading-relaxed text-[#9AA1CC]">
-              Transparent PNG, ready for your engine. Create a free account for 10 credits, 12 art styles, HD quality and your own asset library.
+              {hasKeepable
+                ? "Transparent PNG, ready for your engine. Sign up and this sprite goes straight into your Assets, plus 10 free credits, 12 art styles and HD quality."
+                : "Transparent PNG, ready for your engine. Create a free account for 10 credits, 12 art styles, HD quality and your own asset library."}
             </p>
             {image && (
               <div className="mt-4 flex flex-wrap justify-center gap-2 sm:justify-start">
@@ -209,8 +228,9 @@ export function HeroPrompt({ registerUrl, signedIn = false }: { registerUrl: str
                   <Download className="h-4 w-4" aria-hidden="true" /> Download
                 </button>
                 <Link href={registerUrl}
+                  onClick={() => track(FUNNEL.guestSignupClick, { source: "result", keepable: hasKeepable })}
                   className="px-corners flex h-10 items-center gap-2 bg-[#FFA300] px-4 text-[13px] font-semibold text-[#131A31] transition hover:bg-[#FFB733]">
-                  Get 10 free credits <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  {hasKeepable ? "Sign up to keep this sprite" : "Get 10 free credits"} <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
               </div>
             )}

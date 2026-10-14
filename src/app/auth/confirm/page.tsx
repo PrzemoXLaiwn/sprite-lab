@@ -5,13 +5,15 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { primaryBtnCls } from "@/app/(auth)/_components/auth-ui";
+import { track, FUNNEL } from "@/lib/analytics";
 
 export default function EmailConfirmedPage() {
   const [countdown, setCountdown] = useState(5);
 
-  // Track registration conversion for TikTok
+  // Only brand-new accounts land here (email confirmation, or first OAuth
+  // sign-in via /auth/callback), so this is the completed-signup conversion.
   useEffect(() => {
-    // TikTok tracking removed
+    track(FUNNEL.signupComplete);
   }, []);
 
   useEffect(() => {

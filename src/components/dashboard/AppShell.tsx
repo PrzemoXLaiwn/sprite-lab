@@ -8,6 +8,7 @@ import { UpgradeModal } from "@/components/dashboard/UpgradeModal";
 import { AppRail } from "@/components/dashboard/AppRail";
 import { RelaunchBonus } from "@/components/dashboard/RelaunchBonus";
 import { GettingStarted } from "@/components/dashboard/GettingStarted";
+import { GuestSpriteClaim } from "@/components/dashboard/GuestSpriteClaim";
 import { prisma } from "@/lib/prisma";
 import { relaunchActive } from "@/config/relaunch";
 
@@ -71,6 +72,7 @@ export async function AppShell({ user, children }: { user: User; children: React
       </main>
 
       <NotificationPopup />
+      <GuestSpriteClaim />
       <UpgradeModal />
       {showRelaunchBonus && <RelaunchBonus />}
       <GettingStarted done={{ generate: Boolean(firstSprite), animate: Boolean(firstAnimation), project: Boolean(firstProject) }} />
