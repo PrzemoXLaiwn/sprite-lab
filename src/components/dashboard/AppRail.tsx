@@ -18,7 +18,9 @@ import {
   LogOut,
   Sparkles,
   CircleHelp,
+  Trophy,
 } from "lucide-react";
+import { useQuestClaimable } from "@/hooks/useQuestClaimable";
 import { fetchUserData } from "@/app/(dashboard)/layout.actions";
 import { checkAdminAccess } from "@/app/(dashboard)/admin/page.actions";
 
@@ -27,6 +29,7 @@ const NAV = [
   { href: "/generate", label: "Create", icon: Wand2 },
   { href: "/assets", label: "Assets", icon: Images },
   { href: "/projects", label: "Projects", icon: FolderOpen },
+  { href: "/quests", label: "Quests", icon: Trophy },
   { href: "/community", label: "Explore", icon: Users },
   { href: "/usage", label: "Usage", icon: BarChart3 },
   { href: "/how-it-works", label: "Guide", icon: CircleHelp },
@@ -39,6 +42,7 @@ const NAV = [
  */
 export function AppRail({ email }: { email: string }) {
   const pathname = usePathname();
+  const claimable = useQuestClaimable();
   const [credits, setCredits] = useState<number | null>(null);
   const [planName, setPlanName] = useState<string>("");
   const [roles, setRoles] = useState({ admin: false, moderator: false });
@@ -106,7 +110,12 @@ export function AppRail({ email }: { email: string }) {
                 active ? "bg-white/[0.07] text-white" : "text-[#9AA1CC] hover:bg-white/[0.04] hover:text-white"
               }`}
             >
-              <item.icon className={`h-[19px] w-[19px] ${active ? "text-[#FFA300]" : ""}`} strokeWidth={active ? 2.2 : 1.8} aria-hidden />
+              <span className="relative">
+                <item.icon className={`h-[19px] w-[19px] ${active ? "text-[#FFA300]" : ""}`} strokeWidth={active ? 2.2 : 1.8} aria-hidden />
+                {item.href === "/quests" && claimable > 0 && (
+                  <span className="absolute -right-1.5 -top-1 h-2.5 w-2.5 rounded-full bg-[#00E436] ring-2 ring-[#131A31]" aria-label={`${claimable} rewards to claim`} />
+                )}
+              </span>
               <span className="text-[10px] font-medium leading-none">{item.label}</span>
             </Link>
           );

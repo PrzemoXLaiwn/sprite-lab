@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Wand2, Images, FolderOpen, Settings, Shield, ShieldCheck } from "lucide-react";
+import { Home, Wand2, Images, FolderOpen, Settings, Shield, ShieldCheck, Trophy } from "lucide-react";
+import { useQuestClaimable } from "@/hooks/useQuestClaimable";
 
 const ITEMS = [
   { href: "/", label: "Home", icon: Home },
   { href: "/generate", label: "Create", icon: Wand2 },
   { href: "/assets", label: "Assets", icon: Images },
+  { href: "/quests", label: "Quests", icon: Trophy },
   { href: "/projects", label: "Projects", icon: FolderOpen },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
@@ -21,7 +23,8 @@ export function MobileBottomNav({ role = "USER" }: { role?: string }) {
   // Staff get their panel as a tab (Home stays in the menu)
   const isAdmin = role === "ADMIN" || role === "OWNER";
   const staff = isAdmin ? { href: "/admin", label: "Admin", icon: Shield } : role === "MODERATOR" ? { href: "/moderator", label: "Mod", icon: ShieldCheck } : null;
-  const items = staff ? [...ITEMS.slice(1, 4), staff, ITEMS[4]] : ITEMS;
+  const claimable = useQuestClaimable();
+  const items = staff ? [...ITEMS.slice(1, 5), staff, ITEMS[5]] : ITEMS;
   const isActive = (href: string) =>
     href === "/"
       ? pathname === "/"
@@ -41,7 +44,12 @@ export function MobileBottomNav({ role = "USER" }: { role?: string }) {
                 className={`flex flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors ${
                   active ? "text-white" : "text-[#9AA1CC] hover:text-white"
                 }`}>
-                <item.icon className={`h-[18px] w-[18px] ${active ? "text-[#FFA300]" : ""}`} strokeWidth={active ? 2.2 : 1.8} aria-hidden />
+                <span className="relative">
+                  <item.icon className={`h-[18px] w-[18px] ${active ? "text-[#FFA300]" : ""}`} strokeWidth={active ? 2.2 : 1.8} aria-hidden />
+                  {item.href === "/quests" && claimable > 0 && (
+                    <span className="absolute -right-1.5 -top-1 h-2.5 w-2.5 rounded-full bg-[#00E436] ring-2 ring-[#19223F]" aria-label={`${claimable} rewards to claim`} />
+                  )}
+                </span>
                 {item.label}
               </Link>
             </li>

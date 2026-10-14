@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Check, ChevronDown, X, Sparkles, Film, FolderOpen, Coins } from "lucide-react";
+import { QUEST_BY_ID } from "@/lib/quests/definitions";
 
 const HIDE_KEY = "sl:getting-started:hidden";
 const COSTS_KEY = "sl:getting-started:costs";
@@ -46,10 +47,10 @@ export function GettingStarted({ done }: { done: { generate: boolean; animate: b
   }, []);
 
   const steps = [
-    { id: "generate", label: "Create your first sprite", hint: "Describe it in one sentence", href: "/generate", icon: Sparkles, ok: done.generate },
-    { id: "animate", label: "Animate a sprite", hint: "Walk, attack, breathe fire…", href: "/animate", icon: Film, ok: done.animate },
-    { id: "project", label: "Start a project", hint: "Keep your game's assets together", href: "/projects", icon: FolderOpen, ok: done.project },
-    { id: "costs", label: "See what things cost", hint: "Credits explained in 1 minute", href: "/how-it-works#credits", icon: Coins, ok: costsSeen },
+    { id: "generate", label: "Create your first sprite", hint: "Describe it in one sentence", href: "/generate", icon: Sparkles, ok: done.generate, reward: QUEST_BY_ID.first_sprite.reward },
+    { id: "animate", label: "Animate a sprite", hint: "Walk, attack, breathe fire…", href: "/animate", icon: Film, ok: done.animate, reward: QUEST_BY_ID.first_animation.reward },
+    { id: "project", label: "Start a project", hint: "Keep your game's assets together", href: "/projects", icon: FolderOpen, ok: done.project, reward: QUEST_BY_ID.first_project.reward },
+    { id: "costs", label: "See what things cost", hint: "Credits explained in 1 minute", href: "/how-it-works#credits", icon: Coins, ok: costsSeen, reward: 0 },
   ];
   const count = steps.filter((s) => s.ok).length;
   const onTool = TOOL_PATHS.some((p) => pathname === p || pathname?.startsWith(`${p}/`));
@@ -111,9 +112,15 @@ export function GettingStarted({ done }: { done: { generate: boolean; animate: b
                     <span className={`block text-[13px] ${s.ok ? "text-[#8A92BF] line-through" : "text-white"}`}>{s.label}</span>
                     {!s.ok && <span className="block truncate text-[11.5px] text-[#8A92BF]">{s.hint}</span>}
                   </span>
+                  {s.reward > 0 && <span className="shrink-0 font-mono text-[11.5px] font-semibold text-[#FFC857]">+{s.reward} cr</span>}
                 </Link>
               </li>
             ))}
+            <li>
+              <Link href="/quests" className="mt-1 flex min-h-10 items-center justify-center rounded-xl border-t border-white/[0.06] text-[12.5px] font-medium text-[#FFC857] transition hover:bg-white/[0.05]">
+                Claim your rewards in Quests
+              </Link>
+            </li>
           </ul>
         )}
       </div>

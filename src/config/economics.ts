@@ -28,7 +28,10 @@ export function offers(): Offer[] {
   const plans = Object.entries(PLANS).filter(([, p]) => p.price > 0).map(([k, p]) => ({ key: k, label: p.name ?? k, priceUsd: p.price, credits: p.credits, monthly: true }));
   // Stripe pack prices are USD (the `price` field is in cents)
   const packs = Object.entries(CREDIT_PACKS).map(([k, p]) => ({ key: k, label: k, priceUsd: p.price / 100, credits: p.credits, monthly: false }));
-  return [...plans, ...packs];
+  // Same packs with their bonus credits (launch promo / first-72h welcome offer):
+  // more credits for the same money, so these are the packs' worst case.
+  const bonusPacks = Object.entries(CREDIT_PACKS).map(([k, p]) => ({ key: `${k}+BONUS`, label: `${k} + bonus`, priceUsd: p.price / 100, credits: p.credits + p.bonus, monthly: false }));
+  return [...plans, ...packs, ...bonusPacks];
 }
 
 export function netPerCreditGbp(o: Pick<Offer, "priceUsd" | "credits">, vat: boolean): number {
