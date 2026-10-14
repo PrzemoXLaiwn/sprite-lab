@@ -130,6 +130,21 @@ export function buildSpritePrompt({ subject, styleId, categoryId, view, colorHin
     // same outline no matter whether it's a knight, an ore or an icon.
     ...(isPixelStyle(styleId) ? [PIXEL_CONSISTENCY] : []),
     ...(colorHint ? [`Colors: ${colorHint.slice(0, 200)}.`] : []),
-    `Exactly one subject floating on a ${KEY_BACKGROUND}. No ground, no floor, no drop shadow under it, no scenery, no text, no border, no watermark.`,
+    `Exactly one subject floating on a ${keyBackgroundFor(cleanSubject)}. No ground, no floor, no drop shadow under it, no scenery, no text, no border, no watermark.`,
   ].join(" ");
+}
+
+/**
+ * White, silver or pale subjects can't sit on a white key: background seen
+ * through a gap (between a bow and its string, inside a ring) is then
+ * indistinguishable from a white shirt. Those get a magenta key — no game
+ * subject is pure magenta, so every enclosed patch of it is background
+ * (sprite-postprocess detects the key colour from the border).
+ */
+const PALE_SUBJECT = /\b(white|silver|silvery|snow\w*|ice|icy|frost\w*|ghost\w*|spirit|bone|skull|skeleton|pearl\w*|marble|ivory|cream|pale|cloud\w*|steam|mist|moon\w*|platinum|chrome|glass|crystal\w*|diamond\w*|angel\w*|polar|yeti|wool|sheep|cotton|paper|porcelain)\b/i;
+
+export const MAGENTA_KEY_BACKGROUND = "plain flat solid pure magenta (#FF00FF) background";
+
+export function keyBackgroundFor(subject: string): string {
+  return PALE_SUBJECT.test(subject) ? MAGENTA_KEY_BACKGROUND : KEY_BACKGROUND;
 }

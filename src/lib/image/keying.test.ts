@@ -57,4 +57,17 @@ describe("keySpriteBackground", () => {
     expect(c.alpha(75, 90)).toBe(0);
     expect(c.alpha(130, 90)).toBe(255);
   });
+
+  it("magenta key (pale subjects): removes every enclosed key patch, keeps flat white cloth", () => {
+    const KEY: RGB = [192, 46, 190];
+    const c = canvas(200, 300, KEY);
+    c.rect(40, 40, 160, 260, OUTLINE);
+    c.rect(44, 44, 156, 256, [255, 255, 255]); // flat white shirt
+    c.rect(60, 120, 80, 200, OUTLINE);
+    c.rect(64, 124, 76, 196, KEY); // key colour seen through a gap (bow and string)
+    keySpriteBackground(c.raw);
+    expect(c.alpha(70, 160)).toBe(0);
+    expect(c.alpha(120, 100)).toBe(255);
+    expect(c.alpha(5, 5)).toBe(0);
+  });
 });

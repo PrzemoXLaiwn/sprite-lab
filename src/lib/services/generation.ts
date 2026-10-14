@@ -47,6 +47,9 @@ import { COLOR_PALETTES } from "@/config/features/premium-features";
 import { postprocessSprite, postprocessTile } from "@/lib/image/sprite-postprocess";
 import { buildSpritePrompt, isPixelStyle, isTileCategory, normalizeStyleId } from "@/config/prompts/sprite-prompt";
 import { interpretSubject } from "@/lib/prompt-interpret";
+
+/** Shaded styles where a perfectly flat key-coloured patch can only be background. */
+const PAINTERLY_STYLES = new Set(["REALISTIC_PAINTED", "HAND_PAINTED", "DARK_SOULS"]);
 import { storeGuestSprite } from "@/lib/guest-claim/server";
 
 // =============================================================================
@@ -601,7 +604,7 @@ async function generateSingle2D(request: GenerationRequest): Promise<{ asset: Ge
       png = generated.image;
     }
   } else try {
-    const processed = await postprocessSprite(generated.image, { pixelGrid, paletteSize });
+    const processed = await postprocessSprite(generated.image, { pixelGrid, paletteSize, flatGaps: PAINTERLY_STYLES.has(styleId) });
     png = processed.png;
     if (!processed.backgroundRemoved) {
       // Model drew a scene despite the instruction — fall back to the AI

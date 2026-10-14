@@ -30,9 +30,30 @@ export function animationFrameOption(frames: number | null | undefined): Animati
 export const RIG_CREDITS = 3;
 export const RIG_FRAMES = 24;
 
+/** Rigid-item motions (src/lib/image/item-motion.ts): the drawing is moved, never redrawn. */
+export type ItemMotionKind = "swing" | "thrust" | "spin" | "shine" | "pulse";
+export type RigMotionKind = "breathe" | "float" | ItemMotionKind;
+
+/** Things that don't bend: a sword swings as one piece, a gem glows in place. */
+const RIGID_CATEGORIES = ["WEAPONS", "ARMOR", "CONSUMABLES", "RESOURCES", "UI_ELEMENTS"];
+
+export function isItemMotion(kind: string | null | undefined): kind is ItemMotionKind {
+  return kind === "swing" || kind === "thrust" || kind === "spin" || kind === "shine" || kind === "pulse";
+}
+
 /** Motions that are better as a rig than as redrawn frames. */
-export function rigMotionFor(id: string, label?: string): "breathe" | "float" | null {
+export function rigMotionFor(id: string, label?: string, categoryId?: string | null): RigMotionKind | null {
   const text = `${id} ${label ?? ""}`.toLowerCase();
+  if (RIGID_CATEGORIES.includes((categoryId ?? "").toUpperCase())) {
+    // Image models redraw a "swinging" sword in place and add a white arc;
+    // rotating the real drawing around its grip is what a game animator does
+    if (/\b(swing|slash|strike|chop|cleave|hack|attack|smash)/.test(text)) return "swing";
+    if (/\b(thrust|stab|lunge|poke|jab|pierce)/.test(text)) return "thrust";
+    if (/\b(spin|rotat|twirl|whirl|turn)/.test(text)) return "spin";
+    if (/\b(shine|gleam|glint|sparkle|shimmer|polish|glisten)/.test(text)) return "shine";
+    if (/\b(glow|power|charge|pulse|enchant|empower|aura|ignite|light)/.test(text)) return "pulse";
+    if (/\b(float|hover|bob|pickup|pick up|levitat|idle)/.test(text)) return "float";
+  }
   if (/\b(walk|run|attack|jump|hit|hurt|cast|fly|swim|turn|death|die|dash)/.test(text)) return null;
   if (/\b(hover|float|levitat|bob)/.test(text)) return "float";
   if (/\b(idle|breath|breathing|rest|resting|stand|standing|wait|waiting|calm)\b/.test(text)) return "breathe";

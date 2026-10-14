@@ -115,7 +115,7 @@ export async function makeRigAnimation(sprite: Buffer, opts: RigOptions): Promis
 
 const MAX_SIDE = 1024;
 
-async function loadSprite(buf: Buffer): Promise<Raw> {
+export async function loadSprite(buf: Buffer): Promise<Raw> {
   // Generated sprites are 1024px; cap anything bigger so a large upload can't
   // blow up memory (every frame below is a full-size RGBA copy)
   const { data, info } = await sharp(buf)
@@ -132,7 +132,7 @@ async function loadSprite(buf: Buffer): Promise<Raw> {
 }
 
 /** Size of one art pixel in an upscaled pixel-art image (1 when not exact). */
-function nativeFactor(raw: Raw): number {
+export function nativeFactor(raw: Raw): number {
   for (const f of [16, 12, 10, 8, 6, 5, 4, 3, 2]) {
     if (raw.width % f || raw.height % f) continue;
     let same = 0, total = 0;
@@ -149,7 +149,7 @@ function nativeFactor(raw: Raw): number {
   return 1;
 }
 
-function downsample(raw: Raw, f: number): Raw {
+export function downsample(raw: Raw, f: number): Raw {
   const w = raw.width / f, h = raw.height / f;
   const out: Raw = { data: Buffer.alloc(w * h * 4), width: w, height: h };
   for (let y = 0; y < h; y++) {
@@ -161,7 +161,7 @@ function downsample(raw: Raw, f: number): Raw {
   return out;
 }
 
-function bounds(raw: Raw) {
+export function bounds(raw: Raw) {
   let x0 = raw.width, y0 = raw.height, x1 = -1, y1 = -1;
   for (let y = 0; y < raw.height; y++) {
     for (let x = 0; x < raw.width; x++) {
@@ -173,14 +173,14 @@ function bounds(raw: Raw) {
   return x1 < 0 ? null : { x0, y0, x1, y1 };
 }
 
-function samplePixel(src: Raw, x: number, y: number, out: Buffer, i: number) {
+export function samplePixel(src: Raw, x: number, y: number, out: Buffer, i: number) {
   const sx = Math.round(x - 0.5), sy = Math.round(y - 0.5);
   if (sx < 0 || sy < 0 || sx >= src.width || sy >= src.height) return;
   src.data.copy(out, i, (sy * src.width + sx) * 4, (sy * src.width + sx) * 4 + 4);
 }
 
 /** Bilinear on premultiplied colour so transparent edges don't darken. */
-function sampleBilinear(src: Raw, x: number, y: number, out: Buffer, i: number) {
+export function sampleBilinear(src: Raw, x: number, y: number, out: Buffer, i: number) {
   const fx = x - 0.5, fy = y - 0.5;
   const x0 = Math.floor(fx), y0 = Math.floor(fy);
   const tx = fx - x0, ty = fy - y0;

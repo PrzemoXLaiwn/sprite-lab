@@ -10,6 +10,7 @@ import { safeFetchImage } from "@/lib/safe-fetch";
 import { uploadGenerationBufferToR2 } from "@/lib/r2";
 import { makeAnimation, makeRotation } from "@/lib/services/animation-service";
 import { makeRigAnimation } from "@/lib/image/rig-animation";
+import { makeItemMotion } from "@/lib/image/item-motion";
 import { makeSkeletonAnimation, makeSkeletonIdle } from "@/lib/image/skeleton-rig";
 import {
   animationAnchor,
@@ -23,6 +24,7 @@ import {
   RIG_CREDITS,
   RIG_FRAMES,
   rigMotionFor,
+  isItemMotion,
   type MotionAnchor,
 } from "@/config/animations";
 
@@ -175,7 +177,7 @@ export async function POST(request: Request) {
 
   // Idle / breathing / hover: deform the original sprite instead of redrawing
   // every frame — no flicker in colour, size or detail
-  const rig = !isTile && action !== "custom" ? rigMotionFor(action, typeof body?.label === "string" ? body.label : undefined) : null;
+  const rig = !isTile && action !== "custom" ? rigMotionFor(action, typeof body?.label === "string" ? body.label : undefined, source.categoryId) : null;
   // Pixel-art bipeds also walk as a whole-pixel cut-out from the original
   // sprite (no per-frame redraw); anything that can't be rigged uses the AI
   // (Claude marks the joints — that call runs inside the paid operation, so it
@@ -191,8 +193,11 @@ export async function POST(request: Request) {
         ? await makeSkeletonAnimation(buffer, { pixel: true, motion: "walk" }).catch(() => null)
         // Bipeds get a real skeleton (weight shift, arms, head, tail); anything the
         // rigger can't read falls back to gentle breathing / hovering
-        : (rig === "breathe" ? await makeSkeletonIdle(buffer, { pixel, frames: RIG_FRAMES }) : null)
-          ?? await makeRigAnimation(buffer, { kind: rig ?? "breathe", pixel, frames: RIG_FRAMES }));
+        : isItemMotion(rig)
+          // Weapons and items move as one rigid piece (swing around the grip…)
+          ? await makeItemMotion(buffer, { kind: rig, pixel })
+          : (rig === "breathe" ? await makeSkeletonIdle(buffer, { pixel, frames: RIG_FRAMES }) : null)
+            ?? await makeRigAnimation(buffer, { kind: rig === "float" ? "float" : "breathe", pixel, frames: RIG_FRAMES }));
       if (anim) {
         const [sheet, gif] = await Promise.all([
           uploadGenerationBufferToR2(anim.sheetPng, user.id, "png"),

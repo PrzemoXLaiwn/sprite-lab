@@ -162,13 +162,13 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
   const pixel = isPixelStyleId(source?.styleId ?? resultStyleId);
   const option = animationFrameOption(frames);
   // Idle / breathing / hover are rigged from the original sprite (no redraw, no flicker)
-  const rigKind = !isTile && selected !== "custom" ? rigMotionFor(selected, selectedPreset?.label)
+  const rigKind = !isTile && selected !== "custom" ? rigMotionFor(selected, selectedPreset?.label, source?.categoryId)
     // Pixel-art walks are rigged too (whole-pixel steps); AI frames only as a fallback
     ?? (pixel && /walk/i.test(`${selected} ${selectedPreset?.label ?? ""}`) ? "walk" : null) : null;
   const rotation = rotationFor(selected);
   const canRotate = supportsRotation(source?.categoryId);
   const cost = rotation ? rotation.credits : rigKind ? RIG_CREDITS : animationCredits(frames, smoothOn);
-  const rigFrames = pixel ? (rigKind === "walk" ? 4 : 6) : RIG_FRAMES;
+  const rigFrames = rigKind && rigKind in ITEM_FRAMES ? ITEM_FRAMES[rigKind] : pixel ? (rigKind === "walk" ? 4 : 6) : RIG_FRAMES;
   // Frames in the finished sheet, for the summary lines
   const outFrames = rotation ? rotation.frames : rigKind ? rigFrames : smoothOn ? option.frames * 2 : option.frames;
   const customTooShort = selected === "custom" && customMotion.trim().length < 3;
@@ -440,7 +440,9 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
         {source && rigKind && !rotation && (
           <InfoNote icon={<Check className="h-3.5 w-3.5 text-emerald-300" />}>
             <span className="text-[#C8CCE8]">{pixel ? "Pixel rig" : "Smooth rig"} · {rigFrames} frames · {RIG_CREDITS} credits.</span>{" "}
-            {rigKind === "float"
+            {rigKind && rigKind in ITEM_NOTES
+              ? ITEM_NOTES[rigKind]
+              : rigKind === "float"
               ? "Your sprite itself hovers up and down"
               : pixel
                 ? rigKind === "walk"
@@ -621,6 +623,16 @@ function AnimatePageKeyed() {
   if (needsSource || (bare && (draftRaw === null || draft))) return <PageFallback />;
   return <AnimatePageContent key={id ?? "none"} generationId={id} resultId={result} />;
 }
+
+/** Weapons and items move as one rigid piece (src/lib/image/item-motion.ts). */
+const ITEM_FRAMES: Record<string, number> = { swing: 10, thrust: 8, spin: 8, shine: 12, pulse: 8 };
+const ITEM_NOTES: Record<string, string> = {
+  swing: "Your sprite swings around its grip: wind-up, fast slash, settle back",
+  thrust: "Your sprite pulls back and stabs forward along its blade",
+  spin: "Your sprite turns a full circle around its centre",
+  shine: "A glint of light runs along the blade",
+  pulse: "A glow in the sprite's own colour pulses around its outline",
+};
 
 export default function AnimatePage() {
   return (

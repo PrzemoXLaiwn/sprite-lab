@@ -23,6 +23,8 @@
 import sharp from "sharp";
 
 export interface SpritePostprocessOptions {
+  /** Painted styles: treat enclosed, perfectly flat key-colour patches as background. */
+  flatGaps?: boolean;
   /** Pixel-art grid (longest side of the sprite in "art pixels"). Omit for non-pixel styles. */
   pixelGrid?: number;
   /** Max colours for pixel styles. Default 24. */
@@ -73,6 +75,10 @@ export async function postprocessSprite(
   // Work at ≤1024px — model outputs can be larger and nothing below needs more.
   const raw = await toRaw(input, 1024);
 
+  // Chroma key (magenta for pale subjects)? Read it from the corners before keying
+  const key = cornerColor(raw);
+  const chromaKey = Math.max(...key) - Math.min(...key) > 110 ? key : null;
+
   // 1. Background → alpha
   let backgroundRemoved: boolean;
   if (options.trustInputAlpha && hasMeaningfulAlpha(raw)) {
@@ -81,9 +87,10 @@ export async function postprocessSprite(
   } else {
     // 32: tight enough to keep pale glows/highlights touching the background
     // Painted styles: an enclosed patch of perfectly flat key colour is
-    // background even without a dark outline around it (pixel art can use
-    // flat white for cloth, so it keeps the outline rule only).
-    backgroundRemoved = keyOutBackground(raw, options.bgTolerance ?? 32, 1, 1, !options.pixelGrid);
+    // background even without a dark outline around it. Flat-colour styles
+    // (pixel, cartoon, vector) draw white cloth exactly as flat as the key,
+    // so they keep the outline rule (pale subjects get a magenta key instead).
+    backgroundRemoved = keyOutBackground(raw, options.bgTolerance ?? 32, 1, 1, options.flatGaps ?? false);
   }
 
   // 2. Crop to subject
@@ -145,6 +152,8 @@ export async function postprocessSprite(
   const keepNative = cellsW === Math.max(1, nativeW) && cellsH === Math.max(1, nativeH) && sourcePixel !== null;
   const sprite = keepNative ? majorityDownsample(cropped, cellsW, cellsH, palette) : averageDownsample(cropped, cellsW, cellsH, palette);
   despeckle(sprite);
+  // Key spill that survived inside edge art pixels: clean the 1-art-pixel rim
+  if (chromaKey) despillEdges(sprite, chromaKey[0], chromaKey[1], chromaKey[2], 1);
   fillPinholes(sprite);
 
   // Centre on a square transparent canvas
@@ -379,8 +388,19 @@ function keyOutBackground(raw: Raw, tolerance: number, fringePasses = 1, areaSca
   let best: { n: number; r: number; g: number; b: number } | undefined;
   for (const e of buckets.values()) if (!best || e.n > best.n) best = e;
   if (!best) return true; // border already transparent
-  if (best.n < border.length * 0.5) return false; // no flat background
-  const br = best.r / best.n, bg = best.g / best.n, bb = best.b / best.n;
+  // The mode bucket can split a soft gradient (a chroma key often shades a
+  // little); gather every border pixel close to it before deciding.
+  let mr = best.r / best.n, mg = best.g / best.n, mb = best.b / best.n;
+  let near = 0, sr = 0, sg = 0, sb = 0;
+  for (const p of border) {
+    const i = p * 4;
+    if (data[i + 3] < 128) continue;
+    const dr = data[i] - mr, dg = data[i + 1] - mg, db = data[i + 2] - mb;
+    if (dr * dr + dg * dg + db * db <= 40 * 40) { near++; sr += data[i]; sg += data[i + 1]; sb += data[i + 2]; }
+  }
+  if (near < border.length * 0.5) return false; // no flat background
+  mr = sr / near; mg = sg / near; mb = sb / near;
+  const br = mr, bg = mg, bb = mb;
 
   const tol2 = tolerance * tolerance;
   const isBg = (p: number) => {
@@ -425,8 +445,45 @@ function keyOutBackground(raw: Raw, tolerance: number, fringePasses = 1, areaSca
   }
 
   removeEnclosedBackground(raw, br, bg, bb, areaScale, flatGaps);
+  if (Math.max(br, bg, bb) - Math.min(br, bg, bb) > 110) despillEdges(raw, br, bg, bb);
   removeGroundShadow(raw);
   return true;
+}
+
+/**
+ * Chroma key spill: edge pixels blended with the key (a purple rim around a
+ * silver bow on magenta). Within 4 px of the cleared background, take back
+ * the key colour's excess (within 4 px): for magenta, red and blue above green.
+ * Applied only with a chroma key, never with the white key.
+ */
+/** Mean colour of the four corner pixels (the key, before any keying). */
+function cornerColor(raw: Raw): [number, number, number] {
+  const { width: w, height: h, data } = raw;
+  const idx = [0, w - 1, (h - 1) * w, h * w - 1].map((p) => p * 4);
+  return [0, 1, 2].map((c) => idx.reduce((a, i) => a + data[i + c], 0) / 4) as [number, number, number];
+}
+
+function despillEdges(raw: Raw, br: number, bg: number, bb: number, range = 4): void {
+  const { width, height, data } = raw;
+  // Which channels the key is strong in (magenta: R and B; green: G)
+  const strong = [br, bg, bb].map((v) => v > 180);
+  const weak = [br, bg, bb].map((v) => v < 90);
+  if (!strong.some(Boolean) || !weak.some(Boolean)) return;
+  const near = new Uint8Array(width * height);
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+    const p = y * width + x;
+    if (data[p * 4 + 3] !== 0) continue;
+    for (let oy = -range; oy <= range; oy++) for (let ox = -range; ox <= range; ox++) {
+      const nx = x + ox, ny = y + oy;
+      if (nx >= 0 && ny >= 0 && nx < width && ny < height) near[ny * width + nx] = 1;
+    }
+  }
+  for (let p = 0; p < width * height; p++) {
+    const i = p * 4;
+    if (!near[p] || data[i + 3] === 0) continue;
+    const weakMax = Math.max(...[0, 1, 2].filter((c) => weak[c]).map((c) => data[i + c]));
+    for (let c = 0; c < 3; c++) if (strong[c] && data[i + c] > weakMax) data[i + c] = weakMax + Math.round((data[i + c] - weakMax) * 0.25);
+  }
 }
 
 /**
@@ -554,7 +611,11 @@ function removeEnclosedBackground(raw: Raw, br: number, bg: number, bb: number, 
     // white highlight on cream cloth is fenced by near-white shades (pale);
     // the gap was fenced by red feathers and silver armour (32% pale).
     const flat = flatGaps && region.length >= minFlatArea && border.pale < 0.6 && flatShare(raw, region, br, bg, bb) >= 0.8;
+    // A chroma key (magenta, used for pale subjects) never occurs in the
+    // subject itself, so every enclosed patch of it is background.
+    const chroma = Math.max(br, bg, bb) - Math.min(br, bg, bb) > 110;
     const isGap =
+      (chroma && region.length >= 4) ||
       flat ||
       (region.length >= minArea && border.light < 0.5) ||
       (region.length >= minOutlinedArea && border.dark >= 0.6);

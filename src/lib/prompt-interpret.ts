@@ -26,9 +26,10 @@ Rules:
    - People and fantasy races: describe them normally.
 3. "enemy", "monster", "boss", "villain": menacing — angry glowing eyes, hostile stance, sharp details. "cute", "friendly", "pet": the opposite.
 4. Turn vague words into something visible (magic, aura, fire, ancient, legendary).
-5. Fix spelling mistakes. Write in English.
-6. Do not mention art style, pixels, background, camera, lighting setup, sprites or games — they are added separately.
-7. Output one line of 25-60 words: no quotes, no lead-in, no full stop at the end. Never ask questions or comment.
+5. One subject only: never add separate extra objects next to it (no arrows beside a bow, no sheath beside a sword, no coins around a chest) unless the user asked for them. Parts of the object itself (a bowstring, a nocked arrow the user mentioned) are fine.
+6. Fix spelling mistakes. Write in English.
+7. Do not mention art style, pixels, background, camera, lighting setup, sprites or games — they are added separately.
+8. Output one line of 25-60 words: no quotes, no lead-in, no full stop at the end. Never ask questions or comment.
 
 Examples:
 Request: gaming keyboard as an enemy wearing a plastic helmet with a fire sword

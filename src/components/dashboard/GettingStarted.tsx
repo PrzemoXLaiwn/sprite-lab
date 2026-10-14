@@ -32,6 +32,24 @@ export function GettingStarted({ done }: { done: { generate: boolean; animate: b
   const [hidden, setHidden] = useState(false);
   const [costsSeen, setCostsSeen] = useState(false);
   const [open, setOpen] = useState(true);
+  // Server-rendered "done" is from page load; refresh after each generation
+  // (credits change) so a finished step ticks off right away
+  const [live, setLive] = useState<{ generate: boolean; animate: boolean; project: boolean } | null>(null);
+  useEffect(() => {
+    const refresh = () => {
+      fetch("/api/quests", { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d: { quests?: { id: string; complete: boolean }[] } | null) => {
+          if (!d?.quests) return;
+          const done = (id: string) => d.quests!.some((q) => q.id === id && q.complete);
+          setLive({ generate: done("first_sprite"), animate: done("first_animation"), project: done("first_project") });
+        })
+        .catch(() => { /* keep the server values */ });
+    };
+    window.addEventListener("credits-updated", refresh);
+    return () => window.removeEventListener("credits-updated", refresh);
+  }, []);
+  const isDone = { generate: done.generate || !!live?.generate, animate: done.animate || !!live?.animate, project: done.project || !!live?.project };
 
   // Read per-browser state after mount (localStorage isn't available during SSR)
   useEffect(() => {
@@ -47,9 +65,9 @@ export function GettingStarted({ done }: { done: { generate: boolean; animate: b
   }, []);
 
   const steps = [
-    { id: "generate", label: "Create your first sprite", hint: "Describe it in one sentence", href: "/generate", icon: Sparkles, ok: done.generate, reward: QUEST_BY_ID.first_sprite.reward },
-    { id: "animate", label: "Animate a sprite", hint: "Walk, attack, breathe fire…", href: "/animate", icon: Film, ok: done.animate, reward: QUEST_BY_ID.first_animation.reward },
-    { id: "project", label: "Start a project", hint: "Keep your game's assets together", href: "/projects", icon: FolderOpen, ok: done.project, reward: QUEST_BY_ID.first_project.reward },
+    { id: "generate", label: "Create your first sprite", hint: "Describe it in one sentence", href: "/generate", icon: Sparkles, ok: isDone.generate, reward: QUEST_BY_ID.first_sprite.reward },
+    { id: "animate", label: "Animate a sprite", hint: "Walk, attack, breathe fire…", href: "/animate", icon: Film, ok: isDone.animate, reward: QUEST_BY_ID.first_animation.reward },
+    { id: "project", label: "Start a project", hint: "Keep your game's assets together", href: "/projects", icon: FolderOpen, ok: isDone.project, reward: QUEST_BY_ID.first_project.reward },
     { id: "costs", label: "See what things cost", hint: "Credits explained in 1 minute", href: "/how-it-works#credits", icon: Coins, ok: costsSeen, reward: 0 },
   ];
   const count = steps.filter((s) => s.ok).length;
