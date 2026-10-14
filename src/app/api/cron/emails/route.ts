@@ -6,7 +6,7 @@ import { sendReEngagementEmail, sendAbandonedCartEmail, sendSpecialOfferEmail } 
 import { stripe, PLANS, CREDIT_PACKS } from "@/lib/stripe";
 import { Prisma } from "@prisma/client";
 import { relaunchActive } from "@/config/relaunch";
-import { MARKETING_OFF_RESPONSE, marketingEmailsEnabled } from "@/lib/email/flags";
+import { MARKETING_OFF_RESPONSE, legacyMarketingEnabled } from "@/lib/email/flags";
 import { marketingBlockedByPrefs } from "@/lib/email/suppression";
 
 // Vercel Cron Job - Automated email campaigns
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!marketingEmailsEnabled()) {
+    if (!legacyMarketingEnabled()) {
       return NextResponse.json(MARKETING_OFF_RESPONSE);
     }
 

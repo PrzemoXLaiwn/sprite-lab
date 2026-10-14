@@ -513,6 +513,7 @@ async function generateSingle2D(request: GenerationRequest): Promise<{ asset: Ge
     : await interpretSubject(request.prompt, request.categoryId);
   const finalPrompt = buildSpritePrompt({
     subject,
+    original: request.prompt,
     styleId,
     categoryId: request.categoryId,
     view,

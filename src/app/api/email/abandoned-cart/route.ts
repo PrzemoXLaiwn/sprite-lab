@@ -4,7 +4,7 @@ import { isAuthorizedCronRequest } from "@/lib/cron-auth";
 import { stripe, PLANS, CREDIT_PACKS } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { sendAbandonedCartEmail } from "@/lib/email/send";
-import { MARKETING_OFF_RESPONSE, marketingEmailsEnabled } from "@/lib/email/flags";
+import { MARKETING_OFF_RESPONSE, legacyMarketingEnabled } from "@/lib/email/flags";
 
 // Abandoned Cart Email API
 // Can be called manually or via cron job
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Automated marketing: behind the one switch, like /api/cron/emails
-    if (!marketingEmailsEnabled()) {
+    if (!legacyMarketingEnabled()) {
       return NextResponse.json(MARKETING_OFF_RESPONSE);
     }
 

@@ -3,7 +3,7 @@ import { mergeEmailPreferences } from "@/app/api/_lib/email-prefs";
 import { isAuthorizedCronRequest } from "@/lib/cron-auth";
 import { prisma } from "@/lib/prisma";
 import { sendSpecialOfferEmail } from "@/lib/email/send";
-import { MARKETING_OFF_RESPONSE, marketingEmailsEnabled } from "@/lib/email/flags";
+import { MARKETING_OFF_RESPONSE, legacyMarketingEnabled } from "@/lib/email/flags";
 import { Prisma } from "@prisma/client";
 
 // Special Offer Email API
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Automated marketing: behind the one switch, like /api/cron/emails
-    if (!marketingEmailsEnabled()) {
+    if (!legacyMarketingEnabled()) {
       return NextResponse.json(MARKETING_OFF_RESPONSE);
     }
 

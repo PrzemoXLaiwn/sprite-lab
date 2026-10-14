@@ -57,8 +57,17 @@ describe("one switch for all marketing (MARKETING_EMAILS_ENABLED)", () => {
     expect(touched).toEqual([]);
   });
 
-  it.each(Object.keys(routes))("%s runs (against the mocks) only when the switch is exactly 'true'", async (name) => {
+  it.each(Object.keys(routes))("%s stays off with only the master switch on (needs LEGACY_MARKETING_CRONS_ENABLED too)", async (name) => {
     vi.stubEnv("MARKETING_EMAILS_ENABLED", "true");
+    vi.stubEnv("LEGACY_MARKETING_CRONS_ENABLED", "");
+    const res = await routes[name as keyof typeof routes](req(name));
+    expect((await res.json()).skipped).toBe(true);
+    expect(touched).toEqual([]);
+  });
+
+  it.each(Object.keys(routes))("%s runs (against the mocks) only when both switches are exactly 'true'", async (name) => {
+    vi.stubEnv("MARKETING_EMAILS_ENABLED", "true");
+    vi.stubEnv("LEGACY_MARKETING_CRONS_ENABLED", "true");
     const body = await (await routes[name as keyof typeof routes](req(name))).json();
     expect(body.reason).not.toBe("MARKETING_EMAILS_ENABLED is not true");
     expect(touched.length).toBeGreaterThan(0);

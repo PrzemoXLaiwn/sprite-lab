@@ -64,9 +64,12 @@ const VIEW_LINES: Record<string, string> = {
   TOP_DOWN: "top-down view seen from directly above",
 };
 
+// "auto" is the game-ready default the UI promises: a calm A-pose, ready to
+// rig and animate (combat poses only when the user picks Dynamic)
+const A_POSE = "standing upright in a relaxed A-pose: arms hanging slightly away from the body, open hands, feet shoulder-width apart, facing the viewer at a slight three-quarter angle, calm neutral expression";
 const POSE_LINES: Record<string, string> = {
-  auto: "in a neutral idle stance",
-  "a-pose": "standing in an A-pose with arms angled slightly away from the body",
+  auto: A_POSE,
+  "a-pose": A_POSE,
   "t-pose": "standing in a T-pose with both arms stretched out horizontally",
   dynamic: "in a dynamic action pose",
 };
@@ -80,6 +83,16 @@ export interface SpritePromptInput {
   colorHint?: string;
   /** Only applied to characters / creatures */
   pose?: string;
+  /** What the user typed: decides whether held items were asked for. */
+  original?: string;
+}
+
+/** Anything a character could hold or carry. */
+const HELD_ITEM = /\b(sword|blade|katana|sabre|saber|dagger|knife|axe|hatchet|hammer|mace|club|flail|spear|lance|halberd|pike|trident|scythe|sickle|bow|crossbow|arrows?|gun|pistol|rifle|shotgun|blaster|cannon|staff|wand|rod|scepter|sceptre|orb|tome|book|scroll|shield|buckler|torch|lantern|lamp|weapons?|armed|holding|holds|wielding|wields|carrying|carries|pickaxe|shovel|rake|fishing|guitar|instrument|potion|flask|bottle|mug|cup|bag|sack|basket|umbrella|broom|whip|chain|net|key|lute|banner|flag)\b/i;
+
+/** True when the user asked for something in the hands (so it stays). */
+export function asksForHeldItem(text: string): boolean {
+  return HELD_ITEM.test(text);
 }
 
 /** Legacy style ids ("pixel-16", "pixel_art_16") → canonical ids */
@@ -102,7 +115,9 @@ export function isPixelStyle(styleId: string): boolean {
   return normalizeStyleId(styleId).includes("PIXEL");
 }
 
-export function buildSpritePrompt({ subject, styleId, categoryId, view, colorHint, pose }: SpritePromptInput): string {
+export function buildSpritePrompt(input: SpritePromptInput): string {
+  const { subject, categoryId, view, colorHint, pose } = input;
+  let { styleId } = input;
   styleId = normalizeStyleId(styleId);
   const style = STYLE_LINES[styleId.toUpperCase()] ?? STYLE_LINES.PIXEL_ART_16;
   const category = (categoryId ?? "").toUpperCase();
@@ -117,7 +132,15 @@ export function buildSpritePrompt({ subject, styleId, categoryId, view, colorHin
       "Even lighting with no vignette. No border, no frame, no outline around the tile, no single object in the middle, no background, no text, no watermark.",
     ].join(" ");
   }
-  const posed = (category === "CHARACTERS" || category === "CREATURES") && pose ? POSE_LINES[pose] : undefined;
+  const figure = category === "CHARACTERS" || category === "CREATURES";
+  // Creatures (animals, monsters) aren't put in an A-pose: a calm standing pose instead
+  const posed = figure && pose
+    ? category === "CREATURES" && (pose === "auto" || pose === "a-pose")
+      ? "standing calmly in a neutral pose, facing the viewer at a slight three-quarter angle, not attacking"
+      : POSE_LINES[pose]
+    : undefined;
+  // Game-ready by default: nothing in the hands unless the user asked for it
+  const emptyHands = figure && pose !== "dynamic" && !asksForHeldItem(input.original ?? subject);
   const framing = (CATEGORY_FRAMING[category] ?? "single subject shown whole") + (posed ? `, ${posed}` : "");
   const viewLine = view ? VIEW_LINES[view.toUpperCase()] : undefined;
   const cleanSubject = subject.trim().replace(/\s+/g, " ").slice(0, 400);
@@ -130,6 +153,7 @@ export function buildSpritePrompt({ subject, styleId, categoryId, view, colorHin
     // same outline no matter whether it's a knight, an ore or an icon.
     ...(isPixelStyle(styleId) ? [PIXEL_CONSISTENCY] : []),
     ...(colorHint ? [`Colors: ${colorHint.slice(0, 200)}.`] : []),
+    ...(emptyHands ? ["Hands empty: no weapon, shield, staff, wand, tool or any other held item."] : []),
     `Exactly one subject floating on a ${keyBackgroundFor(cleanSubject)}. No ground, no floor, no drop shadow under it, no scenery, no text, no border, no watermark.`,
   ].join(" ");
 }

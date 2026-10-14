@@ -3,7 +3,7 @@ import { mergeEmailPreferences } from "@/app/api/_lib/email-prefs";
 import { isAuthorizedCronRequest } from "@/lib/cron-auth";
 import { prisma } from "@/lib/prisma";
 import { sendDailyReminderEmail } from "@/lib/email/send";
-import { MARKETING_OFF_RESPONSE, marketingEmailsEnabled } from "@/lib/email/flags";
+import { MARKETING_OFF_RESPONSE, legacyMarketingEnabled } from "@/lib/email/flags";
 import { marketingBlockedByPrefs } from "@/lib/email/suppression";
 
 // Vercel Cron Job - Daily reminder emails
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!marketingEmailsEnabled()) {
+    if (!legacyMarketingEnabled()) {
       return NextResponse.json(MARKETING_OFF_RESPONSE);
     }
 

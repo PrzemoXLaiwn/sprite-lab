@@ -1,8 +1,8 @@
 // =============================================================================
 // Email switches — every env flag that decides whether marketing mail goes out
 // =============================================================================
-// MARKETING_EMAILS_ENABLED  default OFF. One switch for the lifecycle emails and
-//                           the older marketing crons (/api/cron/emails,
+// MARKETING_EMAILS_ENABLED  default OFF. Switch for the lifecycle emails (and,
+//                           with LEGACY_MARKETING_CRONS_ENABLED=true, the older marketing crons (/api/cron/emails,
 //                           /api/cron/daily-reminder, the cron-secret
 //                           /api/email/special-offer and /abandoned-cart).
 //                           Only the exact string "true" turns it on.
@@ -18,9 +18,19 @@
 // The welcome email is transactional and isn't controlled by any of these.
 // =============================================================================
 
-/** Lifecycle + older marketing crons. Off unless exactly "true". */
+/** Lifecycle marketing emails. Off unless exactly "true". */
 export function marketingEmailsEnabled(): boolean {
   return process.env.MARKETING_EMAILS_ENABLED === "true";
+}
+
+/**
+ * The older marketing crons (/api/cron/emails, /api/cron/daily-reminder,
+ * /api/email/special-offer, /abandoned-cart). They predate the shared
+ * frequency caps and warm-up (daily-reminder alone mails up to 100 people a
+ * day), so they need their own explicit switch on top of the master one.
+ */
+export function legacyMarketingEnabled(): boolean {
+  return marketingEmailsEnabled() && process.env.LEGACY_MARKETING_CRONS_ENABLED === "true";
 }
 
 /** Sunday weekly digest. On unless explicitly switched off. */
