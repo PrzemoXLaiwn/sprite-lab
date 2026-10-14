@@ -58,15 +58,28 @@ const CATEGORY_FRAMING: Record<string, string> = {
 };
 
 // Keys match AssetView in prompt-configs.ts ("DEFAULT" → no constraint)
-const VIEW_LINES: Record<string, string> = {
-  SIDE_VIEW: "strict side view in profile, facing right",
-  FRONT: "straight front view facing the viewer",
-  TOP_DOWN: "top-down view seen from directly above",
+// The view alone decides the angle (pose lines never mention one, so they
+// can't contradict it). Figures and objects need different wording.
+const VIEW_LINES: Record<string, { figure: string; object: string }> = {
+  SIDE_VIEW: {
+    figure: "strict side profile view facing right: only one side of the body is visible, one eye, the nose points to the right edge, no three-quarter turn",
+    object: "strict side view in profile, facing right",
+  },
+  FRONT: {
+    figure: "perfectly straight-on front view: head, chest, hips and feet all face the viewer directly, shoulders level and parallel to the image, symmetrical stance, no turn and no three-quarter angle",
+    object: "straight front view facing the viewer, no perspective turn",
+  },
+  TOP_DOWN: {
+    figure: "high top-down RPG view like classic 16-bit RPG games: the camera looks down at about 45 degrees, the top of the head and shoulders are visible, the body is shorter below them, facing down toward the viewer",
+    object: "top-down view seen from directly above",
+  },
 };
+/** No view picked: the slight three-quarter angle the UI calls Default. */
+const DEFAULT_FIGURE_VIEW = "facing the viewer at a slight three-quarter angle";
 
 // "auto" is the game-ready default the UI promises: a calm A-pose, ready to
 // rig and animate (combat poses only when the user picks Dynamic)
-const A_POSE = "standing upright in a relaxed A-pose: arms hanging slightly away from the body, open hands, feet shoulder-width apart, facing the viewer at a slight three-quarter angle, calm neutral expression";
+const A_POSE = "standing upright in a relaxed A-pose: arms hanging slightly away from the body, open hands, feet shoulder-width apart, calm neutral expression";
 const POSE_LINES: Record<string, string> = {
   auto: A_POSE,
   "a-pose": A_POSE,
@@ -136,13 +149,14 @@ export function buildSpritePrompt(input: SpritePromptInput): string {
   // Creatures (animals, monsters) aren't put in an A-pose: a calm standing pose instead
   const posed = figure && pose
     ? category === "CREATURES" && (pose === "auto" || pose === "a-pose")
-      ? "standing calmly in a neutral pose, facing the viewer at a slight three-quarter angle, not attacking"
+      ? "standing calmly in a neutral pose, not attacking"
       : POSE_LINES[pose]
     : undefined;
   // Game-ready by default: nothing in the hands unless the user asked for it
   const emptyHands = figure && pose !== "dynamic" && !asksForHeldItem(input.original ?? subject);
   const framing = (CATEGORY_FRAMING[category] ?? "single subject shown whole") + (posed ? `, ${posed}` : "");
-  const viewLine = view ? VIEW_LINES[view.toUpperCase()] : undefined;
+  const views = view ? VIEW_LINES[view.toUpperCase()] : undefined;
+  const viewLine = views ? (figure ? views.figure : views.object) : figure ? DEFAULT_FIGURE_VIEW : undefined;
   const cleanSubject = subject.trim().replace(/\s+/g, " ").slice(0, 400);
 
   return [
