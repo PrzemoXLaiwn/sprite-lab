@@ -575,7 +575,9 @@ function removeGroundShadow(raw: Raw): void {
  */
 function removeEnclosedBackground(raw: Raw, br: number, bg: number, bb: number, areaScale = 1, flatGaps = false): void {
   const { width, height, data } = raw;
-  const tight2 = 18 * 18;
+  // Painted styles also catch gaps the model shaded a little (GPT Image paints
+  // the key seen between a bow and its string ~12 levels darker)
+  const tight2 = flatGaps ? 28 * 28 : 18 * 18;
   // 0.4% of the canvas: large gaps go, glints on glass/crystal/eyes stay
   const minArea = Math.round(width * height * areaScale * 0.004);
   const minOutlinedArea = Math.round(width * height * areaScale * 0.0002);
@@ -604,39 +606,58 @@ function removeEnclosedBackground(raw: Raw, br: number, bg: number, bb: number, 
     // staff); highlights on glass/metal border on mid-tones instead.
     // White cloth, fur or highlights are bordered by the subject's own light
     // shades; a real gap shows dark outline or mid/dark colours around it.
-    const border = borderStats(raw, region);
+    const border = borderStats(raw, region, [br, bg, bb]);
     // The key background is perfectly flat; painted highlights (metal, glass,
     // eyes) always carry some shading. Measured on a painted parrot: the gap
     // between arm and body was 96% exact key colour, armour glints 2-4%. A
     // white highlight on cream cloth is fenced by near-white shades (pale);
     // the gap was fenced by red feathers and silver armour (32% pale).
-    const flat = flatGaps && region.length >= minFlatArea && border.pale < 0.6 && flatShare(raw, region, br, bg, bb) >= 0.8;
+    // With an off-white key (GPT Image paints ~238), a patch that matches the
+    // key almost exactly can't be white cloth, even inside a whiter halo.
+    const offWhiteKey = 0.299 * br + 0.587 * bg + 0.114 * bb < 246;
+    const exactKey = offWhiteKey && meanDistance(raw, region, br, bg, bb) <= 8;
+    const flat = flatGaps && region.length >= minFlatArea && (border.pale < 0.6 || exactKey) && flatShare(raw, region) >= 0.8;
+    // Outside the flat rule, keep the original, tighter colour match
+    const keyLike = !flatGaps || meanDistance(raw, region, br, bg, bb) <= 18;
     // A chroma key (magenta, used for pale subjects) never occurs in the
     // subject itself, so every enclosed patch of it is background.
     const chroma = Math.max(br, bg, bb) - Math.min(br, bg, bb) > 110;
     const isGap =
       (chroma && region.length >= 4) ||
       flat ||
-      (region.length >= minArea && border.light < 0.5) ||
-      (region.length >= minOutlinedArea && border.dark >= 0.6);
+      (keyLike && region.length >= minArea && border.light < 0.5) ||
+      (keyLike && region.length >= minOutlinedArea && border.dark >= 0.6);
     if (isGap) for (const p of region) data[p * 4 + 3] = 0;
   }
 }
 
-/** Share of the region's pixels within a few levels of the key colour. */
-function flatShare(raw: Raw, region: number[], br: number, bg: number, bb: number): number {
+/** Share of the region's pixels within a few levels of the region's own mean (a background patch is uniform). */
+function flatShare(raw: Raw, region: number[]): number {
   const { data } = raw;
+  if (!region.length) return 0;
+  let r = 0, g = 0, b = 0;
+  for (const p of region) { r += data[p * 4]; g += data[p * 4 + 1]; b += data[p * 4 + 2]; }
+  r /= region.length; g /= region.length; b /= region.length;
   let n = 0;
   for (const p of region) {
     const i = p * 4;
-    const dr = data[i] - br, dg = data[i + 1] - bg, db = data[i + 2] - bb;
-    if (dr * dr + dg * dg + db * db <= 10 * 10) n++;
+    const dr = data[i] - r, dg = data[i + 1] - g, db = data[i + 2] - b;
+    if (dr * dr + dg * dg + db * db <= 8 * 8) n++;
   }
-  return region.length ? n / region.length : 0;
+  return n / region.length;
+}
+
+/** Distance from the region's mean colour to the key. */
+function meanDistance(raw: Raw, region: number[], br: number, bg: number, bb: number): number {
+  const { data } = raw;
+  let r = 0, g = 0, b = 0;
+  for (const p of region) { r += data[p * 4]; g += data[p * 4 + 1]; b += data[p * 4 + 2]; }
+  const n = Math.max(1, region.length);
+  return Math.hypot(r / n - br, g / n - bg, b / n - bb);
 }
 
 /** Shares of the region's outer boundary pixels that are dark (outline-like) and light (cloth, fur). */
-function borderStats(raw: Raw, region: number[]): { dark: number; light: number; pale: number } {
+function borderStats(raw: Raw, region: number[], key?: [number, number, number]): { dark: number; light: number; pale: number } {
   const { width, height, data } = raw;
   const member = new Set(region);
   let dark = 0, light = 0, pale = 0, total = 0;
@@ -651,7 +672,11 @@ function borderStats(raw: Raw, region: number[]): { dark: number; light: number;
       const luma = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
       if (luma < 70) dark++;
       else if (luma >= 185) light++;
-      if (luma >= 225) pale++;
+      // Pale = the subject's own near-white shades. The anti-aliased ring
+      // between a gap and the subject is close to the key itself (an off-white
+      // GPT key sits at ~238), so it doesn't count.
+      const keyish = key ? Math.hypot(data[i] - key[0], data[i + 1] - key[1], data[i + 2] - key[2]) <= 30 : false;
+      if (luma >= 225 && !keyish) pale++;
     }
   }
   return total === 0 ? { dark: 0, light: 0, pale: 0 } : { dark: dark / total, light: light / total, pale: pale / total };

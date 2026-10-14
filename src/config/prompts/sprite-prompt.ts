@@ -31,7 +31,7 @@ const STYLE_LINES: Record<string, string> = {
   DARK_SOULS:
     "dark fantasy 2D game art: gritty, muted desaturated palette, dramatic shading, detailed",
   REALISTIC_PAINTED:
-    "semi-realistic painted 2D game art: detailed rendering, dramatic lighting",
+    "photorealistic AAA game art like a high-end RPG character render: true-to-life proportions and anatomy, a realistic face with natural skin texture, real eyes and subtle features (not cartoon, not anime, not stylized, no big eyes), physically based materials (worn leather, cloth weave, scratched metal), soft cinematic lighting, highly detailed",
   CARTOON_WESTERN:
     "western cartoon 2D game art: bold black outlines, flat vibrant colors, simple shading",
   VECTOR_CLEAN:
