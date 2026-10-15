@@ -878,3 +878,47 @@ model CostReconciliation {
   @@index([provider, checkedAt])
   @@map("cost_reconciliations")
 }
+
+// ===========================================
+// SPRITE DUNGEON (prisma/sql/2026-10-15_sprite_dungeon.sql)
+// ===========================================
+// Game code uses raw SQL (src/lib/dungeon/sql.ts); these models keep the schema in sync.
+
+model DungeonParty {
+  userId    String   @id @map("user_id")
+  slots     Json     @default("[]") // generation ids, slot order, max 4
+  updatedAt DateTime @default(now()) @map("updated_at")
+
+  @@map("dungeon_parties")
+}
+
+model DungeonRun {
+  id        String   @id
+  userId    String   @map("user_id")
+  week      String   // ISO week, e.g. 2026-W42
+  runDay    DateTime @map("run_day") @db.Date // UTC day
+  runIndex  Int      @map("run_index") // 1..5 within the day
+  floor     Int
+  seed      String
+  party     Json
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, runDay, runIndex], map: "dungeon_runs_user_id_run_day_run_index_key")
+  @@index([week, floor(sort: Desc), createdAt], map: "dungeon_runs_week_floor_created_at_idx")
+  @@map("dungeon_runs")
+}
+
+model DungeonPrize {
+  week    String
+  rank    Int
+  userId  String   @map("user_id")
+  floor   Int
+  credits Int      @default(0)
+  badge   String   // gold | silver | bronze | top10
+  paidAt  DateTime @default(now()) @map("paid_at")
+
+  @@id([week, rank], map: "dungeon_prizes_pkey")
+  @@unique([week, userId], map: "dungeon_prizes_week_user_id_key")
+  @@index([userId], map: "dungeon_prizes_user_id_idx")
+  @@map("dungeon_prizes")
+}

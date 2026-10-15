@@ -226,6 +226,15 @@ export default function QuestsPage() {
         <ul className="mt-3 space-y-2">{weekly.map((q) => <QuestRow key={q.id} q={q} onClaim={claim} busy={busy === q.id} />)}</ul>
       </section>
 
+      {/* Sprite Dungeon (not in the phone tab bar, so it's linked here) */}
+      <Link href="/play" className="mt-8 flex min-h-12 items-center justify-between gap-3 rounded-[10px] border border-white/[0.09] bg-[#19223F] p-4 transition hover:border-[#FFA300]/60">
+        <span>
+          <span className="block text-[15px] font-semibold text-[#FFF1E8]">Sprite Dungeon</span>
+          <span className="block text-[13px] text-[#A7ADD4]">Your sprites fight as a party. Weekly leaderboard with credit prizes.</span>
+        </span>
+        <span className="shrink-0 text-[13.5px] font-medium text-[#FFC857]">Play</span>
+      </Link>
+
       {/* Achievements */}
       <section className="mt-8" aria-labelledby="q-badges">
         <h2 id="q-badges" className="font-display text-[22px] font-semibold text-[#FFF1E8]">Achievements</h2>
