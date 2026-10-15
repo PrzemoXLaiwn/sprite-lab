@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Pin the project root: git worktrees next to the repo (with their own
+  // lockfiles) otherwise make Turbopack pick the parent folder as the root.
+  turbopack: { root: __dirname },
   // ===========================================
   // IMAGE OPTIMIZATION
   // ===========================================

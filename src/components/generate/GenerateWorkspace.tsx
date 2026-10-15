@@ -15,7 +15,6 @@ import {
   Lock,
   Unlock,
   Info,
-  Dices,
   ChevronDown,
   Eye,
   X,
@@ -26,9 +25,10 @@ import {
 import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
 import { triggerUpgradeModal } from "@/components/dashboard/UpgradeModal";
 import {
-  Field, Chip, TopBarHint, BackdropToggle, CanvasColumn, CanvasFrame, ToolTabs, CostBadge, PrimaryButton, FooterHint,
-  ErrorNote, IconButton, Elapsed, SECONDARY_BTN, PANEL_FOOTER, saveBlobAs, creditLabel, type ToolBgModeId,
+  Field, Chip, ToolTabs, ErrorNote, IconButton, Elapsed, SECONDARY_BTN, saveBlobAs, creditLabel,
 } from "@/components/tools/ToolWorkspace";
+import { SpriteStage, STAGE_SCENES, type StageSceneId } from "@/components/generate/SpriteStage";
+import { RecipeBar } from "@/components/generate/RecipeBar";
 import { track, FUNNEL } from "@/lib/analytics";
 import { GENERATE_CATEGORIES, SUBTYPE_PLACEHOLDERS, type GenerateCategory, type GenerateSubcategory } from "@/data/generate-categories";
 import { GENERATE_STYLES, ALL_GENERATE_STYLE_IDS } from "@/data/generate-styles";
@@ -239,7 +239,19 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
   const [seed, setSeed]                   = useState("");
   const [palette, setPalette]              = useState<PaletteId>("auto");
   const [pose, setPose]                    = useState<PoseId>("auto");
-  const [bgMode, setBgMode]               = useState<ToolBgModeId>("checker");
+  // Stage scene (remembered per browser) and side-by-side comparison
+  const [scene, setScene]                 = useState<StageSceneId>("checker");
+  const [compare, setCompare]             = useState(false);
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem("sl:stage-scene");
+      if (saved && STAGE_SCENES.some((x) => x.id === saved)) setScene(saved as StageSceneId);
+    } catch { /* storage unavailable */ }
+  }, []);
+  const chooseScene = (id: StageSceneId) => {
+    setScene(id);
+    try { window.localStorage.setItem("sl:stage-scene", id); } catch { /* storage unavailable */ }
+  };
   const [seedLocked, setSeedLocked]       = useState(false);
 
   const [status, setStatus]               = useState<"idle" | "generating" | "error">("idle");
@@ -740,7 +752,6 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
   // RENDER — workspace (Meshy / Tripo style): controls · canvas · history
   // ==========================================================================
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [showAllStyles, setShowAllStyles] = useState(false);
   const [sizesOpen, setSizesOpen] = useState(false);
   const isWelcome = searchParams.get("welcome") === "1";
   const checkoutSuccess = searchParams.get("success") === "true";
@@ -792,10 +803,6 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
 
   const cost = styleRef ? STYLE_MATCH_CREDITS : DETAIL_CREDITS[detail];
   const isCreature = selectedCategory.id === "CHARACTERS" || selectedCategory.id === "CREATURES";
-  const firstStyles = GENERATE_STYLES.slice(0, 6);
-  const visibleStyles = showAllStyles || firstStyles.some((s) => s.id === styleId)
-    ? (showAllStyles ? GENERATE_STYLES : firstStyles)
-    : [...firstStyles.slice(0, 5), GENERATE_STYLES.find((s) => s.id === styleId)!];
   const styleName = (id: string) => GENERATE_STYLES.find((s) => s.id === id)?.name ?? id;
 
   const surpriseMe = () => {
@@ -813,7 +820,6 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
   };
 
   const planName = checkoutPlan ? (CHECKOUT_PLAN_NAMES[checkoutPlan.toLowerCase()] ?? null) : null;
-  const selectedStyle = GENERATE_STYLES.find((s) => s.id === styleId);
   const defaultSubId = selectedCategory.subcategories[0].subcategoryId;
   // How many "More options" differ from their defaults (shown on the closed toggle)
   const advancedSet = [palette !== "auto", isCreature && pose !== "auto", seed.trim() !== "", selectedSubcategoryId !== defaultSubId].filter(Boolean).length;
@@ -821,494 +827,311 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
   return (
     <div className="flex min-h-screen flex-col bg-[#131A31] text-[#FFF1E8] lg:h-screen lg:flex-row lg:overflow-hidden">
 
-      {/* ═══ LEFT — controls ═══════════════════════════════════════════ */}
-      <section aria-label="Sprite settings" className="flex w-full shrink-0 flex-col bg-[#19223F] lg:w-[380px] lg:border-r lg:border-white/[0.06]">
-        <div className="px-5 pb-3 pt-5">
-          {showWelcomeBanner && (
-            <div role="status" className="mb-4 flex items-start gap-2.5 rounded-xl border border-[#FFA300]/30 bg-[#FFA300]/[0.08] py-2.5 pl-3 pr-1.5">
-              <PartyPopper className="mt-0.5 h-4 w-4 shrink-0 text-[#FFA300]" aria-hidden />
-              <p className="min-w-0 flex-1 text-[12.5px] leading-snug text-[#FFF1E8]">
-                {checkoutSuccess
-                  ? <>Payment confirmed{planName ? ` — your ${planName} plan is active` : ""}. Your credits are ready to use.</>
-                  : <>Welcome to SpriteLab! Your free credits are ready — we filled in an example, so just press <b className="font-semibold text-white">Generate</b>.</>}
-              </p>
-              <button type="button" aria-label="Dismiss message" onClick={() => setShowWelcomeBanner(false)}
-                className="-my-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#C8CCE8] transition-colors hover:bg-white/[0.06] hover:text-white">
-                <X className="h-4 w-4" />
+      {/* ═══ MAIN — header · stage · actions · recipe ═══════════════════ */}
+      <section aria-label="Create a sprite" className="flex min-w-0 flex-1 flex-col lg:min-h-0">
+        <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-white/[0.06] px-4 py-3 sm:px-5">
+          <h1 className="font-display text-[20px] font-semibold text-[#FFF1E8]">Create</h1>
+          <div className="min-w-0 flex-1 basis-[260px] [&>div]:mt-0"><ToolTabs active="generate" generationId={activeResult?.generationId} /></div>
+          <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto">
+            <div role="group" aria-label="Scene" className="flex max-w-full overflow-x-auto rounded-[8px] border border-white/[0.1] bg-[#19223F] p-0.5">
+              {STAGE_SCENES.map((s) => (
+                <button key={s.id} type="button" onClick={() => chooseScene(s.id)} aria-pressed={scene === s.id} title={`${s.label} scene`}
+                  className={`h-9 shrink-0 rounded-[6px] px-2.5 text-[12.5px] font-medium transition-colors ${scene === s.id ? "bg-[#FFA300] text-[#131A31]" : "text-[#C8CCE8] hover:text-white"}`}>
+                  {s.label}
+                </button>
+              ))}
+            </div>
+            {history.length > 1 && (
+              <button type="button" onClick={() => setCompare((v) => !v)} aria-pressed={compare} title="Stand the previous sprite next to this one, at the same scale"
+                className={`h-10 rounded-[8px] border px-3 text-[12.5px] font-medium transition-colors ${compare ? "border-[#29ADFF] bg-[#29ADFF]/15 text-[#FFF1E8]" : "border-white/[0.1] text-[#C8CCE8] hover:text-white"}`}>
+                Compare
               </button>
-            </div>
-          )}
-          {!showWelcomeBanner && !projectId && <ContinueBanner current="create" />}
-
-          <div className="flex items-center justify-between gap-3">
-            <h1 className="font-display text-[19px] font-semibold tracking-tight text-white">Create a sprite</h1>
-            <div className="flex shrink-0 items-center gap-2"><HistoryButton onClick={() => setHistoryOpen(true)} /><CostBadge cost={cost} /></div>
+            )}
+            <HistoryButton onClick={() => setHistoryOpen(true)} />
           </div>
-          <ToolTabs active="generate" generationId={activeResult?.generationId} />
-          {session.restoredNote && <div className="mt-3"><RestoredNote onStartFresh={session.startFresh} onDismiss={session.dismissRestoredNote} /></div>}
+        </header>
 
-          {/* Project mode banner — results get Accept / Decline */}
-          {projectId && (
-            <div className="mt-4 rounded-xl border border-[#FFA300]/30 bg-[#FFA300]/[0.06] p-3">
-              {projectError ? (
-                <p role="alert" className="text-[12px] text-red-200">
-                  {projectError}{" "}
-                  <Link href="/projects" className="font-semibold text-[#FFC857] hover:text-white">Open projects →</Link>
+        {(showWelcomeBanner || (!projectId && !showWelcomeBanner) || session.restoredNote || projectId) && (
+          <div className="space-y-2 px-4 pt-3 sm:px-5 empty:hidden">
+            {showWelcomeBanner && (
+              <div role="status" className="flex items-start gap-2.5 rounded-[10px] border border-[#FFA300]/30 bg-[#FFA300]/[0.08] py-2.5 pl-3 pr-1.5">
+                <PartyPopper className="mt-0.5 h-4 w-4 shrink-0 text-[#FFA300]" aria-hidden />
+                <p className="min-w-0 flex-1 text-[13px] leading-snug text-[#FFF1E8]">
+                  {checkoutSuccess
+                    ? <>Payment confirmed{planName ? ` — your ${planName} plan is active` : ""}. Your credits are ready to use.</>
+                    : <>Welcome to SpriteLab! Your free credits are ready. We filled in an example, so just press <b className="font-semibold text-white">Create sprite</b>.</>}
                 </p>
-              ) : (
-                <>
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="min-w-0 truncate text-[12px] text-[#C8CCE8]">
-                      <span className="text-[12.5px] text-[#FFC857] font-semibold">project</span>{" "}
-                      <span className="font-semibold text-white">{project?.name ?? "Loading…"}</span>
-                    </p>
-                    <Link href={`/projects/${encodeURIComponent(projectId)}`} className="inline-flex min-h-8 shrink-0 items-center text-[11.5px] font-medium text-[#FFC857] hover:text-white">
-                      Open →
-                    </Link>
-                  </div>
-                  <label className="mt-2 block">
-                    <span className="mb-1 block text-[12.5px] text-[#A7ADD4] font-semibold">Accept into</span>
-                    <select value={targetFolderId} onChange={(e) => setTargetFolderId(e.target.value)} disabled={!project}
-                      className="h-10 w-full rounded-lg border border-white/[0.08] bg-[#212B4E] px-2.5 text-[12.5px] text-white outline-none focus:border-[#FFA300]/50 disabled:opacity-60">
-                      <option value="">Auto-sort by type (recommended)</option>
-                      {project?.folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-                    </select>
-                  </label>
-                  <p className="mt-1.5 text-[11.5px] leading-snug text-[#A7ADD4]">
-                    Review each sprite: <b className="font-semibold text-emerald-300">Accept</b> files it into the matching folder (a new folder is made if needed), <b className="font-semibold text-[#C8CCE8]">Decline</b> keeps it out of the project.
-                  </p>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="flex-1 space-y-6 px-5 pb-6 pt-2 lg:min-h-0 lg:overflow-y-auto">
-
-          {/* Prompt */}
-          <Field label="Describe your sprite" labelFor="generate-prompt">
-            {styleRef && (
-              <div className="mb-2 flex items-center gap-2.5 rounded-xl border border-[#FFA300]/40 bg-[#FFA300]/[0.06] p-2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={styleRef.imageUrl} alt="" className="pixel-perfect h-10 w-10 shrink-0 rounded-lg bg-[#131A31] object-contain p-0.5" />
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[12.5px] font-medium text-white">Matching this sprite&apos;s style</span>
-                  <span className="block text-[11px] text-[#A7ADD4]">Same look &amp; pixel size · {STYLE_MATCH_CREDITS} credits per sprite</span>
-                </span>
-                <button type="button" onClick={() => setStyleRef(null)} title="Stop matching this style" aria-label="Stop matching this style"
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#A7ADD4] transition-colors hover:bg-white/[0.06] hover:text-white">
+                <button type="button" aria-label="Dismiss message" onClick={() => setShowWelcomeBanner(false)}
+                  className="-my-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] text-[#C8CCE8] transition-colors hover:bg-white/[0.06] hover:text-white">
                   <X className="h-4 w-4" />
                 </button>
               </div>
             )}
-            <div className="rounded-2xl border border-white/[0.08] bg-[#212B4E] transition-colors focus-within:border-[#FFA300]/50">
-              <textarea
-                id="generate-prompt"
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); handleGenerate(); }
-                }}
-                placeholder={placeholder}
-                maxLength={500}
-                rows={4}
-                aria-describedby={promptQuality && promptQuality.level !== "good" ? "generate-prompt-hint" : undefined}
-                className="w-full resize-none bg-transparent px-4 pt-3.5 text-[14px] leading-relaxed text-white outline-none placeholder:text-[#8A92BF]"
-              />
-              <div className="flex items-center justify-between px-2 pb-2">
-                <button type="button" onClick={surpriseMe} title="Fill in a random idea for this asset type"
-                  className="flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 text-[12px] font-medium text-[#A7ADD4] transition-colors hover:bg-white/[0.05] hover:text-white">
-                  <Dices className="h-3.5 w-3.5" aria-hidden /> Surprise me
-                </button>
-                <span className="pr-2 font-mono text-[11px] tabular-nums text-[#8A92BF]" aria-hidden>{prompt.length}/500</span>
-              </div>
-            </div>
-            {promptQuality && promptQuality.level !== "good" && (
-              <p id="generate-prompt-hint" className={`mt-2 px-1 text-[11.5px] ${promptQuality.level === "ok" ? "text-amber-200/85" : "text-rose-200/85"}`}>
-                {promptQuality.hint}
-              </p>
-            )}
-            <AutoSettingsBar enabled={auto.enabled} onToggle={auto.setEnabled} changes={auto.changes} onUndo={auto.undo}
-              labels={{ view: VIEW_OPTIONS, palette: PALETTE_OPTIONS, pose: POSE_OPTIONS }} />
-            {viewConflict && detectedView && detectedViewLabel && (
-              <button type="button" onClick={() => setView(detectedView)}
-                className="mt-2 flex w-full items-start gap-2 rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-3 py-2 text-left text-[11.5px] text-amber-100/90 transition-colors hover:bg-amber-400/[0.1]">
-                <Eye className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" aria-hidden />
-                <span>Your prompt mentions a <b>{detectedViewLabel}</b> view — tap to set Camera view to match.</span>
-              </button>
-            )}
-          </Field>
-
-          {/* Style */}
-          <Field label={<>Style<AutoBadge show={auto.isAuto("style")} /></>} hint={selectedStyle ? `${selectedStyle.name} — ${selectedStyle.description}` : undefined} action={
-            <button type="button" onClick={() => setShowAllStyles((v) => !v)} aria-expanded={showAllStyles}
-              className="-my-1 inline-flex min-h-10 items-center text-[12px] font-medium text-[#A7ADD4] transition-colors hover:text-white lg:min-h-8 lg:text-[11.5px]">
-              {showAllStyles ? "Show fewer" : `All ${GENERATE_STYLES.length} styles`}
-            </button>
-          }>
-            <div className={`grid grid-cols-3 gap-2${autoFlash(auto.isFlashing("style"))}`}>
-              {visibleStyles.map((s) => {
-                const active = s.id === styleId;
-                return (
-                  <button key={s.id} type="button" onClick={() => setStyleId(s.id)} title={s.description}
-                    aria-pressed={active} aria-label={s.name}
-                    className={`group relative aspect-square overflow-hidden rounded-xl border bg-[#212B4E] transition-colors ${
-                      active ? "border-[#FFA300] ring-2 ring-[#FFA300]/25" : "border-white/[0.06] hover:border-white/20"
-                    }`}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={`/styles/${s.id.toLowerCase()}.png`} alt="" loading="lazy" decoding="async"
-                      className={`absolute inset-0 h-full w-full object-contain p-2 pb-5 transition-transform duration-300 group-hover:scale-105 ${isPixelStyle(s.id) ? "pixel-perfect" : ""}`} />
-                    <span aria-hidden className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/50 to-transparent px-1.5 pb-1.5 pt-4 text-center text-[11.5px] font-medium leading-tight text-white lg:text-[10.5px]">
-                      {s.name}
-                    </span>
-                    {active && <span aria-hidden className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#FFA300]"><Check className="h-2.5 w-2.5 text-black" strokeWidth={3} /></span>}
-                  </button>
-                );
-              })}
-            </div>
-          </Field>
-
-          {/* Asset type */}
-          <Field label={<>Asset type<AutoBadge show={auto.isAuto("type")} /></>}>
-            <div className={`flex flex-wrap gap-1.5${autoFlash(auto.isFlashing("type"))}`}>
-              {GENERATE_CATEGORIES.map((c) => {
-                const active = c.id === selectedCategory.id;
-                const Icon = c.icon;
-                return (
-                  <button key={c.id} type="button" onClick={() => handleCategoryChange(c)} aria-pressed={active}
-                    className={`flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[12px] font-medium transition-colors lg:min-h-8 ${
-                      active ? "border-[#FFA300]/60 bg-[#FFA300]/[0.12] text-white" : "border-white/[0.08] text-[#A7ADD4] hover:border-white/20 hover:text-white"
-                    }`}>
-                    <Icon className={`h-3.5 w-3.5 ${active ? "text-[#FFA300]" : ""}`} aria-hidden /> {c.label}
-                  </button>
-                );
-              })}
-            </div>
-          </Field>
-
-          {/* View */}
-          {viewApplies && (
-            <Field label={<>Camera view<AutoBadge show={auto.isAuto("view")} /></>} hint={VIEW_OPTIONS.find((v) => v.id === view)?.id === "none" ? "Default is a 3/4 angle — pick Side for platformers, Top-down for RPG maps." : VIEW_OPTIONS.find((v) => v.id === view)?.desc}>
-              <div className={`grid grid-cols-4 gap-1 rounded-xl bg-white/[0.04] p-1${autoFlash(auto.isFlashing("view"))}`}>
-                {VIEW_OPTIONS.map((v) => (
-                  <button key={v.id} type="button" onClick={() => setView(v.id)} title={v.desc} aria-pressed={view === v.id}
-                    className={`min-h-9 rounded-lg text-[12px] font-medium transition-colors lg:min-h-8 ${
-                      view === v.id ? "bg-white/[0.1] text-white shadow-sm" : "text-[#9AA1CC] hover:text-white"
-                    }`}>
-                    {v.label}
-                  </button>
-                ))}
-              </div>
-            </Field>
-          )}
-
-          {/* Quality */}
-          <Field label="Quality" hint={styleRef ? `Matching a style costs a flat ${STYLE_MATCH_CREDITS} credits per sprite.` : undefined}>
-            <div className="grid grid-cols-2 gap-2">
-              {DETAIL_OPTIONS.map((d) => {
-                const active = d.id === detail;
-                return (
-                  <button key={d.id} type="button" onClick={() => setDetail(d.id)} aria-pressed={active}
-                    className={`rounded-xl border p-3 text-left transition-colors ${
-                      active ? "border-[#FFA300]/70 bg-[#FFA300]/[0.08]" : "border-white/[0.08] hover:border-white/20"
-                    }`}>
-                    <span className="flex items-center justify-between gap-2">
-                      <span className="text-[13px] font-semibold text-white">{d.label}</span>
-                      <span className={`font-mono text-[11px] font-semibold ${active ? "text-[#FFC857]" : "text-[#9AA1CC]"} ${styleRef ? "line-through opacity-60" : ""}`}>
-                        {creditLabel(DETAIL_CREDITS[d.id])}
-                      </span>
-                    </span>
-                    <span className="mt-1 block text-[11.5px] leading-snug text-[#9AA1CC]">{d.description}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </Field>
-
-          {/* More options */}
-          <div className="rounded-2xl border border-white/[0.06]">
-            <button type="button" onClick={() => setShowAdvanced((v) => !v)} aria-expanded={showAdvanced} aria-controls="generate-more-options"
-              className="flex min-h-11 w-full items-center justify-between gap-2 rounded-2xl px-4 text-[12.5px] font-medium text-[#A7ADD4] transition-colors hover:text-white">
-              <span>
-                More options
-                <span className="ml-1.5 font-normal text-[#8A92BF]">
-                  {advancedSet > 0 ? `· ${advancedSet} changed` : "· palette, type, pose, seed"}
-                </span>
-              </span>
-              <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${showAdvanced ? "rotate-180" : ""}`} aria-hidden />
-            </button>
-            {showAdvanced && (
-              <div id="generate-more-options" className="space-y-5 border-t border-white/[0.06] px-4 pb-4 pt-4">
-                <Field label={<>Color palette<AutoBadge show={auto.isAuto("palette")} /></>} hint={palette === "auto" ? "Auto lets the style choose the colours." : PALETTE_OPTIONS.find((p) => p.id === palette)?.label}>
-                  <div className={`flex flex-wrap gap-0.5 lg:gap-1.5${autoFlash(auto.isFlashing("palette"))}`}>
-                    {PALETTE_OPTIONS.map((p) => {
-                      const active = p.id === palette;
-                      return p.id === "auto" ? (
-                        <button key={p.id} type="button" onClick={() => setPalette(p.id)} aria-pressed={active}
-                          className={`flex h-10 items-center rounded-full border-2 px-3 text-[11.5px] font-medium text-[#C8CCE8] transition-colors lg:h-8 ${
-                            active ? "border-white bg-white/[0.08]" : "border-transparent bg-white/[0.06] hover:border-white/40"
-                          }`}>
-                          Auto
-                        </button>
-                      ) : (
-                        <button key={p.id} type="button" onClick={() => setPalette(p.id)} title={p.label} aria-label={`${p.label} palette`} aria-pressed={active}
-                          className="group flex h-10 w-10 items-center justify-center rounded-full lg:h-8 lg:w-8">
-                          <span aria-hidden className={`block h-7 w-7 rounded-full border-2 transition-colors ${active ? "border-white" : "border-transparent group-hover:border-white/40"}`}
-                            style={{ background: PALETTE_SWATCH[p.id] }} />
-                        </button>
-                      );
-                    })}
-                  </div>
-                </Field>
-
-                <Field label={<>Exact type<AutoBadge show={auto.isAuto("type")} /></>} labelFor="generate-type" hint="Narrows the asset type, e.g. sword vs. axe.">
-                  <select id="generate-type" value={selectedSubcategoryId}
-                    onChange={(e) => { const s = selectedCategory.subcategories.find((x) => x.subcategoryId === e.target.value); if (s) handleSubcategoryChange(s); }}
-                    className={`h-10 w-full rounded-xl border border-white/[0.08] bg-[#212B4E] px-3 text-[13px] text-white outline-none focus:border-[#FFA300]/50${autoFlash(auto.isFlashing("type"))}`}>
-                    {selectedCategory.subcategories.map((s) => <option key={s.subcategoryId} value={s.subcategoryId}>{s.label}</option>)}
-                  </select>
-                </Field>
-
-                {isCreature && (
-                  <Field label={<>Pose<AutoBadge show={auto.isAuto("pose")} /></>} hint={POSE_OPTIONS.find((p) => p.id === pose)?.desc}>
-                    <div className={`grid grid-cols-4 gap-1 rounded-xl bg-white/[0.04] p-1${autoFlash(auto.isFlashing("pose"))}`}>
-                      {POSE_OPTIONS.map((p) => (
-                        <button key={p.id} type="button" onClick={() => setPose(p.id)} title={p.desc} aria-pressed={pose === p.id}
-                          className={`min-h-9 rounded-lg text-[11.5px] font-medium transition-colors lg:min-h-8 ${
-                            pose === p.id ? "bg-white/[0.1] text-white shadow-sm" : "text-[#9AA1CC] hover:text-white"
-                          }`}>
-                          {p.label}
-                        </button>
-                      ))}
-                    </div>
-                  </Field>
+            {!showWelcomeBanner && !projectId && <ContinueBanner current="create" />}
+            {session.restoredNote && <RestoredNote onStartFresh={session.startFresh} onDismiss={session.dismissRestoredNote} />}
+            {projectId && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[10px] border border-[#FFA300]/30 bg-[#FFA300]/[0.06] px-3 py-2">
+                {projectError ? (
+                  <p role="alert" className="text-[12.5px] text-red-200">
+                    {projectError} <Link href="/projects" className="font-semibold text-[#FFC857] hover:text-white">Open projects</Link>
+                  </p>
+                ) : (
+                  <>
+                    <p className="min-w-0 text-[13px] text-[#C8CCE8]">Project <Link href={`/projects/${encodeURIComponent(projectId)}`} className="font-semibold text-[#FFF1E8] underline-offset-2 hover:underline">{project?.name ?? "Loading…"}</Link></p>
+                    <label className="flex items-center gap-2 text-[12.5px] text-[#A7ADD4]">
+                      Accept into
+                      <select value={targetFolderId} onChange={(e) => setTargetFolderId(e.target.value)} disabled={!project}
+                        className="h-9 rounded-[7px] border border-white/[0.1] bg-[#212B4E] px-2 text-[12.5px] text-white outline-none focus:border-[#FFA300] disabled:opacity-60">
+                        <option value="">Auto-sort by type</option>
+                        {project?.folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+                      </select>
+                    </label>
+                  </>
                 )}
-
-                <Field label="Seed" labelFor="generate-seed"
-                  hint={seedDriftWarning
-                    ? <span className="text-amber-200/90">Seed is locked but you changed <b>{seedDriftWarning.join(", ")}</b> — the result will differ.</span>
-                    : "Same seed + same settings = the same sprite. Leave empty for a fresh one each time."}>
-                  <div className="flex gap-2">
-                    <input id="generate-seed" type="number" inputMode="numeric" min={0} max={2147483647} placeholder="Random" value={seed}
-                      onChange={(e) => { setSeed(e.target.value); seedRef.current = e.target.value; setSeedLocked(false); }}
-                      className="h-10 min-w-0 flex-1 rounded-xl border border-white/[0.08] bg-[#212B4E] px-3 text-[13px] text-white outline-none placeholder:text-[#8A92BF] focus:border-[#FFA300]/50" />
-                    {activeResult && (
-                      <button type="button" onClick={handleLockSeed} aria-pressed={seedLocked}
-                        title={seedLocked ? "Unlock the seed" : "Reuse the seed of the current sprite"}
-                        aria-label={seedLocked ? "Unlock the seed" : "Reuse the seed of the current sprite"}
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-colors ${seedLocked ? "border-[#FFA300]/50 bg-[#FFA300]/10 text-[#FFC857]" : "border-white/[0.08] text-[#9AA1CC] hover:text-white"}`}>
-                        {seedLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
-                      </button>
-                    )}
-                  </div>
-                </Field>
               </div>
             )}
           </div>
+        )}
+
+        {/* Stage */}
+        <div ref={canvasRef as React.RefObject<HTMLDivElement>} className="relative mx-4 mt-3 aspect-[4/3] sm:mx-5 lg:aspect-auto lg:min-h-[280px] lg:flex-1">
+          <SpriteStage imageUrl={activeResult?.imageUrl ?? null} pixel={activeResult ? isPixelStyle(activeResult.styleId) : false}
+            compareUrl={compare ? history[selectedIndex + 1]?.imageUrl ?? history[0]?.imageUrl : null}
+            comparePixel={compare ? isPixelStyle((history[selectedIndex + 1] ?? history[0])?.styleId ?? "") : false}
+            scene={scene} dim={isGenerating} alt={activeResult?.prompt ?? ""}>
+            {activeResult && (
+              <div className="pointer-events-none absolute left-2.5 top-2.5 flex flex-wrap gap-1">
+                <Chip>{styleName(activeResult.styleId)}</Chip>
+                <Chip>{activeResult.qualityPreset === "hd" ? "HD" : "Standard"}</Chip>
+                {activeResult.resolvedView && activeResult.resolvedView !== "DEFAULT" && <Chip>{VIEW_LABEL_BY_KEY[activeResult.resolvedView] ?? activeResult.resolvedView} view</Chip>}
+              </div>
+            )}
+            {isGenerating && <GenerateProgress expectedSeconds={DETAIL_SECONDS[detail]} />}
+            {!activeResult && !isGenerating && (
+              <div className="absolute inset-x-0 top-0 flex flex-col items-center gap-3 p-4 pt-[8%] sm:gap-4">
+                <p className="rounded-[8px] bg-[#131A31]/80 px-3 py-1.5 text-center font-display text-[18px] font-semibold text-[#FFF1E8] sm:text-[22px]">What goes on stage first?</p>
+                <div className="grid w-full max-w-[300px] grid-cols-3 gap-2 sm:max-w-md">
+                  {SHOWCASE.slice(0, 6).map((ex) => (
+                    <button key={ex.id} type="button" onClick={() => applyExample(ex)} title={`Use: ${ex.prompt}`} aria-label={`Use example: ${ex.prompt}`}
+                      className="checker checker-sm relative aspect-square overflow-hidden rounded-[8px] border border-white/[0.12] transition-colors hover:border-[#FFA300]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={ex.imageUrl} alt="" decoding="async" className={`absolute inset-0 h-full w-full object-contain p-2.5 ${isPixelShowcase(ex) ? "pixel-perfect" : ""}`} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </SpriteStage>
         </div>
 
-        {/* Generate */}
-        <div className={PANEL_FOOTER}>
-          <PrimaryButton onClick={handleGenerate} disabled={!isFormValid || isGenerating} loading={isGenerating}
-            loadingLabel={<>Generating… <Elapsed /></>}
-            icon={<Sparkles className="h-4 w-4" />} label="Generate" cost={cost} />
-          <FooterHint>
-            {!isFormValid && !isGenerating
-              ? "Describe your sprite in a few words to start"
-              : <>~{DETAIL_SECONDS[detail]}s · transparent PNG<span className="max-lg:hidden"> · Ctrl + Enter</span></>}
-          </FooterHint>
-          {status === "error" && errorMessage && <ErrorNote>{errorMessage}</ErrorNote>}
+        {/* Under the stage: project review, actions, notes */}
+        <div className="px-4 pt-2 sm:px-5">
+          {activeResult?.projectStatus && (
+            <div aria-live="polite" className="mb-2 flex flex-wrap items-center gap-2">
+              {activeResult.projectStatus === "accepted" ? (
+                <>
+                  <span className="flex min-h-10 items-center gap-2 rounded-[8px] border border-emerald-400/30 bg-emerald-500/[0.08] px-3 text-[13px] font-medium text-emerald-200">
+                    <Check className="h-4 w-4 shrink-0" aria-hidden /> Added to {activeResult.acceptedFolderName ?? "the project"}
+                  </span>
+                  <button type="button" onClick={() => declineResult(activeResult)} className="h-10 rounded-[8px] px-3 text-[13px] font-medium text-[#A7ADD4] hover:text-white">Undo</button>
+                </>
+              ) : activeResult.projectStatus === "declined" ? (
+                <>
+                  <span className="flex min-h-10 items-center gap-2 rounded-[8px] border border-white/[0.1] px-3 text-[13px] text-[#A7ADD4]">
+                    <X className="h-4 w-4 shrink-0" aria-hidden /> Declined, not added to the project
+                  </span>
+                  <button type="button" onClick={() => acceptResult(activeResult)} className="h-10 rounded-[8px] px-3 text-[13px] font-medium text-[#FFC857] hover:text-white">Accept instead</button>
+                </>
+              ) : (
+                <>
+                  <button type="button" onClick={() => acceptResult(activeResult)} disabled={activeResult.projectStatus === "accepting"}
+                    className="flex h-10 min-w-[120px] items-center justify-center gap-2 rounded-[8px] bg-[#00E436] px-4 text-[13.5px] font-semibold text-[#131A31] transition hover:brightness-110 disabled:opacity-60">
+                    {activeResult.projectStatus === "accepting" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Check className="h-4 w-4" aria-hidden />} Accept
+                  </button>
+                  <button type="button" onClick={() => declineResult(activeResult)} disabled={activeResult.projectStatus === "accepting"}
+                    className="flex h-10 items-center gap-2 rounded-[8px] border border-white/[0.14] px-4 text-[13.5px] font-medium text-[#C8CCE8] hover:text-white disabled:opacity-60">
+                    <X className="h-4 w-4" aria-hidden /> Decline
+                  </button>
+                  {pendingResults.length > 1 && (
+                    <button type="button" onClick={acceptAllPending} className="h-10 rounded-[8px] px-3 text-[13px] font-medium text-[#A7ADD4] hover:text-white">Accept all ({pendingResults.length})</button>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          {activeResult && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button type="button" onClick={isPixelStyle(activeResult.styleId) ? downloadNative : handleDownload}
+                title={isPixelStyle(activeResult.styleId) ? "Download at the sprite's real pixel size (engine-ready)" : "Download as a 1024px PNG"}
+                className="flex h-10 items-center gap-2 rounded-[8px] bg-[#FFF1E8] px-3.5 text-[13px] font-semibold text-[#131A31] transition hover:bg-white">
+                <Download className="h-4 w-4" aria-hidden /> Download PNG
+              </button>
+              <div className="relative" ref={sizesRef}>
+                <button type="button" onClick={() => setSizesOpen((v) => !v)} aria-haspopup="menu" aria-expanded={sizesOpen} className={SECONDARY_BTN}>
+                  Sizes <ChevronDown className={`h-3.5 w-3.5 transition-transform ${sizesOpen ? "rotate-180" : ""}`} aria-hidden />
+                </button>
+                {sizesOpen && (
+                  <div role="menu" aria-label="Download sizes" className="absolute bottom-12 left-0 z-20 w-56 rounded-[10px] border border-white/[0.1] bg-[#1B2446] p-1.5 shadow-2xl">
+                    {isPixelStyle(activeResult.styleId) && (
+                      <button type="button" role="menuitem" onClick={() => { setSizesOpen(false); downloadNative(); }}
+                        className="flex min-h-10 w-full items-center justify-between rounded-[7px] px-3 text-[13px] text-white hover:bg-white/[0.06]">
+                        Real pixel size <span className="text-[11.5px] text-[#00E436]">engine-ready</span>
+                      </button>
+                    )}
+                    {[32, 64, 128, 256, 512, 1024].map((size) => (
+                      <button key={size} type="button" role="menuitem" onClick={() => { setSizesOpen(false); downloadAtSize(size); }}
+                        className="flex min-h-10 w-full items-center rounded-[7px] px-3 font-mono text-[13px] text-[#C8CCE8] hover:bg-white/[0.06] hover:text-white">
+                        {size} × {size} px
+                      </button>
+                    ))}
+                    <button type="button" role="menuitem" onClick={() => { setSizesOpen(false); handleDownloadMetadata(); }}
+                      className="mt-1 flex min-h-10 w-full items-center rounded-[7px] border-t border-white/[0.06] px-3 text-[12.5px] text-[#A7ADD4] hover:bg-white/[0.06] hover:text-white">
+                      Settings file (.json)
+                    </button>
+                  </div>
+                )}
+              </div>
+              {activeResult.generationId && (
+                <Link href={`/animate?id=${encodeURIComponent(activeResult.generationId)}`}
+                  className="flex h-10 items-center gap-1.5 rounded-[8px] border border-[#FFA300]/50 bg-[#FFA300]/10 px-3 text-[13px] font-semibold text-[#FFC857] transition hover:bg-[#FFA300]/20">
+                  <Film className="h-4 w-4" aria-hidden /> Animate
+                </Link>
+              )}
+              {activeResult.generationId && styleRef?.id !== activeResult.generationId && (
+                <button type="button" title={`Make new sprites in this exact style (${STYLE_MATCH_CREDITS} credits each)`}
+                  onClick={() => setStyleRef({ id: activeResult.generationId!, imageUrl: activeResult.imageUrl })} className={SECONDARY_BTN}>
+                  <Paintbrush className="h-4 w-4" aria-hidden /> Match style
+                </button>
+              )}
+              <IconButton label="Generate again with the same settings" onClick={handleRegenerate} disabled={isGenerating || !isFormValid}>
+                <RefreshCw className={`h-4 w-4 ${isGenerating ? "animate-spin" : ""}`} />
+              </IconButton>
+              <IconButton label={seedCopied ? "Seed copied" : `Copy seed ${activeResult.seed}`} onClick={handleCopySeed}>
+                {seedCopied ? <Check className="h-4 w-4 text-[#00E436]" /> : <Copy className="h-4 w-4" />}
+              </IconButton>
+            </div>
+          )}
+
+          {activeResult && ((activeResult.warnings?.length ?? 0) > 0 || activeResult.translatedPrompt) && (
+            <div className="mt-2 space-y-1.5">
+              {activeResult.warnings?.map((w, i) => (
+                <p key={i} className="flex items-start gap-2 rounded-[8px] border border-amber-400/20 bg-amber-400/[0.05] px-3 py-2 text-[12.5px] text-amber-100/90">
+                  <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" aria-hidden /> <span className="flex-1">{w}</span>
+                  {/use Animate/i.test(w) && activeResult.generationId && (
+                    <Link href={`/animate?id=${encodeURIComponent(activeResult.generationId)}`} className="-my-2 inline-flex min-h-9 shrink-0 items-center font-semibold text-[#FFC857] hover:text-white">Animate it</Link>
+                  )}
+                </p>
+              ))}
+              {activeResult.translatedPrompt && (
+                <p className="flex items-center gap-2 rounded-[8px] bg-white/[0.04] py-1 pl-3 pr-1 text-[12.5px] text-[#A7ADD4]">
+                  <span className="font-semibold text-[#C8CCE8]" title="Translated to English">EN</span>
+                  <span className="min-w-0 flex-1 truncate" title={activeResult.translatedPrompt}>{activeResult.translatedPrompt}</span>
+                  <button type="button" onClick={() => activeResult.translatedPrompt && setPrompt(activeResult.translatedPrompt)} title="Put the English version in the prompt box"
+                    className="min-h-10 shrink-0 rounded-[7px] px-3 font-semibold text-[#FFC857] hover:bg-white/[0.04] hover:text-white">Use</button>
+                </p>
+              )}
+            </div>
+          )}
+
+          {history.length > 0 && (
+            <div role="group" aria-label="This session" className="mt-2 flex gap-1.5 overflow-x-auto pb-1 xl:hidden">
+              {history.map((item, index) => (
+                <HistoryThumb key={item.id} item={item} active={selectedIndex === index} pixel={isPixelStyle(item.styleId)}
+                  onClick={() => setSelectedIndex(index)} className="h-14 w-14 shrink-0" />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Recipe */}
+        <div className="px-4 pb-24 pt-3 sm:px-5 lg:pb-4">
+          <RecipeBar
+            prompt={prompt} onPrompt={setPrompt} placeholder={placeholder}
+            onSubmit={handleGenerate} onSurprise={surpriseMe}
+            generating={isGenerating} canSubmit={isFormValid} cost={cost} costLabel={creditLabel(cost)}
+            loadingLabel={<>Creating… <Elapsed /></>}
+            styles={GENERATE_STYLES} styleId={styleId} onStyle={setStyleId} isPixel={isPixelStyle}
+            categories={GENERATE_CATEGORIES} categoryId={selectedCategory.id} onCategory={handleCategoryChange}
+            subcategoryId={selectedSubcategoryId}
+            onSubcategory={(id) => { const s = selectedCategory.subcategories.find((x) => x.subcategoryId === id); if (s) handleSubcategoryChange(s); }}
+            views={viewApplies ? { options: VIEW_OPTIONS, value: view, onChange: (id) => setView(id as ViewId) } : undefined}
+            poses={isCreature ? { options: POSE_OPTIONS, value: pose, onChange: (id) => setPose(id as PoseId) } : undefined}
+            quality={{ options: DETAIL_OPTIONS.map((d) => ({ id: d.id, label: d.label, desc: d.description })), value: detail, onChange: (id) => setDetail(id as DetailId), credits: DETAIL_CREDITS, disabled: !!styleRef }}
+            isAuto={(slot) => slot !== "quality" && auto.isAuto(slot)}
+            tools={
+              <button type="button" onClick={() => setShowAdvanced((v) => !v)} aria-expanded={showAdvanced} aria-controls="generate-more-options"
+                className="flex min-h-10 items-center gap-1 rounded-[7px] px-2.5 text-[12.5px] font-medium text-[#A7ADD4] transition-colors hover:bg-white/[0.05] hover:text-white">
+                More{advancedSet > 0 ? ` · ${advancedSet}` : ""} <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showAdvanced ? "rotate-180" : ""}`} aria-hidden />
+              </button>
+            }
+            extras={
+              <div className="mt-2 space-y-2 empty:hidden">
+                {styleRef && (
+                  <div className="flex items-center gap-2.5 rounded-[10px] border border-[#FFA300]/40 bg-[#FFA300]/[0.06] p-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={styleRef.imageUrl} alt="" className="pixel-perfect h-10 w-10 shrink-0 rounded-[6px] bg-[#131A31] object-contain p-0.5" />
+                    <span className="min-w-0 flex-1 text-[12.5px] text-[#FFF1E8]">Matching this sprite&apos;s style <span className="text-[#A7ADD4]">· {STYLE_MATCH_CREDITS} credits per sprite</span></span>
+                    <button type="button" onClick={() => setStyleRef(null)} aria-label="Stop matching this style"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[7px] text-[#A7ADD4] hover:bg-white/[0.06] hover:text-white"><X className="h-4 w-4" /></button>
+                  </div>
+                )}
+                {promptQuality && promptQuality.level !== "good" && (
+                  <p className={`px-1 text-[12.5px] ${promptQuality.level === "ok" ? "text-amber-200/85" : "text-rose-200/85"}`}>{promptQuality.hint}</p>
+                )}
+                <AutoSettingsBar enabled={auto.enabled} onToggle={auto.setEnabled} changes={auto.changes} onUndo={auto.undo}
+                  labels={{ view: VIEW_OPTIONS, palette: PALETTE_OPTIONS, pose: POSE_OPTIONS }} />
+                {viewConflict && detectedView && detectedViewLabel && (
+                  <button type="button" onClick={() => setView(detectedView)}
+                    className="flex w-full items-start gap-2 rounded-[8px] border border-amber-400/20 bg-amber-400/[0.06] px-3 py-2 text-left text-[12.5px] text-amber-100/90 hover:bg-amber-400/[0.1]">
+                    <Eye className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" aria-hidden />
+                    <span>Your description mentions a <b>{detectedViewLabel}</b> view. Tap to set the view to match.</span>
+                  </button>
+                )}
+                {showAdvanced && (
+                  <div id="generate-more-options" className="grid gap-4 rounded-[10px] border border-white/[0.08] p-3 sm:grid-cols-2">
+                    <Field label={<>Color palette<AutoBadge show={auto.isAuto("palette")} /></>} hint={palette === "auto" ? "Auto lets the style choose the colours." : PALETTE_OPTIONS.find((p) => p.id === palette)?.label}>
+                      <div className={`flex flex-wrap gap-1${autoFlash(auto.isFlashing("palette"))}`}>
+                        {PALETTE_OPTIONS.map((p) => {
+                          const active = p.id === palette;
+                          return p.id === "auto" ? (
+                            <button key={p.id} type="button" onClick={() => setPalette(p.id)} aria-pressed={active}
+                              className={`flex h-10 items-center rounded-[7px] border-2 px-3 text-[12px] font-medium text-[#C8CCE8] ${active ? "border-white bg-white/[0.08]" : "border-transparent bg-white/[0.06] hover:border-white/40"}`}>Auto</button>
+                          ) : (
+                            <button key={p.id} type="button" onClick={() => setPalette(p.id)} title={p.label} aria-label={`${p.label} palette`} aria-pressed={active}
+                              className="group flex h-10 w-10 items-center justify-center rounded-[7px]">
+                              <span aria-hidden className={`block h-7 w-7 rounded-[5px] border-2 ${active ? "border-white" : "border-transparent group-hover:border-white/40"}`} style={{ background: PALETTE_SWATCH[p.id] }} />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </Field>
+                    <Field label="Seed" labelFor="generate-seed"
+                      hint={seedDriftWarning
+                        ? <span className="text-amber-200/90">Seed is locked but you changed <b>{seedDriftWarning.join(", ")}</b>, so the result will differ.</span>
+                        : "Same seed + same settings = the same sprite. Leave empty for a new one each time."}>
+                      <div className="flex gap-2">
+                        <input id="generate-seed" type="number" inputMode="numeric" min={0} max={2147483647} placeholder="Random" value={seed}
+                          onChange={(e) => { setSeed(e.target.value); seedRef.current = e.target.value; setSeedLocked(false); }}
+                          className="h-10 min-w-0 flex-1 rounded-[8px] border border-white/[0.1] bg-[#131A31] px-3 text-[13px] text-white outline-none placeholder:text-[#8A92BF] focus:border-[#FFA300]" />
+                        {activeResult && (
+                          <button type="button" onClick={handleLockSeed} aria-pressed={seedLocked} aria-label={seedLocked ? "Unlock the seed" : "Reuse the seed of the current sprite"}
+                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] border ${seedLocked ? "border-[#FFA300]/50 bg-[#FFA300]/10 text-[#FFC857]" : "border-white/[0.1] text-[#A7ADD4] hover:text-white"}`}>
+                            {seedLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+                          </button>
+                        )}
+                      </div>
+                    </Field>
+                  </div>
+                )}
+                {status === "error" && errorMessage && <ErrorNote>{errorMessage}</ErrorNote>}
+              </div>
+            }
+          />
         </div>
       </section>
 
-      {/* ═══ CENTER — canvas ═══════════════════════════════════════════ */}
-      <CanvasColumn
-        sectionRef={canvasRef}
-        topLeft={
-          activeResult ? (
-            <>
-              <Chip>{styleName(activeResult.styleId)}</Chip>
-              <Chip>{activeResult.qualityPreset === "hd" ? "HD" : "Standard"}</Chip>
-              {activeResult.resolvedView && activeResult.resolvedView !== "DEFAULT" && (
-                <Chip>{VIEW_LABEL_BY_KEY[activeResult.resolvedView] ?? activeResult.resolvedView} view</Chip>
-              )}
-              <Chip>seed {activeResult.seed}</Chip>
-            </>
-          ) : (
-            <TopBarHint>Your sprite will appear here</TopBarHint>
-          )
-        }
-        topRight={<BackdropToggle value={bgMode} onChange={setBgMode} />}
-        below={
-          <>
-            {/* Project review bar */}
-            {activeResult?.projectStatus && (
-              <div aria-live="polite" className="mx-auto mb-2 flex w-full max-w-[680px] flex-wrap items-center justify-center gap-2 px-4 sm:px-5">
-                {activeResult.projectStatus === "accepted" ? (
-                  <>
-                    <span className="flex min-h-10 items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-500/[0.08] px-4 text-[13px] font-medium text-emerald-200">
-                      <Check className="h-4 w-4 shrink-0" aria-hidden /> Added to {activeResult.acceptedFolderName ?? "the project"}
-                    </span>
-                    <button type="button" onClick={() => declineResult(activeResult)}
-                      className="h-10 rounded-xl px-3 text-[12.5px] font-medium text-[#A7ADD4] transition-colors hover:bg-white/[0.04] hover:text-white">Undo</button>
-                  </>
-                ) : activeResult.projectStatus === "declined" ? (
-                  <>
-                    <span className="flex min-h-10 items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-[13px] text-[#A7ADD4]">
-                      <X className="h-4 w-4 shrink-0" aria-hidden /> Declined — not added to the project
-                    </span>
-                    <button type="button" onClick={() => acceptResult(activeResult)}
-                      className="h-10 rounded-xl px-3 text-[12.5px] font-medium text-[#FFC857] transition-colors hover:bg-white/[0.04] hover:text-white">Accept instead</button>
-                  </>
-                ) : (
-                  <>
-                    <button type="button" onClick={() => acceptResult(activeResult)} disabled={activeResult.projectStatus === "accepting"}
-                      className="flex h-11 min-w-[140px] items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 text-[14px] font-semibold text-black transition hover:bg-emerald-400 disabled:opacity-60">
-                      {activeResult.projectStatus === "accepting" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Check className="h-4 w-4" aria-hidden />} Accept
-                    </button>
-                    <button type="button" onClick={() => declineResult(activeResult)} disabled={activeResult.projectStatus === "accepting"}
-                      className="flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.04] px-5 text-[14px] font-medium text-[#C8CCE8] transition hover:bg-white/[0.08] disabled:opacity-60">
-                      <X className="h-4 w-4" aria-hidden /> Decline
-                    </button>
-                    {pendingResults.length > 1 && (
-                      <button type="button" onClick={acceptAllPending}
-                        className="h-11 rounded-xl px-3 text-[12.5px] font-medium text-[#A7ADD4] transition-colors hover:bg-white/[0.04] hover:text-white">
-                        Accept all ({pendingResults.length})
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-
-            {/* Action bar */}
-            {activeResult && (
-              <div className="flex flex-wrap items-center justify-center gap-2 px-4 pb-3 sm:px-5">
-                <button type="button" onClick={isPixelStyle(activeResult.styleId) ? downloadNative : handleDownload}
-                  title={isPixelStyle(activeResult.styleId) ? "Download at the sprite's real pixel size (engine-ready)" : "Download as a 1024px PNG"}
-                  className="flex h-10 items-center gap-2 rounded-xl bg-white px-4 text-[13px] font-semibold text-black transition hover:bg-white/90">
-                  <Download className="h-4 w-4" aria-hidden /> Download PNG
-                </button>
-                <div className="relative" ref={sizesRef}>
-                  <button type="button" onClick={() => setSizesOpen((v) => !v)} aria-haspopup="menu" aria-expanded={sizesOpen}
-                    className={SECONDARY_BTN}>
-                    Other sizes <ChevronDown className={`h-3.5 w-3.5 transition-transform ${sizesOpen ? "rotate-180" : ""}`} aria-hidden />
-                  </button>
-                  {sizesOpen && (
-                    <div role="menu" aria-label="Download sizes"
-                      className="absolute bottom-12 left-1/2 z-20 w-56 -translate-x-1/2 rounded-xl border border-white/[0.08] bg-[#1B2446] p-1.5 shadow-2xl">
-                      {isPixelStyle(activeResult.styleId) && (
-                        <button type="button" role="menuitem" onClick={() => { setSizesOpen(false); downloadNative(); }}
-                          className="flex min-h-9 w-full items-center justify-between rounded-lg px-3 text-[12.5px] text-white hover:bg-white/[0.06]">
-                          Real pixel size <span className="font-mono text-[10.5px] text-emerald-300">engine-ready</span>
-                        </button>
-                      )}
-                      {[32, 64, 128, 256, 512, 1024].map((size) => (
-                        <button key={size} type="button" role="menuitem" onClick={() => { setSizesOpen(false); downloadAtSize(size); }}
-                          className="flex min-h-9 w-full items-center justify-between rounded-lg px-3 font-mono text-[12px] text-[#C8CCE8] hover:bg-white/[0.06] hover:text-white">
-                          {size} × {size} px
-                        </button>
-                      ))}
-                      <button type="button" role="menuitem" onClick={() => { setSizesOpen(false); handleDownloadMetadata(); }}
-                        title="Prompt, seed, style and settings — to recreate this sprite later"
-                        className="mt-1 flex min-h-9 w-full items-center rounded-lg border-t border-white/[0.06] px-3 text-[12px] text-[#A7ADD4] hover:bg-white/[0.06] hover:text-white">
-                        Settings file (.json)
-                      </button>
-                    </div>
-                  )}
-                </div>
-                {activeResult.generationId && (
-                  <Link href={`/animate?id=${encodeURIComponent(activeResult.generationId)}`}
-                    className="flex h-10 items-center gap-1.5 rounded-xl border border-[#FFA300]/40 bg-[#FFA300]/10 px-3 text-[13px] font-medium text-[#FFC857] transition hover:bg-[#FFA300]/20">
-                    <Film className="h-4 w-4" aria-hidden /> Animate
-                  </Link>
-                )}
-                {activeResult.generationId && styleRef?.id !== activeResult.generationId && (
-                  <button type="button" title={`Make new sprites in this exact style (${STYLE_MATCH_CREDITS} credits each)`}
-                    onClick={() => setStyleRef({ id: activeResult.generationId!, imageUrl: activeResult.imageUrl })}
-                    className={SECONDARY_BTN}>
-                    <Paintbrush className="h-4 w-4" aria-hidden /> Match style
-                  </button>
-                )}
-                <IconButton label="Generate again with the same settings" onClick={handleRegenerate} disabled={isGenerating || !isFormValid}>
-                  <RefreshCw className={`h-4 w-4 ${isGenerating ? "animate-spin" : ""}`} />
-                </IconButton>
-                <IconButton label={seedCopied ? "Seed copied" : "Copy seed"} onClick={handleCopySeed}>
-                  {seedCopied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
-                </IconButton>
-              </div>
-            )}
-
-            {/* Notes: warnings / translation */}
-            {activeResult && ((activeResult.warnings?.length ?? 0) > 0 || activeResult.translatedPrompt) && (
-              <div className="mx-auto w-full max-w-[680px] space-y-1.5 px-4 pb-3 sm:px-5">
-                {activeResult.warnings?.map((w, i) => (
-                  <p key={i} className="flex items-start gap-2 rounded-xl border border-amber-400/20 bg-amber-400/[0.05] px-3 py-2 text-[11.5px] text-amber-100/90">
-                    <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" aria-hidden /> <span className="flex-1">{w}</span>
-                    {/use Animate/i.test(w) && activeResult.generationId && (
-                      <Link href={`/animate?id=${encodeURIComponent(activeResult.generationId)}`} className="-my-2 inline-flex min-h-9 shrink-0 items-center font-semibold text-[#FFC857] hover:text-[#FFD0A8]">Animate it →</Link>
-                    )}
-                  </p>
-                ))}
-                {activeResult.translatedPrompt && (
-                  <p className="flex items-center gap-2 rounded-xl bg-white/[0.04] py-1 pl-3 pr-1 text-[11.5px] text-[#A7ADD4]">
-                    <span className="font-mono font-semibold text-[#C8CCE8]" title="Translated to English">EN</span>
-                    <span className="min-w-0 flex-1 truncate" title={activeResult.translatedPrompt}>{activeResult.translatedPrompt}</span>
-                    <button type="button" onClick={() => activeResult.translatedPrompt && setPrompt(activeResult.translatedPrompt)}
-                      title="Put the English version in the prompt box"
-                      className="min-h-10 shrink-0 rounded-lg px-3 font-semibold text-[#FFC857] lg:min-h-8 lg:px-2.5 hover:bg-white/[0.04] hover:text-[#FFD0A8]">Use</button>
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* History strip (when there's no right panel) */}
-            {history.length > 0 && (
-              <div role="group" aria-label="This session" className="flex gap-2 overflow-x-auto px-4 pb-5 sm:px-5 xl:hidden">
-                {history.map((item, index) => (
-                  <HistoryThumb key={item.id} item={item} active={selectedIndex === index} pixel={isPixelStyle(item.styleId)}
-                    onClick={() => setSelectedIndex(index)} className="h-16 w-16 shrink-0" />
-                ))}
-              </div>
-            )}
-          </>
-        }
-      >
-        <CanvasFrame bg={bgMode}>
-          {activeResult && (
-            <Image src={activeResult.imageUrl} alt={activeResult.prompt} fill unoptimized
-              className={`object-contain p-[8%] transition-opacity duration-300 ${isPixelStyle(activeResult.styleId) ? "pixel-perfect" : ""} ${isGenerating ? "opacity-15" : "opacity-100"}`} />
-          )}
-
-          {isGenerating && <GenerateProgress expectedSeconds={DETAIL_SECONDS[detail]} />}
-
-          {!activeResult && !isGenerating && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-5 sm:gap-6 sm:p-8">
-              <div className="text-center">
-                <p className="font-display text-[20px] font-semibold text-white sm:text-[24px]">What will you create?</p>
-                <p className="mt-1.5 text-[13px] text-[#9AA1CC]">
-                  <span className="lg:hidden">Describe it above</span><span className="max-lg:hidden">Describe it on the left</span>, or start from an example
-                </p>
-              </div>
-              <div className="grid w-full max-w-[280px] grid-cols-3 gap-2 sm:max-w-md sm:gap-2.5">
-                {SHOWCASE.slice(0, 6).map((ex) => (
-                  <button key={ex.id} type="button" onClick={() => applyExample(ex)} title={`Use: ${ex.prompt}`} aria-label={`Use example: ${ex.prompt}`}
-                    className="group relative aspect-square overflow-hidden rounded-2xl border border-white/[0.06] bg-[#212B4E]/80 transition-colors hover:border-[#FFA300]/50">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={ex.imageUrl} alt="" decoding="async"
-                      className={`absolute inset-0 h-full w-full object-contain p-3 transition-transform duration-300 group-hover:scale-110 ${isPixelShowcase(ex) ? "pixel-perfect" : ""}`} />
-                    <span aria-hidden className="absolute inset-x-0 bottom-0 translate-y-full bg-black/75 px-2 py-1 text-[10px] leading-snug text-white transition-transform group-hover:translate-y-0 group-focus-visible:translate-y-0">
-                      {ex.prompt}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </CanvasFrame>
-      </CanvasColumn>
-
-      {/* ═══ RIGHT — my generations (column from xl, bottom sheet below) ═══ */}
+      {/* ═══ RIGHT — inventory (column from xl, bottom sheet below) ═══ */}
       <HistoryPanel tool="create" open={historyOpen} onOpenChange={setHistoryOpen} onSelect={session.openFromHistory}
         activeIds={[session.activeGenerationId]} refreshKey={history[0]?.generationId} />
     </div>

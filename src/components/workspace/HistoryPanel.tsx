@@ -42,6 +42,13 @@ const WIDE_QUERY = "(min-width: 1280px)";
 
 const isPixel = (styleId?: string | null) => !!styleId && styleId.toUpperCase().includes("PIXEL");
 
+/** Inventory slot frames: the kind of item reads at a glance, like item rarity in an RPG. */
+const SLOT_FRAME: Record<string, string> = {
+  sprite: "border-[#3A4673]",
+  animation: "border-[#00E436]/70",
+  edit: "border-[#29ADFF]/70",
+};
+
 const EMPTY_TEXT: Record<HistoryFilterId, string> = {
   "all-images": "Nothing here yet. Everything you make shows up here.",
   sprites: "No sprites yet. Sprites you create show up here.",
@@ -50,7 +57,7 @@ const EMPTY_TEXT: Record<HistoryFilterId, string> = {
 };
 
 const PANEL_TITLE: Record<WorkspaceTool, string> = {
-  create: "My sprites",
+  create: "Inventory",
   animate: "My animations",
   edit: "My edits",
 };
@@ -63,8 +70,8 @@ const PANEL_TITLE: Record<WorkspaceTool, string> = {
 export function HistoryButton({ onClick, className }: { onClick: () => void; className?: string }) {
   return (
     <button type="button" onClick={onClick} aria-haspopup="dialog"
-      className={`flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 text-[13px] font-medium text-[#C8CCE8] transition hover:bg-white/[0.08] hover:text-white xl:hidden ${className ?? ""}`}>
-      <History className="h-4 w-4" aria-hidden /> History
+      className={`flex h-10 shrink-0 items-center gap-1.5 rounded-[8px] border border-white/[0.1] px-3 text-[13px] font-medium text-[#C8CCE8] transition hover:bg-white/[0.06] hover:text-white xl:hidden ${className ?? ""}`}>
+      <History className="h-4 w-4" aria-hidden /> Inventory
     </button>
   );
 }
@@ -209,10 +216,9 @@ function HistoryTile({ item, active, onSelect }: { item: HistoryItem; active: bo
       aria-label={`Open ${badge ? `${badge.toLowerCase()} ` : ""}“${title}”`} aria-current={active || undefined}
       onPointerEnter={() => setHover(true)} onPointerLeave={() => setHover(false)}
       onFocus={() => setHover(true)} onBlur={() => setHover(false)}
-      className={`group relative aspect-square w-full overflow-hidden rounded-xl border bg-[#212B4E] transition-colors ${
-        active ? "border-[#FFA300] ring-2 ring-[#FFA300]/25" : "border-white/[0.06] hover:border-[#FFA300]/50"
-      }`}
-      style={{ backgroundImage: "repeating-conic-gradient(#ffffff08 0% 25%, transparent 0% 50%)", backgroundSize: "12px 12px" }}>
+      className={`checker checker-sm group relative aspect-square w-full overflow-hidden rounded-[6px] border-2 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.35)] transition-colors ${
+        active ? "border-[#FFA300]" : `${SLOT_FRAME[kind] ?? SLOT_FRAME.sprite} hover:border-[#FFA300]/70`
+      }`}>
       {kind === "animation" ? (
         <AnimationThumb item={item} playing={hover} />
       ) : (
@@ -221,7 +227,7 @@ function HistoryTile({ item, active, onSelect }: { item: HistoryItem; active: bo
           className={`absolute inset-0 h-full w-full object-contain p-2 transition-transform duration-300 group-hover:scale-105 ${isPixel(item.styleId) ? "pixel-perfect" : ""}`} />
       )}
       {badge && (
-        <span className="pointer-events-none absolute bottom-1.5 left-1.5 max-w-[calc(100%-12px)] truncate rounded-md bg-black/70 px-1.5 py-0.5 font-mono text-[10px] leading-tight text-[#FFF1E8]">
+        <span className="pointer-events-none absolute bottom-1 left-1 max-w-[calc(100%-8px)] truncate rounded-[4px] bg-[#131A31]/85 px-1.5 py-0.5 text-[10.5px] font-semibold leading-tight text-[#FFF1E8]">
           {badge}
         </span>
       )}
@@ -251,10 +257,10 @@ function PanelBody({ tool, filter, setFilter, query, setQuery, data, activeIds, 
     <>
       <div className="space-y-2 px-4 pb-3">
         <label htmlFor={searchId} className="sr-only">Search my generations</label>
-        <div className="flex h-10 items-center gap-2 rounded-xl border border-white/[0.08] bg-[#212B4E] px-3 focus-within:border-[#FFA300]/50">
+        <div className="flex h-10 items-center gap-2 rounded-[8px] border border-white/[0.1] bg-[#131A31] px-3 focus-within:border-[#FFA300]">
           <Search className="h-4 w-4 shrink-0 text-[#8A92BF]" aria-hidden />
           <input id={searchId} type="text" role="searchbox" enterKeyHint="search" value={query} onChange={(e) => setQuery(e.target.value)} maxLength={80}
-            placeholder="Search my generations" autoComplete="off"
+            placeholder="Search your sprites" autoComplete="off"
             className="min-w-0 flex-1 bg-transparent text-[13px] text-white outline-none placeholder:text-[#8A92BF]" />
           {query && (
             <button type="button" onClick={() => setQuery("")} aria-label="Clear search"
@@ -264,11 +270,11 @@ function PanelBody({ tool, filter, setFilter, query, setQuery, data, activeIds, 
           )}
         </div>
         {filters.length > 1 && (
-          <div role="group" aria-label="Type" className="flex gap-1 rounded-xl bg-white/[0.04] p-1">
+          <div role="group" aria-label="Type" className="flex gap-1 rounded-[8px] border border-white/[0.08] p-0.5">
             {filters.map((f) => (
               <button key={f.id} type="button" onClick={() => setFilter(f.id)} aria-pressed={filter === f.id}
-                className={`min-h-9 flex-1 rounded-lg px-2 text-[12.5px] font-medium transition-colors lg:min-h-8 lg:text-[12px] ${
-                  filter === f.id ? "bg-white/[0.1] text-white shadow-sm" : "text-[#9AA1CC] hover:text-white"
+                className={`min-h-9 flex-1 rounded-[6px] px-2 text-[12.5px] font-medium transition-colors ${
+                  filter === f.id ? "bg-[#FFA300] text-[#131A31]" : "text-[#C8CCE8] hover:text-white"
                 }`}>
                 {f.label}
               </button>
@@ -280,7 +286,7 @@ function PanelBody({ tool, filter, setFilter, query, setQuery, data, activeIds, 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4" aria-busy={state === "loading" || undefined}>
         {state === "loading" && items.length === 0 ? (
           <div className={`grid gap-2 ${columns === "three" ? "grid-cols-3" : "grid-cols-2"}`} aria-label="Loading your generations">
-            {Array.from({ length: 6 }, (_, i) => <div key={i} className="aspect-square animate-pulse rounded-xl bg-white/[0.04]" />)}
+            {Array.from({ length: 6 }, (_, i) => <div key={i} className="aspect-square animate-pulse rounded-[6px] border-2 border-[#263260] bg-white/[0.03]" />)}
           </div>
         ) : state === "signed-out" ? (
           <p className="py-6 text-center text-[12.5px] text-[#9AA1CC]">Sign in to see your generations.</p>
@@ -298,7 +304,7 @@ function PanelBody({ tool, filter, setFilter, query, setQuery, data, activeIds, 
           </p>
         ) : (
           <>
-            <div className={`grid gap-2 transition-opacity ${columns === "three" ? "grid-cols-3" : "grid-cols-2"} ${state === "loading" ? "opacity-60" : ""}`}>
+            <div className={`grid gap-1.5 transition-opacity ${columns === "three" ? "grid-cols-3" : "grid-cols-2"} ${state === "loading" ? "opacity-60" : ""}`}>
               {items.map((item) => (
                 <HistoryTile key={item.id} item={item} active={activeIds.includes(item.id)} onSelect={onSelect} />
               ))}
@@ -366,8 +372,8 @@ export function HistoryPanel({ tool, activeIds = [], open, onOpenChange, onSelec
     <>
       <aside aria-label={title} className="hidden w-[288px] shrink-0 flex-col border-l border-white/[0.06] bg-[#19223F] xl:flex xl:min-h-0">
         <div className="flex items-center justify-between px-4 pb-3 pt-5">
-          <p className="font-display text-[15px] font-semibold text-white">{title}</p>
-          <Link href="/assets" className="inline-flex min-h-8 items-center text-[11.5px] text-[#9AA1CC] hover:text-white">All assets →</Link>
+          <p className="font-display text-[17px] font-semibold text-[#FFF1E8]">{title}</p>
+          <Link href="/assets" className="inline-flex min-h-10 items-center text-[12.5px] text-[#A7ADD4] underline-offset-2 hover:text-white hover:underline">All assets</Link>
         </div>
         {wide && <PanelBody {...bodyProps} columns="two" />}
       </aside>
@@ -381,7 +387,7 @@ export function HistoryPanel({ tool, activeIds = [], open, onOpenChange, onSelec
             <div className="flex items-center justify-between gap-3 px-4 pb-3 pt-2 md:pt-4">
               <p className="font-display text-[16px] font-semibold text-white">{title}</p>
               <div className="flex items-center gap-1">
-                <Link href="/assets" className="inline-flex min-h-10 items-center px-2 text-[12px] text-[#9AA1CC] hover:text-white">All assets →</Link>
+                <Link href="/assets" className="inline-flex min-h-10 items-center px-2 text-[12.5px] text-[#A7ADD4] hover:text-white">All assets</Link>
                 <button ref={closeRef} type="button" onClick={() => onOpenChange(false)} aria-label="Close history"
                   className="flex h-10 w-10 items-center justify-center rounded-xl text-[#C8CCE8] hover:bg-white/[0.06] hover:text-white">
                   <X className="h-5 w-5" />
