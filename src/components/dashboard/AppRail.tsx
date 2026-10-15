@@ -19,6 +19,7 @@ import {
   Sparkles,
   CircleHelp,
   Trophy,
+  Gamepad2,
 } from "lucide-react";
 import { useQuestClaimable } from "@/hooks/useQuestClaimable";
 import { fetchUserData } from "@/app/(dashboard)/layout.actions";
@@ -30,6 +31,7 @@ const NAV = [
   { href: "/assets", label: "Assets", icon: Images },
   { href: "/projects", label: "Projects", icon: FolderOpen },
   { href: "/quests", label: "Quests", icon: Trophy },
+  { href: "/play", label: "Dungeon", icon: Gamepad2 },
   { href: "/community", label: "Explore", icon: Users },
   { href: "/usage", label: "Usage", icon: BarChart3 },
   { href: "/how-it-works", label: "Guide", icon: CircleHelp },
