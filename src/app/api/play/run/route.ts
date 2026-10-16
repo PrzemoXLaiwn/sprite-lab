@@ -21,7 +21,7 @@ export async function POST() {
   try {
     const result = await startRun(user.id);
     if (!result.ok && result.reason === "no_party") {
-      return NextResponse.json({ error: "Add at least one of your sprites to the party first.", code: "NO_PARTY" }, { status: 400 });
+      return NextResponse.json({ error: "Add a character or creature to your party first.", code: "NO_PARTY" }, { status: 400 });
     }
     if (!result.ok) {
       return NextResponse.json({ error: `You've used all ${RUNS_PER_DAY} runs today. New runs at 00:00 UTC.`, code: "DAILY_LIMIT" }, { status: 429 });

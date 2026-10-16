@@ -9,6 +9,52 @@ export interface PixelArt {
 }
 
 export const ENEMY_ART: Record<EnemyKind, PixelArt> = {
+  rat: {
+    palette: { D: "#1C1A24", F: "#7A6F80", L: "#A89CAE", P: "#FF8FB1", r: "#FF004D" },
+    rows: [
+      ".DD.........",
+      "DPFD...DD...",
+      ".DFFDDDFFD..",
+      "DFrFFFFFFFD.",
+      "DFFFFLLFFFD.",
+      ".DDFFFFFFDD.",
+      "..DFD..DFDDD",
+      "..DD....DD.P",
+    ],
+  },
+  ghost: {
+    palette: { D: "#3A3F66", W: "#E6E9FF", S: "#B4BBE8", k: "#131A31" },
+    rows: [
+      "...DDDDDD...",
+      "..DWWWWWWD..",
+      ".DWWWWWWWWD.",
+      ".DWkkWWkkWD.",
+      ".DWkkWWkkWD.",
+      ".DWWWWWWWWD.",
+      ".DWWWkkWWWD.",
+      ".DWWWWWWWWD.",
+      ".DSWWWWWWSD.",
+      ".DSSWSSWSSD.",
+      ".DD.DD.DD.D.",
+    ],
+  },
+  imp: {
+    palette: { D: "#2A0A08", R: "#E0442B", O: "#FF8A3D", Y: "#FFE36B", k: "#131A31" },
+    rows: [
+      ".D........D.",
+      ".DRD....DRD.",
+      "..DRDDDDRD..",
+      "..DRRRRRRD..",
+      ".DRYkRRkYRD.",
+      ".DRRRRRRRRD.",
+      "..DRROORRD..",
+      "...DDRRDD...",
+      "..DRRRRRRD.D",
+      ".DRDRRRRDRDO",
+      "...DRDDRD.D.",
+      "...DD..DD...",
+    ],
+  },
   slime: {
     palette: { D: "#0A4D2A", G: "#00E436", L: "#9DFFB0", k: "#131A31" },
     rows: [

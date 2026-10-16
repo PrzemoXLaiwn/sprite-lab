@@ -6,8 +6,9 @@ import { join } from "path";
 import { PGlite } from "@electric-sql/pglite";
 import { beforeEach, describe, expect, it } from "vitest";
 import { PRIZE_BUDGET_PER_WEEK, RUNS_PER_DAY } from "./config";
-import { nextRunIndex } from "./rules";
-import { INSERT_RUN_SQL, LEADERBOARD_SQL, PARTY_GET_SQL, PARTY_SAVE_SQL, PAY_PRIZES_SQL, RUNS_TODAY_SQL, SPRITES_SQL, prizeParams } from "./sql";
+import { isoWeek, nextRunIndex, utcDay } from "./rules";
+import { parseSlots } from "./party";
+import { INSERT_RUN_SQL, LEADERBOARD_SQL, PARTY_GET_SQL, PARTY_SAVE_SQL, PAY_PRIZES_SQL, RECORDS_SQL, RUNS_TODAY_SQL, SPRITES_SQL, prizeParams } from "./sql";
 
 const MIGRATION = readFileSync(join(process.cwd(), "prisma/sql/2026-10-15_sprite_dungeon.sql"), "utf8");
 const WEEK = "2026-W42";
@@ -106,6 +107,33 @@ describe("leaderboard", () => {
     expect(rows.map((r) => [r.rank, r.user_id, r.floor])).toEqual([[1, "b", 12], [2, "a", 12], [3, "c", 4]]);
     expect(rows[0].players).toBe(3);
     expect(JSON.stringify(rows)).not.toContain("@");
+  });
+});
+
+describe("leaderboard right after a run", () => {
+  it("a run stored now is on the board for this ISO week (the same week/day the run route uses)", async () => {
+    const now = new Date();
+    const res = await db.query(INSERT_RUN_SQL, ["now1", "a", isoWeek(now), utcDay(now), 1, 6, "s", "[]"]);
+    expect(res.rows).toHaveLength(1);
+    const rows = (await db.query<{ rank: number; user_id: string; floor: number }>(LEADERBOARD_SQL, [isoWeek(now), 25, "a"])).rows;
+    expect(rows.map((r) => [r.rank, r.user_id, r.floor])).toEqual([[1, "a", 6]]);
+  });
+
+  it("personal records: best ever, best this week, runs this week", async () => {
+    expect((await db.query(RECORDS_SQL, ["a", WEEK])).rows[0]).toEqual({ best_ever: null, best_week: null, runs_week: 0 });
+    await addRun("a", 14, "2026-10-05 10:00:00", "2026-W41");
+    await addRun("a", 6, "2026-10-13 10:00:00");
+    await addRun("a", 9, "2026-10-14 10:00:00");
+    expect((await db.query(RECORDS_SQL, ["a", WEEK])).rows[0]).toEqual({ best_ever: 14, best_week: 9, runs_week: 2 });
+  });
+});
+
+describe("party slots storage", () => {
+  it("stores the new format and still reads old rows", async () => {
+    await db.query(PARTY_SAVE_SQL, ["a", JSON.stringify([{ hero: "g1", weapon: "w1" }])]);
+    expect(parseSlots((await db.query<{ slots: unknown }>(PARTY_GET_SQL, ["a"])).rows[0].slots)).toEqual([{ hero: "g1", weapon: "w1" }]);
+    await db.query(PARTY_SAVE_SQL, ["b", JSON.stringify(["g5", "g6"])]); // a row saved before the gear update
+    expect(parseSlots((await db.query<{ slots: unknown }>(PARTY_GET_SQL, ["b"])).rows[0].slots)).toEqual([{ hero: "g5" }, { hero: "g6" }]);
   });
 });
 

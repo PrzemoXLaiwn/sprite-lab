@@ -32,7 +32,7 @@ export const SPRITES_SQL = `
 /** $1 = user id. */
 export const PARTY_GET_SQL = `SELECT slots FROM dungeon_parties WHERE user_id = $1`;
 
-/** $1 = user id, $2 = slots (json array of generation ids). */
+/** $1 = user id, $2 = slots: json array of { hero, weapon?, armor?, trinket? } generation ids (old rows: plain id strings, see party.ts). */
 export const PARTY_SAVE_SQL = `
   INSERT INTO dungeon_parties (user_id, slots, updated_at) VALUES ($1, $2::jsonb, now())
   ON CONFLICT (user_id) DO UPDATE SET slots = EXCLUDED.slots, updated_at = now()`;
@@ -136,6 +136,13 @@ export function prizeParams(week: string, start: Date, end: Date): unknown[] {
   const badges = Array.from({ length: BADGE_RANKS }, (_, i) => badgeFor(i + 1));
   return [week, start, end, BADGE_RANKS, [...PRIZE_CREDITS], PRIZE_MIN_PAID_GENERATIONS, badges];
 }
+
+/** Personal records. $1 = user id, $2 = this week. */
+export const RECORDS_SQL = `
+  SELECT max(floor)::int AS best_ever,
+    (max(floor) FILTER (WHERE week = $2))::int AS best_week,
+    (count(*) FILTER (WHERE week = $2))::int AS runs_week
+  FROM dungeon_runs WHERE user_id = $1`;
 
 /** $1 = user id. */
 export const TROPHIES_SQL = `

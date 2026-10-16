@@ -23,7 +23,7 @@ export interface Step {
   ms: number;
 }
 
-export const STEP_MS: Record<StepKind, number> = { intro: 900, act: 340, clear: 600, fall: 1400, end: 0 };
+export const STEP_MS: Record<StepKind, number> = { intro: 1000, act: 280, clear: 600, fall: 1400, end: 0 };
 
 export function buildTimeline(log: RunLog): { steps: Step[]; total: number } {
   const steps: Step[] = [];

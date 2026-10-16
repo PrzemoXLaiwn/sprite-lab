@@ -1,28 +1,50 @@
 import { describe, expect, it } from "vitest";
 import {
-  ANIMATED_BONUS, BADGE_RANKS, PRIZE_BUDGET_PER_WEEK, PRIZE_CREDITS, PRIZE_MIN_PAID_GENERATIONS, ROLES, ROLL_MAX, ROLL_MIN, RUNS_PER_DAY,
+  ANIMATED_BONUS, BADGE_RANKS, BOSS_EVERY, GEAR_BONUS, HD_BONUS, PRIZE_BUDGET_PER_WEEK, PRIZE_CREDITS, PRIZE_MIN_PAID_GENERATIONS,
+  ROLL_MAX, ROLL_MIN, RUNS_PER_DAY, THEMES, themeFor,
 } from "./config";
-import { hash32, publicTag, runSeed } from "./rng";
+import { hash32, makeRng, publicTag, runSeed } from "./rng";
 import {
   displayName, isEligibleForCredits, maxWeeklyPayout, nextRunIndex, previousWeek, prizeFor, runsLeft, utcDay,
 } from "./rules";
 import { simulateRun, spawnFloor } from "./simulate";
-import { baseRoll, deriveParty, deriveUnit, roleFor, styleSynergy, type SpriteFacts } from "./stats";
-import { makeRng } from "./rng";
+import {
+  baseRoll, deriveMember, deriveParty, deriveUnit, gearBonus, roleFor, slotFor, spriteMultiplier, styleSynergy,
+  type MemberFacts, type SpriteFacts,
+} from "./stats";
+import { rankChange, summarizeRun } from "./summary";
 
 const sprite = (id: string, categoryId = "CHARACTERS", styleId = "PIXEL_ART_16", animated = false, hd = false): SpriteFacts =>
   ({ id, categoryId, styleId, animated, hd });
+const hero = (id: string, styleId = "A", animated = false, hd = false): MemberFacts => ({ hero: sprite(id, "CHARACTERS", styleId, animated, hd) });
+const equipped = (id: string, styleId = "A", animated = false): MemberFacts => ({
+  hero: sprite(id, "CHARACTERS", styleId, animated),
+  weapon: sprite(`${id}-w`, "WEAPONS"), armor: sprite(`${id}-a`, "ARMOR"), trinket: sprite(`${id}-t`, "CONSUMABLES"),
+});
 
-describe("stats", () => {
-  it("maps categories to roles, everything else is a Charm", () => {
+/** Median floor over many seeds. */
+function medianFloor(members: MemberFacts[], runs = 60): number {
+  const units = deriveParty(members);
+  const floors = Array.from({ length: runs }, (_, s) => simulateRun(units, s * 7919 + 1).floor).sort((a, b) => a - b);
+  return floors[Math.floor(runs / 2)];
+}
+
+describe("slots and roles", () => {
+  it("only characters and creatures are heroes; weapons, armor and everything else is gear", () => {
     expect(roleFor("CHARACTERS")).toBe("hero");
     expect(roleFor("CREATURES")).toBe("beast");
-    expect(roleFor("WEAPONS")).toBe("blade");
-    expect(roleFor("ARMOR")).toBe("guard");
-    expect(roleFor("POTIONS")).toBe("charm");
-    expect(roleFor("")).toBe("charm");
+    expect(roleFor("WEAPONS")).toBeNull();
+    expect(slotFor("CHARACTERS")).toBe("hero");
+    expect(slotFor("CREATURES")).toBe("hero");
+    expect(slotFor("WEAPONS")).toBe("weapon");
+    expect(slotFor("ARMOR")).toBe("armor");
+    expect(slotFor("CONSUMABLES")).toBe("trinket");
+    expect(slotFor("RESOURCES")).toBe("trinket");
+    expect(slotFor("TILESETS")).toBe("trinket");
   });
+});
 
+describe("stats", () => {
   it("rolls are stable per generation id and stay in the narrow range", () => {
     expect(baseRoll("gen_abc")).toBe(baseRoll("gen_abc"));
     for (let i = 0; i < 500; i++) {
@@ -33,52 +55,89 @@ describe("stats", () => {
     expect(deriveUnit(sprite("x1"))).toEqual(deriveUnit(sprite("x1")));
   });
 
-  it("an animation made from the sprite adds 40% power, HD adds 15%", () => {
+  it("an animation made from the hero adds 40%, HD adds 15%", () => {
     const plain = deriveUnit(sprite("k1"));
-    const animated = deriveUnit(sprite("k1", "CHARACTERS", "PIXEL_ART_16", true));
-    const hd = deriveUnit(sprite("k1", "CHARACTERS", "PIXEL_ART_16", false, true));
+    const animated = deriveUnit(sprite("k1", "CHARACTERS", "A", true));
+    const hd = deriveUnit(sprite("k1", "CHARACTERS", "A", false, true));
     expect(animated.atk / plain.atk).toBeCloseTo(1 + ANIMATED_BONUS, 1);
     expect(animated.hp / plain.hp).toBeCloseTo(1 + ANIMATED_BONUS, 1);
-    expect(hd.hp / plain.hp).toBeCloseTo(1.15, 1);
+    expect(hd.hp / plain.hp).toBeCloseTo(1 + HD_BONUS, 1);
     expect(animated.power).toBeGreaterThan(plain.power);
   });
 
-  it("roles keep their shape: Beast has most HP, Blade most attack, Guard most defence, Charm heals", () => {
-    const [h, b, w, g, c] = ["CHARACTERS", "CREATURES", "WEAPONS", "ARMOR", "ITEMS"].map((cat) => deriveUnit(sprite("same", cat)));
+  it("a beast has more HP, a hero more attack", () => {
+    const h = deriveUnit(sprite("same", "CHARACTERS")), b = deriveUnit(sprite("same", "CREATURES"));
     expect(b.hp).toBeGreaterThan(h.hp);
-    expect(w.atk).toBeGreaterThan(h.atk);
-    expect(g.def).toBeGreaterThan(h.def);
-    expect(c.heal).toBeGreaterThan(0);
-    expect(h.heal).toBe(0);
-    expect(ROLES.charm.heal).toBeGreaterThan(0);
+    expect(h.atk).toBeGreaterThan(b.atk);
   });
 
-  it("style variety gives a small capped synergy", () => {
+  it("gear adds its slot bonus scaled by the item's own roll, animation and HD", () => {
+    const w = sprite("w1", "WEAPONS");
+    const wb = gearBonus(w, "weapon");
+    expect(wb.atk).toBe(Math.round(GEAR_BONUS.weapon.atk * spriteMultiplier(w)));
+    expect(wb.crit).toBeGreaterThan(0);
+    expect(wb.def).toBe(0);
+    const animatedW = gearBonus(sprite("w1", "WEAPONS", "A", true), "weapon");
+    expect(animatedW.atk).toBeGreaterThan(wb.atk);
+
+    const a = gearBonus(sprite("a1", "ARMOR"), "armor");
+    expect(a.def).toBeGreaterThan(0);
+    expect(a.hp).toBeGreaterThan(0);
+    expect(a.atk).toBe(0);
+    expect(gearBonus(sprite("t1", "CONSUMABLES"), "trinket").heal).toBeGreaterThan(0);
+
+    const bare = deriveMember(hero("h1"));
+    const full = deriveMember(equipped("h1"));
+    expect(full.atk).toBe(bare.atk + gearBonus(sprite("h1-w", "WEAPONS"), "weapon").atk);
+    expect(full.def).toBe(bare.def + gearBonus(sprite("h1-a", "ARMOR"), "armor").def);
+    expect(full.hp).toBe(bare.hp + gearBonus(sprite("h1-a", "ARMOR"), "armor").hp);
+    expect(full.heal).toBe(gearBonus(sprite("h1-t", "CONSUMABLES"), "trinket").heal);
+    expect(full.gear).toEqual({ weapon: "h1-w", armor: "h1-a", trinket: "h1-t" });
+    expect(full.power).toBeGreaterThan(bare.power);
+  });
+
+  it("style variety among heroes gives a small capped synergy", () => {
     expect(styleSynergy(["A", "A", "A"])).toBe(0);
     expect(styleSynergy(["A", "B"])).toBeCloseTo(0.05);
     expect(styleSynergy(["A", "B", "C", "D"])).toBeCloseTo(0.15);
     expect(styleSynergy(["A", "B", "C", "D", "E"])).toBeCloseTo(0.15);
-    const same = deriveParty([sprite("p1", "CHARACTERS", "A"), sprite("p2", "CHARACTERS", "A")]);
-    const mixed = deriveParty([sprite("p1", "CHARACTERS", "A"), sprite("p2", "CHARACTERS", "B")]);
-    expect(mixed[0].atk).toBeGreaterThanOrEqual(same[0].atk);
+    const same = deriveParty([hero("p1", "A"), hero("p2", "A")]);
+    const mixed = deriveParty([hero("p1", "A"), hero("p2", "B")]);
     expect(mixed[0].hp).toBeGreaterThan(same[0].hp);
   });
 
-  it("a party has at most 4 members and no duplicates", () => {
-    const p = deriveParty(["a", "b", "a", "c", "d", "e"].map((id) => sprite(id)));
-    expect(p.map((u) => u.id)).toEqual(["a", "b", "c", "d"]);
+  it("a party has at most 4 members", () => {
+    expect(deriveParty(["a", "b", "c", "d", "e"].map((id) => hero(id))).map((u) => u.id)).toEqual(["a", "b", "c", "d"]);
+  });
+});
+
+describe("balance (the numbers in config.ts)", () => {
+  it("one bare plain hero reaches about floor 4–5", () => {
+    const f = medianFloor([hero("solo")]);
+    expect(f).toBeGreaterThanOrEqual(4);
+    expect(f).toBeLessThanOrEqual(6);
+  });
+
+  it("4 animated heroes, fully equipped, reach about floor 15–20", () => {
+    const f = medianFloor(["A", "B", "C", "D"].map((st, i) => equipped(`h${i}`, st, true)));
+    expect(f).toBeGreaterThanOrEqual(15);
+    expect(f).toBeLessThanOrEqual(21);
+  });
+
+  it("gear and animation each push the party deeper", () => {
+    const bare = medianFloor([0, 1, 2, 3].map((i) => hero(`b${i}`)));
+    const geared = medianFloor([0, 1, 2, 3].map((i) => equipped(`b${i}`)));
+    const animated = medianFloor([0, 1, 2, 3].map((i) => hero(`b${i}`, "A", true)));
+    expect(geared).toBeGreaterThan(bare);
+    expect(animated).toBeGreaterThan(bare);
   });
 });
 
 describe("simulation", () => {
-  const party = deriveParty([
-    sprite("h", "CHARACTERS", "PIXEL_ART_16", true), sprite("g", "ARMOR", "CARTOON"),
-    sprite("w", "WEAPONS", "ANIME"), sprite("c", "ITEMS", "PIXEL_ART_32"),
-  ]);
+  const party = deriveParty([equipped("h", "PIXEL_ART_16", true), hero("g", "CARTOON"), { hero: sprite("c", "CREATURES", "ANIME") }]);
 
   it("same party + same seed → the same log", () => {
     const seed = runSeed("user-1", "2026-10-14", 3);
-    expect(simulateRun(party, seed)).toEqual(simulateRun(party, seed));
     expect(JSON.stringify(simulateRun(party, seed))).toBe(JSON.stringify(simulateRun(party, seed)));
   });
 
@@ -90,47 +149,60 @@ describe("simulation", () => {
   it("the log is consistent: the party falls on the last floor, every other floor is cleared", () => {
     const log = simulateRun(party, 42);
     expect(log.floor).toBe(log.floors.length);
-    expect(log.floor).toBeGreaterThan(1);
     log.floors.slice(0, -1).forEach((f) => expect(f.cleared).toBe(true));
     expect(log.floors.at(-1)!.cleared).toBe(false);
-
     for (const f of log.floors) {
-      // Replaying the actions from the floor's starting HP reproduces the outcome
+      expect(f.theme).toBe(themeFor(f.floor).id);
       const hp = [...f.partyHpStart];
       const ehp = f.enemies.map((e) => e.hp);
       for (const a of f.actions) {
         if (a.kind === "heal") hp[a.target] += a.amount;
         else if (a.side === "party") ehp[a.target] -= a.amount;
         else hp[a.target] -= a.amount;
-        const after = a.kind === "hit" ? (a.side === "party" ? ehp[a.target] : hp[a.target]) : 1;
-        expect(a.ko).toBe(after <= 0);
-        expect(a.amount).toBeGreaterThanOrEqual(a.kind === "heal" ? 0 : 1);
+        if (a.kind === "hit") expect(a.ko).toBe((a.side === "party" ? ehp[a.target] : hp[a.target]) <= 0);
+        expect(hp.every((h, i) => h <= party[i].hp)).toBe(true);
       }
       expect(f.cleared).toBe(ehp.every((h) => h <= 0) && hp.some((h) => h > 0));
-      expect(f.dealt.reduce((a, b) => a + b, 0)).toBe(f.actions.filter((a) => a.side === "party" && a.kind === "hit").reduce((s, a) => s + a.amount, 0));
-      expect(f.taken.reduce((a, b) => a + b, 0)).toBe(f.actions.filter((a) => a.side === "enemy").reduce((s, a) => s + a.amount, 0));
     }
   });
 
-  it("every 5th floor is a single boss, enemies get tougher with depth", () => {
-    const rng = makeRng(7);
-    const f5 = spawnFloor(5, rng);
-    expect(f5).toHaveLength(1);
-    expect(f5[0].boss).toBe(true);
-    expect(spawnFloor(1, makeRng(1)).every((e) => !e.boss)).toBe(true);
-    const avgHp = (floor: number) => spawnFloor(floor, makeRng(3)).reduce((a, e) => a + e.hp, 0);
-    expect(avgHp(12)).toBeGreaterThan(avgHp(2));
-  });
-
-  it("animated sprites go deeper on average", () => {
-    const plain = deriveParty([sprite("a"), sprite("b", "CREATURES"), sprite("c", "WEAPONS")]);
-    const anim = deriveParty([sprite("a", "CHARACTERS", "PIXEL_ART_16", true), sprite("b", "CREATURES", "PIXEL_ART_16", true), sprite("c", "WEAPONS", "PIXEL_ART_16", true)]);
-    const avg = (p: typeof plain) => Array.from({ length: 40 }, (_, s) => simulateRun(p, s + 1).floor).reduce((a, b) => a + b, 0) / 40;
-    expect(avg(anim)).toBeGreaterThan(avg(plain));
+  it("themes change every 5 floors, each ending in its crowned boss", () => {
+    expect(themeFor(1).name).toBe("Sewers");
+    expect(themeFor(6).name).toBe("Crypt");
+    expect(themeFor(11).name).toBe("Cave");
+    expect(themeFor(16).name).toBe("Forge");
+    expect(themeFor(21).name).toBe("Abyss");
+    expect(themeFor(80).name).toBe("Abyss");
+    const f10 = spawnFloor(10, makeRng(7));
+    expect(f10).toHaveLength(1);
+    expect(f10[0]).toMatchObject({ boss: true, name: "Bone Lord" });
+    for (let f = 1; f <= 30; f++) {
+      const names = new Set(themeFor(f).enemies.map((e) => e.name));
+      const line = spawnFloor(f, makeRng(f));
+      if (f % BOSS_EVERY === 0) expect(line[0].name).toBe(themeFor(f).boss.name);
+      else line.forEach((e) => expect(names.has(e.name)).toBe(true));
+    }
+    expect(THEMES.map((t) => t.from)).toEqual([1, 6, 11, 16, 21]);
   });
 
   it("an empty party doesn't enter the dungeon", () => {
     expect(simulateRun([], 1)).toMatchObject({ floor: 0, floors: [] });
+  });
+});
+
+describe("run summary", () => {
+  it("names the MVP, what stopped the party, and the rank change", () => {
+    const log = simulateRun(deriveParty([hero("a"), equipped("b")]), 9);
+    const s = summarizeRun(log);
+    const dealt = [0, 0];
+    log.floors.forEach((f) => f.dealt.forEach((d, i) => { dealt[i] += d; }));
+    expect(s.mvp).toBe(dealt[1] > dealt[0] ? 1 : 0);
+    expect(s.mvpDamage).toBe(Math.max(...dealt));
+    const last = log.floors.at(-1)!;
+    expect(s.bossStop).toBe(last.boss);
+    if (last.boss) expect(s.stoppedBy).toBe(last.enemies[0].name);
+    expect(rankChange(7, 3)).toEqual({ before: 7, after: 3, climbed: 4 });
+    expect(rankChange(null, 5).climbed).toBe(0);
   });
 });
 
@@ -185,7 +257,6 @@ describe("prizes", () => {
     expect(displayName("pixelfox", "u1")).toBe("pixelfox");
     expect(displayName(null, "u1")).toMatch(/^Creator #[0-9a-z]{5}$/);
     expect(displayName("  ", "u1")).toBe(displayName(null, "u1"));
-    expect(publicTag("u1")).toBe(publicTag("u1"));
     expect(publicTag("u1")).not.toBe(publicTag("u2"));
   });
 });

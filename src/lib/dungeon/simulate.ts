@@ -4,18 +4,18 @@
 // Pure and deterministic: same party + same seed → the same log, byte for byte.
 // The client only replays the log; it never decides an outcome.
 //
-// Each floor: enemies spawn (scaled by depth, a boss every 5th floor), then
-// rounds of auto-battle. In a round every living party member acts in slot
-// order (Charms heal a hurt ally, everyone else hits the front enemy), then
-// every living enemy acts (a living Guard draws every attack, otherwise a
-// random target). Clearing a floor rests the survivors; the run ends on the
-// floor where the party falls.
+// Each floor: enemies of the floor's theme spawn (scaled by depth, a boss
+// every 5th floor), then rounds of auto-battle. In a round every living party
+// member acts in slot order — a member with a trinket first heals the weakest
+// hurt ally, then everyone hits the front enemy — then every living enemy hits
+// a random living member. Clearing a floor rests the survivors; the run ends
+// on the floor where the party falls.
 // =============================================================================
 
 import {
   BOSS_ATK, BOSS_DEF, BOSS_EVERY, BOSS_HP, CRIT_CHANCE, CRIT_MULTIPLIER, DAMAGE_SPREAD,
-  ENEMIES, ENEMY_ATK_PER_FLOOR, ENEMY_DEF_EVERY, ENEMY_HP_PER_FLOOR, ENEMY_ORDER,
-  HEAL_THRESHOLD, MAX_ENEMIES, MAX_FLOOR, MAX_ROUNDS_PER_FLOOR, REST_HEAL, type EnemyKind,
+  ENEMY_ATK_PER_FLOOR, ENEMY_DEF_EVERY, ENEMY_HP_PER_FLOOR, ENEMY_STATS,
+  HEAL_THRESHOLD, MAX_ENEMIES, MAX_FLOOR, MAX_ROUNDS_PER_FLOOR, REST_HEAL, themeFor, type EnemyKind,
 } from "./config";
 import { makeRng } from "./rng";
 import type { UnitStats } from "./stats";
@@ -45,6 +45,8 @@ export interface BattleAction {
 
 export interface FloorLog {
   floor: number;
+  /** Theme id (sewers, crypt, cave, forge, abyss). */
+  theme: string;
   boss: boolean;
   enemies: EnemyUnit[];
   /** Party HP when the floor starts (0 = knocked out earlier). */
@@ -62,7 +64,7 @@ export interface FloorLog {
 }
 
 export interface RunLog {
-  version: 1;
+  version: 2;
   seed: number;
   party: UnitStats[];
   floors: FloorLog[];
@@ -72,30 +74,32 @@ export interface RunLog {
 
 /** Enemy line-up of a floor. Uses the run's rng, so it's part of the deterministic log. */
 export function spawnFloor(floor: number, rng: () => number): EnemyUnit[] {
-  const pool = ENEMY_ORDER.filter((k) => ENEMIES[k].from <= floor);
-  const pick = () => pool[Math.floor(rng() * pool.length)];
+  const theme = themeFor(floor);
   const hpMul = 1 + ENEMY_HP_PER_FLOOR * (floor - 1);
   const atkMul = 1 + ENEMY_ATK_PER_FLOOR * (floor - 1);
   const defAdd = Math.floor((floor - 1) / ENEMY_DEF_EVERY);
-  const make = (kind: EnemyKind, boss: boolean): EnemyUnit => {
-    const d = ENEMIES[kind];
+  const make = (kind: EnemyKind, name: string, boss: boolean): EnemyUnit => {
+    const d = ENEMY_STATS[kind];
     return {
       kind,
-      name: boss ? d.bossName : d.name,
+      name,
       boss,
       hp: Math.round(d.hp * hpMul * (boss ? BOSS_HP : 1)),
       atk: Math.round(d.atk * atkMul * (boss ? BOSS_ATK : 1)),
       def: d.def + defAdd + (boss ? BOSS_DEF : 0),
     };
   };
-  if (floor % BOSS_EVERY === 0) return [make(pick(), true)];
+  if (floor % BOSS_EVERY === 0) return [make(theme.boss.kind, theme.boss.name, true)];
   const count = Math.min(MAX_ENEMIES, 1 + Math.floor(floor / 3));
-  return Array.from({ length: count }, () => make(pick(), false));
+  return Array.from({ length: count }, () => {
+    const e = theme.enemies[Math.floor(rng() * theme.enemies.length)];
+    return make(e.kind, e.name, false);
+  });
 }
 
-function damage(atk: number, def: number, rng: () => number): { amount: number; crit: boolean } {
+function damage(atk: number, def: number, critChance: number, rng: () => number): { amount: number; crit: boolean } {
   const spread = 1 - DAMAGE_SPREAD + rng() * DAMAGE_SPREAD * 2;
-  const crit = rng() < CRIT_CHANCE;
+  const crit = rng() < critChance;
   return { amount: Math.max(1, Math.round(atk * spread * (crit ? CRIT_MULTIPLIER : 1)) - def), crit };
 }
 
@@ -110,7 +114,7 @@ export function simulateRun(party: UnitStats[], seed: number): RunLog {
     const enemies = spawnFloor(floor, rng);
     const ehp = enemies.map((e) => e.hp);
     const log: FloorLog = {
-      floor, boss: enemies.some((e) => e.boss), enemies, partyHpStart: [...hp], actions: [], rounds: 0, cleared: false,
+      floor, theme: themeFor(floor).id, boss: enemies.some((e) => e.boss), enemies, partyHpStart: [...hp], actions: [], rounds: 0, cleared: false,
       dealt: party.map(() => 0), taken: party.map(() => 0), healed: party.map(() => 0), partyKos: [], enemyKos: 0,
     };
     const partyAlive = () => hp.some((h) => h > 0);
@@ -122,6 +126,7 @@ export function simulateRun(party: UnitStats[], seed: number): RunLog {
       for (let i = 0; i < party.length && enemiesAlive(); i++) {
         if (hp[i] <= 0) continue;
         const u = party[i];
+        // Trinket: a free heal on the weakest hurt ally
         if (u.heal > 0) {
           let best = -1, bestRatio = HEAL_THRESHOLD;
           for (let j = 0; j < party.length; j++) {
@@ -133,11 +138,10 @@ export function simulateRun(party: UnitStats[], seed: number): RunLog {
             hp[best] += amount;
             log.healed[i] += amount;
             log.actions.push({ round, side: "party", actor: i, kind: "heal", target: best, amount, crit: false, ko: false });
-            continue;
           }
         }
         const t = ehp.findIndex((h) => h > 0);
-        const hit = damage(u.atk, enemies[t].def, rng);
+        const hit = damage(u.atk, enemies[t].def, CRIT_CHANCE + u.crit, rng);
         const amount = Math.min(hit.amount, ehp[t]);
         ehp[t] -= amount;
         log.dealt[i] += amount;
@@ -149,9 +153,8 @@ export function simulateRun(party: UnitStats[], seed: number): RunLog {
       for (let e = 0; e < enemies.length && partyAlive(); e++) {
         if (ehp[e] <= 0) continue;
         const alive = hp.map((h, i) => (h > 0 ? i : -1)).filter((i) => i >= 0);
-        const guard = alive.find((i) => party[i].role === "guard");
-        const t = guard ?? alive[Math.floor(rng() * alive.length)];
-        const hit = damage(enemies[e].atk, party[t].def, rng);
+        const t = alive[Math.floor(rng() * alive.length)];
+        const hit = damage(enemies[e].atk, party[t].def, CRIT_CHANCE, rng);
         const amount = Math.min(hit.amount, hp[t]);
         hp[t] -= amount;
         log.taken[t] += amount;
@@ -169,5 +172,5 @@ export function simulateRun(party: UnitStats[], seed: number): RunLog {
     }
   }
 
-  return { version: 1, seed, party, floors, floor };
+  return { version: 2, seed, party, floors, floor };
 }
