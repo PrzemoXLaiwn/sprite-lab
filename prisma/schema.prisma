@@ -901,7 +901,12 @@ model DungeonRun {
   floor     Int
   seed      String
   party     Json
-  createdAt DateTime @default(now()) @map("created_at")
+  status    String    @default("done") // choosing | done (prisma/sql/2026-10-17_dungeon_tower.sql)
+  step      Int       @default(0) // optimistic lock for blessing choices
+  state     Json? // rng position, HP, blessings, pending offer
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @default(now()) @map("updated_at")
+  floorAt   DateTime? @map("floor_at") // when the run reached its floor (leaderboard tie-break)
 
   @@unique([userId, runDay, runIndex], map: "dungeon_runs_user_id_run_day_run_index_key")
   @@index([week, floor(sort: Desc), createdAt], map: "dungeon_runs_week_floor_created_at_idx")

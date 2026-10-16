@@ -1,23 +1,34 @@
 // =============================================================================
 // Sprite Dungeon — database side (Prisma raw SQL over src/lib/dungeon/sql.ts)
 // =============================================================================
+// Runs are stepwise: POST /api/play/run climbs to the first blessing choice
+// (or the end) and stores the run's state; POST /api/play/run/choose applies a
+// choice and climbs on. Every step is a conditional UPDATE on the run's step
+// counter, so a double tap can't apply two choices. The leaderboard reads the
+// run's floor as it grows, so an unfinished run counts at the floor reached.
+// =============================================================================
 
 import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
-import { GEAR_SLOTS, LEADERBOARD_SIZE, PARTY_SIZE, RUNS_PER_DAY, type GearSlot, type SpriteSlot } from "./config";
-import { autoEquip, parseSlots, pickTip, referencedIds, validateSlots, type SlotIds, type Spare, type Tip } from "./party";
+import { blessingView } from "./blessings";
+import { GEAR_SLOTS, LEADERBOARD_SIZE, PARTY_SIZE, RUN_IDLE_MS, RUNS_PER_DAY, type GearSlot, type SpriteSlot } from "./config";
+import { autoEquip, parseSlots, referencedIds, validateSlots, type SlotIds } from "./party";
 import { runSeed } from "./rng";
 import {
   displayName, isoWeek, nextRunIndex, nextUtcMidnight, previousWeek, runsLeft, utcDay, weekStart,
 } from "./rules";
-import { simulateRun, type RunLog } from "./simulate";
+import { chooseBlessing, initialState, runSegment, type FloorLog, type RunState } from "./simulate";
 import {
-  INSERT_RUN_SQL, LEADERBOARD_SQL, PARTY_GET_SQL, PARTY_SAVE_SQL, PAY_PRIZES_SQL, RECORDS_SQL, RUNS_TODAY_SQL, SPRITES_SQL,
-  TROPHIES_SQL, prizeParams,
+  ACTIVE_RUN_SQL, ADVANCE_RUN_SQL, INSERT_RUN_SQL, LEADERBOARD_SQL, PARTY_GET_SQL, PARTY_SAVE_SQL, PAY_PRIZES_SQL, RECORDS_SQL,
+  RUN_BY_ID_SQL, RUNS_TODAY_SQL, SPRITES_SQL, TROPHIES_SQL, prizeParams,
 } from "./sql";
 import {
-  deriveParty, deriveUnit, gearBonus, powerOf, slotFor, type MemberFacts, type SpriteFacts, type StatBlock, type UnitStats,
+  deriveParty, deriveUnit, itemBonus, powerOf, slotFor, type ItemBonus, type MemberFacts, type SpriteFacts, type UnitStats,
 } from "./stats";
+import { buildReport, type ResultHero, type RunReport } from "./summary";
+import { classFor, elementFor, starsFor } from "./detect";
+import { towerWeek, type ZoneWeek } from "./tower";
+import type { ClassId, Element } from "./config";
 
 interface SpriteRow {
   id: string;
@@ -25,7 +36,8 @@ interface SpriteRow {
   style_id: string;
   image_url: string;
   prompt: string;
-  animated: boolean;
+  animations: number;
+  rotated: boolean;
   hd: boolean;
 }
 
@@ -40,14 +52,17 @@ export interface DungeonSprite {
   slot: SpriteSlot;
   /** Pixel styles are drawn with nearest-neighbour scaling. */
   pixel: boolean;
-  animated: boolean;
+  stars: number;
   hd: boolean;
+  animated: boolean;
+  element: Element;
+  classId: ClassId | null;
   /** Hero: bare power. Item: the power its bonus adds. */
   power: number;
-  /** Heroes: bare stats. */
+  /** Heroes: bare stats with the breakdown. */
   stats: UnitStats | null;
-  /** Items: what they add when equipped. */
-  bonus: StatBlock | null;
+  /** Items: what they add when equipped (for a hero of no particular class). */
+  bonus: ItemBonus | null;
 }
 
 export interface PartyMember {
@@ -55,7 +70,7 @@ export interface PartyMember {
   weapon: DungeonSprite | null;
   armor: DungeonSprite | null;
   trinket: DungeonSprite | null;
-  /** Final stats with gear and party synergy. */
+  /** Final stats with gear, including the "why this power?" breakdown. */
   stats: UnitStats;
 }
 
@@ -68,7 +83,10 @@ export interface Records {
 const ROSTER_LIMIT = 150;
 
 function facts(r: SpriteRow): SpriteFacts {
-  return { id: r.id, categoryId: r.category_id, styleId: r.style_id, animated: Boolean(r.animated), hd: Boolean(r.hd) };
+  return {
+    id: r.id, categoryId: r.category_id, styleId: r.style_id, prompt: r.prompt ?? "",
+    hd: Boolean(r.hd), animations: Number(r.animations ?? 0), rotated: Boolean(r.rotated),
+  };
 }
 
 function shortName(prompt: string): string {
@@ -79,12 +97,15 @@ function shortName(prompt: string): string {
 function toSprite(r: SpriteRow): DungeonSprite {
   const f = facts(r);
   const slot = slotFor(f.categoryId);
+  const st = starsFor(f);
   const stats = slot === "hero" ? deriveUnit(f) : null;
-  const bonus = slot === "hero" ? null : gearBonus(f, slot);
+  const bonus = slot === "hero" ? null : itemBonus(f, slot);
   return {
     id: r.id, name: shortName(r.prompt), imageUrl: r.image_url, styleId: r.style_id, categoryId: r.category_id, slot,
-    pixel: r.style_id.toUpperCase().includes("PIXEL"), animated: f.animated, hd: f.hd,
-    power: stats ? stats.power : powerOf(bonus!), stats, bonus,
+    pixel: r.style_id.toUpperCase().includes("PIXEL"), stars: st.stars, hd: st.hd, animated: st.animated,
+    element: elementFor(f.prompt), classId: classFor(f.prompt, f.categoryId),
+    power: stats ? stats.power : powerOf({ hp: bonus!.hp, atk: bonus!.atk, def: bonus!.def, crit: bonus!.crit, heal: bonus!.heal, allHit: 0, splash: bonus!.splash }),
+    stats, bonus,
   };
 }
 
@@ -109,12 +130,8 @@ async function resolve(userId: string, slots: SlotIds[]): Promise<{ slots: SlotI
   const rows = ids.length ? await spriteRows(userId, ids, ids.length) : [];
   const byId = new Map(rows.map((r) => [r.id, r]));
   const clean = validateSlots(slots, new Map(rows.map((r) => [r.id, facts(r)])));
-  const memberFacts: MemberFacts[] = clean.map((m) => ({
-    hero: facts(byId.get(m.hero)!),
-    weapon: m.weapon ? facts(byId.get(m.weapon)!) : null,
-    armor: m.armor ? facts(byId.get(m.armor)!) : null,
-    trinket: m.trinket ? facts(byId.get(m.trinket)!) : null,
-  }));
+  const f = (id?: string) => (id ? facts(byId.get(id)!) : null);
+  const memberFacts: MemberFacts[] = clean.map((m) => ({ hero: f(m.hero)!, weapon: f(m.weapon), armor: f(m.armor), trinket: f(m.trinket) }));
   const stats = deriveParty(memberFacts);
   const sprite = (id?: string) => (id ? toSprite(byId.get(id)!) : null);
   const members = clean.map((m, i) => ({
@@ -131,23 +148,18 @@ export async function saveParty(userId: string, slots: SlotIds[]): Promise<Party
 }
 
 /** Best party from the user's sprites (deterministic), saved through the normal validation. */
-export async function autoEquipParty(userId: string, roster?: DungeonSprite[]): Promise<PartyMember[]> {
-  const list = roster ?? (await loadRoster(userId));
-  const slots = autoEquip(list.map((s) => ({ id: s.id, categoryId: s.categoryId, styleId: s.styleId, animated: s.animated, hd: s.hd })));
-  return saveParty(userId, slots);
+export async function autoEquipParty(userId: string): Promise<PartyMember[]> {
+  const rows = await spriteRows(userId, null, ROSTER_LIMIT);
+  return saveParty(userId, autoEquip(rows.map(facts)));
 }
 
 /**
  * The saved party (old-format rows load too: only figure ids survive, as heroes).
  * A user who never saved one gets an auto-equipped party when `autoIfNew` is set.
  */
-export async function loadParty(userId: string, opts: { autoIfNew?: boolean; roster?: DungeonSprite[] } = {}): Promise<PartyMember[]> {
+export async function loadParty(userId: string, opts: { autoIfNew?: boolean } = {}): Promise<PartyMember[]> {
   const slots = await savedSlots(userId);
-  if (slots === null) {
-    if (!opts.autoIfNew) return [];
-    const roster = opts.roster ?? (await loadRoster(userId));
-    return roster.some((s) => s.slot === "hero") ? autoEquipParty(userId, roster) : [];
-  }
+  if (slots === null) return opts.autoIfNew ? autoEquipParty(userId) : [];
   if (slots.length === 0) return [];
   return (await resolve(userId, slots)).members;
 }
@@ -166,52 +178,148 @@ export async function loadRecords(userId: string, now = new Date()): Promise<Rec
   };
 }
 
-/** Unused sprites per slot (for the upgrade tip). */
-export function spareCounts(roster: DungeonSprite[], members: PartyMember[]): Spare {
+/** Unused sprites per gear slot (for tips). */
+export function spareCounts(roster: DungeonSprite[], members: PartyMember[]): Record<GearSlot, number> {
   const used = new Set<string>();
-  for (const m of members) {
-    used.add(m.hero.id);
-    for (const s of GEAR_SLOTS) if (m[s]) used.add(m[s]!.id);
-  }
-  const spare: Spare = { hero: 0, weapon: 0, armor: 0, trinket: 0 };
-  for (const s of roster) if (!used.has(s.id)) spare[s.slot]++;
+  for (const m of members) for (const s of GEAR_SLOTS) if (m[s]) used.add(m[s]!.id);
+  const spare: Record<GearSlot, number> = { weapon: 0, armor: 0, trinket: 0 };
+  for (const s of roster) if (s.slot !== "hero" && !used.has(s.id)) spare[s.slot]++;
   return spare;
 }
 
-export function tipFor(members: PartyMember[], roster: DungeonSprite[]): Tip | null {
-  return pickTip(
-    members.map((m) => ({
-      id: m.hero.id, name: m.hero.name, animated: m.hero.animated, hd: m.hero.hd,
-      gear: Object.fromEntries(GEAR_SLOTS.filter((s) => m[s]).map((s) => [s, m[s]!.id])) as Partial<Record<GearSlot, string>>,
-    })),
-    spareCounts(roster, members),
-  );
+// ── Runs ─────────────────────────────────────────────────────────────────────
+
+/** What the server keeps per run (state column). */
+type StoredState = RunState & { before: { best: number | null; rank: number | null } };
+
+interface RunRow {
+  id: string;
+  week: string;
+  seed: string;
+  floor: number;
+  party: unknown;
+  state: StoredState | null;
+  step: number;
+  status: string;
+  updated_at: Date;
 }
 
-export type RunResult =
-  | {
-      ok: true;
-      log: RunLog;
-      members: PartyMember[];
-      runIndex: number;
-      runsLeft: number;
-      /** Fresh board, read after the run was stored. */
-      board: Leaderboard;
-      rankBefore: number | null;
-      records: Records;
-      newBest: boolean;
-      tip: Tip | null;
+export interface BlessingCard {
+  id: string;
+  name: string;
+  text: string;
+  icon: string;
+  element: Element | null;
+}
+
+export interface RunView {
+  id: string;
+  status: "choosing" | "done";
+  week: string;
+  floor: number;
+  /** Floors climbed in this step (empty when a paused run is resumed). */
+  floors: FloorLog[];
+  offer: BlessingCard[] | null;
+  blessings: BlessingCard[];
+  buffs: BlessingCard[];
+  members: PartyMember[];
+  /** HP after this step. */
+  hp: number[];
+  /** Filled when the run is over. */
+  report: RunReport | null;
+  board: Leaderboard | null;
+  records: Records | null;
+}
+
+const cards = (ids: string[]) => ids.map((id) => blessingView(id)).filter((b): b is BlessingCard => b !== null);
+
+function membersOf(party: unknown): PartyMember[] {
+  const p = party as { members?: PartyMember[] } | null;
+  return Array.isArray(p?.members) ? p!.members : [];
+}
+
+function heroesForReport(members: PartyMember[]): ResultHero[] {
+  return members.map((m) => ({
+    id: m.hero.id, name: m.hero.name, classId: m.stats.classId, stars: m.hero.stars, animated: m.hero.animated, hd: m.hero.hd,
+    attackElement: m.stats.attackElement, gear: m.stats.gear,
+  }));
+}
+
+/** The view of a run; `done` runs get the report, a fresh board and records. */
+async function viewOf(userId: string, id: string, week: string, state: StoredState, members: PartyMember[], floors: FloorLog[], now: Date): Promise<RunView> {
+  const base: RunView = {
+    id, status: state.done ? "done" : "choosing", week, floor: state.floor, floors,
+    offer: state.offer ? cards(state.offer) : null, blessings: cards(state.blessings), buffs: cards(state.buffs),
+    members, hp: state.hp, report: null, board: null, records: null,
+  };
+  if (!state.done) return base;
+  // The run is stored: from here a failed read must not turn it into an error.
+  const soft = <T,>(p: Promise<T>, fallback: T, what: string) =>
+    p.catch((err) => { console.error(`[Dungeon] post-run ${what} failed:`, err instanceof Error ? err.message : err); return fallback; });
+  const [board, records, roster] = await Promise.all([
+    soft(loadLeaderboard(userId, now), null, "leaderboard"),
+    soft(loadRecords(userId, now), null, "records"),
+    soft(loadRoster(userId), [] as DungeonSprite[], "roster"),
+  ]);
+  base.board = board;
+  base.records = records;
+  base.report = buildReport({
+    state, heroes: heroesForReport(members), bestBefore: state.before.best, rankBefore: state.before.rank,
+    rankAfter: board?.me?.rank ?? null, players: board?.players ?? 0, spare: spareCounts(roster, members),
+  });
+  return base;
+}
+
+async function advance(userId: string, row: RunRow, state: StoredState): Promise<boolean> {
+  const updated = await prisma.$queryRawUnsafe<{ step: number }[]>(
+    ADVANCE_RUN_SQL, row.id, userId, row.step, JSON.stringify(state), state.done ? "done" : "choosing", state.floor,
+  );
+  return updated.length === 1;
+}
+
+/** Finishes a run nobody came back to: the first offered blessing at every choice. */
+async function autoFinish(userId: string, row: RunRow): Promise<void> {
+  if (!row.state) return;
+  const units = membersOf(row.party).map((m) => m.stats);
+  let state = row.state;
+  for (let i = 0; i < 40 && !state.done; i++) {
+    if (state.offer?.length) {
+      const c = chooseBlessing(state, state.offer[0]);
+      if (!c.ok) break;
+      state = { ...c.state, before: row.state.before };
     }
+    state = { ...runSegment(units, state).state, before: row.state.before };
+  }
+  if (!state.done) state = { ...state, done: true, offer: null };
+  await advance(userId, row, state);
+}
+
+/** The unfinished run to resume, or null. Runs idle for 10+ minutes are finished automatically. */
+export async function loadActiveRun(userId: string, now = new Date()): Promise<RunView | null> {
+  const [row] = await prisma.$queryRawUnsafe<RunRow[]>(ACTIVE_RUN_SQL, userId);
+  if (!row || !row.state) return null;
+  if (now.getTime() - new Date(row.updated_at).getTime() > RUN_IDLE_MS) {
+    await autoFinish(userId, row);
+    return null;
+  }
+  return viewOf(userId, row.id, row.week, row.state, membersOf(row.party), [], now);
+}
+
+export type StartResult =
+  | { ok: true; view: RunView; resumed: boolean; runsLeft: number }
   | { ok: false; reason: "no_party" | "daily_limit" };
 
-/** Simulates and stores one expedition, respecting the daily limit even under parallel requests. */
-export async function startRun(userId: string, now = new Date()): Promise<RunResult> {
-  const party = await loadParty(userId);
-  if (party.length === 0) return { ok: false, reason: "no_party" };
+/** Starts a run (climbing to the first choice), or resumes the unfinished one. */
+export async function startRun(userId: string, now = new Date()): Promise<StartResult> {
+  const active = await loadActiveRun(userId, now);
+  if (active) return { ok: true, view: active, resumed: true, runsLeft: runsLeft(await runsUsedToday(userId, now)) };
+
+  const members = await loadParty(userId);
+  if (members.length === 0) return { ok: false, reason: "no_party" };
   const day = utcDay(now);
   const week = isoWeek(now);
-  const units = party.map((p) => p.stats);
-  const [before, boardBefore] = await Promise.all([loadRecords(userId, now), loadLeaderboard(userId, now)]);
+  const units = members.map((m) => m.stats);
+  const [records, boardBefore] = await Promise.all([loadRecords(userId, now), loadLeaderboard(userId, now)]);
 
   // A parallel request can take the index we picked; then try the next one.
   for (let attempt = 0; attempt <= RUNS_PER_DAY; attempt++) {
@@ -219,33 +327,38 @@ export async function startRun(userId: string, now = new Date()): Promise<RunRes
     const index = nextRunIndex(taken);
     if (index === null) return { ok: false, reason: "daily_limit" };
     const seed = runSeed(userId, day, index);
-    const log = simulateRun(units, seed);
+    const seg = runSegment(units, initialState(units, seed, week));
+    const state: StoredState = { ...seg.state, before: { best: records.bestEver, rank: boardBefore.me?.rank ?? null } };
+    const id = randomUUID();
     const inserted = await prisma.$queryRawUnsafe<{ id: string }[]>(
-      INSERT_RUN_SQL, randomUUID(), userId, week, day, index, log.floor, seed.toString(16), JSON.stringify(units),
+      INSERT_RUN_SQL, id, userId, week, day, index, state.floor, seed.toString(16), JSON.stringify({ members }),
+      state.done ? "done" : "choosing", JSON.stringify(state),
     );
     if (inserted.length !== 1) continue;
-    // The run is stored and counted: from here on a failed read must not turn
-    // it into an error, so each extra falls back on its own.
-    const soft = <T,>(p: Promise<T>, fallback: T, what: string) =>
-      p.catch((err) => { console.error(`[Dungeon] post-run ${what} failed:`, err instanceof Error ? err.message : err); return fallback; });
-    const newBest = before.bestEver === null || log.floor > before.bestEver;
-    const [board, records, roster] = await Promise.all([
-      soft(loadLeaderboard(userId, now), boardBefore, "leaderboard"),
-      soft(loadRecords(userId, now), {
-        bestEver: Math.max(before.bestEver ?? 0, log.floor),
-        bestWeek: Math.max(before.bestWeek ?? 0, log.floor),
-        runsWeek: before.runsWeek + 1,
-      }, "records"),
-      soft(loadRoster(userId), [] as DungeonSprite[], "roster"),
-    ]);
-    return {
-      ok: true, log, members: party, runIndex: index, runsLeft: runsLeft(index),
-      board, rankBefore: boardBefore.me?.rank ?? null, records, newBest,
-      tip: roster.length ? tipFor(party, roster) : null,
-    };
+    return { ok: true, view: await viewOf(userId, id, week, state, members, seg.floors, now), resumed: false, runsLeft: runsLeft(index) };
   }
   return { ok: false, reason: "daily_limit" };
 }
+
+export type ChooseResult =
+  | { ok: true; view: RunView }
+  | { ok: false; reason: "not-found" | "finished" | "not-offered" | "conflict" };
+
+/** Applies a blessing (must be one the server offered) and climbs on. */
+export async function chooseInRun(userId: string, runId: string, blessingId: string, now = new Date()): Promise<ChooseResult> {
+  const [row] = await prisma.$queryRawUnsafe<RunRow[]>(RUN_BY_ID_SQL, runId, userId);
+  if (!row || !row.state) return { ok: false, reason: "not-found" };
+  if (row.status === "done" || row.state.done) return { ok: false, reason: "finished" };
+  const c = chooseBlessing(row.state, blessingId);
+  if (!c.ok) return { ok: false, reason: c.reason === "not-offered" ? "not-offered" : "finished" };
+  const members = membersOf(row.party);
+  const seg = runSegment(members.map((m) => m.stats), c.state);
+  const state: StoredState = { ...seg.state, before: row.state.before };
+  if (!(await advance(userId, row, state))) return { ok: false, reason: "conflict" };
+  return { ok: true, view: await viewOf(userId, row.id, row.week, state, members, seg.floors, now) };
+}
+
+// ── Leaderboard, tower, trophies, prizes ─────────────────────────────────────
 
 export interface LeaderRow {
   rank: number;
@@ -277,6 +390,12 @@ export async function loadLeaderboard(userId: string, now = new Date(), size = L
     top: mapped.filter((r) => r.rank <= size),
     me: mapped.find((r) => r.you) ?? null,
   };
+}
+
+/** This week's zones and their weaknesses (the same tower for everyone). */
+export function loadTower(now = new Date()): { week: string; zones: ZoneWeek[] } {
+  const week = isoWeek(now);
+  return { week, zones: towerWeek(week) };
 }
 
 export interface Trophy {

@@ -1,13 +1,13 @@
 // =============================================================================
-// Sprite Dungeon — party slots: parsing, validation, auto-equip, upgrade tip
+// Sprite Dungeon — party slots: parsing, validation, auto-equip
 // =============================================================================
 // Pure. The server runs every slot list through validateSlots() against the
 // user's own original sprites before saving or fighting — the client is never
 // trusted.
 // =============================================================================
 
-import { GEAR_LABEL, GEAR_MAKE_CATEGORY, GEAR_SLOTS, HERO_MAKE_CATEGORY, PARTY_SIZE, type GearSlot } from "./config";
-import { deriveUnit, slotFor, spriteMultiplier, type SpriteFacts } from "./stats";
+import { GEAR_SLOTS, PARTY_SIZE, type GearSlot } from "./config";
+import { deriveUnit, itemBonus, slotFor, type SpriteFacts } from "./stats";
 
 /** One party member as stored in dungeon_parties.slots. */
 export interface SlotIds {
@@ -80,9 +80,15 @@ export function validateSlots(slots: SlotIds[], owned: Map<string, SpriteFacts>)
 const byScore = <T extends { id: string }>(score: (x: T) => number) => (a: T, b: T) =>
   score(b) - score(a) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 
+/** How much an item adds, as one number (for auto-equip ordering). */
+export function itemScore(item: SpriteFacts, slot: GearSlot): number {
+  const b = itemBonus(item, slot);
+  return b.atk * 3 * (1 + b.crit * 4) + b.splash * 30 + b.hp / 4 + b.def * 0.8 + b.heal * 3 + (b.ward ? 6 : 0) + b.stars;
+}
+
 /**
- * Deterministic best party: the 4 strongest figures, each given the best
- * unused weapon / armor / trinket (by the item's own multiplier), in order.
+ * Deterministic best party: the 4 strongest figures (bare power), each given
+ * the best unused weapon / armor / trinket in that order.
  */
 export function autoEquip(sprites: SpriteFacts[]): SlotIds[] {
   const figures = sprites.filter((s) => slotFor(s.categoryId) === "hero")
@@ -92,61 +98,10 @@ export function autoEquip(sprites: SpriteFacts[]): SlotIds[] {
     const slot = slotFor(s.categoryId);
     if (slot !== "hero") pools[slot].push(s);
   }
-  for (const s of GEAR_SLOTS) pools[s].sort(byScore(spriteMultiplier));
+  for (const g of GEAR_SLOTS) pools[g].sort(byScore((x) => itemScore(x, g)));
   return figures.map((f, i) => {
     const m: SlotIds = { hero: f.id };
-    for (const s of GEAR_SLOTS) if (pools[s][i]) m[s] = pools[s][i].id;
+    for (const g of GEAR_SLOTS) if (pools[g][i]) m[g] = pools[g][i].id;
     return m;
   });
-}
-
-// ── Upgrade tip ──────────────────────────────────────────────────────────────
-
-export interface TipMember {
-  id: string;
-  name: string;
-  animated: boolean;
-  hd: boolean;
-  gear: Partial<Record<GearSlot, string>>;
-}
-
-/** Sprites the user owns but isn't using, per slot. */
-export type Spare = Record<"hero" | GearSlot, number>;
-
-export interface Tip {
-  text: string;
-  href: string;
-  action: string;
-}
-
-const MAKE_WHAT: Record<GearSlot, string> = { weapon: "a weapon", armor: "armor", trinket: "an item" };
-
-function short(name: string): string {
-  return name.length > 22 ? `${name.slice(0, 21)}…` : name;
-}
-
-/**
- * At most one tip, chosen deterministically, always pointing at a real
- * product action. Order: animate a hero → make missing gear → make another
- * hero → HD. Gear the user already owns is left to Auto-equip, not a tip.
- */
-export function pickTip(members: TipMember[], spare: Spare): Tip | null {
-  const still = members.find((m) => !m.animated);
-  if (still) {
-    return { text: `Animate your ${short(still.name)}: animated heroes are 40% stronger.`, href: `/animate?id=${encodeURIComponent(still.id)}`, action: "Animate" };
-  }
-  for (const slot of GEAR_SLOTS) {
-    const bare = members.find((m) => !m.gear[slot]);
-    if (bare && spare[slot] === 0) {
-      const what = MAKE_WHAT[slot];
-      return { text: `Your ${short(bare.name)} has no ${GEAR_LABEL[slot].toLowerCase()}: make ${what} and it becomes loot.`, href: `/generate?categoryId=${GEAR_MAKE_CATEGORY[slot]}`, action: "Create" };
-    }
-  }
-  if (members.length < PARTY_SIZE && spare.hero === 0) {
-    return { text: "Make another character or creature: every new figure is a new hero.", href: `/generate?categoryId=${HERO_MAKE_CATEGORY}`, action: "Create" };
-  }
-  if (members.some((m) => !m.hd)) {
-    return { text: "HD sprites are 15% stronger. Pick HD quality on your next character.", href: `/generate?categoryId=${HERO_MAKE_CATEGORY}`, action: "Create" };
-  }
-  return null;
 }

@@ -1,28 +1,21 @@
 // =============================================================================
-// Sprite Dungeon — member stats, derived on the server from facts about sprites
+// Sprite Dungeon — hero stats with a "why this power?" breakdown (pure)
 // =============================================================================
-// A member = a figure sprite (CHARACTERS → Hero, CREATURES → Beast) plus up to
-// three gear sprites. The member's base comes from its own sprite (role ×
-// roll × animated × HD × party synergy); each item adds its slot bonus scaled
-// by the item's own roll × animated × HD.
+// hero stats = class base × hero's star multiplier
+//            + each item's slot bonus × that item's star multiplier
+// Attack element = the weapon's element if it has one, else the hero's.
 // =============================================================================
 
 import {
-  ANIMATED_BONUS, FIGURE_ROLE, GEAR_BONUS, GEAR_CATEGORY, GEAR_SLOTS, HD_BONUS, PARTY_SIZE, ROLES, ROLL_MAX, ROLL_MIN,
-  STYLE_SYNERGY_MAX, STYLE_SYNERGY_STEP, type GearSlot, type Role, type SpriteSlot,
+  ARMOR_DEF, ARMOR_HP, BLADE_CRIT, CLASSES, PARTY_SIZE, STAFF_CASTER_BONUS, STAFF_SPLASH, TRINKET_HEAL, TRINKET_SMALL_HEAL,
+  WEAPON_ATK, starMultiplier, type ClassId, type Element, type GearSlot,
 } from "./config";
-import { hashUnit } from "./rng";
+import {
+  classMatch, elementFor, elementMatch, starsFor, trinketKind, weaponKind, type SpriteFacts, type StarBreakdown, type TrinketKind, type WeaponKind,
+} from "./detect";
 
-/** What the server knows about one of the user's sprites. */
-export interface SpriteFacts {
-  id: string;
-  categoryId: string;
-  styleId: string;
-  /** At least one animation was generated from this sprite. */
-  animated: boolean;
-  /** Rendered with the HD model. */
-  hd: boolean;
-}
+export type { SpriteFacts } from "./detect";
+export { slotFor } from "./detect";
 
 export interface MemberFacts {
   hero: SpriteFacts;
@@ -31,100 +24,156 @@ export interface MemberFacts {
   trinket?: SpriteFacts | null;
 }
 
-export interface StatBlock {
+/** What one equipped item adds. */
+export interface ItemBonus {
+  slot: GearSlot;
+  stars: number;
+  element: Element;
+  kind: WeaponKind | TrinketKind | "armor";
   hp: number;
   atk: number;
   def: number;
-  /** HP restored to the weakest hurt ally at the start of the member's turn. */
-  heal: number;
-  /** Extra crit chance (0.05 = +5 percentage points). */
   crit: number;
+  heal: number;
+  /** Staff on a non-caster: other enemies take this share of the hit. */
+  splash: number;
+  /** Staff on a caster: added to the all-hit share. */
+  allHit: number;
+  /** Element trinket: the wearer takes ×0.6 from this element. */
+  ward: Element | null;
+  /** One line for the card ("+12 ATK, +8% crit"). */
+  text: string;
 }
 
-export interface UnitStats extends StatBlock {
+export interface PowerBreakdown {
+  classId: ClassId;
+  /** Prompt word that set the class (null = default for the category). */
+  classWord: string | null;
+  /** Prompt word that set the hero's element. */
+  elementWord: string | null;
+  classLabel: string;
+  role: string;
+  base: { hp: number; atk: number; def: number };
+  stars: StarBreakdown;
+  starMultiplier: number;
+  gear: ItemBonus[];
+  element: Element;
+  attackElement: Element;
+}
+
+export interface UnitStats {
   id: string;
-  role: Role;
-  /** One display number so players can compare at a glance. */
+  classId: ClassId;
+  element: Element;
+  attackElement: Element;
+  stars: number;
+  hp: number;
+  atk: number;
+  def: number;
+  crit: number;
+  heal: number;
+  taunt: number;
+  /** Hits every enemy at this share (Casters). 0 = single target. */
+  allHit: number;
+  /** Other enemies also take this share of a single-target hit (staves). */
+  splash: number;
+  ward: Element | null;
   power: number;
-  animated: boolean;
-  hd: boolean;
   gear: Partial<Record<GearSlot, string>>;
+  why: PowerBreakdown;
 }
 
-export function slotFor(categoryId: string): SpriteSlot {
-  if (FIGURE_ROLE[categoryId]) return "hero";
-  return GEAR_CATEGORY[categoryId] ?? "trinket";
+const pct = (x: number) => `${Math.round(x * 100)}%`;
+
+/** What `item` adds in `slot` for a hero of class `heroClass`. */
+export function itemBonus(item: SpriteFacts, slot: GearSlot, heroClass: ClassId | null = null): ItemBonus {
+  const s = starsFor(item);
+  const m = starMultiplier(s.stars);
+  const element = elementFor(item.prompt);
+  const b: ItemBonus = { slot, stars: s.stars, element, kind: "armor", hp: 0, atk: 0, def: 0, crit: 0, heal: 0, splash: 0, allHit: 0, ward: null, text: "" };
+  const parts: string[] = [];
+  if (slot === "weapon") {
+    const kind = weaponKind(item.prompt);
+    b.kind = kind;
+    b.atk = Math.round(WEAPON_ATK * m);
+    parts.push(`+${b.atk} ATK`);
+    if (kind === "blade") { b.crit = round3(BLADE_CRIT * m); parts.push(`+${pct(b.crit)} crit`); }
+    if (kind === "staff") {
+      if (heroClass === "caster") { b.allHit = round3(STAFF_CASTER_BONUS * m); parts.push(`+${pct(b.allHit)} all-hit`); }
+      else { b.splash = round3(STAFF_SPLASH * m); parts.push(`splashes ${pct(b.splash)}`); }
+    }
+    if (element !== "neutral") parts.push(`${cap(element)} attacks`);
+  } else if (slot === "armor") {
+    b.hp = Math.round(ARMOR_HP * m);
+    b.def = Math.round(ARMOR_DEF * m);
+    parts.push(`+${b.hp} HP`, `+${b.def} DEF`);
+  } else {
+    const kind = trinketKind(item.prompt);
+    b.kind = kind;
+    if (kind === "ward") { b.ward = element; parts.push(`${cap(element)} ward`); }
+    else { b.heal = Math.round((kind === "heal" ? TRINKET_HEAL : TRINKET_SMALL_HEAL) * m); parts.push(`heals ${b.heal}/turn`); }
+  }
+  b.text = parts.join(", ");
+  return b;
 }
 
-export function roleFor(categoryId: string): Role | null {
-  return FIGURE_ROLE[categoryId] ?? null;
+const round3 = (x: number) => Math.round(x * 1000) / 1000;
+const cap = (e: string) => e[0].toUpperCase() + e.slice(1);
+
+/**
+ * Power: one comparable number.
+ * offence = ATK × (1 + crit × 0.75) × (all-hit ? all-hit × 2 : 1 + splash)
+ * power   = HP / 4 + offence × 3 + DEF × 0.8 + heal × 3
+ */
+export function powerOf(s: { hp: number; atk: number; def: number; crit: number; heal: number; allHit: number; splash: number }): number {
+  const offence = s.atk * (1 + s.crit * 0.75) * (s.allHit > 0 ? s.allHit * 2 : 1 + s.splash);
+  return Math.round(s.hp / 4 + offence * 3 + s.def * 0.8 + s.heal * 3);
 }
 
-/** Stable roll from the generation id, in [ROLL_MIN, ROLL_MAX]. */
-export function baseRoll(generationId: string): number {
-  return ROLL_MIN + hashUnit(`roll:${generationId}`) * (ROLL_MAX - ROLL_MIN);
-}
-
-/** roll × animated × HD of one sprite. */
-export function spriteMultiplier(f: SpriteFacts): number {
-  return baseRoll(f.id) * (f.animated ? 1 + ANIMATED_BONUS : 1) * (f.hd ? 1 + HD_BONUS : 1);
-}
-
-/** Synergy for the whole party: +5% per extra distinct style among the heroes, capped. */
-export function styleSynergy(styleIds: string[]): number {
-  const distinct = new Set(styleIds.filter(Boolean)).size;
-  return Math.min(STYLE_SYNERGY_MAX, Math.max(0, distinct - 1) * STYLE_SYNERGY_STEP);
-}
-
-export function powerOf(s: StatBlock): number {
-  return Math.round(s.hp / 2 + s.atk * 3 + s.def * 4 + s.heal * 3 + s.crit * 100);
-}
-
-/** What one item adds when equipped in `slot`. */
-export function gearBonus(item: SpriteFacts, slot: GearSlot): StatBlock {
-  const b = GEAR_BONUS[slot];
-  const m = spriteMultiplier(item);
-  return {
-    hp: Math.round(b.hp * m),
-    atk: Math.round(b.atk * m),
-    def: Math.round(b.def * m),
-    heal: Math.round(b.heal * m),
-    crit: Math.round(b.crit * m * 1000) / 1000,
-  };
-}
-
-/** Stats of one member with its gear. `synergy` is the party bonus (0 when shown alone). */
-export function deriveMember(m: MemberFacts, synergy = 0): UnitStats {
-  const role = roleFor(m.hero.categoryId) ?? "hero";
-  const base = ROLES[role];
-  const mult = spriteMultiplier(m.hero) * (1 + synergy);
-  const s: StatBlock = {
-    hp: Math.round(base.hp * mult),
-    atk: Math.round(base.atk * mult),
-    def: Math.round(base.def * baseRoll(m.hero.id)),
-    heal: 0,
-    crit: 0,
+export function deriveMember(m: MemberFacts): UnitStats {
+  const cm = classMatch(m.hero.prompt, m.hero.categoryId);
+  const classId = cm?.id ?? "striker";
+  const em = elementMatch(m.hero.prompt);
+  const c = CLASSES[classId];
+  const st = starsFor(m.hero);
+  const mul = starMultiplier(st.stars);
+  const element = em.element;
+  const s = {
+    hp: Math.round(c.hp * mul), atk: Math.round(c.atk * mul), def: Math.round(c.def * mul),
+    crit: c.crit, heal: Math.round(c.heal * mul), allHit: c.allHit, splash: 0,
   };
   const gear: Partial<Record<GearSlot, string>> = {};
-  for (const slot of GEAR_SLOTS) {
+  const bonuses: ItemBonus[] = [];
+  let ward: Element | null = null;
+  let attackElement = element;
+  for (const slot of ["weapon", "armor", "trinket"] as GearSlot[]) {
     const item = m[slot];
     if (!item) continue;
-    const b = gearBonus(item, slot);
-    s.hp += b.hp; s.atk += b.atk; s.def += b.def; s.heal += b.heal;
-    s.crit = Math.round((s.crit + b.crit) * 1000) / 1000;
+    const b = itemBonus(item, slot, classId);
+    bonuses.push(b);
     gear[slot] = item.id;
+    s.hp += b.hp; s.atk += b.atk; s.def += b.def; s.heal += b.heal;
+    s.crit = round3(s.crit + b.crit);
+    s.splash = round3(s.splash + b.splash);
+    if (s.allHit > 0) s.allHit = round3(s.allHit + b.allHit);
+    if (b.ward) ward = b.ward;
+    if (slot === "weapon" && b.element !== "neutral") attackElement = b.element;
   }
-  return { id: m.hero.id, role, ...s, power: powerOf(s), animated: m.hero.animated, hd: m.hero.hd, gear };
+  return {
+    id: m.hero.id, classId, element, attackElement, stars: st.stars,
+    ...s, taunt: c.taunt, ward, power: powerOf(s), gear,
+    why: {
+      classId, classWord: cm?.word ?? null, elementWord: em.word, classLabel: c.label, role: c.role, base: { hp: c.hp, atk: c.atk, def: c.def },
+      stars: st, starMultiplier: mul, gear: bonuses, element, attackElement,
+    },
+  };
 }
 
-/** A bare member (no gear, no synergy) — the roster's per-hero number. */
+/** A bare hero (no gear) — the roster's per-hero number. */
 export function deriveUnit(f: SpriteFacts): UnitStats {
   return deriveMember({ hero: f });
 }
 
-/** Stats of a whole party (max 4), synergy included. Members are assumed validated. */
 export function deriveParty(members: MemberFacts[]): UnitStats[] {
-  const list = members.slice(0, PARTY_SIZE);
-  const synergy = styleSynergy(list.map((m) => m.hero.styleId));
-  return list.map((m) => deriveMember(m, synergy));
+  return members.slice(0, PARTY_SIZE).map(deriveMember);
 }

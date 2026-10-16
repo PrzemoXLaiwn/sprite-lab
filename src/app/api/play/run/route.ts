@@ -7,8 +7,9 @@ import { startRun } from "@/lib/dungeon/store";
 export const dynamic = "force-dynamic";
 
 /**
- * POST /api/play/run — starts one expedition. The server simulates the whole
- * run and returns its event log; the page only replays it.
+ * POST /api/play/run — starts a climb. The server simulates up to the first
+ * blessing choice (or the end) and returns those floors for the page to
+ * replay. An unfinished run is resumed instead of starting a new one.
  */
 export async function POST() {
   const supabase = await createClient();
@@ -24,11 +25,11 @@ export async function POST() {
       return NextResponse.json({ error: "Add a character or creature to your party first.", code: "NO_PARTY" }, { status: 400 });
     }
     if (!result.ok) {
-      return NextResponse.json({ error: `You've used all ${RUNS_PER_DAY} runs today. New runs at 00:00 UTC.`, code: "DAILY_LIMIT" }, { status: 429 });
+      return NextResponse.json({ error: `You've used all ${RUNS_PER_DAY} climbs today. New climbs at 00:00 UTC.`, code: "DAILY_LIMIT" }, { status: 429 });
     }
     return NextResponse.json(result);
   } catch (err) {
     console.error("[Dungeon] Run failed:", err instanceof Error ? err.message : err);
-    return NextResponse.json({ error: "Couldn't start the run. Try again in a moment." }, { status: 500 });
+    return NextResponse.json({ error: "Couldn't start the climb. Try again in a moment." }, { status: 500 });
   }
 }

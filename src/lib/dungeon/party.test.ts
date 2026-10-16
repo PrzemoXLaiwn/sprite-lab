@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { autoEquip, parseSlots, pickTip, referencedIds, validateSlots, type TipMember } from "./party";
-import { deriveUnit, spriteMultiplier, type SpriteFacts } from "./stats";
+import { autoEquip, itemScore, parseSlots, referencedIds, validateSlots } from "./party";
+import { deriveUnit, type SpriteFacts } from "./stats";
 
-const sp = (id: string, categoryId: string, animated = false, hd = false): SpriteFacts => ({ id, categoryId, styleId: "A", animated, hd });
+const sp = (id: string, categoryId: string, animated = false, hd = false, prompt = id): SpriteFacts =>
+  ({ id, categoryId, styleId: "A", prompt, hd, animations: animated ? 1 : 0, rotated: false });
 const own = (...list: SpriteFacts[]) => new Map(list.map((s) => [s.id, s]));
 
 describe("parseSlots", () => {
@@ -71,7 +72,7 @@ describe("autoEquip", () => {
     const heroes = roster.filter((s) => s.categoryId === "CHARACTERS" || s.categoryId === "CREATURES")
       .sort((a, b) => deriveUnit(b).power - deriveUnit(a).power).slice(0, 4).map((s) => s.id);
     expect(slots.map((s) => s.hero)).toEqual(heroes);
-    expect(slots[0].weapon).toBe(spriteMultiplier(roster[6]) >= spriteMultiplier(roster[5]) ? "w2" : "w1");
+    expect(slots[0].weapon).toBe(itemScore(roster[6], "weapon") >= itemScore(roster[5], "weapon") ? "w2" : "w1");
     expect(slots[0].trinket).toBe("t2"); // animated trinket beats a plain one
     expect(slots[0].armor).toBe("a1");
     expect(slots[1].armor).toBeUndefined();
@@ -82,27 +83,5 @@ describe("autoEquip", () => {
 
   it("is empty without figures", () => {
     expect(autoEquip([sp("w", "WEAPONS")])).toEqual([]);
-  });
-});
-
-describe("pickTip", () => {
-  const m = (over: Partial<TipMember> = {}): TipMember => ({ id: "g1", name: "Elf ranger", animated: true, hd: true, gear: { weapon: "w", armor: "a", trinket: "t" }, ...over });
-  const none = { hero: 0, weapon: 0, armor: 0, trinket: 0 };
-
-  it("first: animate a hero that isn't animated", () => {
-    expect(pickTip([m(), m({ id: "g2", name: "Dwarf", animated: false })], none))
-      .toEqual({ text: "Animate your Dwarf: animated heroes are 40% stronger.", href: "/animate?id=g2", action: "Animate" });
-  });
-
-  it("then: missing gear the user doesn't own yet", () => {
-    expect(pickTip([m({ gear: { weapon: "w", trinket: "t" }, name: "Dwarf" })], none)?.href).toBe("/generate?categoryId=ARMOR");
-    // Spare armor exists → that's Auto-equip's job, not a tip
-    expect(pickTip([m({ gear: { weapon: "w", trinket: "t" } })], { ...none, armor: 1 })?.href).not.toBe("/generate?categoryId=ARMOR");
-  });
-
-  it("then more heroes, then HD; nothing when the party is maxed", () => {
-    expect(pickTip([m()], none)?.href).toBe("/generate?categoryId=CHARACTERS");
-    expect(pickTip([m(), m(), m(), m({ hd: false })], none)?.text).toContain("HD");
-    expect(pickTip([m(), m(), m(), m()], none)).toBeNull();
   });
 });

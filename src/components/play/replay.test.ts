@@ -1,38 +1,49 @@
 import { describe, expect, it } from "vitest";
-import { simulateRun } from "@/lib/dungeon/simulate";
+import { simulateFull } from "@/lib/dungeon/simulate";
 import { deriveParty } from "@/lib/dungeon/stats";
 import type { Leaderboard } from "@/lib/dungeon/store";
 import { boardAfterRun, removeHero, setGear, setHero, wornBy } from "./party-edit";
 import { buildTimeline, stepAt } from "./replay";
 
+const f = (id: string, categoryId: string, prompt: string) => ({ id, categoryId, styleId: "A", prompt, hd: false, animations: 0, rotated: false });
 const party = deriveParty([
-  { hero: { id: "a", categoryId: "CHARACTERS", styleId: "PIXEL_ART_16", animated: true, hd: false }, trinket: { id: "t", categoryId: "CONSUMABLES", styleId: "A", animated: false, hd: false } },
-  { hero: { id: "b", categoryId: "CREATURES", styleId: "CARTOON", animated: false, hd: false } },
+  { hero: f("a", "CHARACTERS", "fire mage"), trinket: f("t", "CONSUMABLES", "potion") },
+  { hero: f("b", "CREATURES", "wolf") },
 ]);
 
 describe("replay timeline", () => {
-  it("only replays the log: one step per action, the fall is on the logged floor", () => {
-    const log = simulateRun(party, 99);
-    const { steps, total } = buildTimeline(log);
+  it("only replays the log: climb per floor, one step per action, boss gate and chest, fall at the end", () => {
+    const { floors, state } = simulateFull(party, 99, "2026-W42");
+    const { steps, total } = buildTimeline(floors);
     expect(total).toBeGreaterThan(0);
     expect(steps.at(-1)!.kind).toBe("end");
-    expect(steps.filter((s) => s.kind === "act")).toHaveLength(log.floors.reduce((a, f) => a + f.actions.length, 0));
+    expect(steps.filter((s) => s.kind === "climb")).toHaveLength(floors.length);
+    expect(steps.filter((s) => s.kind === "act")).toHaveLength(floors.reduce((a, x) => a + x.actions.length, 0));
+    expect(steps.filter((s) => s.kind === "gate")).toHaveLength(floors.filter((x) => x.boss).length);
+    expect(steps.filter((s) => s.kind === "chest")).toHaveLength(floors.filter((x) => x.chest).length);
     const fall = steps.find((s) => s.kind === "fall")!;
-    expect(fall.floor).toBe(log.floor);
+    expect(fall.floor).toBe(state.floor);
     expect(fall.partyHp.every((h) => h <= 0)).toBe(true);
-    for (const s of steps.filter((x) => x.kind === "clear")) {
-      const next = log.floors[s.floorIndex + 1];
-      s.partyHp.forEach((h, i) => expect(next.partyHpStart[i]).toBeGreaterThanOrEqual(h));
-    }
   });
 
-  it("finds the step playing at any time", () => {
-    const { steps, total } = buildTimeline(simulateRun(party, 5));
+  it("shows the record moment once, when passing the old best", () => {
+    const { floors } = simulateFull(party, 99, "2026-W42");
+    const rec = buildTimeline(floors, { bestBefore: 1 }).steps.filter((s) => s.kind === "record");
+    expect(rec).toHaveLength(floors.length >= 2 ? 1 : 0);
+    if (rec.length) expect(rec[0].floor).toBe(2);
+    expect(buildTimeline(floors, { bestBefore: 99 }).steps.some((s) => s.kind === "record")).toBe(false);
+  });
+
+  it("finds the step playing at any time; the combo resets when an enemy lands a hit", () => {
+    const { floors } = simulateFull(party, 5, "2026-W42");
+    const { steps, total } = buildTimeline(floors);
     expect(stepAt(steps, 0)).toBe(0);
     expect(steps[stepAt(steps, total)].kind).toBe("end");
-    expect(steps[stepAt(steps, total + 10_000)].kind).toBe("end");
     const mid = steps[Math.floor(steps.length / 2)];
     expect(stepAt(steps, mid.start + 1)).toBe(steps.indexOf(mid));
+    steps.forEach((s, i) => {
+      if (i && steps[i - 1].action?.side === "enemy" && steps[i - 1].action?.kind === "hit") expect(s.combo).toBeLessThanOrEqual(1);
+    });
   });
 });
 

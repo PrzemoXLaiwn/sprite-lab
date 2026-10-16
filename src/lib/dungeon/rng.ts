@@ -37,3 +37,26 @@ export function runSeed(userId: string, day: string, runIndex: number): number {
 export function publicTag(userId: string): string {
   return hash32(`creator:${userId}`).toString(36).padStart(5, "0").slice(-5);
 }
+
+/**
+ * Mulberry32 with a readable state, so a paused run can be stored and resumed
+ * exactly where it stopped (the state is one unsigned 32-bit integer).
+ */
+export interface Rng {
+  next(): number;
+  readonly state: number;
+}
+
+export function createRng(state: number): Rng {
+  let a = state >>> 0;
+  return {
+    next() {
+      a = (a + 0x6d2b79f5) >>> 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4_294_967_296;
+    },
+    get state() { return a; },
+  };
+}

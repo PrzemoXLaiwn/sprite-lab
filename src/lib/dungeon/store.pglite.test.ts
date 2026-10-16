@@ -8,9 +8,13 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { PRIZE_BUDGET_PER_WEEK, RUNS_PER_DAY } from "./config";
 import { isoWeek, nextRunIndex, utcDay } from "./rules";
 import { parseSlots } from "./party";
-import { INSERT_RUN_SQL, LEADERBOARD_SQL, PARTY_GET_SQL, PARTY_SAVE_SQL, PAY_PRIZES_SQL, RECORDS_SQL, RUNS_TODAY_SQL, SPRITES_SQL, prizeParams } from "./sql";
+import {
+  ACTIVE_RUN_SQL, ADVANCE_RUN_SQL, INSERT_RUN_SQL, LEADERBOARD_SQL, PARTY_GET_SQL, PARTY_SAVE_SQL, PAY_PRIZES_SQL, RECORDS_SQL, RUN_BY_ID_SQL,
+  RUNS_TODAY_SQL, SPRITES_SQL, prizeParams,
+} from "./sql";
 
 const MIGRATION = readFileSync(join(process.cwd(), "prisma/sql/2026-10-15_sprite_dungeon.sql"), "utf8");
+const TOWER = readFileSync(join(process.cwd(), "prisma/sql/2026-10-17_dungeon_tower.sql"), "utf8");
 const WEEK = "2026-W42";
 const START = new Date("2026-10-12T00:00:00Z");
 const END = new Date("2026-10-19T00:00:00Z");
@@ -21,8 +25,8 @@ let runId = 0;
 async function addRun(user: string, floor: number, at: string, week = WEEK, day = at.slice(0, 10), index?: number) {
   const taken = (await db.query<{ run_index: number }>(RUNS_TODAY_SQL, [user, day])).rows.map((r) => r.run_index);
   const idx = index ?? nextRunIndex(taken) ?? 99;
-  await db.query(INSERT_RUN_SQL, [`r${++runId}`, user, week, day, idx, floor, "abc", "[]"]);
-  await db.query(`UPDATE dungeon_runs SET created_at = $1 WHERE id = $2`, [at, `r${runId}`]);
+  await db.query(INSERT_RUN_SQL, [`r${++runId}`, user, week, day, idx, floor, "abc", "[]", "done", "{}"]);
+  await db.query(`UPDATE dungeon_runs SET created_at = $1, floor_at = $1 WHERE id = $2`, [at, `r${runId}`]);
 }
 
 async function paidOps(user: string, n: number, at = "2026-10-13 10:00", status = "SUCCEEDED") {
@@ -45,23 +49,31 @@ beforeEach(async () => {
   `);
   await db.exec(MIGRATION);
   await db.exec(MIGRATION); // safe to run twice
+  // A run stored before the tower update keeps working once the new columns arrive
+  await db.query(`INSERT INTO dungeon_runs (id, user_id, week, run_day, run_index, floor, seed, party) VALUES ('old', 'zz', '2026-W40', '2026-09-30', 1, 4, 's', '[]')`);
+  await db.exec(TOWER);
+  await db.exec(TOWER);
   await db.exec(`INSERT INTO users (id, username, email) VALUES ('a', 'ana', 'ana@x.io'), ('b', NULL, 'bob@x.io'), ('c', 'cy', 'cy@x.io'), ('d', 'di', 'di@x.io'), ('e', 'ed', 'ed@x.io')`);
 });
 
 describe("sprites + party", () => {
-  it("lists originals only, flags animated and HD sprites", async () => {
+  it("lists originals only, counts different animations, walk/rotation sets and HD", async () => {
     await db.exec(`
       INSERT INTO generations (id, user_id, prompt, category_id, subcategory_id, style_id, image_url, source_generation_id) VALUES
         ('g1','a','a knight','CHARACTERS','HEROES','PIXEL_ART_16','u1',NULL),
         ('g2','a','a sword','WEAPONS','SWORDS','CARTOON','u2',NULL),
         ('g3','a','[Upscaled 2x] a knight','CHARACTERS','HEROES','PIXEL_ART_16','u3',NULL),
-        ('g4','a','[Animation: walk] a knight','CHARACTERS','ANIMATION','PIXEL_ART_16','u4','g1'),
+        ('g4','a','[Animation: walk, 4f] a knight','CHARACTERS','ANIMATION','PIXEL_ART_16','u4','g1'),
+        ('g6','a','[Animation: walk, 6f] a knight','CHARACTERS','ANIMATION','PIXEL_ART_16','u6','g1'),
+        ('g7','a','[Animation: attack, 4f] a knight','CHARACTERS','ANIMATION','PIXEL_ART_16','u7','g1'),
+        ('g8','a','[Animation: 4-direction walk, 16f] a sword','WEAPONS','ANIMATION','CARTOON','u8','g2'),
         ('g5','b','someone else','CHARACTERS','HEROES','PIXEL_ART_16','u5',NULL);
       INSERT INTO operations (id, user_id, feature, status, credits_charged, generation_id, created_at) VALUES
         ('o1','a','sprite_hd','SUCCEEDED',3,'g2',now()), ('o2','a','sprite_hd','FAILED',3,'g1',now());
     `);
-    const rows = (await db.query<{ id: string; animated: boolean; hd: boolean }>(SPRITES_SQL, ["a", null, 100])).rows;
-    expect(rows.map((r) => [r.id, r.animated, r.hd]).sort()).toEqual([["g1", true, false], ["g2", false, true]]);
+    const rows = (await db.query<{ id: string; animations: number; rotated: boolean; hd: boolean }>(SPRITES_SQL, ["a", null, 100])).rows;
+    // g1: "walk" twice + "attack" = 2 different animations; g2: a 4-direction walk set
+    expect(rows.map((r) => [r.id, r.animations, r.rotated, r.hd]).sort()).toEqual([["g1", 2, false, false], ["g2", 1, true, true]]);
     const only = (await db.query<{ id: string }>(SPRITES_SQL, ["a", ["g2", "g5", "g3"], 4])).rows;
     expect(only.map((r) => r.id)).toEqual(["g2"]); // someone else's / tool outputs are never yours to use
   });
@@ -81,7 +93,7 @@ describe("daily limit", () => {
         const taken = (await db.query<{ run_index: number }>(RUNS_TODAY_SQL, ["a", day])).rows.map((r) => r.run_index);
         const idx = nextRunIndex(taken);
         if (idx === null) return null;
-        const res = await db.query(INSERT_RUN_SQL, [`p${n}_${tries}`, "a", WEEK, day, idx, 3, "s", "[]"]);
+        const res = await db.query(INSERT_RUN_SQL, [`p${n}_${tries}`, "a", WEEK, day, idx, 3, "s", "[]", "done", "{}"]);
         if (res.rows.length === 1) return idx;
       }
       return null;
@@ -90,9 +102,9 @@ describe("daily limit", () => {
     expect(results.filter((r) => r !== null).sort()).toEqual([1, 2, 3, 4, 5]);
     expect((await db.query(RUNS_TODAY_SQL, ["a", day])).rows).toHaveLength(RUNS_PER_DAY);
     // Same index twice is refused by the unique key
-    expect((await db.query(INSERT_RUN_SQL, ["dup", "a", WEEK, day, 2, 9, "s", "[]"])).rows).toHaveLength(0);
+    expect((await db.query(INSERT_RUN_SQL, ["dup", "a", WEEK, day, 2, 9, "s", "[]", "done", "{}"])).rows).toHaveLength(0);
     // A new UTC day starts again at 1
-    expect((await db.query(INSERT_RUN_SQL, ["next", "a", WEEK, "2026-10-15", 1, 2, "s", "[]"])).rows).toHaveLength(1);
+    expect((await db.query(INSERT_RUN_SQL, ["next", "a", WEEK, "2026-10-15", 1, 2, "s", "[]", "done", "{}"])).rows).toHaveLength(1);
   });
 });
 
@@ -113,7 +125,7 @@ describe("leaderboard", () => {
 describe("leaderboard right after a run", () => {
   it("a run stored now is on the board for this ISO week (the same week/day the run route uses)", async () => {
     const now = new Date();
-    const res = await db.query(INSERT_RUN_SQL, ["now1", "a", isoWeek(now), utcDay(now), 1, 6, "s", "[]"]);
+    const res = await db.query(INSERT_RUN_SQL, ["now1", "a", isoWeek(now), utcDay(now), 1, 6, "s", "[]", "done", "{}"]);
     expect(res.rows).toHaveLength(1);
     const rows = (await db.query<{ rank: number; user_id: string; floor: number }>(LEADERBOARD_SQL, [isoWeek(now), 25, "a"])).rows;
     expect(rows.map((r) => [r.rank, r.user_id, r.floor])).toEqual([[1, "a", 6]]);
@@ -134,6 +146,45 @@ describe("party slots storage", () => {
     expect(parseSlots((await db.query<{ slots: unknown }>(PARTY_GET_SQL, ["a"])).rows[0].slots)).toEqual([{ hero: "g1", weapon: "w1" }]);
     await db.query(PARTY_SAVE_SQL, ["b", JSON.stringify(["g5", "g6"])]); // a row saved before the gear update
     expect(parseSlots((await db.query<{ slots: unknown }>(PARTY_GET_SQL, ["b"])).rows[0].slots)).toEqual([{ hero: "g5" }, { hero: "g6" }]);
+  });
+});
+
+describe("stepwise runs", () => {
+  const insertChoosing = (id: string, user: string, floor: number, day = "2026-10-14", idx = 1) =>
+    db.query(INSERT_RUN_SQL, [id, user, WEEK, day, idx, floor, "s", '{"members":[]}', "choosing", JSON.stringify({ floor, offer: ["whetstone"] })]);
+
+  it("of two parallel choices exactly one lands (step counter)", async () => {
+    await insertChoosing("run1", "a", 3);
+    const results = await Promise.all([1, 2, 3].map((k) =>
+      db.query(ADVANCE_RUN_SQL, ["run1", "a", 0, JSON.stringify({ floor: 6, pick: k }), "choosing", 6])));
+    expect(results.filter((r) => r.rows.length === 1)).toHaveLength(1);
+    const row = (await db.query<{ step: number; floor: number; status: string }>(RUN_BY_ID_SQL, ["run1", "a"])).rows[0];
+    expect(row).toMatchObject({ step: 1, floor: 6, status: "choosing" });
+    // A stale step or another user's run never moves
+    expect((await db.query(ADVANCE_RUN_SQL, ["run1", "a", 0, "{}", "done", 9])).rows).toHaveLength(0);
+    expect((await db.query(ADVANCE_RUN_SQL, ["run1", "b", 1, "{}", "done", 9])).rows).toHaveLength(0);
+    // Finishing: floor only grows, a done run is frozen
+    expect((await db.query(ADVANCE_RUN_SQL, ["run1", "a", 1, "{}", "done", 8])).rows).toHaveLength(1);
+    expect((await db.query(ADVANCE_RUN_SQL, ["run1", "a", 2, "{}", "choosing", 20])).rows).toHaveLength(0);
+    expect((await db.query<{ floor: number; status: string }>(RUN_BY_ID_SQL, ["run1", "a"])).rows[0]).toMatchObject({ floor: 8, status: "done" });
+  });
+
+  it("finds the unfinished run to resume, and old rows count as finished", async () => {
+    expect((await db.query(ACTIVE_RUN_SQL, ["a"])).rows).toHaveLength(0);
+    await insertChoosing("run2", "a", 3);
+    expect((await db.query<{ id: string }>(ACTIVE_RUN_SQL, ["a"])).rows.map((r) => r.id)).toEqual(["run2"]);
+    expect((await db.query<{ status: string; step: number }>(`SELECT status, step FROM dungeon_runs WHERE id = 'old'`)).rows[0]).toEqual({ status: "done", step: 0 });
+    expect((await db.query(ACTIVE_RUN_SQL, ["zz"])).rows).toHaveLength(0);
+  });
+
+  it("an unfinished run counts on the board at the floor it reached; ties go to who got there first", async () => {
+    await insertChoosing("run3", "a", 6);
+    await db.query(`UPDATE dungeon_runs SET floor_at = '2026-10-14 10:00' WHERE id = 'run3'`);
+    await insertChoosing("run4", "b", 3);
+    await db.query(`UPDATE dungeon_runs SET floor_at = '2026-10-14 09:00' WHERE id = 'run4'`);
+    await db.query(ADVANCE_RUN_SQL, ["run4", "b", 0, "{}", "choosing", 6]); // b reaches 6 now, after a
+    const rows = (await db.query<{ rank: number; user_id: string; floor: number }>(LEADERBOARD_SQL, [WEEK, 25, "a"])).rows;
+    expect(rows.map((r) => [r.rank, r.user_id, r.floor])).toEqual([[1, "a", 6], [2, "b", 6]]);
   });
 });
 
