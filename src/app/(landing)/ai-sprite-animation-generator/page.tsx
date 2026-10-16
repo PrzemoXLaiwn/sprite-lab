@@ -5,19 +5,19 @@ import { LANDING_SPECS } from "@/data/landing-specs";
 const URL = "https://www.sprite-lab.com/ai-sprite-animation-generator";
 
 export const metadata: Metadata = {
-  title: { absolute: "AI Sprite Animation & Sprite Sheet Generator | SpriteLab" },
+  title: { absolute: "AI Sprite Animation Generator — Idle, Walk, Attack | SpriteLab" },
   description:
     "Animate any game sprite with AI: idle, walk, run, attack, jump, fly or a custom move. Get a sprite sheet, frames and a GIF — 4 to 18 frames.",
-  keywords: ["AI sprite animation", "sprite sheet generator", "AI sprite sheet", "walk cycle generator", "pixel art animation AI", "animate sprite", "idle animation generator"],
+  keywords: ["AI sprite animation", "AI sprite animation generator", "sprite animator", "walk cycle generator", "pixel art animation AI", "animate sprite", "idle animation generator", "attack animation"],
   openGraph: {
-    title: "AI Sprite Animation & Sprite Sheet Generator — SpriteLab",
+    title: "AI Sprite Animation Generator — Idle, Walk, Attack | SpriteLab",
     description: "Idle, walk, attack, jump, fly or your own move. Sprite sheet + GIF, ready for your engine.",
     url: URL,
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "AI Sprite Animation & Sprite Sheet Generator | SpriteLab",
+    title: "AI Sprite Animation Generator — Idle, Walk, Attack | SpriteLab",
     description: "Animate any game sprite with AI: idle, walk, run, attack, jump, fly or a custom move. Get a sprite sheet, frames and a GIF — 4 to 18 frames.",
   },
   alternates: { canonical: URL },
@@ -34,7 +34,7 @@ export default function SpriteAnimationPage() {
         <>
           Animate any sprite
           <br />
-          into a sprite sheet
+          with AI
         </>
       }
       subtitle="Pick a sprite, choose how it moves and get a frame-aligned sprite sheet and GIF. A dragon breathes fire, a dog wags its tail, a car drifts — the motions are planned for each sprite."
@@ -117,7 +117,7 @@ export default function SpriteAnimationPage() {
         LANDING_SPECS["ai-sprite-animation-generator"],
       ]}
       faq={[
-        { q: "What does the animation export look like?", a: "A horizontal sprite sheet: one row of equal-size frames with a transparent background, plus the frames as separate PNGs in a ZIP and an animated GIF preview." },
+        { q: "What does the animation export look like?", a: "A horizontal sprite sheet: one row of equal-size frames with a transparent background, plus the frames as separate PNGs in a ZIP, an animated GIF preview and an engine pack for Godot, Unity and GameMaker.", link: { label: "See the sprite sheet format and real examples", href: "/sprite-sheet-generator" } },
         { q: "How many frames do I get?", a: "4, 6 or 9 key poses. Smooth mode adds an AI-drawn in-between for every pair, giving 8, 12 or 18 frames." },
         { q: "How much does an animation cost?", a: "An idle loop costs 3 credits. Other motions cost 7 credits for 4 frames, 11 for 6 and 12 for 9; smooth mode (twice the frames) adds 5–7 credits." },
         { q: "Can it animate things that aren't characters?", a: "Yes — creatures, weapons, items, vehicles, effects, icons and seamless tiles. The motions are suggested for the specific sprite." },

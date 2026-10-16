@@ -118,5 +118,6 @@ export async function GET(request: NextRequest) {
   }
 
   if (failing.length) console.error("[CRON:Health] failing:", errors);
+  else console.log("[CRON:Health] ok");
   return NextResponse.json({ ok: failing.length === 0, failing: errors, alert });
 }

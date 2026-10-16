@@ -12,6 +12,7 @@ export function SiteNav({ registerUrl = "/register", anchorsOnHome = false, sign
   const links = [
     { href: `${prefix}#explore`, label: "Gallery" },
     { href: `${prefix}#features`, label: "Features" },
+    { href: "/sprite-sheet-generator", label: "Sprite sheets" },
     { href: "/how-it-works", label: "How it works" },
     { href: `${prefix}#pricing`, label: "Pricing" },
     { href: "/guides", label: "Guides" },

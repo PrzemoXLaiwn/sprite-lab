@@ -56,9 +56,23 @@ export type SeoSection =
       notes: string[];
       links?: { label: string; href: string }[];
     })
+  /** Real sprite sheets shown at whole-pixel scale with the frame cells marked. */
+  | (SectionHead & { kind: "sheets"; sheets: SeoSheet[] })
   | { kind: "gallery"; items: FeaturedGeneration[] };
 
-export type SeoFaq = { q: string; a: string };
+export type SeoSheet = {
+  src: string;
+  alt: string;
+  title: string;
+  body: string;
+  frames: number;
+  /** Frame size in image pixels. */
+  frameWidth: number;
+  frameHeight: number;
+  fps: number;
+};
+
+export type SeoFaq = { q: string; a: string; /** Optional follow-up link under the answer. */ link?: { label: string; href: string } };
 
 export interface SeoLandingProps {
   /** Path without leading slash, e.g. "pixel-art-generator" (used for JSON-LD). */
@@ -111,6 +125,34 @@ const COLS: Record<2 | 3 | 4, string> = {
   3: "sm:grid-cols-2 lg:grid-cols-3",
   4: "sm:grid-cols-2 lg:grid-cols-4",
 };
+
+/** Shown 128 px tall: half of a 256 px frame, so every art pixel of a 2× pixel-art sheet is one screen pixel. */
+const SHEET_H = 128;
+
+function SheetStrip({ sheet }: { sheet: SeoSheet }) {
+  const cellW = Math.round((sheet.frameWidth * SHEET_H) / sheet.frameHeight);
+  const width = cellW * sheet.frames;
+  return (
+    <figure className="rounded-[8px] border border-white/[0.06] bg-[#212B4E] p-4">
+      <div className="overflow-x-auto pb-1">
+        <div className="relative" style={{ ...CHECKER, width, height: SHEET_H }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={sheet.src} alt={sheet.alt} width={width} height={SHEET_H} loading="lazy" className="pixel-perfect block max-w-none" />
+          {/* Frame cells */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0"
+            style={{ backgroundImage: `repeating-linear-gradient(90deg, transparent 0 ${cellW - 1}px, rgba(255,163,0,0.55) ${cellW - 1}px ${cellW}px)` }} />
+        </div>
+      </div>
+      <figcaption className="mt-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <span className="text-[15px] font-semibold text-white">{sheet.title}</span>
+        <span className="text-[13px] text-[#A7ADD4]">
+          {sheet.frames} frames, {sheet.frameWidth}×{sheet.frameHeight} px each, {sheet.fps} FPS
+        </span>
+        <span className="basis-full text-[13.5px] leading-relaxed text-[#9AA1CC]">{sheet.body}</span>
+      </figcaption>
+    </figure>
+  );
+}
 
 function Section({ section }: { section: SeoSection }) {
   if (section.kind === "gallery") {
@@ -245,6 +287,13 @@ function Section({ section }: { section: SeoSection }) {
         </div>
       );
 
+    case "sheets":
+      return wrap(
+        <div className="space-y-5">
+          {section.sheets.map((sh) => <SheetStrip key={sh.src} sheet={sh} />)}
+        </div>
+      );
+
     case "prompts":
       return wrap(
         <>
@@ -352,7 +401,13 @@ export function SeoLanding(props: SeoLandingProps) {
                   <h3>{f.q}</h3>
                   <Plus className="h-4 w-4 shrink-0 text-[#9AA1CC] transition-transform duration-200 group-open:rotate-45" aria-hidden="true" />
                 </summary>
-                <p className="-mt-1 pb-5 pr-8 text-[14px] leading-relaxed text-[#9AA1CC]">{f.a}</p>
+                <p className={`-mt-1 pr-8 text-[14px] leading-relaxed text-[#9AA1CC] ${f.link ? "pb-2" : "pb-5"}`}>{f.a}</p>
+                {f.link && (
+                  <Link href={f.link.href} className="mb-3 inline-flex min-h-10 items-center gap-1.5 text-[14px] text-[#FFC857] transition-colors hover:text-white">
+                    {f.link.label}
+                    <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                  </Link>
+                )}
               </details>
             ))}
           </div>
