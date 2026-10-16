@@ -71,7 +71,7 @@ function useSpriteMetrics(url: string | null, pixel: boolean): Metrics | null {
             return checked > 0;
           };
           // At least 24 art pixels across: smaller "grids" are false positives
-          for (const f of [16, 12, 10, 8, 6, 5, 4, 3, 2]) if (width % f === 0 && width / f >= 24 && same(f)) { factor = f; break; }
+          for (let f = 16; f >= 2; f--) if (width % f === 0 && width / f >= 24 && same(f)) { factor = f; break; }
         }
         const res: Metrics = x1 < 0
           ? { top: 0.06, bottom: 0.94, left: 0.06, right: 0.94, nativeW: Math.round(width / factor) }
@@ -128,7 +128,10 @@ function StandingSprite({ url, pixel, metrics, stage, k, height, x, dim, alt }: 
   dim?: boolean; alt: string;
 }) {
   const contentH = metrics.bottom - metrics.top;
-  const imgW = pixel ? metrics.nativeW * k : height / Math.max(contentH, 0.05);
+  // No art-pixel grid found (or a huge one): fit it like a painted sprite
+  const onGrid = pixel && metrics.nativeW <= 400;
+  const fitW = (stage.w * 0.85) / Math.max(metrics.right - metrics.left, 0.05);
+  const imgW = onGrid ? metrics.nativeW * k : Math.min(height / Math.max(contentH, 0.05), fitW);
   const imgH = imgW; // sprites are square canvases
   const groundY = stage.h * GROUND;
   const cx = (metrics.left + metrics.right) / 2;

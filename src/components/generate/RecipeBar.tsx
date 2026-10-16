@@ -4,7 +4,7 @@
  * The recipe: what you're making, as one readable line of slots
  * ("Pixel 16-bit · Hero · front view · A-pose · Standard") above the
  * description box. Each slot opens its own picker — the settings live where
- * they are read, not in a long form. Pickers open above the bar on desktop
+ * they are read, not in a long form. Pickers open below the bar on desktop
  * and as a bottom sheet on phones.
  */
 
@@ -101,7 +101,7 @@ export function RecipeBar(p: RecipeBarProps) {
 
   const picker = open && (
     <div role="dialog" aria-label={`Choose ${open}`}
-      className="fixed inset-x-0 bottom-0 z-40 max-h-[70dvh] overflow-y-auto rounded-t-[16px] border-t border-white/[0.1] bg-[#1B2446] p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-[0_-24px_60px_-20px_rgba(0,0,0,0.8)] lg:absolute lg:inset-x-0 lg:bottom-full lg:mb-2 lg:max-h-[60vh] lg:rounded-[12px] lg:border">
+      className="fixed inset-x-0 bottom-0 z-40 max-h-[70dvh] overflow-y-auto rounded-t-[16px] border-t border-white/[0.1] bg-[#1B2446] p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-[0_-24px_60px_-20px_rgba(0,0,0,0.8)] lg:absolute lg:inset-x-0 lg:top-full lg:bottom-auto lg:mt-2 lg:max-h-[60vh] lg:rounded-[12px] lg:border">
       <div className="mb-3 flex items-center justify-between">
         <p className="font-display text-[16px] font-semibold capitalize text-[#FFF1E8]">{open === "type" ? "Asset type" : open}</p>
         <button type="button" onClick={() => setOpen(null)} aria-label="Close" className="flex h-10 w-10 items-center justify-center rounded-[8px] text-[#C8CCE8] hover:bg-white/[0.06]">
@@ -157,15 +157,7 @@ export function RecipeBar(p: RecipeBarProps) {
   return (
     <div ref={boxRef} className="relative rounded-[12px] border border-white/[0.1] bg-[#19223F] p-3 sm:p-4">
       {picker}
-      <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Recipe">
-        <Slot id="style" label="Style" value={style?.name ?? p.styleId} open={open === "style"} auto={p.isAuto("style")} onOpen={toggle} />
-        <Slot id="type" label="Type" value={sub.label} open={open === "type"} auto={p.isAuto("type")} onOpen={toggle} />
-        {p.views && <Slot id="view" label="View" value={viewLabel} open={open === "view"} auto={p.isAuto("view")} onOpen={toggle} />}
-        {p.poses && <Slot id="pose" label="Pose" value={poseLabel} open={open === "pose"} auto={p.isAuto("pose")} onOpen={toggle} />}
-        {!p.quality.disabled && <Slot id="quality" label="Quality" value={qualityLabel} open={open === "quality"} auto={false} onOpen={toggle} />}
-      </div>
-
-      <div className="mt-3 flex flex-col gap-3 lg:flex-row lg:items-end">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-stretch">
         <div className="min-w-0 flex-1 rounded-[10px] border border-white/[0.1] bg-[#131A31] transition-colors focus-within:border-[#FFA300]">
           <label htmlFor="generate-prompt" className="sr-only">Describe your sprite</label>
           <textarea id="generate-prompt" value={p.prompt} onChange={(e) => p.onPrompt(e.target.value)}
@@ -184,11 +176,19 @@ export function RecipeBar(p: RecipeBarProps) {
           </div>
         </div>
         <button type="button" onClick={p.onSubmit} disabled={!p.canSubmit || p.generating}
-          className="px-corners flex h-14 shrink-0 items-center justify-center gap-2 bg-[#FFA300] px-6 text-[15px] font-semibold text-[#131A31] transition hover:bg-[#FFB733] disabled:cursor-not-allowed disabled:opacity-50 lg:h-[88px] lg:w-[180px] lg:flex-col lg:gap-1">
+          className="px-corners flex h-14 shrink-0 items-center justify-center gap-2 bg-[#FFA300] px-6 text-[15px] font-semibold text-[#131A31] transition hover:bg-[#FFB733] disabled:cursor-not-allowed disabled:opacity-50 lg:h-auto lg:min-h-[88px] lg:w-[180px] lg:flex-col lg:gap-1">
           {p.generating ? <><Loader2 className="h-5 w-5 animate-spin" aria-hidden /> <span>{p.loadingLabel}</span></>
             : <><Sparkles className="h-5 w-5" aria-hidden /> <span>Create sprite</span><span className="text-[12.5px] font-medium opacity-80 lg:block">{p.costLabel}</span></>}
         </button>
       </div>
+      <div className="mt-3 flex flex-wrap items-center gap-1.5" role="group" aria-label="Recipe">
+        <Slot id="style" label="Style" value={style?.name ?? p.styleId} open={open === "style"} auto={p.isAuto("style")} onOpen={toggle} />
+        <Slot id="type" label="Type" value={sub.label} open={open === "type"} auto={p.isAuto("type")} onOpen={toggle} />
+        {p.views && <Slot id="view" label="View" value={viewLabel} open={open === "view"} auto={p.isAuto("view")} onOpen={toggle} />}
+        {p.poses && <Slot id="pose" label="Pose" value={poseLabel} open={open === "pose"} auto={p.isAuto("pose")} onOpen={toggle} />}
+        {!p.quality.disabled && <Slot id="quality" label="Quality" value={qualityLabel} open={open === "quality"} auto={false} onOpen={toggle} />}
+      </div>
+
       {p.extras}
     </div>
   );

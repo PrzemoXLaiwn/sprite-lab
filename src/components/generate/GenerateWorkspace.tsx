@@ -893,6 +893,91 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
           </div>
         )}
 
+        {/* Recipe */}
+        <div className="px-4 pt-3 sm:px-5">
+          <RecipeBar
+            prompt={prompt} onPrompt={setPrompt} placeholder={placeholder}
+            onSubmit={handleGenerate} onSurprise={surpriseMe}
+            generating={isGenerating} canSubmit={isFormValid} cost={cost} costLabel={creditLabel(cost)}
+            loadingLabel={<>Creating… <Elapsed /></>}
+            styles={GENERATE_STYLES} styleId={styleId} onStyle={setStyleId} isPixel={isPixelStyle}
+            categories={GENERATE_CATEGORIES} categoryId={selectedCategory.id} onCategory={handleCategoryChange}
+            subcategoryId={selectedSubcategoryId}
+            onSubcategory={(id) => { const s = selectedCategory.subcategories.find((x) => x.subcategoryId === id); if (s) handleSubcategoryChange(s); }}
+            views={viewApplies ? { options: VIEW_OPTIONS, value: view, onChange: (id) => setView(id as ViewId) } : undefined}
+            poses={isCreature ? { options: POSE_OPTIONS, value: pose, onChange: (id) => setPose(id as PoseId) } : undefined}
+            quality={{ options: DETAIL_OPTIONS.map((d) => ({ id: d.id, label: d.label, desc: d.description })), value: detail, onChange: (id) => setDetail(id as DetailId), credits: DETAIL_CREDITS, disabled: !!styleRef }}
+            isAuto={(slot) => slot !== "quality" && auto.isAuto(slot)}
+            tools={
+              <button type="button" onClick={() => setShowAdvanced((v) => !v)} aria-expanded={showAdvanced} aria-controls="generate-more-options"
+                className="flex min-h-10 items-center gap-1 rounded-[7px] px-2.5 text-[12.5px] font-medium text-[#A7ADD4] transition-colors hover:bg-white/[0.05] hover:text-white">
+                More{advancedSet > 0 ? ` · ${advancedSet}` : ""} <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showAdvanced ? "rotate-180" : ""}`} aria-hidden />
+              </button>
+            }
+            extras={
+              <div className="mt-2 space-y-2 empty:hidden">
+                {styleRef && (
+                  <div className="flex items-center gap-2.5 rounded-[10px] border border-[#FFA300]/40 bg-[#FFA300]/[0.06] p-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={styleRef.imageUrl} alt="" className="pixel-perfect h-10 w-10 shrink-0 rounded-[6px] bg-[#131A31] object-contain p-0.5" />
+                    <span className="min-w-0 flex-1 text-[12.5px] text-[#FFF1E8]">Matching this sprite&apos;s style <span className="text-[#A7ADD4]">· {STYLE_MATCH_CREDITS} credits per sprite</span></span>
+                    <button type="button" onClick={() => setStyleRef(null)} aria-label="Stop matching this style"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[7px] text-[#A7ADD4] hover:bg-white/[0.06] hover:text-white"><X className="h-4 w-4" /></button>
+                  </div>
+                )}
+                {promptQuality && promptQuality.level !== "good" && (
+                  <p className={`px-1 text-[12.5px] ${promptQuality.level === "ok" ? "text-amber-200/85" : "text-rose-200/85"}`}>{promptQuality.hint}</p>
+                )}
+                <AutoSettingsBar enabled={auto.enabled} onToggle={auto.setEnabled} changes={auto.changes} onUndo={auto.undo}
+                  labels={{ view: VIEW_OPTIONS, palette: PALETTE_OPTIONS, pose: POSE_OPTIONS }} />
+                {viewConflict && detectedView && detectedViewLabel && (
+                  <button type="button" onClick={() => setView(detectedView)}
+                    className="flex w-full items-start gap-2 rounded-[8px] border border-amber-400/20 bg-amber-400/[0.06] px-3 py-2 text-left text-[12.5px] text-amber-100/90 hover:bg-amber-400/[0.1]">
+                    <Eye className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" aria-hidden />
+                    <span>Your description mentions a <b>{detectedViewLabel}</b> view. Tap to set the view to match.</span>
+                  </button>
+                )}
+                {showAdvanced && (
+                  <div id="generate-more-options" className="grid gap-4 rounded-[10px] border border-white/[0.08] p-3 sm:grid-cols-2">
+                    <Field label={<>Color palette<AutoBadge show={auto.isAuto("palette")} /></>} hint={palette === "auto" ? "Auto lets the style choose the colours." : PALETTE_OPTIONS.find((p) => p.id === palette)?.label}>
+                      <div className={`flex flex-wrap gap-1${autoFlash(auto.isFlashing("palette"))}`}>
+                        {PALETTE_OPTIONS.map((p) => {
+                          const active = p.id === palette;
+                          return p.id === "auto" ? (
+                            <button key={p.id} type="button" onClick={() => setPalette(p.id)} aria-pressed={active}
+                              className={`flex h-10 items-center rounded-[7px] border-2 px-3 text-[12px] font-medium text-[#C8CCE8] ${active ? "border-white bg-white/[0.08]" : "border-transparent bg-white/[0.06] hover:border-white/40"}`}>Auto</button>
+                          ) : (
+                            <button key={p.id} type="button" onClick={() => setPalette(p.id)} title={p.label} aria-label={`${p.label} palette`} aria-pressed={active}
+                              className="group flex h-10 w-10 items-center justify-center rounded-[7px]">
+                              <span aria-hidden className={`block h-7 w-7 rounded-[5px] border-2 ${active ? "border-white" : "border-transparent group-hover:border-white/40"}`} style={{ background: PALETTE_SWATCH[p.id] }} />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </Field>
+                    <Field label="Seed" labelFor="generate-seed"
+                      hint={seedDriftWarning
+                        ? <span className="text-amber-200/90">Seed is locked but you changed <b>{seedDriftWarning.join(", ")}</b>, so the result will differ.</span>
+                        : "Same seed + same settings = the same sprite. Leave empty for a new one each time."}>
+                      <div className="flex gap-2">
+                        <input id="generate-seed" type="number" inputMode="numeric" min={0} max={2147483647} placeholder="Random" value={seed}
+                          onChange={(e) => { setSeed(e.target.value); seedRef.current = e.target.value; setSeedLocked(false); }}
+                          className="h-10 min-w-0 flex-1 rounded-[8px] border border-white/[0.1] bg-[#131A31] px-3 text-[13px] text-white outline-none placeholder:text-[#8A92BF] focus:border-[#FFA300]" />
+                        {activeResult && (
+                          <button type="button" onClick={handleLockSeed} aria-pressed={seedLocked} aria-label={seedLocked ? "Unlock the seed" : "Reuse the seed of the current sprite"}
+                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] border ${seedLocked ? "border-[#FFA300]/50 bg-[#FFA300]/10 text-[#FFC857]" : "border-white/[0.1] text-[#A7ADD4] hover:text-white"}`}>
+                            {seedLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+                          </button>
+                        )}
+                      </div>
+                    </Field>
+                  </div>
+                )}
+                {status === "error" && errorMessage && <ErrorNote>{errorMessage}</ErrorNote>}
+              </div>
+            }
+          />
+        </div>
         {/* Stage */}
         <div ref={canvasRef as React.RefObject<HTMLDivElement>} className="relative mx-4 mt-3 aspect-[4/3] sm:mx-5 lg:aspect-auto lg:min-h-[280px] lg:flex-1">
           <SpriteStage imageUrl={activeResult?.imageUrl ?? null} pixel={activeResult ? isPixelStyle(activeResult.styleId) : false}
@@ -925,7 +1010,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
         </div>
 
         {/* Under the stage: project review, actions, notes */}
-        <div className="px-4 pt-2 sm:px-5">
+        <div className="px-4 pb-24 pt-2 sm:px-5 lg:pb-4">
           {activeResult?.projectStatus && (
             <div aria-live="polite" className="mb-2 flex flex-wrap items-center gap-2">
               {activeResult.projectStatus === "accepted" ? (
@@ -1044,91 +1129,6 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
           )}
         </div>
 
-        {/* Recipe */}
-        <div className="px-4 pb-24 pt-3 sm:px-5 lg:pb-4">
-          <RecipeBar
-            prompt={prompt} onPrompt={setPrompt} placeholder={placeholder}
-            onSubmit={handleGenerate} onSurprise={surpriseMe}
-            generating={isGenerating} canSubmit={isFormValid} cost={cost} costLabel={creditLabel(cost)}
-            loadingLabel={<>Creating… <Elapsed /></>}
-            styles={GENERATE_STYLES} styleId={styleId} onStyle={setStyleId} isPixel={isPixelStyle}
-            categories={GENERATE_CATEGORIES} categoryId={selectedCategory.id} onCategory={handleCategoryChange}
-            subcategoryId={selectedSubcategoryId}
-            onSubcategory={(id) => { const s = selectedCategory.subcategories.find((x) => x.subcategoryId === id); if (s) handleSubcategoryChange(s); }}
-            views={viewApplies ? { options: VIEW_OPTIONS, value: view, onChange: (id) => setView(id as ViewId) } : undefined}
-            poses={isCreature ? { options: POSE_OPTIONS, value: pose, onChange: (id) => setPose(id as PoseId) } : undefined}
-            quality={{ options: DETAIL_OPTIONS.map((d) => ({ id: d.id, label: d.label, desc: d.description })), value: detail, onChange: (id) => setDetail(id as DetailId), credits: DETAIL_CREDITS, disabled: !!styleRef }}
-            isAuto={(slot) => slot !== "quality" && auto.isAuto(slot)}
-            tools={
-              <button type="button" onClick={() => setShowAdvanced((v) => !v)} aria-expanded={showAdvanced} aria-controls="generate-more-options"
-                className="flex min-h-10 items-center gap-1 rounded-[7px] px-2.5 text-[12.5px] font-medium text-[#A7ADD4] transition-colors hover:bg-white/[0.05] hover:text-white">
-                More{advancedSet > 0 ? ` · ${advancedSet}` : ""} <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showAdvanced ? "rotate-180" : ""}`} aria-hidden />
-              </button>
-            }
-            extras={
-              <div className="mt-2 space-y-2 empty:hidden">
-                {styleRef && (
-                  <div className="flex items-center gap-2.5 rounded-[10px] border border-[#FFA300]/40 bg-[#FFA300]/[0.06] p-2">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={styleRef.imageUrl} alt="" className="pixel-perfect h-10 w-10 shrink-0 rounded-[6px] bg-[#131A31] object-contain p-0.5" />
-                    <span className="min-w-0 flex-1 text-[12.5px] text-[#FFF1E8]">Matching this sprite&apos;s style <span className="text-[#A7ADD4]">· {STYLE_MATCH_CREDITS} credits per sprite</span></span>
-                    <button type="button" onClick={() => setStyleRef(null)} aria-label="Stop matching this style"
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[7px] text-[#A7ADD4] hover:bg-white/[0.06] hover:text-white"><X className="h-4 w-4" /></button>
-                  </div>
-                )}
-                {promptQuality && promptQuality.level !== "good" && (
-                  <p className={`px-1 text-[12.5px] ${promptQuality.level === "ok" ? "text-amber-200/85" : "text-rose-200/85"}`}>{promptQuality.hint}</p>
-                )}
-                <AutoSettingsBar enabled={auto.enabled} onToggle={auto.setEnabled} changes={auto.changes} onUndo={auto.undo}
-                  labels={{ view: VIEW_OPTIONS, palette: PALETTE_OPTIONS, pose: POSE_OPTIONS }} />
-                {viewConflict && detectedView && detectedViewLabel && (
-                  <button type="button" onClick={() => setView(detectedView)}
-                    className="flex w-full items-start gap-2 rounded-[8px] border border-amber-400/20 bg-amber-400/[0.06] px-3 py-2 text-left text-[12.5px] text-amber-100/90 hover:bg-amber-400/[0.1]">
-                    <Eye className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" aria-hidden />
-                    <span>Your description mentions a <b>{detectedViewLabel}</b> view. Tap to set the view to match.</span>
-                  </button>
-                )}
-                {showAdvanced && (
-                  <div id="generate-more-options" className="grid gap-4 rounded-[10px] border border-white/[0.08] p-3 sm:grid-cols-2">
-                    <Field label={<>Color palette<AutoBadge show={auto.isAuto("palette")} /></>} hint={palette === "auto" ? "Auto lets the style choose the colours." : PALETTE_OPTIONS.find((p) => p.id === palette)?.label}>
-                      <div className={`flex flex-wrap gap-1${autoFlash(auto.isFlashing("palette"))}`}>
-                        {PALETTE_OPTIONS.map((p) => {
-                          const active = p.id === palette;
-                          return p.id === "auto" ? (
-                            <button key={p.id} type="button" onClick={() => setPalette(p.id)} aria-pressed={active}
-                              className={`flex h-10 items-center rounded-[7px] border-2 px-3 text-[12px] font-medium text-[#C8CCE8] ${active ? "border-white bg-white/[0.08]" : "border-transparent bg-white/[0.06] hover:border-white/40"}`}>Auto</button>
-                          ) : (
-                            <button key={p.id} type="button" onClick={() => setPalette(p.id)} title={p.label} aria-label={`${p.label} palette`} aria-pressed={active}
-                              className="group flex h-10 w-10 items-center justify-center rounded-[7px]">
-                              <span aria-hidden className={`block h-7 w-7 rounded-[5px] border-2 ${active ? "border-white" : "border-transparent group-hover:border-white/40"}`} style={{ background: PALETTE_SWATCH[p.id] }} />
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </Field>
-                    <Field label="Seed" labelFor="generate-seed"
-                      hint={seedDriftWarning
-                        ? <span className="text-amber-200/90">Seed is locked but you changed <b>{seedDriftWarning.join(", ")}</b>, so the result will differ.</span>
-                        : "Same seed + same settings = the same sprite. Leave empty for a new one each time."}>
-                      <div className="flex gap-2">
-                        <input id="generate-seed" type="number" inputMode="numeric" min={0} max={2147483647} placeholder="Random" value={seed}
-                          onChange={(e) => { setSeed(e.target.value); seedRef.current = e.target.value; setSeedLocked(false); }}
-                          className="h-10 min-w-0 flex-1 rounded-[8px] border border-white/[0.1] bg-[#131A31] px-3 text-[13px] text-white outline-none placeholder:text-[#8A92BF] focus:border-[#FFA300]" />
-                        {activeResult && (
-                          <button type="button" onClick={handleLockSeed} aria-pressed={seedLocked} aria-label={seedLocked ? "Unlock the seed" : "Reuse the seed of the current sprite"}
-                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] border ${seedLocked ? "border-[#FFA300]/50 bg-[#FFA300]/10 text-[#FFC857]" : "border-white/[0.1] text-[#A7ADD4] hover:text-white"}`}>
-                            {seedLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
-                          </button>
-                        )}
-                      </div>
-                    </Field>
-                  </div>
-                )}
-                {status === "error" && errorMessage && <ErrorNote>{errorMessage}</ErrorNote>}
-              </div>
-            }
-          />
-        </div>
       </section>
 
       {/* ═══ RIGHT — inventory (column from xl, bottom sheet below) ═══ */}
