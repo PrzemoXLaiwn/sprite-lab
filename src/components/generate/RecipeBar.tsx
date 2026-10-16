@@ -9,7 +9,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { Check, Dices, Loader2, Sparkles, X } from "lucide-react";
+import { Check, ChevronDown, Dices, Loader2, Sparkles, X } from "lucide-react";
 import type { GenerateCategory } from "@/data/generate-categories";
 import type { GenerateStyle } from "@/data/generate-styles";
 
@@ -49,14 +49,20 @@ export interface RecipeBarProps {
 }
 
 function Slot({ id, label, value, open, auto, onOpen }: { id: SlotId; label: string; value: string; open: boolean; auto: boolean; onOpen: (id: SlotId) => void }) {
+  // Looks like a dropdown on purpose: label on top, value + chevron below
   return (
-    <button type="button" onClick={() => onOpen(id)} aria-haspopup="dialog" aria-expanded={open}
-      className={`group inline-flex min-h-10 items-center gap-1.5 rounded-[7px] border px-2.5 text-left transition-colors ${
-        open ? "border-[#FFA300] bg-[#FFA300]/[0.12]" : "border-white/[0.12] bg-[#212B4E] hover:border-white/30"
+    <button type="button" onClick={() => onOpen(id)} aria-haspopup="dialog" aria-expanded={open} title={`Change ${label.toLowerCase()}`}
+      className={`group relative flex min-h-[52px] min-w-[112px] items-center justify-between gap-3 rounded-[8px] border px-3 py-1.5 text-left shadow-[0_2px_0_rgba(0,0,0,0.35)] transition-all hover:-translate-y-px ${
+        open ? "border-[#FFA300] bg-[#FFA300]/[0.12]" : "border-white/[0.16] bg-[#212B4E] hover:border-[#FFA300]/70 hover:bg-[#263260]"
       }`}>
-      <span className="text-[11.5px] text-[#A7ADD4]">{label}</span>
-      <span className="text-[13.5px] font-semibold text-[#FFF1E8]">{value}</span>
-      {auto && <span className="h-1.5 w-1.5 rounded-full bg-[#00E436]" title="Set from your description" aria-label="set automatically" />}
+      <span className="flex flex-col leading-tight">
+        <span className="flex items-center gap-1.5 text-[11.5px] font-medium text-[#A7ADD4]">
+          {label}
+          {auto && <span className="h-1.5 w-1.5 rounded-full bg-[#00E436]" title="Set from your description" aria-label="set automatically" />}
+        </span>
+        <span className="text-[14px] font-semibold text-[#FFF1E8]">{value}</span>
+      </span>
+      <ChevronDown className={`h-4 w-4 shrink-0 text-[#FFC857] transition-transform ${open ? "rotate-180" : "group-hover:translate-y-0.5"}`} aria-hidden />
     </button>
   );
 }

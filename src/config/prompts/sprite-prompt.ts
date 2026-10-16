@@ -168,7 +168,7 @@ export function buildSpritePrompt(input: SpritePromptInput): string {
     ...(isPixelStyle(styleId) ? [PIXEL_CONSISTENCY] : []),
     ...(colorHint ? [`Colors: ${colorHint.slice(0, 200)}.`] : []),
     ...(emptyHands ? ["Hands empty: no weapon, shield, staff, wand, tool or any other held item."] : []),
-    `Exactly one subject floating on a ${keyBackgroundFor(cleanSubject)}. No ground, no floor, no drop shadow under it, no scenery, no text, no border, no watermark.`,
+    `Exactly one subject floating on a ${keyBackgroundFor(cleanSubject, styleId)}. No ground, no floor, no drop shadow under it, no scenery, no text, no border, no watermark.`,
   ].join(" ");
 }
 
@@ -183,6 +183,14 @@ const PALE_SUBJECT = /\b(white|silver|silvery|snow\w*|ice|icy|frost\w*|ghost\w*|
 
 export const MAGENTA_KEY_BACKGROUND = "plain flat solid pure magenta (#FF00FF) background";
 
-export function keyBackgroundFor(subject: string): string {
-  return PALE_SUBJECT.test(subject) ? MAGENTA_KEY_BACKGROUND : KEY_BACKGROUND;
+/**
+ * Soft light (auras, glows, flames, smoke) is semi-transparent: on a chroma
+ * key it blends into a pink halo that can't be keyed out. Those subjects, and
+ * every painted style (soft anti-aliased edges), stay on the white key.
+ */
+const SOFT_LIGHT = /\b(glow\w*|aura|halo|radiant|radiance|shin\w*|light|lights|lit|flame\w*|fire|fiery|burning|blaze|ember\w*|smoke|smoky|sparkl\w*|magic\w*|energy|spell|lightning|electric\w*)\b/i;
+
+export function keyBackgroundFor(subject: string, styleId = "PIXEL_ART_16"): string {
+  const magenta = isPixelStyle(styleId) && PALE_SUBJECT.test(subject) && !SOFT_LIGHT.test(subject);
+  return magenta ? MAGENTA_KEY_BACKGROUND : KEY_BACKGROUND;
 }

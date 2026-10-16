@@ -23,3 +23,13 @@ describe("game-ready characters", () => {
     expect(asksForHeldItem("rainbow slime")).toBe(false);
   });
 });
+
+describe("key colour", () => {
+  it("magenta only for pale pixel-art subjects without soft light", async () => {
+    const { keyBackgroundFor } = await import("./sprite-prompt");
+    expect(keyBackgroundFor("elven longbow carved from silver wood", "PIXEL_ART_16")).toMatch(/magenta/);
+    expect(keyBackgroundFor("white cleric with a glowing healing aura", "PIXEL_ART_16")).not.toMatch(/magenta/);
+    expect(keyBackgroundFor("silver knight", "REALISTIC_PAINTED")).not.toMatch(/magenta/);
+    expect(keyBackgroundFor("red goblin", "PIXEL_ART_16")).not.toMatch(/magenta/);
+  });
+});
