@@ -49,29 +49,29 @@ export function baseMods(): RunMods {
 const GENERIC: BlessingDef[] = [
   { id: "whetstone", name: "Whetstone", text: "+15% attack for the whole party", icon: "sword", apply: (m) => { m.atkMul *= 1.15; } },
   { id: "bulwark", name: "Bulwark", text: "+25% defence for the whole party", icon: "shield", apply: (m) => { m.defMul *= 1.25; } },
-  { id: "second-wind", name: "Second wind", text: "Heal 20% after each floor", icon: "heart", apply: (m) => { m.healAfterFloor += 0.2; } },
-  { id: "giant-slayer", name: "Giant slayer", text: "Crits on bosses hit twice as hard", icon: "crown", apply: (m) => { m.bossCritMul = CRIT_MULTIPLIER * 2; } },
-  { id: "iron-wall", name: "Iron wall", text: "Guardians draw 90% of attacks", icon: "castle", apply: (m) => { m.taunt = 0.9; } },
+  { id: "second-wind", name: "Second wind", text: "Standing heroes heal 20% of max HP after each floor", icon: "heart", apply: (m) => { m.healAfterFloor += 0.2; } },
+  { id: "giant-slayer", name: "Giant slayer", text: "Crits on bosses deal ×3.5 instead of ×1.75", icon: "crown", apply: (m) => { m.bossCritMul = CRIT_MULTIPLIER * 2; } },
+  { id: "iron-wall", name: "Iron wall", text: "Your Guardian draws 90% of enemy attacks instead of 60%", icon: "castle", apply: (m) => { m.taunt = 0.9; } },
   { id: "keen-eye", name: "Keen eye", text: "+12% crit chance for everyone", icon: "eye", apply: (m) => { m.critAdd += 0.12; } },
   { id: "exploit", name: "Exploit", text: "Weakness hits deal ×2 instead of ×1.5", icon: "target", apply: (m) => { m.weakMul = 2; } },
-  { id: "leech", name: "Leech", text: "Heal 10% of the damage you deal", icon: "droplet", apply: (m) => { m.lifesteal += 0.1; } },
-  { id: "phoenix", name: "Phoenix feather", text: "The first hero to fall gets back up at 50% HP", icon: "feather", apply: (m) => { m.revives += 1; } },
-  { id: "ambush", name: "Ambush", text: "+50% damage in the first round of each fight", icon: "zap", apply: (m) => { m.firstRoundMul *= 1.5; } },
+  { id: "leech", name: "Leech", text: "Each hit heals the attacker for 10% of the damage dealt", icon: "droplet", apply: (m) => { m.lifesteal += 0.1; } },
+  { id: "phoenix", name: "Phoenix feather", text: "A fallen hero gets back up at 50% HP: right away if one is down, otherwise the next to fall", icon: "feather", apply: (m) => { m.revives += 1; } },
+  { id: "ambush", name: "Ambush", text: "Your heroes deal +50% damage in the first round of each fight", icon: "zap", apply: (m) => { m.firstRoundMul *= 1.5; } },
 ];
 
 function elementBlessing(e: Element): BlessingDef {
   return {
-    id: `oath-${e}`, name: `${ELEMENT_DEFS[e].label} oath`, text: `+30% ${ELEMENT_DEFS[e].label} damage`, icon: "flame", element: e,
+    id: `oath-${e}`, name: `${ELEMENT_DEFS[e].label} oath`, text: `${ELEMENT_DEFS[e].label} attacks deal +30% damage`, icon: "flame", element: e,
     apply: (m) => { m.elementMul[e] = (m.elementMul[e] ?? 1) * 1.3; },
   };
 }
 
 /** Boss chests: a small automatic buff, run-only. */
 export const CHEST_BUFFS: BlessingDef[] = [
-  { id: "chest-might", name: "Giant's tonic", text: "+10% attack", icon: "sword", apply: (m) => { m.atkMul *= 1.1; } },
-  { id: "chest-guard", name: "Iron charm", text: "+10% defence", icon: "shield", apply: (m) => { m.defMul *= 1.1; } },
-  { id: "chest-luck", name: "Lucky coin", text: "+5% crit chance", icon: "eye", apply: (m) => { m.critAdd += 0.05; } },
-  { id: "chest-mend", name: "Mending moss", text: "Heal 10% after each floor", icon: "heart", apply: (m) => { m.healAfterFloor += 0.1; } },
+  { id: "chest-might", name: "Giant's tonic", text: "+10% attack for the whole party", icon: "sword", apply: (m) => { m.atkMul *= 1.1; } },
+  { id: "chest-guard", name: "Iron charm", text: "+10% defence for the whole party", icon: "shield", apply: (m) => { m.defMul *= 1.1; } },
+  { id: "chest-luck", name: "Lucky coin", text: "+5% crit chance for everyone", icon: "eye", apply: (m) => { m.critAdd += 0.05; } },
+  { id: "chest-mend", name: "Mending moss", text: "Standing heroes heal 10% of max HP after each floor", icon: "heart", apply: (m) => { m.healAfterFloor += 0.1; } },
 ];
 
 export function blessingById(id: string): BlessingDef | null {
@@ -89,10 +89,14 @@ export function modsFor(ids: string[]): RunMods {
   return m;
 }
 
-/** Three distinct offers, seeded by run seed + floor. Element oaths only for elements the party attacks with. */
-export function offerFor(seed: number, floor: number, chosen: string[], partyElements: Element[]): string[] {
+/**
+ * Three distinct offers, seeded by run seed + floor. Only blessings that can do
+ * something for this party: element oaths for elements it attacks with, Iron
+ * wall only with a Guardian.
+ */
+export function offerFor(seed: number, floor: number, chosen: string[], partyElements: Element[], hasGuardian = true): string[] {
   const pool = [
-    ...GENERIC.map((b) => b.id),
+    ...GENERIC.map((b) => b.id).filter((id) => id !== "iron-wall" || hasGuardian),
     ...[...new Set(partyElements)].filter((e) => e !== "neutral").map((e) => `oath-${e}`),
   ].filter((id) => !chosen.includes(id));
   const rng = makeRng(hash32(`offer:${seed}:${floor}`));

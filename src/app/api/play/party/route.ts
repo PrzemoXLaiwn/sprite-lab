@@ -11,14 +11,18 @@ const Id = z.string().min(1).max(64);
 const Body = z.union([
   z.object({ auto: z.literal(true) }),
   z.object({
-    slots: z.array(z.object({ hero: Id, weapon: Id.optional(), armor: Id.optional(), trinket: Id.optional() })).max(PARTY_SIZE),
+    slots: z.array(z.object({
+      hero: Id, weapon: Id.optional(), armor: Id.optional(), trinket: Id.optional(),
+      skills: z.object({ basic: Id.optional(), special: Id.optional(), legendary: Id.optional() }).optional(),
+    })).max(PARTY_SIZE),
   }),
 ]);
 
 /**
- * PUT /api/play/party — { slots: [{ hero, weapon?, armor?, trinket? }] } or { auto: true }.
+ * PUT /api/play/party — { slots: [{ hero, weapon?, armor?, trinket?, skills? }] } or { auto: true }.
  * Everything is re-checked on the server: own original sprites only, figures
- * as heroes, the right category per gear slot, no sprite used twice.
+ * as heroes, the right category per gear slot, no sprite used twice, and
+ * skills only from that hero's own attack animations in a slot their tier allows.
  */
 export async function PUT(request: Request) {
   const supabase = await createClient();

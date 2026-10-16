@@ -4,10 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FastForward, Info, Loader2, SkipForward, Swords, Volume2, VolumeX } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { TowerStage, type StageProgress, type TowerFlag } from "@/components/play/TowerStage";
-import { PartyPanel, Picker, WhySheet, type PickerMode } from "@/components/play/PartyPanel";
-import { BlessingChoice, ResultReport } from "@/components/play/RunOverlays";
+import { PartyPanel, Picker, SkillSheet, WhySheet, type PickerMode } from "@/components/play/PartyPanel";
+import { BLESSING_ICONS, BlessingChoice, ResultReport } from "@/components/play/RunOverlays";
+import { ELEMENT_DEFS, type SkillSlot } from "@/lib/dungeon/config";
 import { Badges, DamageSheet, LeaderboardPanel, TowerWeekPanel } from "@/components/play/InfoPanels";
-import { boardAfterRun, removeHero, setGear, setHero, toSlots } from "@/components/play/party-edit";
+import { boardAfterRun, removeHero, setGear, setHero, setSkill, toSlots } from "@/components/play/party-edit";
 import { loadMuted, play, setMuted as storeMuted, unlockAudio } from "@/components/play/sfx";
 import type { SlotIds } from "@/lib/dungeon/party";
 import type { DungeonSprite, Leaderboard, PartyMember, Records, RunView, Trophy } from "@/lib/dungeon/store";
@@ -44,6 +45,7 @@ export default function PlayPage() {
   const [saving, setSaving] = useState(false);
   const [picker, setPicker] = useState<PickerMode | null>(null);
   const [why, setWhy] = useState<number | null>(null);
+  const [skillSheet, setSkillSheet] = useState<{ index: number; slot: SkillSlot } | null>(null);
   const [damageInfo, setDamageInfo] = useState(false);
   const [speed, setSpeed] = useState(2);
   const [skipToken, setSkipToken] = useState(0);
@@ -249,7 +251,7 @@ export default function PlayPage() {
       </div>
 
       {/* The tower */}
-      <section aria-label="The tower" className="relative mt-3 h-[62vh] min-h-[400px] max-h-[760px] overflow-hidden rounded-[10px] border border-white/[0.1] bg-[#0B1022]">
+      <section aria-label="The tower" className="relative mt-3 h-[62vh] min-h-[400px] max-h-[760px] overflow-hidden lg:h-[74vh] lg:max-h-[860px] rounded-[10px] border border-white/[0.1] bg-[#0B1022]">
         <TowerStage
           members={members}
           floors={phase === "replaying" && view ? view.floors : null}
@@ -266,9 +268,28 @@ export default function PlayPage() {
 
         {/* HUD */}
         <div className="pointer-events-none absolute inset-x-2 top-2 flex items-start justify-between gap-2">
-          <div className="rounded-[6px] border border-white/[0.1] bg-[#131A31]/85 px-2.5 py-1.5">
-            <p className="font-display text-[20px] font-semibold leading-none text-[#FFF1E8]">{hud.floor > 0 ? `Floor ${hud.floor}` : "Ground floor"}</p>
-            <p className="mt-0.5 text-[12px] text-[#A7ADD4]">{hud.zone}</p>
+          <div className="flex flex-col items-start gap-1">
+            <div className="rounded-[6px] border border-white/[0.1] bg-[#131A31]/85 px-2.5 py-1.5">
+              <p className="font-display text-[20px] font-semibold leading-none text-[#FFF1E8]">{hud.floor > 0 ? `Floor ${hud.floor}` : "Ground floor"}</p>
+              <p className="mt-0.5 text-[12px] text-[#A7ADD4]">{hud.zone}</p>
+            </div>
+            {view && phase !== "idle" && view.blessings.length + view.buffs.length > 0 && (
+              <ul className="pointer-events-auto flex max-w-[176px] flex-wrap gap-1" aria-label="Active blessings">
+                {[...view.blessings, ...view.buffs].map((b) => {
+                  const Icon = BLESSING_ICONS[b.icon] ?? Swords;
+                  const color = b.element ? ELEMENT_DEFS[b.element].color : "#FFA300";
+                  return (
+                    <li key={b.id}>
+                      <button type="button" title={`${b.name}: ${b.text}`} aria-label={`${b.name}: ${b.text}`}
+                        onClick={() => toast({ title: b.name, description: b.text })}
+                        className="flex h-10 w-10 items-center justify-center rounded-[6px] border border-white/[0.1] bg-[#131A31]/85 hover:bg-[#212B4E]">
+                        <Icon className="h-4 w-4" style={{ color }} aria-hidden />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
           <div className="flex flex-col items-end gap-1 rounded-[6px] border border-white/[0.1] bg-[#131A31]/85 px-2.5 py-1.5">
             <div className="flex w-[132px] gap-[2px] sm:w-[180px]" role="progressbar" aria-label="Party HP" aria-valuemin={0} aria-valuemax={hud.maxHp} aria-valuenow={hud.hp}>
@@ -329,7 +350,7 @@ export default function PlayPage() {
           <h2 id="party-h" className="font-display text-[20px] font-semibold text-[#FFF1E8]">Your party</h2>
           <p className="mb-2 text-[13px] text-[#A7ADD4]">Characters and creatures you made are heroes; weapons, armor and items are their gear. New sprites join as you make them.</p>
           <PartyPanel members={data.party} figures={figures} hasItems={hasItems} locked={inRun} saving={saving}
-            onPick={setPicker} onWhy={setWhy} onAuto={() => void save({ auto: true })} />
+            onPick={setPicker} onWhy={setWhy} onAuto={() => void save({ auto: true })} onSkill={(index, slot) => setSkillSheet({ index, slot })} />
         </section>
 
         <div className="space-y-7">
@@ -361,6 +382,10 @@ export default function PlayPage() {
         <WhySheet m={data.party[why]} onClose={() => setWhy(null)} onEquip={(slot) => { const i = why; setWhy(null); setPicker({ kind: slot, index: i }); }} />
       )}
       {damageInfo && <DamageSheet onClose={() => setDamageInfo(false)} />}
+      {skillSheet && data.party[skillSheet.index] && (
+        <SkillSheet m={data.party[skillSheet.index]} slot={skillSheet.slot} onClose={() => setSkillSheet(null)}
+          onAssign={(id) => { const k = skillSheet; setSkillSheet(null); void save({ slots: setSkill(slots, k.index, k.slot, id) }); }} />
+      )}
     </div>
   );
 }

@@ -927,3 +927,15 @@ model DungeonPrize {
   @@index([userId], map: "dungeon_prizes_user_id_idx")
   @@map("dungeon_prizes")
 }
+
+/// Spectacle score of an attack animation (prisma/sql/2026-10-18_dungeon_skills.sql), computed once from its sheet.
+model DungeonSkillScore {
+  generationId String   @id @map("generation_id")
+  score        Int
+  tier         String // common | rare | epic | legendary
+  metrics      Json     @default("{}")
+  failed       Boolean  @default(false) // analysis failed: neutral Common score, retried later
+  computedAt   DateTime @default(now()) @map("computed_at")
+
+  @@map("dungeon_skill_scores")
+}

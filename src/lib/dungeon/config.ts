@@ -83,16 +83,81 @@ export const HERO_MAKE_CATEGORY = "CHARACTERS";
 export const PARTY_SIZE = 4;
 export const RUNS_PER_DAY = 5;
 
-// ── Stars: work put into a sprite ──────────────────────────────────────────
-/** ★ plain, +★ HD, +★ animated, +★ three different animations or a walk / rotation set. */
-export const MAX_STARS = 4;
-/** Each star above the first multiplies everything the sprite gives by 1.3 (×1, ×1.3, ×1.69, ×2.2). */
+// ── Work put into a sprite ─────────────────────────────────────────────────
+/**
+ * ITEMS: ★ plain, +★ HD, +★ animated (max 3); each star above the first ×1.3.
+ * HEROES: ★ plain, +★ HD, +★ per different animation made from it (max 6 count).
+ *   hero multiplier = (HD ? ×1.3 : ×1) × animation multiplier
+ *   animation multiplier: the 1st animation adds +30%, each next one adds 80% of
+ *   the previous step (+24%, +19.2%, +15.4%, +12.3%, +9.8%), up to 6 animations:
+ *   1 → ×1.30, 2 → ×1.54, 3 → ×1.73, 4 → ×1.89, 5 → ×2.01, 6 → ×2.11.
+ *   Every distinct motion label counts once (idle, walk, attack, cast…); a
+ *   4-direction walk or a rotation set counts as one.
+ */
+export const MAX_STARS = 3;
 export const STAR_STEP = 1.3;
-export const MULTI_ANIMATION_COUNT = 3;
+export const HD_MULTIPLIER = 1.3;
+export const ANIMATION_FIRST_BONUS = 0.3;
+export const ANIMATION_DECAY = 0.8;
+export const MAX_COUNTED_ANIMATIONS = 6;
 
 export function starMultiplier(stars: number): number {
   return Math.round(STAR_STEP ** (Math.max(1, Math.min(MAX_STARS, stars)) - 1) * 1000) / 1000;
 }
+
+/** What the k-th animation adds (k = 1, 2, …): 0.30, 0.24, 0.192, … and 0 past the cap. */
+export function animationStep(k: number): number {
+  return k < 1 || k > MAX_COUNTED_ANIMATIONS ? 0 : ANIMATION_FIRST_BONUS * ANIMATION_DECAY ** (k - 1);
+}
+
+export function animationMultiplier(count: number): number {
+  let m = 1;
+  for (let k = 1; k <= Math.min(count, MAX_COUNTED_ANIMATIONS); k++) m += animationStep(k);
+  return Math.round(m * 1000) / 1000;
+}
+
+// ── Skills: the hero's attack animations ───────────────────────────────────
+export type SkillSlot = "basic" | "special" | "legendary";
+export type Tier = "common" | "rare" | "epic" | "legendary";
+export const SKILL_SLOTS: SkillSlot[] = ["basic", "special", "legendary"];
+export const TIERS: Tier[] = ["common", "rare", "epic", "legendary"];
+/** Spectacle score thresholds (0–100). */
+export const TIER_MIN: Record<Tier, number> = { common: 0, rare: 35, epic: 60, legendary: 80 };
+export const TIER_LABEL: Record<Tier, string> = { common: "Common", rare: "Rare", epic: "Epic", legendary: "Legendary" };
+export const TIER_COLOR: Record<Tier, string> = { common: "#A7ADD4", rare: "#29ADFF", epic: "#B35CFF", legendary: "#FFA300" };
+/** Lowest tier a slot accepts: the Legendary slot needs Epic or better, Special needs Rare or better. */
+export const SLOT_MIN_TIER: Record<SkillSlot, Tier> = { basic: "common", special: "rare", legendary: "epic" };
+export const SLOT_LABEL: Record<SkillSlot, string> = { basic: "Basic", special: "Special", legendary: "Legendary" };
+/** Animation labels that count as attacks (skills). Idle, walk, hurt… don't. */
+export const SKILL_WORDS = ["attack", "slash", "strike", "cast", "spell", "shoot", "shot", "breath", "breathe", "slam", "punch", "bite", "kick",
+  "combo", "special", "roar", "smash", "stab", "thrust", "claw", "magic", "swing", "throw", "blast", "beam", "fire", "charge", "stomp",
+  // Custom animations are user-described actions; a calm one simply scores low
+  "custom"];
+
+/**
+ * Spectacle score, measured on the animation sheet (no AI): four capped parts summing to 0–100.
+ *  frames  (max 20): (frames − 2) × 20 / 7 → 4 frames 6, 6 frames 11, 9+ frames 20
+ *  motion  (max 25): mean share of the subject that changes between consecutive frames; 30% change = full points
+ *  reach   (max 25): how far the frames' combined outline reaches past the sprite's own (×2 the size = full points)
+ *  effects (max 30): new colours not in the sprite (1.5 points each, max 15) + area they cover (20% of the frame = 15)
+ */
+export const SCORE_WEIGHTS = { frames: 20, motion: 25, reach: 25, effectColours: 15, effectArea: 15 };
+export const SCORE_MOTION_FULL = 0.3;
+export const SCORE_AREA_FULL = 0.2;
+
+/** In battle (a hero's turn = a round): which skill fires. */
+export const SKILL_RULES = {
+  /** Rare (Special slot): every 3rd turn, ×1.5 on one enemy. */
+  rare: { every: 3, mult: 1.5, all: false },
+  /** Epic (Special or Legendary slot): every 4th turn, ×1.6 on every enemy. */
+  epic: { every: 4, mult: 1.6, all: true },
+  /** Legendary (Legendary slot): once per floor on the hero's 2nd turn, ×2.5 on every enemy, stuns them for a turn. */
+  legendary: { atTurn: 2, mult: 2.5, all: true, stun: 1 },
+} as const;
+/** Power bonus a skill adds (expected extra damage): Rare +12%, Epic +25%, Legendary +40% offence. */
+export const SKILL_POWER: Record<Tier, number> = { common: 0, rare: 0.12, epic: 0.25, legendary: 0.4 };
+/** At most this many new skill analyses per page load (the rest show "analysing" until the next load). */
+export const SKILL_ANALYSES_PER_LOAD = 3;
 
 // ── Gear at one star (× the item's star multiplier) ────────────────────────
 export const WEAPON_ATK = 5;
@@ -130,17 +195,42 @@ export interface ElementDef {
 }
 
 export const ELEMENT_DEFS: Record<Element, ElementDef> = {
-  fire: { label: "Fire", adjective: "Ember", color: "#FF6B2B", keywords: ["fire", "flame", "flaming", "lava", "magma", "ember", "inferno", "burning", "blaze", "phoenix", "volcanic", "molten", "sun", "solar"], weakTo: ["ice"], resists: ["fire", "nature"] },
-  ice: { label: "Ice", adjective: "Frost", color: "#7FDBFF", keywords: ["ice", "frost", "frozen", "snow", "glacier", "glacial", "winter", "crystal", "frostbite", "arctic", "icy"], weakTo: ["fire", "lightning"], resists: ["ice"] },
-  poison: { label: "Poison", adjective: "Venom", color: "#B35CFF", keywords: ["poison", "venom", "venomous", "toxic", "acid", "plague", "rot", "rotten", "blight", "sludge"], weakTo: ["holy", "fire"], resists: ["poison", "nature"] },
-  holy: { label: "Holy", adjective: "Radiant", color: "#FFE36B", keywords: ["holy", "divine", "light", "radiant", "angel", "angelic", "celestial", "blessed", "sacred", "golden"], weakTo: ["shadow"], resists: ["holy"] },
-  shadow: { label: "Shadow", adjective: "Shade", color: "#8A6BFF", keywords: ["shadow", "dark", "void", "cursed", "demon", "demonic", "necro", "undead", "ghost", "vampire", "abyss", "night", "skull", "bone"], weakTo: ["holy", "fire"], resists: ["shadow", "poison"] },
-  nature: { label: "Nature", adjective: "Moss", color: "#3BD16F", keywords: ["nature", "forest", "leaf", "leaves", "vine", "wood", "wooden", "earth", "stone", "druidic", "thorn", "flower", "tree", "moss"], weakTo: ["fire", "poison"], resists: ["nature", "lightning"] },
-  lightning: { label: "Lightning", adjective: "Storm", color: "#29ADFF", keywords: ["lightning", "thunder", "storm", "electric", "spark", "shock", "tesla", "bolt"], weakTo: ["nature"], resists: ["lightning"] },
+  fire: { label: "Fire", adjective: "Ember", color: "#FF6B2B", keywords: ["fire", "flame", "flames", "flaming", "burning", "ember", "embers", "lava", "magma", "inferno", "blaze", "blazing", "molten", "volcanic", "fiery", "breathing fire", "fire breathing", "dragon breath", "pyro"], weakTo: ["ice"], resists: ["fire", "nature"] },
+  ice: { label: "Ice", adjective: "Frost", color: "#7FDBFF", keywords: ["ice", "frost", "frosty", "frozen", "snow", "snowy", "glacier", "glacial", "arctic", "blizzard", "cryo"], weakTo: ["fire", "lightning"], resists: ["ice"] },
+  poison: { label: "Poison", adjective: "Venom", color: "#B35CFF", keywords: ["poison", "poisonous", "toxic", "venom", "venomous", "plague", "blight", "sludge", "rotting"], weakTo: ["holy", "fire"], resists: ["poison", "nature"] },
+  holy: { label: "Holy", adjective: "Radiant", color: "#FFE36B", keywords: ["holy", "divine", "light", "radiant", "angel", "angelic", "celestial", "blessed", "sacred", "seraph"], weakTo: ["shadow"], resists: ["holy"] },
+  shadow: { label: "Shadow", adjective: "Shade", color: "#8A6BFF", keywords: ["shadow", "shadows", "dark", "darkness", "void", "necro", "necromantic", "cursed", "demon", "demonic", "undead", "vampire", "abyss", "abyssal"], weakTo: ["holy", "fire"], resists: ["shadow", "poison"] },
+  nature: { label: "Nature", adjective: "Moss", color: "#3BD16F", keywords: ["nature", "forest", "leaf", "leaves", "leafy", "vine", "vines", "druid", "druidic", "thorn", "thorns", "moss", "mossy", "flower", "flowers"], weakTo: ["fire", "poison"], resists: ["nature", "lightning"] },
+  lightning: { label: "Lightning", adjective: "Storm", color: "#29ADFF", keywords: ["lightning", "thunder", "storm", "stormy", "electric", "electrified", "spark", "sparks", "shock", "tesla"], weakTo: ["nature"], resists: ["lightning"] },
   neutral: { label: "Neutral", adjective: "", color: "#C8CCE8", keywords: [], weakTo: [], resists: [] },
 };
-/** Keyword priority when a prompt names several elements. */
+/**
+ * How an element is read from a prompt (heroes and items), first rule that matches wins:
+ *   1. element words (ELEMENT_DEFS keywords; the word that comes FIRST in the prompt wins)
+ *   2. colour words (ELEMENT_COLOURS; first colour in the prompt wins)
+ *   3. creature defaults (ELEMENT_CREATURES: a dragon is Fire unless the prompt says otherwise)
+ *   4. otherwise Neutral
+ */
 export const ELEMENT_ORDER: Element[] = ["fire", "ice", "lightning", "poison", "holy", "shadow", "nature"];
+
+export const ELEMENT_COLOURS: Record<string, Element> = {
+  red: "fire", crimson: "fire", scarlet: "fire", orange: "fire",
+  blue: "ice", cyan: "ice", icy: "ice", azure: "ice",
+  green: "nature", emerald: "nature",
+  purple: "shadow", violet: "shadow", black: "shadow",
+  gold: "holy", golden: "holy", white: "holy", silver: "holy",
+  yellow: "lightning",
+  lime: "poison", acid: "poison",
+};
+
+export const ELEMENT_CREATURES: Record<string, Element> = {
+  dragon: "fire", wyvern: "fire", phoenix: "fire", salamander: "fire",
+  ghost: "shadow", wraith: "shadow", specter: "shadow", spectre: "shadow", skeleton: "shadow", zombie: "shadow", lich: "shadow",
+  angel: "holy", unicorn: "holy",
+  treant: "nature", ent: "nature", dryad: "nature", fairy: "nature",
+  slime: "poison", ooze: "poison",
+  yeti: "ice",
+};
 export const WEAK_MULTIPLIER = 1.5;
 export const RESIST_MULTIPLIER = 0.6;
 

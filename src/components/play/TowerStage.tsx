@@ -12,15 +12,17 @@
 
 import { useEffect, useRef } from "react";
 import { chestName } from "@/lib/dungeon/simulate";
-import { ELEMENT_DEFS, ZONES, zoneFor, type Element } from "@/lib/dungeon/config";
+import { ELEMENT_DEFS, TIER_COLOR, TIER_LABEL, ZONES, zoneFor, type Element } from "@/lib/dungeon/config";
+import type { AnimRef } from "@/lib/dungeon/anims";
 import { blessingView } from "@/lib/dungeon/blessings";
 import type { FloorLog, EnemyUnit } from "@/lib/dungeon/simulate";
 import type { PartyMember } from "@/lib/dungeon/store";
 import { CROWN, ENEMY_ART, artSize, paletteFor } from "./enemy-art";
 import { buildTimeline, stepAt, type Step } from "./replay";
+import { animationSheetGeometry, type SheetGeometry } from "@/lib/workspace/history";
 import { play, type Sfx } from "./sfx";
 import {
-  SLAB, TOWER_W, WALL, ceilingY, drawChest, drawOuterWalls, drawRoom, drawSky, floorY, h2, px, roomHeight, stairPath,
+  ROOM_H, SLAB, TOWER_W, WALL, ceilingY, drawChest, drawOuterWalls, drawRoom, drawSky, floorY, h2, px, roomHeight, stairPath,
   type ZoneId,
 } from "./tower-art";
 
@@ -55,22 +57,29 @@ interface Props {
   onDone?: () => void;
 }
 
-const HERO = 26;
+const HERO = 30;
+type Mode = "idle" | "attack" | "walk" | "hurt" | "defeat" | "static";
 const IMPACT_MS = 140;
 
 // ── positions (logical, relative to the tower's left edge) ───────────────────
 function heroSpot(i: number): { x: number; dy: number } {
-  return { x: 76 - i * 18, dy: i % 2 === 1 ? -5 : 0 };
+  return { x: 106 - i * 24, dy: i % 2 === 1 ? -6 : 0 };
 }
 function enemyScale(e: EnemyUnit): number {
   return e.boss ? 3 : 2;
 }
 function enemySpot(i: number, e: EnemyUnit): { x: number; dy: number } {
-  if (e.boss) return { x: 116, dy: 0 };
-  return { x: 94 + i * 15, dy: i % 2 === 1 ? -5 : 0 };
+  if (e.boss) return { x: 176, dy: 0 };
+  return { x: 142 + i * 19, dy: i % 2 === 1 ? -6 : 0 };
 }
 const zoneId = (floor: number): ZoneId => zoneFor(Math.max(1, floor)).id;
 const ease = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x * x * (3 - 2 * x));
+/** Hit tint for enemy pixels: halfway to white (a flash that keeps the shape readable). */
+function lighten(hex: string): string {
+  const n = parseInt(hex.slice(1, 7), 16);
+  const mix = (c: number) => Math.round(c + (255 - c) * 0.55);
+  return `rgb(${mix((n >> 16) & 255)},${mix((n >> 8) & 255)},${mix(n & 255)})`;
+}
 
 /** Point along a polyline at progress u (0…1), by length. */
 function along(points: [number, number][], u: number): { x: number; y: number; dx: number } {
@@ -95,7 +104,7 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
   const fontRef = useRef<HTMLSpanElement>(null);
   const sizeRef = useRef({ s: 3, vw: 200, vh: 150 });
   const imagesRef = useRef(new Map<string, HTMLImageElement>());
-  const flashRef = useRef(new Map<string, HTMLCanvasElement>());
+  const geoRef = useRef(new Map<string, SheetGeometry>());
   const speedRef = useRef(speed);
   const clockRef = useRef(0);
   const drawRef = useRef<() => void>(() => {});
@@ -109,17 +118,25 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
     drawRef.current();
   }, [flags, reducedMotion, restFloor, restHp, bestBefore]);
 
-  // The player's real sprites (heroes + weapons)
+  // The heroes' sprites and their animation sheets (gear is not drawn on the stage)
   useEffect(() => {
     const redraw = () => drawRef.current();
+    const load = (key: string, url: string, onload?: (img: HTMLImageElement) => void) => {
+      if (imagesRef.current.has(key)) return;
+      const img = new Image();
+      img.decoding = "async";
+      img.onload = () => { onload?.(img); redraw(); };
+      img.src = url;
+      imagesRef.current.set(key, img);
+    };
     for (const m of members) {
-      for (const sp of [m.hero, m.weapon]) {
-        if (!sp || imagesRef.current.has(sp.id)) continue;
-        const img = new Image();
-        img.decoding = "async";
-        img.onload = redraw;
-        img.src = sp.imageUrl;
-        imagesRef.current.set(sp.id, img);
+      load(m.hero.id, m.hero.imageUrl);
+      for (const ref of [...Object.values(m.anims ?? {}), ...(m.skills ?? []).map((k) => k.anim)]) {
+        if (!ref) continue;
+        load(`anim:${ref.url}`, ref.url, (img) => {
+          const geo = animationSheetGeometry({ frameCount: ref.frameCount, walkSet: ref.walkSet }, img.naturalWidth, img.naturalHeight);
+          if (geo) geoRef.current.set(ref.url, geo);
+        });
       }
     }
     redraw();
@@ -132,13 +149,17 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
     const fit = () => {
       const dpr = window.devicePixelRatio || 1;
       const cw = Math.max(1, Math.round(wrap.clientWidth * dpr)), ch = Math.max(1, Math.round(wrap.clientHeight * dpr));
-      const s = Math.max(1, Math.min(Math.floor(cw / (TOWER_W + 12)), Math.floor(ch / 124)));
-      canvas.width = cw;
-      canvas.height = ch;
+      // Whole-number scale: the tower fits the width, a room and a half fits the height.
+      // Below ×2 (narrow low-density screens) draw at ×2 on a larger canvas and let CSS fit it.
+      const natural = Math.min(Math.floor(cw / (TOWER_W + 16)), Math.floor(ch / (ROOM_H * 1.5)));
+      const s = Math.max(2, natural);
+      const k = natural >= 2 ? 1 : Math.max(1, ((TOWER_W + 16) * 2) / cw);
+      const bw = Math.round(cw * k), bh = Math.round(ch * k);
+      canvas.width = bw;
+      canvas.height = bh;
       canvas.style.width = `${wrap.clientWidth}px`;
       canvas.style.height = `${wrap.clientHeight}px`;
-      sizeRef.current = { s, vw: Math.ceil(cw / s), vh: Math.ceil(ch / s) };
-      flashRef.current.clear();
+      sizeRef.current = { s, vw: Math.ceil(bw / s), vh: Math.ceil(bh / s) };
       drawRef.current();
     };
     fit();
@@ -178,64 +199,87 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
       return img?.complete && img.naturalWidth > 0 ? img : null;
     };
 
-    const silhouette = (key: string, img: HTMLImageElement, size: number, smooth: boolean) => {
-      const k = `${key}@${size}`;
-      const hit = flashRef.current.get(k);
-      if (hit) return hit;
-      const c = document.createElement("canvas");
-      c.width = size; c.height = size;
-      const g = c.getContext("2d");
-      if (g) {
-        g.imageSmoothingEnabled = smooth;
-        g.drawImage(img, 0, 0, size, size);
-        g.globalCompositeOperation = "source-in";
-        g.fillStyle = "#FFFFFF";
-        g.fillRect(0, 0, size, size);
-      }
-      flashRef.current.set(k, c);
-      return c;
+    // Hit / revive feedback: a brief colour tint over the sprite, never a solid fill
+    const scratch = document.createElement("canvas");
+    const tinted = (img: CanvasImageSource, sx: number, sy: number, sw: number, sh: number, w: number, h: number, smooth: boolean, tint: string) => {
+      scratch.width = w;
+      scratch.height = h;
+      const g = scratch.getContext("2d");
+      if (!g) return scratch;
+      g.imageSmoothingEnabled = smooth;
+      g.drawImage(img, sx, sy, sw, sh, 0, 0, w, h);
+      g.globalCompositeOperation = "source-atop";
+      g.fillStyle = tint;
+      g.fillRect(0, 0, w, h);
+      g.globalCompositeOperation = "source-over";
+      return scratch;
     };
 
-    const drawHero = (m: PartyMember, x: number, groundY: number, hp: number, opts: { flip?: boolean; flash?: boolean; alpha?: number; swing?: number; bob?: number }) => {
+    /**
+     * A hero from its own animation sheet when it has one for `mode` (frames at a fixed
+     * height, bottom-aligned: the feet stay put and the size never changes), else its
+     * still sprite. No fake motion: without a sheet the sprite simply doesn't animate.
+     */
+    const drawHero = (m: PartyMember, x: number, groundY: number, hp: number, o: { mode: Mode; e?: number; dur?: number; flip?: boolean; left?: boolean; tint?: string | null; alpha?: number; anim?: AnimRef }) => {
       const { s } = sizeRef.current;
-      const left = Math.round(x - HERO / 2), top = Math.round(groundY - HERO - (opts.bob ?? 0));
-      px(ctx, s, left + 4, groundY - 1, HERO - 8, 2, "rgba(0,0,0,0.35)");
-      ctx.globalAlpha = opts.alpha ?? 1;
+      const ref = o.mode === "static" ? undefined : o.anim ?? m.anims?.[o.mode];
+      const sheet = ref ? image(`anim:${ref.url}`) : null;
+      const geo = ref ? geoRef.current.get(ref.url) : undefined;
+      let src: { img: HTMLImageElement; sx: number; sy: number; sw: number; sh: number } | null = null;
+      if (ref && sheet && geo) {
+        const frames = ref.walkSet ? geo.cols : ref.frameCount;
+        const e = o.e ?? 0;
+        let fi: number;
+        if (o.mode === "idle") fi = Math.floor((performance.now() * ref.fps) / 1000) % frames;
+        else if (o.mode === "walk") fi = Math.floor((e * ref.fps) / 1000) % frames;
+        else fi = Math.min(frames - 1, Math.floor((o.dur ? e / o.dur : (e * ref.fps) / 1000 / frames) * frames));
+        const row = ref.walkSet ? (o.left ? 3 : 1) : 0;
+        src = { img: sheet, sx: (fi % geo.cols) * geo.frameWidth, sy: row * geo.frameHeight, sw: geo.frameWidth, sh: geo.frameHeight };
+      } else {
+        const img = image(m.hero.id);
+        if (img) src = { img, sx: 0, sy: 0, sw: img.naturalWidth, sh: img.naturalHeight };
+      }
+      const h = HERO, w = src ? Math.max(8, Math.round((HERO * src.sw) / src.sh)) : HERO;
+      const left = Math.round(x - w / 2), top = Math.round(groundY - h);
+      px(ctx, s, x - 9, groundY - 1, 18, 2, "rgba(0,0,0,0.35)");
+      ctx.globalAlpha = o.alpha ?? 1;
       ctx.save();
-      if (opts.flip) {
-        ctx.translate((left * 2 + HERO) * s, 0);
+      if (o.flip && !ref?.walkSet) {
+        ctx.translate((left * 2 + w) * s, 0);
         ctx.scale(-1, 1);
       }
-      const img = image(m.hero.id);
-      const size = HERO * s;
-      if (img) {
-        ctx.imageSmoothingEnabled = !m.hero.pixel;
+      if (src) {
+        const smooth = !m.hero.pixel;
+        ctx.imageSmoothingEnabled = smooth;
         ctx.imageSmoothingQuality = "high";
-        ctx.drawImage(img, left * s, top * s, size, size);
-        if (opts.flash) ctx.drawImage(silhouette(m.hero.id, img, size, !m.hero.pixel), left * s, top * s);
+        ctx.drawImage(src.img, src.sx, src.sy, src.sw, src.sh, left * s, top * s, w * s, h * s);
+        if (o.tint) ctx.drawImage(tinted(src.img, src.sx, src.sy, src.sw, src.sh, w * s, h * s, smooth, o.tint), left * s, top * s);
       } else {
-        px(ctx, s, left + 6, top + 6, HERO - 12, HERO - 6, "#2A3460");
-      }
-      const wimg = image(m.weapon?.id);
-      if (wimg && m.weapon) {
-        ctx.save();
-        ctx.translate(Math.round(left + HERO / 2 + 7) * s, Math.round(top + 13) * s);
-        ctx.rotate(-0.7 + (opts.swing ?? 0));
-        ctx.imageSmoothingEnabled = !m.weapon.pixel;
-        ctx.drawImage(wimg, -7 * s, -12 * s, 14 * s, 14 * s);
-        ctx.restore();
+        px(ctx, s, left + 8, top + 8, w - 16, h - 8, "#2A3460");
       }
       ctx.restore();
       ctx.globalAlpha = 1;
       if (hp > 0) {
-        const bw = 18, bx = Math.round(x - bw / 2), by = top - 4;
+        const bw = 14, bx = Math.round(x - bw / 2), by = top - 4;
         px(ctx, s, bx - 1, by - 1, bw + 2, 4, "#0B1022");
         px(ctx, s, bx, by, bw, 2, "#2A3460");
         const fill = Math.ceil((Math.max(0, hp) / m.stats.hp) * bw);
         if (fill > 0) px(ctx, s, bx, by, fill, 2, "#00E436");
-        if (m.armor) px(ctx, s, bx + bw + 2, by - 1, 3, 3, "#29ADFF");
-        if (m.trinket) px(ctx, s, bx + bw + (m.armor ? 6 : 2), by - 1, 3, 3, "#00E436");
       }
+      return top;
+    };
+
+    /** A small orange marker over whoever is acting: makes turns readable. */
+    const actorMark = (x: number, y: number) => {
+      const { s } = sizeRef.current;
+      px(ctx, s, x - 2, y - 4, 5, 1, "#FFA300");
+      px(ctx, s, x - 1, y - 3, 3, 1, "#FFA300");
+      px(ctx, s, x, y - 2, 1, 1, "#FFA300");
+    };
+    /** Red corner ticks at a target's feet when a hit lands. */
+    const targetMark = (x: number, y: number, half: number) => {
+      const { s } = sizeRef.current;
+      for (const dx of [-half, half - 3]) px(ctx, s, x + dx, y + 1, 3, 1, "#FF004D");
     };
 
     const drawEnemy = (e: EnemyUnit, x: number, groundY: number, hp: number, flash: boolean, alpha: number) => {
@@ -250,17 +294,17 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
       art.rows.forEach((row, ry) => {
         for (let rx = 0; rx < row.length; rx++) {
           const c = row[rx];
-          if (c !== ".") px(ctx, s, left + rx * p, top + ry * p, p, p, flash ? "#FFFFFF" : pal[c] ?? "#FF00FF");
+          if (c !== ".") px(ctx, s, left + rx * p, top + ry * p, p, p, flash ? lighten(pal[c] ?? "#FF00FF") : pal[c] ?? "#FF00FF");
         }
       });
       if (e.boss) {
         CROWN.rows.forEach((row, ry) => {
-          for (let rx = 0; rx < row.length; rx++) if (row[rx] !== ".") px(ctx, s, x - 7 + rx * 2, top - 9 + ry * 2, 2, 2, flash ? "#FFFFFF" : CROWN.palette[row[rx]]);
+          for (let rx = 0; rx < row.length; rx++) if (row[rx] !== ".") px(ctx, s, x - 7 + rx * 2, top - 9 + ry * 2, 2, 2, flash ? lighten(CROWN.palette[row[rx]]) : CROWN.palette[row[rx]]);
         });
       }
       ctx.globalAlpha = 1;
       if (hp > 0) {
-        const bw = e.boss ? 30 : 16, bx = Math.round(x - bw / 2), by = top - (e.boss ? 13 : 5);
+        const bw = e.boss ? 26 : 12, bx = Math.round(x - bw / 2), by = top - (e.boss ? 13 : 5);
         px(ctx, s, bx - 1, by - 1, bw + 2, 4, "#0B1022");
         px(ctx, s, bx, by, bw, 2, "#2A3460");
         const fill = Math.ceil((hp / e.hp) * bw);
@@ -303,9 +347,10 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
           shake = [3, -3, 2, -2, 1, -1][Math.floor((e - IMPACT_MS) / 27) % 6] * (a.ko && st.enemies[a.target]?.boss ? 2 : 1);
         }
         if (st.kind === "gate" && t > 0.15 && t < 0.75) shake = [1, -1][Math.floor(e / 50) % 2];
+        if (st.kind === "act" && a?.skill?.rule === "legendary" && e >= IMPACT_MS && e < IMPACT_MS + 240) shake = [3, -3, 2, -2, 1, -1][Math.floor((e - IMPACT_MS) / 40) % 6];
       }
       // Never show more than a strip of ground below the tower (the start button sits there)
-      const camTop = Math.min(Math.round(cy - vh / 2), SLAB + 30 - vh);
+      const camTop = Math.min(Math.round(cy - vh / 2), SLAB + 54 - vh);
       const x0 = Math.floor((vw - TOWER_W) / 2) + shake;
 
       ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -363,28 +408,49 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
           const u = ease((t - i * 0.04) / 0.86);
           const p = along(pts, u);
           const moving = u > 0 && u < 1;
-          const bob = moving && !rm ? (Math.floor(e / 110) % 2) : 0;
           const hp = hpNow[i] ?? 0;
-          drawHero(members[i], p.x, Math.round(p.y), hp, { flip: p.dx < 0 && moving, alpha: hp > 0 ? 1 : 0.3, bob });
+          const m = members[i];
+          // Real walk sheet while moving; without one the still sprite just glides (no fake steps)
+          const mode: Mode = hp <= 0 ? "static" : moving ? (m.anims?.walk ? "walk" : "static") : "idle";
+          drawHero(m, p.x, Math.round(p.y), hp, { mode, e, flip: p.dx < 0 && moving, left: p.dx < 0, alpha: hp > 0 ? 1 : 0.3 });
         });
       } else {
         order.forEach((i) => {
           const spot = heroSpot(i);
-          const hp = hpNow[i] ?? 0;
+          const m = members[i];
+          // Revives: mid-fight (action) or as the floor starts (Phoenix feather picked while down)
+          const reviving = (a?.kind === "revive" && a.target === i) || (st?.kind === "revive" && st.event?.target === i);
+          const upAt = st?.kind === "revive" ? 300 : IMPACT_MS;
+          const revived = reviving && e >= upAt;
+          const hp = st?.kind === "revive" && st.event?.target === i ? (revived ? st.event.amount : 0) : hpNow[i] ?? 0;
           const before = st ? st.partyHp[i] ?? 0 : hp;
-          const isActor = a && a.side === "party" && a.actor === i && a.kind === "hit";
-          const lunge = isActor ? Math.round(Math.sin(Math.PI * Math.min(1, e < IMPACT_MS ? e / (IMPACT_MS * 2) : 0.5 + Math.max(0, e - IMPACT_MS - (a!.crit || a!.ko ? 150 : 0)) / 300)) * 7) : 0;
-          const hit = a && a.side === "enemy" && a.target === i && e >= IMPACT_MS && e < IMPACT_MS + 90;
-          const fallingNow = a && a.side === "enemy" && a.target === i && a.ko;
-          const alpha = before <= 0 && !fallingNow && !(a?.kind === "revive" && a.target === i) ? 0.3 : 1;
-          const swing = isActor ? Math.sin(Math.PI * Math.min(1, e / 300)) * 1.1 : 0;
-          drawHero(members[i], x0 + spot.x + lunge, ground + spot.dy, hp, { flash: Boolean(hit) && !rm, alpha, swing });
+          const isActor = Boolean(a && a.side === "party" && a.actor === i && a.kind === "hit");
+          const skillAnim = isActor && a?.skill && a.skill.rule !== "basic" ? m.skills?.find((k) => k.id === a.skill!.animId)?.anim : undefined;
+          const hasAttack = Boolean(skillAnim ?? m.anims?.attack);
+          // With a real attack animation the hero steps in a little; without one, a short lunge only
+          const reach = hasAttack ? 4 : 7;
+          const lunge = isActor ? Math.round(Math.sin(Math.PI * Math.min(1, e < IMPACT_MS ? e / (IMPACT_MS * 2) : 0.5 + Math.max(0, e - IMPACT_MS - (a!.crit || a!.ko ? 150 : 0)) / 300)) * reach) : 0;
+          const struck = Boolean(a && a.side === "enemy" && a.kind === "hit" && a.target === i && e >= IMPACT_MS);
+          const fallingNow = Boolean(a && a.side === "enemy" && a.target === i && a.ko);
+          const down = before <= 0 && !fallingNow && !revived;
+          let mode: Mode = "idle";
+          let me = e, dur: number | undefined;
+          if (down) { mode = m.anims?.defeat ? "defeat" : "static"; me = 1e9; }
+          else if (fallingNow && e >= IMPACT_MS) { mode = m.anims?.defeat ? "defeat" : "static"; me = e - IMPACT_MS; dur = 450; }
+          else if (isActor) { mode = hasAttack ? "attack" : "idle"; dur = st!.ms * 0.9; }
+          else if (struck && e < IMPACT_MS + 320 && m.anims?.hurt) { mode = "hurt"; me = e - IMPACT_MS; dur = 320; }
+          const alpha = down ? (m.anims?.defeat ? 0.75 : 0.3) : fallingNow && e >= IMPACT_MS && !m.anims?.defeat ? Math.max(0.3, Math.round((1 - (e - IMPACT_MS) / 400) * 4) / 4) : 1;
+          const tint = !rm && struck && e < IMPACT_MS + 110 ? "rgba(255,72,72,0.45)" : revived && e < upAt + 200 ? "rgba(255,227,107,0.5)" : null;
+          const top = drawHero(m, x0 + spot.x + lunge, ground + spot.dy, hp, { mode, e: me, dur, alpha, tint, anim: mode === "attack" ? skillAnim : undefined });
+          if (st?.kind === "act" && a && a.side === "party" && a.actor === i) actorMark(x0 + spot.x + lunge, top - 6);
+          if (struck && e < IMPACT_MS + 260) targetMark(x0 + spot.x, ground + spot.dy, 10);
+          if (revived) burst(idx * 37 + i, x0 + spot.x, ground + spot.dy - 14, e - upAt, "#FFE36B", 18, 1.8, 700);
           if (fallingNow && e >= IMPACT_MS) burst(idx * 31 + i, x0 + spot.x, ground + spot.dy - 10, e - IMPACT_MS, "#C8CCE8", 10, 1.2, 420);
         });
       }
 
       // ── Enemies ───────────────────────────────────────────────────────────
-      if (st && st.kind !== "climb" && st.kind !== "clear" && st.kind !== "chest" && st.kind !== "record") {
+      if (st && st.kind !== "climb" && st.kind !== "revive" && st.kind !== "clear" && st.kind !== "chest" && st.kind !== "record") {
         const appear = st.kind === "intro" ? ease(t / 0.8) : 1;
         st.enemies.forEach((en, i) => {
           const before = st.enemyHp[i];
@@ -399,6 +465,19 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
           const flash = Boolean(struck) && e >= IMPACT_MS && e < IMPACT_MS + 90 && !rm;
           const fade = fallingNow && e >= IMPACT_MS + 60 ? Math.max(0, Math.round((1 - (e - IMPACT_MS - 60) / 240) * 4) / 4) : 1;
           drawEnemy(en, x0 + spot.x - lunge + slide, ground + spot.dy, enemyHpNow[i] ?? 0, flash, (st.kind === "intro" ? Math.round(appear * 4) / 4 : 1) * fade);
+          const eh = artSize(ENEMY_ART[en.kind]).h * enemyScale(en);
+          if (isActor && st.kind === "act") actorMark(x0 + spot.x - lunge, ground + spot.dy - eh - (en.boss ? 18 : 9));
+          if (struck && e >= IMPACT_MS && e < IMPACT_MS + 260) targetMark(x0 + spot.x, ground + spot.dy, en.boss ? 18 : 10);
+          // Stun: from a Legendary hit, or this enemy losing its turn
+          const stunnedNow = (a?.stun?.includes(i) && e >= IMPACT_MS + 420) || (a?.kind === "stunned" && a.actor === i);
+          if (stunnedNow) {
+            const sy = ground + spot.dy - eh - (en.boss ? 22 : 12);
+            text("Stunned", x0 + spot.x, sy - Math.round(Math.min(1, e / 600) * 6), "#FFE36B", 6, true);
+            for (let k = 0; k < 3; k++) {
+              const ang = (e / 180 + (k * Math.PI * 2) / 3);
+              px(ctx, sizeRef.current.s, x0 + spot.x + Math.round(Math.cos(ang) * 7), sy + 6 + Math.round(Math.sin(ang) * 2), 1, 1, "#FFE36B");
+            }
+          }
           if (fallingNow && e >= IMPACT_MS) {
             const big = en.boss;
             burst(idx * 17 + i, x0 + spot.x, ground + spot.dy - (big ? 18 : 8), e - IMPACT_MS, big ? "#FFA300" : "#C8CCE8", big ? 26 : 10, big ? 2.4 : 1.2, big ? 700 : 420);
@@ -427,14 +506,26 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
             const spot = enemySpot(tg.target, en);
             const h = artSize(ENEMY_ART[en.kind]).h * enemyScale(en);
             show(x0 + spot.x, ground + spot.dy - h - 6, tg.amount, a.crit, tg.matchup, a.element, false, n);
+            if (a.ambush && n === 0) text("Ambush!", x0 + spot.x, ground + spot.dy - h - 26 - rise, "#FFA300", 6, true);
           });
+          // Leech: the attacker heals, in green
+          if (a.leech) {
+            const me = heroSpot(a.actor);
+            text(`+${a.leech}`, x0 + me.x, ground + me.dy - HERO - 8 - rise, "#00E436", 8, true);
+          }
         } else if (a.kind === "hit") {
           const spot = heroSpot(a.target);
           show(x0 + spot.x, ground + spot.dy - HERO - 8, a.amount, a.crit, a.matchup, a.element, true, 0);
+          if (a.taunt) text("Taunt!", x0 + spot.x, ground + spot.dy - HERO - 22 - rise, "#29ADFF", 6, true);
+          if (a.ward) text("Ward", x0 + spot.x, ground + spot.dy + 9, ELEMENT_DEFS[a.element].color, 6, true);
+        } else if (a.kind === "revive") {
+          const spot = heroSpot(a.target);
+          text("REVIVED!", x0 + spot.x, ground + spot.dy - HERO - 10 - rise, "#FFE36B", 10, true);
+          text(`+${a.amount} HP`, x0 + spot.x, ground + spot.dy - HERO + 1 - rise, "#00E436", 7, true);
         } else {
           const spot = heroSpot(a.target);
-          text(a.kind === "revive" ? "Back up!" : `+${a.amount}`, x0 + spot.x, ground + spot.dy - HERO - 8 - rise, a.kind === "revive" ? "#FFE36B" : "#00E436", 8, true);
-          burst(idx * 7, x0 + spot.x, ground + spot.dy - 10, k, a.kind === "revive" ? "#FFE36B" : "#00E436", 8, 0.8, 400);
+          text(`+${a.amount}`, x0 + spot.x, ground + spot.dy - HERO - 8 - rise, "#00E436", 8, true);
+          burst(idx * 7, x0 + spot.x, ground + spot.dy - 10, k, "#00E436", 8, 0.8, 400);
         }
       }
 
@@ -455,8 +546,22 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
         text("New record", cx, vh / 2 - 6, "#FFA300", 16, true);
         text(`Past your best floor ${st.floor - 1}`, cx, vh / 2 + 8, "#FFF1E8", 7);
         burst(idx, cx, vh / 2 - 10, e, "#FFA300", 30, 3, 1100);
+      } else if (st?.kind === "revive" && st.event) {
+        const spot = heroSpot(st.event.target);
+        text("Phoenix feather", cx, BY, "#FFE36B", 9, true);
+        if (e >= 300) {
+          const r = Math.round(Math.min(1, (e - 300) / 500) * 12);
+          text("REVIVED!", x0 + spot.x, ground + spot.dy - HERO - 10 - r, "#FFE36B", 10, true);
+          text(`+${st.event.amount} HP`, x0 + spot.x, ground + spot.dy - HERO + 1 - r, "#00E436", 7, true);
+        }
       } else if (st?.kind === "clear") {
         text(`Floor ${st.floor} cleared`, cx, BY, "#00E436", 8, true);
+        // Rest + Second wind / Mending moss: what each standing hero got back
+        st.restHeal?.forEach((h, i) => {
+          if (h <= 0) return;
+          const spot = heroSpot(i);
+          text(`+${h}`, x0 + spot.x, ground + spot.dy - HERO - 8 - Math.round(t * 12), "#00E436", 8, true);
+        });
       } else if (st?.kind === "chest" && st.chest) {
         const chestX = x0 + 106, drop = Math.round((1 - ease(t / 0.35)) * 40);
         const bounce = t > 0.35 && t < 0.45 ? 2 : 0;
@@ -467,8 +572,29 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
           if (b) text(b.text, chestX + 7, ground - 16 - Math.round((t - 0.6) * 20), "#FFF1E8", 6);
           burst(idx * 3, chestX + 7, ground - 12, e - 900, "#FFE36B", 14, 1.4, 600);
         }
-      } else if (st && (st.kind === "fall" || st.kind === "end") && st.partyHp.every((h) => h <= 0)) {
-        text(`Your party fell on floor ${st.floor}`, cx, BY, "#FFF1E8", 9, true);
+      }
+      // Skill banner in the tier colour; Legendary adds a screen-wide flash (shake is in the camera)
+      if (st?.kind === "act" && a?.skill && a.skill.rule !== "basic") {
+        const col = TIER_COLOR[a.skill.tier];
+        const yy = BY - 4 + (e < 120 ? Math.round((1 - e / 120) * -6) : 0);
+        text(TIER_LABEL[a.skill.tier], cx, yy, col, 7, true);
+        text(a.skill.name, cx, yy + 13, "#FFF1E8", 11, true);
+        if (a.skill.rule === "legendary" && !rm && e >= IMPACT_MS && e < IMPACT_MS + 110) {
+          ctx.fillStyle = "rgba(255,163,0,0.22)";
+          ctx.fillRect(0, 0, vw * s, vh * s);
+        }
+      }
+      // Revive flash (gold, short)
+      const revFlashAt = st?.kind === "revive" ? 300 : st?.action?.kind === "revive" ? IMPACT_MS : -1;
+      if (!rm && revFlashAt >= 0 && e >= revFlashAt && e < revFlashAt + 80) {
+        ctx.fillStyle = "rgba(255,227,107,0.18)";
+        ctx.fillRect(0, 0, vw * s, vh * s);
+      }
+      // The end of the run: the tower dims behind the result
+      if (st && (st.kind === "fall" || st.kind === "end") && st.partyHp.every((h) => h <= 0)) {
+        ctx.fillStyle = `rgba(11,16,34,${(Math.round(Math.min(1, st.kind === "end" ? 1 : t) * 4) / 4) * 0.45})`;
+        ctx.fillRect(0, 0, vw * s, vh * s);
+        text(`Your party fell on floor ${st.floor}`, cx, BY, "#FFF1E8", 10, true);
       }
       // Crit flash (very short, skipped with reduced motion)
       if (!rm && st?.kind === "act" && a?.crit && e >= IMPACT_MS && e < IMPACT_MS + 50) {
@@ -480,6 +606,8 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
     const describe = (st: Step): string => {
       const names = [...new Set(st.enemies.map((en) => en.name))].join(", ");
       if (st.kind === "climb") return `Climbing to floor ${st.floor}`;
+      if (st.kind === "revive" && st.event) return `Phoenix feather: ${members[st.event.target]?.hero.name ?? "a hero"} gets back up`;
+      if (st.kind === "act" && st.action?.kind === "revive") return `${members[st.action.target]?.hero.name ?? "A hero"} gets back up`;
       if (st.kind === "gate") return `Boss: ${st.enemies[0]?.name ?? ""}`;
       if (st.kind === "clear") return `Floor ${st.floor} cleared`;
       if (st.kind === "chest" && st.chest) return `Boss chest: ${chestName(st.chest)}`;
@@ -491,10 +619,12 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
     const sfxFor = (st: Step): Sfx | null => {
       const a = st.action;
       if (st.kind === "climb") return "climb";
+      if (st.kind === "revive" || a?.kind === "revive") return "revive";
       if (st.kind === "record") return "record";
       if (st.kind === "gate") return "boss";
       if (st.kind === "chest") return "chest";
       if (st.kind === "fall") return st.partyHp.every((h) => h <= 0) ? "fall" : null;
+      if (st.kind === "act" && a?.kind === "hit" && a.skill && a.skill.rule !== "basic") return a.skill.rule === "legendary" ? "record" : "crit";
       if (st.kind === "act" && a?.kind === "hit") return a.ko ? "ko" : a.crit ? "crit" : a.matchup === "weak" ? "weak" : "hit";
       return null;
     };
@@ -525,16 +655,24 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
       const rf = propsRef.current.restFloor;
       const hp = (propsRef.current.restHp ?? members.map((m) => m.stats.hp)).reduce((x, y) => x + Math.max(0, y), 0);
       cbRef.current.onProgress?.({ floor: rf, zone: rf > 0 ? zoneFor(rf).name : "Entrance", hp, maxHp, combo: 0, line: "", done: true });
-      return;
     }
+    // Real idle animations keep playing while standing (redrawn ~15 times a second)
+    const animated = members.some((m) => m.anims && Object.keys(m.anims).length > 0);
+    if (!timeline && !animated) return;
     let raf = 0;
     let prev = performance.now();
+    let lastIdle = 0;
     const tick = (now: number) => {
       const dt = Math.min(100, now - prev);
       prev = now;
-      clockRef.current += dt * speedRef.current;
-      draw();
-      if (!finished) raf = requestAnimationFrame(tick);
+      if (timeline && !finished) {
+        clockRef.current += dt * speedRef.current;
+        draw();
+      } else if (animated && now - lastIdle > 66) {
+        lastIdle = now;
+        draw();
+      }
+      if ((timeline && !finished) || animated) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);

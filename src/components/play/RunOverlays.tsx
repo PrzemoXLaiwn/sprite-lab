@@ -7,7 +7,7 @@ import type { BlessingCard, PartyMember } from "@/lib/dungeon/store";
 import type { RunReport, RunTip } from "@/lib/dungeon/summary";
 import { SpriteImg } from "./Sheet";
 
-const ICONS: Record<string, typeof Sword> = {
+export const BLESSING_ICONS: Record<string, typeof Sword> = {
   sword: Sword, shield: Shield, heart: Heart, crown: Crown, castle: Castle, eye: Eye, target: Target, droplet: Droplet, feather: Feather, zap: Zap, flame: Flame,
 };
 
@@ -20,7 +20,7 @@ export function BlessingChoice({ floor, offer, chosen, busy, onChoose }: {
       <h2 id="bless-h" className="mt-0.5 font-display text-[22px] font-semibold text-[#FFF1E8] sm:text-[26px]">Choose a blessing</h2>
       <ul className="mt-3 grid w-full max-w-[640px] grid-cols-3 gap-2 sm:gap-3">
         {offer.map((b) => {
-          const Icon = ICONS[b.icon] ?? Sword;
+          const Icon = BLESSING_ICONS[b.icon] ?? Sword;
           const color = b.element ? ELEMENT_DEFS[b.element].color : "#FFA300";
           return (
             <li key={b.id}>

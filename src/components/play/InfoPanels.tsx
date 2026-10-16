@@ -2,12 +2,18 @@
 
 import { Trophy } from "lucide-react";
 import {
-  BADGE_RANKS, BLESSING_EVERY, CRIT_MULTIPLIER, ELEMENTS, ELEMENT_DEFS, PRIZE_CREDITS, PRIZE_MIN_PAID_GENERATIONS, RESIST_MULTIPLIER,
+  BADGE_RANKS, BLESSING_EVERY, CRIT_MULTIPLIER, ELEMENTS, ELEMENT_COLOURS, ELEMENT_CREATURES, ELEMENT_DEFS, PRIZE_CREDITS, PRIZE_MIN_PAID_GENERATIONS, RESIST_MULTIPLIER,
   WEAK_MULTIPLIER,
 } from "@/lib/dungeon/config";
 import type { Leaderboard, Trophy as TrophyRow } from "@/lib/dungeon/store";
 import type { ZoneWeek } from "@/lib/dungeon/tower";
 import { ElementTag, Sheet } from "./Sheet";
+
+function groupBy(table: Record<string, string>): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const [w, e] of Object.entries(table)) (out[e] ??= []).push(w);
+  return out;
+}
 
 const BADGE_LABEL: Record<string, string> = { gold: "1st place", silver: "2nd place", bronze: "3rd place", top10: "Top 10" };
 const BADGE_COLOR: Record<string, string> = { gold: "#FFA300", silver: "#C8CCE8", bronze: "#D08A4E", top10: "#29ADFF" };
@@ -95,6 +101,15 @@ export function DamageSheet({ onClose }: { onClose: () => void }) {
         <li>Every {BLESSING_EVERY} floors you pick a blessing for the rest of the climb. Bosses drop a chest with a small buff.</li>
         <li>The tower is the same for everyone this week; only the dice differ per climb.</li>
       </ul>
+      <h3 className="mt-4 text-[14px] font-semibold text-[#FFF1E8]">Where an element comes from</h3>
+      <p className="mt-1 text-[13px] text-[#C8CCE8]">Read from the sprite&apos;s prompt, heroes and items alike. The first rule that matches wins:</p>
+      <ol className="mt-1 list-decimal space-y-1 pl-5 text-[13px] text-[#C8CCE8]">
+        <li>An element word, like &ldquo;fire&rdquo;, &ldquo;breathing fire&rdquo;, &ldquo;frost&rdquo;, &ldquo;toxic&rdquo;, &ldquo;holy&rdquo;, &ldquo;dark&rdquo;, &ldquo;forest&rdquo; or &ldquo;storm&rdquo;. If there are several, the first one in the prompt.</li>
+        <li>A colour: {Object.entries(groupBy(ELEMENT_COLOURS)).map(([e, ws]) => `${ws.join(", ")} → ${ELEMENT_DEFS[e as keyof typeof ELEMENT_DEFS].label}`).join("; ")}.</li>
+        <li>The kind of creature: {Object.entries(groupBy(ELEMENT_CREATURES)).map(([e, ws]) => `${ws.join(", ")} → ${ELEMENT_DEFS[e as keyof typeof ELEMENT_DEFS].label}`).join("; ")}.</li>
+        <li>Otherwise Neutral: no weakness bonus, never resisted.</li>
+      </ol>
+      <p className="mt-1 text-[12.5px] text-[#A7ADD4]">A hero card shows the hero&apos;s own element. A weapon with an element changes what the hero attacks with (shown as a pip on the weapon slot); a trinket with an element wards off that element.</p>
       <h3 className="mt-4 text-[14px] font-semibold text-[#FFF1E8]">Elements</h3>
       <table className="mt-1 w-full text-left text-[13px]">
         <thead><tr className="text-[12px] text-[#A7ADD4]"><th className="py-1 font-normal">Enemy</th><th className="py-1 font-normal">Weak to</th><th className="py-1 font-normal">Resists</th></tr></thead>

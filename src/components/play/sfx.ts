@@ -6,7 +6,7 @@
 // remember). Rapid hits are throttled so long fights don't turn into noise.
 // =============================================================================
 
-export type Sfx = "hit" | "crit" | "weak" | "ko" | "climb" | "chest" | "record" | "boss" | "fall" | "pick";
+export type Sfx = "hit" | "crit" | "weak" | "ko" | "climb" | "chest" | "record" | "boss" | "fall" | "pick" | "revive";
 
 const KEY = "sl-tower-muted";
 let ctx: AudioContext | null = null;
@@ -89,6 +89,7 @@ export function play(s: Sfx): void {
     case "record": [392, 523, 659, 784, 1047].forEach((f, i) => tone(f, t + i * 0.11, i === 4 ? 0.4 : 0.12, "square", 0.45)); break;
     case "boss": tone(70, t, 0.6, "sawtooth", 0.5, 45); noise(t, 0.5, 0.2); break;
     case "fall": [392, 330, 262, 196].forEach((f, i) => tone(f, t + i * 0.14, 0.16, "triangle", 0.5)); break;
+    case "revive": [523, 784, 1047, 1568].forEach((f, i) => tone(f, t + i * 0.06, 0.14, "triangle", 0.45)); break;
     case "pick": tone(784, t, 0.05, "square", 0.4); tone(1175, t + 0.05, 0.08, "square", 0.4); break;
   }
 }

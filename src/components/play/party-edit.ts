@@ -1,7 +1,7 @@
 // Party editing on the page (pure). The result is only a request: the server
 // re-validates every slot list before saving it.
 
-import { GEAR_SLOTS, PARTY_SIZE, type GearSlot } from "@/lib/dungeon/config";
+import { GEAR_SLOTS, PARTY_SIZE, type GearSlot, type SkillSlot } from "@/lib/dungeon/config";
 import type { SlotIds } from "@/lib/dungeon/party";
 import type { Leaderboard, PartyMember } from "@/lib/dungeon/store";
 
@@ -9,7 +9,22 @@ export function toSlots(members: PartyMember[]): SlotIds[] {
   return members.map((m) => {
     const s: SlotIds = { hero: m.hero.id };
     for (const g of GEAR_SLOTS) if (m[g]) s[g] = m[g]!.id;
+    const skills: Partial<Record<SkillSlot, string>> = {};
+    for (const k of m.skills ?? []) if (k.slot) skills[k.slot] = k.id;
+    if (Object.keys(skills).length) s.skills = skills;
     return s;
+  });
+}
+
+/** Puts an animation in a skill slot (taking it out of any other slot of that hero), or empties the slot. */
+export function setSkill(slots: SlotIds[], index: number, slot: SkillSlot, animId: string | null): SlotIds[] {
+  return slots.map((s, i) => {
+    if (i !== index) return s;
+    const skills: Partial<Record<SkillSlot, string>> = {};
+    for (const [k, v] of Object.entries(s.skills ?? {}) as [SkillSlot, string][]) if (v !== animId) skills[k] = v;
+    if (animId) skills[slot] = animId;
+    else delete skills[slot];
+    return { ...s, skills };
   });
 }
 

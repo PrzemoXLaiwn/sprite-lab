@@ -10,8 +10,12 @@
 
 import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
+import { pickAnimations, type AnimRef, type AnimRow, type HeroAnims } from "./anims";
+import { skillScores, type CachedScore } from "./skill-analyse";
+import { NEUTRAL_SCORE, isSkillLabel, resolveSkills, skillName, type SkillMetrics } from "./skills";
+import { parseAnimationPrompt } from "@/lib/workspace/history";
 import { blessingView } from "./blessings";
-import { GEAR_SLOTS, LEADERBOARD_SIZE, PARTY_SIZE, RUN_IDLE_MS, RUNS_PER_DAY, type GearSlot, type SpriteSlot } from "./config";
+import { GEAR_SLOTS, LEADERBOARD_SIZE, PARTY_SIZE, RUN_IDLE_MS, RUNS_PER_DAY, SKILL_SLOTS, type GearSlot, type SkillSlot, type SpriteSlot, type Tier } from "./config";
 import { autoEquip, parseSlots, referencedIds, validateSlots, type SlotIds } from "./party";
 import { runSeed } from "./rng";
 import {
@@ -19,14 +23,14 @@ import {
 } from "./rules";
 import { chooseBlessing, initialState, runSegment, type FloorLog, type RunState } from "./simulate";
 import {
-  ACTIVE_RUN_SQL, ADVANCE_RUN_SQL, INSERT_RUN_SQL, LEADERBOARD_SQL, PARTY_GET_SQL, PARTY_SAVE_SQL, PAY_PRIZES_SQL, RECORDS_SQL,
+  ACTIVE_RUN_SQL, ADVANCE_RUN_SQL, HERO_ANIMS_SQL, INSERT_RUN_SQL, LEADERBOARD_SQL, PARTY_GET_SQL, PARTY_SAVE_SQL, PAY_PRIZES_SQL, RECORDS_SQL,
   RUN_BY_ID_SQL, RUNS_TODAY_SQL, SPRITES_SQL, TROPHIES_SQL, prizeParams,
 } from "./sql";
 import {
   deriveParty, deriveUnit, itemBonus, powerOf, slotFor, type ItemBonus, type MemberFacts, type SpriteFacts, type UnitStats,
 } from "./stats";
 import { buildReport, type ResultHero, type RunReport } from "./summary";
-import { classFor, elementFor, starsFor } from "./detect";
+import { classFor, elementFor, heroWork, starsFor } from "./detect";
 import { towerWeek, type ZoneWeek } from "./tower";
 import type { ClassId, Element } from "./config";
 
@@ -55,6 +59,8 @@ export interface DungeonSprite {
   stars: number;
   hd: boolean;
   animated: boolean;
+  /** Different animations made from it (heroes: each adds power). */
+  animations: number;
   element: Element;
   classId: ClassId | null;
   /** Hero: bare power. Item: the power its bonus adds. */
@@ -72,6 +78,28 @@ export interface PartyMember {
   trinket: DungeonSprite | null;
   /** Final stats with gear, including the "why this power?" breakdown. */
   stats: UnitStats;
+  /** The hero's own animation sheets, played in battle (missing roles fall back to the sprite). */
+  anims?: HeroAnims;
+  /** Distinct animation labels made from the hero (each one adds power). */
+  animationLabels?: string[];
+  /** Skills in their slots (Basic / Special / Legendary). */
+  skills?: PartySkill[];
+  /** Every attack animation of the hero, scored (for swapping skills). */
+  skillOptions?: PartySkill[];
+}
+
+export interface PartySkill {
+  /** Animation generation id. */
+  id: string;
+  name: string;
+  label: string;
+  score: number;
+  tier: Tier;
+  metrics: SkillMetrics;
+  /** Not analysed yet: shown as "analysing", counts as Common for now. */
+  pending: boolean;
+  anim: AnimRef;
+  slot: SkillSlot | null;
 }
 
 export interface Records {
@@ -97,12 +125,13 @@ function shortName(prompt: string): string {
 function toSprite(r: SpriteRow): DungeonSprite {
   const f = facts(r);
   const slot = slotFor(f.categoryId);
-  const st = starsFor(f);
+  const st = slot === "hero" ? heroWork(f) : starsFor(f);
   const stats = slot === "hero" ? deriveUnit(f) : null;
   const bonus = slot === "hero" ? null : itemBonus(f, slot);
   return {
     id: r.id, name: shortName(r.prompt), imageUrl: r.image_url, styleId: r.style_id, categoryId: r.category_id, slot,
-    pixel: r.style_id.toUpperCase().includes("PIXEL"), stars: st.stars, hd: st.hd, animated: st.animated,
+    pixel: r.style_id.toUpperCase().includes("PIXEL"), stars: st.stars, hd: st.hd,
+    animated: "animations" in st ? st.animations > 0 : st.animated, animations: f.animations,
     element: elementFor(f.prompt), classId: classFor(f.prompt, f.categoryId),
     power: stats ? stats.power : powerOf({ hp: bonus!.hp, atk: bonus!.atk, def: bonus!.def, crit: bonus!.crit, heal: bonus!.heal, allHit: 0, splash: bonus!.splash }),
     stats, bonus,
@@ -131,13 +160,62 @@ async function resolve(userId: string, slots: SlotIds[]): Promise<{ slots: SlotI
   const byId = new Map(rows.map((r) => [r.id, r]));
   const clean = validateSlots(slots, new Map(rows.map((r) => [r.id, facts(r)])));
   const f = (id?: string) => (id ? facts(byId.get(id)!) : null);
-  const memberFacts: MemberFacts[] = clean.map((m) => ({ hero: f(m.hero)!, weapon: f(m.weapon), armor: f(m.armor), trinket: f(m.trinket) }));
-  const stats = deriveParty(memberFacts);
   const sprite = (id?: string) => (id ? toSprite(byId.get(id)!) : null);
-  const members = clean.map((m, i) => ({
-    hero: toSprite(byId.get(m.hero)!), weapon: sprite(m.weapon), armor: sprite(m.armor), trinket: sprite(m.trinket), stats: stats[i],
+
+  // The heroes' animations: motion roles for the stage, attack animations as skills
+  const heroIds = clean.map((m) => m.hero);
+  const animRows = heroIds.length ? await prisma.$queryRawUnsafe<AnimRow[]>(HERO_ANIMS_SQL, userId, heroIds).catch(() => [] as AnimRow[]) : [];
+  const anims = pickAnimations(animRows);
+  const skillRows = animRows.filter((r): r is AnimRow & { id: string } => {
+    const p = parseAnimationPrompt(r.prompt);
+    return Boolean(r.id && p && !p.directions && isSkillLabel(p.label));
+  });
+  const scores = await skillScores(skillRows.map((r) => ({
+    id: r.id, prompt: r.prompt, imageUrl: r.image_url, sourceUrl: byId.get(r.source_generation_id)?.image_url ?? null,
+  }))).catch(() => new Map<string, CachedScore>());
+
+  const options = new Map<string, PartySkill[]>();
+  for (const r of skillRows) {
+    const p = parseAnimationPrompt(r.prompt)!;
+    const sc = scores.get(r.id) ?? { ...NEUTRAL_SCORE, pending: true };
+    const list = options.get(r.source_generation_id) ?? [];
+    list.push({
+      id: r.id, name: skillName(p.label), label: p.label, score: sc.score, tier: sc.tier, metrics: sc.metrics, pending: sc.pending,
+      anim: { id: r.id, url: r.image_url, label: p.label, frameCount: p.frameCount, walkSet: false, fps: p.frameCount >= 9 ? 14 : 12 },
+      slot: null,
+    });
+    options.set(r.source_generation_id, list);
+  }
+
+  const resolved = clean.map((m) => {
+    const opts = options.get(m.hero) ?? [];
+    const choice = resolveSkills(m.skills, opts.map((o) => ({ id: o.id, score: o.score, tier: o.tier })));
+    const skills = SKILL_SLOTS.flatMap((slot) => {
+      const o = opts.find((x) => x.id === choice[slot]);
+      return o ? [{ ...o, slot }] : [];
+    });
+    return { slot: { ...m, skills: m.skills ? choice : undefined } as SlotIds, skills, opts };
+  });
+
+  const memberFacts: MemberFacts[] = clean.map((m, i) => ({
+    hero: f(m.hero)!, weapon: f(m.weapon), armor: f(m.armor), trinket: f(m.trinket),
+    skills: resolved[i].skills.map((k) => ({ slot: k.slot!, tier: k.tier, name: k.name, animId: k.id })),
   }));
-  return { slots: clean, members };
+  const stats = deriveParty(memberFacts);
+  const members = clean.map((m, i) => {
+    const heroAnims: HeroAnims = { ...(anims[m.hero] ?? {}) };
+    const basic = resolved[i].skills.find((k) => k.slot === "basic");
+    if (basic) heroAnims.attack = basic.anim;
+    else delete heroAnims.attack; // no Basic skill: the plain attack, no animation
+    return {
+      hero: toSprite(byId.get(m.hero)!), weapon: sprite(m.weapon), armor: sprite(m.armor), trinket: sprite(m.trinket), stats: stats[i],
+      anims: heroAnims,
+      animationLabels: [...new Set(animRows.filter((r) => r.source_generation_id === m.hero).map((r) => parseAnimationPrompt(r.prompt)?.label).filter((l): l is string => Boolean(l)))],
+      skills: resolved[i].skills,
+      skillOptions: resolved[i].opts,
+    };
+  });
+  return { slots: resolved.map((r) => r.slot), members };
 }
 
 /** Saves the party after server-side validation; returns it as stored. */

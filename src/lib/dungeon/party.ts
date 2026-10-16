@@ -6,7 +6,7 @@
 // trusted.
 // =============================================================================
 
-import { GEAR_SLOTS, PARTY_SIZE, type GearSlot } from "./config";
+import { GEAR_SLOTS, PARTY_SIZE, SKILL_SLOTS, type GearSlot, type SkillSlot } from "./config";
 import { deriveUnit, itemBonus, slotFor, type SpriteFacts } from "./stats";
 
 /** One party member as stored in dungeon_parties.slots. */
@@ -15,6 +15,8 @@ export interface SlotIds {
   weapon?: string;
   armor?: string;
   trinket?: string;
+  /** The player's skill choice (animation ids by slot); checked against the hero's own scored animations on load. */
+  skills?: Partial<Record<SkillSlot, string>>;
 }
 
 const isId = (v: unknown): v is string => typeof v === "string" && v.length > 0 && v.length <= 64;
@@ -34,6 +36,12 @@ export function parseSlots(raw: unknown): SlotIds[] {
       const e = entry as Record<string, unknown>;
       const m: SlotIds = { hero: e.hero as string };
       for (const s of GEAR_SLOTS) if (isId(e[s])) m[s] = e[s] as string;
+      const sk = e.skills as Record<string, unknown> | undefined;
+      if (sk && typeof sk === "object") {
+        const picked: Partial<Record<SkillSlot, string>> = {};
+        for (const slot of SKILL_SLOTS) if (isId(sk[slot])) picked[slot] = sk[slot] as string;
+        if (Object.keys(picked).length) m.skills = picked;
+      }
       out.push(m);
     }
   }
@@ -72,6 +80,7 @@ export function validateSlots(slots: SlotIds[], owned: Map<string, SpriteFacts>)
       used.add(item.id);
       clean[s] = item.id;
     }
+    if (m.skills) clean.skills = { ...m.skills };
     out.push(clean);
   }
   return out;

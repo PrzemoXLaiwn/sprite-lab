@@ -6,8 +6,8 @@
 // =============================================================================
 
 import {
-  BLADE_KEYWORDS, CLASSES, CLASS_FALLBACK, CLASS_ORDER, ELEMENT_DEFS, ELEMENT_ORDER, FIGURE_CATEGORIES, GEAR_CATEGORY,
-  HEAL_TRINKET_KEYWORDS, MAX_STARS, MULTI_ANIMATION_COUNT, STAFF_KEYWORDS, type ClassId, type Element, type SpriteSlot,
+  BLADE_KEYWORDS, CLASSES, CLASS_FALLBACK, CLASS_ORDER, ELEMENT_COLOURS, ELEMENT_CREATURES, ELEMENT_DEFS, ELEMENT_ORDER, FIGURE_CATEGORIES, GEAR_CATEGORY,
+  HEAL_TRINKET_KEYWORDS, HD_MULTIPLIER, MAX_COUNTED_ANIMATIONS, MAX_STARS, STAFF_KEYWORDS, animationMultiplier, animationStep, type ClassId, type Element, type SpriteSlot,
 } from "./config";
 
 /** Facts the server reads from the database for one sprite. */
@@ -57,14 +57,47 @@ export function classFor(prompt: string, categoryId: string): ClassId | null {
   return classMatch(prompt, categoryId)?.id ?? null;
 }
 
-/** Element and the prompt word that decided it. */
-export function elementMatch(prompt: string): { element: Element; word: string | null } {
-  const ws = words(prompt);
-  for (const e of ELEMENT_ORDER) {
-    const word = ELEMENT_DEFS[e].keywords.find((k) => ws.has(k));
-    if (word) return { element: e, word };
+export type ElementRule = "word" | "colour" | "creature" | "none";
+
+export interface ElementSource {
+  element: Element;
+  /** The prompt word or phrase that decided it (null when nothing matched). */
+  word: string | null;
+  rule: ElementRule;
+}
+
+/** " red dragon breathing fire " — lower-case words, single spaces, padded for phrase search. */
+function phraseText(prompt: string): string {
+  return ` ${prompt.toLowerCase().split(/[^a-z]+/).filter(Boolean).join(" ")} `;
+}
+
+/** Earliest match of any key (whole words or phrases, plural "s" allowed); ties go to the longer key. */
+function earliest<T>(text: string, table: [string, T][]): { key: string; value: T } | null {
+  let best: { key: string; value: T; at: number } | null = null;
+  for (const [key, value] of table) {
+    for (const form of [key, `${key}s`]) {
+      const at = text.indexOf(` ${form} `);
+      if (at >= 0 && (!best || at < best.at || (at === best.at && key.length > best.key.length))) best = { key, value, at };
+    }
   }
-  return { element: "neutral", word: null };
+  return best ? { key: best.key, value: best.value } : null;
+}
+
+const ELEMENT_WORD_TABLE: [string, Element][] = ELEMENT_ORDER.flatMap((e) => ELEMENT_DEFS[e].keywords.map((k): [string, Element] => [k, e]));
+
+/**
+ * Element of a prompt, and which rule decided it:
+ * element words → colour words → creature defaults → Neutral (tables in config.ts).
+ */
+export function elementMatch(prompt: string): ElementSource {
+  const text = phraseText(prompt);
+  const word = earliest(text, ELEMENT_WORD_TABLE);
+  if (word) return { element: word.value, word: word.key, rule: "word" };
+  const colour = earliest(text, Object.entries(ELEMENT_COLOURS));
+  if (colour) return { element: colour.value, word: colour.key, rule: "colour" };
+  const creature = earliest(text, Object.entries(ELEMENT_CREATURES));
+  if (creature) return { element: creature.value, word: creature.key, rule: "creature" };
+  return { element: "neutral", word: null, rule: "none" };
 }
 
 export function elementFor(prompt: string): Element {
@@ -89,14 +122,37 @@ export interface StarBreakdown {
   stars: number;
   hd: boolean;
   animated: boolean;
-  /** ≥3 different animations or a walk / rotation set. */
-  showcase: boolean;
 }
 
-/** ★ plain, +★ HD, +★ animated, +★ three different animations or a walk / rotation set. */
+/** Items: ★ plain, +★ HD, +★ animated (max 3). */
 export function starsFor(f: Pick<SpriteFacts, "hd" | "animations" | "rotated">): StarBreakdown {
   const animated = f.animations > 0 || f.rotated;
-  const showcase = f.animations >= MULTI_ANIMATION_COUNT || f.rotated;
-  const stars = Math.min(MAX_STARS, 1 + (f.hd ? 1 : 0) + (animated ? 1 : 0) + (showcase ? 1 : 0));
-  return { stars, hd: f.hd, animated, showcase };
+  const stars = Math.min(MAX_STARS, 1 + (f.hd ? 1 : 0) + (animated ? 1 : 0));
+  return { stars, hd: f.hd, animated };
+}
+
+export interface HeroWork {
+  /** ★ plain + HD + one per different animation (counted up to the cap). */
+  stars: number;
+  hd: boolean;
+  /** Different animations made from the sprite. */
+  animations: number;
+  /** What each counted animation added, in order (+0.30, +0.24, …). */
+  steps: number[];
+  hdMultiplier: number;
+  animationMultiplier: number;
+  multiplier: number;
+}
+
+/** Heroes: HD ×1.3, and every different animation adds power with diminishing returns (config.ts). */
+export function heroWork(f: Pick<SpriteFacts, "hd" | "animations" | "rotated">): HeroWork {
+  const animations = Math.max(f.animations, f.rotated ? 1 : 0);
+  const counted = Math.min(animations, MAX_COUNTED_ANIMATIONS);
+  const steps = Array.from({ length: counted }, (_, i) => Math.round(animationStep(i + 1) * 1000) / 1000);
+  const hdMultiplier = f.hd ? HD_MULTIPLIER : 1;
+  const am = animationMultiplier(animations);
+  return {
+    stars: 1 + (f.hd ? 1 : 0) + counted, hd: f.hd, animations, steps, hdMultiplier, animationMultiplier: am,
+    multiplier: Math.round(hdMultiplier * am * 1000) / 1000,
+  };
 }

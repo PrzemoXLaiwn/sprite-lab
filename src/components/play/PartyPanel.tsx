@@ -2,24 +2,59 @@
 
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { Check, Gem, Plus, Shield, Sparkles, Sword, Wand2 } from "lucide-react";
+import { Check, Film, Gem, Loader2, Plus, Shield, Sparkles, Star, Sword, Wand2 } from "lucide-react";
 import {
-  CLASSES, GEAR_LABEL, GEAR_MAKE_CATEGORY, GEAR_SLOTS, HERO_MAKE_CATEGORY, PARTY_SIZE, STAR_STEP, type GearSlot,
+  ANIMATION_DECAY, ANIMATION_FIRST_BONUS, CLASSES, ELEMENT_DEFS, GEAR_LABEL, GEAR_MAKE_CATEGORY, GEAR_SLOTS, HD_MULTIPLIER, HERO_MAKE_CATEGORY,
+  MAX_COUNTED_ANIMATIONS, PARTY_SIZE, SKILL_POWER, SKILL_RULES, SKILL_SLOTS, SLOT_LABEL, SLOT_MIN_TIER, TIER_COLOR, TIER_LABEL,
+  animationMultiplier, animationStep, type Element, type GearSlot, type SkillSlot,
 } from "@/lib/dungeon/config";
+import type { AnimRef } from "@/lib/dungeon/anims";
+import { slotAccepts } from "@/lib/dungeon/skills";
 import type { SlotIds } from "@/lib/dungeon/party";
-import type { DungeonSprite, PartyMember } from "@/lib/dungeon/store";
+import type { DungeonSprite, PartyMember, PartySkill } from "@/lib/dungeon/store";
 import { ElementTag, Sheet, SpriteImg, Stars } from "./Sheet";
 import { wornBy } from "./party-edit";
 
 export type PickerMode = { kind: "hero"; index: number } | { kind: GearSlot; index: number };
 
 const GEAR_ICON: Record<GearSlot, typeof Sword> = { weapon: Sword, armor: Shield, trinket: Gem };
+
+/** Element pip on a gear slot: a weapon's attack element, a trinket's ward. Never shown as the hero's element. */
+function pipFor(slot: GearSlot, item: DungeonSprite): Element | null {
+  if (slot === "weapon" && item.bonus && item.bonus.element !== "neutral") return item.bonus.element;
+  if (slot === "trinket" && item.bonus?.ward) return item.bonus.ward;
+  return null;
+}
+
+const RULE_TEXT = (src: { rule: string; word: string | null; element: Element }): string =>
+  src.rule === "word" ? `from “${src.word}” in the prompt`
+  : src.rule === "colour" ? `from the colour “${src.word}” in the prompt`
+  : src.rule === "creature" ? `${src.word}s default to ${ELEMENT_DEFS[src.element].label}`
+  : "no element word, colour or creature in the prompt";
+const cap1 = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 const MAKE_LABEL: Record<GearSlot, string> = { weapon: "Make a weapon", armor: "Make armor", trinket: "Make an item" };
 const NONE_YET: Record<GearSlot, string> = { weapon: "weapons", armor: "armor", trinket: "items" };
 
 // ── Hero card ────────────────────────────────────────────────────────────────
-function HeroCard({ m, index, locked, onPick, onWhy }: {
+/** A looping preview of an animation sheet (one row of frames), CSS only. */
+export function SkillPreview({ anim, pixel }: { anim: AnimRef; pixel: boolean }) {
+  const n = Math.max(1, anim.frameCount);
+  return (
+    <span className="skill-strip block h-full w-full" aria-hidden
+      style={{
+        backgroundImage: `url(${anim.url})`, backgroundSize: `${n * 100}% 100%`, backgroundRepeat: "no-repeat",
+        imageRendering: pixel ? "pixelated" : undefined,
+        animation: n > 1 ? `skillstrip ${(n / anim.fps).toFixed(2)}s steps(${n}) infinite` : undefined,
+        ["--to" as string]: `${n > 1 ? (100 * n) / (n - 1) : 0}%`,
+      }} />
+  );
+}
+
+export const SKILL_STRIP_CSS = "@keyframes skillstrip{from{background-position:0% 0}to{background-position:var(--to) 0}}@media (prefers-reduced-motion: reduce){.skill-strip{animation:none!important}}";
+
+function HeroCard({ m, index, locked, onPick, onWhy, onSkill }: {
   m: PartyMember; index: number; locked: boolean; onPick: (mode: PickerMode) => void; onWhy: (i: number) => void;
+  onSkill: (index: number, slot: SkillSlot) => void;
 }) {
   const s = m.stats;
   return (
@@ -28,17 +63,27 @@ function HeroCard({ m, index, locked, onPick, onWhy }: {
         className="checker checker-sm relative block aspect-square overflow-hidden rounded-[6px] transition hover:ring-2 hover:ring-[#FFA300]/70 disabled:opacity-80">
         <SpriteImg s={m.hero} />
         <span className="absolute left-1 top-1 rounded-[4px] bg-[#131A31]/85 px-1.5 py-0.5 text-[11.5px] font-semibold text-[#FFF1E8]">{CLASSES[s.classId].label}</span>
+        {m.hero.animated && (
+          <span className="absolute bottom-1 left-1 inline-flex items-center gap-1 rounded-[4px] bg-[#131A31]/85 px-1.5 py-0.5 text-[11px] font-semibold text-[#00E436]">
+            <Film className="h-3 w-3" aria-hidden /> Animated
+          </span>
+        )}
       </button>
       <button type="button" onClick={() => onWhy(index)} aria-label={`Why power ${s.power}? Show the breakdown`}
         className="mt-1 flex min-h-11 flex-col items-start gap-0.5 rounded-[6px] px-1 py-1 text-left hover:bg-white/[0.05]">
         <span className="flex w-full items-center justify-between gap-1">
           <span className="font-display text-[16px] font-semibold leading-none text-[#FFF1E8]">{s.power}</span>
-          <Stars n={m.hero.stars} size={11} />
+          <span className="inline-flex items-center gap-0.5 text-[12px] font-semibold text-[#FFC857]" aria-label={`${m.hero.stars} stars`}>
+            <Star className="h-3 w-3 fill-[#FFA300] text-[#FFA300]" aria-hidden />{m.hero.stars}
+          </span>
         </span>
         <span className="flex w-full items-center justify-between gap-1">
           <span className="text-[11.5px] text-[#A7ADD4]">Power</span>
-          <ElementTag e={s.attackElement} small />
+          <ElementTag e={s.element} small />
         </span>
+        {s.attackElement !== s.element && (
+          <span className="text-[11px] leading-tight text-[#A7ADD4]">Attacks with {ELEMENT_DEFS[s.attackElement].label} (weapon)</span>
+        )}
       </button>
       <div className="mt-1 grid grid-cols-3 gap-1">
         {GEAR_SLOTS.map((g) => {
@@ -50,6 +95,26 @@ function HeroCard({ m, index, locked, onPick, onWhy }: {
               title={item ? `${GEAR_LABEL[g]}: ${item.bonus?.text ?? ""}` : `${GEAR_LABEL[g]} (empty)`}
               className={`relative flex aspect-square min-h-10 items-center justify-center overflow-hidden rounded-[5px] transition disabled:opacity-70 ${item ? "checker checker-sm border border-white/[0.1] hover:ring-2 hover:ring-[#FFA300]/70" : "border border-dashed border-white/[0.18] text-[#7F86B5] hover:border-[#FFA300]/70 hover:text-[#FFF1E8]"}`}>
               {item ? <SpriteImg s={item} /> : <Icon className="h-4 w-4" aria-hidden />}
+              {item && pipFor(g, item) && (
+                <span className="absolute right-0.5 top-0.5 h-2.5 w-2.5 rounded-[2px] ring-1 ring-[#131A31]" style={{ background: ELEMENT_DEFS[pipFor(g, item)!].color }}
+                  title={g === "weapon" ? `${ELEMENT_DEFS[pipFor(g, item)!].label} attacks` : `${ELEMENT_DEFS[pipFor(g, item)!].label} ward`} aria-hidden />
+              )}
+            </button>
+          );
+        })}
+      </div>
+      <div className="mt-1 grid grid-cols-3 gap-1" aria-label="Skills">
+        {SKILL_SLOTS.map((slot) => {
+          const k = m.skills?.find((x) => x.slot === slot);
+          const color = k ? TIER_COLOR[k.tier] : "rgba(255,255,255,0.18)";
+          return (
+            <button key={slot} type="button" disabled={locked} onClick={() => onSkill(index, slot)}
+              aria-label={k ? `${SLOT_LABEL[slot]} skill: ${k.name}, ${TIER_LABEL[k.tier]}. Details` : `Empty ${SLOT_LABEL[slot]} skill slot`}
+              title={k ? `${SLOT_LABEL[slot]}: ${k.name} (${TIER_LABEL[k.tier]} ${k.score})` : `${SLOT_LABEL[slot]} skill (empty)`}
+              className={`relative flex aspect-square min-h-10 items-center justify-center overflow-hidden rounded-[5px] transition disabled:opacity-70 ${k ? "checker checker-sm" : "border border-dashed"}`}
+              style={{ boxShadow: k ? `inset 0 0 0 2px ${color}` : undefined, borderColor: k ? undefined : color }}>
+              {k ? <SkillPreview anim={k.anim} pixel={m.hero.pixel} /> : <span className="text-[10.5px] leading-tight text-[#7F86B5]">{SLOT_LABEL[slot]}</span>}
+              {k?.pending && <Loader2 className="absolute right-0.5 top-0.5 h-3 w-3 animate-spin text-[#C8CCE8]" aria-hidden />}
             </button>
           );
         })}
@@ -147,14 +212,32 @@ export function WhySheet({ m, onClose, onEquip }: { m: PartyMember; onClose: () 
       <h3 className="mt-4 text-[14px] font-semibold text-[#FFF1E8]">1. Class base at one star</h3>
       <p className="mt-1 font-mono text-[13px] text-[#C8CCE8]">HP {w.base.hp}, ATK {w.base.atk}, DEF {w.base.def}</p>
 
-      <h3 className="mt-4 flex items-center gap-2 text-[14px] font-semibold text-[#FFF1E8]">2. Stars <Stars n={w.stars.stars} /> <span className="font-mono text-[13px] font-normal text-[#FFC857]">×{w.starMultiplier}</span></h3>
-      <p className="text-[12.5px] text-[#A7ADD4]">Each star multiplies the hero by {STAR_STEP}. Stars come from work on the sprite:</p>
+      <h3 className="mt-4 flex items-center gap-2 text-[14px] font-semibold text-[#FFF1E8]">2. Work on the sprite <span className="font-mono text-[13px] font-normal text-[#FFC857]">×{w.work.multiplier}</span></h3>
+      <p className="text-[12.5px] text-[#A7ADD4]">
+        HD is ×{HD_MULTIPLIER}. Every different animation adds power: the first +{Math.round(ANIMATION_FIRST_BONUS * 100)}%, each next one {Math.round(ANIMATION_DECAY * 100)}% of the previous, up to {MAX_COUNTED_ANIMATIONS}.
+      </p>
       <ul className="mt-1">
-        <Row ok label="Made the sprite (first star)" />
-        <Row ok={w.stars.hd} label="HD quality" hint={<Link className={link} href={`/generate?categoryId=${HERO_MAKE_CATEGORY}`}>Make one in HD</Link>} />
-        <Row ok={w.stars.animated} label="Animated" hint={<Link className={link} href={`/animate?id=${encodeURIComponent(m.hero.id)}`}>Animate it</Link>} />
-        <Row ok={w.stars.showcase} label="3 different animations, or a walk / rotation set" hint={<Link className={link} href={`/animate?id=${encodeURIComponent(m.hero.id)}`}>Add more</Link>} />
+        <Row ok={w.work.hd} label={`HD quality (×${HD_MULTIPLIER})`} hint={<Link className={link} href={`/generate?categoryId=${HERO_MAKE_CATEGORY}`}>Make one in HD</Link>} />
+        {w.work.steps.map((step, k) => (
+          <Row key={k} ok label={`${m.animationLabels?.[k] ? cap1(m.animationLabels[k]) : `Animation ${k + 1}`} (+${Math.round(step * 1000) / 10}%)`} />
+        ))}
+        {w.work.animations > MAX_COUNTED_ANIMATIONS && <li className="py-1 text-[12.5px] text-[#A7ADD4]">More animations still count for skills, not for base power.</li>}
       </ul>
+      {w.work.animations < MAX_COUNTED_ANIMATIONS && (() => {
+        const n = w.work.animations;
+        const gain = Math.round((animationStep(n + 1) / animationMultiplier(n)) * 100);
+        const labels = (m.animationLabels ?? []).join(" ").toLowerCase();
+        const next = !/walk|run|move/.test(labels) ? { what: "a walk animation", why: "and your hero walks up the tower" }
+          : !/idle|breath|stand/.test(labels) ? { what: "an idle animation", why: "and your hero breathes while it waits" }
+          : !(m.skills ?? []).length ? { what: "an attack animation", why: "and it becomes a skill your hero uses in battle" }
+          : { what: "another attack animation", why: "and it can fill a better skill slot" };
+        return (
+          <p className="mt-1 rounded-[7px] bg-[#212B4E] px-3 py-2 text-[13px] text-[#FFF1E8]">
+            Add {next.what}: +{gain}% to its base stats, {next.why}.{" "}
+            <Link className={link} href={`/animate?id=${encodeURIComponent(m.hero.id)}`}>Animate</Link>
+          </p>
+        );
+      })()}
 
       <h3 className="mt-4 text-[14px] font-semibold text-[#FFF1E8]">3. Gear</h3>
       <ul className="mt-1 space-y-1.5">
@@ -178,10 +261,27 @@ export function WhySheet({ m, onClose, onEquip }: { m: PartyMember; onClose: () 
         })}
       </ul>
 
-      <h3 className="mt-4 text-[14px] font-semibold text-[#FFF1E8]">4. Element</h3>
+      <h3 className="mt-4 text-[14px] font-semibold text-[#FFF1E8]">4. Skills {w.skillBonus > 0 && <span className="font-mono text-[13px] font-normal text-[#FFC857]">+{Math.round(w.skillBonus * 100)}% offence</span>}</h3>
+      {(m.skills ?? []).length === 0 ? (
+        <p className="mt-1 text-[13px] text-[#C8CCE8]">No skills yet: its attacks are plain. <Link className={link} href={`/animate?id=${encodeURIComponent(m.hero.id)}`}>Make an attack animation</Link></p>
+      ) : (
+        <ul className="mt-1 space-y-1 text-[13px] text-[#C8CCE8]">
+          {(m.skills ?? []).map((k) => (
+            <li key={k.id}><span style={{ color: TIER_COLOR[k.tier] }}>{TIER_LABEL[k.tier]}</span> {k.name} in the {SLOT_LABEL[k.slot!]} slot{SKILL_POWER[k.tier] && k.slot !== "basic" ? `: +${Math.round(SKILL_POWER[k.tier] * 100)}% offence` : ""}</li>
+          ))}
+        </ul>
+      )}
+
+      <h3 className="mt-4 text-[14px] font-semibold text-[#FFF1E8]">5. Element</h3>
       <p className="mt-1 text-[13px] text-[#C8CCE8]">
-        Hero: <ElementTag e={w.element} />{w.elementWord ? <> (&ldquo;{w.elementWord}&rdquo;)</> : null}. Attacks with <ElementTag e={w.attackElement} />
-        {w.attackElement !== w.element ? " from its weapon" : ""}. Hitting a weakness deals ×1.5, a resisted hit ×0.6.
+        <ElementTag e={w.element} />, {RULE_TEXT(w.elementSource)}.
+      </p>
+      <p className="mt-1 text-[13px] text-[#C8CCE8]">
+        {w.attackElement !== w.element
+          ? <>Attacks with <ElementTag e={w.attackElement} /> from its weapon. </>
+          : <>Attacks with its own element. </>}
+        {m.stats.ward ? <>Its trinket wards off <ElementTag e={m.stats.ward} /> (×0.6 damage taken). </> : null}
+        Hitting a weakness deals ×1.5, a resisted hit ×0.6.
       </p>
 
       <div className="mt-4 rounded-[8px] bg-[#212B4E] p-3 font-mono text-[13px] text-[#FFF1E8]">
@@ -194,10 +294,92 @@ export function WhySheet({ m, onClose, onEquip }: { m: PartyMember; onClose: () 
   );
 }
 
+// ── Skill sheet ──────────────────────────────────────────────────────────────
+const SLOT_RULE_TEXT: Record<SkillSlot, string> = {
+  basic: "Used on every turn.",
+  special: `Rare: every ${SKILL_RULES.rare.every}rd turn, ×${SKILL_RULES.rare.mult} on one enemy. Epic or better: every ${SKILL_RULES.epic.every}th turn, ×${SKILL_RULES.epic.mult} on every enemy.`,
+  legendary: `Epic: every ${SKILL_RULES.epic.every}th turn, ×${SKILL_RULES.epic.mult} on every enemy. Legendary: once per floor, ×${SKILL_RULES.legendary.mult} on every enemy and stuns them for a turn.`,
+};
+
+export function scoreLines(k: PartySkill): { label: string; pts: number }[] {
+  const x = k.metrics;
+  const level = x.motion < 0.1 ? "low" : x.motion < 0.2 ? "medium" : "high";
+  return [
+    { label: `${x.frames} frames`, pts: x.framesPts },
+    { label: `Motion ${level} (${Math.round(x.motion * 100)}% of the hero changes per frame)`, pts: x.motionPts },
+    { label: `Reach ${x.reach}× its own size`, pts: x.reachPts },
+    { label: `${x.newColours} new effect colours over ${Math.round(x.coverage * 100)}% of the frame`, pts: x.effectsPts },
+  ];
+}
+
+export function SkillSheet({ m, slot, onAssign, onClose }: {
+  m: PartyMember; slot: SkillSlot; onAssign: (animId: string | null) => void; onClose: () => void;
+}) {
+  const k = m.skills?.find((x) => x.slot === slot);
+  const options = [...(m.skillOptions ?? [])].sort((a, b) => b.score - a.score);
+  const link = "font-semibold text-[#FFC857] underline underline-offset-2";
+  return (
+    <Sheet title={`${SLOT_LABEL[slot]} skill`} onClose={onClose}>
+      <p className="text-[13px] text-[#C8CCE8]">{SLOT_RULE_TEXT[slot]} This slot takes {TIER_LABEL[SLOT_MIN_TIER[slot]]} or better.</p>
+      {k ? (
+        <div className="mt-3 flex gap-3">
+          <span className="checker checker-sm h-20 w-20 shrink-0 overflow-hidden rounded-[6px]" style={{ boxShadow: `inset 0 0 0 2px ${TIER_COLOR[k.tier]}` }}>
+            <SkillPreview anim={k.anim} pixel={m.hero.pixel} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-display text-[17px] font-semibold text-[#FFF1E8]">{k.name}</p>
+            <p className="text-[13px]" style={{ color: TIER_COLOR[k.tier] }}>{TIER_LABEL[k.tier]}, spectacle {k.score}{k.pending ? " (analysing…)" : ""}</p>
+            {!k.pending && (
+              <ul className="mt-1.5 space-y-0.5 text-[12.5px] text-[#C8CCE8]">
+                {scoreLines(k).map((l) => <li key={l.label} className="flex justify-between gap-2"><span>{l.label}</span><span className="font-mono text-[#FFF1E8]">+{l.pts}</span></li>)}
+                <li className="flex justify-between gap-2 border-t border-white/[0.08] pt-0.5 font-semibold"><span>Total</span><span className="font-mono" style={{ color: TIER_COLOR[k.tier] }}>{k.score} {TIER_LABEL[k.tier]}</span></li>
+              </ul>
+            )}
+          </div>
+        </div>
+      ) : (
+        <p className="mt-3 text-[13px] text-[#C8CCE8]">{slot === "basic" ? "Empty: your hero uses its plain attack." : "Empty."} <Link className={link} href={`/animate?id=${encodeURIComponent(m.hero.id)}`}>Make an attack animation</Link></p>
+      )}
+      <p className="mt-3 text-[12.5px] text-[#A7ADD4]">
+        Score is measured on the animation itself: more frames, more movement, a wider reach and new effect colours (fire, magic, sparks) score higher. Common under 35, Rare 35+, Epic 60+, Legendary 80+.{" "}
+        <Link className={link} href={`/animate?id=${encodeURIComponent(m.hero.id)}`}>Make a stronger one</Link>
+      </p>
+      {options.length > 0 && (
+        <>
+          <h3 className="mt-4 text-[14px] font-semibold text-[#FFF1E8]">Put in this slot</h3>
+          <ul className="mt-2 grid grid-cols-3 gap-2">
+            {options.map((o) => {
+              const ok = slotAccepts(slot, o.tier);
+              const here = k?.id === o.id;
+              return (
+                <li key={o.id}>
+                  <button type="button" disabled={!ok || here} onClick={() => onAssign(o.id)}
+                    className="flex w-full flex-col rounded-[7px] border border-white/[0.08] bg-[#212B4E] p-1.5 text-left transition hover:border-[#FFA300]/70 disabled:opacity-45 disabled:hover:border-white/[0.08]">
+                    <span className="checker checker-sm block aspect-square overflow-hidden rounded-[5px]" style={{ boxShadow: `inset 0 0 0 2px ${TIER_COLOR[o.tier]}` }}>
+                      <SkillPreview anim={o.anim} pixel={m.hero.pixel} />
+                    </span>
+                    <span className="mt-1 truncate text-[12.5px] font-semibold text-[#FFF1E8]">{o.name}</span>
+                    <span className="text-[11.5px]" style={{ color: TIER_COLOR[o.tier] }}>{here ? "In this slot" : ok ? `${TIER_LABEL[o.tier]} ${o.score}` : `${TIER_LABEL[o.tier]}: too weak here`}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
+      {k && (
+        <button type="button" onClick={() => onAssign(null)} className="mt-3 inline-flex h-10 items-center rounded-[7px] border border-white/[0.14] px-3.5 text-[13.5px] text-[#FFF1E8] hover:bg-white/[0.06]">
+          Use the best one automatically
+        </button>
+      )}
+    </Sheet>
+  );
+}
+
 // ── Panel ────────────────────────────────────────────────────────────────────
-export function PartyPanel({ members, figures, hasItems, locked, saving, onPick, onWhy, onAuto }: {
+export function PartyPanel({ members, figures, hasItems, locked, saving, onPick, onWhy, onAuto, onSkill }: {
   members: PartyMember[]; figures: number; hasItems: boolean; locked: boolean; saving: boolean;
-  onPick: (mode: PickerMode) => void; onWhy: (i: number) => void; onAuto: () => void;
+  onPick: (mode: PickerMode) => void; onWhy: (i: number) => void; onAuto: () => void; onSkill: (index: number, slot: SkillSlot) => void;
 }) {
   const power = members.reduce((a, m) => a + m.stats.power, 0);
   const [hint] = useState(() => figures > members.length);
@@ -216,6 +398,7 @@ export function PartyPanel({ members, figures, hasItems, locked, saving, onPick,
   }
   return (
     <>
+      <style>{SKILL_STRIP_CSS}</style>
       <div className="flex items-center justify-between gap-2">
         <p className="text-[13.5px] text-[#A7ADD4]">Party power <span className="font-display text-[17px] font-semibold text-[#FFC857]">{power}</span></p>
         <button type="button" onClick={onAuto} disabled={locked || saving}
@@ -226,7 +409,7 @@ export function PartyPanel({ members, figures, hasItems, locked, saving, onPick,
       <ul className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {Array.from({ length: PARTY_SIZE }, (_, i) => {
           const m = members[i];
-          if (m) return <HeroCard key={m.hero.id} m={m} index={i} locked={locked || saving} onPick={onPick} onWhy={onWhy} />;
+          if (m) return <HeroCard key={m.hero.id} m={m} index={i} locked={locked || saving} onPick={onPick} onWhy={onWhy} onSkill={onSkill} />;
           const canAdd = i === members.length && figures > members.length;
           return (
             <li key={`empty-${i}`}>
@@ -247,7 +430,7 @@ export function PartyPanel({ members, figures, hasItems, locked, saving, onPick,
         })}
       </ul>
       <p className="mt-2 text-[12.5px] text-[#A7ADD4]">
-        Tap a hero to swap it, a slot to change gear, the power number to see why.{hint ? " You have more heroes than slots: try Auto-equip." : ""}
+        Tap a hero to swap it, a slot to change gear or skills, the power number to see why. Animated heroes are stronger and you see their animations in battle.{hint ? " You have more heroes than slots: try Auto-equip." : ""}
       </p>
     </>
   );

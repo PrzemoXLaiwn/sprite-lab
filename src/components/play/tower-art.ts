@@ -31,13 +31,13 @@ export const ZONE_LOOK: Record<ZoneId, ZoneLook> = {
 };
 
 /** Tower geometry (logical px). */
-export const TOWER_W = 150;
+export const TOWER_W = 224;
 export const WALL = 8;
 export const SLAB = 6;
-export const ROOM_H = 72;
-export const BOSS_ROOM_H = 96;
-export const STAIR_STEPS = 13;
-export const STAIR_W = 4;
+export const ROOM_H = 92;
+export const BOSS_ROOM_H = 124;
+export const STAIR_STEPS = 14;
+export const STAIR_W = 5;
 
 export function roomHeight(floor: number): number {
   return floor > 0 && floor % 5 === 0 ? BOSS_ROOM_H : ROOM_H;
@@ -181,7 +181,7 @@ function drawProps(ctx: Ctx, s: number, zone: ZoneId, floor: number, x0: number,
   const mid = x0 + TOWER_W / 2;
   if (zone === "cells") {
     // Barred window and a wall torch
-    const wx = x0 + (floor % 2 ? 30 : 96);
+    const wx = x0 + (floor % 2 ? 40 : 130);
     px(ctx, s, wx, top + 14, 16, 14, "#0E1228");
     for (let i = 0; i < 4; i++) px(ctx, s, wx + 2 + i * 4, top + 14, 1, 14, "#6A7299");
     torch(ctx, s, wx + 26, top + 22, L.glow);
@@ -266,7 +266,7 @@ function glowDisc(ctx: Ctx, s: number, x: number, y: number, r: number, color: s
 /** Portcullis across the boss hall: open = 0 (down) … 1 (fully raised). */
 function drawGate(ctx: Ctx, s: number, zone: ZoneId, x0: number, top: number, bottom: number, open: number) {
   if (open >= 1) return;
-  const gx = x0 + 98, h = bottom - top - SLAB;
+  const gx = x0 + 130, h = bottom - top - SLAB;
   const lift = Math.round(h * open);
   for (let i = 0; i < 5; i++) px(ctx, s, gx + i * 4, top + SLAB, 1, h - lift, "#6A7299");
   for (let y = top + SLAB + 6; y < bottom - lift; y += 8) px(ctx, s, gx - 1, y, 19, 1, "#6A7299");

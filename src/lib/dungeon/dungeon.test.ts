@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import { blessingById, chestFor, modsFor, offerFor } from "./blessings";
 import {
   BADGE_RANKS, BLESSING_EVERY, CLASSES, CRIT_MULTIPLIER, PRIZE_BUDGET_PER_WEEK, PRIZE_CREDITS, PRIZE_MIN_PAID_GENERATIONS,
-  RUNS_PER_DAY, STAR_STEP, ZONES, starMultiplier, zoneFor,
+  RUNS_PER_DAY, STAR_STEP, ZONES, animationMultiplier, animationStep, starMultiplier, zoneFor,
 } from "./config";
 import { computeDamage, elementMultiplier, matchup } from "./damage";
-import { classFor, classMatch, elementFor, starsFor, trinketKind, weaponKind, type SpriteFacts } from "./detect";
+import { classFor, classMatch, elementFor, elementMatch, heroWork, starsFor, trinketKind, weaponKind, type SpriteFacts } from "./detect";
 import { createRng, hash32, makeRng, publicTag, runSeed } from "./rng";
 import {
   displayName, isEligibleForCredits, maxWeeklyPayout, nextRunIndex, previousWeek, prizeFor, runsLeft, utcDay,
@@ -65,6 +65,25 @@ describe("element and item kind from the prompt", () => {
     expect(elementFor("iron sword")).toBe("neutral");
   });
 
+  it("real prompts: element words first, then colours, then the creature, else Neutral", () => {
+    expect(elementMatch("red dragon breathing fire")).toEqual({ element: "fire", word: "breathing fire", rule: "word" });
+    expect(elementMatch("dark knight in black armor")).toEqual({ element: "shadow", word: "dark", rule: "word" });
+    expect(elementMatch("elf ranger with a green hood")).toEqual({ element: "nature", word: "green", rule: "colour" });
+    expect(elementMatch("a big red dragon")).toEqual({ element: "fire", word: "red", rule: "colour" });
+    expect(elementMatch("baby dragon")).toEqual({ element: "fire", word: "dragon", rule: "creature" });
+    expect(elementMatch("friendly ghost")).toEqual({ element: "shadow", word: "ghost", rule: "creature" });
+    expect(elementMatch("bouncy slime")).toEqual({ element: "poison", word: "slime", rule: "creature" });
+    expect(elementMatch("knight in shining armor")).toEqual({ element: "neutral", word: null, rule: "none" });
+    expect(elementFor("ice dragon")).toBe("ice"); // the word beats the creature default
+    expect(elementFor("golden paladin")).toBe("holy");
+    expect(elementFor("purple witch")).toBe("shadow");
+    expect(elementFor("yellow electric mouse")).toBe("lightning"); // "electric" is a word, beats the colour
+    expect(elementFor("blue slime")).toBe("ice"); // colour beats the creature default
+    expect(elementFor("talented bard")).toBe("neutral"); // whole words only ("ent")
+    // The first element word in the prompt wins
+    expect(elementFor("dark knight with a fire sword")).toBe("shadow");
+  });
+
   it("knows blades, staves and trinket kinds", () => {
     expect(weaponKind("short bow")).toBe("blade");
     expect(weaponKind("oak staff")).toBe("staff");
@@ -75,26 +94,40 @@ describe("element and item kind from the prompt", () => {
   });
 });
 
-describe("stars: work put into the sprite", () => {
-  it("★ plain, +HD, +animated, +3 animations or a walk / rotation; max 4", () => {
+describe("work put into a sprite", () => {
+  it("items: ★ plain, +HD, +animated (max 3), ×1.3 per star", () => {
     expect(starsFor({ hd: false, animations: 0, rotated: false }).stars).toBe(1);
     expect(starsFor({ hd: true, animations: 0, rotated: false }).stars).toBe(2);
     expect(starsFor({ hd: false, animations: 1, rotated: false }).stars).toBe(2);
-    expect(starsFor({ hd: false, animations: 2, rotated: false }).stars).toBe(2);
-    expect(starsFor({ hd: false, animations: 3, rotated: false }).stars).toBe(3);
-    expect(starsFor({ hd: false, animations: 0, rotated: true }).stars).toBe(3);
-    expect(starsFor({ hd: true, animations: 5, rotated: true }).stars).toBe(4);
-  });
-
-  it("each star multiplies by a fixed step", () => {
+    expect(starsFor({ hd: true, animations: 5, rotated: true }).stars).toBe(3);
     expect(starMultiplier(1)).toBe(1);
     expect(starMultiplier(2)).toBeCloseTo(STAR_STEP);
-    expect(starMultiplier(4)).toBeCloseTo(STAR_STEP ** 3, 2);
-    expect(starMultiplier(9)).toBe(starMultiplier(4));
-    const one = deriveUnit(sp("CHARACTERS", "knight", 1));
-    const three = deriveUnit(sp("CHARACTERS", "knight", 3));
-    expect(one.hp).toBe(CLASSES.guardian.hp);
-    expect(three.hp).toBe(Math.round(CLASSES.guardian.hp * starMultiplier(3)));
+    expect(starMultiplier(9)).toBe(starMultiplier(3));
+  });
+
+  it("heroes: every different animation adds power, with diminishing but always positive returns, up to 6", () => {
+    const steps = [1, 2, 3, 4, 5, 6].map(animationStep);
+    expect(steps[0]).toBeCloseTo(0.3);
+    for (let k = 1; k < steps.length; k++) {
+      expect(steps[k]).toBeGreaterThan(0);
+      expect(steps[k]).toBeLessThan(steps[k - 1]);
+    }
+    expect(animationStep(7)).toBe(0);
+    expect([0, 1, 2, 3, 6, 9].map(animationMultiplier)).toEqual([1, 1.3, 1.54, 1.732, 2.107, 2.107]);
+    const w = heroWork({ hd: true, animations: 3, rotated: false });
+    expect(w).toMatchObject({ stars: 5, hd: true, animations: 3, hdMultiplier: 1.3, animationMultiplier: 1.732 });
+    expect(w.steps).toEqual([0.3, 0.24, 0.192]);
+    expect(w.multiplier).toBeCloseTo(1.3 * 1.732, 3);
+    // A rotation / walk set alone counts as one animation
+    expect(heroWork({ hd: false, animations: 0, rotated: true }).animations).toBe(1);
+  });
+
+  it("a hero with more animations is clearly stronger", () => {
+    const power = (n: number) => deriveUnit({ ...sp("CHARACTERS", "knight", 1), animations: n }).power;
+    const ps = [0, 1, 2, 3, 4, 5, 6].map(power);
+    for (let k = 1; k < ps.length; k++) expect(ps[k]).toBeGreaterThan(ps[k - 1]);
+    expect(ps[3] / ps[0]).toBeGreaterThan(1.6);
+    expect(deriveUnit(sp("CHARACTERS", "knight", 1)).hp).toBe(CLASSES.guardian.hp);
   });
 });
 
@@ -146,11 +179,11 @@ describe("gear", () => {
     expect(m.attackElement).toBe("fire");
     expect(deriveMember(hero("ice knight", 2, { w: "iron mace" })).attackElement).toBe("ice");
     const w = m.why;
-    const base = Math.round(w.base.atk * w.starMultiplier);
+    const base = Math.round(w.base.atk * w.work.multiplier);
     expect(m.atk).toBe(base + w.gear.reduce((a, g) => a + g.atk, 0));
-    expect(m.hp).toBe(Math.round(w.base.hp * w.starMultiplier) + w.gear.reduce((a, g) => a + g.hp, 0));
+    expect(m.hp).toBe(Math.round(w.base.hp * w.work.multiplier) + w.gear.reduce((a, g) => a + g.hp, 0));
     expect(w.classWord).toBe("knight");
-    expect(w.elementWord).toBe("ice");
+    expect(w.elementSource).toEqual({ element: "ice", word: "ice", rule: "word" });
     expect(m.power).toBeGreaterThan(deriveUnit(sp("CHARACTERS", "ice knight", 2)).power);
   });
 });

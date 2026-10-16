@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { simulateFull } from "@/lib/dungeon/simulate";
+import { chooseBlessing, initialState, runSegment, simulateFull, type RunState } from "@/lib/dungeon/simulate";
 import { deriveParty } from "@/lib/dungeon/stats";
 import type { Leaderboard } from "@/lib/dungeon/store";
 import { boardAfterRun, removeHero, setGear, setHero, wornBy } from "./party-edit";
@@ -44,6 +44,27 @@ describe("replay timeline", () => {
     steps.forEach((s, i) => {
       if (i && steps[i - 1].action?.side === "enemy" && steps[i - 1].action?.kind === "hit") expect(s.combo).toBeLessThanOrEqual(1);
     });
+  });
+});
+
+describe("effects are visible in the replay", () => {
+  it("a Phoenix revive at floor start: hero shown down during the climb, then a revive step brings them back", () => {
+    const paused: RunState = { ...initialState(party, 3, "2026-W42"), floor: 3, hp: [0, party[1].hp], offer: ["phoenix"] };
+    const c = chooseBlessing(paused, "phoenix");
+    if (!c.ok) throw new Error("choice refused");
+    const { floors } = runSegment(party, c.state);
+    const { steps } = buildTimeline(floors);
+    expect(steps[0]).toMatchObject({ kind: "climb" });
+    expect(steps[0].partyHp[0]).toBe(0);
+    expect(steps[1]).toMatchObject({ kind: "revive", event: { kind: "revive", target: 0 } });
+    expect(steps[2].partyHp[0]).toBe(Math.round(party[0].hp * 0.5));
+  });
+
+  it("cleared floors carry the rest heal for the green numbers", () => {
+    const st: RunState = { ...initialState(party, 3, "2026-W42"), hp: party.map((u) => Math.round(u.hp * 0.5)) };
+    const { floors } = runSegment(party, st);
+    const clear = buildTimeline(floors).steps.find((s) => s.kind === "clear" && s.restHeal);
+    expect(clear?.restHeal?.some((h) => h > 0)).toBe(true);
   });
 });
 

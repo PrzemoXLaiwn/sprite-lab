@@ -1,7 +1,7 @@
 // =============================================================================
 // Sprite Dungeon — SQL (kept as strings so the PGlite tests run the exact text)
 // =============================================================================
-// Tables: prisma/sql/2026-10-15_sprite_dungeon.sql + 2026-10-17_dungeon_tower.sql
+// Tables: prisma/sql/2026-10-15_sprite_dungeon.sql + 2026-10-17_dungeon_tower.sql + 2026-10-18_dungeon_skills.sql
 // =============================================================================
 
 import { BADGE_RANKS, PRIZE_CREDITS, PRIZE_MIN_PAID_GENERATIONS, badgeFor } from "./config";
@@ -33,6 +33,24 @@ export const SPRITES_SQL = `
     AND ($2::text[] IS NULL OR g.id = ANY($2::text[]))
   ORDER BY g.created_at DESC
   LIMIT $3`;
+
+/** The heroes' animation sheets, newest first. $1 = user id, $2 = hero generation ids. */
+export const HERO_ANIMS_SQL = `
+  SELECT id, source_generation_id, prompt, image_url FROM generations
+  WHERE user_id = $1 AND subcategory_id = 'ANIMATION' AND source_generation_id = ANY($2::text[])
+  ORDER BY created_at DESC
+  LIMIT 200`;
+
+/** Cached spectacle scores. $1 = animation generation ids. */
+export const SKILL_SCORES_SQL = `
+  SELECT generation_id, score, tier, metrics, failed, computed_at FROM dungeon_skill_scores WHERE generation_id = ANY($1::text[])`;
+
+/** Stores (or refreshes) one analysis. $1 id, $2 score, $3 tier, $4 metrics json, $5 failed. */
+export const SKILL_SCORE_SAVE_SQL = `
+  INSERT INTO dungeon_skill_scores (generation_id, score, tier, metrics, failed, computed_at)
+  VALUES ($1, $2, $3, $4::jsonb, $5, now())
+  ON CONFLICT (generation_id) DO UPDATE
+  SET score = EXCLUDED.score, tier = EXCLUDED.tier, metrics = EXCLUDED.metrics, failed = EXCLUDED.failed, computed_at = now()`;
 
 /** $1 = user id. */
 export const PARTY_GET_SQL = `SELECT slots FROM dungeon_parties WHERE user_id = $1`;

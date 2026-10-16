@@ -10,11 +10,12 @@ import { isoWeek, nextRunIndex, utcDay } from "./rules";
 import { parseSlots } from "./party";
 import {
   ACTIVE_RUN_SQL, ADVANCE_RUN_SQL, INSERT_RUN_SQL, LEADERBOARD_SQL, PARTY_GET_SQL, PARTY_SAVE_SQL, PAY_PRIZES_SQL, RECORDS_SQL, RUN_BY_ID_SQL,
-  RUNS_TODAY_SQL, SPRITES_SQL, prizeParams,
+  HERO_ANIMS_SQL, RUNS_TODAY_SQL, SKILL_SCORES_SQL, SKILL_SCORE_SAVE_SQL, SPRITES_SQL, prizeParams,
 } from "./sql";
 
 const MIGRATION = readFileSync(join(process.cwd(), "prisma/sql/2026-10-15_sprite_dungeon.sql"), "utf8");
 const TOWER = readFileSync(join(process.cwd(), "prisma/sql/2026-10-17_dungeon_tower.sql"), "utf8");
+const SKILLS = readFileSync(join(process.cwd(), "prisma/sql/2026-10-18_dungeon_skills.sql"), "utf8");
 const WEEK = "2026-W42";
 const START = new Date("2026-10-12T00:00:00Z");
 const END = new Date("2026-10-19T00:00:00Z");
@@ -53,6 +54,8 @@ beforeEach(async () => {
   await db.query(`INSERT INTO dungeon_runs (id, user_id, week, run_day, run_index, floor, seed, party) VALUES ('old', 'zz', '2026-W40', '2026-09-30', 1, 4, 's', '[]')`);
   await db.exec(TOWER);
   await db.exec(TOWER);
+  await db.exec(SKILLS);
+  await db.exec(SKILLS);
   await db.exec(`INSERT INTO users (id, username, email) VALUES ('a', 'ana', 'ana@x.io'), ('b', NULL, 'bob@x.io'), ('c', 'cy', 'cy@x.io'), ('d', 'di', 'di@x.io'), ('e', 'ed', 'ed@x.io')`);
 });
 
@@ -185,6 +188,29 @@ describe("stepwise runs", () => {
     await db.query(ADVANCE_RUN_SQL, ["run4", "b", 0, "{}", "choosing", 6]); // b reaches 6 now, after a
     const rows = (await db.query<{ rank: number; user_id: string; floor: number }>(LEADERBOARD_SQL, [WEEK, 25, "a"])).rows;
     expect(rows.map((r) => [r.rank, r.user_id, r.floor])).toEqual([[1, "a", 6], [2, "b", 6]]);
+  });
+});
+
+describe("skills cache", () => {
+  it("stores each animation's score once, updates on re-analysis, rejects out-of-range scores", async () => {
+    await db.query(SKILL_SCORE_SAVE_SQL, ["anim1", 20, "common", JSON.stringify({ frames: 0 }), true]);
+    await db.query(SKILL_SCORE_SAVE_SQL, ["anim1", 86, "legendary", JSON.stringify({ frames: 9, reach: 2.1 }), false]);
+    await db.query(SKILL_SCORE_SAVE_SQL, ["anim2", 41, "rare", "{}", false]);
+    const rows = (await db.query<{ generation_id: string; score: number; tier: string; metrics: { reach?: number }; failed: boolean }>(SKILL_SCORES_SQL, [["anim1", "anim2", "nope"]])).rows;
+    expect(rows.map((r) => [r.generation_id, r.score, r.tier, r.failed]).sort()).toEqual([["anim1", 86, "legendary", false], ["anim2", 41, "rare", false]]);
+    expect(rows.find((r) => r.generation_id === "anim1")!.metrics.reach).toBe(2.1);
+    await expect(db.query(SKILL_SCORE_SAVE_SQL, ["bad", 140, "legendary", "{}", false])).rejects.toThrow();
+  });
+
+  it("lists a hero's animations newest first, only the user's own", async () => {
+    await db.exec(`
+      INSERT INTO generations (id, user_id, prompt, category_id, subcategory_id, style_id, image_url, source_generation_id, created_at) VALUES
+        ('x1','a','[Animation: attack, 6f] golem','CREATURES','ANIMATION','A','u1','h1','2026-10-10'),
+        ('x2','a','[Animation: ground slam, 9f] golem','CREATURES','ANIMATION','A','u2','h1','2026-10-12'),
+        ('x3','b','[Animation: attack, 6f] golem','CREATURES','ANIMATION','A','u3','h1','2026-10-13');
+    `);
+    const rows = (await db.query<{ id: string }>(HERO_ANIMS_SQL, ["a", ["h1"]])).rows;
+    expect(rows.map((r) => r.id)).toEqual(["x2", "x1"]);
   });
 });
 
