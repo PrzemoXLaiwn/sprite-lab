@@ -39,7 +39,7 @@ const SL = {
   styles: "12 styles: pixel art (16-bit, HD, isometric), isometric, isometric cartoon, hand painted, anime, chibi, dark fantasy, cartoon, vector, realistic",
   pixel: "Yes — real pixel grid with a limited palette",
   animation: "Yes — any sprite to sprite sheet + GIF (4/6/9 key poses, smooth mode up to 18 frames, AI-suggested motions)",
-  turnaround: "4- and 8-direction views (static); no per-direction walk sets",
+  turnaround: "Static 4- and 8-direction views, plus a 4-direction walk sheet; no 8-direction animations",
   tiles: "Seamless tiles and animated tiles; no autotile tilesets",
   threeD: "No",
   api: "No",
@@ -60,7 +60,7 @@ export const COMPARISONS: Comparison[] = [
     checkedOn: COMPARE_CHECKED_ON,
     tagline: "Pixel-art specialist with directional characters, tilesets, an Aseprite extension, API and MCP.",
     summary:
-      "PixelLab is a pixel-art-focused generator for indie game developers. Its site lists character sprites and animations, 4- and 8-directional views, connectable Wang tilesets and maps, UI elements, inpainting, an Aseprite extension, an API and an MCP integration. SpriteLab covers more art styles beyond pixel art and is built around fast prompt-to-sprite plus animation, but it has no API, no per-direction animation sets and no autotile tilesets (it does make static 4- and 8-direction views).",
+      "PixelLab is a pixel-art-focused generator for indie game developers. Its site lists character sprites and animations, 4- and 8-directional views, connectable Wang tilesets and maps, UI elements, inpainting, an Aseprite extension, an API and an MCP integration. SpriteLab covers more art styles beyond pixel art and is built around fast prompt-to-sprite plus animation, but it has no API, no 8-direction animation sets and no autotile tilesets (it does make static 4- and 8-direction views and a 4-direction walk).",
     rows: [
       { feature: "What it generates", spritelab: SL.what, competitor: "Pixel art characters, animations, backgrounds, maps, tilesets and UI elements" },
       { feature: "Art styles", spritelab: SL.styles, competitor: "Pixel art (including isometric)" },

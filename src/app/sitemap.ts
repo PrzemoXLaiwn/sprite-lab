@@ -59,6 +59,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "monthly",
       priority: 0.7,
     },
+    {
+      url: `${baseUrl}/compare/best-ai-sprite-generators-2026`,
+      lastModified: new Date("2026-10-17").toISOString(),
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
     ...COMPARISONS.map((c) => ({
       url: `${baseUrl}/compare/${c.slug}`,
       lastModified: new Date(COMPARE_CHECKED_ON).toISOString(),

@@ -18,7 +18,7 @@ export const SEO_PAGES: SeoPage[] = [
   { slug: "ai-sprite-generator", label: "AI Sprite Generator", summary: "Generate game-ready 2D sprites from a text prompt: characters, creatures, weapons, items and props as transparent PNGs." },
   { slug: "pixel-art-generator", label: "AI Pixel Art Generator", summary: "Pixel art sprites on a real pixel grid with a limited palette, in 16-bit, HD and isometric pixel styles." },
   { slug: "sprite-sheet-generator", label: "Sprite Sheet Generator", summary: "Sprite sheets of equal-size frames on a transparent PNG, 4- and 8-direction sheets, a frames ZIP and engine packs for Godot, Unity and GameMaker." },
-  { slug: "ai-sprite-animation-generator", label: "AI Sprite Animation & Sprite Sheets", summary: "Animate any sprite — idle, walk, run, attack, jump, cast or a custom motion — and export a sprite sheet and GIF." },
+  { slug: "ai-sprite-animation-generator", label: "AI Sprite Animation", summary: "Animate any sprite — idle, walk, run, attack, jump, cast or a custom motion — and export a sprite sheet and GIF." },
   { slug: "rpg-character-creator", label: "RPG Character Creator", summary: "Heroes, enemies, NPCs and bosses for RPGs, roguelikes and dungeon crawlers." },
   { slug: "game-weapon-generator", label: "Game Weapon Generator", summary: "Swords, axes, bows, staffs, guns and shields as game-ready sprites." },
   { slug: "ai-tileset-generator", label: "AI Tile Generator", summary: "Seamless floor and wall tiles that repeat without visible seams, plus animated water and lava tiles." },

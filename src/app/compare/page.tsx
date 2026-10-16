@@ -50,12 +50,16 @@ export default function CompareIndexPage() {
         <div className="pixel-grid pointer-events-none absolute inset-0 [mask-image:radial-gradient(ellipse_at_top,black_20%,transparent_70%)]" />
         <div className="relative z-10 mx-auto max-w-4xl px-5 text-center">
           <h1 className="mt-5 font-display text-[38px] font-semibold leading-[1.06] text-white sm:text-[56px]">
-            Best AI sprite &amp; game asset generators
+            Compare AI sprite generators
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-[16px] leading-relaxed text-[#9AA1CC]">
             We make SpriteLab, so we are biased — which is why every comparison here is based on each tool&apos;s own
             website and says plainly when another tool is the better choice.
           </p>
+          <Link href="/compare/best-ai-sprite-generators-2026" className="group mt-6 inline-flex min-h-10 items-center gap-1.5 text-[15px] font-semibold text-[#FFA300]">
+            All six tools in one table: the best AI sprite generators in 2026
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+          </Link>
         </div>
       </section>
 

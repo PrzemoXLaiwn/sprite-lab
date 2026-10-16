@@ -121,4 +121,22 @@ export const GUIDE_INTROS: Record<string, GuideIntro> = {
     ],
     needs: ["Sprites or frames you want to pack", "Any 2D engine"],
   },
+  "what-is-a-sprite-in-gaming": {
+    learn: [
+      "What a sprite is and what isn't one",
+      "Where the word comes from and why old games flicker",
+      "The difference between a sprite, a sprite sheet and a texture atlas",
+      "What to check before a sprite goes into your game",
+    ],
+    needs: ["No experience needed"],
+  },
+  "how-to-make-an-8-direction-walk-cycle": {
+    learn: [
+      "Which five directions to draw and which three to mirror",
+      "A row order and the input angle for each direction",
+      "How many frames each direction needs and why they must match",
+      "How to pick the facing from input in Godot and Unity",
+    ],
+    needs: ["A pixel editor such as Aseprite or LibreSprite", "A standing turnaround of your character"],
+  },
 };
