@@ -1,19 +1,19 @@
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — Accounts, Credits & Asset Use",
+  title: "Terms of Service — Credits & Asset Use",
   description:
     "The terms for using SpriteLab, the AI game asset generator: accounts, credits and payments, acceptable use and your license to the assets you generate.",
   alternates: { canonical: "https://www.sprite-lab.com/terms" },
   openGraph: {
-    title: "Terms of Service — Accounts, Credits & Asset Use | SpriteLab",
+    title: "Terms of Service — Credits & Asset Use | SpriteLab",
     description: "The terms for using SpriteLab, the AI game asset generator: accounts, credits and payments, acceptable use and your license to the assets you generate.",
     url: "https://www.sprite-lab.com/terms",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Terms of Service — Accounts, Credits & Asset Use | SpriteLab",
+    title: "Terms of Service — Credits & Asset Use | SpriteLab",
     description: "The terms for using SpriteLab, the AI game asset generator: accounts, credits and payments, acceptable use and your license to the assets you generate.",
   },
 };

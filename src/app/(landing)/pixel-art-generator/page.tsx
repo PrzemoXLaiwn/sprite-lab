@@ -5,7 +5,7 @@ import { LANDING_SPECS } from "@/data/landing-specs";
 import { SHOWCASE, isPixelShowcase } from "@/data/showcase";
 
 export const metadata: Metadata = {
-  title: { absolute: "Free AI Pixel Art Generator — Retro Game Sprites | SpriteLab" },
+  title: { absolute: "Free AI Pixel Art Generator for Game Sprites | SpriteLab" },
   description:
     "Generate pixel art game sprites with AI, snapped to a real pixel grid with a limited palette. 16-bit retro, HD and isometric styles. Free to try.",
   keywords: [
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Free AI Pixel Art Generator — Retro Game Sprites | SpriteLab",
+    title: "Free AI Pixel Art Generator for Game Sprites | SpriteLab",
     description: "Generate pixel art game sprites with AI, snapped to a real pixel grid with a limited palette. 16-bit retro, HD and isometric styles. Free to try.",
   },
   alternates: {

@@ -16,7 +16,7 @@ export function generateStaticParams(): Params[] {
 }
 
 function titleFor(c: Comparison) {
-  return `SpriteLab vs ${c.competitor}: AI Sprite Generator Comparison | SpriteLab`;
+  return `SpriteLab vs ${c.competitor}: AI Sprite Tools Compared`;
 }
 
 function descriptionFor(c: Comparison) {

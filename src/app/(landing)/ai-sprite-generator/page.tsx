@@ -6,7 +6,7 @@ import { SHOWCASE } from "@/data/showcase";
 const URL = "https://www.sprite-lab.com/ai-sprite-generator";
 
 export const metadata: Metadata = {
-  title: { absolute: "AI Sprite Generator — Transparent PNG Game Sprites | SpriteLab" },
+  title: { absolute: "AI Sprite Generator & Sprite Maker Online | SpriteLab" },
   description:
     "Generate game-ready 2D sprites with AI: characters, creatures, weapons, items and props as transparent PNGs in 12 art styles. Free to try.",
   keywords: ["AI sprite generator", "sprite generator", "game sprite maker", "2D sprite generator", "AI game sprites", "transparent PNG sprites", "sprite creator online"],
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "AI Sprite Generator — Transparent PNG Game Sprites | SpriteLab",
+    title: "AI Sprite Generator & Sprite Maker Online | SpriteLab",
     description: "Generate game-ready 2D sprites with AI: characters, creatures, weapons, items and props as transparent PNGs in 12 art styles. Free to try.",
   },
   alternates: { canonical: URL },

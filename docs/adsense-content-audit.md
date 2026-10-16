@@ -179,3 +179,5 @@ need" box (`src/data/guide-intros.ts`) and a reading time computed from the text
 - Guides ↔ tool pages ↔ `/how-it-works` cross-links. Titles, descriptions and canonicals checked unique and correct
   on 38 public URLs.
 - `/api/stats` no longer returns invented numbers (1,000 assets / 100 users) when the database is down.
+
+**2026-10-17 update:** `/unity-sprite-generator` and `/godot-sprite-generator` are indexed again (owner's decision: thin content is fixed with content, not noindex). Each now has its own engine-pack section (SpriteFrames `.tres`, Sprite Editor slicing, Point/Nearest filtering, Pixels Per Unit, hitbox coordinates) that the guides don't repeat. Home, pricing and community are static (ISR) and no longer depend on the database.

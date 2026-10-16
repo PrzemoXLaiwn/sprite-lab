@@ -11,7 +11,7 @@ const DESCRIPTION =
   "Practical guides for indie game devs: sprite sheets, pixel art sizes, frame counts, Godot 4, Unity and GameMaker import, hitboxes and tiles.";
 
 export const metadata: Metadata = {
-  title: { absolute: "Game Dev Guides — Sprites, Sprite Sheets & Tiles | SpriteLab" },
+  title: { absolute: "Game Dev Guides: Sprites, Sheets & Tiles | SpriteLab" },
   description: DESCRIPTION,
   alternates: { canonical: URL },
   openGraph: {

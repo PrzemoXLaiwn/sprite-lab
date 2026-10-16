@@ -5,7 +5,7 @@ import { LANDING_SPECS } from "@/data/landing-specs";
 const URL = "https://www.sprite-lab.com/ai-game-icon-generator";
 
 export const metadata: Metadata = {
-  title: { absolute: "AI Game Icon Generator — Item, Skill & Status Icons | SpriteLab" },
+  title: { absolute: "AI Game Icon Generator — Items & Skills | SpriteLab" },
   description:
     "Generate game icons with AI: inventory items, skills, spells, status effects and UI buttons. Pixel art or painted, transparent PNG, matching frames.",
   keywords: ["AI game icon generator", "game icon generator", "skill icon generator", "item icon generator", "RPG icons", "pixel art icons", "inventory icons"],
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "AI Game Icon Generator — Item, Skill & Status Icons | SpriteLab",
+    title: "AI Game Icon Generator — Items & Skills | SpriteLab",
     description: "Generate game icons with AI: inventory items, skills, spells, status effects and UI buttons. Pixel art or painted, transparent PNG, matching frames.",
   },
   alternates: { canonical: URL },

@@ -7,7 +7,7 @@ import { COMPARISONS, COMPARE_CHECKED_ON_LABEL, SPRITELAB_SUMMARY } from "@/data
 import { CONTAINER, CompareCta, Disclaimer, JsonLd, SITE, SectionHead } from "./_ui";
 
 const URL = `${SITE}/compare`;
-const TITLE = "Best AI Sprite & Game Asset Generators Compared | SpriteLab";
+const TITLE = "Compare AI Sprite Generators | SpriteLab";
 const DESCRIPTION =
   "Honest comparison of AI sprite and game asset generators: PixelLab, Scenario, Retro Diffusion, Leonardo AI and Ludo.ai — features, pricing and who each suits.";
 

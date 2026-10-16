@@ -4,7 +4,7 @@ import { LANDING_SPECS } from "@/data/landing-specs";
 import { SHOWCASE } from "@/data/showcase";
 
 export const metadata: Metadata = {
-  title: { absolute: "AI RPG Character Creator — Heroes, NPCs & Monsters | SpriteLab" },
+  title: { absolute: "AI RPG Character Creator: Heroes & Monsters | SpriteLab" },
   description:
     "Create RPG characters with AI: heroes, villains, NPCs, monsters and bosses as transparent PNG sprites in 12 art styles, ready to animate.",
   keywords: [
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "AI RPG Character Creator — Heroes, NPCs & Monsters | SpriteLab",
+    title: "AI RPG Character Creator: Heroes & Monsters | SpriteLab",
     description: "Create RPG characters with AI: heroes, villains, NPCs, monsters and bosses as transparent PNG sprites in 12 art styles, ready to animate.",
   },
   alternates: {

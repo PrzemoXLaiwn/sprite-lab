@@ -56,7 +56,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!guide) return {};
   const url = `${SITE}/guides/${guide.slug}`;
   return {
-    title: { absolute: `${guide.title} | SpriteLab` },
+    // Brand only where it still fits the ~60 characters search results show
+    title: { absolute: guide.title.length <= 48 ? `${guide.title} | SpriteLab` : guide.title },
     description: guide.description,
     alternates: { canonical: url },
     openGraph: {

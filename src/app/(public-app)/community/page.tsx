@@ -1,6 +1,9 @@
 import { COMMUNITY_PAGE_SIZE, fetchCommunityPage, type CommunityPage } from "@/lib/community-gallery";
 import { CommunityClient } from "./CommunityClient";
 
+// Static, refreshed every 5 minutes (without the database the client loads the works itself)
+export const revalidate = 300;
+
 /**
  * /community — the first page of public works (newest first) is fetched and
  * rendered on the server, so the HTML already contains each piece's prompt,

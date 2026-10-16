@@ -12,7 +12,7 @@ const DESCRIPTION =
   "Every public page on SpriteLab in one place: the sprite, pixel art, animation, tile and icon tools, all game dev guides, tool comparisons and company pages.";
 
 export const metadata: Metadata = {
-  title: { absolute: "Site Map — All SpriteLab Pages, Tools and Guides | SpriteLab" },
+  title: { absolute: "Site Map — All SpriteLab Pages and Guides" },
   description: DESCRIPTION,
   alternates: { canonical: URL },
   openGraph: { title: "SpriteLab site map", description: DESCRIPTION, url: URL, type: "website" },

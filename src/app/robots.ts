@@ -56,6 +56,8 @@ const PRIVATE = [
   "/variations",
   "/animate",
   "/projects",
+  // Signed-in copies of /, /pricing and /community (served by a proxy rewrite)
+  "/member/",
   // Admin / internal
   "/api/",
   "/auth/",

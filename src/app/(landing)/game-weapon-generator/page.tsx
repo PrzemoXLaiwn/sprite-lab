@@ -4,7 +4,7 @@ import { LANDING_SPECS } from "@/data/landing-specs";
 import { SHOWCASE } from "@/data/showcase";
 
 export const metadata: Metadata = {
-  title: { absolute: "AI Game Weapon Generator — Swords, Guns & Staffs | SpriteLab" },
+  title: { absolute: "AI Game Weapon Generator — Swords & Guns | SpriteLab" },
   description:
     "Generate game weapons with AI: swords, axes, guns, staffs, shields and more as transparent PNG sprites in 12 art styles. Free to try.",
   keywords: [
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "AI Game Weapon Generator — Swords, Guns & Staffs | SpriteLab",
+    title: "AI Game Weapon Generator — Swords & Guns | SpriteLab",
     description: "Generate game weapons with AI: swords, axes, guns, staffs, shields and more as transparent PNG sprites in 12 art styles. Free to try.",
   },
   alternates: {

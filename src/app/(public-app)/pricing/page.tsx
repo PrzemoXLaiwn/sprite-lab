@@ -24,6 +24,9 @@ import {
   PricingStats,
 } from "./pricing-client";
 
+// Static (no database, no session); hourly so the launch promo can switch off on time
+export const revalidate = 3600;
+
 
 
 /** Display cards with the numbers taken from the config Stripe charges from. */

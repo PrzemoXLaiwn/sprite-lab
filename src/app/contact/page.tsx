@@ -11,7 +11,7 @@ const DESCRIPTION =
   "Contact SpriteLab: email support about bugs, billing and refunds, account and privacy requests, feature ideas or press.";
 
 export const metadata: Metadata = {
-  title: { absolute: "Contact SpriteLab — Support, Billing and Feedback | SpriteLab" },
+  title: { absolute: "Contact SpriteLab: Support, Billing, Feedback" },
   description: DESCRIPTION,
   alternates: { canonical: URL },
   openGraph: { title: "Contact SpriteLab", description: DESCRIPTION, url: URL, type: "website" },

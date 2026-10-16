@@ -20,6 +20,10 @@ export const HOME_FAQ: Faq[] = [
     a: "SpriteLab is an AI game asset generator for indie game developers. You describe an asset in a sentence and get a game-ready 2D sprite — a transparent PNG, with pixel art snapped to a real pixel grid — that you can animate into a sprite sheet and drop into Unity, Godot or GameMaker.",
   },
   {
+    q: "Is SpriteLab related to Code.org's Sprite Lab?",
+    a: "No. Sprite Lab on Code.org is a free coding course for students. SpriteLab (sprite-lab.com) is a separate, independent tool that uses AI to make sprites, animations and sprite sheets for people building their own games. The two aren't connected, and a Code.org account doesn't work here.",
+  },
+  {
     q: "How is it different from a general AI image generator?",
     a: "Every result is post-processed for games: the background is removed to transparency, pixel art is snapped to one pixel grid and a limited palette, outlines are kept consistent, and sprites can be animated into frame-aligned sprite sheets and organised into project packs. You get assets, not illustrations.",
   },

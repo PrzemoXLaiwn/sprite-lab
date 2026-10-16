@@ -5,7 +5,7 @@ import { LANDING_SPECS } from "@/data/landing-specs";
 const URL = "https://www.sprite-lab.com/ai-tileset-generator";
 
 export const metadata: Metadata = {
-  title: { absolute: "AI Tile Generator — Seamless Floor & Wall Tiles | SpriteLab" },
+  title: { absolute: "AI Tileset Generator — Seamless Game Tiles | SpriteLab" },
   description:
     "Generate seamless floor and wall tiles for 2D games with AI: stone, grass, water, lava, wood. Pixel-art tiles that repeat without visible seams.",
   keywords: ["AI tile generator", "seamless tile generator", "tileable texture AI", "pixel art tiles", "game floor tiles", "wall tiles generator", "animated water tile"],
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "AI Tile Generator — Seamless Floor & Wall Tiles | SpriteLab",
+    title: "AI Tileset Generator — Seamless Game Tiles | SpriteLab",
     description: "Generate seamless floor and wall tiles for 2D games with AI: stone, grass, water, lava, wood. Pixel-art tiles that repeat without visible seams.",
   },
   alternates: { canonical: URL },

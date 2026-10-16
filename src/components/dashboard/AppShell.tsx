@@ -21,7 +21,7 @@ export async function AppShell({ user, children }: { user: User; children: React
   const dbUser = await prisma.user.findUnique({
     where: { id: user.id },
     select: { plan: true, role: true, emailPreferences: true },
-  });
+  }).catch(() => null); // database down: the frame still renders
   const prefs = dbUser?.emailPreferences as { relaunchBonusAt?: string } | null;
   const showRelaunchBonus = Boolean(dbUser) && relaunchActive() && !prefs?.relaunchBonusAt;
 

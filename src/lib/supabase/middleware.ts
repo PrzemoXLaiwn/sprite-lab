@@ -33,9 +33,15 @@ export async function updateSession(request: NextRequest) {
   // supabase.auth.getUser(). A simple mistake could make it very hard to debug
   // issues with users being randomly logged out.
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // A visitor without a session cookie costs no network call here. If the auth
+  // service is unreachable, treat everyone as signed out: public pages keep
+  // working and protected ones send people to the login page.
+  let user = null;
+  try {
+    ({ data: { user } } = await supabase.auth.getUser());
+  } catch (error) {
+    console.error("[proxy] auth check failed:", error);
+  }
 
   // Protected routes
   const protectedPaths = ["/generate", "/gallery", "/assets", "/presets", "/projects", "/settings", "/dashboard", "/usage", "/referrals", "/admin", "/moderator", "/animate", "/upscale", "/remove-bg", "/variations", "/edit", "/quests", "/play"];
@@ -63,5 +69,23 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Public pages are static for visitors and search engines; signed-in users
+  // get the versions with their account state (src/app/member). The address
+  // bar keeps the public URL.
+  const memberPath = user ? MEMBER_REWRITES[request.nextUrl.pathname] : undefined;
+  if (memberPath) {
+    const url = request.nextUrl.clone();
+    url.pathname = memberPath;
+    const rewrite = NextResponse.rewrite(url, { request });
+    supabaseResponse.cookies.getAll().forEach((c) => rewrite.cookies.set(c));
+    return rewrite;
+  }
+
   return supabaseResponse;
 }
+
+const MEMBER_REWRITES: Record<string, string> = {
+  "/": "/member/home",
+  "/pricing": "/member/pricing",
+  "/community": "/member/community",
+};
