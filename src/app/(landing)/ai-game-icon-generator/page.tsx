@@ -34,6 +34,7 @@ export default function GameIconGeneratorPage() {
       h1={
         <>
           Game icons
+          <span className="sr-only">: </span>
           <br />
           for every slot in your UI
         </>

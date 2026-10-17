@@ -35,6 +35,7 @@ export default function GodotSpritesPage() {
       h1={
         <>
           AI sprites for Godot
+          <span className="sr-only">: </span>
           <br />
           straight into SpriteFrames
         </>

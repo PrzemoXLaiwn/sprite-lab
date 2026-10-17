@@ -65,6 +65,7 @@ export default function RPGCharacterCreatorPage() {
       h1={
         <>
           AI RPG Character Creator
+          <span className="sr-only">: </span>
           <br />
           heroes in seconds
         </>
