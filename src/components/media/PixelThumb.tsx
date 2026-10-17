@@ -30,8 +30,8 @@ function srcSetFor(src: string, pixel: boolean): string | undefined {
 
 /**
  * Sprite tile that downloads a size close to the box on screen.
- * Pixel art uses a nearest-neighbor derivative plus `pixel-perfect`
- * (crisp-edges). Not priority — the LCP image opts in elsewhere.
+ * The derivative is always nearest-neighbor. Pixel styles also get
+ * `pixel-perfect` (crisp-edges). Not priority — the LCP image opts in elsewhere.
  */
 export function PixelThumb({ src, alt, sizes, pixel = false, className = "", width, height }: PixelThumbProps) {
   // 20px chips have a committed 40×40 file. Don't request the full PNG.

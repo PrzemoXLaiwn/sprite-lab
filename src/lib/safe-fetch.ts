@@ -23,6 +23,7 @@ export type SafeFetchErrorCode =
   | "HOST_NOT_ALLOWED"
   | "TOO_MANY_REDIRECTS"
   | "UPSTREAM_ERROR"
+  | "NOT_FOUND"
   | "NOT_IMAGE"
   | "TOO_LARGE"
   | "TIMEOUT";
@@ -225,6 +226,9 @@ export async function safeFetchImage(
 
       if (!response.ok) {
         try { await response.body?.cancel(); } catch { /* ignore */ }
+        if (response.status === 404 || response.status === 410) {
+          throw new SafeFetchError("NOT_FOUND", "Image not found");
+        }
         throw new SafeFetchError("UPSTREAM_ERROR", `Upstream responded ${response.status}`);
       }
 

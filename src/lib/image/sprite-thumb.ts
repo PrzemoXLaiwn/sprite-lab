@@ -2,9 +2,10 @@
  * Display URLs for sprite thumbnails.
  *
  * Gallery cells are ~62–184 CSS pixels, but the files behind them are often
- * 1024×1024 PNGs (up to ~4 MB). Pixel art must stay on a hard grid, so these
- * thumbs are resized with a nearest-neighbor kernel (see /api/sprite-thumb)
- * and painted with `image-rendering: pixelated`. That is intentionally not
+ * 1024×1024 PNGs (up to ~4 MB). Every thumb is a nearest-neighbor resize
+ * (integer scale when the source divides evenly — see /api/sprite-thumb),
+ * so a 384px sprite is not blurred down to 40px. Pixel styles are also
+ * painted with `image-rendering: pixelated`. This is intentionally not
  * Vercel Image Optimization, which resamples with a smooth kernel and bills
  * a transformation per source image.
  *
@@ -74,11 +75,66 @@ export function isNativePixelFile(src: string): boolean {
   return NATIVE_PIXEL.has(src);
 }
 
-export function thumbUrl(src: string, width: number, pixel: boolean): string {
+/**
+ * Largest integer downsample that still fills at least half the requested
+ * box, else a nearest-neighbor fit. Does not enlarge. 384×384 into 40px
+ * becomes 32×32 (÷12). A prime 47×47 sprite stays a 40px nearest fit
+ * instead of collapsing to 1×1.
+ */
+export function nearestPixelBox(
+  srcWidth: number,
+  srcHeight: number,
+  maxWidth: number,
+  maxHeight: number,
+): { width: number; height: number } {
+  if (srcWidth < 1 || srcHeight < 1 || maxWidth < 1 || maxHeight < 1) {
+    return { width: 1, height: 1 };
+  }
+  if (srcWidth <= maxWidth && srcHeight <= maxHeight) {
+    return { width: srcWidth, height: srcHeight };
+  }
+  const scale = Math.min(maxWidth / srcWidth, maxHeight / srcHeight);
+  const nearest = {
+    width: Math.max(1, Math.round(srcWidth * scale)),
+    height: Math.max(1, Math.round(srcHeight * scale)),
+  };
+  const maxFactor = Math.min(srcWidth, srcHeight);
+  for (let factor = 2; factor <= maxFactor; factor++) {
+    if (srcWidth % factor !== 0 || srcHeight % factor !== 0) continue;
+    const width = srcWidth / factor;
+    const height = srcHeight / factor;
+    if (width > maxWidth || height > maxHeight) continue;
+    if (width * 2 >= nearest.width && height * 2 >= nearest.height) return { width, height };
+  }
+  return nearest;
+}
+
+/** Top-left sample of each factor×factor block. Factor must divide both sides. */
+export function integerDownsample(
+  data: Buffer,
+  srcWidth: number,
+  srcHeight: number,
+  channels: number,
+  factor: number,
+): Buffer {
+  const outW = srcWidth / factor;
+  const outH = srcHeight / factor;
+  const out = Buffer.alloc(outW * outH * channels);
+  for (let y = 0; y < outH; y++) {
+    for (let x = 0; x < outW; x++) {
+      const si = (y * factor * srcWidth + x * factor) * channels;
+      const di = (y * outW + x) * channels;
+      data.copy(out, di, si, si + channels);
+    }
+  }
+  return out;
+}
+
+export function thumbUrl(src: string, width: number, _pixel?: boolean): string {
   const params = new URLSearchParams({
     src,
     w: String(snapThumbWidth(width)),
-    k: pixel ? "nearest" : "smooth",
+    k: "nearest",
   });
   return `/api/sprite-thumb?${params.toString()}`;
 }
@@ -86,7 +142,7 @@ export function thumbUrl(src: string, width: number, pixel: boolean): string {
 /**
  * URL to put in a gallery `<img>`. Small native pixel files stay as-is
  * (CSS nearest-neighbor scales them). Everything else goes through the
- * thumbnail route at `width` (device pixels).
+ * thumbnail route at `width` (device pixels), always nearest-neighbor.
  */
 export function gallerySrc(src: string, width: number, pixel: boolean): string {
   if (!src || src.startsWith("data:") || src.startsWith("blob:")) return src;
