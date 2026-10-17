@@ -1,7 +1,21 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isCheckoutReturn, safeRedirectPath } from "@/lib/safe-redirect";
+
+const PATH_HEADER = "x-pathname";
+
+/** So the dashboard layout can tell a checkout URL from any other protected page. */
+function stampPath(request: NextRequest) {
+  try {
+    request.headers.set(PATH_HEADER, request.nextUrl.pathname + request.nextUrl.search);
+  } catch {
+    // Some NextRequest headers are immutable. The checkout redirect below still
+    // sends anonymous buyers to /register; the layout then falls back to /login.
+  }
+}
 
 export async function updateSession(request: NextRequest) {
+  stampPath(request);
   let supabaseResponse = NextResponse.next({
     request,
   });
@@ -18,6 +32,7 @@ export async function updateSession(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
+          stampPath(request);
           supabaseResponse = NextResponse.next({
             request,
           });
@@ -57,6 +72,22 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Buying is a new-user path: keep the checkout URL and send them to sign-up
+  // (the form links to sign-in for people who already have an account).
+  if (!user && isCheckoutReturn(request.nextUrl.pathname)) {
+    const next = safeRedirectPath(
+      request.nextUrl.pathname + request.nextUrl.search,
+      request.nextUrl.origin,
+    );
+    const url = request.nextUrl.clone();
+    url.pathname = "/register";
+    url.search = "";
+    if (isCheckoutReturn(next)) {
+      url.searchParams.set("next", next);
+    }
+    return NextResponse.redirect(url);
+  }
+
   // Auth routes - redirect to dashboard if already logged in
   const authPaths = ["/login", "/register"];
   const isAuthPath = authPaths.some((path) =>
@@ -64,6 +95,15 @@ export async function updateSession(request: NextRequest) {
   );
 
   if (user && isAuthPath) {
+    // Only a checkout return overrides the usual "already signed in → /generate"
+    // redirect. Other auth-page visits stay as they are.
+    const requested = request.nextUrl.searchParams.get("next") ?? request.nextUrl.searchParams.get("redirectTo");
+    if (requested) {
+      const next = safeRedirectPath(requested, request.nextUrl.origin);
+      if (isCheckoutReturn(next)) {
+        return NextResponse.redirect(new URL(next, request.nextUrl.origin));
+      }
+    }
     const url = request.nextUrl.clone();
     url.pathname = "/generate";
     return NextResponse.redirect(url);

@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { checkoutPurchaseLabel } from "@/lib/checkout-intent";
+import { isCheckoutReturn, safeRedirectPath } from "@/lib/safe-redirect";
 import { Gift, MailCheck } from "lucide-react";
 import {
   AuthHeading,
@@ -29,6 +31,8 @@ declare global {
 
 export default function RegisterPage() {
   const searchParams = useSearchParams();
+  const returnPath = safeRedirectPath(searchParams.get("next"));
+  const purchaseLabel = checkoutPurchaseLabel(searchParams.get("next"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -122,7 +126,7 @@ export default function RegisterPage() {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=/generate${referralCode ? `&ref=${referralCode}` : ""}`,
+        emailRedirectTo: authCallbackUrl(referralCode),
       },
     });
 
@@ -159,7 +163,7 @@ export default function RegisterPage() {
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/generate${referralCode ? `&ref=${referralCode}` : ""}`,
+        redirectTo: authCallbackUrl(referralCode),
       },
     });
   };
@@ -178,10 +182,25 @@ export default function RegisterPage() {
     await supabase.auth.signInWithOAuth({
       provider: "discord",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/generate${referralCode ? `&ref=${referralCode}` : ""}`,
+        redirectTo: authCallbackUrl(referralCode),
       },
     });
   };
+
+  function authCallbackUrl(ref: string | null): string {
+    const params = new URLSearchParams();
+    params.set("next", isCheckoutReturn(returnPath) ? returnPath : "/generate");
+    if (ref) params.set("ref", ref);
+    return `${window.location.origin}/auth/callback?${params.toString()}`;
+  }
+
+  const refForLink = referralCode ?? searchParams.get("ref");
+  const loginHref = isCheckoutReturn(returnPath)
+    ? `/login?${new URLSearchParams({
+        redirectTo: returnPath,
+        ...(refForLink ? { ref: refForLink } : {}),
+      })}`
+    : "/login";
 
   if (success) {
     return (
@@ -196,7 +215,12 @@ export default function RegisterPage() {
             </>
           }
         />
-        <p className="text-[13px] text-[#9AA1CC]">
+        {purchaseLabel && (
+          <p className="text-[13px] leading-relaxed text-[#FFC857]">
+            You&apos;re creating an account to buy {purchaseLabel}.
+          </p>
+        )}
+        <p className="mt-4 text-[13px] text-[#9AA1CC]">
           Didn&apos;t receive the email? Check your spam folder or{" "}
           <button
             type="button"
@@ -212,7 +236,7 @@ export default function RegisterPage() {
           </button>
           .
         </p>
-        <Link href="/login" className={`${secondaryBtnCls} mt-6`}>
+        <Link href={loginHref} className={`${secondaryBtnCls} mt-6`}>
           Back to sign in
         </Link>
       </div>
@@ -222,6 +246,12 @@ export default function RegisterPage() {
   return (
     <div>
       <AuthHeading title="Create your account" subtitle="Start with 10 free credits. No card required." />
+
+      {purchaseLabel && (
+        <p className="mb-6 rounded-xl border border-[#FFA300]/20 bg-[#FFA300]/[0.06] px-3.5 py-3 text-[13px] leading-relaxed text-[#FFC857]">
+          You&apos;re creating an account to buy {purchaseLabel}.
+        </p>
+      )}
 
       {/* Referral Code Banner */}
       {referralCode && (
@@ -320,7 +350,7 @@ export default function RegisterPage() {
 
       <p className="mt-4 text-center text-[13px] text-[#9AA1CC]">
         Already have an account?{" "}
-        <Link href="/login" className={linkCls}>
+        <Link href={loginHref} className={linkCls}>
           Sign in
         </Link>
       </p>
