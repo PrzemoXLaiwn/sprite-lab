@@ -58,11 +58,14 @@ export const stripe = new Proxy({} as Stripe, {
 //   + ~$0.02 Claude planner; smooth mode = a second image
 // - Rigged idle: no image model (one Claude call for the joints)
 // - Stripe: 2.9% + £0.20 per payment
-// Cheapest credit we sell nets ~£0.019 (~$0.024) after Stripe (Starter /
-// Studio). Credit prices of every action are set so each keeps ≥35% margin
-// at that rate — see ANIMATION_FRAME_OPTIONS in src/config/animations.ts.
-// FREE.credits is SIGNUP_CREDITS (src/config/signup.ts). Paid plan counts,
-// prices and price IDs below are unchanged.
+// The most expensive credit costs us about $0.015. Studio at 1,500 credits
+// is about $0.022 per credit at the shelf price (£25 / 1,500 ≈ £0.0167):
+// roughly 32% above that $0.015, about 20% on a tighter reading. Feature
+// credit prices were not raised with the allowance. The provider-cost model
+// does not clear 20% on every Studio row; those misses stay listed in
+// KNOWN_MARGIN_VIOLATIONS. See ANIMATION_FRAME_OPTIONS.
+// FREE.credits is SIGNUP_CREDITS (src/config/signup.ts). Monthly allowances
+// come from PLAN_MONTHLY_CREDITS. Prices and Stripe price IDs are unchanged.
 export const PLANS = {
   FREE: {
     name: "Free",
@@ -167,16 +170,18 @@ export const CREDIT_PACKS = {
 // 50 lifetime slots total. Loss-leader pricing — these exist to build a
 // community of paying power users and create FOMO around limited supply.
 //
-// CREDIT MATH (5-year horizon, ~£0.024/credit at flux-dev):
-//   Starter Lifetime  —  250 credits/mo × 60 = 15,000 credits ≈ £360 cost  →  £49 price
-//   Pro Lifetime      —  500 credits/mo × 60 = 30,000 credits ≈ £720 cost  →  £99 price
-//   Studio Lifetime   — 1200 credits/mo × 60 = 72,000 credits ≈ £1,728 cost → £249 price
+// CREDIT MATH (5-year horizon). Monthly allowances match PLAN_MONTHLY_CREDITS.
+// Stripe prices and price IDs are unchanged. The expensive credit costs about
+// $0.015, so these stay loss-leaders on purpose.
+//   Starter Lifetime  —  250 credits/mo × 60 = 15,000 credits → £49 price
+//   Pro Lifetime      —  650 credits/mo × 60 = 39,000 credits → £99 price
+//   Studio Lifetime   — 1500 credits/mo × 60 = 90,000 credits → £249 price
 // Yes, these are aggressive loss-leaders. That's the whole point.
 export const LIFETIME_DEALS = {
   STARTER_LIFETIME: {
     name: "Starter Lifetime",
     basePlan: "STARTER",
-    credits: 250, // Matches monthly STARTER plan
+    credits: PLAN_MONTHLY_CREDITS.STARTER, // Matches monthly STARTER plan
     price: 4900, // £49 (≈ 10 months of £5)
     originalPrice: 6000, // £60 — 12 months of £5
     priceId: process.env.STRIPE_FORGE_LIFETIME_PRICE_ID,
@@ -185,7 +190,7 @@ export const LIFETIME_DEALS = {
   PRO_LIFETIME: {
     name: "Pro Lifetime",
     basePlan: "PRO",
-    credits: 500, // Matches monthly PRO plan
+    credits: PLAN_MONTHLY_CREDITS.PRO, // Matches monthly PRO plan
     price: 9900, // £99 (≈ 8 months of £12)
     originalPrice: 14400, // £144 — 12 months of £12
     priceId: process.env.STRIPE_APEX_LIFETIME_PRICE_ID,
@@ -194,7 +199,7 @@ export const LIFETIME_DEALS = {
   UNLIMITED_LIFETIME: {
     name: "Studio Lifetime",
     basePlan: "UNLIMITED",
-    credits: 1200, // Matches monthly STUDIO plan
+    credits: PLAN_MONTHLY_CREDITS.UNLIMITED, // Matches monthly STUDIO plan
     price: 24900, // £249 (≈ 10 months of £25)
     originalPrice: 30000, // £300 — 12 months of £25
     priceId: process.env.STRIPE_TITAN_LIFETIME_PRICE_ID,

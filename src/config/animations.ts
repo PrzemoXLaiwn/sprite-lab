@@ -6,9 +6,13 @@
 /**
  * Frame-count options. Priced from the real cost (Oct 2026): the animation
  * model is billed per image — ~$0.07 for a 1024 grid, ~$0.10 for 2048 — plus
- * ~$0.02 for the Claude pose planner. At the cheapest credit we sell (~$0.024
- * net, Starter/Studio) every option keeps a ≥35% margin. `smoothExtra` pays
- * for the second image pass that draws the in-betweens.
+ * ~$0.02 for the Claude pose planner. The most expensive credit costs us
+ * about $0.015. Studio at 1,500 credits is about $0.022 per credit at the
+ * shelf price. These credit prices were not raised when monthly allowances
+ * grew; the old "≥35% at the cheapest credit" note does not hold on the
+ * provider-cost model (several Studio rows are under 20%, and the worst
+ * modelled case is negative). `smoothExtra` pays for the second image pass
+ * that draws the in-betweens.
  */
 export const ANIMATION_FRAME_OPTIONS = [
   { frames: 4, cols: 2, rows: 2, size: 1024, credits: 7, smoothExtra: 5, label: "4 frames", hint: "Classic retro loop" },

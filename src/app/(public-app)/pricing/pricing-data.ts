@@ -119,9 +119,9 @@ export interface LifetimeCard {
 }
 
 export const LIFETIME_CARDS: readonly LifetimeCard[] = [
-  { key: "STARTER_LIFETIME", slug: "starter_lifetime", name: "Starter Lifetime", credits: 250, price: 49, originalPrice: 60, maxSlots: 30 },
-  { key: "PRO_LIFETIME", slug: "pro_lifetime", name: "Pro Lifetime", credits: 500, price: 99, originalPrice: 144, maxSlots: 15, featured: true },
-  { key: "UNLIMITED_LIFETIME", slug: "unlimited_lifetime", name: "Studio Lifetime", credits: 1200, price: 249, originalPrice: 300, maxSlots: 5 },
+  { key: "STARTER_LIFETIME", slug: "starter_lifetime", name: "Starter Lifetime", credits: PLAN_MONTHLY_CREDITS.STARTER, price: 49, originalPrice: 60, maxSlots: 30 },
+  { key: "PRO_LIFETIME", slug: "pro_lifetime", name: "Pro Lifetime", credits: PLAN_MONTHLY_CREDITS.PRO, price: 99, originalPrice: 144, maxSlots: 15, featured: true },
+  { key: "UNLIMITED_LIFETIME", slug: "unlimited_lifetime", name: "Studio Lifetime", credits: PLAN_MONTHLY_CREDITS.UNLIMITED, price: 249, originalPrice: 300, maxSlots: 5 },
 ];
 
 export const TOTAL_LIFETIME_SLOTS = LIFETIME_CARDS.reduce((n, d) => n + d.maxSlots, 0);
