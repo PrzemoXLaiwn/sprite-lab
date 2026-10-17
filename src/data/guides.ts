@@ -5,6 +5,7 @@
 // the passage search engines and AI assistants tend to quote).
 // =============================================================================
 
+import { COMMERCIAL_LICENCE_ANSWER } from "@/config/licence";
 import { ENGINE_GUIDES } from "@/data/geo-content";
 import { ENGINE_CRAFT_GUIDES } from "@/data/guides-engine";
 import { BASICS_GUIDES } from "@/data/guides-basics";
@@ -767,7 +768,7 @@ func attack() -> void:
       },
       {
         q: "Can I use SpriteLab assets commercially?",
-        a: "Yes. Assets generated with SpriteLab can be used in commercial games, with no attribution required.",
+        a: COMMERCIAL_LICENCE_ANSWER,
       },
       {
         q: "Should I use Standard or HD quality for a whole game?",

@@ -42,7 +42,7 @@ Any sprite can be animated: idle, walk, run, attack, jump, cast, hurt, defeat, f
 Output is standard PNG / sprite-sheet PNG / GIF, which works in Unity, Godot, GameMaker, Phaser, Construct, RPG Maker and any engine that loads images. Sprite sheets are horizontal strips of equal-size frames, so they can be sliced by cell size in Unity's Sprite Editor or used as SpriteFrames in Godot.
 
 ## Pricing
-Free: 3 tries without an account, 10 credits on signup (no credit card). Paid plans from £5/month (Starter, 250 credits), Pro £12/month (500 credits), Studio £25/month (1,200 credits); one-off credit packs are also available. A standard sprite costs 1 credit, HD quality 3 credits, an idle loop 3 credits and other animations 7–12 credits (smooth mode 12–19). Assets can be used in commercial projects.
+Free: 3 tries without an account, 10 credits on signup (no credit card). Paid plans from £5/month (Starter, 250 credits), Pro £12/month (500 credits), Studio £25/month (1,200 credits); one-off credit packs are also available. A standard sprite costs 1 credit, HD quality 3 credits, an idle loop 3 credits and other animations 7–12 credits (smooth mode 12–19). Commercial use is included on Starter, Pro and Studio. The Free plan is personal, non-commercial use. Assets generated on the Free plan before 17 October 2026 keep the licence that applied when they were created.
 
 ## Not offered
 SpriteLab does not currently offer a public REST API, an MCP server, 3D model generation, per-direction walk animations (it makes static 4- and 8-direction views), autotile (47-tile) tilesets or engine-specific project files. It is a web app (sprite-lab.com).

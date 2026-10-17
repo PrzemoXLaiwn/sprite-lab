@@ -32,7 +32,7 @@ export const COMPARE_CHECKED_ON_LABEL = "8 Oct 2026";
 
 /** SpriteLab's own facts, shared across every comparison. */
 export const SPRITELAB_SUMMARY =
-  "SpriteLab is an AI game asset generator for indie developers. Type a prompt and get a transparent PNG 2D sprite in one of 12 art styles — pixel art is placed on a real pixel grid with a limited palette. Any sprite can be animated into a sprite sheet and GIF, and you can also make seamless and animated tiles and icons. 3 free tries without an account, 10 credits on signup, paid plans from £5/month, commercial use included.";
+  "SpriteLab is an AI game asset generator for indie developers. Type a prompt and get a transparent PNG 2D sprite in one of 12 art styles — pixel art is placed on a real pixel grid with a limited palette. Any sprite can be animated into a sprite sheet and GIF, and you can also make seamless and animated tiles and icons. 3 free tries without an account, 10 credits on signup, paid plans from £5/month. Commercial use is included on Starter, Pro and Studio; the Free plan is personal, non-commercial use.";
 
 const SL = {
   what: "2D game sprites, seamless tiles, animated tiles and icons as transparent PNGs",
@@ -47,7 +47,7 @@ const SL = {
   plugin: "No — web app",
   free: "3 tries without an account + 10 credits on signup",
   price: "From £5/month",
-  commercial: "Yes",
+  commercial: "Yes on Starter, Pro and Studio. Free plan is personal, non-commercial use.",
   organise: "Projects with automatic folder sorting and ZIP export",
 };
 

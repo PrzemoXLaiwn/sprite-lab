@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Zap, Palette, Download, Grid3x3, Shield, Layers } from "lucide-react";
+import { COMMERCIAL_LICENCE_ANSWER } from "@/config/licence";
 import { SeoLanding } from "@/components/landing/SeoLanding";
 import { LANDING_SPECS } from "@/data/landing-specs";
 import { SHOWCASE, isPixelShowcase } from "@/data/showcase";
@@ -48,7 +49,7 @@ export default function PixelArtGeneratorPage() {
     <SeoLanding
       slug="pixel-art-generator"
       appName="SpriteLab AI Pixel Art Generator"
-      appDescription="Generate 8-bit, 16-bit and 32-bit pixel art game sprites from a text prompt. Transparent PNG, commercial license."
+      appDescription="Generate 8-bit, 16-bit and 32-bit pixel art game sprites from a text prompt. Transparent PNG. Commercial licence on paid plans."
       heroLine="ai pixel art generator"
       h1={
         <>
@@ -162,7 +163,7 @@ export default function PixelArtGeneratorPage() {
             { icon: Palette, title: "Multiple styles", body: "8-bit, 16-bit, 32-bit HD and isometric pixel art — plus 9 more non-pixel styles." },
             { icon: Download, title: "Ready to use", body: "PNG format with transparent backgrounds. Drop it straight into Unity, Godot or GameMaker." },
             { icon: Grid3x3, title: "Real pixel grid", body: "Sprites are stored at native resolution, so they scale up crisply with nearest-neighbour filtering." },
-            { icon: Shield, title: "Commercial license", body: "Use what you generate in commercial games on Steam, itch.io or mobile. No attribution required." },
+            { icon: Shield, title: "Commercial licence on paid plans", body: "Starter, Pro and Studio include commercial use in games on Steam, itch.io or mobile, with no attribution required. The Free plan is personal, non-commercial use." },
             { icon: Layers, title: "Asset library", body: "Keep every sprite organized by project in your own library once you sign up." },
           ],
         },
@@ -220,7 +221,7 @@ export default function PixelArtGeneratorPage() {
         },
         {
           q: "Can I use the pixel art in commercial games?",
-          a: "Yes. You get full ownership of every asset you generate and can use it in any commercial project — Steam, App Store, itch.io, anywhere. No attribution required.",
+          a: COMMERCIAL_LICENCE_ANSWER,
         },
         {
           q: "What format are the sprites?",

@@ -415,7 +415,7 @@ export default function DashboardPage() {
               <Zap className="mb-2 h-5 w-5 text-[#FFA300]" />
               <h3 className="text-[15px] font-semibold text-white">Upgrade to Pro</h3>
               <p className="mb-4 mt-1 text-[13px] text-[#C8CCE8]">
-                500 credits/month + higher quality + commercial rights
+                500 credits/month and a commercial licence
               </p>
               <Link href="/pricing" className={`${BTN_PRIMARY} w-full`}>
                 View plans <ArrowRight className="h-4 w-4" />

@@ -4,6 +4,8 @@
 // assistants get the same (true) answers.
 // =============================================================================
 
+import { COMMERCIAL_LICENCE_ANSWER } from "@/config/licence";
+
 export interface Faq { q: string; a: string }
 
 export const HOME_FAQ: Faq[] = [
@@ -29,7 +31,7 @@ export const HOME_FAQ: Faq[] = [
   },
   {
     q: "Can I use the assets in a commercial game?",
-    a: "Yes. Assets you generate can be used in commercial projects, with no attribution required.",
+    a: COMMERCIAL_LICENCE_ANSWER,
   },
   {
     q: "Can SpriteLab animate sprites?",

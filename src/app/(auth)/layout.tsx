@@ -67,7 +67,7 @@ export default function AuthLayout({
                 From prompt to sprite in seconds
               </h2>
               <p className="mt-3 max-w-[440px] text-[15px] leading-relaxed text-[#9AA1CC]">
-                Characters, weapons, items and creatures in pixel art and more. Transparent PNG, commercial use included.
+                Characters, weapons, items and creatures in pixel art and more. Transparent PNG. Commercial licence on paid plans.
               </p>
 
               {/* Prompt mock */}
@@ -102,7 +102,7 @@ export default function AuthLayout({
               </div>
 
               <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 font-mono text-[12px] text-[#9AA1CC]">
-                {["10 free credits", "No card required", "Commercial license"].map((t) => (
+                {["10 free credits", "No card required", "Commercial licence on paid plans"].map((t) => (
                   <span key={t} className="flex items-center gap-1.5">
                     <Check className="h-3.5 w-3.5 text-[#FFA300]" />
                     {t}

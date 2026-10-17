@@ -61,6 +61,8 @@ function groups(): { title: string; intro: string; items: Item[] }[] {
         { label: "Contact", href: "/contact" },
         { label: "Privacy policy", href: "/privacy" },
         { label: "Terms of service", href: "/terms" },
+        { label: "Cookie policy", href: "/cookies" },
+        { label: "Refunds and cancellation", href: "/refunds" },
       ],
     },
   ];

@@ -38,7 +38,7 @@ export default function SpriteAnimationPage() {
         </>
       }
       subtitle="Pick a sprite, choose how it moves and get a frame-aligned sprite sheet and GIF. A dragon breathes fire, a dog wags its tail, a car drifts — the motions are planned for each sprite."
-      trust={["4, 6 or 9 key poses", "smooth mode up to 18 frames", "sprite sheet + gif + frames", "commercial use"]}
+      trust={["4, 6 or 9 key poses", "smooth mode up to 18 frames", "sprite sheet + gif + frames", "commercial licence on paid plans"]}
       floating={[
         { src: "/showcase/anim-knight-idle.webp", alt: "", pixel: true, cls: "left-[5%] top-[28%] w-28 animate-float" },
         { src: "/showcase/anim-witch-walk.webp", alt: "", pixel: true, cls: "left-[13%] top-[58%] w-24 animate-float [animation-delay:1.2s]" },

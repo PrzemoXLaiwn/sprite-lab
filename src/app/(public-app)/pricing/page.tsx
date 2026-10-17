@@ -9,6 +9,7 @@
 
 import Link from "next/link";
 import { Check, ChevronDown, Coins, Shield, X } from "lucide-react";
+import { COMMERCIAL_LICENCE_ANSWER } from "@/config/licence";
 import { CREDIT_PACKS, LIFETIME_DEALS, PLANS, isLaunchPromoActive } from "@/lib/stripe";
 import { ANIMATION_FRAME_OPTIONS, RIG_CREDITS, ROTATIONS, animationCredits } from "@/config/animations";
 import { featureCredits } from "@/config/economics";
@@ -81,7 +82,7 @@ const FAQS = [
   },
   {
     q: "Can I use assets commercially?",
-    a: "Yes. You own what you generate and can use it in games, apps or anything you sell — on any plan, with no attribution required.",
+    a: COMMERCIAL_LICENCE_ANSWER,
   },
   {
     q: "Do unused credits roll over?",

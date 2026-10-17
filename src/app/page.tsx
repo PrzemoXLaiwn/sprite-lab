@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   keywords: ["AI game asset generator", "AI sprite generator", "AI pixel art generator", "sprite sheet generator", "sprite animation", "indie game development", "Unity sprites", "Godot sprites", "RPG sprites"],
   openGraph: {
     title: "SpriteLab — AI Game Asset Generator",
-    description: "Game-ready sprites, pixel art and sprite-sheet animations from a text prompt. 12 art styles, transparent PNG, commercial use.",
+    description: "Game-ready sprites, pixel art and sprite-sheet animations from a text prompt. 12 art styles, transparent PNG. Commercial licence on paid plans.",
     url: "https://www.sprite-lab.com",
     type: "website",
   },

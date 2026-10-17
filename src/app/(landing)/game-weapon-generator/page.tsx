@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SeoLanding } from "@/components/landing/SeoLanding";
+import { COMMERCIAL_LICENCE_ANSWER } from "@/config/licence";
 import { LANDING_SPECS } from "@/data/landing-specs";
 import { SHOWCASE } from "@/data/showcase";
 
@@ -57,7 +58,7 @@ export default function GameWeaponGeneratorPage() {
         </>
       }
       subtitle="Create unique swords, guns, staffs, shields and more for your game. Any style, any fantasy — just describe your weapon."
-      trust={["3 free tries, no account", "10 credits on signup", "transparent png", "commercial license"]}
+      trust={["3 free tries, no account", "10 credits on signup", "transparent png", "commercial licence on paid plans"]}
       floating={[
         { src: "/showcase/fire-sword.png", alt: "", pixel: true, cls: "left-[7%] top-[30%] w-24 animate-float" },
         { src: "/showcase/ice-staff.png", alt: "", pixel: true, cls: "left-[14%] top-[60%] w-20 animate-float [animation-delay:1.2s]" },
@@ -160,7 +161,7 @@ export default function GameWeaponGeneratorPage() {
         },
         {
           q: "Can I use the weapon sprites in a commercial game?",
-          a: "Yes. You get full ownership of every asset you generate and can use it in any commercial project, with no attribution required.",
+          a: COMMERCIAL_LICENCE_ANSWER,
         },
         {
           q: "Which art styles work best for weapons?",

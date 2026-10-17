@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SeoLanding } from "@/components/landing/SeoLanding";
+import { COMMERCIAL_LICENCE_ANSWER } from "@/config/licence";
 import { LANDING_SPECS } from "@/data/landing-specs";
 import { SHOWCASE } from "@/data/showcase";
 
@@ -40,7 +41,7 @@ export default function AiSpriteGeneratorPage() {
         </>
       }
       subtitle="Create sprites online from one sentence: describe a character, monster, weapon or item and get a clean transparent PNG, on a real pixel grid for pixel art, ready for your engine. No drawing and nothing to install."
-      trust={["3 free tries, no account", "10 credits on signup", "transparent png", "commercial use"]}
+      trust={["3 free tries, no account", "10 credits on signup", "transparent png", "commercial licence on paid plans"]}
       floating={[
         { src: "/showcase/knight.png", alt: "", pixel: true, cls: "left-[7%] top-[30%] w-24 animate-float" },
         { src: "/showcase/health-potion.png", alt: "", pixel: true, cls: "left-[14%] top-[62%] w-14 animate-float [animation-delay:1.2s]" },
@@ -140,7 +141,7 @@ export default function AiSpriteGeneratorPage() {
         { q: "Is this sprite maker free?", a: "You can make 3 sprites without an account, and you get 10 free credits when you sign up, with no card needed. After that there are monthly plans and one-off credit packs." },
         { q: "Is it a sprite editor like Aseprite or Piskel?", a: "No. In a sprite editor you draw every pixel yourself; SpriteLab generates the whole sprite from a description. The results are ordinary PNGs, so you can open them in Aseprite, Piskel or any editor to touch up details." },
         { q: "Can I animate the sprites?", a: "Yes. Open any sprite in Animate, pick a suggested motion (idle, walk, attack, jump…) or describe your own, and download a sprite sheet, the frames and a GIF.", link: { label: "See the sprite sheet format", href: "/sprite-sheet-generator" } },
-        { q: "Can I use the sprites commercially?", a: "Yes, assets you generate can be used in commercial games with no attribution required." },
+        { q: "Can I use the sprites commercially?", a: COMMERCIAL_LICENCE_ANSWER },
       ]}
       cta={{
         title: (

@@ -126,6 +126,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "yearly",
       priority: 0.2,
     },
+    {
+      url: `${baseUrl}/cookies`,
+      lastModified: new Date("2026-10-17").toISOString(),
+      changeFrequency: "yearly",
+      priority: 0.2,
+    },
+    {
+      url: `${baseUrl}/refunds`,
+      lastModified: new Date("2026-10-17").toISOString(),
+      changeFrequency: "yearly",
+      priority: 0.2,
+    },
   ];
 
   // ── Dynamic: public user profiles ───────────────────────────────

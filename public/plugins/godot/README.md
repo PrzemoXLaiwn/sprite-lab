@@ -137,4 +137,4 @@ addons/
 ## License
 
 This plugin is provided for use with a valid SpriteLab subscription.
-Generated assets can be used in commercial projects.
+Generated assets can be used in commercial projects on the Starter, Pro and Studio plans. The Free plan is personal, non-commercial use.

@@ -5,8 +5,10 @@
 // section and the upgrade modal. Only list things the product actually does:
 // every plan gets all 12 styles, both Standard (1 credit) and HD (3 credits)
 // quality, and a transparent PNG on every sprite. Plans differ by monthly
-// credits and by the extra tools below. Starter is the lowest price per
-// credit (£5 / 250); Studio is the largest monthly allowance.
+// credits, by a few extra tools, and by licence. Commercial use is included
+// on Starter, Pro and Studio only. Free is personal, non-commercial use.
+// Starter is the lowest price per credit (£5 / 250); Studio is the largest
+// monthly allowance.
 // =============================================================================
 
 export const PLAN_FEATURES = {
@@ -16,24 +18,25 @@ export const PLAN_FEATURES = {
     "Transparent PNG on every sprite",
     "Animations, 4 & 8 directions, AI editing",
     "Projects + pack export (.zip)",
+    "Personal, non-commercial use",
   ],
   STARTER: [
     "250 credits / month",
     "Everything in Free",
-    "Commercial license",
+    "Commercial licence",
   ],
   PRO: [
     "500 credits / month",
     "Everything in Starter",
     "AI upscale 2× / 4×",
     "Variations",
-    "Commercial license",
+    "Commercial licence",
   ],
   UNLIMITED: [
     "1,200 credits / month",
     "Everything in Pro",
     "Most credits per month",
-    "Commercial license",
+    "Commercial licence",
   ],
 } as const;
 
