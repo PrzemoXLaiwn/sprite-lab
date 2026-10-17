@@ -252,7 +252,8 @@ export async function proxy(request: NextRequest) {
   // ===========================================
   const isAuthPath = pathname === "/login" || pathname === "/register" ||
                      pathname.startsWith("/auth/") ||
-                     pathname === "/api/auth/callback";
+                     pathname === "/api/auth/callback" ||
+                     pathname === "/api/auth/sync";
 
   if (isAuthPath && (method === "POST" || pathname.includes("callback"))) {
     const authLimit = isAuthRateLimited(ip);

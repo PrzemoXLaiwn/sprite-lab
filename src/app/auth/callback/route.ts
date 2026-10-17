@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
-import { sendWelcomeFor, syncAuthUser } from "@/lib/auth/sync-user";
+import { NextResponse, after } from "next/server";
+import { sendWelcomeFor } from "@/lib/auth/sync-user";
+import { establishFirstLogin } from "@/lib/auth/first-login";
 import { isCheckoutReturn, safeRedirectPath } from "@/lib/safe-redirect";
 
 export async function GET(request: Request) {
@@ -18,7 +19,10 @@ export async function GET(request: Request) {
       // Get the authenticated user
       const { data: { user } } = await supabase.auth.getUser();
 
-      const isNewUser = user ? (await syncAuthUser(user, referralCode)).isNewUser : false;
+      // Insert result, not a prior lookup: parallel callbacks cannot each
+      // count as new. A database failure still lets the signed-in user through.
+      const firstLogin = user ? await establishFirstLogin(user, referralCode) : { ok: true as const, isNewUser: false };
+      const isNewUser = firstLogin.ok && firstLogin.isNewUser;
 
       // Password reset - redirect to update-password page
       if (type === "recovery" || next === "/update-password") {
@@ -26,10 +30,10 @@ export async function GET(request: Request) {
       }
       // Email confirmation OR fresh signup that just landed here for the
       // first time. Supabase PKCE does not consistently carry `type=signup`
-      // through the redirect, so fall back to the `isNewUser` flag we
-      // already computed above to detect first-time users.
+      // through the redirect, so fall back to the insert result above.
+      // The welcome email goes out only when the users row was created.
+      if (user && isNewUser) after(() => sendWelcomeFor(user));
       if (type === "signup" || isNewUser) {
-        if (user) sendWelcomeFor(user);
         // A plan or credit pack chosen before sign-up has to survive email
         // confirmation and OAuth. Other first-time users still see /auth/confirm.
         if (isCheckoutReturn(next)) {
