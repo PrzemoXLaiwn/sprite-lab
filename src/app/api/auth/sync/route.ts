@@ -3,7 +3,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { sendWelcomeFor } from "@/lib/auth/sync-user";
 import { establishFirstLogin } from "@/lib/auth/first-login";
-import { rateLimitAuthSync } from "@/lib/rate-limit";
+import { rateLimitAuthSync, rateLimitAuthSyncByIp } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +46,9 @@ function originAllowed(request: Request): boolean {
  * only when the insert actually created it.
  */
 export async function POST(request: Request) {
+  const { blocked: ipBlocked } = await rateLimitAuthSyncByIp(request);
+  if (ipBlocked) return ipBlocked;
+
   if (!isJsonContentType(request)) {
     return NextResponse.json({ error: "Unsupported content type" }, { status: 403 });
   }

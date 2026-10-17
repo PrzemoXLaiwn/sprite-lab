@@ -439,7 +439,18 @@ export async function rateLimitFeedback(
 /**
  * One Tap account sync: 5 requests per minute per authenticated user id.
  * Stops a signed-in caller from hammering first-login / referral writes.
+ * Missing Upstash credentials fail open (see `check`).
  */
 export async function rateLimitAuthSync(userId: string): Promise<RateLimitResult> {
   return check("auth:sync", 5, 60, userId);
+}
+
+/**
+ * Same route, before the session lookup: 5 requests per minute per client IP.
+ * The in-memory map in src/proxy.ts does not hold across Vercel instances.
+ * When UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN are unset, `check`
+ * allows the request, so behavior stays as it is until those vars exist.
+ */
+export async function rateLimitAuthSyncByIp(request: Request): Promise<RateLimitResult> {
+  return check("auth:sync:ip", 5, 60, getClientIp(request));
 }
