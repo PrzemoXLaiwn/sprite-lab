@@ -35,7 +35,7 @@ Any sprite can be animated: idle, walk, run, attack, jump, cast, hurt, defeat, f
 ## Workflow features
 - Projects: generate assets for a game, accept or decline each result; accepted sprites are sorted into folders by type automatically; download the whole project as a ZIP pack.
 - Free pixel-perfect upscaling (nearest-neighbour, up to 4096 px).
-- Background removal, image editing and AI upscaling on paid plans.
+- AI upscaling (2× / 4×) is on Pro, Studio and Lifetime. Every plan, including Free, gets image editing and a transparent PNG on each generated sprite.
 - Community gallery of shared assets.
 
 ## Game engines
