@@ -13,7 +13,9 @@ import { prisma } from "@/lib/prisma";
 import { sanitizeAvatarUrl, sanitizeName } from "@/lib/auth/sync-user";
 import { newAccountGrant } from "@/lib/signup-grant";
 
-const REFERRAL_CODE = /^[A-Za-z0-9]{4,16}$/;
+// nanoid(8) uses A-Za-z0-9_- (then uppercased). Stored codes are also accepted
+// up to 32 characters, matching /api/referral.
+const REFERRAL_CODE = /^[A-Za-z0-9_-]{4,32}$/;
 
 export type FirstLoginResult =
   | { ok: true; isNewUser: boolean }

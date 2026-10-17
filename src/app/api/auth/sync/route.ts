@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { sendWelcomeFor } from "@/lib/auth/sync-user";
@@ -7,7 +7,7 @@ import { rateLimitAuthSync } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
-const Body = z.object({ ref: z.string().regex(/^[A-Za-z0-9]{4,16}$/).nullish() });
+const Body = z.object({ ref: z.string().regex(/^[A-Za-z0-9_-]{4,32}$/).nullish() });
 
 function isJsonContentType(request: Request): boolean {
   const media = request.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
@@ -65,6 +65,6 @@ export async function POST(request: Request) {
   if (!result.ok) {
     return NextResponse.json({ error: "Could not finish sign-in" }, { status: 500 });
   }
-  if (result.isNewUser) sendWelcomeFor(user);
+  if (result.isNewUser) after(() => sendWelcomeFor(user));
   return NextResponse.json({ isNewUser: result.isNewUser });
 }
