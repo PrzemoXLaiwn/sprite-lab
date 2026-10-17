@@ -1,5 +1,5 @@
 import Stripe from "stripe";
-import { PLAN_FEATURES } from "@/config/plan-features";
+import { PLAN_FEATURES, PLAN_MONTHLY_CREDITS, PLAN_MONTHLY_PRICE_GBP } from "@/config/plan-features";
 import { SIGNUP_CREDITS } from "@/config/signup";
 
 // =============================================================================
@@ -73,22 +73,22 @@ export const PLANS = {
   },
   STARTER: {
     name: "Starter",
-    credits: 250,
-    price: 5.00,
+    credits: PLAN_MONTHLY_CREDITS.STARTER,
+    price: PLAN_MONTHLY_PRICE_GBP.STARTER,
     priceId: process.env.STRIPE_STARTER_PRICE_ID,
     features: [...PLAN_FEATURES.STARTER],
   },
   PRO: {
     name: "Pro",
-    credits: 500,
-    price: 12.00,
+    credits: PLAN_MONTHLY_CREDITS.PRO,
+    price: PLAN_MONTHLY_PRICE_GBP.PRO,
     priceId: process.env.STRIPE_PRO_PRICE_ID,
     features: [...PLAN_FEATURES.PRO],
   },
   UNLIMITED: {
     name: "Studio",
-    credits: 1200,
-    price: 25.00,
+    credits: PLAN_MONTHLY_CREDITS.UNLIMITED,
+    price: PLAN_MONTHLY_PRICE_GBP.UNLIMITED,
     // Vercel stores this as STRIPE_STUDIO_PRICE_ID (the plan's display name);
     // accept the legacy name too.
     priceId: process.env.STRIPE_UNLIMITED_PRICE_ID || process.env.STRIPE_STUDIO_PRICE_ID,
