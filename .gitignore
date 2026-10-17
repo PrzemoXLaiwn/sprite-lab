@@ -50,8 +50,13 @@ nul
 # archive/migration scripts
 /scripts/archive/
 
+# One-off local admin scripts. Kept on disk, not in git.
+/scripts/make-owner.ts
+/scripts/restore-admin.ts
+
 .vercel
 .env*
+!.env.example
 
 # local Claude Code settings (per machine)
 .claude/settings.local.json

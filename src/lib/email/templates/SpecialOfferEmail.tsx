@@ -11,6 +11,7 @@ import {
   Text,
 } from "@react-email/components";
 import * as React from "react";
+import { visiblePromoCode } from "@/lib/email/promo-codes";
 import { PostalAddressLine } from "./PostalAddressLine";
 
 interface SpecialOfferEmailProps {
@@ -30,6 +31,7 @@ export function SpecialOfferEmail({
   expiresIn = "7 days",
   promoCode,
 }: SpecialOfferEmailProps) {
+  const code = visiblePromoCode(promoCode);
   const previewText = discountPercent
     ? `Special ${discountPercent}% off - We miss you at SpriteLab!`
     : "Special offer waiting for you at SpriteLab!";
@@ -64,10 +66,10 @@ export function SpecialOfferEmail({
               <Section style={offerBox}>
                 <Text style={discountBadge}>{discountPercent}% OFF</Text>
                 <Text style={offerSubtext}>On your next credit pack</Text>
-                {promoCode && (
+                {code && (
                   <Section style={promoCodeBox}>
                     <Text style={promoCodeLabel}>Use code:</Text>
-                    <Text style={promoCodeValue}>{promoCode}</Text>
+                    <Text style={promoCodeValue}>{code}</Text>
                   </Section>
                 )}
                 <Text style={expiryText}>Expires in {expiresIn}</Text>
