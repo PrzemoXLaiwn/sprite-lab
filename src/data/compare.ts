@@ -68,7 +68,7 @@ export const COMPARISONS: Comparison[] = [
       { feature: "Animation", spritelab: SL.animation, competitor: "Yes — text prompts, skeleton-based controls or automatic character creator" },
       { feature: "Directional views", spritelab: SL.turnaround, competitor: "Yes — 4 and 8 directional views" },
       { feature: "Tilesets", spritelab: SL.tiles, competitor: "Yes — connectable Wang tilesets (export to Wang, dual-grid 15 and 3x3 formats); requires a paid tier" },
-      { feature: "Editing / inpainting", spritelab: "Yes — image editing on paid plans (Starter and up)", competitor: "Yes — inpainting with style-consistent generation" },
+      { feature: "Editing / inpainting", spritelab: "Yes — image editing on every plan", competitor: "Yes — inpainting with style-consistent generation" },
       { feature: "Editor plugin", spritelab: SL.plugin, competitor: "Yes — Aseprite extension (not available on the trial)" },
       { feature: "API", spritelab: SL.api, competitor: "Yes — priced per generation" },
       { feature: "MCP / vibe coding", spritelab: SL.mcp, competitor: "Yes" },

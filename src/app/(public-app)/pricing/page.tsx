@@ -93,7 +93,7 @@ const FAQS = [
   },
   {
     q: "Do paid plans get better quality?",
-    a: "No — every plan, including Free, gets the same models, all 12 art styles and both Standard and HD quality. Plans differ in monthly credits and a few extra tools (background removal, AI upscale, variations).",
+    a: "No — every plan, including Free, gets the same models, all 12 art styles, both Standard and HD quality, and a transparent PNG on every sprite. Plans differ in monthly credits and a few extra tools (AI upscale, variations).",
   },
   {
     q: "What happens if a generation fails?",
