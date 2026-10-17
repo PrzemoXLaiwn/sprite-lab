@@ -34,7 +34,7 @@ export function unsubscribeUrl(userId: string): string {
 /** Headers that give Gmail/Outlook their native "Unsubscribe" button (RFC 8058). */
 export function unsubscribeHeaders(userId: string): Record<string, string> {
   return {
-    "List-Unsubscribe": `<${unsubscribeUrl(userId)}>, <mailto:support@sprite-lab.com?subject=unsubscribe>`,
+    "List-Unsubscribe": `<${unsubscribeUrl(userId)}>, <mailto:spritelab.contact@gmail.com?subject=unsubscribe>`,
     "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
   };
 }

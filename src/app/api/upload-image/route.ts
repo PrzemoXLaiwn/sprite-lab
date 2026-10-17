@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { rateLimitUserAction } from "@/lib/rate-limit";
 
 import { randomUUID } from "crypto";
 
@@ -49,6 +50,11 @@ export async function POST(request: Request) {
         { status: 401 }
       );
     }
+
+    // Uploads are free but cost storage — 30/hour per user (own bucket in the
+    // per-user generation limiter, so they don't eat into generation quota)
+    const { blocked } = await rateLimitUserAction("upload", user.id);
+    if (blocked) return blocked;
 
     const formData = await request.formData();
     const file = formData.get("file") as File | null;

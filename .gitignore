@@ -52,3 +52,9 @@ nul
 
 .vercel
 .env*
+
+# local Claude Code settings (per machine)
+.claude/settings.local.json
+.claude/.verify-cache
+.playwright-cli/
+.claude/worktrees/

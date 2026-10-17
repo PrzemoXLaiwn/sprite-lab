@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { isAuthorizedCronRequest } from "@/lib/cron-auth";
 import { generateLearningReport, updateDailyStats } from "@/lib/analytics/prompt-learning";
 
 // GET - Get learning report (admin only)
@@ -41,13 +42,11 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Verify cron secret or admin
-    const authHeader = request.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET;
 
     let isAuthorized = false;
 
     // Check cron secret
-    if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
+    if (isAuthorizedCronRequest(request)) {
       isAuthorized = true;
     } else {
       // Check if admin user

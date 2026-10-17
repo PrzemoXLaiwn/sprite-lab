@@ -1,4 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { claudeCall, trackClaude } from "@/lib/claude-usage";
+import { translateWithCloudflare } from "@/lib/cloudflare-ai";
+
+const HAIKU = "claude-haiku-4-5-20251001";
 
 /**
  * AI Prompt Enhancer — Pro/Studio feature
@@ -113,25 +117,25 @@ export async function translatePromptIfNeeded(
   const original = userPrompt.trim();
 
   // Fast path: pure ASCII = English (or close enough), skip the API call.
-  if (!/[^\x00-\x7F]/.test(original)) {
+  // …unless it reads like another language without accents ("crea un personaje para")
+  const foreign = /\b(crea|crear|un|una|personaje|para|con|del|los|las|uma|com|der|die|das|und|mit|ein|eine|une|avec|pour|les|personnage|jest|oraz|dla|z|ze|w|na|do|bez|rycerz|smok|postac|miecz|mieczem|potwor|dziewczyna|chlopak|zielony|czerwony|niebieski|czarny)\b/gi;
+  if (!/[^\x00-\x7F]/.test(original) && (original.match(foreign) ?? []).length < 2) {
     return { translated: original, original, wasTranslated: false };
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    console.warn("[Translate] No ANTHROPIC_API_KEY, refusing non-English prompt");
-    return { translated: original, original, wasTranslated: false, translationFailed: true };
-  }
+  if (!apiKey) return translateFallback(original);
 
   try {
-    const anthropic = new Anthropic({ apiKey });
+    const anthropic = new Anthropic({ apiKey, timeout: 15_000, maxRetries: 1 });
 
-    const response = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
+    const response = await claudeCall("translate", HAIKU, () => anthropic.messages.create({
+      model: HAIKU,
       max_tokens: 200,
       system: TRANSLATE_SYSTEM_PROMPT,
       messages: [{ role: "user", content: original }],
-    });
+    }));
+    trackClaude("translate", response);
 
     const text = response.content[0];
     if (text.type !== "text" || !text.text.trim()) {
@@ -150,8 +154,8 @@ export async function translatePromptIfNeeded(
     console.log(`[Translate] "${original}" → "${translated}"`);
     return { translated, original, wasTranslated: true };
   } catch (error) {
-    console.error("[Translate] Error:", error);
-    return { translated: original, original, wasTranslated: false, translationFailed: true };
+    console.error("[Translate] Claude failed, trying Workers AI:", error instanceof Error ? error.message : error);
+    return translateFallback(original);
   }
 }
 
@@ -179,10 +183,10 @@ export async function enhanceUserPrompt(
   }
 
   try {
-    const anthropic = new Anthropic({ apiKey });
+    const anthropic = new Anthropic({ apiKey, timeout: 15_000, maxRetries: 1 });
 
-    const response = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
+    const response = await claudeCall("enhance", HAIKU, () => anthropic.messages.create({
+      model: HAIKU,
       max_tokens: 100,
       system: SYSTEM_PROMPT,
       messages: [
@@ -191,7 +195,8 @@ export async function enhanceUserPrompt(
           content: `Category: ${categoryId}/${subcategoryId}\nUser prompt: "${original}"`,
         },
       ],
-    });
+    }));
+    trackClaude("enhance", response);
 
     const text = response.content[0];
     if (text.type !== "text" || !text.text.trim()) {
@@ -254,4 +259,16 @@ export async function enhanceUserPrompt(
     console.error("[PromptEnhance] Error:", error);
     return { enhanced: original, original, wasEnhanced: false };
   }
+}
+
+/** Claude unavailable (no key, no balance, outage): free Workers AI model. */
+async function translateFallback(original: string): Promise<TranslateResult> {
+  const translated = await translateWithCloudflare(original);
+  // Must really be English: no non-ASCII letters left and not the input echoed back
+  const english = translated && /[a-zA-Z]/.test(translated) && !/[^\x00-\x7F]/.test(translated) && translated.toLowerCase() !== original.toLowerCase();
+  if (english && translated && !looksLikeChatReply(translated, original)) {
+    console.log(`[Translate] (fallback) "${original}" → "${translated}"`);
+    return { translated, original, wasTranslated: true };
+  }
+  return { translated: original, original, wasTranslated: false, translationFailed: true };
 }

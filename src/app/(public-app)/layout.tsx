@@ -1,21 +1,16 @@
-import { createClient } from "@/lib/supabase/server";
-import { AppShell } from "@/components/dashboard/AppShell";
 import { SiteNav } from "@/components/layout/SiteNav";
 import { Footer } from "@/components/layout/Footer";
 
 /**
  * Pages that belong to the app but must be readable without an account
- * (pricing, community gallery) — search engines and new visitors see them
- * with the public site chrome; signed-in users keep the app frame.
+ * (pricing, community gallery). This public version is static: no session,
+ * no cookies, so search engines get it even when the database or the auth
+ * service is down. Signed-in users are rewritten by the session proxy to the
+ * same pages under /member, which keep the app frame.
  */
-export default async function PublicAppLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (user) return <AppShell user={user}>{children}</AppShell>;
-
+export default function PublicAppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#0B0D12] text-white">
+    <div className="min-h-screen bg-[#131A31] text-white">
       <SiteNav />
       <main className="pt-16">{children}</main>
       <Footer />

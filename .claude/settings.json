@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run test:*)",
+      "Bash(npm ls:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx vitest:*)",
+      "Bash(npx eslint:*)",
+      "Bash(npx next build:*)",
+      "Bash(npx next dev:*)",
+      "Bash(npx tsx:*)",
+      "Bash(npx prisma generate:*)",
+      "Bash(npx vercel --prod --yes)",
+      "Bash(npx vercel ls:*)",
+      "Bash(npx vercel logs:*)",
+      "Bash(npx vercel inspect:*)",
+      "Bash(playwright-cli:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git stash list:*)",
+      "Bash(ls:*)",
+      "Bash(wc:*)",
+      "Bash(curl:*)",
+      "Bash(node -e:*)",
+      "mcp__context7"
+    ],
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(git checkout:*)",
+      "Bash(git restore:*)",
+      "Bash(git reset:*)",
+      "Bash(git clean:*)",
+      "Bash(git stash:*)",
+      "Bash(rm -rf:*)",
+      "Bash(npm install:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(npx prisma db push:*)",
+      "Bash(npx prisma migrate:*)",
+      "Bash(npx vercel env:*)",
+      "PowerShell(Remove-Item:*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./.vercel/**)",
+      "Edit(./.env*)",
+      "Bash(cat .env:*)",
+      "Bash(cat .env.local:*)",
+      "Bash(type .env.local:*)",
+      "Bash(npx vercel env pull:*)",
+      "Bash(npx vercel env rm:*)",
+      "Bash(npx vercel remove:*)",
+      "Bash(npx vercel rm:*)",
+      "Bash(npx prisma migrate reset:*)",
+      "Bash(npx prisma db push --force-reset:*)",
+      "Bash(npx prisma db push --accept-data-loss:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(rm -rf /:*)",
+      "Bash(rm -rf ~:*)",
+      "Bash(rm -rf .git:*)",
+      "Bash(rm -rf src:*)",
+      "Bash(rm -rf prisma:*)",
+      "Bash(rm -rf public:*)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/verify.mjs\"",
+            "timeout": 240
+          }
+        ]
+      }
+    ]
+  }
+}

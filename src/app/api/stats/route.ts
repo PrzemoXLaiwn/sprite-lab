@@ -91,15 +91,18 @@ export async function GET() {
   } catch (error) {
     console.error("Failed to get stats:", error);
 
-    // Return reasonable defaults on error
-    return NextResponse.json({
-      totalGenerations: 1000,
-      totalUsers: 100,
-      activeUsersToday: 5,
-      activeUsersWeek: 20,
-      paidSubscribers: 0,
-      error: true,
-      timestamp: new Date().toISOString(),
-    });
+    // Never invent numbers: callers hide the stats when they are zero.
+    return NextResponse.json(
+      {
+        totalGenerations: 0,
+        totalUsers: 0,
+        activeUsersToday: 0,
+        activeUsersWeek: 0,
+        paidSubscribers: 0,
+        error: true,
+        timestamp: new Date().toISOString(),
+      },
+      { status: 503 }
+    );
   }
 }

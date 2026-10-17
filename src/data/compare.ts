@@ -39,7 +39,7 @@ const SL = {
   styles: "12 styles: pixel art (16-bit, HD, isometric), isometric, isometric cartoon, hand painted, anime, chibi, dark fantasy, cartoon, vector, realistic",
   pixel: "Yes — real pixel grid with a limited palette",
   animation: "Yes — any sprite to sprite sheet + GIF (4/6/9 key poses, smooth mode up to 18 frames, AI-suggested motions)",
-  turnaround: "Turnaround animation; no 8-direction sets",
+  turnaround: "Static 4- and 8-direction views, plus a 4-direction walk sheet; no 8-direction animations",
   tiles: "Seamless tiles and animated tiles; no autotile tilesets",
   threeD: "No",
   api: "No",
@@ -60,7 +60,7 @@ export const COMPARISONS: Comparison[] = [
     checkedOn: COMPARE_CHECKED_ON,
     tagline: "Pixel-art specialist with directional characters, tilesets, an Aseprite extension, API and MCP.",
     summary:
-      "PixelLab is a pixel-art-focused generator for indie game developers. Its site lists character sprites and animations, 4- and 8-directional views, connectable Wang tilesets and maps, UI elements, inpainting, an Aseprite extension, an API and an MCP integration. SpriteLab covers more art styles beyond pixel art and is built around fast prompt-to-sprite plus animation, but it has no API, no 8-direction sets and no autotile tilesets.",
+      "PixelLab is a pixel-art-focused generator for indie game developers. Its site lists character sprites and animations, 4- and 8-directional views, connectable Wang tilesets and maps, UI elements, inpainting, an Aseprite extension, an API and an MCP integration. SpriteLab covers more art styles beyond pixel art and is built around fast prompt-to-sprite plus animation, but it has no API, no 8-direction animation sets and no autotile tilesets (it does make static 4- and 8-direction views and a 4-direction walk).",
     rows: [
       { feature: "What it generates", spritelab: SL.what, competitor: "Pixel art characters, animations, backgrounds, maps, tilesets and UI elements" },
       { feature: "Art styles", spritelab: SL.styles, competitor: "Pixel art (including isometric)" },
@@ -82,7 +82,7 @@ export const COMPARISONS: Comparison[] = [
       "You like keeping assets in projects with automatic folder sorting and ZIP export.",
     ],
     chooseCompetitorIf: [
-      "You need 4- or 8-directional character sets for a top-down game.",
+      "You need animated 8-directional movement sets for a top-down game.",
       "You need connectable Wang / autotile tilesets and map building.",
       "You work inside Aseprite and want generation in your editor.",
       "You need an API or MCP integration to generate assets from code or an AI coding assistant.",
@@ -97,7 +97,7 @@ export const COMPARISONS: Comparison[] = [
     faq: [
       {
         q: "Is SpriteLab a good PixelLab alternative?",
-        a: "It depends on what you need. SpriteLab is a good fit if you want fast prompt-to-sprite generation in 12 art styles plus sprite sheet animation. PixelLab is the better choice if you need 8-directional characters, Wang tilesets, an Aseprite extension or an API — SpriteLab does not offer those.",
+        a: "It depends on what you need. SpriteLab is a good fit if you want fast prompt-to-sprite generation in 12 art styles plus sprite sheet animation. PixelLab is the better choice if you need animated 8-directional movement, Wang tilesets, an Aseprite extension or an API — SpriteLab does not offer those yet.",
       },
       {
         q: "Does SpriteLab have an API or Aseprite plugin like PixelLab?",
@@ -192,7 +192,7 @@ export const COMPARISONS: Comparison[] = [
     ],
     chooseCompetitorIf: [
       "You only make pixel art and want a large range of pixel-specific styles and sizes.",
-      "You need Wang tilesets or 8-direction rotations.",
+      "You need Wang tilesets or an Aseprite plugin.",
       "You want an API or MCP server to generate from code or an AI assistant.",
       "You want an Aseprite extension you buy once and run locally.",
       "You prefer paying per generation with no subscription.",

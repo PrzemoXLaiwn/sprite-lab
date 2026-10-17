@@ -31,7 +31,7 @@ const STYLE_LINES: Record<string, string> = {
   DARK_SOULS:
     "dark fantasy 2D game art: gritty, muted desaturated palette, dramatic shading, detailed",
   REALISTIC_PAINTED:
-    "semi-realistic painted 2D game art: detailed rendering, dramatic lighting",
+    "photorealistic AAA game art like a high-end RPG character render: true-to-life proportions and anatomy, a realistic face with natural skin texture, real eyes and subtle features (not cartoon, not anime, not stylized, no big eyes), physically based materials (worn leather, cloth weave, scratched metal), soft cinematic lighting, highly detailed",
   CARTOON_WESTERN:
     "western cartoon 2D game art: bold black outlines, flat vibrant colors, simple shading",
   VECTOR_CLEAN:
@@ -47,7 +47,7 @@ const STYLE_LINES: Record<string, string> = {
 };
 
 const CATEGORY_FRAMING: Record<string, string> = {
-  CHARACTERS: "full body character, whole figure visible from head to feet",
+  CHARACTERS: "full body character, the whole character visible",
   CREATURES: "full body creature, whole creature visible",
   WEAPONS: "single weapon item shown whole, diagonal orientation, nothing else",
   ARMOR: "single armor item shown whole, nothing else",
@@ -58,15 +58,34 @@ const CATEGORY_FRAMING: Record<string, string> = {
 };
 
 // Keys match AssetView in prompt-configs.ts ("DEFAULT" → no constraint)
-const VIEW_LINES: Record<string, string> = {
-  SIDE_VIEW: "strict side view in profile, facing right",
-  FRONT: "straight front view facing the viewer",
-  TOP_DOWN: "top-down view seen from directly above",
+// The view alone decides the angle (pose lines never mention one, so they
+// can't contradict it). Figures and objects need different wording.
+const VIEW_LINES: Record<string, { figure: string; object: string }> = {
+  SIDE_VIEW: {
+    figure: "strict side profile view facing right: only one side of the body is visible, one eye, the nose points to the right edge, no three-quarter turn",
+    object: "strict side view in profile, facing right",
+  },
+  FRONT: {
+    figure: "perfectly straight-on front view: head, chest, hips and feet all face the viewer directly, shoulders level and parallel to the image, symmetrical stance, no turn and no three-quarter angle",
+    object: "straight front view facing the viewer, no perspective turn",
+  },
+  TOP_DOWN: {
+    figure: "high top-down RPG view like classic 16-bit RPG games: the camera looks down at about 45 degrees, the top of the head and shoulders are visible, the body is shorter below them, facing down toward the viewer",
+    object: "top-down view seen from directly above",
+  },
 };
+/** No view picked: the slight three-quarter angle the UI calls Default. */
+const DEFAULT_FIGURE_VIEW = "facing the viewer at a slight three-quarter angle";
 
+// "auto" is the game-ready default the UI promises: a calm A-pose, ready to
+// rig and animate (combat poses only when the user picks Dynamic)
+const A_POSE = "standing upright in a relaxed A-pose: arms hanging slightly away from the body, open hands, feet shoulder-width apart, calm neutral expression";
+// Something in the hands (the user asked for it): an A-pose with "open hands"
+// drops the weapons, so the calm game-ready stance holds them out instead
+const ARMED_STANCE = "standing upright in a steady, symmetrical ready stance, not attacking, every hand gripping its weapon or item held out and away from the body so each blade, handle and tip is fully visible";
 const POSE_LINES: Record<string, string> = {
-  auto: "standing in a neutral idle pose",
-  "a-pose": "standing in an A-pose with arms angled slightly away from the body",
+  auto: A_POSE,
+  "a-pose": A_POSE,
   "t-pose": "standing in a T-pose with both arms stretched out horizontally",
   dynamic: "in a dynamic action pose",
 };
@@ -80,6 +99,16 @@ export interface SpritePromptInput {
   colorHint?: string;
   /** Only applied to characters / creatures */
   pose?: string;
+  /** What the user typed: decides whether held items were asked for. */
+  original?: string;
+}
+
+/** Anything a character could hold or carry. */
+const HELD_ITEM = /\b(sword|blade|katana|sabre|saber|dagger|knife|axe|hatchet|hammer|mace|club|flail|spear|lance|halberd|pike|trident|scythe|sickle|bow|crossbow|arrows?|gun|pistol|rifle|shotgun|blaster|cannon|staff|wand|rod|scepter|sceptre|orb|tome|book|scroll|shield|buckler|torch|lantern|lamp|weapons?|armed|holding|holds|wielding|wields|carrying|carries|pickaxe|shovel|rake|fishing|guitar|instrument|potion|flask|bottle|mug|cup|bag|sack|basket|umbrella|broom|whip|chain|net|key|lute|banner|flag)\b/i;
+
+/** True when the user asked for something in the hands (so it stays). */
+export function asksForHeldItem(text: string): boolean {
+  return HELD_ITEM.test(text);
 }
 
 /** Legacy style ids ("pixel-16", "pixel_art_16") → canonical ids */
@@ -102,7 +131,17 @@ export function isPixelStyle(styleId: string): boolean {
   return normalizeStyleId(styleId).includes("PIXEL");
 }
 
-export function buildSpritePrompt({ subject, styleId, categoryId, view, colorHint, pose }: SpritePromptInput): string {
+/** Cut at the last comma or space before `max`, never mid-word. */
+function clip(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const at = Math.max(cut.lastIndexOf(", "), cut.lastIndexOf(" "));
+  return (at > max * 0.6 ? cut.slice(0, at) : cut).replace(/[,\s]+$/, "");
+}
+
+export function buildSpritePrompt(input: SpritePromptInput): string {
+  const { subject, categoryId, view, colorHint, pose } = input;
+  let { styleId } = input;
   styleId = normalizeStyleId(styleId);
   const style = STYLE_LINES[styleId.toUpperCase()] ?? STYLE_LINES.PIXEL_ART_16;
   const category = (categoryId ?? "").toUpperCase();
@@ -117,19 +156,60 @@ export function buildSpritePrompt({ subject, styleId, categoryId, view, colorHin
       "Even lighting with no vignette. No border, no frame, no outline around the tile, no single object in the middle, no background, no text, no watermark.",
     ].join(" ");
   }
-  const posed = (category === "CHARACTERS" || category === "CREATURES") && pose ? POSE_LINES[pose] : undefined;
+  const figure = category === "CHARACTERS" || category === "CREATURES";
+  // Game-ready by default: nothing in the hands unless the user asked for it
+  const holds = asksForHeldItem(input.original ?? subject);
+  const emptyHands = figure && pose !== "dynamic" && !holds;
+  // Creatures (animals, monsters) aren't put in an A-pose: a calm standing pose
+  // instead. Anything holding weapons gets the armed stance.
+  const calm = pose === "auto" || pose === "a-pose";
+  const posed = figure && pose
+    ? calm && holds
+      ? ARMED_STANCE
+      : category === "CREATURES" && calm
+        ? "standing calmly in a neutral pose, not attacking"
+        : POSE_LINES[pose]
+    : undefined;
   const framing = (CATEGORY_FRAMING[category] ?? "single subject shown whole") + (posed ? `, ${posed}` : "");
-  const viewLine = view ? VIEW_LINES[view.toUpperCase()] : undefined;
-  const cleanSubject = subject.trim().replace(/\s+/g, " ").slice(0, 400);
+  const views = view ? VIEW_LINES[view.toUpperCase()] : undefined;
+  const viewLine = views ? (figure ? views.figure : views.object) : figure ? DEFAULT_FIGURE_VIEW : undefined;
+  const cleanSubject = clip(subject.trim().replace(/\s+/g, " "), 400);
 
   return [
     `A 2D video game sprite of ${cleanSubject}.`,
     `${framing}${viewLine ? `, ${viewLine}` : ""}, centered with empty space around it.`,
+    // Models fill the canvas edge to edge; anything they draw past it is lost
+    // for good (cut feet, flat-topped auras), so the margin is spelled out
+    `Leave a wide empty margin on every side: the whole ${figure ? "figure" : "subject"}, including ${figure ? "feet, " : ""}weapon tips, flames and any glow, fits well inside the image at about two thirds of its height, and nothing touches or crosses the edges.`,
     `Style: ${style}.`,
     // Sprites of one game must match each other: same pixel density and the
     // same outline no matter whether it's a knight, an ore or an icon.
     ...(isPixelStyle(styleId) ? [PIXEL_CONSISTENCY] : []),
     ...(colorHint ? [`Colors: ${colorHint.slice(0, 200)}.`] : []),
-    `Exactly one subject floating on a ${KEY_BACKGROUND}. No ground, no floor, no drop shadow under it, no scenery, no text, no border, no watermark.`,
+    ...(emptyHands ? ["Hands empty: no weapon, shield, staff, wand, tool or any other held item."] : []),
+    `Exactly one subject floating on a ${keyBackgroundFor(cleanSubject, styleId)}. No ground, no floor, no drop shadow under it, no scenery, no text, no border, no watermark.`,
   ].join(" ");
+}
+
+/**
+ * White, silver or pale subjects can't sit on a white key: background seen
+ * through a gap (between a bow and its string, inside a ring) is then
+ * indistinguishable from a white shirt. Those get a magenta key — no game
+ * subject is pure magenta, so every enclosed patch of it is background
+ * (sprite-postprocess detects the key colour from the border).
+ */
+const PALE_SUBJECT = /\b(white|silver|silvery|snow\w*|ice|icy|frost\w*|ghost\w*|spirit|bone|skull|skeleton|pearl\w*|marble|ivory|cream|pale|cloud\w*|steam|mist|moon\w*|platinum|chrome|glass|crystal\w*|diamond\w*|angel\w*|polar|yeti|wool|sheep|cotton|paper|porcelain)\b/i;
+
+export const MAGENTA_KEY_BACKGROUND = "plain flat solid pure magenta (#FF00FF) background";
+
+/**
+ * Soft light (auras, glows, flames, smoke) is semi-transparent: on a chroma
+ * key it blends into a pink halo that can't be keyed out. Those subjects, and
+ * every painted style (soft anti-aliased edges), stay on the white key.
+ */
+const SOFT_LIGHT = /\b(glow\w*|aura|halo|radiant|radiance|shin\w*|light|lights|lit|flame\w*|fire|fiery|burning|blaze|ember\w*|smoke|smoky|sparkl\w*|magic\w*|energy|spell|lightning|electric\w*)\b/i;
+
+export function keyBackgroundFor(subject: string, styleId = "PIXEL_ART_16"): string {
+  const magenta = isPixelStyle(styleId) && PALE_SUBJECT.test(subject) && !SOFT_LIGHT.test(subject);
+  return magenta ? MAGENTA_KEY_BACKGROUND : KEY_BACKGROUND;
 }

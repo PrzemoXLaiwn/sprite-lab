@@ -1,6 +1,4 @@
 import { Metadata } from "next";
-import Link from "next/link";
-import { ArrowLeft, Sparkles, Zap, Bug, Star } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Changelog — New Features & Updates",
@@ -79,92 +77,66 @@ const CHANGELOG = [
   },
 ];
 
-const typeConfig = {
-  feature: { icon: Sparkles, color: "text-[#FF6B2C]", bg: "bg-[#FF6B2C]/10" },
-  improvement: { icon: Zap, color: "text-[#FF6B2C]", bg: "bg-[#FF6B2C]/10" },
-  fix: { icon: Bug, color: "text-[#ef4444]", bg: "bg-[#ef4444]/10" },
-  release: { icon: Star, color: "text-[#8b5cf6]", bg: "bg-[#8b5cf6]/10" },
-};
+const TYPE_LABEL = { release: "release", feature: "feature" } as const;
 
 export default function ChangelogPage() {
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto px-4 py-16">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Home
-        </Link>
+    <div className="relative">
+      <div className="pixel-grid pointer-events-none absolute inset-x-0 top-0 h-[360px] [mask-image:radial-gradient(ellipse_at_top,black_15%,transparent_70%)]" />
+      <div className="relative mx-auto max-w-3xl px-5 pb-24 pt-14 sm:pt-20">
+        <h1 className="mt-3 font-display text-[36px] font-semibold leading-[1.06] tracking-[-0.015em] text-white sm:text-[48px]">
+          What&apos;s new in SpriteLab
+        </h1>
+        <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-[#9AA1CC]">
+          Every release, newest first.
+        </p>
 
-        <div className="mb-12">
-          <h1 className="text-4xl font-bold mb-4">Changelog</h1>
-          <p className="text-muted-foreground text-lg">
-            All the latest updates, improvements, and fixes to SpriteLab.
-          </p>
-        </div>
-
-        <div className="space-y-12">
-          {CHANGELOG.map((release, index) => {
-            const config = typeConfig[release.type];
-            const Icon = config.icon;
-
-            return (
-              <div key={index} className="relative">
-                {/* Timeline line */}
-                {index < CHANGELOG.length - 1 && (
-                  <div className="absolute left-[19px] top-12 bottom-0 w-px bg-border" />
-                )}
-
-                <div className="flex gap-6">
-                  {/* Icon */}
-                  <div className={`w-10 h-10 rounded-full ${config.bg} flex items-center justify-center flex-shrink-0`}>
-                    <Icon className={`w-5 h-5 ${config.color}`} />
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 pb-8">
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className="text-sm font-mono text-muted-foreground">
-                        v{release.version}
-                      </span>
-                      <span className="text-sm text-muted-foreground">
-                        {release.date}
-                      </span>
-                    </div>
-
-                    <h2 className="text-xl font-semibold mb-4">{release.title}</h2>
-
-                    <ul className="space-y-2">
-                      {release.changes.map((change, changeIndex) => (
-                        <li
-                          key={changeIndex}
-                          className="flex items-start gap-2 text-muted-foreground"
-                        >
-                          <span className={`mt-2 w-1.5 h-1.5 rounded-full ${config.bg.replace('/10', '')} flex-shrink-0`} />
-                          {change}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
+        <ol className="mt-14 space-y-12">
+          {CHANGELOG.map((release, index) => (
+            <li key={release.version} className="relative grid gap-3 sm:grid-cols-[150px_1fr] sm:gap-8">
+              {/* Timeline */}
+              {index < CHANGELOG.length - 1 && (
+                <span aria-hidden="true" className="absolute bottom-[-48px] left-[5px] top-3 w-px bg-white/[0.07] sm:left-[165px]" />
+              )}
+              <div className="flex items-center gap-3 pl-6 sm:block sm:pl-0 sm:pt-0.5 sm:text-right">
+                <span aria-hidden="true" className={`absolute left-0 top-1.5 h-[11px] w-[11px] rounded-[2px] border sm:left-[160px] ${
+                  index === 0 ? "border-[#FFA300] bg-[#FFA300]" : "border-white/20 bg-[#131A31]"
+                }`} />
+                <p className="font-mono text-[12px] text-[#FFC857]">v{release.version}</p>
+                <p className="font-mono text-[12px] text-[#8A92BF] sm:mt-1">{release.date}</p>
               </div>
-            );
-          })}
-        </div>
 
-        {/* CTA */}
-        <div className="mt-16 p-8 rounded-2xl bg-card border border-border text-center">
-          <h3 className="text-xl font-semibold mb-2">Want to see more features?</h3>
-          <p className="text-muted-foreground mb-4">
-            Have a feature request or found a bug? Let us know!
+              <div className="pl-6 sm:pl-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="font-display text-[22px] font-semibold leading-snug text-white">{release.title}</h2>
+                  <span className="rounded-full border border-white/[0.08] px-2 py-0.5 font-mono text-[10.5px] text-[#9AA1CC]">
+                    {TYPE_LABEL[release.type]}
+                  </span>
+                </div>
+                <ul className="mt-4 space-y-2.5">
+                  {release.changes.map((change) => (
+                    <li key={change} className="flex items-start gap-3 text-[15px] leading-relaxed text-[#A7ADD4]">
+                      <span aria-hidden="true" className="mt-[10px] h-1.5 w-1.5 shrink-0 rounded-[1px] bg-[#FFA300]/70" />
+                      {change}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </li>
+          ))}
+        </ol>
+
+        {/* Feedback */}
+        <div className="mt-20 rounded-3xl border border-white/[0.07] bg-[#19223F] p-8 text-center sm:p-10">
+          <h2 className="font-display text-[24px] font-semibold leading-tight text-white sm:text-[28px]">Missing something?</h2>
+          <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-[#9AA1CC]">
+            Feature requests and bug reports go straight to the developer.
           </p>
           <a
-            href="mailto:support@sprite-lab.com"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            href="mailto:spritelab.contact@gmail.com"
+            className="mt-6 inline-flex h-11 items-center justify-center rounded-xl border border-white/[0.1] bg-white/[0.04] px-6 text-[14px] font-semibold text-[#FFF1E8] transition hover:bg-white/[0.08]"
           >
-            Send Feedback
+            Email spritelab.contact@gmail.com
           </a>
         </div>
       </div>

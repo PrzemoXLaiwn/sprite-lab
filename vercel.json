@@ -23,6 +23,22 @@
     {
       "path": "/api/cron/relaunch",
       "schedule": "0 16 * * *"
+    },
+    {
+      "path": "/api/cron/lifecycle",
+      "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/cron/reconcile-costs",
+      "schedule": "15 */6 * * *"
+    },
+    {
+      "path": "/api/cron/dungeon-prizes",
+      "schedule": "10 0 * * 1"
+    },
+    {
+      "path": "/api/cron/health",
+      "schedule": "*/5 * * * *"
     }
   ],
   "redirects": [

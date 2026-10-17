@@ -11,6 +11,7 @@
 // =============================================================================
 
 import Anthropic from "@anthropic-ai/sdk";
+import { claudeCall, trackClaude } from "@/lib/claude-usage";
 
 const PLANNER_MODEL = "claude-opus-5-5";
 const PLANNER_TIMEOUT_MS = 45_000;
@@ -78,6 +79,7 @@ Then write a pose for EVERY frame. Each pose must describe the whole body, not o
 - Turnaround requests: the same neutral pose seen from the front, right side, back and left side, at identical size and height — this one is allowed to change the facing direction.
 - Characters with weapons attack with that weapon (wind-up, strike, impact, follow-through); mages cast with their staff/wand/hands. Weapons are rigid: describe the whole weapon's angle and where the hands grip it, so the blade stays straight, unbroken and full length in every frame — the arc comes from the arms and body rotating, never from the blade bending.
 - Keep the camera, size, facing direction and design identical; only the pose changes. Effects (fire, trails, sparks) appear only where the motion needs them.
+- Characters and creatures doing physical moves (kicks, punches, jumps, dodges, swings): show the movement through the pose alone — no swoosh arcs, speed lines, motion blur, dust puffs or impact stars. Game engines add those as separate effects, and drawn lines get cut into the sprite. A magic or elemental attack (fireball, breath, spell) may show its own effect.
 Write each frame as concrete, drawable direction (limb positions, angles, what is extended, what is compressed) so an illustrator never has to guess.`;
 
 const PLAN_SCHEMA = {
@@ -136,7 +138,8 @@ export async function planAnimation(opts: {
 
   try {
     const anthropic = new Anthropic({ apiKey, timeout: PLANNER_TIMEOUT_MS, maxRetries: 1 });
-    const response = await anthropic.messages.create(params as unknown as Anthropic.MessageCreateParamsNonStreaming);
+    const response = await claudeCall("planner", PLANNER_MODEL, () => anthropic.messages.create(params as unknown as Anthropic.MessageCreateParamsNonStreaming));
+    trackClaude("planner", response);
     const text = response.content.find((b) => b.type === "text");
     if (!text || text.type !== "text") return fallback;
     const input = JSON.parse(text.text) as Partial<Record<"bodyType" | "subject" | "consistency", unknown>> & { frames?: unknown };

@@ -14,6 +14,7 @@
 // =============================================================================
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Shield,
@@ -21,14 +22,16 @@ import {
   UserCheck,
   UserPlus,
   Image as ImageIcon,
-  PoundSterling,
+  DollarSign,
   Coins,
   TrendingUp,
   TrendingDown,
   RefreshCw,
   Loader2,
+  Mail,
 } from "lucide-react";
 import { checkAdminAccess, fetchAdminStats } from "./page.actions";
+import { UsagePanel } from "@/components/admin/UsagePanel";
 
 interface AdminStats {
   totalUsers: number;
@@ -52,20 +55,12 @@ interface AdminStats {
 
 const REFRESH_INTERVAL_MS = 30_000;
 
-function formatGBP(value: number): string {
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: "GBP",
-    maximumFractionDigits: value < 100 ? 2 : 0,
-  }).format(value);
-}
-
 function formatUSD(value: number): string {
   // Runware costs are recorded in USD on the Generation row.
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-    maximumFractionDigits: value < 10 ? 4 : 2,
+    maximumFractionDigits: Math.abs(value) < 1 ? 4 : 2,
   }).format(value);
 }
 
@@ -87,7 +82,7 @@ function formatRelative(date: Date | string): string {
 
 function StatCardSkeleton() {
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-[#0E1016] p-5">
+    <div className="rounded-2xl border border-white/[0.06] bg-[#19223F] p-4 sm:p-5">
       <div className="mb-3 flex items-center justify-between">
         <div className="h-3 w-20 animate-pulse rounded bg-white/[0.06]" />
         <div className="h-4 w-4 animate-pulse rounded bg-white/[0.06]" />
@@ -100,7 +95,7 @@ function StatCardSkeleton() {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="mb-3 font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">{children}</h2>
+    <h2 className="mb-3 text-[12.5px] text-[#9AA1CC] font-semibold">{children}</h2>
   );
 }
 
@@ -122,13 +117,13 @@ function StatCard({
     emphasis === "negative" ? "text-red-300" :
     "text-white";
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-[#0E1016] p-5">
-      <div className="mb-2 flex items-center justify-between">
-        <p className="text-[12px] text-[#8B93A5]">{label}</p>
-        <Icon className="h-4 w-4 text-[#7A8294]" />
+    <div className="min-w-0 rounded-2xl border border-white/[0.06] bg-[#19223F] p-4 sm:p-5">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="truncate text-[12px] text-[#9AA1CC]">{label}</p>
+        <Icon className="h-4 w-4 shrink-0 text-[#8A92BF]" />
       </div>
-      <p className={`font-sans tracking-tight text-[28px] font-semibold leading-tight tabular-nums ${emphasisClass}`}>{value}</p>
-      {hint && <p className="mt-2 font-mono text-[11px] text-[#7A8294]">{hint}</p>}
+      <p className={`truncate font-sans text-[22px] font-semibold leading-tight tracking-tight tabular-nums sm:text-[28px] ${emphasisClass}`}>{value}</p>
+      {hint && <p className="mt-1.5 truncate font-mono text-[11px] text-[#8A92BF] sm:mt-2">{hint}</p>}
     </div>
   );
 }
@@ -197,10 +192,10 @@ export default function AdminPage() {
     return (
       <div className="mx-auto max-w-[1100px] px-5 py-6 lg:px-8">
         <div className="mb-8 flex items-center gap-2.5">
-          <Shield className="h-5 w-5 text-[#FF8A3D]" />
+          <Shield className="h-5 w-5 text-[#FFA300]" />
           <h1 className="font-display text-[22px] font-semibold tracking-tight text-white">Admin</h1>
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => <StatCardSkeleton key={i} />)}
         </div>
       </div>
@@ -212,21 +207,29 @@ export default function AdminPage() {
     : null;
 
   return (
-    <div className="mx-auto max-w-[1100px] px-5 py-6 text-[#ECEEF3] lg:px-8">
+    <div className="mx-auto max-w-[1100px] px-4 py-5 text-[#FFF1E8] sm:px-5 sm:py-6 lg:px-8">
       {/* Header */}
-      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+      <div className="mb-6 flex items-start justify-between gap-3 sm:mb-8">
         <div>
           <div className="flex items-center gap-2.5">
-            <Shield className="h-5 w-5 text-[#FF8A3D]" />
+            <Shield className="h-5 w-5 text-[#FFA300]" />
             <h1 className="font-display text-[22px] font-semibold tracking-tight text-white">Admin</h1>
           </div>
-          <p className="mt-1 text-[13px] text-[#8B93A5]">
-            People &amp; cost overview. Auto-refreshes every 30 seconds.
+          <p className="mt-1 text-[13px] text-[#9AA1CC]">
+            Usage, people &amp; money · refreshes on its own
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Link
+            href="/admin/emails"
+            aria-label="Email previews"
+            className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3.5 text-[13px] font-medium text-[#C8CCE8] transition-colors hover:bg-white/[0.08] hover:text-white"
+          >
+            <Mail className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Emails</span>
+          </Link>
           {lastUpdated && (
-            <span className="hidden font-mono text-[11px] text-[#7A8294] sm:inline">
+            <span className="hidden font-mono text-[11px] text-[#8A92BF] sm:inline">
               updated {formatRelative(lastUpdated)}
             </span>
           )}
@@ -234,12 +237,13 @@ export default function AdminPage() {
             type="button"
             onClick={handleRefresh}
             disabled={refreshing}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3.5 py-2 text-[13px] font-medium text-[#C9CFDB] transition-colors hover:bg-white/[0.08] hover:text-white disabled:opacity-60"
+            aria-label="Refresh stats"
+            className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3.5 text-[13px] font-medium text-[#C8CCE8] transition-colors hover:bg-white/[0.08] hover:text-white disabled:opacity-60"
           >
             {refreshing
               ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
               : <RefreshCw className="h-3.5 w-3.5" />}
-            Refresh
+            <span className="hidden sm:inline">Refresh</span>
           </button>
         </div>
       </div>
@@ -250,10 +254,12 @@ export default function AdminPage() {
         </div>
       )}
 
+      <UsagePanel />
+
       {/* People */}
-      <section className="mb-8">
+      <section className="mb-6 sm:mb-8">
         <SectionLabel>People</SectionLabel>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <StatCard
             label="Total users"
             value={formatNumber(stats?.totalUsers ?? 0)}
@@ -286,25 +292,26 @@ export default function AdminPage() {
       </section>
 
       {/* Costs / revenue */}
-      <section className="mb-8">
+      <section className="mb-6 sm:mb-8">
         <SectionLabel>Money</SectionLabel>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <StatCard
             label="Total revenue"
-            value={formatGBP(stats?.totalRevenue ?? 0)}
-            icon={PoundSterling}
+            value={formatUSD(stats?.totalRevenue ?? 0)}
+            hint="All time · as charged"
+            icon={DollarSign}
             emphasis="positive"
           />
           <StatCard
             label="Runware cost"
             value={formatUSD(stats?.totalRunwareCost ?? 0)}
-            hint="API spend (USD)"
+            hint="All time · image API"
             icon={Coins}
             emphasis="negative"
           />
           <StatCard
             label="Profit"
-            value={formatGBP(stats?.profit ?? 0)}
+            value={formatUSD(stats?.profit ?? 0)}
             hint={margin ? `${margin}% margin` : "Revenue − provider cost"}
             icon={(stats?.profit ?? 0) >= 0 ? TrendingUp : TrendingDown}
             emphasis={(stats?.profit ?? 0) >= 0 ? "positive" : "negative"}
@@ -323,10 +330,10 @@ export default function AdminPage() {
       </section>
 
       {/* Recent purchases — small, optional, just for "did anyone pay today?" */}
-      <section className="rounded-2xl border border-white/[0.06] bg-[#0E1016] p-6">
+      <section className="rounded-2xl border border-white/[0.06] bg-[#19223F] p-4 sm:p-6">
         <div className="mb-4">
           <h2 className="text-[15px] font-semibold text-white">Recent purchases</h2>
-          <p className="mt-1 text-[13px] text-[#8B93A5]">Last 10 paid credit / subscription transactions.</p>
+          <p className="mt-1 text-[13px] text-[#9AA1CC]">Last 10 paid packs and subscriptions.</p>
         </div>
         {stats?.recentTransactions?.length ? (
           <ul className="-mx-2 divide-y divide-white/[0.06]">
@@ -336,20 +343,20 @@ export default function AdminPage() {
                 className="flex items-center justify-between gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-white/[0.03]"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-medium text-[#ECEEF3]">
+                  <p className="truncate text-[13px] font-medium text-[#FFF1E8]">
                     {tx.user.name || tx.user.email}
                   </p>
                   {tx.user.name && (
-                    <p className="truncate text-[12px] text-[#8B93A5]">{tx.user.email}</p>
+                    <p className="truncate text-[12px] text-[#9AA1CC]">{tx.user.email}</p>
                   )}
                 </div>
                 <div className="shrink-0 text-right">
                   <p className="font-mono text-[13px] font-semibold tabular-nums text-white">
                     {tx.moneyAmount != null
-                      ? formatGBP(tx.moneyAmount)
+                      ? formatUSD(tx.moneyAmount)
                       : `${tx.amount > 0 ? "+" : ""}${tx.amount} credits`}
                   </p>
-                  <p className="font-mono text-[11px] text-[#7A8294]">
+                  <p className="font-mono text-[11px] text-[#8A92BF]">
                     {formatRelative(tx.createdAt)}
                   </p>
                 </div>
@@ -357,7 +364,7 @@ export default function AdminPage() {
             ))}
           </ul>
         ) : (
-          <div className="rounded-xl border border-dashed border-white/[0.08] py-8 text-center text-[13px] text-[#8B93A5]">
+          <div className="rounded-xl border border-dashed border-white/[0.08] py-8 text-center text-[13px] text-[#9AA1CC]">
             No purchases yet.
           </div>
         )}

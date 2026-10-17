@@ -139,7 +139,7 @@ Respond ONLY with valid JSON, no other text.`;
 
     // Call Claude Vision API with base64 image
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 1500,
       messages: [
         {
@@ -284,7 +284,7 @@ export async function processAnalysisJob(jobId: string): Promise<void> {
         suggestedFix: result.suggestedFix,
         confidenceScore: result.confidenceScore,
         rawAnalysis: JSON.stringify(result.rawAnalysis),
-        modelUsed: "claude-sonnet-4-20250514",
+        modelUsed: "claude-haiku-4-5-20251001",
         analysisCost: 0.003, // Approximate cost per analysis
       },
       create: {
@@ -307,7 +307,7 @@ export async function processAnalysisJob(jobId: string): Promise<void> {
         suggestedFix: result.suggestedFix,
         confidenceScore: result.confidenceScore,
         rawAnalysis: JSON.stringify(result.rawAnalysis),
-        modelUsed: "claude-sonnet-4-20250514",
+        modelUsed: "claude-haiku-4-5-20251001",
         analysisCost: 0.003,
       },
     });

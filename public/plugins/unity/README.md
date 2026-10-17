@@ -111,7 +111,7 @@ public class MyScript : MonoBehaviour
 
 - Documentation: [sprite-lab.com/docs](https://sprite-lab.com/docs)
 - Discord: [discord.gg/spritelab](https://discord.gg/spritelab)
-- Email: support@sprite-lab.com
+- Email: spritelab.contact@gmail.com
 
 ## License
 

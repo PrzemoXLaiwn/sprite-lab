@@ -10,8 +10,8 @@ import { ImageResponse } from "next/og";
 
 export const OG_SIZE = { width: 1200, height: 630 };
 
-const BG = "#0B0D12";
-const ACCENT = "#FF8A3D";
+const BG = "#131A31";
+const ACCENT = "#FFA300";
 
 export function renderOgImage({ title, subtitle }: { title: string; subtitle: string }) {
   return new ImageResponse(
@@ -37,7 +37,7 @@ export function renderOgImage({ title, subtitle }: { title: string; subtitle: st
             width: "700px",
             height: "520px",
             borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(255,138,61,0.16) 0%, transparent 70%)",
+            background: "radial-gradient(circle, rgba(255,163,0,0.16) 0%, transparent 70%)",
           }}
         />
 
@@ -82,7 +82,7 @@ export function renderOgImage({ title, subtitle }: { title: string; subtitle: st
         </div>
 
         {/* Subtitle */}
-        <div style={{ display: "flex", fontSize: "28px", color: "#8B93A5" }}>{subtitle}</div>
+        <div style={{ display: "flex", fontSize: "28px", color: "#9AA1CC" }}>{subtitle}</div>
       </div>
     ),
     { ...OG_SIZE }

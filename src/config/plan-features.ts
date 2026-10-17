@@ -11,14 +11,13 @@ export const PLAN_FEATURES = {
   FREE: [
     "10 credits to start",
     "All 12 art styles, Standard & HD",
-    "Sprite animations (walk, attack…)",
+    "Animations, 4 & 8 directions, AI editing",
     "Projects + pack export (.zip)",
   ],
   STARTER: [
     "250 credits / month",
     "Everything in Free",
     "Background removal",
-    "Image editing",
     "Commercial license",
   ],
   PRO: [

@@ -23,12 +23,17 @@ const AI_CRAWLERS = [
 const PUBLIC = [
   "/",
   ...SEO_PAGES.map((p) => `/${p.slug}`),
+  "/how-it-works",
   "/guides",
   "/compare",
   "/pricing",
   "/community",
   "/u/",
   "/changelog",
+  "/about",
+  "/contact",
+  "/sitemap",
+  "/ads.txt",
   "/llms.txt",
   "/llms-full.txt",
   "/privacy",
@@ -51,6 +56,8 @@ const PRIVATE = [
   "/variations",
   "/animate",
   "/projects",
+  // Signed-in copies of /, /pricing and /community (served by a proxy rewrite)
+  "/member/",
   // Admin / internal
   "/api/",
   "/auth/",

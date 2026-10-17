@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 
 /**
  * Cloudflare R2 Storage Client
@@ -307,6 +307,77 @@ export async function uploadBufferToR2(
       success: false,
       error: error instanceof Error ? error.message : "R2 upload failed",
     };
+  }
+}
+
+/** Public URL for an object key (no I/O). */
+export function getR2PublicUrl(key: string): string {
+  return getPublicUrl(key);
+}
+
+function httpStatusOf(error: unknown): number | undefined {
+  return (error as { $metadata?: { httpStatusCode?: number } } | null)?.$metadata?.httpStatusCode;
+}
+
+/**
+ * Read an object by key. Returns null when it doesn't exist (or R2 is not
+ * configured); throws on other storage errors so callers can tell
+ * "gone" from "storage down".
+ */
+export async function getR2ObjectBuffer(key: string): Promise<Buffer | null> {
+  const client = getR2Client();
+  const bucketName = process.env.R2_BUCKET_NAME;
+  if (!client || !bucketName) return null;
+  try {
+    const out = await client.send(new GetObjectCommand({ Bucket: bucketName, Key: key }));
+    if (!out.Body) return null;
+    return Buffer.from(await out.Body.transformToByteArray());
+  } catch (error) {
+    const name = (error as { name?: string } | null)?.name;
+    if (name === "NoSuchKey" || name === "NotFound" || httpStatusOf(error) === 404) return null;
+    throw error;
+  }
+}
+
+/**
+ * Create an object only if nothing exists at `key` (If-None-Match: *).
+ * Returns "created", or "exists" when another request got there first —
+ * R2 evaluates the condition atomically, so this works as a one-shot lock.
+ */
+export async function putR2ObjectIfAbsent(
+  key: string,
+  body: Buffer | string,
+  contentType: string = "application/octet-stream"
+): Promise<"created" | "exists"> {
+  const client = getR2Client();
+  const bucketName = process.env.R2_BUCKET_NAME;
+  if (!client || !bucketName) throw new Error("R2 not configured");
+  try {
+    await client.send(new PutObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+      IfNoneMatch: "*",
+    }));
+    return "created";
+  } catch (error) {
+    const name = (error as { name?: string } | null)?.name;
+    if (httpStatusOf(error) === 412 || name === "PreconditionFailed") return "exists";
+    throw error;
+  }
+}
+
+/** Delete an object by key. Deleting a missing key is not an error. */
+export async function deleteR2Key(key: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const client = getR2Client();
+    const bucketName = process.env.R2_BUCKET_NAME;
+    if (!client || !bucketName) return { success: false, error: "R2 not configured" };
+    await client.send(new DeleteObjectCommand({ Bucket: bucketName, Key: key }));
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "R2 delete failed" };
   }
 }
 

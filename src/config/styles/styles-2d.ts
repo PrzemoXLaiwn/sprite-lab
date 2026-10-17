@@ -367,7 +367,7 @@ const STYLE_PREVIEWS: Record<string, { colors: string[]; bestFor: string[]; exam
     example: "Painterly style like Hollow Knight or Ori",
   },
   VECTOR_CLEAN: {
-    colors: ["#FF6B2C", "#FF6B2C", "#ef4444", "#feca57"],
+    colors: ["#FF9500", "#FF9500", "#ef4444", "#feca57"],
     bestFor: ["Mobile games", "Casual", "Puzzle"],
     example: "Clean flat design like Angry Birds",
   },

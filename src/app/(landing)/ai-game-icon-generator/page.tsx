@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { SeoLanding } from "@/components/landing/SeoLanding";
+import { LANDING_SPECS } from "@/data/landing-specs";
 
 const URL = "https://www.sprite-lab.com/ai-game-icon-generator";
 
 export const metadata: Metadata = {
-  title: { absolute: "AI Game Icon Generator — Item, Skill & Status Icons | SpriteLab" },
+  title: { absolute: "AI Game Icon Generator — Items & Skills | SpriteLab" },
   description:
     "Generate game icons with AI: inventory items, skills, spells, status effects and UI buttons. Pixel art or painted, transparent PNG, matching frames.",
   keywords: ["AI game icon generator", "game icon generator", "skill icon generator", "item icon generator", "RPG icons", "pixel art icons", "inventory icons"],
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "AI Game Icon Generator — Item, Skill & Status Icons | SpriteLab",
+    title: "AI Game Icon Generator — Items & Skills | SpriteLab",
     description: "Generate game icons with AI: inventory items, skills, spells, status effects and UI buttons. Pixel art or painted, transparent PNG, matching frames.",
   },
   alternates: { canonical: URL },
@@ -33,7 +34,7 @@ export default function GameIconGeneratorPage() {
         <>
           Game icons
           <br />
-          <span className="text-[#FF8A3D]">for every slot in your UI</span>
+          for every slot in your UI
         </>
       }
       subtitle="Inventory items, skills, spells and status effects — framed, readable at thumbnail size and in the same style as the rest of your game."
@@ -51,7 +52,7 @@ export default function GameIconGeneratorPage() {
           eyebrow: "made with spritelab",
           title: (
             <>
-              Icons that read at <span className="text-[#FF8A3D]">48 pixels</span>
+              Icons that read at 48 pixels
             </>
           ),
           cols: 4,
@@ -67,7 +68,7 @@ export default function GameIconGeneratorPage() {
           eyebrow: "icon types",
           title: (
             <>
-              Every <span className="text-[#FF8A3D]">icon set</span> a game needs
+              Every icon set a game needs
             </>
           ),
           cols: 3,
@@ -82,7 +83,7 @@ export default function GameIconGeneratorPage() {
           eyebrow: "made for ui",
           title: (
             <>
-              Built for <span className="text-[#FF8A3D]">inventories and HUDs</span>
+              Built for inventories and HUDs
             </>
           ),
           cards: [
@@ -97,7 +98,7 @@ export default function GameIconGeneratorPage() {
           eyebrow: "example prompts",
           title: (
             <>
-              Icon <span className="text-[#FF8A3D]">prompts</span>
+              Icon prompts
             </>
           ),
           prompts: [
@@ -109,6 +110,7 @@ export default function GameIconGeneratorPage() {
             "buff icon of a glowing shield, golden frame",
           ],
         },
+        LANDING_SPECS["ai-game-icon-generator"],
       ]}
       faq={[
         { q: "Which asset type should I choose for icons?", a: "Pick Icons in the generator, then Item Icons, Skill Icons, Status Icons or UI Icons. The framing is tuned for square, readable icons." },
@@ -119,7 +121,7 @@ export default function GameIconGeneratorPage() {
       cta={{
         title: (
           <>
-            Fill your <span className="text-[#FF8A3D]">hotbar</span>
+            Fill your hotbar
           </>
         ),
         body: "Generate a full icon set in minutes.",

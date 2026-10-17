@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Gift, X, Sparkles } from "lucide-react";
 
 interface Notification {
@@ -14,7 +14,7 @@ interface Notification {
 
 // Deterministic confetti layout — computed once at module load so render
 // stays pure (no Math.random during render).
-const CONFETTI_COLORS = ["#FF8A3D", "#FFB27A", "#FF9F43", "#ECEEF3"];
+const CONFETTI_COLORS = ["#FFA300", "#FFC857", "#FFB733", "#FFF1E8"];
 const CONFETTI = Array.from({ length: 20 }, (_, i) => ({
   left: (i * 53 + 17) % 100,
   color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
@@ -55,7 +55,7 @@ export function NotificationPopup() {
     // Poll every 60 seconds. The previous 30s cadence doubled request volume
     // for no perceptible UX gain — notifications appear after server-side
     // events (purchases, admin grants) that don't need real-time polling.
-    const interval = setInterval(fetchNotifications, 60_000);
+    const interval = setInterval(() => { if (!document.hidden) fetchNotifications(); }, 60_000);
 
     return () => {
       clearTimeout(initial);
@@ -93,6 +93,18 @@ export function NotificationPopup() {
     }, 300);
   };
 
+  // Keyboard: focus the button when the popup opens, Escape dismisses.
+  const ctaRef = useRef<HTMLButtonElement>(null);
+  const dismissRef = useRef(handleDismiss);
+  useEffect(() => { dismissRef.current = handleDismiss; });
+  useEffect(() => {
+    if (!isVisible) return;
+    ctaRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") dismissRef.current(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isVisible]);
+
   const parseData = (data?: string) => {
     if (!data) return null;
     try {
@@ -114,6 +126,7 @@ export function NotificationPopup() {
           isVisible ? "opacity-100" : "opacity-0"
         }`}
         onClick={handleDismiss}
+        aria-hidden
       />
 
       {/* Popup */}
@@ -125,7 +138,7 @@ export function NotificationPopup() {
         aria-modal="true"
         aria-labelledby="notification-title"
       >
-        <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0E1016] shadow-2xl">
+        <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#19223F] shadow-2xl">
           {/* Confetti particles (CSS only, deterministic positions) */}
           {currentNotification.type === "CREDIT_GRANT" && isVisible && (
             <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -149,7 +162,7 @@ export function NotificationPopup() {
             type="button"
             onClick={handleDismiss}
             aria-label="Close"
-            className="absolute right-3 top-3 z-10 rounded-lg p-1.5 text-[#7A8294] transition-colors hover:bg-white/[0.05] hover:text-white"
+            className="absolute right-2 top-2 z-10 flex h-10 w-10 items-center justify-center rounded-lg text-[#9AA1CC] transition-colors hover:bg-white/[0.05] hover:text-white"
           >
             <X className="h-4 w-4" />
           </button>
@@ -157,11 +170,11 @@ export function NotificationPopup() {
           {/* Content */}
           <div className="pixel-grid relative p-6 pt-8 text-center">
             {/* Icon */}
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#FF8A3D]/25 bg-[#FF8A3D]/10">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#FFA300]/25 bg-[#FFA300]/10">
               {currentNotification.type === "CREDIT_GRANT" ? (
-                <Gift className="animate-bounce-slow h-6 w-6 text-[#FF8A3D]" />
+                <Gift className="animate-bounce-slow h-6 w-6 text-[#FFA300]" />
               ) : (
-                <Sparkles className="h-6 w-6 text-[#FF8A3D]" />
+                <Sparkles className="h-6 w-6 text-[#FFA300]" />
               )}
             </div>
 
@@ -173,32 +186,33 @@ export function NotificationPopup() {
             {/* Credit amount for credit grants */}
             {currentNotification.type === "CREDIT_GRANT" && notificationData?.amount && (
               <div className="mt-3 flex items-baseline justify-center gap-2">
-                <span className="font-sans tracking-tight text-[44px] font-semibold leading-none tabular-nums text-[#FFB27A]">
+                <span className="font-sans tracking-tight text-[44px] font-semibold leading-none tabular-nums text-[#FFC857]">
                   +{notificationData.amount}
                 </span>
-                <span className="font-mono text-[12px] text-[#8B93A5]">credits</span>
+                <span className="font-mono text-[12px] text-[#9AA1CC]">credits</span>
               </div>
             )}
 
             {/* Message */}
-            <p className="mb-6 mt-3 text-[13px] leading-relaxed text-[#C9CFDB]">
+            <p className="mb-6 mt-3 text-[13px] leading-relaxed text-[#C8CCE8]">
               {currentNotification.message}
             </p>
 
             {/* Admin info */}
             {notificationData?.adminName && (
-              <p className="-mt-3 mb-6 font-mono text-[11px] text-[#7A8294]">
-                from <span className="text-[#FFB27A]">{notificationData.adminName}</span>
+              <p className="-mt-3 mb-6 font-mono text-[11px] text-[#8A92BF]">
+                from <span className="text-[#FFC857]">{notificationData.adminName}</span>
               </p>
             )}
 
             {/* CTA Button */}
             <button
               type="button"
+              ref={ctaRef}
               onClick={handleDismiss}
-              className="px-corners w-full bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] py-3 text-[14px] font-semibold text-white transition hover:brightness-110"
+              className="px-corners w-full bg-[#FFA300] py-3 text-[14px] font-semibold text-[#131A31] transition hover:bg-[#FFB733]"
             >
-              Awesome, thanks!
+              Got it
             </button>
           </div>
         </div>

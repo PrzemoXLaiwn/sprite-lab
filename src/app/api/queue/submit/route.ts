@@ -9,6 +9,7 @@ import {
 import { getOrCreateUser, checkAndDeductCredits, refundCredits } from "@/lib/database";
 import { z } from "zod";
 import { parseJsonBody, validateBody } from "@/lib/validation/common";
+import { rateLimit3DGeneration, rateLimitUserGeneration } from "@/lib/rate-limit";
 
 // The after() callback waits for /api/queue/process to finish, which can take
 // up to that route's maxDuration — keep this invocation alive as long.
@@ -23,13 +24,14 @@ const QueueSubmitSchema = z.object({
     .transform((v) => v.trim()),
   categoryId: z
     .string()
-    .min(1, "Please select a category."),
+    .min(1, "Please select a category.")
+    .max(100),
   subcategoryId: z
     .string()
     .min(1, "Please select a type."),
-  styleId: z.string().optional().default("PIXEL_ART_16"),
+  styleId: z.string().max(100).optional().default("PIXEL_ART_16"),
   mode: z.enum(["2d", "3d"]).optional().default("2d"),
-  seed: z.union([z.number(), z.string(), z.null()]).optional(),
+  seed: z.union([z.number(), z.string().max(20), z.null()]).optional(),
   model3DId: z
     .enum(["rodin", "trellis", "hunyuan3d", "wonder3d"])
     .optional()
@@ -46,6 +48,11 @@ const QueueSubmitSchema = z.object({
 // Like Sora - user submits, we process in background
 
 export async function POST(request: Request) {
+  // Retired (Oct 2026): no screen uses the queue, and charging here while the
+  // work runs in another request can't be guarded like the other paid tools.
+  if (process.env.QUEUE_SUBMIT_ENABLED !== "true") {
+    return NextResponse.json({ error: "This endpoint is no longer available. Use the Create page." }, { status: 410 });
+  }
   try {
     // 🔐 Auth Check
     const supabase = await createClient();
@@ -86,6 +93,12 @@ export async function POST(request: Request) {
       quality3D,
     } = parsed.data;
 
+    // Same per-user limits as the direct /api/generate and /api/generate-3d routes
+    const { blocked: rateLimitBlocked } = mode === "3d"
+      ? await rateLimit3DGeneration(user.id)
+      : await rateLimitUserGeneration(user.id);
+    if (rateLimitBlocked) return rateLimitBlocked;
+
     // ✅ Semantic validation (category/subcategory/style existence)
     const category = getCategoryById(categoryId);
     if (!category) {
@@ -104,7 +117,7 @@ export async function POST(request: Request) {
     }
 
     // Validate style for 2D
-    if (mode === "2d" && !STYLES_2D_FULL[styleId]) {
+    if (mode === "2d" && !Object.hasOwn(STYLES_2D_FULL, styleId)) {
       return NextResponse.json(
         { error: `Invalid style: ${styleId}`, code: "VALIDATION_ERROR" },
         { status: 400 }

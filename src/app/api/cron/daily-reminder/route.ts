@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { mergeEmailPreferences } from "@/app/api/_lib/email-prefs";
 import { isAuthorizedCronRequest } from "@/lib/cron-auth";
 import { prisma } from "@/lib/prisma";
 import { sendDailyReminderEmail } from "@/lib/email/send";
+import { MARKETING_OFF_RESPONSE, legacyMarketingEnabled } from "@/lib/email/flags";
+import { marketingBlockedByPrefs } from "@/lib/email/suppression";
 
 // Vercel Cron Job - Daily reminder emails
 // Runs every day at 9:00 AM UTC
 // Schedule in vercel.json: "0 9 * * *"
+// Off unless MARKETING_EMAILS_ENABLED=true (the one switch for all marketing).
 
 export const maxDuration = 300; // Max 5 minutes
 export const dynamic = "force-dynamic";
@@ -89,6 +93,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    if (!legacyMarketingEnabled()) {
+      return NextResponse.json(MARKETING_OFF_RESPONSE);
+    }
+
     // Check if Resend is configured
     if (!process.env.RESEND_API_KEY) {
       console.log("[CRON:DailyReminder] RESEND_API_KEY not configured, skipping");
@@ -151,8 +159,8 @@ export async function GET(request: NextRequest) {
     const usersToEmail = eligibleUsers.filter((user) => {
       const prefs = user.emailPreferences as { lastDailyReminderAt?: string; marketing?: boolean } | null;
 
-      // Skip if marketing is explicitly disabled
-      if (prefs?.marketing === false) return false;
+      // Skip if marketing is off, or the address bounced / complained
+      if (prefs?.marketing === false || marketingBlockedByPrefs(prefs)) return false;
 
       // Skip if already sent today
       if (prefs?.lastDailyReminderAt) {
@@ -185,16 +193,7 @@ export async function GET(request: NextRequest) {
           results.sent++;
 
           // Update last daily reminder timestamp
-          const currentPrefs = (user.emailPreferences as Record<string, unknown>) || {};
-          await prisma.user.update({
-            where: { id: user.id },
-            data: {
-              emailPreferences: {
-                ...currentPrefs,
-                lastDailyReminderAt: new Date().toISOString(),
-              },
-            },
-          });
+          await mergeEmailPreferences(user.id, { lastDailyReminderAt: new Date().toISOString() });
         } else {
           results.failed++;
           results.errors.push(`${user.id}: ${result.error}`);

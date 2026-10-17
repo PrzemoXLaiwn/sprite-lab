@@ -4,7 +4,6 @@ import {
   Container,
   Head,
   Heading,
-  Hr,
   Html,
   Link,
   Preview,
@@ -12,6 +11,7 @@ import {
   Text,
 } from "@react-email/components";
 import * as React from "react";
+import { PostalAddressLine } from "./PostalAddressLine";
 
 interface AbandonedCartEmailProps {
   userName?: string;
@@ -52,7 +52,7 @@ export function AbandonedCartEmail({
             </Heading>
 
             <Text style={paragraph}>
-              We noticed you didn't complete your purchase. No worries - your selection is still waiting for you!
+              We noticed you didn&apos;t complete your purchase. No worries - your selection is still waiting for you!
             </Text>
 
             {/* Plan Summary */}
@@ -67,7 +67,7 @@ export function AbandonedCartEmail({
 
             {/* Benefits reminder */}
             <Section style={benefitsBox}>
-              <Text style={benefitsTitle}>What you'll get:</Text>
+              <Text style={benefitsTitle}>What you&apos;ll get:</Text>
               <Text style={benefitItem}>✓ Instant access to credits</Text>
               <Text style={benefitItem}>✓ All art styles unlocked</Text>
               <Text style={benefitItem}>✓ Commercial usage rights</Text>
@@ -97,10 +97,10 @@ export function AbandonedCartEmail({
           {/* Footer */}
           <Section style={footer}>
             <Text style={footerText}>
-              Having trouble? Reply to this email and we'll help you out.
+              Having trouble? Reply to this email and we&apos;ll help you out.
             </Text>
             <Text style={footerText}>
-              Don't want these emails?{" "}
+              Don&apos;t want these emails?{" "}
               <Link href="https://sprite-lab.com/settings" style={link}>
                 Update your preferences
               </Link>
@@ -108,6 +108,7 @@ export function AbandonedCartEmail({
             <Text style={footerText}>
               SpriteLab - AI Game Asset Generator
             </Text>
+            <PostalAddressLine style={footerText} />
           </Section>
         </Container>
       </Body>
@@ -117,7 +118,7 @@ export function AbandonedCartEmail({
 
 // Styles
 const main = {
-  backgroundColor: "#0a0c10",
+  backgroundColor: "#0F1529",
   fontFamily:
     '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif',
 };
@@ -141,11 +142,11 @@ const logo = {
 };
 
 const logoAccent = {
-  color: "#FF6B2C",
+  color: "#FF9500",
 };
 
 const content = {
-  backgroundColor: "#11151b",
+  backgroundColor: "#161E39",
   borderRadius: "16px",
   padding: "32px",
   border: "1px solid rgba(255,255,255,0.06)",
@@ -166,7 +167,7 @@ const heading = {
 };
 
 const paragraph = {
-  color: "#a0a0b0",
+  color: "#A7ADD4",
   fontSize: "16px",
   lineHeight: "24px",
   margin: "0 0 24px",
@@ -203,19 +204,19 @@ const planDetails = {
 };
 
 const planCreditsStyle = {
-  color: "#FF6B2C",
+  color: "#FF9500",
   fontSize: "16px",
   fontWeight: "bold",
   marginRight: "12px",
 };
 
 const planPriceStyle = {
-  color: "#a0a0b0",
+  color: "#A7ADD4",
   fontSize: "16px",
 };
 
 const benefitsBox = {
-  backgroundColor: "#0f0f15",
+  backgroundColor: "#0F1529",
   borderRadius: "12px",
   padding: "20px",
   margin: "0 0 24px",
@@ -230,7 +231,7 @@ const benefitsTitle = {
 };
 
 const benefitItem = {
-  color: "#a0a0b0",
+  color: "#A7ADD4",
   fontSize: "14px",
   margin: "0 0 8px",
   lineHeight: "20px",
@@ -242,7 +243,7 @@ const buttonContainer = {
 };
 
 const button = {
-  background: "linear-gradient(135deg, #8b5cf6 0%, #FF6B2C 100%)",
+  background: "linear-gradient(135deg, #8b5cf6 0%, #FF9500 100%)",
   borderRadius: "8px",
   color: "#ffffff",
   fontSize: "16px",
@@ -254,7 +255,7 @@ const button = {
 };
 
 const smallText = {
-  color: "#606070",
+  color: "#8A92BF",
   fontSize: "14px",
   textAlign: "center" as const,
   margin: "0 0 24px",
@@ -280,13 +281,13 @@ const footer = {
 };
 
 const footerText = {
-  color: "#606070",
+  color: "#8A92BF",
   fontSize: "12px",
   margin: "0 0 8px",
 };
 
 const link = {
-  color: "#FF6B2C",
+  color: "#FF9500",
   textDecoration: "underline",
 };
 

@@ -12,6 +12,7 @@ import {
   Text,
 } from "@react-email/components";
 import * as React from "react";
+import { PostalAddressLine } from "./PostalAddressLine";
 
 interface NewFeaturesEmailProps {
   userName?: string;
@@ -56,7 +57,7 @@ export function NewFeaturesEmail({
             </Heading>
 
             <Text style={introText}>
-              We've been working hard to make SpriteLab even better. Here's what's new:
+              We&apos;ve been working hard to make SpriteLab even better. Here&apos;s what&apos;s new:
             </Text>
 
             {/* Features List */}
@@ -96,6 +97,7 @@ export function NewFeaturesEmail({
                 Full Changelog
               </Link>
             </Text>
+            <PostalAddressLine style={footerText} />
           </Section>
         </Container>
       </Body>
@@ -105,7 +107,7 @@ export function NewFeaturesEmail({
 
 // Styles
 const main = {
-  backgroundColor: "#0a0c10",
+  backgroundColor: "#0F1529",
   fontFamily:
     '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif',
 };
@@ -129,11 +131,11 @@ const logo = {
 };
 
 const logoAccent = {
-  color: "#FF6B2C",
+  color: "#FF9500",
 };
 
 const content = {
-  backgroundColor: "#11151b",
+  backgroundColor: "#161E39",
   borderRadius: "16px",
   padding: "32px",
   border: "1px solid rgba(255,255,255,0.06)",
@@ -146,8 +148,8 @@ const announcementBadge = {
 
 const badgeText = {
   display: "inline-block",
-  backgroundColor: "#FF6B2C",
-  color: "#0a0c10",
+  backgroundColor: "#FF9500",
+  color: "#0F1529",
   fontSize: "12px",
   fontWeight: "bold",
   padding: "6px 16px",
@@ -166,7 +168,7 @@ const heading = {
 };
 
 const introText = {
-  color: "#a0a0b0",
+  color: "#A7ADD4",
   fontSize: "16px",
   lineHeight: "24px",
   margin: "0 0 24px",
@@ -174,7 +176,7 @@ const introText = {
 };
 
 const featureBox = {
-  backgroundColor: "#0f0f15",
+  backgroundColor: "#0F1529",
   borderRadius: "12px",
   padding: "20px",
   marginBottom: "16px",
@@ -195,7 +197,7 @@ const featureTitle = {
 };
 
 const featureDescription = {
-  color: "#a0a0b0",
+  color: "#A7ADD4",
   fontSize: "14px",
   lineHeight: "22px",
   margin: "0",
@@ -207,9 +209,9 @@ const buttonContainer = {
 };
 
 const button = {
-  backgroundColor: "#FF6B2C",
+  backgroundColor: "#FF9500",
   borderRadius: "8px",
-  color: "#0a0c10",
+  color: "#0F1529",
   fontSize: "16px",
   fontWeight: "bold",
   textDecoration: "none",
@@ -219,7 +221,7 @@ const button = {
 };
 
 const feedbackText = {
-  color: "#606070",
+  color: "#8A92BF",
   fontSize: "14px",
   textAlign: "center" as const,
   margin: "0",
@@ -236,19 +238,19 @@ const footer = {
 };
 
 const footerText = {
-  color: "#606070",
+  color: "#8A92BF",
   fontSize: "12px",
   margin: "0 0 8px",
 };
 
 const footerLinks = {
-  color: "#606070",
+  color: "#8A92BF",
   fontSize: "12px",
   margin: "16px 0 0",
 };
 
 const link = {
-  color: "#FF6B2C",
+  color: "#FF9500",
   textDecoration: "underline",
 };
 

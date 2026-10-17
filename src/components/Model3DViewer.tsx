@@ -126,7 +126,7 @@ export function Model3DViewer({
           <span className="text-[#8b5cf6] font-mono font-bold">{format}</span>
         </div>
 
-        <p className="text-sm text-[#a0a0b0] max-w-xs mb-4">
+        <p className="text-sm text-[#A7ADD4] max-w-xs mb-4">
           Download to view in Unity, Unreal, Blender, or Godot
         </p>
 
@@ -154,21 +154,21 @@ export function Model3DViewer({
         </div>
 
         {/* Compatibility badges */}
-        <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-[#a0a0b0]">
+        <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-[#A7ADD4]">
           <div className="flex items-center gap-1 justify-center">
-            <Check className="w-3 h-3 text-[#FF6B2C]" />
+            <Check className="w-3 h-3 text-[#FF9500]" />
             Unity
           </div>
           <div className="flex items-center gap-1 justify-center">
-            <Check className="w-3 h-3 text-[#FF6B2C]" />
+            <Check className="w-3 h-3 text-[#FF9500]" />
             Unreal
           </div>
           <div className="flex items-center gap-1 justify-center">
-            <Check className="w-3 h-3 text-[#FF6B2C]" />
+            <Check className="w-3 h-3 text-[#FF9500]" />
             Blender
           </div>
           <div className="flex items-center gap-1 justify-center">
-            <Check className="w-3 h-3 text-[#FF6B2C]" />
+            <Check className="w-3 h-3 text-[#FF9500]" />
             Godot
           </div>
         </div>

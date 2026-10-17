@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { mergeEmailPreferences } from "@/app/api/_lib/email-prefs";
 import { isAuthorizedCronRequest } from "@/lib/cron-auth";
 import { prisma } from "@/lib/prisma";
 import { sendSpecialOfferEmail } from "@/lib/email/send";
+import { MARKETING_OFF_RESPONSE, legacyMarketingEnabled } from "@/lib/email/flags";
 import { Prisma } from "@prisma/client";
 
 // Special Offer Email API
@@ -16,6 +18,11 @@ export async function GET(request: NextRequest) {
     // Verify CRON_SECRET
     if (!isAuthorizedCronRequest(request)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Automated marketing: behind the one switch, like /api/cron/emails
+    if (!legacyMarketingEnabled()) {
+      return NextResponse.json(MARKETING_OFF_RESPONSE);
     }
 
     // Check if Resend is configured
@@ -108,10 +115,7 @@ export async function GET(request: NextRequest) {
         continue;
       }
 
-      // Calculate days since signup and last activity
-      const daysSinceSignup = Math.floor(
-        (Date.now() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24)
-      );
+      // Calculate days since last activity
       const daysSinceActive = user.lastActiveAt
         ? Math.floor(
             (Date.now() - user.lastActiveAt.getTime()) / (1000 * 60 * 60 * 24)
@@ -159,16 +163,7 @@ export async function GET(request: NextRequest) {
         results.sent++;
 
         // Update user's email preferences
-        const currentPrefs = (user.emailPreferences as Record<string, unknown>) || {};
-        await prisma.user.update({
-          where: { id: user.id },
-          data: {
-            emailPreferences: {
-              ...currentPrefs,
-              lastSpecialOfferAt: new Date().toISOString(),
-            },
-          },
-        });
+        await mergeEmailPreferences(user.id, { lastSpecialOfferAt: new Date().toISOString() });
       } else {
         results.failed++;
         results.errors.push(`${user.id}: ${result.error}`);

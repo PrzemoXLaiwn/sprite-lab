@@ -88,6 +88,8 @@ model Generation {
   likes         Int      @default(0) // Community likes count
   projectId     String?  @map("project_id")
   folderId      String?  @map("folder_id")
+  /// The sprite an animation / edit was made from (null for originals and rows before Oct 2026)
+  sourceGenerationId String? @map("source_generation_id")
   createdAt     DateTime @default(now()) @map("created_at")
 
   user                User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -103,6 +105,7 @@ model Generation {
   @@index([createdAt])
   @@index([projectId])
   @@index([folderId])
+  @@index([sourceGenerationId])
   @@map("generations")
 }
 
@@ -802,4 +805,137 @@ model Asset {
   @@index([setId])
   @@index([legacy])
   @@map("assets")
+}
+
+// =============================================================================
+// Cost ledger (Oct 2026) — every paid request is an Operation; every call to
+// an AI provider is a ProviderCall (also failures/timeouts). Additive tables,
+// no foreign keys: cost history must outlive users and generations.
+// SQL: prisma/sql/2026-10-13_cost_ledger.sql
+// =============================================================================
+
+model Operation {
+  id                String    @id @default(cuid())
+  userId            String    @map("user_id")
+  feature           String    // see src/lib/billing/features.ts
+  status            String    @default("RUNNING") // RUNNING | SUCCEEDED | PARTIAL | FAILED
+  creditsCharged    Int       @map("credits_charged")
+  creditsRefunded   Int       @default(0) @map("credits_refunded")
+  estCostUsd        Float     @map("est_cost_usd") // worst-case reservation for the spend guard
+  costCapUsd        Float     @map("cost_cap_usd") // retries stop when the next call would cross it
+  inputHash         String?   @map("input_hash")
+  ipHash            String?   @map("ip_hash")
+  plan              String?
+  errorCode         String?   @map("error_code")
+  generationId      String?   @map("generation_id")
+  costLogIncomplete Boolean   @default(false) @map("cost_log_incomplete")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  finishedAt        DateTime? @map("finished_at")
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([createdAt])
+  @@index([ipHash, createdAt])
+  @@map("operations")
+}
+
+model ProviderCall {
+  id             String   @id @default(cuid())
+  operationId    String?  @map("operation_id")
+  userId         String?  @map("user_id")
+  provider       String   // runware | anthropic | cloudflare | replicate
+  model          String
+  task           String   // sprite | grid | edit | plan | rig | translate | enhance ...
+  size           String?
+  attempt        Int      @default(1)
+  outcome        String   // ok | error | timeout | moderated | discarded
+  costUsd        Float?   @map("cost_usd") // as reported by the provider (null = not reported)
+  estCostUsd     Float    @map("est_cost_usd") // our list-price estimate, always set
+  inputTokens    Int?     @map("input_tokens")
+  outputTokens   Int?     @map("output_tokens")
+  latencyMs      Int?     @map("latency_ms")
+  providerTaskId String?  @map("provider_task_id")
+  error          String?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([operationId])
+  @@index([provider, createdAt])
+  @@index([createdAt])
+  @@map("provider_calls")
+}
+
+model CostReconciliation {
+  id               String   @id @default(cuid())
+  provider         String
+  checkedAt        DateTime @default(now()) @map("checked_at")
+  reportedTotalUsd Float    @map("reported_total_usd") // provider's cumulative usage counter
+  reportedDeltaUsd Float?   @map("reported_delta_usd") // since the previous snapshot
+  loggedDeltaUsd   Float?   @map("logged_delta_usd")   // our provider_calls over the same window
+  gapUsd           Float?   @map("gap_usd")            // reported − logged (unlogged spend)
+  sinceAt          DateTime? @map("since_at")
+  note             String?
+
+  @@index([provider, checkedAt])
+  @@map("cost_reconciliations")
+}
+
+// ===========================================
+// SPRITE DUNGEON (prisma/sql/2026-10-15_sprite_dungeon.sql)
+// ===========================================
+// Game code uses raw SQL (src/lib/dungeon/sql.ts); these models keep the schema in sync.
+
+model DungeonParty {
+  userId    String   @id @map("user_id")
+  slots     Json     @default("[]") // generation ids, slot order, max 4
+  updatedAt DateTime @default(now()) @map("updated_at")
+
+  @@map("dungeon_parties")
+}
+
+model DungeonRun {
+  id        String   @id
+  userId    String   @map("user_id")
+  week      String   // ISO week, e.g. 2026-W42
+  runDay    DateTime @map("run_day") @db.Date // UTC day
+  runIndex  Int      @map("run_index") // 1..5 within the day
+  floor     Int
+  seed      String
+  party     Json
+  status    String    @default("done") // choosing | done (prisma/sql/2026-10-17_dungeon_tower.sql)
+  step      Int       @default(0) // optimistic lock for blessing choices
+  state     Json? // rng position, HP, blessings, pending offer
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @default(now()) @map("updated_at")
+  floorAt   DateTime? @map("floor_at") // when the run reached its floor (leaderboard tie-break)
+
+  @@unique([userId, runDay, runIndex], map: "dungeon_runs_user_id_run_day_run_index_key")
+  @@index([week, floor(sort: Desc), createdAt], map: "dungeon_runs_week_floor_created_at_idx")
+  @@map("dungeon_runs")
+}
+
+model DungeonPrize {
+  week    String
+  rank    Int
+  userId  String   @map("user_id")
+  floor   Int
+  credits Int      @default(0)
+  badge   String   // gold | silver | bronze | top10
+  paidAt  DateTime @default(now()) @map("paid_at")
+
+  @@id([week, rank], map: "dungeon_prizes_pkey")
+  @@unique([week, userId], map: "dungeon_prizes_week_user_id_key")
+  @@index([userId], map: "dungeon_prizes_user_id_idx")
+  @@map("dungeon_prizes")
+}
+
+/// Spectacle score of an attack animation (prisma/sql/2026-10-18_dungeon_skills.sql), computed once from its sheet.
+model DungeonSkillScore {
+  generationId String   @id @map("generation_id")
+  score        Int
+  tier         String // common | rare | epic | legendary
+  metrics      Json     @default("{}")
+  failed       Boolean  @default(false) // analysis failed: neutral Common score, retried later
+  computedAt   DateTime @default(now()) @map("computed_at")
+
+  @@map("dungeon_skill_scores")
 }

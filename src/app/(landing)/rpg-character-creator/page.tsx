@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { SeoLanding } from "@/components/landing/SeoLanding";
+import { LANDING_SPECS } from "@/data/landing-specs";
 import { SHOWCASE } from "@/data/showcase";
 
 export const metadata: Metadata = {
-  title: { absolute: "AI RPG Character Creator — Heroes, NPCs & Monsters | SpriteLab" },
+  title: { absolute: "AI RPG Character Creator: Heroes & Monsters | SpriteLab" },
   description:
     "Create RPG characters with AI: heroes, villains, NPCs, monsters and bosses as transparent PNG sprites in 12 art styles, ready to animate.",
   keywords: [
@@ -27,7 +28,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "AI RPG Character Creator — Heroes, NPCs & Monsters | SpriteLab",
+    title: "AI RPG Character Creator: Heroes & Monsters | SpriteLab",
     description: "Create RPG characters with AI: heroes, villains, NPCs, monsters and bosses as transparent PNG sprites in 12 art styles, ready to animate.",
   },
   alternates: {
@@ -64,7 +65,7 @@ export default function RPGCharacterCreatorPage() {
         <>
           AI RPG Character Creator
           <br />
-          <span className="text-[#FF8A3D]">heroes in seconds</span>
+          heroes in seconds
         </>
       }
       subtitle="Generate unique heroes, villains, NPCs and monsters for your RPG. Any class, any race, any fantasy style — just describe your character."
@@ -82,7 +83,7 @@ export default function RPGCharacterCreatorPage() {
           eyebrow: "character types",
           title: (
             <>
-              Any <span className="text-[#FF8A3D]">character type</span>
+              Any character type
             </>
           ),
           intro: "From legendary heroes to terrifying monsters — a hero generator, NPC generator and monster generator in one.",
@@ -126,7 +127,7 @@ export default function RPGCharacterCreatorPage() {
           eyebrow: "styles",
           title: (
             <>
-              One hero, <span className="text-[#FF8A3D]">every style</span>
+              One hero, every style
             </>
           ),
           intro: "The same knight prompt rendered in eight of SpriteLab's art styles — pick the one that fits your RPG.",
@@ -143,7 +144,7 @@ export default function RPGCharacterCreatorPage() {
           eyebrow: "features",
           title: (
             <>
-              Game-ready <span className="text-[#FF8A3D]">characters</span>
+              Game-ready characters
             </>
           ),
           intro: "Everything you need to bring your RPG to life.",
@@ -161,7 +162,7 @@ export default function RPGCharacterCreatorPage() {
           eyebrow: "example prompts",
           title: (
             <>
-              Example <span className="text-[#FF8A3D]">prompts</span>
+              Example prompts
             </>
           ),
           intro: "Copy one into the generator at the top of the page and tweak it for your party.",
@@ -174,6 +175,7 @@ export default function RPGCharacterCreatorPage() {
             "Dark knight in cursed black armor, red glowing eyes",
           ],
         },
+        LANDING_SPECS["rpg-character-creator"],
       ]}
       faq={[
         {
@@ -196,7 +198,7 @@ export default function RPGCharacterCreatorPage() {
       cta={{
         title: (
           <>
-            Build your <span className="text-[#FF8A3D]">party</span> today
+            Build your party today
           </>
         ),
         body: "Stop searching for character assets. Create exactly what your RPG needs.",

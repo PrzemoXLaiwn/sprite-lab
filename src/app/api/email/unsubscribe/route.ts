@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { mergeEmailPreferences } from "@/app/api/_lib/email-prefs";
 import { prisma } from "@/lib/prisma";
 import { verifyUnsubscribe } from "@/lib/email/unsubscribe";
 
@@ -9,20 +10,14 @@ export const dynamic = "force-dynamic";
 
 async function unsubscribe(userId: string, token: string): Promise<boolean> {
   if (!verifyUnsubscribe(userId, token)) return false;
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { emailPreferences: true } });
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
   if (!user) return false;
-  const prefs = (user.emailPreferences as Record<string, unknown> | null) ?? {};
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      emailPreferences: {
-        ...prefs,
-        marketing: false,
-        dailyReminders: false,
-        weeklyDigest: false,
-        unsubscribedAt: new Date().toISOString(),
-      },
-    },
+  // Atomic merge — a read-modify-write here could reset a gift's claimedAt.
+  await mergeEmailPreferences(userId, {
+    marketing: false,
+    dailyReminders: false,
+    weeklyDigest: false,
+    unsubscribedAt: new Date().toISOString(),
   });
   return true;
 }

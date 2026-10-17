@@ -21,7 +21,15 @@ import {
 function afterLogin(): string {
   if (typeof window === "undefined") return "/generate";
   const target = new URLSearchParams(window.location.search).get("redirectTo") ?? "";
-  return target.startsWith("/") && !target.startsWith("//") && !target.startsWith("/\\") ? target : "/generate";
+  if (!target.startsWith("/")) return "/generate";
+  // Resolve like the browser will (it strips tabs/newlines, so "/%09/evil.com"
+  // would become //evil.com) and only accept our own origin
+  try {
+    const url = new URL(target, window.location.origin);
+    return url.origin === window.location.origin ? url.pathname + url.search + url.hash : "/generate";
+  } catch {
+    return "/generate";
+  }
 }
 
 export default function LoginPage() {
@@ -128,7 +136,7 @@ export default function LoginPage() {
         </PrimaryButton>
       </form>
 
-      <p className="mt-6 text-center text-[13px] text-[#8B93A5]">
+      <p className="mt-6 text-center text-[13px] text-[#9AA1CC]">
         Don&apos;t have an account?{" "}
         <Link href="/register" className={linkCls}>
           Sign up free

@@ -12,6 +12,7 @@ import {
   Text,
 } from "@react-email/components";
 import * as React from "react";
+import { PostalAddressLine } from "./PostalAddressLine";
 
 interface PromoEmailProps {
   userName?: string;
@@ -90,7 +91,7 @@ export function PromoEmail({
             </Section>
 
             {/* What You Get */}
-            <Heading style={subheading}>What You'll Get</Heading>
+            <Heading style={subheading}>What You&apos;ll Get</Heading>
 
             <Section style={benefitsList}>
               <Text style={benefitItem}>
@@ -118,7 +119,7 @@ export function PromoEmail({
             </Section>
 
             <Text style={urgencyText}>
-              Offer expires in {expiresIn}. Don't miss out!
+              Offer expires in {expiresIn}. Don&apos;t miss out!
             </Text>
 
             <Hr style={hr} />
@@ -143,6 +144,7 @@ export function PromoEmail({
             <Text style={footerText}>
               SpriteLab - AI Game Asset Generator
             </Text>
+            <PostalAddressLine style={footerText} />
           </Section>
         </Container>
       </Body>
@@ -152,7 +154,7 @@ export function PromoEmail({
 
 // Styles
 const main = {
-  backgroundColor: "#0a0c10",
+  backgroundColor: "#0F1529",
   fontFamily:
     '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif',
 };
@@ -176,11 +178,11 @@ const logo = {
 };
 
 const logoAccent = {
-  color: "#FF6B2C",
+  color: "#FF9500",
 };
 
 const content = {
-  backgroundColor: "#11151b",
+  backgroundColor: "#161E39",
   borderRadius: "16px",
   padding: "32px",
   border: "1px solid rgba(255,255,255,0.06)",
@@ -225,7 +227,7 @@ const greeting = {
 };
 
 const paragraph = {
-  color: "#a0a0b0",
+  color: "#A7ADD4",
   fontSize: "16px",
   lineHeight: "24px",
   margin: "0 0 24px",
@@ -239,15 +241,15 @@ const subheading = {
 };
 
 const offerBox = {
-  backgroundColor: "#0f0f15",
+  backgroundColor: "#0F1529",
   borderRadius: "12px",
   padding: "24px",
-  border: "2px solid #FF6B2C",
+  border: "2px solid #FF9500",
   marginBottom: "24px",
 };
 
 const offerTitle = {
-  color: "#FF6B2C",
+  color: "#FF9500",
   fontSize: "12px",
   fontWeight: "bold",
   textTransform: "uppercase" as const,
@@ -267,7 +269,7 @@ const offerRow = {
 };
 
 const offerLabel = {
-  color: "#606070",
+  color: "#8A92BF",
   fontSize: "14px",
   margin: "0",
 };
@@ -280,7 +282,7 @@ const offerValue = {
 };
 
 const offerValueHighlight = {
-  color: "#FF6B2C",
+  color: "#FF9500",
   fontSize: "14px",
   fontWeight: "bold",
   margin: "0",
@@ -309,14 +311,14 @@ const benefitsList = {
 };
 
 const benefitItem = {
-  color: "#a0a0b0",
+  color: "#A7ADD4",
   fontSize: "14px",
   margin: "0 0 8px",
   lineHeight: "20px",
 };
 
 const checkmark = {
-  color: "#FF6B2C",
+  color: "#FF9500",
   marginRight: "8px",
 };
 
@@ -326,9 +328,9 @@ const buttonContainer = {
 };
 
 const button = {
-  backgroundColor: "#FF6B2C",
+  backgroundColor: "#FF9500",
   borderRadius: "8px",
-  color: "#0a0c10",
+  color: "#0F1529",
   fontSize: "18px",
   fontWeight: "bold",
   textDecoration: "none",
@@ -362,7 +364,7 @@ const socialProofTitle = {
 };
 
 const socialProofStats = {
-  color: "#606070",
+  color: "#8A92BF",
   fontSize: "13px",
   margin: "0",
 };
@@ -373,13 +375,13 @@ const footer = {
 };
 
 const footerText = {
-  color: "#606070",
+  color: "#8A92BF",
   fontSize: "12px",
   margin: "0 0 8px",
 };
 
 const link = {
-  color: "#FF6B2C",
+  color: "#FF9500",
   textDecoration: "underline",
 };
 

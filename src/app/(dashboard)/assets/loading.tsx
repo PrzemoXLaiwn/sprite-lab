@@ -1,6 +1,6 @@
 export default function GalleryLoading() {
   return (
-    <div className="min-h-screen bg-[#0B0D12]">
+    <div className="min-h-screen bg-[#131A31]">
       <div className="mx-auto max-w-[1400px] px-5 py-6 lg:px-8">
         {/* Header */}
         <div className="mb-6 flex items-end justify-between gap-4">

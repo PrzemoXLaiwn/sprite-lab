@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getUserCredits, checkAndDeductCredits, refundCredits } from "@/lib/database";
+import { getUserCredits } from "@/lib/database";
 import { prisma } from "@/lib/prisma";
 import { removeBackground } from "@/lib/runware";
 import { persistImage } from "@/lib/storage";
@@ -8,13 +8,15 @@ import { safeFetchImage, safeFetchErrorResponse } from "@/lib/safe-fetch";
 import { rateLimitUserGeneration } from "@/lib/rate-limit";
 import { parseJsonBody, validateBody } from "@/lib/validation/common";
 import { removeBackgroundSchema } from "@/lib/validations";
+import { REMOVE_BG_CREDITS } from "@/config/tool-prices";
+import { budgetPlan, requestIp, startOperation, type OpHandle } from "@/lib/billing/operations";
 
 // Runware bg removal is capped at 20s (BG_REMOVAL_TIMEOUT in runware.ts);
 // re-hosting adds up to ~30s.
 export const maxDuration = 90;
 
 // Cost: 1 credit for background removal
-const REMOVE_BG_COST = 1;
+const REMOVE_BG_COST = REMOVE_BG_CREDITS;
 const MAX_INPUT_IMAGE_MB = 10;
 
 // Plans that have access to Remove BG (Free is excluded, but now it's auto for all generations)
@@ -22,8 +24,8 @@ const MAX_INPUT_IMAGE_MB = 10;
 const ALLOWED_PLANS = ["STARTER", "PRO", "UNLIMITED", "LIFETIME"];
 
 export async function POST(request: Request) {
-  let creditsDeducted = false;
-  let chargedUserId: string | null = null;
+  // Paid operation; null once the result is stored (no refund from then on)
+  let pendingOp: OpHandle | null = null;
 
   try {
     // Authentication
@@ -37,8 +39,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check user credits and plan
-    const { credits, plan, role } = await getUserCredits(user.id);
+    // Check user plan
+    const { plan, role } = await getUserCredits(user.id);
 
     // Starter, Pro, Studio, and Lifetime plans can use Remove BG (admins/owners always have access)
     const hasPremiumAccess = ALLOWED_PLANS.includes(plan) || role === "OWNER" || role === "ADMIN";
@@ -72,46 +74,45 @@ export async function POST(request: Request) {
       return NextResponse.json({ error }, { status });
     }
 
-    console.log("[RemoveBG] Removing background (Runware)");
-
-    // Atomically check and deduct credits BEFORE processing
-    const creditResult = await checkAndDeductCredits(user.id, REMOVE_BG_COST);
-    if (!creditResult.success) {
-      const insufficient = creditResult.error === "Not enough credits";
-      if (!insufficient) console.error("[RemoveBG] Credit deduction failed:", creditResult.error);
-      const errorMsg = insufficient
-        ? `Not enough credits. Background removal costs ${REMOVE_BG_COST} credit.`
-        : "Failed to process credits. Please try again.";
-      return NextResponse.json(
-        { error: errorMsg, noCredits: insufficient },
-        { status: insufficient ? 402 : 500 }
-      );
+    // Charge + guards in one operation; every failure below refunds it once
+    const account = await prisma.user.findUnique({ where: { id: user.id }, select: { plan: true, totalSpent: true, stripeCustomerId: true } });
+    const started = await startOperation({
+      userId: user.id, feature: "remove_bg", credits: REMOVE_BG_COST, plan: budgetPlan(account), ip: requestIp(request),
+      input: { imageUrl },
+    });
+    if (!started.ok) {
+      const body = started.status === 402
+        ? { ...started.body, error: `Not enough credits. Background removal costs ${REMOVE_BG_COST} credit.` }
+        : started.body;
+      return NextResponse.json(body, { status: started.status });
     }
-    creditsDeducted = true;
-    chargedUserId = user.id;
+    const op = started.op;
+    pendingOp = op;
 
-    // Use Runware for background removal
-    const result = await removeBackground(imageUrl);
-
+    const result = await op.run(() => removeBackground(imageUrl));
     if (!result.success || !result.imageUrl) {
       console.error("Background removal failed:", result.error);
-      // Refund credit on failure
-      creditsDeducted = false;
-      await refundCredits(user.id, REMOVE_BG_COST);
+      pendingOp = null;
+      await op.fail("PROVIDER_ERROR");
       return NextResponse.json(
         { error: "Background removal failed. Credit refunded." },
         { status: 500 }
       );
     }
-    // Provider delivered — no refund past this point.
-    creditsDeducted = false;
 
-    // Runware output URLs are temporary — re-host before saving to gallery.
-    const persistedUrl = await persistImage(result.imageUrl, user.id, `nobg-${Date.now()}`);
-    if (!persistedUrl) {
-      console.error("[RemoveBG] Re-host failed — saving TEMPORARY provider URL (will expire)");
+    // Runware output URLs are temporary: the result only counts as delivered
+    // once it is stored on our side.
+    const outputUrl = await persistImage(result.imageUrl, user.id, `nobg-${Date.now()}`);
+    if (!outputUrl) {
+      console.error("[RemoveBG] Re-host failed — refunding");
+      pendingOp = null;
+      await op.fail("STORE_FAILED");
+      return NextResponse.json(
+        { error: "Couldn't save the result. Credit refunded — please try again." },
+        { status: 500 }
+      );
     }
-    const outputUrl = persistedUrl ?? result.imageUrl;
+    pendingOp = null; // delivered (stored) — no refund from here on
 
     // Auto-save to user's gallery as a new generation
     let savedGenerationId: string | null = null;
@@ -128,15 +129,11 @@ export async function POST(request: Request) {
         },
       });
       savedGenerationId = generation.id;
-      console.log("Auto-saved to gallery:", generation.id);
     } catch (saveError) {
+      // The stored image is still returned to the user
       console.error("Failed to auto-save to gallery:", saveError);
-      // Don't fail the request if save fails
     }
-
-    console.log("===========================================");
-    console.log("BACKGROUND REMOVAL SUCCESS! (Runware)");
-    console.log("===========================================");
+    await op.succeed(savedGenerationId);
 
     return NextResponse.json({
       success: true,
@@ -148,9 +145,10 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error("Background removal error:", error);
-    if (creditsDeducted && chargedUserId) {
-      creditsDeducted = false;
-      await refundCredits(chargedUserId, REMOVE_BG_COST);
+    if (pendingOp) {
+      const op = pendingOp;
+      pendingOp = null;
+      await op.fail("UNEXPECTED");
     }
     return NextResponse.json(
       { error: "Background removal failed. Please try again." },

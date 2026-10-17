@@ -15,4 +15,4 @@ export const resend = process.env.RESEND_API_KEY
 export const EMAIL_FROM = process.env.RESEND_VERIFIED_DOMAIN === "true"
   ? "SpriteLab <noreply@sprite-lab.com>"
   : "SpriteLab <onboarding@resend.dev>";
-export const EMAIL_REPLY_TO = "support@sprite-lab.com";
+export const EMAIL_REPLY_TO = "spritelab.contact@gmail.com";

@@ -9,6 +9,7 @@
 // =============================================================================
 
 import Anthropic from "@anthropic-ai/sdk";
+import { claudeCall, trackClaude } from "@/lib/claude-usage";
 import { animationPresetsFor, MOTION_ANCHORS, type AnimationPreset, type MotionAnchor } from "@/config/animations";
 
 const MODEL = "claude-opus-5-5";
@@ -109,7 +110,8 @@ export async function suggestMotions(opts: {
         ],
       }],
     };
-    const response = await anthropic.messages.create(params as unknown as Anthropic.MessageCreateParamsNonStreaming);
+    const response = await claudeCall("suggest", MODEL, () => anthropic.messages.create(params as unknown as Anthropic.MessageCreateParamsNonStreaming));
+    trackClaude("suggest", response);
     const text = response.content.find((b) => b.type === "text");
     if (!text || text.type !== "text") return fallbackSuggestions(opts.categoryId);
     const data = JSON.parse(text.text) as { subject?: unknown; motions?: unknown };

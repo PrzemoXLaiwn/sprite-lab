@@ -65,7 +65,7 @@ export function GenerationFeedback({
             "p-1 rounded transition-colors",
             rating === 1
               ? "text-green-500 bg-green-500/20"
-              : "text-[#a0a0b0] hover:text-green-500 hover:bg-green-500/10"
+              : "text-[#A7ADD4] hover:text-green-500 hover:bg-green-500/10"
           )}
           title="Good result"
         >
@@ -78,7 +78,7 @@ export function GenerationFeedback({
             "p-1 rounded transition-colors",
             rating === -1
               ? "text-red-500 bg-red-500/20"
-              : "text-[#a0a0b0] hover:text-red-500 hover:bg-red-500/10"
+              : "text-[#A7ADD4] hover:text-red-500 hover:bg-red-500/10"
           )}
           title="Bad result"
         >
@@ -90,7 +90,7 @@ export function GenerationFeedback({
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs text-[#a0a0b0]">Rate this:</span>
+      <span className="text-xs text-[#A7ADD4]">Rate this:</span>
       <Button
         size="sm"
         variant="outline"

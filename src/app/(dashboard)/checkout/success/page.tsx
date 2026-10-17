@@ -143,7 +143,7 @@ function SuccessContent() {
       <p>Your subscription is now active.</p>
       <p>
         <CreditChip>+{planCredits[plan] ?? 250} credits</CreditChip>
-        <span className="ml-2 text-[#8B93A5]">added to your account</span>
+        <span className="ml-2 text-[#9AA1CC]">added to your account</span>
       </p>
     </SuccessShell>
   );

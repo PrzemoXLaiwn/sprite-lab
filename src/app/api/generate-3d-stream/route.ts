@@ -1,7 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import Replicate from "replicate";
 import { getCategoryById, getSubcategoryById } from "@/config";
-import { getOrCreateUser, checkAndDeductCredits, refundCredits, saveGeneration } from "@/lib/database";
+import { getOrCreateUser, saveGeneration } from "@/lib/database";
+import { prisma } from "@/lib/prisma";
+import { budgetPlan, requestIp, startOperation, type OpHandle } from "@/lib/billing/operations";
+import { PRICE } from "@/lib/billing/features";
+import { replicateCall } from "@/lib/billing/replicate";
 import { rateLimit3DGeneration } from "@/lib/rate-limit";
 import { validateBody } from "@/lib/validation/common";
 import { generate3DStreamSchema } from "@/lib/validations";
@@ -16,6 +20,8 @@ const replicate = new Replicate({
 export const maxDuration = 300;
 const PIPELINE_BUDGET_MS = 240_000;
 const CREDITS_REQUIRED = 4;
+const SDXL = "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b";
+const HUNYUAN = "tencent/hunyuan3d-2:b1b9449a1277e10402781c5d41eb30c0a0683504fb23fab591ca9dfc2aabe1cb";
 
 // ===========================================
 // SSE Helper
@@ -208,15 +214,15 @@ export async function POST(request: Request) {
 
   const { stream, send, close } = createSSEStream(onClientGone);
 
-  // Set while credits are held and the provider has not delivered yet.
-  // Cleared BEFORE refunding so a refund happens at most once.
-  let chargedUserId: string | null = null;
+  // Paid operation while the result is not stored yet. Cleared BEFORE
+  // refunding; op.fail() itself is idempotent per operation.
+  let pendingOp: OpHandle | null = null;
   const refundIfCharged = async (reason: string) => {
-    if (!chargedUserId) return;
-    const uid = chargedUserId;
-    chargedUserId = null;
+    if (!pendingOp) return;
+    const op = pendingOp;
+    pendingOp = null;
     console.warn(`[3D Stream] Refunding ${CREDITS_REQUIRED} credits (${reason})`);
-    await refundCredits(uid, CREDITS_REQUIRED);
+    await op.fail(reason.toUpperCase().replace(/[^A-Z0-9]+/g, "_").slice(0, 60));
   };
   const fail = async (message: string, reason: string) => {
     await refundIfCharged(reason);
@@ -287,18 +293,22 @@ export async function POST(request: Request) {
       // Credits: atomic deduct up-front. Parallel or aborted requests can no
       // longer get free generations; every failure path below refunds.
       await getOrCreateUser(user.id, user.email!);
-      const creditResult = await checkAndDeductCredits(user.id, CREDITS_REQUIRED);
-      if (!creditResult.success) {
-        if (creditResult.error === "Not enough credits") {
+      const account = await prisma.user.findUnique({ where: { id: user.id }, select: { plan: true, totalSpent: true, stripeCustomerId: true } });
+      const started = await startOperation({
+        userId: user.id, feature: "model_3d", credits: CREDITS_REQUIRED, plan: budgetPlan(account), ip: requestIp(request),
+        input: { prompt, customImageUrl, categoryId, subcategoryId, styleId, qualityPreset },
+      });
+      if (!started.ok) {
+        if (started.status === 402) {
           send("error", { message: `Not enough credits. Need ${CREDITS_REQUIRED}.`, noCredits: true });
         } else {
-          console.error("[3D Stream] Credit deduction failed:", creditResult.error);
-          send("error", { message: "Failed to process credits. Please try again." });
+          send("error", { message: started.body.error, code: started.code });
         }
         close();
         return;
       }
-      chargedUserId = user.id;
+      const op = started.op;
+      pendingOp = op;
 
       // Get style configuration
       const styleConfig = STYLE_3D_CONFIGS[styleId];
@@ -333,10 +343,10 @@ export async function POST(request: Request) {
         try {
           // For REALISTIC style, use SDXL directly (better with negative prompts)
           // For other styles, try FLUX first
-          const imageOutput = await runWithRetry(async () => {
+          const imageOutput = await op.run(() => runWithRetry(async () => {
             if (isRealistic) {
               // SDXL is better for photorealistic with negative prompts
-              return await replicate.run("stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b", {
+              return await replicateCall({ model: SDXL, task: "3d_reference", estCostUsd: PRICE.replicateRef }, () => replicate.run(SDXL, {
                 input: {
                   prompt: enhancedPrompt,
                   negative_prompt: styleConfig.negativePrompt + ", multiple objects, busy background, text, watermark, blurry",
@@ -348,10 +358,10 @@ export async function POST(request: Request) {
                   num_inference_steps: 30,
                 },
                 signal,
-              });
+              }));
             }
             // FLUX for stylized looks
-            return await replicate.run("black-forest-labs/flux-dev", {
+            return await replicateCall({ model: "black-forest-labs/flux-dev", task: "3d_reference", estCostUsd: PRICE.replicateRef }, () => replicate.run("black-forest-labs/flux-dev", {
               input: {
                 prompt: enhancedPrompt,
                 seed: usedSeed,
@@ -363,15 +373,15 @@ export async function POST(request: Request) {
                 num_inference_steps: 28,
               },
               signal,
-            });
-          }, 3, 5000, signal);
+            }));
+          }, 3, 5000, signal));
 
           referenceImageUrl = await extractImageUrl(imageOutput);
         } catch (primaryError) {
           if (signal.aborted) throw primaryError;
           // Fallback to SDXL with style-specific negative prompt
-          const sdxlOutput = await runWithRetry(async () => {
-            return await replicate.run("stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b", {
+          const sdxlOutput = await op.run(() => runWithRetry(async () => {
+            return await replicateCall({ model: SDXL, task: "3d_reference", estCostUsd: PRICE.replicateRef }, () => replicate.run(SDXL, {
               input: {
                 prompt: enhancedPrompt,
                 negative_prompt: styleConfig.negativePrompt + ", multiple objects, busy background, text, watermark, blurry",
@@ -383,8 +393,8 @@ export async function POST(request: Request) {
                 num_inference_steps: 30,
               },
               signal,
-            });
-          }, 3, 5000, signal);
+            }));
+          }, 3, 5000, signal));
           referenceImageUrl = await extractImageUrl(sdxlOutput);
         }
 
@@ -410,8 +420,8 @@ export async function POST(request: Request) {
       // Try Rodin first (most reliable)
       try {
         console.log("[3D Gen] Trying Rodin Gen-2...");
-        model3DOutput = await runWithRetry(async () => {
-          return await replicate.run("hyper3d/rodin" as `${string}/${string}`, {
+        model3DOutput = await op.run(() => runWithRetry(async () => {
+          return await replicateCall({ model: "hyper3d/rodin", task: "3d_model", estCostUsd: PRICE.replicate3d }, () => replicate.run("hyper3d/rodin" as `${string}/${string}`, {
             input: {
               prompt: "3D model of the object in the image, game-ready asset",
               images: [referenceImageUrl],
@@ -422,8 +432,8 @@ export async function POST(request: Request) {
               mesh_mode: "Quad",
             },
             signal,
-          });
-        }, 2, 3000, signal);
+          }));
+        }, 2, 3000, signal));
         usedModel = "rodin";
       } catch (rodinError) {
         console.error("[3D Gen] Rodin failed:", rodinError);
@@ -434,16 +444,16 @@ export async function POST(request: Request) {
           console.log("[3D Gen] Trying Hunyuan3D-2...");
           send("step", { step: 2, total: 3, title: "Switching to backup engine", description: "Using alternative 3D generator..." });
 
-          model3DOutput = await runWithRetry(async () => {
-            return await replicate.run("tencent/hunyuan3d-2:b1b9449a1277e10402781c5d41eb30c0a0683504fb23fab591ca9dfc2aabe1cb", {
+          model3DOutput = await op.run(() => runWithRetry(async () => {
+            return await replicateCall({ model: HUNYUAN, task: "3d_model", estCostUsd: PRICE.replicate3d }, () => replicate.run(HUNYUAN, {
               input: {
                 image: referenceImageUrl,
                 foreground_ratio: 0.9,
                 remesh: "none",
               },
               signal,
-            });
-          }, 2, 3000, signal);
+            }));
+          }, 2, 3000, signal));
           usedModel = "hunyuan3d";
         } catch (hunyuanError) {
           console.error("[3D Gen] Hunyuan3D failed:", hunyuanError);
@@ -508,10 +518,6 @@ export async function POST(request: Request) {
         return;
       }
 
-      // Provider delivered — credits are now earned; no refund past here.
-      // (Even if the client disconnected, the model is saved to their gallery.)
-      chargedUserId = null;
-
       send("step", { step: 2, total: 3, title: "3D geometry complete", description: "Mesh created successfully!", completed: true });
 
       // ========================================
@@ -520,8 +526,10 @@ export async function POST(request: Request) {
       send("step", { step: 3, total: 3, title: "Finalizing", description: "Preparing download..." });
 
       // Save to database (prompt is optional when an image was uploaded)
+      // Delivered once the gallery row exists (even if the client disconnected).
+      // The model URL is Replicate's temporary delivery URL; it is not re-hosted.
       const savedPrompt = prompt.trim() || "[Image to 3D]";
-      await saveGeneration({
+      const saved = await saveGeneration({
         userId: user.id,
         prompt: savedPrompt,
         fullPrompt: `[3D] ${savedPrompt}`,
@@ -531,6 +539,12 @@ export async function POST(request: Request) {
         imageUrl: modelUrl,
         seed: usedSeed,
       });
+      if (!saved.success) {
+        await fail("Couldn't save the 3D model. Credits refunded — please try again.", "store failed");
+        return;
+      }
+      pendingOp = null;
+      await op.succeed(saved.generation?.id ?? null);
 
       send("step", { step: 3, total: 3, title: "Complete!", description: "Your 3D model is ready", completed: true });
 

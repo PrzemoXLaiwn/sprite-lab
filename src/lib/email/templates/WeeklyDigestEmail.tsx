@@ -12,6 +12,7 @@ import {
   Text,
 } from "@react-email/components";
 import * as React from "react";
+import { PostalAddressLine } from "./PostalAddressLine";
 
 interface WeeklyDigestEmailProps {
   userName?: string;
@@ -27,6 +28,8 @@ interface WeeklyDigestEmailProps {
   };
   newFeatures?: string[];
   topCreators?: Array<{ name: string; count: number }>;
+  /** One-click unsubscribe link for this recipient. */
+  unsubscribeHref?: string;
 }
 
 export function WeeklyDigestEmail({
@@ -36,6 +39,7 @@ export function WeeklyDigestEmail({
   communityStats = { totalAssetsThisWeek: 0 },
   newFeatures = [],
   topCreators = [],
+  unsubscribeHref = "https://www.sprite-lab.com/settings",
 }: WeeklyDigestEmailProps) {
   const previewText = `Your weekly SpriteLab digest - ${weeklyStats.assetsCreated} assets created!`;
 
@@ -95,7 +99,7 @@ export function WeeklyDigestEmail({
               {communityStats.popularPrompt && (
                 <Section style={popularPromptBox}>
                   <Text style={popularLabel}>Most Popular Prompt:</Text>
-                  <Text style={popularPrompt}>"{communityStats.popularPrompt}"</Text>
+                  <Text style={popularPrompt}>&quot;{communityStats.popularPrompt}&quot;</Text>
                 </Section>
               )}
             </Section>
@@ -120,7 +124,7 @@ export function WeeklyDigestEmail({
               <>
                 <Hr style={hr} />
                 <Section style={featuresSection}>
-                  <Text style={sectionTitle}>✨ What's New</Text>
+                  <Text style={sectionTitle}>✨ What&apos;s New</Text>
                   {newFeatures.map((feature, i) => (
                     <Text key={i} style={featureItem}>• {feature}</Text>
                   ))}
@@ -156,10 +160,11 @@ export function WeeklyDigestEmail({
                 Email Preferences
               </Link>
               {" | "}
-              <Link href="https://sprite-lab.com/privacy" style={link}>
+              <Link href={unsubscribeHref} style={link}>
                 Unsubscribe
               </Link>
             </Text>
+            <PostalAddressLine style={footerText} />
           </Section>
         </Container>
       </Body>
@@ -169,7 +174,7 @@ export function WeeklyDigestEmail({
 
 // Styles
 const main = {
-  backgroundColor: "#0a0c10",
+  backgroundColor: "#0F1529",
   fontFamily:
     '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif',
 };
@@ -193,11 +198,11 @@ const logo = {
 };
 
 const logoAccent = {
-  color: "#FF6B2C",
+  color: "#FF9500",
 };
 
 const weekLabel = {
-  color: "#FF6B2C",
+  color: "#FF9500",
   fontSize: "12px",
   textTransform: "uppercase" as const,
   letterSpacing: "2px",
@@ -205,7 +210,7 @@ const weekLabel = {
 };
 
 const content = {
-  backgroundColor: "#11151b",
+  backgroundColor: "#161E39",
   borderRadius: "16px",
   padding: "32px",
   border: "1px solid rgba(255,255,255,0.06)",
@@ -238,7 +243,7 @@ const statRow = {
 };
 
 const statBox = {
-  backgroundColor: "#0f0f15",
+  backgroundColor: "#0F1529",
   borderRadius: "12px",
   padding: "20px 32px",
   border: "1px solid rgba(255,255,255,0.06)",
@@ -247,7 +252,7 @@ const statBox = {
 };
 
 const statNumber = {
-  color: "#FF6B2C",
+  color: "#FF9500",
   fontSize: "32px",
   fontWeight: "bold",
   margin: "0",
@@ -255,14 +260,14 @@ const statNumber = {
 };
 
 const statLabel = {
-  color: "#a0a0b0",
+  color: "#A7ADD4",
   fontSize: "12px",
   margin: "8px 0 0",
   textTransform: "uppercase" as const,
 };
 
 const statDetail = {
-  color: "#a0a0b0",
+  color: "#A7ADD4",
   fontSize: "14px",
   margin: "8px 0 0",
 };
@@ -272,13 +277,13 @@ const communitySection = {
 };
 
 const communityText = {
-  color: "#a0a0b0",
+  color: "#A7ADD4",
   fontSize: "16px",
   margin: "0 0 16px",
 };
 
 const popularPromptBox = {
-  backgroundColor: "#0f0f15",
+  backgroundColor: "#0F1529",
   borderRadius: "8px",
   padding: "16px",
   border: "1px solid rgba(255,255,255,0.06)",
@@ -286,7 +291,7 @@ const popularPromptBox = {
 };
 
 const popularLabel = {
-  color: "#606070",
+  color: "#8A92BF",
   fontSize: "12px",
   margin: "0 0 4px",
 };
@@ -299,7 +304,7 @@ const popularPrompt = {
 };
 
 const creatorRow = {
-  color: "#a0a0b0",
+  color: "#A7ADD4",
   fontSize: "14px",
   margin: "8px 0",
 };
@@ -309,7 +314,7 @@ const featuresSection = {
 };
 
 const featureItem = {
-  color: "#a0a0b0",
+  color: "#A7ADD4",
   fontSize: "14px",
   margin: "8px 0",
   lineHeight: "20px",
@@ -321,9 +326,9 @@ const buttonContainer = {
 };
 
 const button = {
-  backgroundColor: "#FF6B2C",
+  backgroundColor: "#FF9500",
   borderRadius: "8px",
-  color: "#0a0c10",
+  color: "#0F1529",
   fontSize: "16px",
   fontWeight: "bold",
   textDecoration: "none",
@@ -333,7 +338,7 @@ const button = {
 };
 
 const motivationalText = {
-  color: "#a0a0b0",
+  color: "#A7ADD4",
   fontSize: "14px",
   textAlign: "center" as const,
   margin: "0",
@@ -350,19 +355,19 @@ const footer = {
 };
 
 const footerText = {
-  color: "#606070",
+  color: "#8A92BF",
   fontSize: "12px",
   margin: "0 0 8px",
 };
 
 const footerLinks = {
-  color: "#606070",
+  color: "#8A92BF",
   fontSize: "12px",
   margin: "16px 0 0",
 };
 
 const link = {
-  color: "#FF6B2C",
+  color: "#FF9500",
   textDecoration: "underline",
 };
 

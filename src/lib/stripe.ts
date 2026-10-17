@@ -50,16 +50,16 @@ export const stripe = new Proxy({} as Stripe, {
 // ===========================================
 // PLAN CONFIGURATION (GBP - British Pounds)
 // ===========================================
-// COST BREAKDOWN (Runware API):
-// - flux-schnell: ~$0.003/image (fast, good quality)
-// - flux-dev: ~$0.01/image (premium quality)
-// - Stripe fee: 2.9% + £0.20 per transaction
-//
-// PRICING STRATEGY:
-// - Free: 10 credits (schnell) - marketing cost ~$0.030
-// - Starter: 250 credits (schnell) @ £5 - cost ~$0.75, margin 85%
-// - Pro: 500 credits (dev) @ £12 - cost ~$5, margin 58%
-// - Studio: 1200 credits (dev) @ £25 - cost ~$12, margin 52%
+// REAL COSTS (checked Oct 2026, USD):
+// - Standard sprite (FLUX.2 klein, 1 credit): ~$0.0008
+// - HD sprite (GPT Image 1 Mini, 3 credits): ~$0.036
+// - AI animation (Nano Banana 2): ~$0.07 (1024 grid) / ~$0.10 (2048) per image,
+//   + ~$0.02 Claude planner; smooth mode = a second image
+// - Rigged idle: no image model (one Claude call for the joints)
+// - Stripe: 2.9% + £0.20 per payment
+// Cheapest credit we sell nets ~£0.019 (~$0.024) after Stripe (Starter /
+// Studio). Credit prices of every action are set so each keeps ≥35% margin
+// at that rate — see ANIMATION_FRAME_OPTIONS in src/config/animations.ts.
 export const PLANS = {
   FREE: {
     name: "Free",

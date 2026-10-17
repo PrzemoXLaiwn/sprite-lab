@@ -98,7 +98,8 @@ export async function GET() {
       },
       referredUsers: referredUsers.map(u => ({
         id: u.id,
-        email: u.email ? `${u.email.slice(0, 3)}...${u.email.slice(-10)}` : "Anonymous",
+        // Masked: short addresses were shown in full by the old first-3/last-10 cut
+        email: u.email ? u.email.replace(/^(.{1,2})[^@]*@.*$/, "$1***@***") : "Anonymous",
         name: u.name,
         joinedAt: u.createdAt,
         hasPurchased: u.totalSpent > 0,
@@ -123,9 +124,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { referralCode } = await request.json();
+    const body = await request.json().catch(() => null);
+    const referralCode = body?.referralCode;
 
-    if (!referralCode) {
+    if (typeof referralCode !== "string" || !referralCode || referralCode.length > 32) {
       return NextResponse.json({ error: "Referral code is required" }, { status: 400 });
     }
 

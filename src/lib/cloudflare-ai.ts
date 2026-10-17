@@ -55,6 +55,22 @@ async function run(model: string, prompt: string, seed?: number): Promise<Buffer
 }
 
 /**
+ * True when the error means the free daily allowance is used up (code 4006).
+ * It resets at 00:00 UTC, so retrying before then is pointless.
+ */
+export function isDailyAllowanceError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /\b4006\b|daily free allocation/i.test(msg);
+}
+
+/** User-facing message for an exhausted daily allowance. */
+export function dailyAllowanceMessage(now = new Date()): string {
+  const reset = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+  const hours = Math.max(1, Math.ceil((reset.getTime() - now.getTime()) / 3_600_000));
+  return `Today's generation capacity is used up — it resets in about ${hours} hour${hours === 1 ? "" : "s"} (00:00 UTC). No credits were used.`;
+}
+
+/**
  * Tries the preferred model, then the other one. Cloudflare's safety filter
  * sometimes flags harmless game art (code 3030) — a new seed usually passes,
  * so each model gets a second attempt with a different seed. The 9B model's
@@ -82,4 +98,35 @@ export async function generateWithCloudflare(opts: { prompt: string; hd: boolean
     }
   }
   throw lastErr instanceof Error ? lastErr : new Error("Cloudflare AI failed");
+}
+
+/**
+ * Free text fallback (Workers AI, Llama 3.3 70B): translates a prompt to
+ * English when the Claude API is unavailable. Returns null on failure.
+ */
+export async function translateWithCloudflare(text: string): Promise<string | null> {
+  const account = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.R2_ACCOUNT_ID;
+  const token = process.env.CLOUDFLARE_AI_TOKEN;
+  if (!account || !token) return null;
+  try {
+    const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/ai/run/@cf/meta/llama-3.3-70b-instruct-fp8-fast`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        max_tokens: 160,
+        messages: [
+          { role: "system", content: "Translate the user's text into natural English. It describes a game sprite. Output ONLY the English translation — no quotes, no notes, no explanations." },
+          { role: "user", content: "rycerz z płonącym mieczem" },
+          { role: "assistant", content: "a knight with a flaming sword" },
+          { role: "user", content: text.slice(0, 500) },
+        ],
+      }),
+      signal: AbortSignal.timeout(20_000),
+    });
+    const json = (await res.json().catch(() => null)) as { result?: { response?: string } } | null;
+    const out = json?.result?.response?.trim().replace(/^["']|["']$/g, "").trim();
+    return res.ok && out ? out : null;
+  } catch {
+    return null;
+  }
 }

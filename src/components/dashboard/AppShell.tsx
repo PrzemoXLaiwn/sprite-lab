@@ -2,10 +2,13 @@ import Link from "next/link";
 import Image from "next/image";
 import type { User } from "@supabase/supabase-js";
 import { MobileMenu } from "@/components/dashboard/MobileMenu";
+import { MobileBottomNav } from "@/components/dashboard/MobileBottomNav";
 import { NotificationPopup } from "@/components/dashboard/NotificationPopup";
 import { UpgradeModal } from "@/components/dashboard/UpgradeModal";
 import { AppRail } from "@/components/dashboard/AppRail";
 import { RelaunchBonus } from "@/components/dashboard/RelaunchBonus";
+import { GettingStarted } from "@/components/dashboard/GettingStarted";
+import { GuestSpriteClaim } from "@/components/dashboard/GuestSpriteClaim";
 import { prisma } from "@/lib/prisma";
 import { relaunchActive } from "@/config/relaunch";
 
@@ -18,23 +21,36 @@ export async function AppShell({ user, children }: { user: User; children: React
   const dbUser = await prisma.user.findUnique({
     where: { id: user.id },
     select: { plan: true, role: true, emailPreferences: true },
-  });
+  }).catch(() => null); // database down: the frame still renders
   const prefs = dbUser?.emailPreferences as { relaunchBonusAt?: string } | null;
   const showRelaunchBonus = Boolean(dbUser) && relaunchActive() && !prefs?.relaunchBonusAt;
 
+  // Getting-started checklist: ticks from real activity (3 indexed lookups,
+  // once per layout render — layouts don't re-render on client navigation).
+  const [firstSprite, firstAnimation, firstProject] = await Promise.all([
+    prisma.generation.findFirst({ where: { userId: user.id, NOT: { subcategoryId: "ANIMATION" } }, select: { id: true } }),
+    prisma.generation.findFirst({ where: { userId: user.id, subcategoryId: "ANIMATION" }, select: { id: true } }),
+    prisma.project.findFirst({ where: { userId: user.id }, select: { id: true } }),
+  ]).catch(() => [null, null, null] as const);
+
   return (
-    <div className="min-h-screen bg-[#0B0D12]">
+    <div className="min-h-screen bg-[#131A31]">
+
+      <a href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[200] focus:rounded-lg focus:bg-[#FFA300] focus:px-3 focus:py-2 focus:text-[13px] focus:font-semibold focus:text-black">
+        Skip to content
+      </a>
 
       {/* ═══ ICON RAIL — Desktop ═════════════════════════════ */}
       <AppRail email={user.email!} />
 
       {/* ═══ MOBILE HEADER ═══════════════════════════════════ */}
-      <div className="md:hidden fixed top-0 left-0 right-0 h-12 border-b border-white/[0.06] bg-[#0B0D12]/95 backdrop-blur-sm z-40">
+      <header className="md:hidden fixed top-0 left-0 right-0 h-12 border-b border-white/[0.06] bg-[#131A31]/95 backdrop-blur-sm z-40">
         <div className="flex items-center justify-between h-full px-4">
-          <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo.png" alt="SpriteLab" width={22} height={22} />
+          <Link href="/" aria-label="SpriteLab home" className="flex min-h-10 items-center gap-2">
+            <Image src="/logo.png" alt="" width={22} height={22} />
             <span className="font-display font-bold text-[13px] tracking-tight">
-              Sprite<span className="text-[#F97316]">Lab</span>
+              Sprite<span className="text-[#FFA300]">Lab</span>
             </span>
           </Link>
           <MobileMenu
@@ -43,36 +59,23 @@ export async function AppShell({ user, children }: { user: User; children: React
             userRole={dbUser?.role || "USER"}
           />
         </div>
-      </div>
+      </header>
 
       {/* ═══ MOBILE BOTTOM NAV ═══════════════════════════════ */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 border-t border-white/[0.06] bg-[#0E1016]/95 backdrop-blur-sm z-40 pb-[env(safe-area-inset-bottom)]">
-        <nav className="flex items-center justify-around h-12">
-          {[
-            { href: "/", label: "Home" },
-            { href: "/generate", label: "Create" },
-            { href: "/assets", label: "Assets" },
-            { href: "/projects", label: "Projects" },
-            { href: "/settings", label: "Settings" },
-          ].map((item) => (
-            <Link key={item.href} href={item.href}
-              className="flex flex-col items-center gap-0.5 py-1.5 px-3 text-slate-500 hover:text-slate-300 transition-colors">
-              <span className="text-[10px] font-medium">{item.label}</span>
-            </Link>
-          ))}
-        </nav>
-      </div>
+      <MobileBottomNav role={dbUser?.role || "USER"} />
 
       {/* ═══ MAIN CONTENT ═══════════════════════════════════ */}
-      <main className="md:pl-[76px] min-h-screen">
-        <div className="pt-12 md:pt-0 pb-16 md:pb-0 bg-[#0B0D12]">
+      <main id="main-content" className="md:pl-[76px] min-h-screen">
+        <div className="app-main pt-12 md:pt-0 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 bg-[#131A31]">
           {children}
         </div>
       </main>
 
       <NotificationPopup />
+      <GuestSpriteClaim />
       <UpgradeModal />
       {showRelaunchBonus && <RelaunchBonus />}
+      <GettingStarted done={{ generate: Boolean(firstSprite), animate: Boolean(firstAnimation), project: Boolean(firstProject) }} />
     </div>
   );
 }

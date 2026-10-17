@@ -1,31 +1,32 @@
 /* SpriteLab Global Styles — Premium Pixel-Art Indie Game Tool */
-/* Color system: #F97316 primary orange, #0B0F19 main bg, #182033 panel bg */
+/* Brand: #131A31 background, #FFA300 orange accent, Space Grotesk headings,
+   Inter body, JetBrains Mono labels. (The --sl-* tokens below are legacy.) */
 @import "tailwindcss";
 
 @theme inline {
   /* Main color system */
-  --color-background: #0B0D12;
-  --color-foreground: #ECEEF3;
-  --color-card: #151922;
-  --color-card-foreground: #ECEEF3;
-  --color-popover: #161A22;
-  --color-popover-foreground: #ECEEF3;
-  --color-primary: #FF8A3D;
-  --color-primary-foreground: #ffffff;
-  --color-secondary: #0E1016;
-  --color-secondary-foreground: #ECEEF3;
-  --color-muted: #151922;
-  --color-muted-foreground: #8B93A5;
-  --color-accent: #FF8A3D;
+  --color-background: #131A31;
+  --color-foreground: #FFF1E8;
+  --color-card: #212B4E;
+  --color-card-foreground: #FFF1E8;
+  --color-popover: #1B2446;
+  --color-popover-foreground: #FFF1E8;
+  --color-primary: #FFA300;
+  --color-primary-foreground: #131A31;
+  --color-secondary: #19223F;
+  --color-secondary-foreground: #FFF1E8;
+  --color-muted: #212B4E;
+  --color-muted-foreground: #9AA1CC;
+  --color-accent: #FFA300;
   --color-accent-foreground: #ffffff;
   --color-destructive: #ef4444;
   --color-destructive-foreground: #ffffff;
   --color-border: rgba(255, 255, 255, 0.07);
-  --color-input: #151922;
-  --color-ring: rgba(255, 138, 61, 0.45);
+  --color-input: #212B4E;
+  --color-ring: rgba(255, 163, 0, 0.45);
   
   /* Custom colors */
-  --sl-bg-main: #0B0F19;
+  --sl-bg-main: #0F1529;
   --sl-bg-secondary: #121826;
   --sl-bg-panel: #182033;
   --sl-border: #263046;
@@ -43,17 +44,20 @@
   --color-chart-3: #ef4444;
   --color-chart-4: #eab308;
   --color-chart-5: #8b5cf6;
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-grotesk), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-tektur), var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  /* UI labels/numbers that used to be monospace now use the body face (tabular
+     figures keep numbers aligned); real code keeps JetBrains Mono below. */
+  --font-mono: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-code: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 /* ── Pixel × dev design language ─────────────────────────────────────────
-   font-display → headings + logo (Space Grotesk — a pixel font was tried
-                  and rejected: unreadable, esp. digits)
-   font-mono   → labels, chips, counters, "terminal" hints (JetBrains Mono)
+   font-display → headings + logo (Tektur — never a pixel font: unreadable digits)
+   font-mono   → labels/numbers (body face, tabular figures); .font-code → code
    .px-corners → stepped 8-bit corners for primary buttons / badges
    .pixel-grid → faint pixel-grid backdrop for hero / canvases
+   .checker    → transparency checkerboard behind real sprites
    .caret      → blinking terminal block cursor                       */
 @layer utilities {
   .px-corners {
@@ -69,13 +73,24 @@
       linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
     background-size: 16px 16px;
   }
+  /* Transparency checkerboard — the signature surface: real sprites sit on it
+     exactly like they do in an image editor. */
+  .checker {
+    background-color: #1B2446;
+    background-image:
+      linear-gradient(45deg, #212B4E 25%, transparent 25%, transparent 75%, #212B4E 75%),
+      linear-gradient(45deg, #212B4E 25%, transparent 25%, transparent 75%, #212B4E 75%);
+    background-size: 16px 16px;
+    background-position: 0 0, 8px 8px;
+  }
+  .checker-sm { background-size: 10px 10px; background-position: 0 0, 5px 5px; }
   .caret {
     display: inline-block;
     width: 0.55em;
     height: 1.05em;
     margin-left: 2px;
     vertical-align: -0.15em;
-    background: #FF8A3D;
+    background: #FFA300;
     animation: caret-blink 1.05s steps(1) infinite;
   }
 }
@@ -89,7 +104,7 @@
    blinking / floating / pulsing for people who ask the OS to reduce motion. */
 @layer base {
   :where(a, button, input, textarea, select, summary, [role="button"], [tabindex]):focus-visible {
-    outline: 2px solid #FF8A3D;
+    outline: 2px solid #FFA300;
     outline-offset: 2px;
     border-radius: 6px;
   }
@@ -133,7 +148,7 @@
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: #0a0c10;
+    background: #0F1529;
   }
   ::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.08);
@@ -143,14 +158,15 @@
     background: rgba(255, 255, 255, 0.15);
   }
   ::selection {
-    background: rgba(255, 107, 44, 0.25);
+    background: rgba(255, 163, 0, 0.3);
     color: #ffffff;
   }
 }
 
 /* ── Fonts ─────────────────────────────────────────────── */
 .font-display { font-family: var(--font-display), sans-serif; }
-.font-mono { font-family: var(--font-mono), monospace; }
+.font-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+pre, code, kbd, samp, .font-code { font-family: var(--font-code); }
 
 /* ── Animations ───────────────────────────────────────── */
 @keyframes slide-up {
@@ -190,33 +206,36 @@
 .animate-float { animation: float 3s ease-in-out infinite; }
 .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
 
-/* Respect users who have requested reduced motion at the OS level. Disables
-   loops + decorative transforms. We keep a tiny duration on transitions so
-   functional state changes (open/close, hover) still register without
-   feeling broken. */
+/* Generate panel auto-settings: a control the prompt just changed glows once.
+   box-shadow only, so nothing moves. Reduced motion: a static ring instead. */
+@keyframes auto-flash {
+  0% { box-shadow: 0 0 0 0 rgba(255, 163, 0, 0); }
+  18% { box-shadow: 0 0 0 2px rgba(255, 163, 0, 0.55), 0 0 18px 2px rgba(255, 163, 0, 0.22); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 163, 0, 0); }
+}
+@keyframes auto-chip-in {
+  0% { opacity: 0; transform: scale(0.9); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.auto-flash { border-radius: 0.75rem; animation: auto-flash 1.5s ease-out; }
+.auto-chip { animation: auto-chip-in 0.2s ease-out; }
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
-  }
+  .auto-flash { animation: none !important; box-shadow: 0 0 0 2px rgba(255, 163, 0, 0.5); }
+  .auto-chip { animation: none !important; }
 }
 
 /* ── Utility classes ──────────────────────────────────── */
 
 /* Premium generator tokens */
 :root {
-  --sl-panel: #11151b;
-  --sl-panel-2: #141821;
+  --sl-panel: #161E39;
+  --sl-panel-2: #1B2446;
   --sl-stroke: rgba(255, 255, 255, 0.08);
   --sl-stroke-strong: rgba(255, 255, 255, 0.14);
   --sl-soft-text: rgba(255, 255, 255, 0.62);
   --sl-dim-text: rgba(255, 255, 255, 0.32);
-  --sl-focus: rgba(255, 107, 44, 0.38);
-  --sl-focus-ring: 0 0 0 3px rgba(255, 107, 44, 0.14), 0 0 24px rgba(255, 107, 44, 0.1);
+  --sl-focus: rgba(255, 163, 0, 0.38);
+  --sl-focus-ring: 0 0 0 3px rgba(255, 163, 0, 0.14), 0 0 24px rgba(255, 163, 0, 0.1);
   --sl-panel-shadow: 0 10px 35px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
@@ -253,22 +272,22 @@
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.03),
     0 8px 24px rgba(0, 0, 0, 0.38),
-    0 0 28px rgba(255, 107, 44, 0.07);
+    0 0 28px rgba(255, 163, 0, 0.07);
 }
 
 .sl-cta {
-  background: linear-gradient(180deg, #ff7a42 0%, #ff6b2c 40%, #e55a1f 100%);
+  background: linear-gradient(180deg, #FFB733 0%, #FF9500 40%, #E08600 100%);
   color: #fff;
   border: 1px solid rgba(255, 137, 88, 0.55);
   box-shadow:
-    0 4px 18px rgba(255, 107, 44, 0.28),
+    0 4px 18px rgba(255, 163, 0, 0.28),
     inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 .sl-cta:hover {
   filter: brightness(1.04);
   transform: translateY(-1px);
   box-shadow:
-    0 8px 24px rgba(255, 107, 44, 0.34),
+    0 8px 24px rgba(255, 163, 0, 0.34),
     inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 .sl-cta:active {
@@ -286,9 +305,9 @@
   z-index: -2;
   pointer-events: none;
   background:
-    radial-gradient(90% 65% at 8% 10%, rgba(255, 107, 44, 0.13) 0%, rgba(255, 107, 44, 0) 65%),
+    radial-gradient(90% 65% at 8% 10%, rgba(255, 163, 0, 0.13) 0%, rgba(255, 163, 0, 0) 65%),
     radial-gradient(75% 55% at 90% 12%, rgba(14, 165, 233, 0.1) 0%, rgba(14, 165, 233, 0) 66%),
-    linear-gradient(180deg, #0e1118 0%, #090b10 100%);
+    linear-gradient(180deg, #161E39 0%, #131A31 100%);
 }
 .sl-atmo-bg::after {
   content: "";
@@ -303,12 +322,12 @@
 .sl-panel-vivid {
   background:
     linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 28%),
-    linear-gradient(180deg, #111722 0%, #0c1018 100%);
+    linear-gradient(180deg, #1B2446 0%, #19223F 100%);
   border: 1px solid rgba(255,255,255,0.08);
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.06),
     0 16px 40px rgba(0,0,0,0.42),
-    0 0 35px rgba(255,107,44,0.08);
+    0 0 35px rgba(255, 163, 0,0.08);
 }
 
 .sl-sidebar-sheen {
@@ -324,7 +343,7 @@
   height: 260px;
   border-radius: 9999px;
   pointer-events: none;
-  background: radial-gradient(circle, rgba(255,107,44,0.16) 0%, rgba(255,107,44,0) 72%);
+  background: radial-gradient(circle, rgba(255, 163, 0,0.16) 0%, rgba(255, 163, 0,0) 72%);
 }
 
 /* Inputs + Textareas */
@@ -334,20 +353,20 @@ input:-webkit-autofill:focus,
 textarea:-webkit-autofill,
 select:-webkit-autofill {
   -webkit-text-fill-color: #e8e8ec;
-  -webkit-box-shadow: 0 0 0px 1000px #141821 inset;
+  -webkit-box-shadow: 0 0 0px 1000px #1B2446 inset;
   transition: background-color 9999s ease-in-out 0s;
 }
 
 .skeleton {
-  background: linear-gradient(90deg, #141821 0%, #1c2030 50%, #141821 100%);
+  background: linear-gradient(90deg, #1B2446 0%, #1c2030 50%, #1B2446 100%);
   background-size: 200% 100%;
   animation: skeleton-loading 1.5s ease-in-out infinite;
 }
 .spinner {
   width: 32px;
   height: 32px;
-  border: 2px solid rgba(255, 107, 44, 0.15);
-  border-top-color: #FF6B2C;
+  border: 2px solid rgba(255, 163, 0, 0.15);
+  border-top-color: #FF9500;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -414,18 +433,18 @@ select:-webkit-autofill {
 .lift-hover:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3),
-              0 0 15px rgba(255, 107, 44, 0.08);
+              0 0 15px rgba(255, 163, 0, 0.08);
 }
 
 /* ── Legacy class compatibility (used by older pages) ─── */
 .gradient-text {
-  background: linear-gradient(135deg, #FF6B2C, #f59e0b);
+  background: linear-gradient(135deg, #FF9500, #f59e0b);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 .text-gradient-animated {
-  background: linear-gradient(135deg, #FF6B2C, #f59e0b, #FF6B2C);
+  background: linear-gradient(135deg, #FF9500, #f59e0b, #FF9500);
   background-size: 200% 200%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -438,38 +457,38 @@ select:-webkit-autofill {
   -webkit-backdrop-filter: blur(8px);
 }
 .glass-card:hover {
-  border-color: rgba(255, 107, 44, 0.15);
+  border-color: rgba(255, 163, 0, 0.15);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2),
-              0 0 15px rgba(255, 107, 44, 0.05);
+              0 0 15px rgba(255, 163, 0, 0.05);
 }
 .btn-primary {
-  background: linear-gradient(135deg, #FF6B2C 0%, #e55a1f 100%);
+  background: linear-gradient(135deg, #FF9500 0%, #E08600 100%);
   color: #ffffff;
   font-weight: 600;
   padding: 0.75rem 1.5rem;
   border-radius: 0.625rem;
   transition: all 0.25s cubic-bezier(0.33, 1, 0.68, 1);
-  box-shadow: 0 2px 8px rgba(255, 107, 44, 0.25),
+  box-shadow: 0 2px 8px rgba(255, 163, 0, 0.25),
               inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 .btn-primary:hover {
-  background: linear-gradient(135deg, #ff7a42 0%, #FF6B2C 100%);
-  box-shadow: 0 4px 16px rgba(255, 107, 44, 0.35),
+  background: linear-gradient(135deg, #FFB733 0%, #FF9500 100%);
+  box-shadow: 0 4px 16px rgba(255, 163, 0, 0.35),
               inset 0 1px 0 rgba(255, 255, 255, 0.15);
   transform: translateY(-1px);
 }
 .btn-primary:active {
   transform: translateY(0);
-  box-shadow: 0 1px 4px rgba(255, 107, 44, 0.2);
+  box-shadow: 0 1px 4px rgba(255, 163, 0, 0.2);
 }
 .badge-primary {
-  background: linear-gradient(135deg, #FF6B2C, #e55a1f);
+  background: linear-gradient(135deg, #FF9500, #E08600);
   color: #ffffff;
   font-size: 0.75rem;
   font-weight: 600;
   padding: 0.25rem 0.75rem;
   border-radius: 9999px;
-  box-shadow: 0 1px 4px rgba(255, 107, 44, 0.2);
+  box-shadow: 0 1px 4px rgba(255, 163, 0, 0.2);
 }
 .grid-pattern {
   background-image: linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
@@ -504,11 +523,30 @@ select:-webkit-autofill {
   margin: 0.5rem 0;
 }
 
-/* ── Reduced motion ───────────────────────────────────── */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+/* ── App shell (signed-in) ─────────────────────────────────────────────
+   On phones the Getting-started card floats above the tab bar; while it is
+   shown, pages get extra bottom room so it never covers their last button. */
+@media (max-width: 767px) {
+  html[data-getting-started] .app-main {
+    padding-bottom: calc(8rem + env(safe-area-inset-bottom));
+  }
+}
+
+/* ── Phones: form fields at 16px so iOS Safari doesn't zoom on focus ──── */
+@media (max-width: 767px) {
+  .app-main input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  .app-main textarea,
+  .app-main select,
+  [role="dialog"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  [role="dialog"] textarea,
+  [role="dialog"] select {
+    font-size: 16px;
+  }
+}
+
+/* ── Phones: global toasts drop in below the fixed 48px app header ─────── */
+@media (max-width: 639px) {
+  ol.fixed.top-0.flex-col-reverse {
+    top: 3rem;
   }
 }

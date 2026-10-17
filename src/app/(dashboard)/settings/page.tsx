@@ -68,13 +68,13 @@ interface Transaction {
 // =============================================================================
 
 const INPUT =
-  "w-full rounded-xl border border-white/[0.08] bg-[#151922] px-3 py-2.5 text-[13px] text-white placeholder:text-[#7A8294] outline-none transition-colors focus:border-[#FF8A3D]/50 disabled:cursor-not-allowed disabled:text-[#8B93A5] disabled:opacity-70";
+  "w-full rounded-xl border border-white/[0.08] bg-[#212B4E] px-3 py-2.5 text-[13px] text-white placeholder:text-[#8A92BF] outline-none transition-colors focus:border-[#FFA300]/50 disabled:cursor-not-allowed disabled:text-[#9AA1CC] disabled:opacity-70";
 const BTN_PRIMARY =
-  "px-corners inline-flex items-center justify-center gap-2 bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] px-4 py-2.5 text-[13px] font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:brightness-100";
+  "px-corners inline-flex items-center justify-center gap-2 bg-[#FFA300] px-4 py-2.5 text-[13px] font-semibold text-[#131A31] transition hover:bg-[#FFB733] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#FFB733]";
 const BTN_SECONDARY =
-  "inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 py-2.5 text-[13px] font-medium text-[#C9CFDB] transition-colors hover:bg-white/[0.08] hover:text-white";
-const LABEL = "mb-1.5 block text-[12px] font-medium text-[#C9CFDB]";
-const HINT = "mt-1.5 text-[12px] text-[#8B93A5]";
+  "inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 py-2.5 text-[13px] font-medium text-[#C8CCE8] transition-colors hover:bg-white/[0.08] hover:text-white";
+const LABEL = "mb-1.5 block text-[12px] font-medium text-[#C8CCE8]";
+const HINT = "mt-1.5 text-[12px] text-[#9AA1CC]";
 
 const SECTIONS = [
   { id: "profile", label: "Profile", icon: User },
@@ -127,11 +127,11 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section id={id} className="scroll-mt-16 rounded-2xl border border-white/[0.06] bg-[#0E1016] p-6 md:scroll-mt-6">
+    <section id={id} className="scroll-mt-16 rounded-2xl border border-white/[0.06] bg-[#19223F] p-4 sm:p-6 md:scroll-mt-6">
       <div className="mb-5 flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h2 className="text-[15px] font-semibold text-white">{title}</h2>
-          {description && <p className="mt-1 text-[13px] text-[#8B93A5]">{description}</p>}
+          {description && <p className="mt-1 text-[13px] text-[#9AA1CC]">{description}</p>}
         </div>
         {action}
       </div>
@@ -159,8 +159,8 @@ function Toggle({
       aria-label={label}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8A3D]/40 disabled:cursor-not-allowed disabled:opacity-50 ${
-        checked ? "border-[#FF8A3D]/40 bg-[#FF8A3D]" : "border-white/[0.08] bg-white/[0.08]"
+      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors before:absolute before:-inset-x-1 before:-inset-y-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFA300]/40 disabled:cursor-not-allowed disabled:opacity-50 ${
+        checked ? "border-[#FFA300]/40 bg-[#FFA300]" : "border-white/[0.08] bg-white/[0.08]"
       }`}
     >
       <span
@@ -187,12 +187,12 @@ function SettingsSkeleton() {
         </div>
         <div className="space-y-5">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="rounded-2xl border border-white/[0.06] bg-[#0E1016] p-6">
+            <div key={i} className="rounded-2xl border border-white/[0.06] bg-[#19223F] p-6">
               <div className="mb-2 h-4 w-36 animate-pulse rounded bg-white/[0.06]" />
               <div className="mb-6 h-3 w-60 animate-pulse rounded bg-white/[0.04]" />
               <div className="space-y-3">
-                <div className="h-10 animate-pulse rounded-xl bg-[#151922]" />
-                <div className="h-10 animate-pulse rounded-xl bg-[#151922]" />
+                <div className="h-10 animate-pulse rounded-xl bg-[#212B4E]" />
+                <div className="h-10 animate-pulse rounded-xl bg-[#212B4E]" />
               </div>
             </div>
           ))}
@@ -431,11 +431,11 @@ export default function SettingsPage() {
   const credits = user?.credits || 0;
 
   return (
-    <div className="mx-auto max-w-[1100px] px-5 py-6 text-[#ECEEF3] lg:px-8">
+    <div className="mx-auto max-w-[1100px] px-5 py-6 text-[#FFF1E8] lg:px-8">
       {/* Header */}
       <div className="mb-6 lg:mb-8">
-        <h1 className="font-display text-[22px] font-semibold tracking-tight text-white">Settings</h1>
-        <p className="mt-1 text-[13px] text-[#8B93A5]">Manage your profile, plan and notifications</p>
+        <h1 className="font-display text-[24px] font-semibold leading-tight tracking-tight text-white">Settings</h1>
+        <p className="mt-1 text-[13px] text-[#9AA1CC]">Manage your profile, plan and notifications</p>
       </div>
 
       {/* Mobile section nav */}
@@ -447,10 +447,10 @@ export default function SettingsPage() {
               key={s.id}
               href={`#${s.id}`}
               onClick={jumpTo(s.id)}
-              className={`shrink-0 rounded-full border px-3 py-1.5 font-mono text-[11px] transition-colors ${
+              className={`flex min-h-10 shrink-0 items-center rounded-full border px-3.5 font-mono text-[11.5px] transition-colors ${
                 active
-                  ? "border-[#FF8A3D]/50 bg-[#FF8A3D]/10 text-white"
-                  : "border-white/[0.08] bg-white/[0.04] text-[#8B93A5] hover:text-white"
+                  ? "border-[#FFA300]/50 bg-[#FFA300]/10 text-white"
+                  : "border-white/[0.08] bg-white/[0.04] text-[#9AA1CC] hover:text-white"
               }`}
             >
               {s.label}
@@ -463,7 +463,7 @@ export default function SettingsPage() {
         {/* Desktop section nav */}
         <aside className="hidden lg:block">
           <nav className="sticky top-6 space-y-0.5" aria-label="Settings sections">
-            <p className="mb-2 px-3 font-mono text-[11px] uppercase tracking-[0.08em] text-[#7A8294]">~/settings</p>
+            <p className="mb-2 px-3 text-[12.5px] text-[#8A92BF] font-semibold">Settings</p>
             {SECTIONS.map((s) => {
               const active = activeSection === s.id;
               return (
@@ -472,10 +472,10 @@ export default function SettingsPage() {
                   href={`#${s.id}`}
                   onClick={jumpTo(s.id)}
                   className={`flex items-center gap-2.5 rounded-xl px-3 py-2 font-mono text-[12px] transition-colors ${
-                    active ? "bg-white/[0.07] text-white" : "text-[#8B93A5] hover:bg-white/[0.04] hover:text-white"
+                    active ? "bg-white/[0.07] text-white" : "text-[#9AA1CC] hover:bg-white/[0.04] hover:text-white"
                   }`}
                 >
-                  <s.icon className={`h-4 w-4 ${active ? "text-[#FF8A3D]" : ""}`} />
+                  <s.icon className={`h-4 w-4 ${active ? "text-[#FFA300]" : ""}`} />
                   {s.label}
                 </a>
               );
@@ -510,13 +510,13 @@ export default function SettingsPage() {
                     onClick={handleAvatarClick}
                     disabled={uploadingAvatar}
                     aria-label="Change profile picture"
-                    className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-white/[0.08] bg-[#151922] transition-colors hover:border-white/20"
+                    className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-white/[0.08] bg-[#212B4E] transition-colors hover:border-white/20"
                   >
                     {user?.avatarUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={user.avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
                     ) : (
-                      <User className="h-7 w-7 text-[#7A8294]" />
+                      <User className="h-7 w-7 text-[#8A92BF]" />
                     )}
                     {uploadingAvatar && (
                       <span className="absolute inset-0 flex items-center justify-center bg-black/60">
@@ -524,7 +524,7 @@ export default function SettingsPage() {
                       </span>
                     )}
                   </button>
-                  <span className="pointer-events-none absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#0E1016] bg-[#FF8A3D]">
+                  <span className="pointer-events-none absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#19223F] bg-[#FFA300]">
                     <Camera className="h-3 w-3 text-white" />
                   </span>
                   <input
@@ -540,11 +540,11 @@ export default function SettingsPage() {
                     type="button"
                     onClick={handleAvatarClick}
                     disabled={uploadingAvatar}
-                    className="text-[13px] font-medium text-white hover:text-[#FFB27A] disabled:opacity-60"
+                    className="-my-2 inline-flex min-h-10 items-center text-[13px] font-medium text-white hover:text-[#FFC857] disabled:opacity-60 lg:my-0 lg:min-h-0"
                   >
                     {uploadingAvatar ? "Uploading…" : "Change picture"}
                   </button>
-                  <p className="mt-0.5 text-[12px] text-[#8B93A5]">JPG, PNG, WebP or GIF. Max 2MB</p>
+                  <p className="mt-0.5 text-[12px] text-[#9AA1CC]">JPG, PNG, WebP or GIF. Max 2MB</p>
                 </div>
               </div>
 
@@ -574,7 +574,7 @@ export default function SettingsPage() {
               <div>
                 <label htmlFor="username" className={LABEL}>Username</label>
                 <div className="relative">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-[#7A8294]">@</span>
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-[#8A92BF]">@</span>
                   <input
                     id="username"
                     type="text"
@@ -588,7 +588,7 @@ export default function SettingsPage() {
                   />
                   {usernameStatus !== "idle" && (
                     <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      {usernameStatus === "checking" && <Loader2 className="h-4 w-4 animate-spin text-[#8B93A5]" />}
+                      {usernameStatus === "checking" && <Loader2 className="h-4 w-4 animate-spin text-[#9AA1CC]" />}
                       {usernameStatus === "available" && <CheckCircle2 className="h-4 w-4 text-emerald-300" />}
                       {usernameStatus === "taken" && <AlertCircle className="h-4 w-4 text-red-300" />}
                       {usernameStatus === "invalid" && <AlertCircle className="h-4 w-4 text-amber-300" />}
@@ -596,7 +596,7 @@ export default function SettingsPage() {
                   )}
                 </div>
                 <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-[12px]">
-                  <p className="text-[#8B93A5]">
+                  <p className="text-[#9AA1CC]">
                     {usernameStatus === "taken" && <span className="text-red-200">Username is taken</span>}
                     {usernameStatus === "invalid" && <span className="text-amber-200">3-20 characters, letters, numbers, underscores</span>}
                     {usernameStatus === "available" && <span className="text-emerald-200">Username is available</span>}
@@ -606,7 +606,7 @@ export default function SettingsPage() {
                   {user?.username && (
                     <Link
                       href={`/u/${user.username}`}
-                      className="inline-flex items-center gap-1 font-medium text-[#FFB27A] hover:text-[#FF8A3D]"
+                      className="-my-2 inline-flex min-h-9 items-center gap-1 font-medium text-[#FFC857] hover:text-[#FFA300] lg:my-0 lg:min-h-0"
                     >
                       <LinkIcon className="h-3 w-3" />
                       View public profile
@@ -627,14 +627,14 @@ export default function SettingsPage() {
                   rows={3}
                   maxLength={200}
                 />
-                <p className="mt-1.5 text-right font-mono text-[11px] tabular-nums text-[#7A8294]">{bio.length}/200</p>
+                <p className="mt-1.5 text-right font-mono text-[11px] tabular-nums text-[#8A92BF]">{bio.length}/200</p>
               </div>
 
               {/* Website */}
               <div>
                 <label htmlFor="website" className={LABEL}>Website</label>
                 <div className="relative">
-                  <Globe className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7A8294]" />
+                  <Globe className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A92BF]" />
                   <input
                     id="website"
                     type="url"
@@ -649,9 +649,9 @@ export default function SettingsPage() {
               {/* Social Links */}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label htmlFor="twitter" className={LABEL}>Twitter</label>
+                  <label htmlFor="twitter" className={LABEL}>X (Twitter)</label>
                   <div className="relative">
-                    <Twitter className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7A8294]" />
+                    <Twitter className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A92BF]" />
                     <input
                       id="twitter"
                       type="text"
@@ -665,7 +665,7 @@ export default function SettingsPage() {
                 <div>
                   <label htmlFor="github" className={LABEL}>GitHub</label>
                   <div className="relative">
-                    <Github className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7A8294]" />
+                    <Github className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A92BF]" />
                     <input
                       id="github"
                       type="text"
@@ -679,16 +679,16 @@ export default function SettingsPage() {
               </div>
 
               {/* Profile Visibility */}
-              <div className="flex items-center justify-between gap-4 rounded-xl border border-white/[0.08] bg-[#151922] px-4 py-3.5">
+              <div className="flex items-center justify-between gap-4 rounded-xl border border-white/[0.08] bg-[#212B4E] px-4 py-3.5">
                 <div className="flex min-w-0 items-center gap-3">
                   {isProfilePublic ? (
-                    <Eye className="h-4 w-4 shrink-0 text-[#FF8A3D]" />
+                    <Eye className="h-4 w-4 shrink-0 text-[#FFA300]" />
                   ) : (
-                    <EyeOff className="h-4 w-4 shrink-0 text-[#8B93A5]" />
+                    <EyeOff className="h-4 w-4 shrink-0 text-[#9AA1CC]" />
                   )}
                   <div className="min-w-0">
                     <p className="text-[13px] font-medium text-white">Public profile</p>
-                    <p className="text-[12px] text-[#8B93A5]">
+                    <p className="text-[12px] text-[#9AA1CC]">
                       {isProfilePublic ? "Anyone can view your profile" : "Your profile is hidden"}
                     </p>
                   </div>
@@ -713,7 +713,7 @@ export default function SettingsPage() {
                 {saving ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Saving...
+                    Saving…
                   </>
                 ) : saved ? (
                   <>
@@ -742,34 +742,34 @@ export default function SettingsPage() {
             }
           >
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <div className="rounded-xl border border-white/[0.08] bg-[#151922] p-4">
-                <p className="text-[12px] text-[#8B93A5]">Current plan</p>
+              <div className="rounded-xl border border-white/[0.08] bg-[#212B4E] p-4">
+                <p className="text-[12px] text-[#9AA1CC]">Current plan</p>
                 <p className="mt-1 font-display text-[24px] font-semibold text-white">{planLabel(user?.plan)}</p>
               </div>
-              <div className="rounded-xl border border-white/[0.08] bg-[#151922] p-4">
-                <p className="flex items-center gap-1.5 text-[12px] text-[#8B93A5]">
-                  <Zap className="h-3.5 w-3.5 text-[#FF8A3D]" /> Credits remaining
+              <div className="rounded-xl border border-white/[0.08] bg-[#212B4E] p-4">
+                <p className="flex items-center gap-1.5 text-[12px] text-[#9AA1CC]">
+                  <Zap className="h-3.5 w-3.5 text-[#FFA300]" /> Credits remaining
                 </p>
                 <p className="mt-1 font-sans tracking-tight text-[24px] font-semibold tabular-nums text-white">{credits}</p>
               </div>
-              <div className="rounded-xl border border-white/[0.08] bg-[#151922] p-4">
-                <p className="text-[12px] text-[#8B93A5]">Total generations</p>
+              <div className="rounded-xl border border-white/[0.08] bg-[#212B4E] p-4">
+                <p className="text-[12px] text-[#9AA1CC]">Total generations</p>
                 <p className="mt-1 font-sans tracking-tight text-[24px] font-semibold tabular-nums text-white">{generations}</p>
               </div>
             </div>
 
             <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-[12px] text-[#8B93A5]">
+              <p className="text-[12px] text-[#9AA1CC]">
                 {generations === 0 ? (
                   <>
                     No assets yet —{" "}
-                    <Link href="/generate" className="font-medium text-[#FFB27A] hover:text-[#FF8A3D]">
+                    <Link href="/generate" className="font-medium text-[#FFC857] hover:text-[#FFA300]">
                       generate your first one
                     </Link>
                     .
                   </>
                 ) : (
-                  <>{generations} assets created so far. Keep going.</>
+                  <>{generations} sprite{generations === 1 ? "" : "s"} created so far.</>
                 )}
               </p>
               <div className="flex gap-2">
@@ -789,7 +789,7 @@ export default function SettingsPage() {
             title="Credit history"
             description="Your 10 most recent credit transactions"
             action={
-              <Link href="/usage" className="hidden shrink-0 items-center gap-1 text-[12px] font-medium text-[#8B93A5] hover:text-white sm:inline-flex">
+              <Link href="/usage" className="hidden shrink-0 items-center gap-1 text-[12px] font-medium text-[#9AA1CC] hover:text-white sm:inline-flex">
                 Usage <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             }
@@ -802,14 +802,14 @@ export default function SettingsPage() {
                     className="flex items-center justify-between gap-4 rounded-lg px-2 py-3 transition-colors hover:bg-white/[0.03]"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13px] font-medium text-[#ECEEF3]">
+                      <p className="truncate text-[13px] font-medium text-[#FFF1E8]">
                         {transaction.description || transaction.type}
                       </p>
-                      <p className="mt-0.5 font-mono text-[11px] text-[#7A8294]">{formatDate(transaction.createdAt)}</p>
+                      <p className="mt-0.5 font-mono text-[11px] text-[#8A92BF]">{formatDate(transaction.createdAt)}</p>
                     </div>
                     <span
                       className={`shrink-0 font-mono text-[12px] font-semibold tabular-nums ${
-                        transaction.amount > 0 ? "text-emerald-300" : "text-[#C9CFDB]"
+                        transaction.amount > 0 ? "text-emerald-300" : "text-[#C8CCE8]"
                       }`}
                     >
                       {transaction.amount > 0 ? "+" : ""}
@@ -820,9 +820,9 @@ export default function SettingsPage() {
               </ul>
             ) : (
               <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/[0.08] py-10 text-center">
-                <History className="mb-2 h-5 w-5 text-[#7A8294]" />
-                <p className="text-[13px] font-medium text-[#C9CFDB]">No credit history yet</p>
-                <p className="mt-0.5 text-[12px] text-[#8B93A5]">Purchases and generations will show up here.</p>
+                <History className="mb-2 h-5 w-5 text-[#8A92BF]" />
+                <p className="text-[13px] font-medium text-[#C8CCE8]">No credit history yet</p>
+                <p className="mt-0.5 text-[12px] text-[#9AA1CC]">Purchases and generations will show up here.</p>
               </div>
             )}
           </Section>
@@ -832,18 +832,18 @@ export default function SettingsPage() {
             id="email"
             title="Email notifications"
             description="Control what emails you receive from us"
-            action={savingEmailPrefs ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#8B93A5]" /> : undefined}
+            action={savingEmailPrefs ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#9AA1CC]" /> : undefined}
           >
-            <ul className="divide-y divide-white/[0.06] rounded-xl border border-white/[0.08] bg-[#151922]">
+            <ul className="divide-y divide-white/[0.06] rounded-xl border border-white/[0.08] bg-[#212B4E]">
               {EMAIL_PREF_ROWS.map((row) => (
                 <li key={row.key} className="flex items-center justify-between gap-4 px-4 py-3.5">
                   <div className="flex min-w-0 items-center gap-3">
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/[0.06] bg-white/[0.04]">
-                      <row.icon className="h-4 w-4 text-[#C9CFDB]" />
+                      <row.icon className="h-4 w-4 text-[#C8CCE8]" />
                     </span>
                     <div className="min-w-0">
                       <p className="text-[13px] font-medium text-white">{row.title}</p>
-                      <p className="text-[12px] text-[#8B93A5]">{row.description}</p>
+                      <p className="text-[12px] text-[#9AA1CC]">{row.description}</p>
                     </div>
                   </div>
                   <Toggle
@@ -855,7 +855,7 @@ export default function SettingsPage() {
                 </li>
               ))}
             </ul>
-            <p className="mt-3 text-[12px] text-[#7A8294]">
+            <p className="mt-3 text-[12px] text-[#8A92BF]">
               We&apos;ll always send you important account notifications like receipts and security alerts.
             </p>
           </Section>
@@ -867,15 +867,15 @@ export default function SettingsPage() {
 
           {/* ── Security ────────────────────────────────────────────── */}
           <Section id="security" title="Security" description="Manage your password and account">
-            <div className="divide-y divide-white/[0.06] rounded-xl border border-white/[0.08] bg-[#151922]">
+            <div className="divide-y divide-white/[0.06] rounded-xl border border-white/[0.08] bg-[#212B4E]">
               <div className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/[0.06] bg-white/[0.04]">
-                    <KeyRound className="h-4 w-4 text-[#C9CFDB]" />
+                    <KeyRound className="h-4 w-4 text-[#C8CCE8]" />
                   </span>
                   <div>
                     <p className="text-[13px] font-medium text-white">Password</p>
-                    <p className="text-[12px] text-[#8B93A5]">Send yourself a reset link to set a new password</p>
+                    <p className="text-[12px] text-[#9AA1CC]">Send yourself a reset link to set a new password</p>
                   </div>
                 </div>
                 <Link href="/reset-password" className={`${BTN_SECONDARY} py-2`}>
@@ -892,7 +892,7 @@ export default function SettingsPage() {
                   </span>
                   <div>
                     <p className="text-[13px] font-medium text-white">Delete account</p>
-                    <p className="text-[12px] text-[#8B93A5]">Permanently remove your account, generations and projects</p>
+                    <p className="text-[12px] text-[#9AA1CC]">Ask us to permanently remove your account, sprites and projects</p>
                   </div>
                 </div>
                 <button
@@ -900,13 +900,13 @@ export default function SettingsPage() {
                   className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-400/20 bg-red-500/[0.06] px-4 py-2 text-[13px] font-medium text-red-200 transition-colors hover:bg-red-500/[0.12]"
                   onClick={() => {
                     const ok = window.confirm(
-                      "Delete your account?\n\nThis cannot be undone. All your generations and projects will be removed.\n\nIf you'd like a refund or have feedback, email support@sprite-lab.com first."
+                      "Request account deletion?\n\nThis opens an email to spritelab.contact@gmail.com. Once we delete the account, all your sprites and projects are gone for good — it can't be undone.\n\nWant a refund or have feedback? Mention it in the same email."
                     );
                     if (!ok) return;
-                    window.location.href = "mailto:support@sprite-lab.com?subject=Delete%20my%20SpriteLab%20account&body=Please%20delete%20my%20account.";
+                    window.location.href = "mailto:spritelab.contact@gmail.com?subject=Delete%20my%20SpriteLab%20account&body=Please%20delete%20my%20account.";
                   }}
                 >
-                  Delete account
+                  Request deletion
                 </button>
               </div>
             </div>

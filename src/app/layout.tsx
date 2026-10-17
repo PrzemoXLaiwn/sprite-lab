@@ -1,17 +1,19 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import { Atkinson_Hyperlegible_Next, JetBrains_Mono, Tektur } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
 import Script from "next/script";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
 // Optimized font loading with next/font (no render-blocking!)
-const inter = Inter({
+// Body + UI: built for legibility (distinct I/l/1, 0/O) — small labels and
+// numbers stay readable without a monospace face.
+const body = Atkinson_Hyperlegible_Next({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-inter",
-  weight: ["300", "400", "500", "600", "700", "800"],
+  variable: "--font-body",
 });
 
 const jetbrainsMono = JetBrains_Mono({
@@ -21,13 +23,12 @@ const jetbrainsMono = JetBrains_Mono({
   weight: ["400", "500", "600"],
 });
 
-// Display face for headings / logo — technical but highly legible (digits
-// included). JetBrains Mono supplies the "dev" accents.
-const spaceGrotesk = Space_Grotesk({
+// Display face: angular, game-UI flavoured, but not a pixel font (pixel
+// fonts were tried and rejected — unreadable, esp. digits).
+const display = Tektur({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-grotesk",
-  weight: ["500", "600", "700"],
+  variable: "--font-tektur",
 });
 
 const baseUrl = "https://www.sprite-lab.com";
@@ -129,10 +130,10 @@ const jsonLd = {
       foundingDate: "2024",
       // sameAs: list SpriteLab's own social profiles here once they exist
       // (a handle we don't control would tell search engines it's ours).
-      sameAs: ["https://github.com/PrzemoXLaiwn/sprite-lab"],
+      sameAs: ["https://github.com/PrzemoXLaiwn/sprite-lab", "https://www.tiktok.com/@spritelab1"],
       contactPoint: {
         "@type": "ContactPoint",
-        email: "support@sprite-lab.com",
+        email: "spritelab.contact@gmail.com",
         contactType: "Customer Support",
         availableLanguage: ["English", "Polish"],
       },
@@ -207,7 +208,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`dark ${inter.variable} ${jetbrainsMono.variable} ${spaceGrotesk.variable}`}>
+    <html lang="en" className={`dark ${body.variable} ${jetbrainsMono.variable} ${display.variable}`}>
       <head>
         {/* Resource Hints - Performance Optimization */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -223,7 +224,7 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="48x48" href="/icon-48.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#0a0c10" />
+        <meta name="theme-color" content="#0F1529" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         {/* Structured Data - static, no hydration issues */}
@@ -240,6 +241,7 @@ export default function RootLayout({
         <Toaster />
         <Analytics />
         <SpeedInsights />
+        <GoogleAnalytics />
 
       </body>
     </html>

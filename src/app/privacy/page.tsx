@@ -1,6 +1,4 @@
 import { Metadata } from "next";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — How We Handle Your Data",
@@ -22,30 +20,23 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto px-4 py-16">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Home
-        </Link>
+    <div className="relative">
+      <div className="mx-auto max-w-3xl px-5 pb-24 pt-14 sm:pt-20">
+        <h1 className="mt-3 font-display text-[36px] font-semibold leading-[1.06] tracking-[-0.015em] text-white sm:text-[48px]">Privacy Policy</h1>
+        {/* Fixed date: only change it when the text below changes. */}
+        <p className="mt-4 mb-12 font-mono text-[12px] text-[#8A92BF]">Last updated: 13 October 2026</p>
 
-        <h1 className="text-4xl font-bold mb-8">Privacy Policy</h1>
-        <p className="text-muted-foreground mb-8">Last updated: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
-
-        <div className="prose prose-invert max-w-none space-y-8">
+        <div className="max-w-none space-y-10 text-[15px] leading-relaxed">
           <section>
-            <h2 className="text-2xl font-semibold mb-4">1. Introduction</h2>
+            <h2 className="mb-3 scroll-mt-24 font-display text-[22px] font-semibold leading-snug text-white">1. Introduction</h2>
             <p className="text-muted-foreground">
               SpriteLab (&ldquo;we&rdquo;, &ldquo;our&rdquo;, or &ldquo;us&rdquo;) is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our website and services at sprite-lab.com.
             </p>
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold mb-4">2. Information We Collect</h2>
-            <h3 className="text-xl font-medium mb-2">2.1 Personal Information</h3>
+            <h2 className="mb-3 scroll-mt-24 font-display text-[22px] font-semibold leading-snug text-white">2. Information We Collect</h2>
+            <h3 className="mb-2 text-[16px] font-semibold text-white">2.1 Personal Information</h3>
             <p className="text-muted-foreground mb-4">When you register for an account, we collect:</p>
             <ul className="list-disc pl-6 text-muted-foreground space-y-2">
               <li>Email address</li>
@@ -54,7 +45,7 @@ export default function PrivacyPage() {
               <li>Payment information (processed securely by Stripe)</li>
             </ul>
 
-            <h3 className="text-xl font-medium mb-2 mt-6">2.2 Usage Information</h3>
+            <h3 className="mb-2 mt-6 text-[16px] font-semibold text-white">2.2 Usage Information</h3>
             <p className="text-muted-foreground mb-4">We automatically collect:</p>
             <ul className="list-disc pl-6 text-muted-foreground space-y-2">
               <li>Device information (browser type, operating system)</li>
@@ -65,7 +56,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold mb-4">3. How We Use Your Information</h2>
+            <h2 className="mb-3 scroll-mt-24 font-display text-[22px] font-semibold leading-snug text-white">3. How We Use Your Information</h2>
             <p className="text-muted-foreground mb-4">We use collected information to:</p>
             <ul className="list-disc pl-6 text-muted-foreground space-y-2">
               <li>Provide and maintain our services</li>
@@ -78,7 +69,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold mb-4">4. Data Storage and Security</h2>
+            <h2 className="mb-3 scroll-mt-24 font-display text-[22px] font-semibold leading-snug text-white">4. Data Storage and Security</h2>
             <p className="text-muted-foreground mb-4">
               Your data is stored securely using industry-standard practices:
             </p>
@@ -91,13 +82,18 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold mb-4">5. Third-Party Services</h2>
+            <h2 className="mb-3 scroll-mt-24 font-display text-[22px] font-semibold leading-snug text-white">5. Third-Party Services</h2>
             <p className="text-muted-foreground mb-4">We use the following third-party services:</p>
             <ul className="list-disc pl-6 text-muted-foreground space-y-2">
               <li><strong>Supabase:</strong> Authentication and database</li>
               <li><strong>Stripe:</strong> Payment processing</li>
-              <li><strong>Replicate:</strong> AI model hosting for image generation</li>
-              <li><strong>Vercel:</strong> Website hosting and analytics</li>
+              <li><strong>Runware:</strong> AI image generation (your prompt and, for edits and animations, your sprite are sent to generate the result)</li>
+              <li><strong>Anthropic (Claude):</strong> prompt translation, animation planning and character rigging</li>
+              <li><strong>Cloudflare:</strong> image storage (R2) and backup AI generation</li>
+              <li><strong>Resend:</strong> transactional and account emails</li>
+              <li><strong>Vercel:</strong> website hosting and anonymous analytics</li>
+              <li><strong>Google AdSense:</strong> ads on guide articles and comparisons for signed-out visitors (see Cookies)</li>
+              <li><strong>Google Analytics:</strong> anonymous usage statistics (pages visited, device type); in the UK and EEA only after you accept cookies</li>
             </ul>
             <p className="text-muted-foreground mt-4">
               Each of these services has their own privacy policy governing their use of your data.
@@ -105,14 +101,17 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold mb-4">6. Cookies</h2>
+            <h2 className="mb-3 scroll-mt-24 font-display text-[22px] font-semibold leading-snug text-white">6. Cookies</h2>
             <p className="text-muted-foreground">
-              We use essential cookies to maintain your session and preferences. We may also use analytics cookies to understand how you use our service. You can control cookie settings in your browser.
+              We use essential cookies to maintain your session and preferences, and privacy-friendly analytics to understand how the service is used.
+            </p>
+            <p className="text-muted-foreground mt-4">
+              Guide articles and comparison pages show ads from Google AdSense to visitors who are not signed in. Google and its partners use cookies to serve ads based on your visits to this and other websites. You can opt out of personalised advertising in <a href="https://adssettings.google.com" className="text-[#FFC857] underline underline-offset-2" target="_blank" rel="noopener noreferrer">Google Ads Settings</a>; see also <a href="https://policies.google.com/technologies/ads" className="text-[#FFC857] underline underline-offset-2" target="_blank" rel="noopener noreferrer">how Google uses data from partner sites</a>. Visitors in the UK and EEA are asked for consent before personalised ads are shown. Signed-in members never see ads. You can control cookies in your browser settings.
             </p>
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold mb-4">7. Your Rights (GDPR)</h2>
+            <h2 className="mb-3 scroll-mt-24 font-display text-[22px] font-semibold leading-snug text-white">7. Your Rights (GDPR)</h2>
             <p className="text-muted-foreground mb-4">If you are in the European Union, you have the right to:</p>
             <ul className="list-disc pl-6 text-muted-foreground space-y-2">
               <li>Access your personal data</li>
@@ -123,37 +122,37 @@ export default function PrivacyPage() {
               <li>Withdraw consent at any time</li>
             </ul>
             <p className="text-muted-foreground mt-4">
-              To exercise these rights, contact us at support@sprite-lab.com.
+              To exercise these rights, contact us at spritelab.contact@gmail.com.
             </p>
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold mb-4">8. Data Retention</h2>
+            <h2 className="mb-3 scroll-mt-24 font-display text-[22px] font-semibold leading-snug text-white">8. Data Retention</h2>
             <p className="text-muted-foreground">
               We retain your data for as long as your account is active. If you delete your account, we will delete your personal data within 30 days, except where we are required to retain it for legal purposes.
             </p>
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold mb-4">9. Children&apos;s Privacy</h2>
+            <h2 className="mb-3 scroll-mt-24 font-display text-[22px] font-semibold leading-snug text-white">9. Children&apos;s Privacy</h2>
             <p className="text-muted-foreground">
               Our service is not intended for children under 13 years of age. We do not knowingly collect personal information from children under 13.
             </p>
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold mb-4">10. Changes to This Policy</h2>
+            <h2 className="mb-3 scroll-mt-24 font-display text-[22px] font-semibold leading-snug text-white">10. Changes to This Policy</h2>
             <p className="text-muted-foreground">
               We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the &ldquo;Last updated&rdquo; date.
             </p>
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold mb-4">11. Contact Us</h2>
+            <h2 className="mb-3 scroll-mt-24 font-display text-[22px] font-semibold leading-snug text-white">11. Contact Us</h2>
             <p className="text-muted-foreground">
               If you have questions about this Privacy Policy, please contact us at:{" "}
-              <a href="mailto:support@sprite-lab.com" className="text-primary hover:underline">
-                support@sprite-lab.com
+              <a href="mailto:spritelab.contact@gmail.com" className="text-[#FFC857] underline-offset-4 hover:underline">
+                spritelab.contact@gmail.com
               </a>
             </p>
           </section>

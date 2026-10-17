@@ -19,6 +19,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Opt-in: every run makes paid Claude calls, and the learned prompts are
+    // not used by the current FLUX.2 pipeline. Set AUTO_LEARNING_ENABLED=true
+    // to turn it back on.
+    if (process.env.AUTO_LEARNING_ENABLED !== "true") {
+      return NextResponse.json({ success: true, skipped: true, reason: "AUTO_LEARNING_ENABLED is not set" });
+    }
+
     // Sprawdź czy mamy klucz Anthropic
     if (!process.env.ANTHROPIC_API_KEY) {
       console.log("[CRON] ⚠️ ANTHROPIC_API_KEY not configured, skipping");

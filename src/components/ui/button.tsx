@@ -9,23 +9,23 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-gradient-to-b from-primary to-[#e55a1f] text-primary-foreground shadow-[0_2px_8px_rgba(255,107,44,0.25),inset_0_1px_0_rgba(255,255,255,0.15)] hover:shadow-[0_4px_16px_rgba(255,107,44,0.35),inset_0_1px_0_rgba(255,255,255,0.15)] hover:brightness-110 hover:-translate-y-0.5",
+          "bg-gradient-to-b from-primary to-[#E08600] text-primary-foreground shadow-[0_2px_8px_rgba(255, 163, 0,0.25),inset_0_1px_0_rgba(255,255,255,0.15)] hover:shadow-[0_4px_16px_rgba(255, 163, 0,0.35),inset_0_1px_0_rgba(255,255,255,0.15)] hover:brightness-110 hover:-translate-y-0.5",
         destructive:
           "bg-gradient-to-b from-destructive to-[#dc2626] text-destructive-foreground shadow-[0_2px_8px_rgba(239,68,68,0.25),inset_0_1px_0_rgba(255,255,255,0.1)] hover:shadow-[0_4px_16px_rgba(239,68,68,0.35)] hover:brightness-110 hover:-translate-y-0.5",
         outline:
-          "border border-white/[0.08] bg-white/[0.02] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:bg-white/[0.06] hover:border-primary/30 hover:shadow-[0_0_15px_rgba(255,107,44,0.08),inset_0_1px_0_rgba(255,255,255,0.04)] text-foreground",
+          "border border-white/[0.08] bg-white/[0.02] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:bg-white/[0.06] hover:border-primary/30 hover:shadow-[0_0_15px_rgba(255, 163, 0,0.08),inset_0_1px_0_rgba(255,255,255,0.04)] text-foreground",
         secondary:
           "bg-gradient-to-b from-secondary to-[#161a28] text-secondary-foreground border border-white/[0.06] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:border-white/[0.1] hover:bg-gradient-to-b hover:from-[#222640] hover:to-secondary",
         ghost:
           "hover:bg-white/[0.06] hover:text-foreground text-muted-foreground",
         link:
-          "text-primary underline-offset-4 hover:underline hover:text-[#ff7a42]",
+          "text-primary underline-offset-4 hover:underline hover:text-[#FFB733]",
         premium:
-          "bg-gradient-to-r from-primary via-[#ff7a42] to-[#f59e0b] text-white shadow-[0_2px_12px_rgba(255,107,44,0.3),inset_0_1px_0_rgba(255,255,255,0.2)] hover:shadow-[0_4px_20px_rgba(255,107,44,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] hover:-translate-y-0.5 hover:brightness-110",
+          "bg-gradient-to-r from-primary via-[#FFB733] to-[#f59e0b] text-white shadow-[0_2px_12px_rgba(255, 163, 0,0.3),inset_0_1px_0_rgba(255,255,255,0.2)] hover:shadow-[0_4px_20px_rgba(255, 163, 0,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] hover:-translate-y-0.5 hover:brightness-110",
         neo:
           "sl-cta rounded-xl text-white",
         subtle:
-          "bg-gradient-to-b from-[#171d28] to-[#141821] border border-white/[0.08] text-white/80 hover:text-white hover:border-white/[0.14] hover:shadow-[0_6px_16px_rgba(0,0,0,0.25)]",
+          "bg-gradient-to-b from-[#171d28] to-[#1B2446] border border-white/[0.08] text-white/80 hover:text-white hover:border-white/[0.14] hover:shadow-[0_6px_16px_rgba(0,0,0,0.25)]",
         glass:
           "backdrop-blur-md bg-white/[0.03] border border-white/[0.1] text-white/80 hover:text-white hover:bg-white/[0.07] hover:border-white/[0.16]",
       },

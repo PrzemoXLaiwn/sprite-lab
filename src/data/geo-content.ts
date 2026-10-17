@@ -8,8 +8,20 @@ export interface Faq { q: string; a: string }
 
 export const HOME_FAQ: Faq[] = [
   {
+    q: "Can I get my character from 4 or 8 directions?",
+    a: "Yes. In Animate, pick \"4 directions\" or \"8 directions\" for any character or creature and SpriteLab draws the same sprite from the front, sides and back (every 45° for 8) — same size, same ground line, one view per frame. It's made for top-down and isometric games.",
+  },
+  {
+    q: "Do I need a powerful computer or to install anything?",
+    a: "No. SpriteLab runs in the browser on Windows, Mac, Linux and phones — the AI runs on our servers, so any device works.",
+  },
+  {
     q: "What is SpriteLab?",
     a: "SpriteLab is an AI game asset generator for indie game developers. You describe an asset in a sentence and get a game-ready 2D sprite — a transparent PNG, with pixel art snapped to a real pixel grid — that you can animate into a sprite sheet and drop into Unity, Godot or GameMaker.",
+  },
+  {
+    q: "Is SpriteLab related to Code.org's Sprite Lab?",
+    a: "No. Sprite Lab on Code.org is a free coding course for students. SpriteLab (sprite-lab.com) is a separate, independent tool that uses AI to make sprites, animations and sprite sheets for people building their own games. The two aren't connected, and a Code.org account doesn't work here.",
   },
   {
     q: "How is it different from a general AI image generator?",
@@ -41,7 +53,7 @@ export const HOME_FAQ: Faq[] = [
   },
   {
     q: "How much does it cost?",
-    a: "You can try it 3 times without an account and get 10 free credits when you sign up — no credit card needed. A standard sprite costs 1 credit, HD quality 3 credits and animations 1 credit per frame. Monthly plans start at £5 for 250 credits, and one-off credit packs are available.",
+    a: "You can try it 3 times without an account and get 10 free credits when you sign up — no credit card needed. A standard sprite costs 1 credit, HD quality 3 credits an idle loop 3 credits and other animations 7–12 credits. Monthly plans start at £5 for 250 credits, and one-off credit packs are available.",
   },
   {
     q: "Do credits expire?",

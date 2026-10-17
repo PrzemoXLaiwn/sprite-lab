@@ -12,7 +12,7 @@ export default function DashboardHomeLoading() {
         {Array.from({ length: 3 }).map((_, i) => (
           <div
             key={i}
-            className="rounded-2xl border border-white/[0.06] bg-[#0E1016] p-5"
+            className="rounded-2xl border border-white/[0.06] bg-[#19223F] p-5"
             style={{ animationDelay: `${i * 100}ms` }}
           >
             <div className="mb-3 h-3 w-20 animate-pulse rounded bg-white/[0.06]" />
@@ -24,13 +24,13 @@ export default function DashboardHomeLoading() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Recent generations */}
-        <div className="rounded-2xl border border-white/[0.06] bg-[#0E1016] p-6 lg:col-span-2">
+        <div className="rounded-2xl border border-white/[0.06] bg-[#19223F] p-6 lg:col-span-2">
           <div className="mb-5 h-4 w-40 animate-pulse rounded bg-white/[0.06]" />
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
-                className="aspect-square animate-pulse rounded-xl bg-[#151922]"
+                className="aspect-square animate-pulse rounded-xl bg-[#212B4E]"
                 style={{ animationDelay: `${i * 50}ms` }}
               />
             ))}
@@ -38,7 +38,7 @@ export default function DashboardHomeLoading() {
         </div>
 
         {/* Quick actions */}
-        <div className="space-y-2 rounded-2xl border border-white/[0.06] bg-[#0E1016] p-3">
+        <div className="space-y-2 rounded-2xl border border-white/[0.06] bg-[#19223F] p-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="h-14 animate-pulse rounded-xl bg-white/[0.03]" />
           ))}

@@ -105,6 +105,8 @@ export const editImageSchema = z.object({
     .max(500, "Edit description too long. Maximum 500 characters."),
   originalGeneration: originalGenerationInput,
   strength: z.number().min(0.05).max(1).optional(),
+  /** Painted area (PNG data URL, alpha = may change). */
+  mask: z.string().max(3_000_000).optional(),
 });
 
 /** Body for /api/upscale */

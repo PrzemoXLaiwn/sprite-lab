@@ -111,7 +111,7 @@ function CreditCheckoutForm({ pack, packDetails }: { pack: string; packDetails: 
   if (success) {
     return (
       <InlineSuccess title="Payment successful">
-        <span className="font-mono text-[#FFB27A]">+{packDetails.total} credits</span> added to your account
+        <span className="font-mono text-[#FFC857]">+{packDetails.total} credits</span> added to your account
         {packDetails.bonus > 0 && (
           <span className="mt-1 block text-[12px] text-emerald-200">Includes {packDetails.bonus} bonus credits</span>
         )}
@@ -213,14 +213,14 @@ export default function CreditPackCheckoutPage() {
           <SummaryCard highlight>
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2">
-                <Coins className="h-4 w-4 text-[#FF8A3D]" />
+                <Coins className="h-4 w-4 text-[#FFA300]" />
                 <h2 className="font-display text-[18px] font-semibold text-white">{packDetails.name} pack</h2>
               </div>
               <CreditChip>{packDetails.total} credits</CreditChip>
             </div>
             <div className="mt-5 flex items-baseline gap-1.5">
               <span className="font-sans tracking-tight tabular-nums text-[32px] font-semibold leading-none text-white">{priceLabel}</span>
-              <span className="font-mono text-[12px] text-[#8B93A5]">one-time</span>
+              <span className="font-mono text-[12px] text-[#9AA1CC]">one-time</span>
             </div>
             <div className="mt-5 border-t border-white/[0.06] pt-2">
               <SummaryRow label="Credits" value={packDetails.credits} />

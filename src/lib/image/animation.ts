@@ -28,6 +28,8 @@ export interface AnimationResult {
   frameHeight: number;
   /** Individual frame PNGs (transparent), in order. */
   frames: Buffer[];
+  /** Intended playback speed, when the generator knows better than the default. */
+  fps?: number;
 }
 
 export interface Raw { data: Buffer; width: number; height: number }
@@ -48,6 +50,8 @@ export interface AssembleOptions {
   frameSize?: number;
   fps?: number;
   anchor?: FrameAnchor;
+  /** Line bodies up frame to frame (default true). Off for rotation sheets. */
+  alignBodies?: boolean;
 }
 
 /**
@@ -57,9 +61,11 @@ export interface AssembleOptions {
  */
 export interface Frame extends Raw {
   cell?: { x: number; y: number };
+  /** Some edge of this piece was cut by us (not a natural white gap) — it may slice a figure. */
+  cut?: boolean;
 }
 
-interface Piece { raw: Raw; x: number; y: number }
+interface Piece { raw: Raw; x: number; y: number; cut?: boolean }
 
 /** Grid image → finished animation (extract + assemble). */
 export async function buildAnimation(
@@ -80,7 +86,9 @@ export async function extractFrames(gridImage: Buffer, cols: number, rows: numbe
   // 1. Key the whole sheet at once — the white gutters connect every cell to
   // the border, so one flood fill reaches all of them
   removeGridLines(full);
-  keySpriteBackground(full, { tolerance: 32, fringePasses: 2, areaScale: 1 / (cols * rows) });
+  // Enclosed gaps (between legs and a tail) are judged per sprite, a quarter
+  // of a cell: painted styles have no dark outline to recognise them by
+  keySpriteBackground(full, { tolerance: 32, fringePasses: 2, areaScale: 1 / (cols * rows * 4) });
   removeSpecks(full, 24);
 
   // 2. Find the frames. Models don't always keep the requested layout (a 3×2
@@ -93,7 +101,9 @@ export async function extractFrames(gridImage: Buffer, cols: number, rows: numbe
     pieces = [];
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
-        pieces.push({ raw: crop(full, xs[c], ys[r], xs[c + 1] - xs[c], ys[r + 1] - ys[r]), x: xs[c], y: ys[r] });
+        const w = xs[c + 1] - xs[c], h = ys[r + 1] - ys[r];
+        if (w <= 0 || h <= 0) continue; // degenerate cut on a tiny sheet
+        pieces.push({ raw: crop(full, xs[c], ys[r], w, h), x: xs[c], y: ys[r], cut: true });
       }
     }
   }
@@ -103,7 +113,7 @@ export async function extractFrames(gridImage: Buffer, cols: number, rows: numbe
     const b = bounds(piece.raw);
     if (!b) continue; // the model left a cell empty — skip it rather than flash a blank frame
     const sprite = crop(piece.raw, b.x0, b.y0, b.x1 - b.x0 + 1, b.y1 - b.y0 + 1);
-    out.push({ ...sprite, absX: piece.x + b.x0, absY: piece.y + b.y0 });
+    out.push({ ...sprite, absX: piece.x + b.x0, absY: piece.y + b.y0, cut: piece.cut });
   }
 
   // Record where each sprite sits in its nominal grid cell — only trustworthy
@@ -115,11 +125,31 @@ export async function extractFrames(gridImage: Buffer, cols: number, rows: numbe
   });
   return out.map((f, i) => {
     const frame: Frame = { data: f.data, width: f.width, height: f.height };
+    if (f.cut) frame.cut = true;
     if (matches) {
       frame.cell = { x: ((i % cols) + 0.5) * cw - f.absX, y: (Math.floor(i / cols) + 1) * ch - f.absY };
     }
     return frame;
   });
+}
+
+/** A frame we cut out ourselves whose edge runs straight through solid pixels — half a figure. */
+export function isSlicedFrame(f: Frame): boolean {
+  return f.cut === true && hasCutEdge(f);
+}
+
+/**
+ * True when a cut-out sprite has a straight, mostly-filled side or top edge —
+ * the mark of a figure sliced by a fallback grid cut (a real outline only
+ * touches its bounding box at a few pixels; measured: sliced ≥0.7, whole ≤0.3).
+ */
+export function hasCutEdge(f: Raw, threshold = 0.6): boolean {
+  if (f.width < 4 || f.height < 4) return false;
+  const opaque = (x: number, y: number) => f.data[(y * f.width + x) * 4 + 3] > 128;
+  let left = 0, right = 0, top = 0;
+  for (let y = 0; y < f.height; y++) { if (opaque(0, y)) left++; if (opaque(f.width - 1, y)) right++; }
+  for (let x = 0; x < f.width; x++) if (opaque(x, 0)) top++;
+  return left / f.height > threshold || right / f.height > threshold || top / f.width > threshold;
 }
 
 /**
@@ -128,8 +158,10 @@ export async function extractFrames(gridImage: Buffer, cols: number, rows: numbe
  */
 export async function extractTileFrames(gridImage: Buffer, cols: number, rows: number): Promise<Buffer[]> {
   const meta = await sharp(gridImage).metadata();
-  const cw = Math.floor(meta.width! / cols), ch = Math.floor(meta.height! / rows);
+  const cw = Math.floor((meta.width ?? 0) / cols), ch = Math.floor((meta.height ?? 0) / rows);
   const inset = Math.round(Math.min(cw, ch) * 0.04);
+  // sharp throws on an empty / out-of-range extract
+  if (cw - inset * 2 < 1 || ch - inset * 2 < 1) throw new Error(`Tile sheet too small (${meta.width}×${meta.height}) for ${cols}×${rows} frames`);
   const frames: Buffer[] = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -144,6 +176,7 @@ export async function extractTileFrames(gridImage: Buffer, cols: number, rows: n
 
 /** Full-square tile frames → sheet + GIF on one pixel grid and palette. */
 export async function assembleTileAnimation(frames: Buffer[], opts: { pixel: boolean; frameSize?: number; fps?: number }): Promise<AnimationResult> {
+  if (frames.length === 0) throw new Error("No tile frames to assemble");
   const size = opts.frameSize ?? 256;
   const grid = opts.pixel ? PIXEL_GRID / 2 : size;
   const small: Raw[] = [];
@@ -188,7 +221,7 @@ export async function assembleAnimation(sprites: Frame[], opts: AssembleOptions)
     }
   });
   if (placed.length < 2) throw new Error("Too few frames found in the animation sheet");
-  if (anchor === "ground" || anchor === "air") alignBodies(placed);
+  if ((anchor === "ground" || anchor === "air") && opts.alignBodies !== false) alignBodies(placed);
   if (anchor === "air") {
     // Lowest frame sits on the baseline; the rest keep their height above it
     const lowest = Math.min(...placed.map((p) => p.ay - p.raw.height));
@@ -213,6 +246,11 @@ export async function assembleAnimation(sprites: Frame[], opts: AssembleOptions)
     blit(p.raw, out, Math.round(anchorX - p.ax), Math.round(anchorY - p.ay));
     return out;
   });
+
+  // Every frame is a fresh drawing, so brightness and tint drift a little
+  // between frames ("boiling"). Pull each frame's colour statistics to the
+  // animation's median so the whole loop shares one look.
+  matchColours(aligned);
 
   // 4. Scale: frame height = frameSize, width follows the canvas
   const frames: Buffer[] = [];
@@ -271,9 +309,13 @@ export async function encodeGif(frames: Buffer[], fps: number, background?: stri
   const input = background
     ? await Promise.all(frames.map((f) => sharp(f).flatten({ background }).png().toBuffer()))
     : frames;
-  return sharp(input, { join: { animated: true } })
+  // fps ≤ 0 / NaN would make an Infinity / NaN delay
+  const safeFps = Number.isFinite(fps) && fps > 0 ? Math.min(fps, 50) : 8;
+  if (input.length === 0) throw new Error("No frames to encode");
+  // join needs ≥2 images — a single frame is a still GIF
+  return sharp(input.length === 1 ? input[0] : input, input.length === 1 ? {} : { join: { animated: true } })
     .gif({
-      delay: Array(input.length).fill(Math.round(1000 / fps)),
+      delay: Array(input.length).fill(Math.round(1000 / safeFps)),
       loop: 0,
       reuse: false,
       dither: 0,
@@ -316,7 +358,8 @@ export async function interleave(keys: Frame[], betweens: Frame[]): Promise<Fram
 export async function referenceGrid(frames: Buffer[], cols: number, rows: number, size: number): Promise<Buffer> {
   const cellW = Math.floor(size / cols), cellH = Math.floor(size / rows);
   const inset = Math.round(Math.min(cellW, cellH) * 0.06);
-  const tiles = await Promise.all(frames.map((f) =>
+  // Frames beyond the layout would be composited off the page (sharp throws)
+  const tiles = await Promise.all(frames.slice(0, cols * rows).map((f) =>
     sharp(f)
       .resize(cellW - inset * 2, cellH - inset * 2, { fit: "contain", background: { r: 255, g: 255, b: 255, alpha: 0 }, kernel: "nearest" })
       .png()
@@ -346,6 +389,8 @@ function detectFrames(full: Raw, cols: number, rows: number): Piece[] {
   // empty band of ≥3px separates them; then cut over-tall bands when the
   // model clearly drew more rows than we found.
   let bands = runs(rowProfile, Math.max(3, Math.round(height * 0.004)), height * 0.08);
+  // Edges at real white gaps; anything else was cut by us (and may slice a figure)
+  const naturalRows = new Set(bands.flat());
   if (bands.length < rows) bands = splitOversized(bands, rowProfile, height / rows, rows);
   const frames: Piece[] = [];
   for (const [y0, y1] of bands) {
@@ -354,6 +399,7 @@ function detectFrames(full: Raw, cols: number, rows: number): Piece[] {
       for (let x = 0; x < width; x++) if (full.data[(y * width + x) * 4 + 3] >= 128) ink[x]++;
     }
     let segs = runs(ink, Math.max(3, Math.round(width * 0.004)), 0);
+    const naturalCols = new Set(segs.flat());
     if (segs.length < cols) {
       // Two touching sprites are both full height; a sprite plus its breath
       // of fire is not — leave those together
@@ -392,24 +438,35 @@ function detectFrames(full: Raw, cols: number, rows: number): Piece[] {
       segs.splice(Math.min(i, j), 0, merged);
       i = 0;
     }
-    // Split pieces holding two sprites that touch
-    const med = median();
+    // Split pieces holding two sprites that touch (a tail or sword crossing
+    // into the next cell). The reference width is the narrower of the typical
+    // piece and one nominal cell — with two pieces in a row, the "median" is
+    // the merged one itself. Both halves must look like whole sprites.
+    const sorted = segs.map(([a, b]) => b - a).sort((p, q) => p - q);
+    const ref = Math.min(sorted[Math.floor((sorted.length - 1) / 2)], width / cols);
     const out: [number, number][] = [];
     for (const [a, b] of segs) {
-      const parts = segs.length > 1 ? Math.round((b - a) / med) : 1;
-      if (parts < 2 || (b - a) < med * 1.7) { out.push([a, b]); continue; }
-      let start = a;
+      const parts = Math.min(cols, Math.round((b - a) / ref));
+      if (parts < 2 || (b - a) < ref * 1.6) { out.push([a, b]); continue; }
+      const cuts: number[] = [];
       for (let k = 1; k < parts; k++) {
         const nominal = Math.round(a + ((b - a) * k) / parts);
-        const r = Math.round((b - a) / parts * 0.2);
+        const r = Math.round(((b - a) / parts) * 0.25);
         let cut = nominal, min = Infinity;
-        for (let x = nominal - r; x <= nominal + r; x++) if (ink[x] < min) { min = ink[x]; cut = x; }
-        out.push([start, cut]);
-        start = cut;
+        for (let x = Math.max(a + 1, nominal - r); x <= Math.min(b - 1, nominal + r); x++) if (ink[x] < min) { min = ink[x]; cut = x; }
+        cuts.push(cut);
       }
-      out.push([start, b]);
+      const edges = [a, ...cuts, b];
+      const stats = edges.slice(0, -1).map((x, k) => pieceStats(full, x, edges[k + 1], y0, y1));
+      const maxH = Math.max(...stats.map((s) => s.h)), maxM = Math.max(...stats.map((s) => s.mass));
+      const whole = stats.every((s) => s.h >= maxH * 0.6 && s.mass >= maxM * 0.45);
+      if (!whole) { out.push([a, b]); continue; }
+      for (let k = 0; k < edges.length - 1; k++) out.push([edges[k], edges[k + 1]]);
     }
-    for (const [a, b] of out) frames.push({ raw: crop(full, a, y0, b - a, y1 - y0), x: a, y: y0 });
+    const bandCut = !naturalRows.has(y0) || !naturalRows.has(y1);
+    for (const [a, b] of out) {
+      frames.push({ raw: crop(full, a, y0, b - a, y1 - y0), x: a, y: y0, cut: bandCut || !naturalCols.has(a) || !naturalCols.has(b) });
+    }
   }
   return frames;
 }
@@ -529,6 +586,49 @@ function alignBodies(placed: { raw: Raw; ax: number; ay: number }[]): void {
   }
 }
 
+/**
+ * Per-channel mean / spread of each frame's opaque pixels, moved most of the
+ * way to the median across frames. Fixes global drift (one frame a bit
+ * darker or greener) without touching shapes.
+ */
+function matchColours(frames: Raw[], strength = 0.85): void {
+  if (frames.length < 2) return;
+  // Measure only the body — pixels opaque in most frames — so a breath of
+  // fire or a sword trail in some frames doesn't skew the comparison
+  const size = frames[0].data.length;
+  if (frames.some((f) => f.data.length !== size)) return;
+  const hits = new Uint16Array(size / 4);
+  for (const f of frames) for (let i = 0; i < size; i += 4) if (f.data[i + 3] >= 128) hits[i / 4]++;
+  const body = (i: number) => hits[i / 4] >= frames.length * 0.7;
+  const stats = frames.map((f) => {
+    const sum = [0, 0, 0], sq = [0, 0, 0];
+    let n = 0;
+    for (let i = 0; i < f.data.length; i += 4) {
+      if (f.data[i + 3] < 128 || !body(i)) continue;
+      for (let c = 0; c < 3; c++) { sum[c] += f.data[i + c]; sq[c] += f.data[i + c] * f.data[i + c]; }
+      n++;
+    }
+    const mean = sum.map((v) => (n ? v / n : 0));
+    const sd = sq.map((v, c) => (n ? Math.sqrt(Math.max(1, v / n - mean[c] * mean[c])) : 1));
+    return { mean, sd, n };
+  });
+  if (stats.some((s) => s.n === 0)) return;
+  const med = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+  const tMean = [0, 1, 2].map((c) => med(stats.map((s) => s.mean[c])));
+  const tSd = [0, 1, 2].map((c) => med(stats.map((s) => s.sd[c])));
+  frames.forEach((f, k) => {
+    const { mean, sd } = stats[k];
+    for (let i = 0; i < f.data.length; i += 4) {
+      if (f.data[i + 3] === 0) continue;
+      for (let c = 0; c < 3; c++) {
+        const v = f.data[i + c];
+        const matched = (v - mean[c]) * (tSd[c] / sd[c]) + tMean[c];
+        f.data[i + c] = Math.max(0, Math.min(255, Math.round(v + (matched - v) * strength)));
+      }
+    }
+  });
+}
+
 /** Horizontal centre of the lowest part of the sprite (feet, base of a slime). */
 function footCenter(raw: Raw): number {
   const from = Math.floor(raw.height * 0.88);
@@ -588,27 +688,74 @@ function splitPoints(ink: number[], parts: number): number[] {
   return cuts;
 }
 
-/** Models sometimes draw divider lines despite being told not to. */
+/**
+ * Models sometimes draw divider lines or a whole graph-paper grid despite
+ * being told not to. A line runs across the full sheet, so a column (row)
+ * that is non-white for ~all of its length is one — sprites never span the
+ * whole sheet. Lines are 1–4px wide: on the background they're painted
+ * white, and where they cross a sprite the gap is filled from the pixels on
+ * either side (whitening it would cut a seam through the body).
+ */
 function removeGridLines(raw: Raw) {
   const { width, height, data } = raw;
-  const isLine = (i: number) => {
-    const luma = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-    return luma < 235;
-  };
-  for (let x = 0; x < width; x++) {
-    let n = 0;
-    for (let y = 0; y < height; y++) if (isLine((y * width + x) * 4)) n++;
-    if (n > height * 0.92) for (let y = 0; y < height; y++) whiten(data, (y * width + x) * 4);
-  }
-  for (let y = 0; y < height; y++) {
-    let n = 0;
-    for (let x = 0; x < width; x++) if (isLine((y * width + x) * 4)) n++;
-    if (n > width * 0.92) for (let x = 0; x < width; x++) whiten(data, (y * width + x) * 4);
-  }
-}
+  const luma = (i: number) => 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+  // Anti-aliased line edges are barely grey (luma ~240) but still too dark to
+  // key out, and they fence off background gaps — detect with a looser bar
+  const OFF_WHITE = 248;
 
-function whiten(data: Buffer, i: number) {
-  data[i] = 255; data[i + 1] = 255; data[i + 2] = 255;
+  const findLines = (len: number, across: number, at: (pos: number, k: number) => number): [number, number][] => {
+    const flagged: number[] = [];
+    const white = (q: number, k: number) => q < 0 || q >= len || luma(at(q, k)) >= OFF_WHITE;
+    for (let pos = 0; pos < len; pos++) {
+      // `any`: the line (±2px — hand-drawn lines drift) is non-white here.
+      // `thin`: …and the background 5px to either side is white, i.e. a thin
+      // stroke on the page rather than part of a sprite. Models often draw
+      // graph paper only in parts of the sheet, so full length isn't required:
+      // thin strokes over ≥30% of the length, in both halves (one sprite never
+      // spans two rows of the sheet), or a solid divider over ≥90%.
+      let any = 0, thinA = 0, thinB = 0;
+      for (let k = 0; k < across; k++) {
+        let hit = false;
+        for (let d = -2; d <= 2 && !hit; d++) if (!white(pos + d, k)) hit = true;
+        if (!hit) continue;
+        any++;
+        if (white(pos - 5, k) && white(pos + 5, k)) { if (k < across / 2) thinA++; else thinB++; }
+      }
+      const thin = thinA + thinB;
+      if (any > across * 0.9 || (thin > across * 0.3 && Math.min(thinA, thinB) > across * 0.06)) flagged.push(pos);
+    }
+    // Group neighbours into lines; anything wider than a few pixels isn't a line
+    const groups: [number, number][] = [];
+    for (const p of flagged) {
+      const g = groups[groups.length - 1];
+      if (g && p === g[1] + 1) g[1] = p;
+      else groups.push([p, p]);
+    }
+    return groups.filter(([a, b]) => b - a < 12);
+  };
+
+  const repair = (a: number, b: number, len: number, across: number, at: (pos: number, k: number) => number) => {
+    const lo = Math.max(0, a - 2), hi = Math.min(len - 1, b + 2);
+    for (let k = 0; k < across; k++) {
+      const L = at(lo, k), R = at(hi, k);
+      const bothWhite = luma(L) >= OFF_WHITE - 8 && luma(R) >= OFF_WHITE - 8;
+      for (let pos = a; pos <= b; pos++) {
+        const i = at(pos, k);
+        if (bothWhite || lo === a || hi === b) { data[i] = 255; data[i + 1] = 255; data[i + 2] = 255; continue; }
+        const t = (pos - lo) / (hi - lo);
+        for (let c = 0; c < 3; c++) data[i + c] = Math.round(data[L + c] * (1 - t) + data[R + c] * t);
+      }
+    }
+  };
+
+  const col = (x: number, y: number) => (y * width + x) * 4;
+  const row = (y: number, x: number) => (y * width + x) * 4;
+  // Find both directions before repairing so crossings don't hide each other
+  const cols = findLines(width, height, col);
+  const rows = findLines(height, width, row);
+  // The band search already widens each line by 2px on both sides
+  for (const [a, b] of cols) repair(a, b, width, height, col);
+  for (const [a, b] of rows) repair(a, b, height, width, row);
 }
 
 /** Clear connected specks smaller than `minSize` pixels (keying noise). */
@@ -645,7 +792,20 @@ function dropIntruders(raw: Raw) {
       const flat = s.y1 - s.y0 + 1 <= bodyH * 0.12;
       label = flat && (s.y0 > body.y1 + gap || s.y1 < body.y0 - gap);
     }
-    if (intruder || speck || label) for (const p of c.pixels) raw.data[p * 4 + 3] = 0;
+    // Leftover strokes of a drawn grid: very thin, long, grey
+    let stroke = false;
+    if (c !== main && c.size < largest * 0.05) {
+      let x0 = Infinity, x1 = -1, y0 = Infinity, y1 = -1, sat = 0;
+      for (const p of c.pixels) {
+        const x = p % raw.width, y = (p - x) / raw.width;
+        if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+        const i = p * 4;
+        sat += Math.max(raw.data[i], raw.data[i + 1], raw.data[i + 2]) - Math.min(raw.data[i], raw.data[i + 1], raw.data[i + 2]);
+      }
+      const w = x1 - x0 + 1, h = y1 - y0 + 1;
+      stroke = Math.min(w, h) <= 6 && Math.max(w, h) >= Math.min(w, h) * 8 && sat / c.size < 24;
+    }
+    if (intruder || speck || label || stroke) for (const p of c.pixels) raw.data[p * 4 + 3] = 0;
   }
 }
 

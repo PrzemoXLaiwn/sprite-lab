@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { stripe, getOrCreateStripeCustomer, CREDIT_PACKS, CreditPackName, isLaunchPromoActive } from "@/lib/stripe";
+import { prisma } from "@/lib/prisma";
+import { welcomeOfferActive } from "@/config/welcome-offer";
 
 export async function POST(request: Request) {
   try {
@@ -22,8 +24,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Credit pack not configured" }, { status: 400 });
     }
 
-    // Check if promo is active
-    const isPromoActive = isLaunchPromoActive();
+    // Pack bonus: site-wide launch promo, or the first-72h welcome offer.
+    // Decided here on the server and baked into the PaymentIntent metadata, so
+    // fulfillment credits exactly what was shown and a refund reverses it.
+    const account = await prisma.user.findUnique({ where: { id: user.id }, select: { createdAt: true } });
+    const isPromoActive = isLaunchPromoActive() || welcomeOfferActive(account?.createdAt);
     const bonusCredits = isPromoActive ? selectedPack.bonus : 0;
     const totalCredits = selectedPack.credits + bonusCredits;
 

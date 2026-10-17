@@ -3,11 +3,17 @@
 // Shared by the /animate UI and /api/animate (client-safe).
 // =============================================================================
 
-/** Frame-count options: more frames = smoother motion, larger canvas, more credits. */
+/**
+ * Frame-count options. Priced from the real cost (Oct 2026): the animation
+ * model is billed per image — ~$0.07 for a 1024 grid, ~$0.10 for 2048 — plus
+ * ~$0.02 for the Claude pose planner. At the cheapest credit we sell (~$0.024
+ * net, Starter/Studio) every option keeps a ≥35% margin. `smoothExtra` pays
+ * for the second image pass that draws the in-betweens.
+ */
 export const ANIMATION_FRAME_OPTIONS = [
-  { frames: 4, cols: 2, rows: 2, size: 1024, credits: 4, label: "4 frames", hint: "Classic retro loop" },
-  { frames: 6, cols: 3, rows: 2, size: 2048, credits: 6, label: "6 frames", hint: "Smoother" },
-  { frames: 9, cols: 3, rows: 3, size: 2048, credits: 9, label: "9 frames", hint: "Most detail" },
+  { frames: 4, cols: 2, rows: 2, size: 1024, credits: 7, smoothExtra: 5, label: "4 frames", hint: "Classic retro loop" },
+  { frames: 6, cols: 3, rows: 2, size: 2048, credits: 11, smoothExtra: 7, label: "6 frames", hint: "Smoother" },
+  { frames: 9, cols: 3, rows: 3, size: 2048, credits: 12, smoothExtra: 7, label: "9 frames", hint: "Most detail" },
 ] as const;
 export type AnimationFrameOption = (typeof ANIMATION_FRAME_OPTIONS)[number];
 
@@ -17,9 +23,138 @@ export function animationFrameOption(frames: number | null | undefined): Animati
   return ANIMATION_FRAME_OPTIONS.find((o) => o.frames === frames) ?? ANIMATION_FRAME_OPTIONS[0];
 }
 
-/** Credits for an animation: 1 per frame; smooth (AI in-betweens) doubles both. */
+/**
+ * Rigged idles: the original sprite is deformed (breathing / hovering)
+ * instead of redrawn per frame, so nothing flickers. Flat price, no AI cost.
+ */
+export const RIG_CREDITS = 3;
+export const RIG_FRAMES = 24;
+
+/** Rigid-item motions (src/lib/image/item-motion.ts): the drawing is moved, never redrawn. */
+export type ItemMotionKind = "swing" | "thrust" | "spin" | "shine" | "pulse";
+export type RigMotionKind = "breathe" | "float" | ItemMotionKind;
+
+/** Things that don't bend: a sword swings as one piece, a gem glows in place. */
+const RIGID_CATEGORIES = ["WEAPONS", "ARMOR", "CONSUMABLES", "RESOURCES", "UI_ELEMENTS"];
+
+export function isItemMotion(kind: string | null | undefined): kind is ItemMotionKind {
+  return kind === "swing" || kind === "thrust" || kind === "spin" || kind === "shine" || kind === "pulse";
+}
+
+/** Motions that are better as a rig than as redrawn frames. */
+export function rigMotionFor(id: string, label?: string, categoryId?: string | null): RigMotionKind | null {
+  const text = `${id} ${label ?? ""}`.toLowerCase();
+  if (RIGID_CATEGORIES.includes((categoryId ?? "").toUpperCase())) {
+    // Image models redraw a "swinging" sword in place and add a white arc;
+    // rotating the real drawing around its grip is what a game animator does
+    if (/\b(swing|slash|strike|chop|cleave|hack|attack|smash)/.test(text)) return "swing";
+    if (/\b(thrust|stab|lunge|poke|jab|pierce)/.test(text)) return "thrust";
+    if (/\b(spin|rotat|twirl|whirl|turn)/.test(text)) return "spin";
+    if (/\b(shine|gleam|glint|sparkle|shimmer|polish|glisten)/.test(text)) return "shine";
+    if (/\b(glow|power|charge|pulse|enchant|empower|aura|ignite|light)/.test(text)) return "pulse";
+    if (/\b(float|hover|bob|pickup|pick up|levitat|idle)/.test(text)) return "float";
+  }
+  if (/\b(walk|run|attack|jump|hit|hurt|cast|fly|swim|turn|death|die|dash)/.test(text)) return null;
+  if (/\b(hover|float|levitat|bob)/.test(text)) return "float";
+  if (/\b(idle|breath|breathing|rest|resting|stand|standing|wait|waiting|calm)\b/.test(text)) return "breathe";
+  return null;
+}
+
+/**
+ * Directional views for top-down / isometric games ("rotations"): the same
+ * sprite seen from 4 or 8 directions. One image-model pass on a 1024 (4) or
+ * 2048 (8) grid — priced like the matching animation.
+ */
+export const ROTATIONS = [
+  { id: "rotate4", kind: "views" as const, label: "4 directions", directions: 4 as const, frames: 4, cols: 2, rows: 2, size: 1024 as const, credits: 6, hint: "front · right · back · left" },
+  { id: "rotate8", kind: "views" as const, label: "8 directions", directions: 8 as const, frames: 8, cols: 3, rows: 3, size: 2048 as const, credits: 10, hint: "every 45° — isometric & top-down" },
+  { id: "walk4dir", kind: "walk" as const, label: "4-direction walk", directions: 4 as const, frames: 16, cols: 4, rows: 3, size: 2048 as const, credits: 12, hint: "RPG sheet: 4 rows × 4 steps" },
+];
+export type RotationOption = (typeof ROTATIONS)[number];
+
+export function rotationFor(id: string | null | undefined): RotationOption | null {
+  return ROTATIONS.find((r) => r.id === id) ?? null;
+}
+
+/** Things that face a direction: people and monsters. */
+export function supportsRotation(categoryId: string | null | undefined): boolean {
+  return ["CHARACTERS", "CREATURES"].includes((categoryId ?? "").toUpperCase());
+}
+
+export const DIRECTION_NAMES: Record<4 | 8, string[]> = {
+  4: ["front (facing the viewer)", "right side (profile, facing the right edge of the image)", "back (facing away from the viewer)", "left side (profile, facing the left edge of the image)"],
+  8: ["front (facing the viewer)", "front-right three-quarter view", "right side (profile, facing right)", "back-right three-quarter view (seen mostly from behind)", "back (facing away from the viewer)", "back-left three-quarter view (seen mostly from behind)", "left side (profile, facing left)", "front-left three-quarter view"],
+};
+
+/** Short labels for file names / UI, same order as DIRECTION_NAMES. */
+export const DIRECTION_KEYS: Record<4 | 8, string[]> = {
+  4: ["S", "E", "N", "W"],
+  8: ["S", "SE", "E", "NE", "N", "NW", "W", "SW"],
+};
+
+/** 4-direction walk: one row per direction (front, right, back, left), 4 steps each. */
+export function buildWalkSetPrompt(opts: { pixel: boolean; subject: string }): string {
+  const style = opts.pixel ? "pixel art" : "2D game art";
+  const steps = "4 frames of a walk cycle in place — 1: left foot forward, 2: feet passing, 3: right foot forward, 4: feet passing — arms swinging opposite to the legs";
+  return [
+    `Using the reference image, draw a top-down RPG character walking sprite sheet of EXACTLY this same ${style} sprite (${opts.subject.slice(0, 200)}).`,
+    "Identical design, colors, proportions, outline, size and art style in every frame. Held items stay in the same hand.",
+    "Layout: 3 rows of 4 figures on one blank white page, evenly spaced with wide empty white space so no two figures touch; every figure is the same height and all stand on the same invisible ground level within their row.",
+    `Row 1: facing the viewer (front), ${steps}.`,
+    `Row 2: facing right (side profile), ${steps}.`,
+    `Row 3: facing away from the viewer (back), ${steps}.`,
+    "Plain flat solid pure white background, like a blank sheet of paper. Do not draw any lines on the background: no grid, no guide lines, no boxes, no arrows, no labels or text of any kind, no ground, no shadows, no motion blur.",
+  ].join("\n");
+}
+
+/**
+ * Redraw of one walk row that came back frozen (same pose four times). Poses
+ * are spelled out per frame so the legs visibly alternate.
+ */
+export function buildWalkRowPrompt(opts: { pixel: boolean; subject: string; view: "front" | "side" | "back" }): string {
+  const style = opts.pixel ? "pixel art" : "2D game art";
+  const facing = { front: "facing the viewer (front view)", side: "facing right (side profile)", back: "facing away from the viewer (back view)" }[opts.view];
+  const poses = opts.view === "side"
+    ? [
+        "1: contact — left leg stretched far forward with the heel on the ground, right leg stretched far back, wide stride, right arm forward",
+        "2: passing — legs together under the body, right knee lifted and bent, body slightly higher",
+        "3: contact — right leg stretched far forward with the heel on the ground, left leg stretched far back, wide stride, left arm forward",
+        "4: passing — legs together under the body, left knee lifted and bent, body slightly higher",
+      ]
+    : [
+        "1: left foot stepping forward and slightly lower, right foot back, right arm forward",
+        "2: feet together, body slightly higher",
+        "3: right foot stepping forward and slightly lower, left foot back, left arm forward",
+        "4: feet together, body slightly higher",
+      ];
+  return [
+    `Using the reference image, draw 4 frames of EXACTLY this same ${style} character (${opts.subject.slice(0, 200)}) walking in place, ${facing}.`,
+    "Identical design, colors, proportions, outline, size and art style in every frame. Held items stay in the same hand.",
+    "The four poses must be clearly different from each other — the legs must visibly move:",
+    ...poses,
+    "Layout: 2 rows of 2 figures on one blank white page, in reading order, evenly spaced with wide empty white space so no two figures touch; every figure is the same height and stands on the same invisible ground level.",
+    "Plain flat solid pure white background, like a blank sheet of paper. Do not draw any lines on the background: no grid, no guide lines, no boxes, no arrows, no labels or text of any kind, no ground, no shadows, no motion blur.",
+  ].join("\n");
+}
+
+export function buildRotationPrompt(opts: { directions: 4 | 8; cols: number; rows: number; pixel: boolean; subject: string }): string {
+  const style = opts.pixel ? "pixel art" : "2D game art";
+  const names = DIRECTION_NAMES[opts.directions];
+  const empty = opts.cols * opts.rows - names.length;
+  return [
+    `Using the reference image, draw a ${opts.directions}-direction rotation sheet of EXACTLY this same ${style} sprite (${opts.subject.slice(0, 200)}) for a top-down / isometric game.`,
+    "Identical design, colors, proportions, outline, size and art style in every view. Standing in the same neutral pose — only the viewing direction changes. Held items stay in the same hand.",
+    `Layout: ${opts.rows} rows of ${opts.cols} views on one blank white page, in reading order (left to right, then top to bottom), evenly spaced with wide empty white space so no two views touch. Every view is the same height and stands on the same invisible ground level.`,
+    ...names.map((n, i) => `View ${i + 1}: ${n}.`),
+    empty > 0 ? `Leave the last ${empty === 1 ? "place" : empty + " places"} empty.` : "",
+    "Plain flat solid pure white background, like a blank sheet of paper. Do not draw any lines on the background: no grid, no guide lines, no boxes, no arrows, no labels or text of any kind, no ground, no shadows.",
+  ].filter(Boolean).join("\n");
+}
+
+/** Credits for an AI animation; smooth adds the in-between pass. */
 export function animationCredits(frames: number, smooth: boolean): number {
-  return animationFrameOption(frames).credits * (smooth ? 2 : 1);
+  const o = animationFrameOption(frames);
+  return o.credits + (smooth ? o.smoothExtra : 0);
 }
 
 /** Lowest price, shown in places that don't know the frame count yet. */
@@ -56,7 +191,6 @@ const CHARACTER: AnimationPreset[] = [
   { id: "jump", label: "Jump", anchor: "air", loop: false, frames: 6, motion: "Jump: crouch, take-off with arms up, rising, peak high in the air with legs tucked, falling, landing with knees bent — the body really leaves the ground" },
   { id: "hurt", label: "Hurt", anchor: "ground", loop: false, frames: 4, motion: "Hit reaction: flinch backwards, recoil with a pained face, stagger, recover to the stance" },
   { id: "death", label: "Defeat", anchor: "ground", loop: false, frames: 6, motion: "Defeat: stagger, knees buckle, collapse, lying down (or fading for ghosts)" },
-  { id: "turnaround", label: "Turnaround", anchor: "ground", loop: true, frames: 4, motion: "Turnaround sheet for a game: the same character standing in a neutral pose, rotated to face front (toward the viewer), right side, back (away from the viewer) and left side — one view per frame, same size and height" },
 ];
 
 const CREATURE: AnimationPreset[] = [
@@ -155,10 +289,11 @@ export function buildAnimationPrompt(opts: {
     "Identical character design, colors, proportions, outline, size, facing direction and art style in every frame — only the pose changes, and it changes clearly between frames.",
     `Animation: ${opts.motion.slice(0, 300)}.`,
     opts.consistency ? `Keep in every frame: ${opts.consistency.slice(0, 400)}` : "",
-    `Layout: a ${opts.cols} by ${opts.rows} grid (${opts.cols} columns, ${opts.rows} rows) of equal cells in reading order, left to right then top to bottom. One full sprite per cell, horizontally centred, same scale and camera angle as the reference, never touching or crossing into another cell. Every cell shares the same ground line in its lower part; when the motion leaves the ground (jump, hop, fly, float) the sprite is drawn higher in its cell by that amount.`,
+    // No "grid"/"cells" wording: it makes the model draw graph paper and divider lines
+    `Layout: ${opts.rows} rows of ${opts.cols} poses on one blank white page, in reading order (left to right, then top to bottom), evenly spaced with wide empty white space between neighbours so no two poses touch. Every pose is the same scale and camera angle as the reference, and all poses in a row stand on the same invisible ground level; when the motion leaves the ground (jump, hop, fly, float) the pose is drawn higher by that amount.`,
     "Weapons, staffs and props are rigid: they stay straight, unbroken and full length in every frame.",
   ];
-  const tail = "Plain flat solid pure white background everywhere. No grid lines, no borders, no frame numbers, no labels or captions, no text of any kind, no ground, no shadows, no motion blur.";
+  const tail = "Plain flat solid pure white background everywhere, like a blank sheet of paper. Do not draw any lines on the background: no graph paper, no grid, no guide or divider lines, no boxes or borders, no frame numbers, no labels or captions, no text of any kind, no ground, no shadows, no motion blur.";
   // The image API takes ~2900 chars: share what's left between the frames
   const fixed = head.join("\n").length + tail.length + 2;
   const perFrame = Math.max(80, Math.floor((PROMPT_LIMIT - fixed) / n) - 30);
@@ -205,16 +340,16 @@ export function buildInbetweenPrompt(opts: {
   const style = opts.pixel ? "pixel art" : "2D game art";
   const empty = opts.cols * opts.rows - opts.count;
   return [
-    `The reference image is a sprite sheet with ${opts.count} key poses of one ${style} animation (${opts.subject.slice(0, 160)}), in a ${opts.cols} by ${opts.rows} grid in reading order: left to right, then top to bottom.`,
-    `Draw a new sprite sheet with exactly the same grid layout, where cell k shows the in-between pose exactly halfway between key pose k and key pose k+1.`,
+    `The reference image is a sprite sheet with ${opts.count} key poses of one ${style} animation (${opts.subject.slice(0, 160)}), in ${opts.rows} rows of ${opts.cols} in reading order: left to right, then top to bottom.`,
+    `Draw a new sprite sheet with exactly the same layout, size and spacing, where pose k is the in-between pose exactly halfway between key pose k and key pose k+1. Every pose is drawn as large as the key poses, with wide empty white space between neighbours so no two poses touch.`,
     opts.loop
-      ? `Cell ${opts.count} is halfway between key pose ${opts.count} and key pose 1, closing the loop.`
-      : `Cell ${opts.count} is halfway between key pose ${opts.count} and key pose 1, easing back to the start.`,
+      ? `Pose ${opts.count} is halfway between key pose ${opts.count} and key pose 1, closing the loop.`
+      : `Pose ${opts.count} is halfway between key pose ${opts.count} and key pose 1, easing back to the start.`,
     "Every in-between is a genuinely new pose between its two neighbours — limbs, weapon, cloth and effects halfway along their path — never a copy of either key pose.",
-    "The body keeps the same size, height and place in its cell as the key poses. A foot or paw that is planted in both neighbouring key poses stays planted in the same spot.",
-    "Identical character design, colors, proportions, size, position inside the cell, facing direction and art style as the key poses. Weapons and props stay rigid, straight and full length.",
-    empty > 0 ? `Leave the last ${empty} cell${empty === 1 ? "" : "s"} empty.` : "",
-    "Plain flat solid pure white background. No grid lines, no borders, no numbers, no labels or captions, no text of any kind, no shadows, no motion blur.",
+    "The body keeps the same size, height and place on the page as the key poses. A foot or paw that is planted in both neighbouring key poses stays planted in the same spot.",
+    "Identical character design, colors, proportions, size, position, facing direction and art style as the key poses. Weapons and props stay rigid, straight and full length.",
+    empty > 0 ? `Leave the last ${empty} place${empty === 1 ? "" : "s"} empty.` : "",
+    "Plain flat solid pure white background, like a blank sheet of paper. Do not draw any lines on the background: no graph paper, no grid, no guide or divider lines, no boxes or borders, no numbers, no labels or captions, no text of any kind, no shadows, no motion blur.",
   ].filter(Boolean).join("\n");
 }
 

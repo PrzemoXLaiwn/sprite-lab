@@ -1,4 +1,5 @@
 "use server";
+import { mergeEmailPreferences } from "@/app/api/_lib/email-prefs";
 
 import { createClient } from "@/lib/supabase/server";
 import { getUser, updateUserProfile, getCreditTransactions, checkUsernameAvailable, UpdateProfileData } from "@/lib/database";
@@ -246,14 +247,6 @@ export async function updateEmailPreferences(
   }
 
   try {
-    // Get current preferences
-    const dbUser = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: { emailPreferences: true },
-    });
-
-    const currentPrefs = (dbUser?.emailPreferences as Record<string, unknown>) || {};
-
     // Only user-facing boolean toggles may be changed here; other keys in this
     // JSON (e.g. cron bookkeeping timestamps) are server-managed.
     const allowedKeys: (keyof EmailPreferences)[] = [
@@ -270,16 +263,9 @@ export async function updateEmailPreferences(
     }
     preferences = sanitized;
 
-    // Merge with new preferences
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        emailPreferences: {
-          ...currentPrefs,
-          ...preferences,
-        },
-      },
-    });
+    // Merge in one statement — never write back a stale copy (the same JSON
+    // holds gift / relaunch claim markers)
+    await mergeEmailPreferences(user.id, preferences as Record<string, unknown>);
 
     return { success: true };
   } catch (error) {

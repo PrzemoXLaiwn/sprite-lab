@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getUserCredits, checkAndDeductCredits, refundCredits, saveGeneration } from "@/lib/database";
+import { saveGeneration } from "@/lib/database";
 import { persistImage } from "@/lib/storage";
 import {
   getRunwareClient,
@@ -13,12 +13,18 @@ import {
 } from "@/lib/runware";
 import { safeFetchImage, safeFetchErrorResponse } from "@/lib/safe-fetch";
 import { rateLimitUserGeneration } from "@/lib/rate-limit";
+import { prisma } from "@/lib/prisma";
+import { startOperation, requestIp, budgetPlan, type OpHandle } from "@/lib/billing/operations";
 import { parseJsonBody, validateBody } from "@/lib/validation/common";
 import { editImageSchema } from "@/lib/validations";
+import { editSprite, EDIT_CREDITS } from "@/lib/image/sprite-edit";
+import { uploadGenerationBufferToR2 } from "@/lib/r2";
 
 // Runware edit is capped at RUNWARE_INFERENCE_TIMEOUT_MS (75s); leaves
 // headroom for input validation, re-hosting and refunds.
-export const maxDuration = 120;
+// One image pass can take up to 150 s (plus a moderation retry) — the refund
+// path must still run before the platform stops the function
+export const maxDuration = 300;
 
 const MAX_INPUT_IMAGE_MB = 10;
 
@@ -647,193 +653,91 @@ async function editImageWithRunware(
 
 export async function POST(request: Request) {
   const startTime = Date.now();
-  let creditsDeducted = false;
-  let chargedUserId: string | null = null;
+  // Paid operation; null once the edit was delivered (no refund from then on)
+  let pendingOp: OpHandle | null = null;
 
   try {
-    // Authentication
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "You must be logged in" }, { status: 401 });
-    }
-
-    // Check credits and plan
-    const { plan, role } = await getUserCredits(user.id);
-    const hasPremiumAccess = plan !== "FREE" || role === "OWNER" || role === "ADMIN";
-
-    if (!hasPremiumAccess) {
-      return NextResponse.json(
-        {
-          error: "Image editing is a premium feature. Upgrade to Starter or higher.",
-          upgradeRequired: true,
-        },
-        { status: 403 }
-      );
-    }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: "You must be logged in" }, { status: 401 });
 
     const { blocked: rateLimitBlocked } = await rateLimitUserGeneration(user.id);
     if (rateLimitBlocked) return rateLimitBlocked;
 
     // ── Parse + validate BEFORE charging ─────────────────────────────────────
     const rawBody = await parseJsonBody(request);
-    if (rawBody === null) {
-      return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
-    }
+    if (rawBody === null) return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
     const parsed = validateBody(editImageSchema, rawBody);
-    if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error }, { status: 400 });
-    }
-    const {
-      imageUrl,
-      editPrompt: trimmedPrompt,
-      originalGeneration,
-      strength: userStrength,
-    } = parsed.data;
+    if (!parsed.success) return NextResponse.json({ error: parsed.error }, { status: 400 });
+    const { imageUrl, editPrompt: instruction, originalGeneration, mask: maskDataUrl } = parsed.data;
 
-    // Image validation (SSRF-safe, size capped while streaming). Also
-    // enforces the host allowlist for the URL we hand to Runware.
+    let sprite: Buffer;
     try {
-      await safeFetchImage(imageUrl, { maxBytes: MAX_INPUT_IMAGE_MB * 1024 * 1024 });
+      sprite = (await safeFetchImage(imageUrl, { maxBytes: MAX_INPUT_IMAGE_MB * 1024 * 1024 })).buffer;
     } catch (fetchError) {
-      console.warn("[Edit] Input image rejected:", fetchError instanceof Error ? fetchError.message : fetchError);
       const { error, status } = safeFetchErrorResponse(fetchError, MAX_INPUT_IMAGE_MB);
       return NextResponse.json({ error }, { status });
     }
-
-    // Atomically check and deduct credits — only after the request is valid
-    const creditResult = await checkAndDeductCredits(user.id, 1);
-    if (!creditResult.success) {
-      if (creditResult.error !== "Not enough credits") {
-        console.error("[Edit] Credit deduction failed:", creditResult.error);
-        return NextResponse.json(
-          { error: "Failed to process credits. Please try again." },
-          { status: 500 }
-        );
-      }
-      return NextResponse.json(
-        {
-          error: "No credits left! Please top up your account.",
-          noCredits: true,
-        },
-        { status: 402 }
-      );
+    let mask: Buffer | undefined;
+    if (maskDataUrl) {
+      const m = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(maskDataUrl);
+      if (!m) return NextResponse.json({ error: "Invalid mask." }, { status: 400 });
+      mask = Buffer.from(m[1], "base64");
     }
-    creditsDeducted = true;
-    chargedUserId = user.id;
+    const pixel = (originalGeneration?.styleId ?? "").toUpperCase().includes("PIXEL");
 
-    // Analyze user intent
-    const editAnalysis = analyzeEditIntent(trimmedPrompt);
-
-    // Detect item type and find best preset
-    const itemType = detectItemType(originalGeneration ?? undefined);
-    const { preset, presetName } = findBestPreset(trimmedPrompt);
-
-    // Build prompts
-    const strength = userStrength !== undefined ? userStrength : preset.strength;
-    const finalPrompt = buildPrompt(trimmedPrompt, preset, itemType, editAnalysis);
-    const negativePrompt = buildNegativePrompt(preset, editAnalysis);
-
-    // Get user tier for model selection
-    const userTier = getUserTier(plan, role);
-
-    // Logging (prompt truncated — don't dump user content into logs)
-    console.log("[Edit] Runware image edit", {
-      editType: editAnalysis.type,
-      preset: presetName || "default",
-      userTier,
-      strength,
-      promptPreview: trimmedPrompt.substring(0, 80),
+    const account = await prisma.user.findUnique({ where: { id: user.id }, select: { plan: true, totalSpent: true, stripeCustomerId: true } });
+    const started = await startOperation({
+      userId: user.id, feature: "edit", credits: EDIT_CREDITS, plan: budgetPlan(account), ip: requestIp(request),
+      input: { imageUrl, instruction, masked: Boolean(mask) },
     });
-
-    // Run the edit with Runware
-    const result = await editImageWithRunware(
-      imageUrl,
-      finalPrompt,
-      negativePrompt,
-      strength,
-      userTier
-    );
-
-    if (!result.success || !result.imageUrl) {
-      console.error("Edit failed:", result.error);
-      // Refund credit on failure (exactly once — flag cleared)
-      creditsDeducted = false;
-      await refundCredits(user.id, 1);
-      return NextResponse.json(
-        { error: "Edit failed. Please try different instructions. Credit refunded." },
-        { status: 500 }
-      );
+    if (!started.ok) {
+      const body = started.status === 402 ? { ...started.body, error: `Editing costs ${EDIT_CREDITS} credits.` } : started.body;
+      return NextResponse.json(body, { status: started.status });
     }
-    // Provider succeeded — from here on the edit is delivered; no refund.
-    creditsDeducted = false;
+    const op = started.op;
+    pendingOp = op;
 
-    console.log("Edit succeeded! Uploading to storage...");
+    const result = await op.run(() => editSprite({ sprite, instruction, pixel, mask }));
 
-    // Upload to permanent storage
-    const fileName = `edited-${Date.now()}-${presetName || "custom"}`;
-    const persistedUrl = await persistImage(result.imageUrl, user.id, fileName);
-    if (!persistedUrl) {
-      console.error("[Edit] Re-host failed — saving TEMPORARY provider URL (will expire)");
-    }
-    const finalUrl = persistedUrl ?? result.imageUrl;
+    const upload = await uploadGenerationBufferToR2(result.png, user.id, "png");
+    if (!upload.success || !upload.url) throw new Error(`upload failed: ${upload.error}`);
+    pendingOp = null; // delivered (stored) — no refund from here on
 
-    // Save to database
     const saveResult = await saveGeneration({
       userId: user.id,
-      prompt: `[Edited: ${presetName || "custom"}] ${trimmedPrompt}`,
-      fullPrompt: finalPrompt,
+      prompt: `[Edited] ${instruction}`.slice(0, 1000),
+      fullPrompt: instruction,
       categoryId: originalGeneration?.categoryId || "EDITED",
       subcategoryId: originalGeneration?.subcategoryId || "CUSTOM",
-      styleId: originalGeneration?.styleId || "PIXEL_ART",
-      imageUrl: finalUrl,
+      styleId: originalGeneration?.styleId || "PIXEL_ART_16",
+      imageUrl: upload.url,
       seed: undefined,
+      replicateCost: result.cost,
     });
-
-    if (!saveResult.success) {
-      console.error("Failed to save generation:", saveResult.error);
-    }
-
-    // Credits already deducted atomically at the beginning
-
-    const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-
-    console.log("===========================================");
-    console.log("EDIT COMPLETE!");
-    console.log(`Duration: ${duration}s`);
-    console.log(`Effect: ${preset.description}`);
-    console.log(`Cost: ~$${result.cost?.toFixed(4) || "0.01"}`);
-    console.log("===========================================");
+    if (!saveResult.success) console.error("Failed to save generation:", saveResult.error);
+    await op.succeed(saveResult.generation?.id ?? null);
 
     return NextResponse.json({
       success: true,
-      imageUrl: finalUrl,
+      imageUrl: upload.url,
       generationId: saveResult.generation?.id,
-      editInfo: {
-        preset: presetName || "custom",
-        description: preset.description,
-        model: `Runware ${userTier}`,
-        duration: `${duration}s`,
-        preservedOriginal: editAnalysis.preserveOriginal,
-        editType: editAnalysis.type,
-        cost: result.cost,
-      },
-      message: "Image edited and saved to gallery!",
+      editInfo: { model: "image-edit", masked: Boolean(mask), duration: `${((Date.now() - startTime) / 1000).toFixed(1)}s`, cost: result.cost },
+      creditsUsed: EDIT_CREDITS,
+      message: "Edited and saved to your assets!",
     });
   } catch (error) {
-    console.error("Edit image error:", error);
-    // Refund only if we charged and the provider had not yet delivered.
-    if (creditsDeducted && chargedUserId) {
-      creditsDeducted = false;
-      await refundCredits(chargedUserId, 1);
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error("Edit image error:", msg);
+    if (pendingOp) {
+      const op = pendingOp;
+      pendingOp = null;
+      await op.fail(/insufficientCredits|insufficient credits|top-up/i.test(msg) ? "PROVIDER_BALANCE" : "EDIT_FAILED");
     }
-    return NextResponse.json(
-      { error: "Edit failed. Please try again." },
-      { status: 500 }
-    );
+    if (/insufficientCredits|insufficient credits|top-up/i.test(msg)) {
+      return NextResponse.json({ error: "Editing is paused for a short while — your credits were refunded." }, { status: 503 });
+    }
+    return NextResponse.json({ error: "Edit failed — your credits were refunded. Try describing the change differently." }, { status: 500 });
   }
 }
 
@@ -878,6 +782,6 @@ export async function GET() {
       { type: "transform", description: "Transformation - may significantly alter original" },
     ],
     provider: "Runware",
-    costPerEdit: "~$0.003-0.01 depending on plan",
+    costPerEdit: `${EDIT_CREDITS} credits`,
   });
 }

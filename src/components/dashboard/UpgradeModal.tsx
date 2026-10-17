@@ -121,13 +121,14 @@ export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm transition-opacity duration-200 data-[state=closed]:opacity-0 data-[state=open]:opacity-100" />
         <Dialog.Content
-          className="fixed left-1/2 top-1/2 z-[101] max-h-[90vh] w-[95vw] max-w-3xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-white/[0.08] bg-[#0E1016] text-[#ECEEF3] shadow-2xl outline-none transition-opacity duration-200 data-[state=closed]:opacity-0 data-[state=open]:opacity-100"
+          className="fixed left-1/2 top-1/2 z-[101] max-h-[90vh] w-[95vw] max-w-3xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-white/[0.08] bg-[#19223F] text-[#FFF1E8] shadow-2xl outline-none transition-opacity duration-200 data-[state=closed]:opacity-0 data-[state=open]:opacity-100"
           aria-describedby="upgrade-modal-description"
         >
           <Dialog.Close asChild>
             <button
               aria-label="Close"
-              className="absolute right-4 top-4 z-10 rounded-lg p-2 text-[#8B93A5] transition-colors hover:bg-white/[0.06] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8A3D]/50"
+              type="button"
+              className="absolute right-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-lg text-[#9AA1CC] transition-colors hover:bg-white/[0.06] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FFA300]/50"
             >
               <X className="h-4 w-4" />
             </button>
@@ -138,7 +139,7 @@ export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
             <div className="pr-10">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-red-400/20 bg-red-500/[0.06] px-2.5 py-1 font-mono text-[11px] text-red-200">
                 <Zap className="h-3 w-3" />
-                You&apos;re out of credits
+                Not enough credits
               </span>
               <Dialog.Title asChild>
                 <h2 className="mt-3 font-display text-[24px] font-semibold tracking-tight text-white">
@@ -146,8 +147,8 @@ export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
                 </h2>
               </Dialog.Title>
               <Dialog.Description asChild>
-                <p id="upgrade-modal-description" className="mt-1 max-w-md text-[13px] text-[#8B93A5]">
-                  Choose a plan that fits your needs. All plans include access to our latest AI models and features.
+                <p id="upgrade-modal-description" className="mt-1 max-w-md text-[13px] text-[#9AA1CC]">
+                  Monthly plans refill your credits every month. Just need a few? Grab a one-time pack below.
                 </p>
               </Dialog.Description>
             </div>
@@ -157,12 +158,12 @@ export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
               {PLANS.map((plan) => (
                 <div
                   key={plan.name}
-                  className={`relative flex flex-col rounded-2xl border bg-[#151922] p-4 transition-colors ${
-                    plan.popular ? "border-[#FF8A3D]/60" : "border-white/[0.08] hover:border-white/20"
+                  className={`relative flex flex-col rounded-2xl border bg-[#212B4E] p-4 transition-colors ${
+                    plan.popular ? "border-[#FFA300]/60" : "border-white/[0.08] hover:border-white/20"
                   }`}
                 >
                   {plan.popular && (
-                    <span className="px-corners absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap bg-[#FF8A3D] px-3 py-1 font-mono text-[11px] font-semibold text-black">
+                    <span className="px-corners absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap bg-[#FFA300] px-3 py-1 font-mono text-[11px] font-semibold text-black">
                       Most popular
                     </span>
                   )}
@@ -170,16 +171,16 @@ export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
                   <h3 className="font-display text-[17px] font-semibold text-white">{plan.name}</h3>
                   <div className="mt-3 flex items-baseline gap-1.5">
                     <span className="font-sans tracking-tight tabular-nums text-[28px] font-semibold leading-none text-white">£{plan.price}</span>
-                    <span className="font-mono text-[12px] text-[#8B93A5]">/month</span>
+                    <span className="font-mono text-[12px] text-[#9AA1CC]">/month</span>
                   </div>
-                  <span className="mt-3 w-fit rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] text-[#ECEEF3]">
+                  <span className="mt-3 w-fit rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] text-[#FFF1E8]">
                     {plan.credits.toLocaleString()} credits/mo
                   </span>
 
                   <ul className="mt-4 flex-1 space-y-2">
                     {plan.features.map((feature) => (
-                      <li key={feature} className="flex items-start gap-2 text-[13px] text-[#C9CFDB]">
-                        <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#FF8A3D]" strokeWidth={2.5} />
+                      <li key={feature} className="flex items-start gap-2 text-[13px] text-[#C8CCE8]">
+                        <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#FFA300]" strokeWidth={2.5} />
                         {feature}
                       </li>
                     ))}
@@ -190,8 +191,8 @@ export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
                     onClick={closeOnNavigate}
                     className={`mt-5 flex h-10 w-full items-center justify-center gap-1.5 text-[13px] font-semibold ${
                       plan.popular
-                        ? "px-corners bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] text-white transition hover:brightness-110"
-                        : "rounded-xl border border-white/[0.1] bg-white/[0.04] text-[#C9CFDB] transition-colors hover:bg-white/[0.08] hover:text-white"
+                        ? "px-corners bg-[#FFA300] text-[#131A31] transition hover:bg-[#FFB733]"
+                        : "rounded-xl border border-white/[0.1] bg-white/[0.04] text-[#C8CCE8] transition-colors hover:bg-white/[0.08] hover:text-white"
                     }`}
                   >
                     Get {plan.name}
@@ -202,11 +203,11 @@ export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
             </div>
 
             <div className="mt-5 flex flex-col items-center justify-between gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 sm:flex-row">
-              <p className="text-[13px] text-[#8B93A5]">Just need a few credits? One-time packs, no subscription.</p>
+              <p className="text-[13px] text-[#9AA1CC]">Just need a few credits? One-time packs, no subscription.</p>
               <Link
                 href="/pricing#credit-packs"
                 onClick={closeOnNavigate}
-                className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#FFB27A] hover:underline"
+                className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#FFC857] hover:underline"
               >
                 View credit packs
                 <ArrowRight className="h-3.5 w-3.5" />

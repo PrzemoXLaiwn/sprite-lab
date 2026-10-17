@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
+import { mergeEmailPreferences } from "@/app/api/_lib/email-prefs";
 import { isAuthorizedCronRequest } from "@/lib/cron-auth";
 import { prisma } from "@/lib/prisma";
 import { sendWeeklyDigestEmail } from "@/lib/email/send";
+import { weeklyDigestEnabled } from "@/lib/email/flags";
+import { marketingBlockedByPrefs } from "@/lib/email/suppression";
 import { Prisma } from "@prisma/client";
 
 // Vercel Cron Job - Weekly digest emails
 // Runs every Sunday at 10:00 AM UTC
 // Schedule in vercel.json: "0 10 * * 0"
+// Controlled by WEEKLY_DIGEST_ENABLED (default ON when unset; "false" stops it).
+// Deliberately NOT behind MARKETING_EMAILS_ENABLED: the digest is live and the
+// owner decides on it separately.
 
 export const maxDuration = 300; // Max 5 minutes
 export const dynamic = "force-dynamic";
@@ -161,6 +167,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    if (!weeklyDigestEnabled()) {
+      return NextResponse.json({ success: true, skipped: true, reason: "WEEKLY_DIGEST_ENABLED is false" });
+    }
+
     // Check if Resend is configured
     if (!process.env.RESEND_API_KEY) {
       console.log("[CRON:WeeklyDigest] RESEND_API_KEY not configured, skipping");
@@ -246,8 +256,8 @@ export async function GET(request: NextRequest) {
         marketing?: boolean;
       } | null;
 
-      // Skip if marketing is explicitly disabled
-      if (prefs?.marketing === false) return false;
+      // Skip if marketing is off, or the address bounced / complained
+      if (prefs?.marketing === false || marketingBlockedByPrefs(prefs)) return false;
 
       // Skip if already sent this week
       if (prefs?.lastWeeklyDigestAt) {
@@ -295,16 +305,7 @@ export async function GET(request: NextRequest) {
           results.sent++;
 
           // Update last weekly digest timestamp
-          const currentPrefs = (user.emailPreferences as Record<string, unknown>) || {};
-          await prisma.user.update({
-            where: { id: user.id },
-            data: {
-              emailPreferences: {
-                ...currentPrefs,
-                lastWeeklyDigestAt: new Date().toISOString(),
-              },
-            },
-          });
+          await mergeEmailPreferences(user.id, { lastWeeklyDigestAt: new Date().toISOString() });
         } else {
           results.failed++;
           results.errors.push(`${user.id}: ${result.error}`);

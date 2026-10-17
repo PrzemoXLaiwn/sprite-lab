@@ -12,6 +12,7 @@ import {
   Text,
 } from "@react-email/components";
 import * as React from "react";
+import { PostalAddressLine } from "./PostalAddressLine";
 
 interface DailyReminderEmailProps {
   userName?: string;
@@ -58,7 +59,8 @@ export function DailyReminderEmail({
   totalAssetsCreated = 0,
   tipOfTheDay,
 }: DailyReminderEmailProps) {
-  const tip = tipOfTheDay || TIPS[Math.floor(Math.random() * TIPS.length)];
+  // Deterministic (render must be pure): rotates with the streak
+  const tip = tipOfTheDay || TIPS[Math.abs(loginStreak + credits) % TIPS.length];
   const previewText = loginStreak > 0
     ? `Day ${loginStreak} streak! ${streakBonus > 0 ? `+${streakBonus} bonus credits` : "Keep it going!"}`
     : `Your daily SpriteLab update - ${credits} credits ready`;
@@ -141,7 +143,7 @@ export function DailyReminderEmail({
                 <Hr style={hr} />
                 <Section style={statsSection}>
                   <Text style={statsText}>
-                    You've created <strong>{totalAssetsCreated}</strong> assets so far!
+                    You&apos;ve created <strong>{totalAssetsCreated}</strong> assets so far!
                   </Text>
                   <Button style={linkButton} href="https://sprite-lab.com/gallery">
                     View Your Gallery →
@@ -165,6 +167,7 @@ export function DailyReminderEmail({
                 Unsubscribe
               </Link>
             </Text>
+            <PostalAddressLine style={footerText} />
           </Section>
         </Container>
       </Body>
@@ -174,7 +177,7 @@ export function DailyReminderEmail({
 
 // Styles
 const main = {
-  backgroundColor: "#0a0c10",
+  backgroundColor: "#0F1529",
   fontFamily:
     '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif',
 };
@@ -198,11 +201,11 @@ const logo = {
 };
 
 const logoAccent = {
-  color: "#FF6B2C",
+  color: "#FF9500",
 };
 
 const content = {
-  backgroundColor: "#11151b",
+  backgroundColor: "#161E39",
   borderRadius: "16px",
   padding: "32px",
   border: "1px solid rgba(255,255,255,0.06)",
@@ -230,14 +233,14 @@ const streakEmoji = {
 };
 
 const streakNumber = {
-  color: "#0a0c10",
+  color: "#0F1529",
   fontSize: "24px",
   fontWeight: "bold",
   margin: "0",
 };
 
 const streakBonusText = {
-  color: "#0a0c10",
+  color: "#0F1529",
   fontSize: "14px",
   margin: "8px 0 0",
   fontWeight: "600",
@@ -249,7 +252,7 @@ const creditsSection = {
 };
 
 const creditsLabel = {
-  color: "#a0a0b0",
+  color: "#A7ADD4",
   fontSize: "12px",
   textTransform: "uppercase" as const,
   letterSpacing: "1px",
@@ -257,7 +260,7 @@ const creditsLabel = {
 };
 
 const creditsNumber = {
-  color: "#FF6B2C",
+  color: "#FF9500",
   fontSize: "48px",
   fontWeight: "bold",
   margin: "0",
@@ -276,9 +279,9 @@ const buttonContainer = {
 };
 
 const button = {
-  backgroundColor: "#FF6B2C",
+  backgroundColor: "#FF9500",
   borderRadius: "8px",
-  color: "#0a0c10",
+  color: "#0F1529",
   fontSize: "16px",
   fontWeight: "bold",
   textDecoration: "none",
@@ -290,8 +293,8 @@ const button = {
 const buttonSecondary = {
   backgroundColor: "transparent",
   borderRadius: "8px",
-  border: "2px solid #FF6B2C",
-  color: "#FF6B2C",
+  border: "2px solid #FF9500",
+  color: "#FF9500",
   fontSize: "14px",
   fontWeight: "600",
   textDecoration: "none",
@@ -302,7 +305,7 @@ const buttonSecondary = {
 };
 
 const linkButton = {
-  color: "#FF6B2C",
+  color: "#FF9500",
   fontSize: "14px",
   textDecoration: "none",
   fontWeight: "600",
@@ -325,7 +328,7 @@ const trendingSection = {
 };
 
 const trendingText = {
-  color: "#a0a0b0",
+  color: "#A7ADD4",
   fontSize: "14px",
   margin: "0",
 };
@@ -335,21 +338,21 @@ const tipSection = {
 };
 
 const tipBox = {
-  backgroundColor: "#0f0f15",
+  backgroundColor: "#0F1529",
   borderRadius: "8px",
   padding: "16px",
   border: "1px solid rgba(255,255,255,0.06)",
 };
 
 const tipTitle = {
-  color: "#FF6B2C",
+  color: "#FF9500",
   fontSize: "14px",
   fontWeight: "bold",
   margin: "0 0 4px",
 };
 
 const tipContent = {
-  color: "#a0a0b0",
+  color: "#A7ADD4",
   fontSize: "14px",
   margin: "0",
   lineHeight: "20px",
@@ -360,7 +363,7 @@ const statsSection = {
 };
 
 const statsText = {
-  color: "#a0a0b0",
+  color: "#A7ADD4",
   fontSize: "14px",
   margin: "0 0 8px",
 };
@@ -371,19 +374,19 @@ const footer = {
 };
 
 const footerText = {
-  color: "#606070",
+  color: "#8A92BF",
   fontSize: "12px",
   margin: "0 0 8px",
 };
 
 const footerLinks = {
-  color: "#606070",
+  color: "#8A92BF",
   fontSize: "12px",
   margin: "16px 0 0",
 };
 
 const link = {
-  color: "#FF6B2C",
+  color: "#FF9500",
   textDecoration: "underline",
 };
 

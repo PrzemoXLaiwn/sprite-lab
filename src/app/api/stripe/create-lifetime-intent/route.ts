@@ -3,8 +3,13 @@ import { createClient } from "@/lib/supabase/server";
 import { stripe, getOrCreateStripeCustomer, LIFETIME_DEALS, LifetimeDealName } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { getLifetimeSlotsSold, TOTAL_LIFETIME_SLOTS } from "../_lib/fulfillment";
+import { lifetimeSalesEnabled, LIFETIME_PAUSED_MESSAGE } from "@/lib/lifetime-sales";
 
 export async function POST(request: Request) {
+  // New lifetime purchases are paused — refuse before any Stripe object is created
+  if (!lifetimeSalesEnabled()) {
+    return NextResponse.json({ error: "LIFETIME_PAUSED", message: LIFETIME_PAUSED_MESSAGE }, { status: 410 });
+  }
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();

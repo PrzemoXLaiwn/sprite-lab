@@ -2,18 +2,29 @@ import { NextResponse } from "next/server";
 import sharp from "sharp";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { checkAndDeductCredits, refundCredits } from "@/lib/db/credits";
+import { startOperation, requestIp, budgetPlan } from "@/lib/billing/operations";
+import { animationFeature } from "@/lib/billing/features";
 import { saveGeneration } from "@/lib/db/generations";
 import { rateLimitUserGeneration } from "@/lib/rate-limit";
 import { safeFetchImage } from "@/lib/safe-fetch";
 import { uploadGenerationBufferToR2 } from "@/lib/r2";
-import { makeAnimation } from "@/lib/services/animation-service";
+import { makeAnimation, makeRotation } from "@/lib/services/animation-service";
+import { makeRigAnimation } from "@/lib/image/rig-animation";
+import { makeItemMotion } from "@/lib/image/item-motion";
+import { makeSkeletonAnimation, makeSkeletonIdle } from "@/lib/image/skeleton-rig";
 import {
   animationAnchor,
   animationCredits,
   animationFrameOption,
   animationPresetsFor,
   MOTION_ANCHORS,
+  DIRECTION_KEYS,
+  rotationFor,
+  supportsRotation,
+  RIG_CREDITS,
+  RIG_FRAMES,
+  rigMotionFor,
+  isItemMotion,
   type MotionAnchor,
 } from "@/config/animations";
 
@@ -60,8 +71,79 @@ export async function POST(request: Request) {
     select: { id: true, imageUrl: true, prompt: true, styleId: true, categoryId: true, subcategoryId: true, projectId: true, folderId: true },
   });
   if (!source) return NextResponse.json({ error: "Sprite not found." }, { status: 404 });
+  const account = await prisma.user.findUnique({ where: { id: user.id }, select: { plan: true, totalSpent: true, stripeCustomerId: true } });
+  const plan = budgetPlan(account);
+  const ip = requestIp(request);
+  const opInput = { generationId, action, customMotion, frames: option.frames, smooth };
   if (source.subcategoryId === "ANIMATION") {
     return NextResponse.json({ error: "Pick a single sprite, not an animation sheet." }, { status: 400 });
+  }
+
+  // Directional views (4 / 8 directions) — their own one-pass pipeline
+  const rotation = rotationFor(action);
+  if (rotation) {
+    if (!supportsRotation(source.categoryId)) return NextResponse.json({ error: "Directions are available for characters and creatures." }, { status: 400 });
+    const pixelR = (source.styleId ?? "").toUpperCase().includes("PIXEL");
+    let referenceR: Buffer;
+    try {
+      const { buffer } = await safeFetchImage(source.imageUrl, { maxBytes: 10 * 1024 * 1024 });
+      referenceR = await sharp(buffer)
+        .resize(512, 512, { fit: "contain", background: { r: 255, g: 255, b: 255, alpha: 1 }, kernel: pixelR ? "nearest" : "lanczos3" })
+        .flatten({ background: "#ffffff" }).png().toBuffer();
+    } catch {
+      return NextResponse.json({ error: "Couldn't load this sprite." }, { status: 400 });
+    }
+    const started = await startOperation({ userId: user.id, feature: rotation.id as "rotate4" | "rotate8" | "walk4dir", credits: rotation.credits, plan, input: opInput, ip });
+    if (!started.ok) return NextResponse.json(started.body, { status: started.status });
+    const op = started.op;
+    try {
+      const { anim, prompt: rPrompt, cost } = await op.run(() => makeRotation({ reference: referenceR, prompt: source.prompt, pixel: pixelR, rotation }));
+      const [sheet, gif] = await Promise.all([
+        uploadGenerationBufferToR2(anim.sheetPng, user.id, "png"),
+        uploadGenerationBufferToR2(anim.gif, user.id, "gif"),
+      ]);
+      if (!sheet.success || !sheet.url) throw new Error(`sheet upload failed: ${sheet.error}`);
+      const saved = await saveGeneration({
+        userId: user.id,
+        prompt: `[Animation: ${rotation.kind === "walk" ? "4-direction walk" : `${rotation.directions} directions`}, ${anim.frameCount}f] ${source.prompt}`.slice(0, 1000),
+        fullPrompt: rPrompt,
+        categoryId: source.categoryId,
+        subcategoryId: "ANIMATION",
+        styleId: source.styleId,
+        imageUrl: sheet.url,
+        replicateCost: cost,
+        projectId: source.projectId ?? undefined,
+        folderId: source.folderId ?? undefined,
+        sourceGenerationId: source.id,
+      });
+      const savedId = saved.success && "generation" in saved && saved.generation ? saved.generation.id : undefined;
+      await op.succeed(savedId);
+      return NextResponse.json({
+        success: true,
+        sheetUrl: sheet.url,
+        gifUrl: gif.success ? gif.url : null,
+        frameCount: anim.frameCount,
+        frameWidth: anim.frameWidth,
+        frameHeight: anim.frameHeight,
+        generationId: savedId,
+      // Lets the client link the animation back to its sprite
+      sourceGenerationId: source.id,
+        smoothed: false,
+        fps: rotation.kind === "walk" ? 6 : 2,
+        directions: DIRECTION_KEYS[rotation.directions],
+        // Walk sets come as a grid: one row per direction
+        sheetCols: rotation.kind === "walk" ? rotation.cols : undefined,
+        creditsUsed: rotation.credits,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[Rotate] Failed:", msg);
+      await op.fail(/insufficientCredits|insufficient credits|top-up/i.test(msg) ? "PROVIDER_BALANCE" : "ROTATION_FAILED");
+      if (/insufficientCredits|insufficient credits|top-up/i.test(msg)) {
+        return NextResponse.json({ error: "Directions are paused for a short while — your credits were refunded." }, { status: 503 });
+      }
+      return NextResponse.json({ error: "Couldn't draw the directions — your credits were refunded. Please try again." }, { status: 502 });
+    }
   }
 
   let motion: string;
@@ -91,6 +173,76 @@ export async function POST(request: Request) {
     anchor = preset.anchor ?? anchor;
   }
   const pixel = (source.styleId ?? "").toUpperCase().includes("PIXEL");
+  const isTile = (source.categoryId ?? "").toUpperCase() === "TILESETS";
+
+  // Idle / breathing / hover: deform the original sprite instead of redrawing
+  // every frame — no flicker in colour, size or detail
+  const rig = !isTile && action !== "custom" ? rigMotionFor(action, typeof body?.label === "string" ? body.label : undefined, source.categoryId) : null;
+  // Pixel-art bipeds also walk as a whole-pixel cut-out from the original
+  // sprite (no per-frame redraw); anything that can't be rigged uses the AI
+  // (Claude marks the joints — that call runs inside the paid operation, so it
+  // is charged, rate-limited and counted like everything else)
+  const wantsPixelWalk = !rig && pixel && !isTile && action !== "custom" && /walk/i.test(action + " " + (typeof body?.label === "string" ? body.label : ""));
+  if (rig || wantsPixelWalk) {
+    const started = await startOperation({ userId: user.id, feature: "rig", credits: RIG_CREDITS, plan, input: opInput, ip });
+    if (!started.ok) return NextResponse.json(started.body, { status: started.status });
+    const op = started.op;
+    try {
+      const { buffer } = await safeFetchImage(source.imageUrl, { maxBytes: 10 * 1024 * 1024 });
+      const anim = await op.run(async () => wantsPixelWalk
+        ? await makeSkeletonAnimation(buffer, { pixel: true, motion: "walk" }).catch(() => null)
+        // Bipeds get a real skeleton (weight shift, arms, head, tail); anything the
+        // rigger can't read falls back to gentle breathing / hovering
+        : isItemMotion(rig)
+          // Weapons and items move as one rigid piece (swing around the grip…)
+          ? await makeItemMotion(buffer, { kind: rig, pixel })
+          : (rig === "breathe" ? await makeSkeletonIdle(buffer, { pixel, frames: RIG_FRAMES }) : null)
+            ?? await makeRigAnimation(buffer, { kind: rig === "float" ? "float" : "breathe", pixel, frames: RIG_FRAMES }));
+      if (anim) {
+        const [sheet, gif] = await Promise.all([
+          uploadGenerationBufferToR2(anim.sheetPng, user.id, "png"),
+          uploadGenerationBufferToR2(anim.gif, user.id, "gif"),
+        ]);
+        if (!sheet.success || !sheet.url) throw new Error(`sheet upload failed: ${sheet.error}`);
+        const saved = await saveGeneration({
+          userId: user.id,
+          prompt: `[Animation: ${label}, ${anim.frameCount}f] ${source.prompt}`.slice(0, 1000),
+          fullPrompt: `rig:${rig ?? "walk"}`,
+          categoryId: source.categoryId,
+          subcategoryId: "ANIMATION",
+          styleId: source.styleId,
+          imageUrl: sheet.url,
+          replicateCost: 0,
+          projectId: source.projectId ?? undefined,
+          folderId: source.folderId ?? undefined,
+          sourceGenerationId: source.id,
+        });
+        const savedId = saved.success && "generation" in saved && saved.generation ? saved.generation.id : undefined;
+        await op.succeed(savedId);
+        return NextResponse.json({
+          success: true,
+          sheetUrl: sheet.url,
+          gifUrl: gif.success ? gif.url : null,
+          frameCount: anim.frameCount,
+          frameWidth: anim.frameWidth,
+          frameHeight: anim.frameHeight,
+          generationId: savedId,
+          // Lets the client link the animation back to its sprite
+          sourceGenerationId: source.id,
+          smoothed: false,
+          rigged: true,
+          fps: anim.fps ?? 12,
+          creditsUsed: RIG_CREDITS,
+        });
+      }
+    } catch (err) {
+      console.error("[Animate] Rig failed:", err instanceof Error ? err.message : err);
+      await op.fail("RIG_FAILED");
+      return NextResponse.json({ error: "Animation failed — your credits were refunded. Please try again." }, { status: 502 });
+    }
+    // This sprite can't walk as a cut-out: refund the rig price and use the AI walk below
+    await op.cancel("NO_PIXEL_WALK");
+  }
 
   // Reference: the sprite flattened onto white (the model draws on white too)
   let reference: Buffer;
@@ -107,17 +259,12 @@ export async function POST(request: Request) {
 
   // Smooth motion = a second image pass drawing in-betweens → twice the frames, twice the credits
   const credits = animationCredits(option.frames, smooth);
-  const charged = await checkAndDeductCredits(user.id, credits);
-  if (!charged.success) {
-    const insufficient = charged.error === "Not enough credits";
-    return NextResponse.json(
-      { error: insufficient ? `This animation costs ${credits} credits.` : "Couldn't process credits.", noCredits: insufficient || undefined },
-      { status: insufficient ? 402 : 500 }
-    );
-  }
+  const started = await startOperation({ userId: user.id, feature: isTile ? "tile_anim" : animationFeature(option.frames, smooth), credits, plan, input: opInput, ip });
+  if (!started.ok) return NextResponse.json(started.body, { status: started.status });
+  const op = started.op;
 
   try {
-    const { anim, plan, prompt, cost, smoothed } = await makeAnimation({
+    const { anim, plan: motionPlan, prompt, cost, smoothed } = await op.run(() => makeAnimation({
       reference,
       prompt: source.prompt,
       categoryId: source.categoryId,
@@ -127,10 +274,11 @@ export async function POST(request: Request) {
       pixel,
       anchor,
       loop,
-      tile: (source.categoryId ?? "").toUpperCase() === "TILESETS",
-    });
+      tile: isTile,
+    }));
     // The in-between pass didn't line up — the user got key frames only
-    if (smooth && !smoothed) await refundCredits(user.id, credits - option.credits);
+    // (idempotent: an operation never refunds more than it charged)
+    if (smooth && !smoothed) await op.refund(credits - option.credits, "smooth_pass_unavailable");
 
     const [sheet, gif] = await Promise.all([
       uploadGenerationBufferToR2(anim.sheetPng, user.id, "png"),
@@ -149,7 +297,11 @@ export async function POST(request: Request) {
       replicateCost: cost,
       projectId: source.projectId ?? undefined,
       folderId: source.folderId ?? undefined,
+      sourceGenerationId: source.id,
     });
+    const savedId = saved.success && "generation" in saved && saved.generation ? saved.generation.id : undefined;
+    if (smooth && !smoothed) await op.partial(savedId ?? null, "smooth_pass_unavailable");
+    else await op.succeed(savedId);
 
     return NextResponse.json({
       success: true,
@@ -158,15 +310,16 @@ export async function POST(request: Request) {
       frameCount: anim.frameCount,
       frameWidth: anim.frameWidth,
       frameHeight: anim.frameHeight,
-      bodyType: plan.bodyType,
-      generationId: saved.success && "generation" in saved && saved.generation ? saved.generation.id : undefined,
+      bodyType: motionPlan.bodyType,
+      generationId: savedId,
+        sourceGenerationId: source.id,
       smoothed,
       creditsUsed: smooth && !smoothed ? option.credits : credits,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[Animate] Failed:", msg);
-    await refundCredits(user.id, credits);
+    await op.fail(/insufficientCredits|insufficient credits|top-up/i.test(msg) ? "PROVIDER_BALANCE" : "ANIMATION_FAILED");
     // Provider balance ran out: say so plainly instead of "try again"
     if (/insufficientCredits|insufficient credits|top-up/i.test(msg)) {
       return NextResponse.json({ error: "Animations are paused for a short while — your credits were refunded. Sprites still work." }, { status: 503 });

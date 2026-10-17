@@ -45,8 +45,8 @@ export function Chip({ children, accent = false }: { children: ReactNode; accent
     <span
       className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 font-mono text-[11px] font-medium leading-none ${
         accent
-          ? "border-[#FF8A3D]/25 bg-[#FF8A3D]/10 text-[#FFB27A]"
-          : "border-white/[0.08] bg-white/[0.04] text-[#C9CFDB]"
+          ? "border-[#FFA300]/25 bg-[#FFA300]/10 text-[#FFC857]"
+          : "border-white/[0.08] bg-white/[0.04] text-[#C8CCE8]"
       }`}
     >
       {children}
@@ -78,10 +78,10 @@ function IconAction({
       }}
       className={`flex h-8 w-8 items-center justify-center rounded-lg border backdrop-blur-md transition-colors ${
         danger
-          ? "border-white/[0.1] bg-black/50 text-[#C9CFDB] hover:border-red-400/30 hover:bg-red-500/20 hover:text-red-200"
+          ? "border-white/[0.1] bg-black/50 text-[#C8CCE8] hover:border-red-400/30 hover:bg-red-500/20 hover:text-red-200"
           : active
-          ? "border-[#FF8A3D]/40 bg-[#FF8A3D]/20 text-[#FFB27A] hover:bg-[#FF8A3D]/30"
-          : "border-white/[0.1] bg-black/50 text-[#ECEEF3] hover:bg-white/[0.15] hover:text-white"
+          ? "border-[#FFA300]/40 bg-[#FFA300]/20 text-[#FFC857] hover:bg-[#FFA300]/30"
+          : "border-white/[0.1] bg-black/50 text-[#FFF1E8] hover:bg-white/[0.15] hover:text-white"
       }`}
     >
       {children}
@@ -103,9 +103,9 @@ export function AssetMedia({
     return (
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center">
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.04]">
-          <Cuboid className="h-6 w-6 text-[#FF8A3D]" />
+          <Cuboid className="h-6 w-6 text-[#FFA300]" />
         </div>
-        <span className="font-mono text-[11px] font-semibold text-[#C9CFDB]">{get3DFormat(gen.imageUrl)} model</span>
+        <span className="font-mono text-[11px] font-semibold text-[#C8CCE8]">{get3DFormat(gen.imageUrl)} model</span>
       </div>
     );
   }
@@ -161,14 +161,14 @@ export function AssetCard({
 
   return (
     <div
-      className={`group relative overflow-hidden rounded-2xl border bg-[#151922] transition-all ${
-        selected ? "border-[#FF8A3D] ring-2 ring-[#FF8A3D]/25" : "border-white/[0.08] hover:border-white/20"
+      className={`group relative overflow-hidden rounded-2xl border bg-[#212B4E] transition-all ${
+        selected ? "border-[#FFA300] ring-2 ring-[#FFA300]/25" : "border-white/[0.08] hover:border-white/20"
       } ${selectMode ? "cursor-pointer" : ""}`}
       onClick={() => selectMode && onToggleSelect(gen.id)}
     >
       {/* Preview */}
       <div
-        className={`relative aspect-square overflow-hidden bg-[#0E1016] ${selectMode ? "" : "cursor-zoom-in"}`}
+        className={`relative aspect-square overflow-hidden bg-[#19223F] ${selectMode ? "" : "cursor-zoom-in"}`}
         style={CHECKER_STYLE}
         onClick={() => !selectMode && onOpen(gen)}
       >
@@ -180,12 +180,12 @@ export function AssetCard({
         <div className="absolute left-2.5 top-2.5 z-10 flex gap-1.5">
           {is3D && (
             <span className="inline-flex items-center gap-1 rounded-full border border-white/[0.1] bg-black/55 px-2 py-1 font-mono text-[10.5px] font-semibold text-white backdrop-blur-md">
-              <Cuboid className="h-3 w-3 text-[#FF8A3D]" /> {get3DFormat(gen.imageUrl)}
+              <Cuboid className="h-3 w-3 text-[#FFA300]" /> {get3DFormat(gen.imageUrl)}
             </span>
           )}
           {gen.isPublic && (
             <span className="inline-flex items-center gap-1 rounded-full border border-white/[0.1] bg-black/55 px-2 py-1 font-mono text-[10.5px] font-semibold text-white backdrop-blur-md">
-              <Globe className="h-3 w-3 text-[#FF8A3D]" /> Shared
+              <Globe className="h-3 w-3 text-[#FFA300]" /> Shared
             </span>
           )}
         </div>
@@ -200,7 +200,7 @@ export function AssetCard({
             }}
             className={`absolute right-2.5 top-2.5 z-10 flex h-6 w-6 items-center justify-center rounded-lg border transition-all ${
               selected
-                ? "border-[#FF8A3D] bg-[#FF8A3D] text-black"
+                ? "border-[#FFA300] bg-[#FFA300] text-black"
                 : "border-white/30 bg-black/50 text-transparent backdrop-blur-md hover:border-white/60"
             }`}
           >
@@ -227,7 +227,7 @@ export function AssetCard({
 
             {/* Hover overlay */}
             <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/90 via-black/60 to-transparent px-3 pb-3 pt-12 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-              <p className="line-clamp-2 text-[12px] leading-snug text-[#ECEEF3]">{cleanPrompt(gen.prompt)}</p>
+              <p className="line-clamp-2 text-[12px] leading-snug text-[#FFF1E8]">{cleanPrompt(gen.prompt)}</p>
               <div className="pointer-events-auto mt-2.5 flex flex-wrap gap-1.5">
                 {!is3D &&
                   tools.map((t) => (
@@ -240,7 +240,7 @@ export function AssetCard({
                 </IconAction>
               </div>
               {is3D && (
-                <p className="mt-2 text-[11px] text-[#8B93A5]">
+                <p className="mt-2 text-[11px] text-[#9AA1CC]">
                   Download {get3DFormat(gen.imageUrl)} for Unity, Unreal, Blender, Godot
                 </p>
               )}
@@ -251,14 +251,14 @@ export function AssetCard({
 
       {/* Info */}
       <div className="space-y-2 px-3 pb-2.5 pt-3">
-        <p className="truncate text-[13px] font-medium text-[#ECEEF3]" title={cleanPrompt(gen.prompt)}>
+        <p className="truncate text-[13px] font-medium text-[#FFF1E8]" title={cleanPrompt(gen.prompt)}>
           {cleanPrompt(gen.prompt)}
         </p>
         <div className="flex flex-wrap gap-1.5">
           <Chip>{formatLabel(gen.categoryId)}</Chip>
           <Chip>{is3D ? `${get3DFormat(gen.imageUrl)} · ${getModelName(gen.styleId)}` : getModelName(gen.styleId)}</Chip>
         </div>
-        <div className="flex items-center justify-between gap-2 text-[11px] text-[#8B93A5]">
+        <div className="flex items-center justify-between gap-2 text-[11px] text-[#9AA1CC]">
           <div className="flex min-w-0 items-center gap-2">
             <span className="shrink-0 font-mono">{new Date(gen.createdAt).toLocaleDateString()}</span>
             {gen.seed != null && gen.seed !== 0 && (
@@ -269,10 +269,10 @@ export function AssetCard({
                   e.stopPropagation();
                   onCopySeed(gen.seed!, gen.id);
                 }}
-                className="flex min-w-0 items-center gap-1 rounded-md px-1 py-0.5 font-mono text-[#7A8294] transition-colors hover:bg-white/[0.06] hover:text-[#C9CFDB]"
+                className="flex min-w-0 items-center gap-1 rounded-md px-1 py-0.5 font-mono text-[#8A92BF] transition-colors hover:bg-white/[0.06] hover:text-[#C8CCE8] max-sm:hidden"
               >
                 <span className="truncate">#{gen.seed}</span>
-                {copied ? <Check className="h-3 w-3 shrink-0 text-[#FF8A3D]" /> : <Copy className="h-3 w-3 shrink-0" />}
+                {copied ? <Check className="h-3 w-3 shrink-0 text-[#FFA300]" /> : <Copy className="h-3 w-3 shrink-0" />}
               </button>
             )}
           </div>
@@ -312,23 +312,23 @@ export function AssetRow({
   return (
     <div
       onClick={() => (selectMode ? onToggleSelect(gen.id) : onOpen(gen))}
-      className={`group flex cursor-pointer items-center gap-3 rounded-2xl border bg-[#151922] p-2.5 pr-3 transition-all sm:gap-4 ${
-        selected ? "border-[#FF8A3D] ring-2 ring-[#FF8A3D]/25" : "border-white/[0.08] hover:border-white/20 hover:bg-[#1A1F2A]"
+      className={`group flex cursor-pointer items-center gap-3 rounded-2xl border bg-[#212B4E] p-2.5 pr-3 transition-all sm:gap-4 ${
+        selected ? "border-[#FFA300] ring-2 ring-[#FFA300]/25" : "border-white/[0.08] hover:border-white/20 hover:bg-[#263260]"
       }`}
     >
       {selectMode && (
         <span
           className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
-            selected ? "border-[#FF8A3D] bg-[#FF8A3D] text-black" : "border-white/30 text-transparent"
+            selected ? "border-[#FFA300] bg-[#FFA300] text-black" : "border-white/30 text-transparent"
           }`}
         >
           <Check className="h-3 w-3" strokeWidth={3} />
         </span>
       )}
-      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-[#0E1016]" style={CHECKER_STYLE}>
+      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-[#19223F]" style={CHECKER_STYLE}>
         {is3D ? (
           <div className="absolute inset-0 flex items-center justify-center">
-            <Cuboid className="h-6 w-6 text-[#FF8A3D]" />
+            <Cuboid className="h-6 w-6 text-[#FFA300]" />
           </div>
         ) : (
           <AssetMedia gen={gen} sizes="64px" padding="p-1.5" />
@@ -336,7 +336,7 @@ export function AssetRow({
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[13px] font-medium text-[#ECEEF3]">{cleanPrompt(gen.prompt)}</p>
+        <p className="truncate text-[13px] font-medium text-[#FFF1E8]">{cleanPrompt(gen.prompt)}</p>
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
           <Chip>{formatLabel(gen.categoryId)}</Chip>
           <Chip>{is3D ? `${get3DFormat(gen.imageUrl)} · ${getModelName(gen.styleId)}` : getModelName(gen.styleId)}</Chip>
@@ -345,7 +345,7 @@ export function AssetRow({
               <Globe className="h-3 w-3" /> Shared
             </Chip>
           )}
-          <span className="font-mono text-[11px] text-[#7A8294]">{new Date(gen.createdAt).toLocaleDateString()}</span>
+          <span className="font-mono text-[11px] text-[#8A92BF]">{new Date(gen.createdAt).toLocaleDateString()}</span>
           {gen.seed != null && gen.seed !== 0 && (
             <button
               type="button"
@@ -354,10 +354,10 @@ export function AssetRow({
                 e.stopPropagation();
                 onCopySeed(gen.seed!, gen.id);
               }}
-              className="hidden items-center gap-1 rounded-md px-1 py-0.5 font-mono text-[11px] text-[#7A8294] transition-colors hover:bg-white/[0.06] hover:text-[#C9CFDB] sm:flex"
+              className="hidden items-center gap-1 rounded-md px-1 py-0.5 font-mono text-[11px] text-[#8A92BF] transition-colors hover:bg-white/[0.06] hover:text-[#C8CCE8] sm:flex"
             >
               #{gen.seed}
-              {copied ? <Check className="h-3 w-3 text-[#FF8A3D]" /> : <Copy className="h-3 w-3" />}
+              {copied ? <Check className="h-3 w-3 text-[#FFA300]" /> : <Copy className="h-3 w-3" />}
             </button>
           )}
         </div>
@@ -403,10 +403,10 @@ function RowButton({
       onClick={onClick}
       className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${
         danger
-          ? "text-[#8B93A5] hover:bg-red-500/10 hover:text-red-300"
+          ? "text-[#9AA1CC] hover:bg-red-500/10 hover:text-red-300"
           : active
-          ? "bg-[#FF8A3D]/10 text-[#FFB27A] hover:bg-[#FF8A3D]/20"
-          : "text-[#8B93A5] hover:bg-white/[0.06] hover:text-white"
+          ? "bg-[#FFA300]/10 text-[#FFC857] hover:bg-[#FFA300]/20"
+          : "text-[#9AA1CC] hover:bg-white/[0.06] hover:text-white"
       }`}
     >
       {children}
@@ -420,22 +420,22 @@ function RowButton({
 export function PendingJobCard({ job, onCancel }: { job: PendingJob; onCancel: (id: string) => void }) {
   const processing = job.status === "processing";
   return (
-    <div className="overflow-hidden rounded-2xl border border-[#FF8A3D]/30 bg-[#151922]">
-      <div className="relative flex aspect-square items-center justify-center bg-[#0E1016]" style={CHECKER_STYLE}>
+    <div className="overflow-hidden rounded-2xl border border-[#FFA300]/30 bg-[#212B4E]">
+      <div className="relative flex aspect-square items-center justify-center bg-[#19223F]" style={CHECKER_STYLE}>
         <div className="absolute left-2.5 top-2.5 flex gap-1.5">
           <span
             className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 font-mono text-[10.5px] font-semibold ${
               processing
-                ? "border-[#FF8A3D]/30 bg-[#FF8A3D]/15 text-[#FFB27A]"
-                : "border-white/[0.1] bg-white/[0.06] text-[#C9CFDB]"
+                ? "border-[#FFA300]/30 bg-[#FFA300]/15 text-[#FFC857]"
+                : "border-white/[0.1] bg-white/[0.06] text-[#C8CCE8]"
             }`}
           >
             <Loader2 className="h-3 w-3 animate-spin" />
             {processing ? "Processing" : "Queued"}
           </span>
           {job.mode === "3d" && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-white/[0.1] bg-white/[0.06] px-2 py-1 font-mono text-[10.5px] font-semibold text-[#C9CFDB]">
-              <Cuboid className="h-3 w-3 text-[#FF8A3D]" /> 3D
+            <span className="inline-flex items-center gap-1 rounded-full border border-white/[0.1] bg-white/[0.06] px-2 py-1 font-mono text-[10.5px] font-semibold text-[#C8CCE8]">
+              <Cuboid className="h-3 w-3 text-[#FFA300]" /> 3D
             </span>
           )}
         </div>
@@ -446,7 +446,7 @@ export function PendingJobCard({ job, onCancel }: { job: PendingJob; onCancel: (
             onClick={() => onCancel(job.id)}
             title="Cancel and refund credits"
             aria-label="Cancel and refund credits"
-            className="absolute right-2.5 top-2.5 flex h-7 w-7 items-center justify-center rounded-lg border border-white/[0.1] bg-black/40 text-[#C9CFDB] transition-colors hover:border-red-400/30 hover:bg-red-500/20 hover:text-red-200"
+            className="absolute right-2.5 top-2.5 flex h-7 w-7 items-center justify-center rounded-lg border border-white/[0.1] bg-black/40 text-[#C8CCE8] transition-colors hover:border-red-400/30 hover:bg-red-500/20 hover:text-red-200"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -465,16 +465,16 @@ export function PendingJobCard({ job, onCancel }: { job: PendingJob; onCancel: (
           </div>
           <div className="mb-2 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] transition-all duration-500"
+              className="h-full rounded-full bg-[#FFA300] transition-all duration-500"
               style={{ width: `${job.progress}%` }}
             />
           </div>
-          <p className="font-mono text-[11px] text-[#8B93A5]">{job.progressMessage || "Waiting..."}</p>
+          <p className="font-mono text-[11px] text-[#9AA1CC]">{job.progressMessage || "Waiting..."}</p>
         </div>
       </div>
       <div className="px-3 pb-3 pt-3">
-        <p className="truncate text-[13px] font-medium text-[#ECEEF3]">{job.prompt}</p>
-        <div className="mt-1 flex items-center justify-between font-mono text-[11px] text-[#8B93A5]">
+        <p className="truncate text-[13px] font-medium text-[#FFF1E8]">{job.prompt}</p>
+        <div className="mt-1 flex items-center justify-between font-mono text-[11px] text-[#9AA1CC]">
           <span>{job.mode === "3d" ? "3D Model" : "2D Sprite"}</span>
           <span>{job.creditsUsed} credits</span>
         </div>

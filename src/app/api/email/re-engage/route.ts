@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { mergeEmailPreferences } from "@/app/api/_lib/email-prefs";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { sendReEngagementEmail } from "@/lib/email/send";
@@ -134,16 +135,7 @@ export async function POST(request: Request) {
         results.sent++;
 
         // Update user's last re-engagement email timestamp
-        const currentPrefs = (dbUser.emailPreferences as Record<string, unknown>) || {};
-        await prisma.user.update({
-          where: { id: dbUser.id },
-          data: {
-            emailPreferences: {
-              ...currentPrefs,
-              lastReEngagementAt: new Date().toISOString()
-            }
-          }
-        });
+        await mergeEmailPreferences(dbUser.id, { lastReEngagementAt: new Date().toISOString() });
       } else {
         results.failed++;
         results.errors.push(`${dbUser.email}: ${result.error}`);

@@ -1,62 +1,32 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Scissors, Check, Info, Maximize2 } from "lucide-react";
+import { Scissors, Check, Info, Maximize2, Lock } from "lucide-react";
 import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
 import {
-  ToolShell, ToolPanel, ToolTabs, Field, CanvasColumn, CanvasFrame, CanvasImage, BeforeAfter,
-  BackdropToggle, Chip, PrimaryButton, DownloadButton, SecondaryButton, ErrorNote, InfoNote,
-  SourceCard, RecentAssetPicker, ProcessingOverlay, CanvasEmptyHint, Segmented, PageFallback,
-  isPixelStyleId, useElapsedSeconds, type ToolBgModeId, type ToolGeneration,
+  ToolShell, ToolPanel, ToolTabs, Field, FooterHint, CanvasColumn, CanvasFrame, CanvasImage, BeforeAfter,
+  BackdropToggle, Chip, TopBarHint, PrimaryButton, DownloadButton, SecondaryButton, ErrorNote, InfoNote,
+  SourceCard, RecentAssetPicker, ProcessingOverlay, SourceMissing, Segmented, PageFallback, Elapsed,
+  isPixelStyleId, useSourceGeneration, toolErrorMessage, downloadImage, type ToolBgModeId,
 } from "@/components/tools/ToolWorkspace";
 
+// Must match /api/remove-bg (1 credit, Starter plan and up)
 const COST = 1;
 
 function RemoveBgPageContent({ generationId }: { generationId: string | null }) {
+  const { source, loading: loadingSource, error: sourceError } = useSourceGeneration(generationId);
   const [loading, setLoading] = useState(false);
-  const [loadingOriginal, setLoadingOriginal] = useState(true);
-  const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [processedImage, setProcessedImage] = useState<string | null>(null);
+  const [savedToGallery, setSavedToGallery] = useState(false);
   const [error, setError] = useState("");
-  const [originalData, setOriginalData] = useState<ToolGeneration | null>(null);
   const [bgMode, setBgMode] = useState<ToolBgModeId>("checker");
   const [view, setView] = useState<"compare" | "result">("compare");
-  const seconds = useElapsedSeconds(loading);
 
-  // Load original generation
-  useEffect(() => {
-    if (generationId) {
-      loadOriginalGeneration();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [generationId]);
-
-  const loadOriginalGeneration = async () => {
-    try {
-      const response = await fetch(`/api/generations/${generationId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setOriginalImage(data.generation.imageUrl);
-        setOriginalData(data.generation);
-      } else {
-        setError("Failed to load original image");
-      }
-    } catch {
-      setError("Error loading image");
-    } finally {
-      setLoadingOriginal(false);
-    }
-  };
-
-  const [savedToGallery, setSavedToGallery] = useState(false);
+  const originalImage = source?.imageUrl ?? null;
 
   const handleRemoveBackground = async () => {
-    if (!originalImage) {
-      setError("No original image loaded");
-      return;
-    }
-
+    if (!originalImage || loading) return;
     setLoading(true);
     setError("");
     setProcessedImage(null);
@@ -68,56 +38,30 @@ function RemoveBgPageContent({ generationId }: { generationId: string | null }) 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           imageUrl: originalImage,
-          originalPrompt: originalData?.prompt,
-          categoryId: originalData?.categoryId,
-          subcategoryId: originalData?.subcategoryId,
-          styleId: originalData?.styleId,
-          generationId: generationId,
+          originalPrompt: source?.prompt,
+          categoryId: source?.categoryId,
+          subcategoryId: source?.subcategoryId,
+          styleId: source?.styleId,
+          generationId,
         }),
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        if (data.noCredits) {
-          setError("Not enough credits. Background removal costs 1 credit.");
-        } else {
-          throw new Error(data.error || "Background removal failed");
-        }
-        return;
-      }
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(toolErrorMessage(response, data, "Background removal failed."));
+      if (!data?.imageUrl) throw new Error("Background removal finished but returned no image. Please try again.");
 
       setProcessedImage(data.imageUrl);
-      setSavedToGallery(data.savedToGallery || false);
+      setSavedToGallery(Boolean(data.savedToGallery));
       setView("compare");
       triggerCreditsRefresh();
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Something went wrong";
-      setError(errorMessage);
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDownload = async (imageUrl: string) => {
-    try {
-      const response = await fetch(imageUrl);
-      const blob = await response.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = `no-background-${Date.now()}.png`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(blobUrl);
-    } catch (err) {
-      console.error("Download failed:", err);
-    }
-  };
-
-  const pixel = isPixelStyleId(originalData?.styleId);
-  const isLoadingSource = !!generationId && loadingOriginal;
+  const pixel = isPixelStyleId(source?.styleId);
+  const shownError = error || sourceError;
 
   return (
     <ToolShell>
@@ -128,32 +72,29 @@ function RemoveBgPageContent({ generationId }: { generationId: string | null }) 
         footer={
           <>
             <PrimaryButton onClick={handleRemoveBackground} disabled={loading || !originalImage} loading={loading}
-              loadingLabel={<>Removing background… <span className="font-mono">{seconds}s</span></>}
+              loadingLabel={<>Removing background… <Elapsed /></>}
               icon={<Scissors className="h-4 w-4" />} label="Remove background" cost={COST} />
-            <p className="mt-2 text-center font-mono text-[11px] text-[#7A8294]">~20–40s · transparent PNG</p>
-            {error && <ErrorNote>{error}</ErrorNote>}
+            <FooterHint>~20–40s · transparent PNG</FooterHint>
+            {shownError && <ErrorNote>{shownError}</ErrorNote>}
           </>
         }
       >
-        <Field label="Source">
-          <SourceCard imageUrl={originalImage} loading={isLoadingSource} prompt={originalData?.prompt} pixel={pixel} />
+        <Field label="Sprite">
+          <SourceCard imageUrl={originalImage} loading={loadingSource} prompt={source?.prompt} pixel={pixel} />
         </Field>
 
-        <Field label="How it works">
-          <InfoNote icon={<Info className="h-3.5 w-3.5 text-[#8B93A5]" />}>
-            <ul className="space-y-1">
-              <li>AI detects the subject and removes everything behind it.</li>
-              <li>Fine details like hair and soft edges are preserved.</li>
-              <li>Outputs a transparent PNG ready for any game engine.</li>
-              <li>Works best with clear subject separation.</li>
-            </ul>
-          </InfoNote>
-        </Field>
+        <InfoNote icon={<Info className="h-3.5 w-3.5 text-[#9AA1CC]" />}>
+          Cuts the sprite out and makes everything behind it transparent, ready to drop into any engine.
+          New sprites already come without a background — use this for older ones or when a background slipped in.
+        </InfoNote>
+
+        <InfoNote icon={<Lock className="h-3.5 w-3.5 text-[#9AA1CC]" />}>
+          Available on the <span className="text-[#C8CCE8]">Starter plan and up</span>.
+        </InfoNote>
 
         {processedImage && (
           <InfoNote tone="success" icon={<Check className="h-3.5 w-3.5 text-emerald-300" />}>
-            Background removed — the sprite is now transparent and ready for your engine.
-            {savedToGallery && " Auto-saved to your assets."}
+            Background removed.{savedToGallery && " Saved to your assets."}
           </InfoNote>
         )}
       </ToolPanel>
@@ -162,26 +103,26 @@ function RemoveBgPageContent({ generationId }: { generationId: string | null }) 
         topLeft={
           originalImage ? (
             <>
-              {processedImage ? <Chip>background removed</Chip> : <Chip>original</Chip>}
+              <Chip>{processedImage ? "background removed" : "original"}</Chip>
               {pixel && <Chip>pixel art</Chip>}
             </>
           ) : (
-            <span className="text-[12px] text-[#7A8294]">Your transparent sprite will appear here</span>
+            <TopBarHint>Your transparent sprite will appear here</TopBarHint>
           )
         }
         topRight={
-          <div className="flex items-center gap-2">
+          <>
             {processedImage && (
-              <Segmented value={view} onChange={setView}
+              <Segmented label="Preview mode" value={view} onChange={setView}
                 options={[{ id: "compare", label: "Compare" }, { id: "result", label: "Result" }]} />
             )}
             <BackdropToggle value={bgMode} onChange={setBgMode} />
-          </div>
+          </>
         }
         actions={
           processedImage ? (
             <>
-              <DownloadButton onClick={() => handleDownload(processedImage)} />
+              <DownloadButton onClick={() => downloadImage(processedImage, `spritelab-no-background-${Date.now()}.png`)} />
               {generationId && (
                 <SecondaryButton href={`/upscale?id=${encodeURIComponent(generationId)}`} title="Upscale the original sprite">
                   <Maximize2 className="h-4 w-4" /> Upscale
@@ -194,23 +135,23 @@ function RemoveBgPageContent({ generationId }: { generationId: string | null }) 
         <CanvasFrame bg={bgMode}>
           {!generationId ? (
             <RecentAssetPicker toolPath="/remove-bg" title="Remove a background" />
-          ) : isLoadingSource ? (
-            <ProcessingOverlay icon={<Scissors className="h-5 w-5" />} title="Loading sprite…" seconds={0} hint="fetching" />
+          ) : loadingSource ? (
+            <ProcessingOverlay icon={<Scissors className="h-5 w-5" />} title="Loading sprite…" />
           ) : processedImage && originalImage ? (
             view === "compare" ? (
               <BeforeAfter before={originalImage} after={processedImage} pixel={pixel} beforeLabel="Original" afterLabel="No background" />
             ) : (
-              <CanvasImage src={processedImage} alt="No background" pixel={pixel} />
+              <CanvasImage src={processedImage} alt="Sprite without background" pixel={pixel} />
             )
           ) : originalImage ? (
             <>
-              <CanvasImage src={originalImage} alt="Original" pixel={pixel} dim={loading} />
+              <CanvasImage src={originalImage} alt="Original sprite" pixel={pixel} dim={loading} />
               {loading && (
-                <ProcessingOverlay icon={<Scissors className="h-5 w-5" />} title="Removing background…" seconds={seconds} hint="usually 20–40s" />
+                <ProcessingOverlay icon={<Scissors className="h-5 w-5" />} title="Removing background…" hint="usually 20–40s" timed />
               )}
             </>
           ) : (
-            <CanvasEmptyHint icon={<Scissors className="h-5 w-5" />} title="Couldn't load this sprite" subtitle="Pick another one from your assets." />
+            <SourceMissing icon={<Scissors className="h-5 w-5" />} message={sourceError} />
           )}
         </CanvasFrame>
       </CanvasColumn>

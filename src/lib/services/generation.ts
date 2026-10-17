@@ -7,9 +7,9 @@
 //   Existing routes continue to use their own logic until Phase 3B migration.
 //
 // ARCHITECTURE:
-//   Public API:    generateAssets()  generateGuestAsset()  getModelForUser()
+//   Public API:    generateAssets()  generateGuestAsset()
 //   Core pipeline: generateSingle2D() (shared by all 2D flows)
-//   Helpers:       uploadGeneratedAsset()  saveGeneratedAssets()  refundCreditsSafely()
+//   Helpers:       saveGeneratedAssets()  (charging/refunds: src/lib/billing/operations.ts)
 //
 // 3D NOTE:
 //   3D generation uses Replicate (not Runware) and produces a different output
@@ -18,7 +18,7 @@
 //
 // CREDIT SAFETY CONTRACT:
 //   A. Failure BEFORE deduction     → no action needed
-//   B. Failure AFTER deduction,     → refund via refundCreditsSafely()
+//   B. Failure AFTER deduction,     → op.fail() refunds what is still due (once)
 //      BEFORE provider success
 //   C. Failure AFTER provider       → image exists; attempt DB save anyway.
 //      success, BEFORE DB save        If save fails, log for manual recovery.
@@ -35,26 +35,22 @@
 import {
   removeBackground,
   generateSpriteImage,
-  DEFAULT_MODEL,
-  TIER_MODELS,
-  type RunwareModelId,
+  SPRITE_MODELS,
   type SpriteModelKey,
-  type UserTier,
+  generateAnimationGrid,
 } from "@/lib/runware";
-import { uploadToR2, isR2Configured, uploadGenerationBufferToR2 } from "@/lib/r2";
-import { uploadImageToStorage } from "@/lib/storage";
-import { checkAndDeductCredits, refundCredits } from "@/lib/db/credits";
+import { isDailyAllowanceError, dailyAllowanceMessage } from "@/lib/cloudflare-ai";
+import { uploadGenerationBufferToR2 } from "@/lib/r2";
+import { startOperation, type OpHandle } from "@/lib/billing/operations";
 import { saveGeneration, type SaveGenerationParams } from "@/lib/db/generations";
-import { getUserTier } from "@/lib/db/users";
-import {
-  buildUltimatePrompt,
-  buildEnhancedPrompt,
-  STYLES_2D_FULL,
-} from "@/config";
 import { COLOR_PALETTES } from "@/config/features/premium-features";
-import { enhancePromptWithLearnedFixes } from "@/lib/analytics/prompt-enhancer";
 import { postprocessSprite, postprocessTile } from "@/lib/image/sprite-postprocess";
 import { buildSpritePrompt, isPixelStyle, isTileCategory, normalizeStyleId } from "@/config/prompts/sprite-prompt";
+import { interpretSubject } from "@/lib/prompt-interpret";
+
+/** Shaded styles where a perfectly flat key-coloured patch can only be background. */
+const PAINTERLY_STYLES = new Set(["REALISTIC_PAINTED", "HAND_PAINTED", "DARK_SOULS"]);
+import { storeGuestSprite } from "@/lib/guest-claim/server";
 
 // =============================================================================
 // SECTION 1 — TYPES
@@ -74,12 +70,6 @@ export type GenerationMode =
 
 export type QualityPreset = "draft" | "normal" | "hd";
 
-const QUALITY_SETTINGS: Record<QualityPreset, { steps: number; guidance: number }> = {
-  draft:  { steps: 15, guidance: 2.5 },
-  normal: { steps: 28, guidance: 3.2 },
-  hd:     { steps: 40, guidance: 3.8 },
-};
-
 // Credit cost per preset. Draft + Normal = 1 credit (FLUX.2 klein, ~$0.001).
 // HD runs on GPT Image Mini (~$0.036/image ≈ the price of 1 credit in the
 // cheapest pack), so it costs 3 credits to keep a margin. Surfacing the cost
@@ -90,8 +80,12 @@ export const CREDIT_COSTS: Record<QualityPreset, number> = {
   hd: 3,
 };
 
+/** Matching a reference sprite's style runs on the image-edit model (~$0.07). */
+import { STYLE_MATCH_CREDITS } from "@/config/tool-prices";
+export { STYLE_MATCH_CREDITS };
+
 export function creditsForPreset(preset?: QualityPreset): number {
-  return CREDIT_COSTS[preset ?? "normal"];
+  return CREDIT_COSTS[preset ?? "normal"] ?? CREDIT_COSTS.normal;
 }
 
 // ---------------------------------------------------------------------------
@@ -126,6 +120,17 @@ export interface GenerationRequest {
    * (weapons, items, environment) ignore this field.
    */
   pose?: "auto" | "a-pose" | "t-pose" | "dynamic";
+  /**
+   * Style reference: another sprite (PNG on white). The new sprite is drawn
+   * in exactly its art style by the image-edit model — a whole game in one look.
+   */
+  styleReference?: Buffer;
+  /** Pixel canvas of the reference (e.g. 64) so the new sprite gets the same pixel size. */
+  styleReferenceGrid?: number;
+  /** For the free-tier spend guard. */
+  plan?: string | null;
+  /** For the per-network failure guard. */
+  ip?: string | null;
 
   // The style-mix / model-override / pack-batch fields used to live here
   // but were never wired to a real UI surface. Removed to make the
@@ -208,6 +213,9 @@ export type GenerationErrorCode =
   | "INVALID_STYLE"
   | "PROVIDER_ERROR"
   | "PROVIDER_TIMEOUT"
+  | "CAPACITY_EXHAUSTED"
+  | "RATE_LIMITED"
+  | "SERVICE_PAUSED"
   | "UPLOAD_ERROR"
   | "SAVE_ERROR"
   | "UNEXPECTED_ERROR";
@@ -241,89 +249,6 @@ export class GenerationError extends Error {
 // =============================================================================
 // SECTION 2 — PUBLIC API
 // =============================================================================
-
-// ---------------------------------------------------------------------------
-// getModelForUser
-// ---------------------------------------------------------------------------
-
-/**
- * Returns the Runware model ID that should be used for a given user.
- * Respects the tier hierarchy: free → schnell, starter → dev, pro/lifetime → pro.
- * Pass an optional override to use a specific model (validated against allowed tier).
- */
-export async function getModelForUser(
-  userId: string,
-  requestedModelId?: RunwareModelId
-): Promise<RunwareModelId> {
-  const tier = await getUserTier(userId);
-  return resolveModel(tier, requestedModelId);
-}
-
-// ---------------------------------------------------------------------------
-// buildEnhancedPromptForGeneration (public helper, thin wrapper)
-// ---------------------------------------------------------------------------
-
-/**
- * Builds the final prompt for a 2D generation, applying style config +
- * learned optimizations. Returns all values needed by the provider.
- */
-export async function buildPromptForGeneration(
-  prompt: string,
-  categoryId: string,
-  subcategoryId: string,
-  styleId: string,
-  options?: {
-    colorPaletteId?: string;
-    view?: string;
-    qualityPreset?: QualityPreset;
-    pose?: "auto" | "a-pose" | "t-pose" | "dynamic";
-  }
-): Promise<{
-  finalPrompt: string;
-  negativePrompt: string;
-  guidance: number;
-  steps: number;
-  appliedOptimizations: string[];
-  warnings: string[];
-  resolvedView?: string;
-}> {
-  // Build base prompt — buildEnhancedPrompt only fires when a palette ID
-  // is set (otherwise the cheaper buildUltimatePrompt is sufficient).
-  const {
-    prompt: builtPrompt,
-    negativePrompt: builtNegative,
-    guidance: styleGuidance,
-    steps: styleSteps,
-    resolvedView,
-  } = options?.colorPaletteId
-    ? buildEnhancedPrompt(prompt, categoryId, subcategoryId, styleId, {
-        colorPaletteId: options.colorPaletteId,
-        view: options.view,
-        qualityPreset: options.qualityPreset,
-        pose: options.pose,
-      })
-    : buildUltimatePrompt(prompt, categoryId, subcategoryId, styleId, options?.view, options?.qualityPreset, options?.pose);
-
-  // Apply learned optimizations from analytics layer
-  const { enhancedPrompt, enhancedNegative, appliedFixes, warnings } =
-    await enhancePromptWithLearnedFixes(
-      builtPrompt,
-      builtNegative,
-      categoryId,
-      subcategoryId,
-      styleId
-    );
-
-  return {
-    finalPrompt: enhancedPrompt,
-    negativePrompt: enhancedNegative,
-    guidance: styleGuidance,
-    steps: styleSteps,
-    appliedOptimizations: appliedFixes,
-    warnings,
-    resolvedView,
-  };
-}
 
 // ---------------------------------------------------------------------------
 // generateAssets — authenticated
@@ -383,13 +308,14 @@ export async function generateAssets(
 
 /**
  * Guest generation (no auth, no credits, no DB save).
- * Returns a single asset with a temporary URL — no persistence.
+ * The PNG is stored under a guest claim token (48 h) so it can be moved into
+ * the account the visitor creates; no DB row until it is claimed.
  *
  * Throws GenerationError on provider failure.
  */
 export async function generateGuestAsset(
   request: GuestGenerationRequest
-): Promise<Omit<GenerationResult, "creditsUsed"> & { creditsUsed: 0 }> {
+): Promise<Omit<GenerationResult, "creditsUsed"> & { creditsUsed: 0; claimToken: string | null }> {
   const startMs = Date.now();
 
   log("generation:start", {
@@ -401,7 +327,8 @@ export async function generateGuestAsset(
   // Same sprite pipeline as signed-in users (standard model) so the demo
   // shows exactly the quality people get after signing up.
   const styleId = request.style === "pixel" ? "PIXEL_ART_16" : "CARTOON_WESTERN";
-  const finalPrompt = buildSpritePrompt({ subject: request.prompt, styleId });
+  const { subject } = await interpretSubject(request.prompt, "");
+  const finalPrompt = buildSpritePrompt({ subject, styleId });
 
   let generated: Awaited<ReturnType<typeof generateSpriteImage>>;
   try {
@@ -412,9 +339,10 @@ export async function generateGuestAsset(
     });
   } catch (err) {
     log("generation:error", { mode: "guest", error: err instanceof Error ? err.message : String(err) });
+    const exhausted = isDailyAllowanceError(err);
     throw new GenerationError({
-      code: "PROVIDER_ERROR",
-      userMessage: "Generation failed. Please try again.",
+      code: exhausted ? "CAPACITY_EXHAUSTED" : "PROVIDER_ERROR",
+      userMessage: exhausted ? dailyAllowanceMessage() : "Generation failed. Please try again.",
       isExpected: false,
       cause: err,
     });
@@ -430,10 +358,19 @@ export async function generateGuestAsset(
     log("generation:error", { mode: "guest", stage: "postprocess", error: err instanceof Error ? err.message : String(err) });
   }
 
-  // Persist so the URL outlives the provider's temporary link; fall back to
-  // an inline data URL if storage is unavailable.
-  const upload = await uploadGenerationBufferToR2(png, "guest");
-  const imageUrl = upload.success && upload.url ? upload.url : `data:image/png;base64,${png.toString("base64")}`;
+  // Persist under a claim token so the sprite can move into the account the
+  // visitor creates next (src/lib/guest-claim). Fall back to an inline data
+  // URL (no claim) if storage is unavailable.
+  const stored = await storeGuestSprite(png, {
+    prompt: request.prompt,
+    style: request.style,
+    styleId,
+    finalPrompt,
+    seed: generated.seed,
+    model: generated.model,
+    providerCost: generated.cost,
+  }).catch(() => null);
+  const imageUrl = stored?.imageUrl ?? `data:image/png;base64,${png.toString("base64")}`;
 
   log("generation:result", {
     mode: "guest",
@@ -456,6 +393,7 @@ export async function generateGuestAsset(
       },
     ],
     creditsUsed: 0,
+    claimToken: stored?.token ?? null,
     durationMs: Date.now() - startMs,
   };
 }
@@ -475,33 +413,41 @@ async function generateSinglePipeline(
   // Credit cost scales with quality preset because HD uses ~3× the steps
   // (and therefore ~3× the provider cost). Without this, an HD generation
   // looked free to the user while costing us multiples per image.
-  const creditsRequired = creditsForPreset(request.qualityPreset);
+  const creditsRequired = request.styleReference ? STYLE_MATCH_CREDITS : creditsForPreset(request.qualityPreset);
 
-  // ── Credit deduction (case A boundary) ────────────────────────────────────
-  const creditResult = await checkAndDeductCredits(request.userId, creditsRequired);
-  if (!creditResult.success) {
-    if (creditResult.error === "Not enough credits") {
-      throw new GenerationError({
-        code: "INSUFFICIENT_CREDITS",
-        userMessage: `Not enough credits. You need ${creditsRequired} credit${creditsRequired === 1 ? "" : "s"}.`,
-        isExpected: true,
-      });
-    }
+  // ── Charge as a paid operation (case A boundary) ──────────────────────────
+  // Guards (rate, failures, daily budget) run first; nothing is charged when they refuse.
+  const feature = request.styleReference ? "style_match" : request.qualityPreset === "hd" ? "sprite_hd" : "sprite";
+  const started = await startOperation({
+    userId: request.userId, feature, credits: creditsRequired, plan: request.plan ?? null, ip: request.ip ?? null,
+    input: { prompt: request.prompt, categoryId: request.categoryId, subcategoryId: request.subcategoryId, styleId: request.styleId, preset: request.qualityPreset, styleMatch: !!request.styleReference },
+  });
+  if (!started.ok) {
+    const code: GenerationErrorCode = started.status === 402 ? "INSUFFICIENT_CREDITS" : started.status === 429 ? "RATE_LIMITED" : started.status === 503 ? "SERVICE_PAUSED" : "UNEXPECTED_ERROR";
     throw new GenerationError({
-      code: "UNEXPECTED_ERROR",
-      userMessage: "Something went wrong. Please try again.",
-      isExpected: false,
-      message: `Credit deduction failed: ${creditResult.error}`,
+      code,
+      userMessage: started.status === 402 ? `Not enough credits. You need ${creditsRequired} credit${creditsRequired === 1 ? "" : "s"}.` : started.body.error,
+      isExpected: started.status !== 500,
+      message: `Operation refused: ${started.code}`,
     });
   }
+  const op: OpHandle = started.op;
   // ── CREDITS DEDUCTED — failures from here require refund (case B) ─────────
 
   let asset: GeneratedAsset;
+  let creditsUsed = creditsRequired;
   try {
-    asset = await generateSingle2D(request);
+    const out = await op.run(() => generateSingle2D(request));
+    asset = out.asset;
+    // Style match or HD fell back to the standard model: charge only for
+    // what was delivered and give the difference back (idempotent per operation).
+    if (out.creditsUsed < creditsRequired) {
+      await op.refund(creditsRequired - out.creditsUsed, "single:downgrade");
+      creditsUsed = out.creditsUsed;
+    }
   } catch (err) {
-    // Case B: provider failed after deduction — refund
-    await refundCreditsSafely(request.userId, creditsRequired, "single:provider_error");
+    // Case B: provider failed after deduction — refund what's still due, once
+    await op.fail(err instanceof GenerationError ? err.code : "PROVIDER_ERROR");
     throw err; // Re-throw — already a GenerationError
   }
   // ── PROVIDER SUCCESS — case C boundary ────────────────────────────────────
@@ -510,6 +456,8 @@ async function generateSinglePipeline(
   // Case C: save to DB. If this fails, log for manual recovery.
   // The image was generated and provider was paid — no refund issued.
   await saveGeneratedAssets(request.userId, request, [asset]);
+  if (creditsUsed < creditsRequired) await op.partial(asset.generationId ?? null, "downgraded");
+  else await op.succeed(asset.generationId ?? null);
 
   // Case D: safe to return. DB record exists.
   log("generation:result", {
@@ -523,7 +471,7 @@ async function generateSinglePipeline(
   return {
     success: true,
     assets: [asset],
-    creditsUsed: creditsRequired,
+    creditsUsed,
     durationMs: Date.now() - startMs,
   };
 }
@@ -546,7 +494,7 @@ async function generateSinglePipeline(
  * Does NOT handle credits. Callers must deduct/refund.
  * Throws GenerationError on any failure.
  */
-async function generateSingle2D(request: GenerationRequest): Promise<GeneratedAsset> {
+async function generateSingle2D(request: GenerationRequest): Promise<{ asset: GeneratedAsset; creditsUsed: number }> {
   const warnings: string[] = [];
   const styleId = normalizeStyleId(request.styleId);
 
@@ -558,8 +506,14 @@ async function generateSingle2D(request: GenerationRequest): Promise<GeneratedAs
   const palette = request.colorPaletteId
     ? COLOR_PALETTES.find((p) => p.id === request.colorPaletteId)
     : undefined;
+  // Abstract ideas ("a keyboard as an enemy") → what to actually draw. Not
+  // for style match: the reference sets the look and the margin is thinner.
+  const { subject } = request.styleReference
+    ? { subject: request.prompt }
+    : await interpretSubject(request.prompt, request.categoryId);
   const finalPrompt = buildSpritePrompt({
-    subject: request.prompt,
+    subject,
+    original: request.prompt,
     styleId,
     categoryId: request.categoryId,
     view,
@@ -573,8 +527,43 @@ async function generateSingle2D(request: GenerationRequest): Promise<GeneratedAs
   }
 
   // ── 3. Generate ────────────────────────────────────────────────────────────
-  let generated: Awaited<ReturnType<typeof generateSpriteImage>>;
-  try {
+  // The route has maxDuration 300 s. Each provider call can take up to ~165 s
+  // (Runware 75 s timeout + Cloudflare fallback 90 s), so a second call is
+  // only started while it can still finish in time — otherwise the function
+  // would be killed before the caller refunds the credits.
+  const startedAt = Date.now();
+  const RETRY_BUDGET_MS = 100_000;
+  const providerError = (cause: unknown) => {
+    const exhausted = isDailyAllowanceError(cause);
+    return new GenerationError({
+      code: exhausted ? "CAPACITY_EXHAUSTED" : "PROVIDER_ERROR",
+      userMessage: exhausted ? dailyAllowanceMessage() : "Generation failed. Please try again.",
+      isExpected: exhausted,
+      cause,
+    });
+  };
+  let generated: Awaited<ReturnType<typeof generateSpriteImage>> | undefined;
+  let styleMatched = false;
+  if (request.styleReference) {
+    try {
+      const styled = await generateAnimationGrid({
+        prompt: [
+          finalPrompt,
+          "Match the art style of the reference image exactly: the same rendering technique, pixel size, outline colour and thickness, colour palette, shading and lighting, and the same proportions / level of detail, so both sprites look like they come from one game.",
+          "Draw a completely NEW subject as described above — do not copy the reference's subject, pose or design. Same scale as the reference.",
+        ].join("\n"),
+        reference: request.styleReference,
+        size: 1024,
+      });
+      generated = { image: styled.image, seed: request.seed ?? 0, model: "style-match", cost: styled.cost };
+      styleMatched = true;
+    } catch (err) {
+      log("generation:error", { stage: "style-match", userId: request.userId, error: err instanceof Error ? err.message : String(err) });
+      if (Date.now() - startedAt > RETRY_BUDGET_MS) throw providerError(err);
+      warnings.push("Couldn't match the reference style this time — this sprite uses your selected style and the extra credits were refunded.");
+    }
+  }
+  if (!generated) try {
     generated = await generateSpriteImage({ prompt: finalPrompt, model: modelKey, seed: request.seed });
   } catch (err) {
     // One retry on the standard model — a transient provider error shouldn't
@@ -585,24 +574,27 @@ async function generateSingle2D(request: GenerationRequest): Promise<GeneratedAs
       modelKey,
       error: err instanceof Error ? err.message : String(err),
     });
+    if (isDailyAllowanceError(err) || Date.now() - startedAt > RETRY_BUDGET_MS) throw providerError(err);
     try {
       generated = await generateSpriteImage({ prompt: finalPrompt, model: "standard", seed: request.seed });
-      if (modelKey === "hd") warnings.push("HD model was busy — this sprite was made with the standard model.");
     } catch (retryErr) {
-      throw new GenerationError({
-        code: "PROVIDER_ERROR",
-        userMessage: "Generation failed. Please try again.",
-        isExpected: false,
-        cause: retryErr,
-      });
+      throw providerError(retryErr);
     }
   }
+
+  // What was actually delivered decides the price. HD counts only when the
+  // HD model itself drew it (not the standard retry or the free fallback).
+  const deliveredHd = modelKey === "hd" && generated.model === SPRITE_MODELS.hd.air;
+  if (modelKey === "hd" && !deliveredHd && !styleMatched) {
+    warnings.push(`HD model was busy — this sprite was made with the standard model and costs ${CREDIT_COSTS.normal} credit.`);
+  }
+  const creditsUsed = styleMatched ? STYLE_MATCH_CREDITS : deliveredHd ? CREDIT_COSTS.hd : CREDIT_COSTS.normal;
 
   // ── 4. Post-process ────────────────────────────────────────────────────────
   // Pixel styles: canvas of up to 128 art pixels. The model's own pixel size
   // is kept when detected; forcing a smaller grid (we tried 64) merged faces
   // and fine detail into blobs.
-  const pixelGrid = isPixelStyle(styleId) ? 128 : undefined;
+  const pixelGrid = isPixelStyle(styleId) ? (request.styleReferenceGrid && request.styleReferenceGrid >= 24 ? request.styleReferenceGrid : 128) : undefined;
   const paletteSize = 32;
   let png: Buffer;
   if (isTileCategory(request.categoryId)) {
@@ -613,7 +605,7 @@ async function generateSingle2D(request: GenerationRequest): Promise<GeneratedAs
       png = generated.image;
     }
   } else try {
-    const processed = await postprocessSprite(generated.image, { pixelGrid, paletteSize });
+    const processed = await postprocessSprite(generated.image, { pixelGrid, paletteSize, flatGaps: PAINTERLY_STYLES.has(styleId) });
     png = processed.png;
     if (!processed.backgroundRemoved) {
       // Model drew a scene despite the instruction — fall back to the AI
@@ -647,14 +639,17 @@ async function generateSingle2D(request: GenerationRequest): Promise<GeneratedAs
   }
 
   return {
-    imageUrl: upload.url,
-    seed: generated.seed,
-    model: generated.model,
-    providerCost: generated.cost,
-    finalPrompt,
-    appliedOptimizations: [],
-    warnings,
-    resolvedView: view ?? "DEFAULT",
+    asset: {
+      imageUrl: upload.url,
+      seed: generated.seed,
+      model: generated.model,
+      providerCost: generated.cost,
+      finalPrompt,
+      appliedOptimizations: [],
+      warnings,
+      resolvedView: view ?? "DEFAULT",
+    },
+    creditsUsed,
   };
 }
 
@@ -664,7 +659,7 @@ async function removeBackgroundFromBuffer(image: Buffer): Promise<Buffer | null>
     const dataUri = `data:image/png;base64,${image.toString("base64")}`;
     const result = await removeBackground(dataUri);
     if (!result.success || !result.imageUrl) return null;
-    const res = await fetch(result.imageUrl);
+    const res = await fetch(result.imageUrl, { signal: AbortSignal.timeout(30_000) });
     return res.ok ? Buffer.from(await res.arrayBuffer()) : null;
   } catch {
     return null;
@@ -674,84 +669,6 @@ async function removeBackgroundFromBuffer(image: Buffer): Promise<Buffer | null>
 // =============================================================================
 // SECTION 5 — INTERNAL HELPERS
 // =============================================================================
-
-// ---------------------------------------------------------------------------
-// resolveModel — internal
-// ---------------------------------------------------------------------------
-
-function resolveModel(
-  tier: UserTier,
-  requested?: RunwareModelId
-): RunwareModelId {
-  if (!requested) return DEFAULT_MODEL[tier];
-
-  const allowed = TIER_MODELS[tier];
-  if (allowed.includes(requested)) return requested;
-
-  // Requested model is above tier — fall back to tier default
-  return DEFAULT_MODEL[tier];
-}
-
-// ---------------------------------------------------------------------------
-// uploadGeneratedAsset — internal
-// ---------------------------------------------------------------------------
-
-/**
- * Uploads a generated image to the best available storage provider.
- * Order: R2 (primary, zero-egress) → Supabase Storage (fallback).
- *
- * Throws PROVIDER_ERROR if both providers fail. Persisting the ephemeral
- * Runware URL silently gives the user a broken asset hours later — better
- * to fail loudly here so the caller refunds the credit (case B) and the
- * user knows to retry.
- */
-async function uploadGeneratedAsset(
-  imageUrl: string,
-  userId: string,
-  categoryId: string,
-  subcategoryId: string,
-  styleId: string,
-  seed: number
-): Promise<string> {
-  if (isR2Configured()) {
-    const r2Result = await uploadToR2(imageUrl, userId);
-    if (r2Result.success && r2Result.url) {
-      return r2Result.url;
-    }
-    log("generation:error", {
-      stage: "upload_r2",
-      userId,
-      error: r2Result.error,
-    });
-  }
-
-  // R2 unavailable or failed → try Supabase
-  const fileName = `sprite-${categoryId}-${subcategoryId}-${styleId}-${seed}`;
-  const supabaseResult = await uploadImageToStorage(imageUrl, userId, fileName);
-  if (supabaseResult.success && supabaseResult.url) {
-    return supabaseResult.url;
-  }
-
-  log("generation:error", {
-    stage: "upload_supabase",
-    userId,
-    error: supabaseResult.error,
-  });
-
-  log("generation:error", {
-    stage: "upload_all_failed",
-    userId,
-    message: "Both R2 and Supabase upload failed. Refusing to persist temp provider URL.",
-  });
-
-  throw new GenerationError({
-    code: "PROVIDER_ERROR",
-    userMessage:
-      "We couldn't save your image right now. Your credit has been refunded — please try again in a moment.",
-    isExpected: false,
-    message: "Image hosting unavailable: both R2 and Supabase upload failed",
-  });
-}
 
 // ---------------------------------------------------------------------------
 // saveGeneratedAssets — internal
@@ -786,7 +703,12 @@ async function saveGeneratedAssets(
       folderId: request.folderId,
     };
 
-    const saveResult = await saveGeneration(params);
+    let saveResult: Awaited<ReturnType<typeof saveGeneration>>;
+    try {
+      saveResult = await saveGeneration(params);
+    } catch (err) {
+      saveResult = { success: false, error: err instanceof Error ? err.message : String(err) } as Awaited<ReturnType<typeof saveGeneration>>;
+    }
     if (saveResult.success && "generation" in saveResult && saveResult.generation) {
       asset.generationId = saveResult.generation.id;
     }
@@ -802,53 +724,6 @@ async function saveGeneratedAssets(
         recoveryNote: "Image generated successfully. DB record missing — manual save needed.",
       });
     }
-  }
-}
-
-// ---------------------------------------------------------------------------
-// refundCreditsSafely — internal
-// ---------------------------------------------------------------------------
-
-/**
- * Issues a credit refund and logs the outcome.
- * Absorbs errors — a failed refund is logged but does not crash the request.
- * Never throws.
- *
- * Context is a short string for log tracing, e.g. "single:provider_error".
- */
-async function refundCreditsSafely(
-  userId: string,
-  amount: number,
-  context: string
-): Promise<void> {
-  try {
-    const refundResult = await refundCredits(userId, amount);
-    if (refundResult.success) {
-      log("generation:error", {
-        stage: "refund_issued",
-        context,
-        userId,
-        amount,
-        newBalance: refundResult.credits,
-      });
-    } else {
-      log("generation:error", {
-        stage: "refund_failed",
-        context,
-        userId,
-        amount,
-        warning: "Refund call returned success: false — manual credit restore needed.",
-      });
-    }
-  } catch (err) {
-    log("generation:error", {
-      stage: "refund_exception",
-      context,
-      userId,
-      amount,
-      error: err instanceof Error ? err.message : String(err),
-      warning: "Refund threw an exception — manual credit restore needed.",
-    });
   }
 }
 

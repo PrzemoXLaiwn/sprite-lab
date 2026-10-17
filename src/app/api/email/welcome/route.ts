@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { mergeEmailPreferences } from "@/app/api/_lib/email-prefs";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { sendWelcomeEmail } from "@/lib/email/send";
@@ -87,12 +88,9 @@ export async function POST() {
     if (!result.success) {
       console.error("[API] Welcome email send failed:", result.error);
       // Release the claim so a later call can retry
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          emailPreferences: prefs ? (prefs as Prisma.InputJsonValue) : Prisma.DbNull,
-        },
-      }).catch(console.error);
+      // (merge, not a write-back of the old snapshot — that could undo a gift claim)
+      await mergeEmailPreferences(user.id, { welcomeEmailSent: false, welcomeEmailSentAt: null })
+        .catch(console.error);
       return NextResponse.json(
         { error: "Failed to send welcome email" },
         { status: 500 }

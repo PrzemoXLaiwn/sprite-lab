@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { mergeEmailPreferences } from "@/app/api/_lib/email-prefs";
 import { isAuthorizedCronRequest } from "@/lib/cron-auth";
 import { stripe, PLANS, CREDIT_PACKS } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { sendAbandonedCartEmail } from "@/lib/email/send";
-import { Prisma } from "@prisma/client";
+import { MARKETING_OFF_RESPONSE, legacyMarketingEnabled } from "@/lib/email/flags";
 
 // Abandoned Cart Email API
 // Can be called manually or via cron job
@@ -41,6 +42,11 @@ export async function GET(request: NextRequest) {
     // Verify CRON_SECRET
     if (!isAuthorizedCronRequest(request)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Automated marketing: behind the one switch, like /api/cron/emails
+    if (!legacyMarketingEnabled()) {
+      return NextResponse.json(MARKETING_OFF_RESPONSE);
     }
 
     // Check if Resend is configured
@@ -174,16 +180,7 @@ export async function GET(request: NextRequest) {
 
         // Update user's email preferences if user exists
         if (user) {
-          const currentPrefs = (user.emailPreferences as Record<string, unknown>) || {};
-          await prisma.user.update({
-            where: { id: user.id },
-            data: {
-              emailPreferences: {
-                ...currentPrefs,
-                lastAbandonedCartAt: new Date().toISOString(),
-              },
-            },
-          });
+          await mergeEmailPreferences(user.id, { lastAbandonedCartAt: new Date().toISOString() });
         }
       } else {
         results.failed++;

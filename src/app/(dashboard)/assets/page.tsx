@@ -22,7 +22,6 @@ import {
   SearchX,
   ArrowDownUp,
 } from "lucide-react";
-import JSZip from "jszip";
 import { SpriteEditor } from "@/components/editor/SpriteEditor";
 import { SpritePlayground } from "@/components/playground/SpritePlayground";
 import { AssetCard, AssetRow, PendingJobCard } from "@/components/assets/AssetCard";
@@ -69,20 +68,20 @@ function SuccessToast({
       ? { box: "border-emerald-400/20 bg-emerald-500/[0.06]", icon: "text-emerald-300", title: "text-emerald-200", Icon: CheckCircle2 }
       : message.type === "error"
       ? { box: "border-red-400/20 bg-red-500/[0.06]", icon: "text-red-300", title: "text-red-200", Icon: XCircle }
-      : { box: "border-white/[0.08] bg-white/[0.03]", icon: "text-[#FF8A3D]", title: "text-white", Icon: Info };
+      : { box: "border-white/[0.08] bg-white/[0.03]", icon: "text-[#FFA300]", title: "text-white", Icon: Info };
 
   return (
-    <div className="pointer-events-auto overflow-hidden rounded-2xl border border-white/[0.08] bg-[#151922] shadow-2xl animate-in slide-in-from-top-2 fade-in duration-300">
+    <div className="pointer-events-auto overflow-hidden rounded-2xl border border-white/[0.08] bg-[#212B4E] shadow-2xl animate-in slide-in-from-top-2 fade-in duration-300">
       <div className={`flex items-start gap-3 border p-3.5 ${tone.box} rounded-2xl`}>
         <tone.Icon className={`mt-0.5 h-4 w-4 shrink-0 ${tone.icon}`} />
         <div className="min-w-0 flex-1">
           <p className={`text-[13px] font-semibold ${tone.title}`}>{message.title}</p>
-          {message.description && <p className="mt-0.5 text-[12px] text-[#8B93A5]">{message.description}</p>}
+          {message.description && <p className="mt-0.5 text-[12px] text-[#9AA1CC]">{message.description}</p>}
         </div>
         <button
           onClick={onClose}
           aria-label="Dismiss"
-          className="rounded-md p-0.5 text-[#7A8294] transition-colors hover:text-white"
+          className="rounded-md p-0.5 text-[#8A92BF] transition-colors hover:text-white"
         >
           <X className="h-3.5 w-3.5" />
         </button>
@@ -153,10 +152,19 @@ export default function GalleryPage() {
 
   useEffect(() => {
     loadGenerations();
-    loadPendingJobs();
-    // Poll for pending jobs every 3 seconds
-    const interval = setInterval(loadPendingJobs, 3000);
-    return () => clearInterval(interval);
+    // Queue polling: every 3s while something is generating, otherwise every
+    // 20s; paused while the tab is in the background.
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const tick = async () => {
+      const busy = document.hidden ? false : await loadPendingJobs();
+      if (!cancelled) timer = setTimeout(tick, busy ? 3000 : 20_000);
+    };
+    tick();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -178,7 +186,8 @@ export default function GalleryPage() {
     }
   };
 
-  const loadPendingJobs = async () => {
+  /** Returns true while a job is still pending / processing. */
+  const loadPendingJobs = async (): Promise<boolean> => {
     try {
       const response = await fetch("/api/queue/status");
       if (response.ok) {
@@ -196,15 +205,17 @@ export default function GalleryPage() {
         if (newlyCompleted.length > 0) {
           showToast(
             "success",
-            `${newlyCompleted.length} generation${newlyCompleted.length > 1 ? "s" : ""} completed!`,
-            "Your new assets have been added to the gallery."
+            `${newlyCompleted.length} sprite${newlyCompleted.length > 1 ? "s" : ""} finished`,
+            "They're now in your assets."
           );
           loadGenerations(true);
         }
+        return jobs.some((job) => job.status === "pending" || job.status === "processing");
       }
     } catch (error) {
       console.error("Failed to load pending jobs:", error);
     }
+    return false;
   };
 
   const cancelPendingJob = async (jobId: string) => {
@@ -217,15 +228,16 @@ export default function GalleryPage() {
 
       if (response.ok) {
         const data = await response.json();
-        showToast("success", "Job Cancelled", `${data.creditsRefunded} credits refunded`);
+        showToast("success", "Cancelled", `${data.creditsRefunded} credit${data.creditsRefunded === 1 ? "" : "s"} refunded`);
         loadPendingJobs();
       } else {
-        const error = await response.json();
-        showToast("error", "Failed to cancel", error.error);
+        const error = await response.json().catch(() => ({}));
+        showToast("error", "Couldn't cancel", error.error || "Please try again.");
+
       }
     } catch (error) {
       console.error("Failed to cancel job:", error);
-      showToast("error", "Failed to cancel", "Please try again");
+      showToast("error", "Couldn't cancel", "Please try again.");
     }
   };
 
@@ -235,12 +247,11 @@ export default function GalleryPage() {
   );
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this generation?")) return;
+    if (!confirm("Delete this sprite? This can't be undone.")) return;
 
     // Optimistic update - remove immediately
     const previousGenerations = generations;
     setGenerations((prev) => prev.filter((g) => g.id !== id));
-    showToast("info", "Deleting...", "Removing from gallery");
 
     try {
       const response = await fetch(`/api/generations/${id}`, {
@@ -248,17 +259,17 @@ export default function GalleryPage() {
       });
 
       if (response.ok) {
-        showToast("success", "Deleted", "Asset removed from gallery");
+        showToast("success", "Deleted", "The sprite was removed from your assets.");
       } else {
         // Rollback on error
         setGenerations(previousGenerations);
-        showToast("error", "Delete failed", "Please try again");
+        showToast("error", "Couldn't delete", "Please try again.");
       }
     } catch (error) {
       console.error("Failed to delete:", error);
       // Rollback on error
       setGenerations(previousGenerations);
-      showToast("error", "Delete failed", "Please try again");
+      showToast("error", "Couldn't delete", "Please try again.");
     }
   };
 
@@ -320,7 +331,7 @@ export default function GalleryPage() {
     if (selectedIds.size === 0) return;
 
     const count = selectedIds.size;
-    if (!confirm(`Are you sure you want to delete ${count} item(s)? This cannot be undone.`)) return;
+    if (!confirm(`Delete ${count} sprite${count === 1 ? "" : "s"}? This can't be undone.`)) return;
 
     // Optimistic update - remove immediately
     const previousGenerations = generations;
@@ -328,7 +339,6 @@ export default function GalleryPage() {
     setGenerations((prev) => prev.filter((g) => !idsToDelete.has(g.id)));
     clearSelection();
     setDeleting(true);
-    showToast("info", `Deleting ${count} items...`, "This may take a moment");
 
     try {
       const response = await fetch("/api/generations", {
@@ -339,18 +349,18 @@ export default function GalleryPage() {
 
       if (response.ok) {
         const data = await response.json();
-        showToast("success", "Deleted", `${data.deleted} items removed`);
+        showToast("success", "Deleted", `${data.deleted} sprite${data.deleted === 1 ? "" : "s"} removed.`);
       } else {
         // Rollback on error
         setGenerations(previousGenerations);
-        const error = await response.json();
-        showToast("error", "Delete failed", error.error || "Please try again");
+        const error = await response.json().catch(() => ({}));
+        showToast("error", "Couldn't delete", error.error || "Please try again.");
       }
     } catch (error) {
       console.error("Bulk delete failed:", error);
       // Rollback on error
       setGenerations(previousGenerations);
-      showToast("error", "Delete failed", "Please try again");
+      showToast("error", "Couldn't delete", "Please try again.");
     } finally {
       setDeleting(false);
     }
@@ -361,9 +371,10 @@ export default function GalleryPage() {
     if (selectedIds.size === 0) return;
 
     setDownloading(true);
-    showToast("info", "Preparing download...", `Packaging ${selectedIds.size} files`);
+    showToast("info", "Preparing your .zip…", `Packing ${selectedIds.size} file${selectedIds.size === 1 ? "" : "s"}`);
 
     try {
+      const JSZip = (await import("jszip")).default;
       const zip = new JSZip();
       const selectedGens = generations.filter((g) => selectedIds.has(g.id));
 
@@ -398,11 +409,11 @@ export default function GalleryPage() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      showToast("success", "Download complete!", `${selectedIds.size} files packaged`);
+      showToast("success", "Download ready", `${selectedIds.size} file${selectedIds.size === 1 ? "" : "s"} in the .zip`);
       clearSelection();
     } catch (error) {
       console.error("Batch download failed:", error);
-      showToast("error", "Download failed", "Please try again");
+      showToast("error", "Couldn't build the .zip", "Please try again.");
     } finally {
       setDownloading(false);
     }
@@ -425,19 +436,19 @@ export default function GalleryPage() {
         if (newIsPublic) {
           showToast(
             "success",
-            "Shared to Community!",
-            "Your creation is now visible to everyone in the community gallery."
+            "Shared to Explore",
+            "Everyone can now see it on the Explore page."
           );
         } else {
-          showToast("info", "Removed from Community", "Your creation is now private.");
+          showToast("info", "No longer shared", "Only you can see it now.");
         }
       } else {
-        const error = await response.json();
-        showToast("error", "Failed to update", error.error || "Please try again.");
+        const error = await response.json().catch(() => ({}));
+        showToast("error", "Couldn't update sharing", error.error || "Please try again.");
       }
     } catch (error) {
       console.error("Share toggle failed:", error);
-      showToast("error", "Failed to update", "Please try again.");
+      showToast("error", "Couldn't update sharing", "Please try again.");
     }
   };
 
@@ -504,27 +515,27 @@ export default function GalleryPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0B0D12] text-[#ECEEF3]">
+    <div className="min-h-screen bg-[#131A31] text-[#FFF1E8]">
       <div className="mx-auto max-w-[1400px] px-5 py-6 lg:px-8">
         {/* Header */}
         <div className="mb-6 flex items-end justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="font-display text-[26px] font-semibold leading-tight tracking-normal text-white">My Assets</h1>
-            <p className="mt-1 text-[13px] text-[#8B93A5]">
-              <span className="font-mono text-[#C9CFDB]">{generations.length}</span> assets
-              <span className="mx-1.5 text-[#7A8294]">·</span>
-              <span className="font-mono text-[#C9CFDB]">{total2D}</span> sprites
+            <h1 className="font-display text-[24px] font-semibold leading-tight tracking-tight text-white">My Assets</h1>
+            <p className="mt-1 text-[13px] text-[#9AA1CC]">
+              <span className="font-mono text-[#C8CCE8]">{generations.length}</span> assets
+              <span className="mx-1.5 text-[#8A92BF]">·</span>
+              <span className="font-mono text-[#C8CCE8]">{total2D}</span> sprites
               {total3D > 0 && (
                 <>
-                  <span className="mx-1.5 text-[#7A8294]">·</span>
-                  <span className="font-mono text-[#C9CFDB]">{total3D}</span> 3D models
+                  <span className="mx-1.5 text-[#8A92BF]">·</span>
+                  <span className="font-mono text-[#C8CCE8]">{total3D}</span> 3D models
                 </>
               )}
             </p>
           </div>
           <Link
             href="/generate"
-            className="px-corners inline-flex h-10 shrink-0 items-center gap-2 bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] px-4 text-[13px] font-semibold text-white transition hover:brightness-110"
+            className="px-corners inline-flex h-10 shrink-0 items-center gap-2 bg-[#FFA300] px-4 text-[13px] font-semibold text-[#131A31] transition hover:bg-[#FFB733]"
           >
             <Plus className="h-4 w-4" />
             Create
@@ -535,30 +546,31 @@ export default function GalleryPage() {
         <div className="mb-5 space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative min-w-[200px] flex-1">
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7A8294]" />
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A92BF]" />
               <input
                 type="search"
-                placeholder="Search by prompt..."
+                placeholder="Search by prompt…"
+                aria-label="Search your assets by prompt"
                 value={searchQuery}
                 onChange={(e) => changeSearch(e.target.value)}
-                className="h-10 w-full rounded-xl border border-white/[0.08] bg-[#151922] pl-10 pr-3 text-[13px] text-white outline-none transition-colors placeholder:text-[#7A8294] focus:border-[#FF8A3D]/50"
+                className="h-10 w-full rounded-xl border border-white/[0.08] bg-[#212B4E] pl-10 pr-3 text-[13px] text-white outline-none transition-colors placeholder:text-[#8A92BF] focus:border-[#FFA300]/50"
               />
             </div>
 
             <div className="relative">
-              <ArrowDownUp className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#8B93A5]" />
+              <ArrowDownUp className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9AA1CC]" />
               <select
                 value={sortOrder}
                 onChange={(e) => setSortOrder(e.target.value as "newest" | "oldest")}
-                aria-label="Sort"
-                className="h-10 appearance-none rounded-xl border border-white/[0.08] bg-[#151922] pl-8 pr-4 text-[13px] text-[#C9CFDB] outline-none transition-colors hover:border-white/20 focus:border-[#FF8A3D]/50"
+                aria-label="Sort order"
+                className="h-10 appearance-none rounded-xl border border-white/[0.08] bg-[#212B4E] pl-8 pr-4 text-[13px] text-[#C8CCE8] outline-none transition-colors hover:border-white/20 focus:border-[#FFA300]/50"
               >
-                <option value="newest">Newest</option>
-                <option value="oldest">Oldest</option>
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
               </select>
             </div>
 
-            <div className="flex h-10 items-center gap-1 rounded-xl bg-white/[0.04] p-1">
+            <div className="flex h-11 items-center gap-1 rounded-xl bg-white/[0.04] p-1 lg:h-10">
               {([
                 { id: "grid" as const, icon: LayoutGrid, label: "Grid view" },
                 { id: "list" as const, icon: List, label: "List view" },
@@ -570,8 +582,8 @@ export default function GalleryPage() {
                   title={v.label}
                   aria-label={v.label}
                   aria-pressed={viewMode === v.id}
-                  className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
-                    viewMode === v.id ? "bg-white/[0.1] text-white" : "text-[#8B93A5] hover:text-white"
+                  className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors lg:h-8 lg:w-8 ${
+                    viewMode === v.id ? "bg-white/[0.1] text-white" : "text-[#9AA1CC] hover:text-white"
                   }`}
                 >
                   <v.icon className="h-4 w-4" />
@@ -584,8 +596,8 @@ export default function GalleryPage() {
               onClick={() => (selectMode ? clearSelection() : setSelectMode(true))}
               className={`flex h-10 items-center gap-1.5 rounded-xl border px-3.5 text-[13px] font-medium transition-colors ${
                 selectMode
-                  ? "border-[#FF8A3D] bg-[#FF8A3D]/10 text-[#FFB27A] ring-2 ring-[#FF8A3D]/25"
-                  : "border-white/[0.1] bg-white/[0.04] text-[#C9CFDB] hover:bg-white/[0.08]"
+                  ? "border-[#FFA300] bg-[#FFA300]/10 text-[#FFC857] ring-2 ring-[#FFA300]/25"
+                  : "border-white/[0.1] bg-white/[0.04] text-[#C8CCE8] hover:bg-white/[0.08]"
               }`}
             >
               {selectMode ? <X className="h-4 w-4" /> : <CheckSquare className="h-4 w-4" />}
@@ -598,7 +610,7 @@ export default function GalleryPage() {
               disabled={refreshing}
               title="Refresh"
               aria-label="Refresh"
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.1] bg-white/[0.04] text-[#C9CFDB] transition-colors hover:bg-white/[0.08] disabled:opacity-60"
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.1] bg-white/[0.04] text-[#C8CCE8] transition-colors hover:bg-white/[0.08] disabled:opacity-60"
             >
               <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
             </button>
@@ -612,13 +624,14 @@ export default function GalleryPage() {
                     key={t.id}
                     type="button"
                     onClick={() => changeType(t.id)}
+                    aria-pressed={filterType === t.id}
                     className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12px] font-medium transition-colors ${
-                      filterType === t.id ? "bg-white/[0.1] text-white" : "text-[#8B93A5] hover:text-white"
+                      filterType === t.id ? "bg-white/[0.1] text-white" : "text-[#9AA1CC] hover:text-white"
                     }`}
                   >
                     {t.icon && <t.icon className="h-3.5 w-3.5" />}
                     {t.label}
-                    <span className="font-mono text-[10.5px] text-[#7A8294]">{t.count}</span>
+                    <span className="font-mono text-[10.5px] text-[#8A92BF]">{t.count}</span>
                   </button>
                 ))}
               </div>
@@ -631,10 +644,11 @@ export default function GalleryPage() {
                     key={c.id}
                     type="button"
                     onClick={() => changeCategory(c.id)}
-                    className={`shrink-0 rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors ${
+                    aria-pressed={active}
+                    className={`min-h-10 shrink-0 rounded-full border px-3.5 py-1.5 text-[12.5px] font-medium transition-colors lg:min-h-0 lg:px-3 lg:text-[12px] ${
                       active
-                        ? "border-[#FF8A3D]/60 bg-[#FF8A3D]/[0.12] text-white"
-                        : "border-white/[0.08] text-[#8B93A5] hover:border-white/20 hover:text-white"
+                        ? "border-[#FFA300]/60 bg-[#FFA300]/[0.12] text-white"
+                        : "border-white/[0.08] text-[#9AA1CC] hover:border-white/20 hover:text-white"
                     }`}
                   >
                     {c.label}
@@ -649,8 +663,8 @@ export default function GalleryPage() {
         {!loading && activePendingJobs.length > 0 && (
           <section className="mb-8">
             <div className="mb-3 flex items-center gap-2">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#FF8A3D]" />
-              <h2 className="font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#FFA300]" />
+              <h2 className="text-[12.5px] text-[#9AA1CC] font-semibold">
                 Generating · {activePendingJobs.length}
               </h2>
             </div>
@@ -673,14 +687,14 @@ export default function GalleryPage() {
           hasFilters ? (
             <div className="flex flex-col items-center justify-center rounded-3xl border border-white/[0.06] px-6 py-20 text-center">
               <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.04]">
-                <SearchX className="h-5 w-5 text-[#FF8A3D]" />
+                <SearchX className="h-5 w-5 text-[#FFA300]" />
               </div>
               <h3 className="text-[15px] font-semibold text-white">No matches found</h3>
-              <p className="mt-1 max-w-sm text-[13px] text-[#8B93A5]">No assets match your filters. Try adjusting your search.</p>
+              <p className="mt-1 max-w-sm text-[13px] text-[#9AA1CC]">Nothing matches these filters. Try another word or clear them.</p>
               <button
                 type="button"
                 onClick={clearFilters}
-                className="mt-5 inline-flex h-10 items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 text-[13px] font-medium text-[#C9CFDB] transition-colors hover:bg-white/[0.08]"
+                className="mt-5 inline-flex h-10 items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 text-[13px] font-medium text-[#C8CCE8] transition-colors hover:bg-white/[0.08]"
               >
                 <X className="h-4 w-4" /> Clear filters
               </button>
@@ -688,17 +702,17 @@ export default function GalleryPage() {
           ) : activePendingJobs.length > 0 ? null : (
             <div className="pixel-grid flex flex-col items-center justify-center rounded-3xl border border-white/[0.06] px-6 py-24 text-center">
               <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.04]">
-                <Images className="h-5 w-5 text-[#FF8A3D]" />
+                <Images className="h-5 w-5 text-[#FFA300]" />
               </div>
               <h3 className="text-[15px] font-semibold text-white">
-                No assets yet<span className="caret" />
+                No assets yet
               </h3>
-              <p className="mt-1 max-w-sm text-[13px] text-[#8B93A5]">
+              <p className="mt-1 max-w-sm text-[13px] text-[#9AA1CC]">
                 Everything you generate is saved here — ready to download, edit and share.
               </p>
               <Link
                 href="/generate"
-                className="px-corners mt-5 inline-flex h-10 items-center gap-2 bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] px-4 text-[13px] font-semibold text-white transition hover:brightness-110"
+                className="px-corners mt-5 inline-flex h-10 items-center gap-2 bg-[#FFA300] px-4 text-[13px] font-semibold text-[#131A31] transition hover:bg-[#FFB733]"
               >
                 <Plus className="h-4 w-4" /> Create your first asset
               </Link>
@@ -707,9 +721,9 @@ export default function GalleryPage() {
         ) : (
           <>
             {hasFilters && (
-              <p className="mb-3 text-[12px] text-[#8B93A5]">
-                Showing <span className="font-mono text-[#C9CFDB]">{filteredGenerations.length}</span> of{" "}
-                <span className="font-mono text-[#C9CFDB]">{generations.length}</span>
+              <p className="mb-3 text-[12px] text-[#9AA1CC]">
+                Showing <span className="font-mono text-[#C8CCE8]">{filteredGenerations.length}</span> of{" "}
+                <span className="font-mono text-[#C8CCE8]">{generations.length}</span>
               </p>
             )}
             <div
@@ -742,11 +756,11 @@ export default function GalleryPage() {
                 <button
                   type="button"
                   onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
-                  className="inline-flex h-10 items-center rounded-xl border border-white/[0.1] bg-white/[0.04] px-5 text-[13px] font-medium text-[#C9CFDB] transition-colors hover:bg-white/[0.08]"
+                  className="inline-flex h-10 items-center rounded-xl border border-white/[0.1] bg-white/[0.04] px-5 text-[13px] font-medium text-[#C8CCE8] transition-colors hover:bg-white/[0.08]"
                 >
                   Load more
                 </button>
-                <span className="font-mono text-[11px] text-[#7A8294]">
+                <span className="font-mono text-[11px] text-[#8A92BF]">
                   {visibleGenerations.length} / {filteredGenerations.length}
                 </span>
               </div>
@@ -757,7 +771,7 @@ export default function GalleryPage() {
         {/* Floating selection action bar */}
         {selectMode && (
           <div className="fixed bottom-20 left-1/2 z-50 w-[calc(100%-1.5rem)] max-w-xl -translate-x-1/2 md:bottom-6 md:ml-[38px] md:w-auto md:max-w-none">
-            <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/[0.08] bg-[#151922]/95 p-2 pl-4 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.8)] backdrop-blur-xl sm:flex-nowrap">
+            <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/[0.08] bg-[#212B4E]/95 p-2 pl-4 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.8)] backdrop-blur-xl sm:flex-nowrap">
               <span className="mr-1 text-[13px] font-medium text-white">
                 <span className="font-mono">{selectedIds.size}</span> selected
               </span>
@@ -767,19 +781,19 @@ export default function GalleryPage() {
               <button
                 type="button"
                 onClick={selectAll}
-                className="inline-flex h-9 items-center gap-1.5 rounded-xl px-3 text-[12.5px] font-medium text-[#C9CFDB] transition-colors hover:bg-white/[0.06] hover:text-white"
+                className="inline-flex h-9 items-center gap-1.5 rounded-xl px-3 text-[12.5px] font-medium text-[#C8CCE8] transition-colors hover:bg-white/[0.06] hover:text-white"
               >
                 <CheckSquare className="h-4 w-4" />
                 <span className="hidden sm:inline">Select all</span>
                 <span className="sm:hidden">All</span>
-                <span className="font-mono text-[11px] text-[#7A8294]">{filteredGenerations.length}</span>
+                <span className="font-mono text-[11px] text-[#8A92BF]">{filteredGenerations.length}</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setSelectedIds(new Set())}
                 disabled={selectedIds.size === 0}
-                className="inline-flex h-9 items-center rounded-xl px-3 text-[12.5px] font-medium text-[#C9CFDB] transition-colors hover:bg-white/[0.06] hover:text-white disabled:opacity-40"
+                className="inline-flex h-9 items-center rounded-xl px-3 text-[12.5px] font-medium text-[#C8CCE8] transition-colors hover:bg-white/[0.06] hover:text-white disabled:opacity-40"
               >
                 Clear
               </button>
@@ -789,10 +803,10 @@ export default function GalleryPage() {
                   type="button"
                   onClick={handleBatchDownload}
                   disabled={downloading || selectedIds.size === 0}
-                  className="px-corners inline-flex h-9 items-center gap-1.5 bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] px-3.5 text-[12.5px] font-semibold text-white transition hover:brightness-110 disabled:opacity-50 disabled:hover:brightness-100"
+                  className="px-corners inline-flex h-9 items-center gap-1.5 bg-[#FFA300] px-3.5 text-[12.5px] font-semibold text-[#131A31] transition hover:bg-[#FFB733] disabled:opacity-50 disabled:hover:bg-[#FFB733]"
                 >
                   {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Archive className="h-4 w-4" />}
-                  {downloading ? "Packaging..." : "Download ZIP"}
+                  {downloading ? "Packing…" : "Download .zip"}
                 </button>
 
                 <button
@@ -802,7 +816,7 @@ export default function GalleryPage() {
                   className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-red-400/20 bg-red-500/[0.06] px-3.5 text-[12.5px] font-semibold text-red-200 transition-colors hover:bg-red-500/[0.12] disabled:opacity-50"
                 >
                   {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                  {deleting ? "Deleting..." : "Delete"}
+                  {deleting ? "Deleting…" : "Delete"}
                 </button>
               </div>
             </div>
@@ -811,7 +825,7 @@ export default function GalleryPage() {
 
         {/* Toast container */}
         {toasts.length > 0 && (
-          <div className="pointer-events-none fixed right-4 top-4 z-[80] flex w-[calc(100%-2rem)] max-w-sm flex-col gap-2">
+          <div role="status" aria-live="polite" className="pointer-events-none fixed right-4 top-16 z-[80] flex w-[calc(100%-2rem)] max-w-sm flex-col gap-2 md:top-4">
             {toasts.map((toast) => (
               <SuccessToast key={toast.id} message={toast} onClose={() => removeToast(toast.id)} />
             ))}
@@ -849,7 +863,7 @@ export default function GalleryPage() {
             // Refresh gallery after saving
             loadGenerations();
             setInpaintGeneration(null);
-            showToast("success", "Inpainting complete!", "Your edited image has been saved to gallery.");
+            showToast("success", "Edit saved", "The edited sprite is now in your assets.");
           }}
         />
       )}

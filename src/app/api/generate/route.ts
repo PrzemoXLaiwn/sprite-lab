@@ -1,3 +1,7 @@
+import { pixelCanvasOf } from "@/lib/image/sprite-postprocess";
+import { prisma } from "@/lib/prisma";
+import { safeFetchImage } from "@/lib/safe-fetch";
+import sharp from "sharp";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -8,16 +12,18 @@ import {
 } from "@/config";
 import { RUNWARE_MODELS, MODEL_COSTS, type RunwareModelId } from "@/lib/runware";
 import { getOrCreateUser } from "@/lib/database";
+import { requestIp, budgetPlan } from "@/lib/billing/operations";
 import { z } from "zod";
 import { parseJsonBody, validateBody } from "@/lib/validation/common";
 import {
   generateAssets,
   GenerationError,
-  CREDIT_COSTS,
+  CREDIT_COSTS, STYLE_MATCH_CREDITS,
   type GenerationRequest,
 } from "@/lib/services/generation";
-import { enhanceUserPrompt, translatePromptIfNeeded } from "@/lib/prompt-enhance";
+import { translatePromptIfNeeded } from "@/lib/prompt-enhance";
 import { rateLimitUserGeneration } from "@/lib/rate-limit";
+import { cleanUserPrompt } from "@/lib/prompt-clean";
 
 // Vercel Pro limit is 300s. Runware calls are capped at 75s each (see
 // src/lib/runware.ts) so a failed generation still has time to refund.
@@ -35,16 +41,18 @@ const GenerateBodySchema = z.object({
     .min(1, "Please enter a description for your sprite.")
     .max(500, "Description too long. Maximum 500 characters.")
     .transform((v) => v.trim()),
-  categoryId: z.string().min(1, "Please select a category."),
-  subcategoryId: z.string().min(1, "Please select a type."),
-  styleId: z.string().optional().default("PIXEL_ART_16"),
-  view: z.string().optional().default("DEFAULT"),
-  seed: z.union([z.number(), z.string(), z.null()]).optional(),
+  categoryId: z.string().min(1, "Please select a category.").max(100),
+  subcategoryId: z.string().min(1, "Please select a type.").max(100),
+  styleId: z.string().max(100).optional().default("PIXEL_ART_16"),
+  view: z.string().max(50).optional().default("DEFAULT"),
+  seed: z.union([z.number(), z.string().max(20), z.null()]).optional(),
   qualityPreset: z.enum(["draft", "normal", "hd"]).optional().default("normal"),
-  colorPaletteId: z.string().optional(),
+  colorPaletteId: z.string().max(100).optional(),
   pose: z.enum(["auto", "a-pose", "t-pose", "dynamic"]).optional().default("auto"),
-  projectId: z.string().optional(),
-  folderId: z.string().optional(),
+  projectId: z.string().max(64).optional(),
+  folderId: z.string().max(64).optional(),
+  /** One of the user's own sprites whose art style the new sprite should match. */
+  styleReferenceId: z.string().max(64).optional(),
 });
 
 // ─── Error code → HTTP status mapping ────────────────────────────────────────
@@ -57,6 +65,9 @@ function statusForCode(code: string): number {
     case "INVALID_STYLE":
     case "UNSUPPORTED_MODE":       return 400;
     case "UNAUTHENTICATED":        return 401;
+    case "CAPACITY_EXHAUSTED":
+    case "SERVICE_PAUSED":         return 503;
+    case "RATE_LIMITED":           return 429;
     case "PROVIDER_ERROR":
     case "PROVIDER_TIMEOUT":       return 500;
     default:                       return 500;
@@ -107,9 +118,9 @@ export async function POST(request: Request) {
     }
 
     const {
-      prompt,
-      categoryId,
-      subcategoryId,
+      prompt: rawPrompt,
+      categoryId: pickedCategoryId,
+      subcategoryId: pickedSubcategoryId,
       styleId,
       view,
       seed,
@@ -118,7 +129,16 @@ export async function POST(request: Request) {
       pose,
       projectId,
       folderId,
+      styleReferenceId,
     } = parsed.data;
+
+    // Fix common prompt mistakes: leftover example text, chat-model
+    // boilerplate, and the asset type left on the default (a character in
+    // "Weapons" gets framed as a diagonal weapon)
+    const cleaned = cleanUserPrompt(rawPrompt, pickedCategoryId);
+    const prompt = cleaned.prompt;
+    const categoryId = cleaned.category?.categoryId ?? pickedCategoryId;
+    const subcategoryId = cleaned.category?.subcategoryId ?? pickedSubcategoryId;
 
     // ── 3. Semantic validation ────────────────────────────────────────────────
     // The service does not validate category/subcategory/style existence —
@@ -139,7 +159,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!STYLES_2D_FULL[styleId]) {
+    if (!Object.hasOwn(STYLES_2D_FULL, styleId)) {
       return NextResponse.json(
         { error: `Invalid style: ${styleId}`, code: "VALIDATION_ERROR" },
         { status: 400 }
@@ -166,7 +186,26 @@ export async function POST(request: Request) {
     // Translation/enhancement below are paid LLM calls, so refuse users who
     // can't afford the generation before making them. The authoritative,
     // atomic deduction still happens inside generateAssets().
-    const creditsRequired = CREDIT_COSTS[qualityPreset];
+    // Style reference: must be the user's own sprite (or a public one)
+    let styleReference: Buffer | undefined;
+    let styleReferenceGrid: number | undefined;
+    if (styleReferenceId) {
+      const ref = await prisma.generation.findFirst({
+        where: { id: styleReferenceId, OR: [{ userId: user.id }, { isPublic: true }] },
+        select: { imageUrl: true },
+      });
+      if (!ref) return NextResponse.json({ error: "Style reference not found.", code: "VALIDATION_ERROR" }, { status: 400 });
+      try {
+        const { buffer } = await safeFetchImage(ref.imageUrl, { maxBytes: 10 * 1024 * 1024 });
+        styleReferenceGrid = (await pixelCanvasOf(buffer)) ?? undefined;
+        styleReference = await sharp(buffer)
+          .resize(768, 768, { fit: "contain", background: { r: 255, g: 255, b: 255, alpha: 1 }, kernel: "nearest" })
+          .flatten({ background: "#ffffff" }).png().toBuffer();
+      } catch {
+        return NextResponse.json({ error: "Couldn't load the style reference.", code: "VALIDATION_ERROR" }, { status: 400 });
+      }
+    }
+    const creditsRequired = styleReference ? STYLE_MATCH_CREDITS : CREDIT_COSTS[qualityPreset];
     if (dbUser.user.credits < creditsRequired) {
       return NextResponse.json(
         {
@@ -181,7 +220,6 @@ export async function POST(request: Request) {
     // FLUX is English-trained; Cyrillic/Polish/etc. pass through as garbage
     // and produce unrelated images. Translate first, then optionally enhance.
     let finalUserPrompt = prompt;
-    let promptWasEnhanced = false;
     let promptWasTranslated = false;
 
     try {
@@ -206,28 +244,10 @@ export async function POST(request: Request) {
       // Should not happen — translatePromptIfNeeded swallows its errors.
     }
 
-    // ── 4c. AI Prompt Enhancement (Pro/Studio only) ─────────────────────────
-    // Expands short prompts like "iron sword magic" into detailed visual
-    // descriptions while preserving the user's exact intent. Operates on the
-    // (already-translated) English prompt so the safety check works correctly.
-    const userPlan = dbUser?.user?.plan ?? "FREE";
-    const isPaidPlan = ["PRO", "UNLIMITED", "STARTER"].includes(userPlan);
-
-    if (isPaidPlan && finalUserPrompt.split(/\s+/).length < 7) {
-      try {
-        const { enhanced, wasEnhanced } = await enhanceUserPrompt(
-          finalUserPrompt,
-          categoryId,
-          subcategoryId
-        );
-        if (wasEnhanced) {
-          finalUserPrompt = enhanced;
-          promptWasEnhanced = true;
-        }
-      } catch {
-        // Enhancement failed — use translated prompt, don't block generation
-      }
-    }
+    // ── 4c. Prompt interpretation ───────────────────────────────────────────
+    // Replaced by the subject interpreter inside the generation service, which
+    // runs for every plan and turns abstract ideas into what to draw. The
+    // user's own words stay the saved prompt.
 
     // ── 5. Resolve seed ───────────────────────────────────────────────────────
     // Service accepts seed as number | undefined. Convert here before dispatch.
@@ -253,6 +273,10 @@ export async function POST(request: Request) {
       qualityPreset,
       colorPaletteId,
       pose,
+      styleReference,
+      styleReferenceGrid,
+      plan: budgetPlan(dbUser?.user),
+      ip: requestIp(request),
     };
 
     // ── 7. Delegate to service ────────────────────────────────────────────────
@@ -278,12 +302,15 @@ export async function POST(request: Request) {
       transparentBackground: true,
       prompt: prompt.trim(),
       translatedPrompt: promptWasTranslated ? finalUserPrompt : undefined,
-      enhancedPrompt: promptWasEnhanced ? finalUserPrompt : undefined,
       fullPrompt: asset.finalPrompt,
       seed: asset.seed,
       modelUsed: asset.model,
       appliedOptimizations: asset.appliedOptimizations,
-      warnings: asset.warnings,
+      warnings: [
+        ...(asset.warnings ?? []),
+        ...(cleaned.category ? [`This looked like ${cleaned.category.categoryId === "CHARACTERS" ? "a character" : cleaned.category.categoryId === "ENVIRONMENT" ? "a building" : "a UI icon"}, so it was generated as one — pick the asset type to override.`] : []),
+        ...(cleaned.wantsSheet ? ["The generator makes one sprite at a time — use Animate to turn it into frames."] : []),
+      ],
       resolvedView: asset.resolvedView ?? view,
       style: {
         id: styleId,

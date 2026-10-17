@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
+import { mergeEmailPreferences } from "@/app/api/_lib/email-prefs";
 import { isAuthorizedCronRequest } from "@/lib/cron-auth";
 import { prisma } from "@/lib/prisma";
 import { sendReEngagementEmail, sendAbandonedCartEmail, sendSpecialOfferEmail } from "@/lib/email/send";
 import { stripe, PLANS, CREDIT_PACKS } from "@/lib/stripe";
 import { Prisma } from "@prisma/client";
 import { relaunchActive } from "@/config/relaunch";
+import { MARKETING_OFF_RESPONSE, legacyMarketingEnabled } from "@/lib/email/flags";
+import { marketingBlockedByPrefs } from "@/lib/email/suppression";
 
 // Vercel Cron Job - Automated email campaigns
 // Runs daily at 10:00 AM UTC
 // Schedule in vercel.json: "0 10 * * *"
+// Off unless MARKETING_EMAILS_ENABLED=true (the one switch for all marketing).
 
 export const maxDuration = 300; // Max 5 minutes
 export const dynamic = "force-dynamic";
@@ -48,6 +52,10 @@ export async function GET(request: NextRequest) {
     if (!isAuthorizedCronRequest(request)) {
       console.log("[CRON:Email] Unauthorized request");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!legacyMarketingEnabled()) {
+      return NextResponse.json(MARKETING_OFF_RESPONSE);
     }
 
     // Check if Resend is configured
@@ -114,6 +122,7 @@ export async function GET(request: NextRequest) {
 
     // Filter users who received re-engagement recently
     const eligibleUsers = inactiveUsers.filter((u) => {
+      if (marketingBlockedByPrefs(u.emailPreferences)) return false; // bounced / complained / opted out
       const prefs = u.emailPreferences as { lastReEngagementAt?: string } | null;
       if (!prefs?.lastReEngagementAt) return true;
       return new Date(prefs.lastReEngagementAt) < sevenDaysAgo;
@@ -148,16 +157,7 @@ export async function GET(request: NextRequest) {
         results.reEngagement.sent++;
 
         // Update user's last re-engagement timestamp
-        const currentPrefs = (user.emailPreferences as Record<string, unknown>) || {};
-        await prisma.user.update({
-          where: { id: user.id },
-          data: {
-            emailPreferences: {
-              ...currentPrefs,
-              lastReEngagementAt: new Date().toISOString(),
-            },
-          },
-        });
+        await mergeEmailPreferences(user.id, { lastReEngagementAt: new Date().toISOString() });
       } else {
         results.reEngagement.failed++;
         results.reEngagement.errors.push(`${user.id}: ${result.error}`);
@@ -210,7 +210,7 @@ export async function GET(request: NextRequest) {
         });
 
         const prefs = user?.emailPreferences as { marketing?: boolean; lastAbandonedCartAt?: string } | null;
-        if (prefs?.marketing === false) { results.abandonedCart.skipped++; continue; }
+        if (marketingBlockedByPrefs(prefs)) { results.abandonedCart.skipped++; continue; }
         if (prefs?.lastAbandonedCartAt && new Date(prefs.lastAbandonedCartAt) > sevenDaysAgoCart) {
           results.abandonedCart.skipped++;
           continue;
@@ -230,11 +230,7 @@ export async function GET(request: NextRequest) {
         if (result.success) {
           results.abandonedCart.sent++;
           if (user) {
-            const currentPrefs = (user.emailPreferences as Record<string, unknown>) || {};
-            await prisma.user.update({
-              where: { id: user.id },
-              data: { emailPreferences: { ...currentPrefs, lastAbandonedCartAt: new Date().toISOString() } },
-            });
+            await mergeEmailPreferences(user.id, { lastAbandonedCartAt: new Date().toISOString() });
           }
         } else {
           results.abandonedCart.failed++;
@@ -272,6 +268,7 @@ export async function GET(request: NextRequest) {
     });
 
     const filteredOfferUsers = zeroCreditsUsers.filter((u) => {
+      if (marketingBlockedByPrefs(u.emailPreferences)) return false;
       const prefs = u.emailPreferences as { lastSpecialOfferAt?: string } | null;
       if (!prefs?.lastSpecialOfferAt) return true;
       return new Date(prefs.lastSpecialOfferAt) < fourteenDaysAgo;
@@ -313,11 +310,7 @@ export async function GET(request: NextRequest) {
 
       if (result.success) {
         results.specialOffer.sent++;
-        const currentPrefs = (user.emailPreferences as Record<string, unknown>) || {};
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { emailPreferences: { ...currentPrefs, lastSpecialOfferAt: new Date().toISOString() } },
-        });
+        await mergeEmailPreferences(user.id, { lastSpecialOfferAt: new Date().toISOString() });
       } else {
         results.specialOffer.failed++;
         results.specialOffer.errors.push(`${user.id}: ${result.error}`);

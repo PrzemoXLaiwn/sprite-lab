@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { SeoLanding } from "@/components/landing/SeoLanding";
+import { LANDING_SPECS } from "@/data/landing-specs";
 
 const URL = "https://www.sprite-lab.com/ai-tileset-generator";
 
 export const metadata: Metadata = {
-  title: { absolute: "AI Tile Generator — Seamless Floor & Wall Tiles | SpriteLab" },
+  title: { absolute: "AI Tileset Generator — Seamless Game Tiles | SpriteLab" },
   description:
     "Generate seamless floor and wall tiles for 2D games with AI: stone, grass, water, lava, wood. Pixel-art tiles that repeat without visible seams.",
   keywords: ["AI tile generator", "seamless tile generator", "tileable texture AI", "pixel art tiles", "game floor tiles", "wall tiles generator", "animated water tile"],
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "AI Tile Generator — Seamless Floor & Wall Tiles | SpriteLab",
+    title: "AI Tileset Generator — Seamless Game Tiles | SpriteLab",
     description: "Generate seamless floor and wall tiles for 2D games with AI: stone, grass, water, lava, wood. Pixel-art tiles that repeat without visible seams.",
   },
   alternates: { canonical: URL },
@@ -33,7 +34,7 @@ export default function TileGeneratorPage() {
         <>
           Seamless game tiles
           <br />
-          <span className="text-[#FF8A3D]">from a sentence</span>
+          from a sentence
         </>
       }
       subtitle="Floors, walls, water and lava as square tiles that repeat without visible seams — on a pixel grid for pixel-art games. Animate surfaces into looping frames."
@@ -51,7 +52,7 @@ export default function TileGeneratorPage() {
           eyebrow: "made with spritelab",
           title: (
             <>
-              Tiles that <span className="text-[#FF8A3D]">repeat cleanly</span>
+              Tiles that repeat cleanly
             </>
           ),
           intro: "Each tile wraps on all four edges, so a grid of copies shows no seam lines.",
@@ -68,7 +69,7 @@ export default function TileGeneratorPage() {
           eyebrow: "how tiles differ",
           title: (
             <>
-              Made to <span className="text-[#FF8A3D]">tile</span>, not to be framed
+              Made to tile, not to be framed
             </>
           ),
           cards: [
@@ -83,7 +84,7 @@ export default function TileGeneratorPage() {
           eyebrow: "how it works",
           title: (
             <>
-              Make a tile in <span className="text-[#FF8A3D]">three steps</span>
+              Make a tile in three steps
             </>
           ),
           steps: [
@@ -97,7 +98,7 @@ export default function TileGeneratorPage() {
           eyebrow: "example prompts",
           title: (
             <>
-              Tile <span className="text-[#FF8A3D]">ideas</span>
+              Tile ideas
             </>
           ),
           prompts: [
@@ -109,6 +110,7 @@ export default function TileGeneratorPage() {
             "desert sand with small pebbles",
           ],
         },
+        LANDING_SPECS["ai-tileset-generator"],
       ]}
       faq={[
         { q: "Are the tiles really seamless?", a: "Yes. Every tile is checked at its edges; if it doesn't wrap, the edges are blended with a half-offset copy so copies line up without a visible seam." },
@@ -119,7 +121,7 @@ export default function TileGeneratorPage() {
       cta={{
         title: (
           <>
-            Build your <span className="text-[#FF8A3D]">levels</span> faster
+            Build your levels faster
           </>
         ),
         body: "Generate seamless floors and walls that match your sprites.",

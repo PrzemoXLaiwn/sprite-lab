@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getUserCredits, checkAndDeductCredits, refundCredits, saveGeneration } from "@/lib/database";
+import { getUserCredits, saveGeneration } from "@/lib/database";
+import { prisma } from "@/lib/prisma";
+import { budgetPlan, requestIp, startOperation, type OpHandle } from "@/lib/billing/operations";
 import { persistImage } from "@/lib/storage";
 import { upscaleImage } from "@/lib/runware";
 import { safeFetchImage, safeFetchErrorResponse } from "@/lib/safe-fetch";
@@ -9,6 +11,7 @@ import { parseJsonBody, validateBody } from "@/lib/validation/common";
 import { upscaleSchema } from "@/lib/validations";
 import { uploadGenerationBufferToR2 } from "@/lib/r2";
 import sharp from "sharp";
+import { upscaleCredits } from "@/config/tool-prices";
 
 // Runware upscale is capped at 90s (RUNWARE_UPSCALE_TIMEOUT_MS) so the
 // refund path always has time to run.
@@ -19,9 +22,7 @@ const MAX_INPUT_IMAGE_MB = 5;
 const MAX_PIXEL_OUTPUT = 4096;
 
 /** Credits by effective output scale (4x costs the runware-4x price). */
-function creditsForScale(scale: number): number {
-  return scale >= 4 ? 2 : 1;
-}
+const creditsForScale = upscaleCredits;
 
 // Plans that have access to Upscale (Free and Starter are excluded)
 // PRO = Pro plan, UNLIMITED = Studio plan, LIFETIME = any lifetime deal
@@ -80,8 +81,8 @@ const DEFAULT_UPSCALE_MODEL = "runware";
 
 export async function POST(request: Request) {
   const startTime = Date.now();
-  let creditsDeducted = false;
-  let userId: string | null = null;
+  // Paid operation (AI upscale only); null once the result is stored
+  let pendingOp: OpHandle | null = null;
   let creditCost = 0;
 
   try {
@@ -95,8 +96,6 @@ export async function POST(request: Request) {
         { status: 401 }
       );
     }
-
-    userId = user.id;
 
     const { blocked: rateLimitBlocked } = await rateLimitUserGeneration(user.id);
     if (rateLimitBlocked) return rateLimitBlocked;
@@ -168,7 +167,7 @@ export async function POST(request: Request) {
     }
 
     // ── AI upscale (Runware): paid plans only, 2× or 4×
-    const { credits, plan, role } = await getUserCredits(user.id);
+    const { plan, role } = await getUserCredits(user.id);
     const hasPremiumAccess = ALLOWED_PLANS.includes(plan) || role === "OWNER" || role === "ADMIN";
     if (!hasPremiumAccess) {
       return NextResponse.json(
@@ -194,20 +193,20 @@ export async function POST(request: Request) {
     // modelType "runware" (1 credit) with scale 4 bypasses the 4x price.
     creditCost = Math.max(modelConfig.credits, creditsForScale(scale));
 
-    // Atomically check and deduct credits BEFORE processing
-    const creditResult = await checkAndDeductCredits(user.id, creditCost);
-    if (!creditResult.success) {
-      const insufficient = creditResult.error === "Not enough credits";
-      if (!insufficient) console.error("[Upscale] Credit deduction failed:", creditResult.error);
-      const errorMsg = insufficient
-        ? `Not enough credits. Need ${creditCost}, you have ${credits}.`
-        : "Failed to process credits. Please try again.";
-      return NextResponse.json(
-        { error: errorMsg, noCredits: insufficient },
-        { status: insufficient ? 402 : 500 }
-      );
+    // Charge + guards in one operation; every failure below refunds it once
+    const account = await prisma.user.findUnique({ where: { id: user.id }, select: { plan: true, totalSpent: true, stripeCustomerId: true } });
+    const started = await startOperation({
+      userId: user.id, feature: "upscale", credits: creditCost, plan: budgetPlan(account), ip: requestIp(request),
+      input: { imageUrl, scale },
+    });
+    if (!started.ok) {
+      const body = started.status === 402
+        ? { ...started.body, error: `Not enough credits. ${scale}× AI upscaling costs ${creditCost} credit${creditCost > 1 ? "s" : ""}.` }
+        : started.body;
+      return NextResponse.json(body, { status: started.status });
     }
-    creditsDeducted = true;
+    const op = started.op;
+    pendingOp = op;
 
     console.log("[Upscale] Runware upscaling", {
       user: user.id,
@@ -217,32 +216,31 @@ export async function POST(request: Request) {
     });
 
     // Run upscaling with Runware
-    const result = await upscaleImage(imageUrl, scale);
+    const result = await op.run(() => upscaleImage(imageUrl, scale));
 
     if (!result.success || !result.imageUrl) {
       console.error("[Upscale] Failed:", result.error);
-      // Refund credits on failure
-      if (creditsDeducted && userId) {
-        creditsDeducted = false;
-        await refundCredits(userId, creditCost);
-      }
+      pendingOp = null;
+      await op.fail("PROVIDER_ERROR");
       return NextResponse.json(
         { error: "Upscaling failed. Credit refunded." },
         { status: 500 }
       );
     }
-    // Provider delivered — no refund past this point.
-    creditsDeducted = false;
 
-    console.log("[Upscale] Uploading to storage...");
-
-    // Upload to permanent storage
+    // Runware output URLs are temporary: delivered only once stored on our side
     const fileName = `upscaled-${scale}x-${Date.now()}`;
-    const persistedUrl = await persistImage(result.imageUrl, user.id, fileName);
-    if (!persistedUrl) {
-      console.error("[Upscale] Re-host failed — saving TEMPORARY provider URL (will expire)");
+    const finalUrl = await persistImage(result.imageUrl, user.id, fileName);
+    if (!finalUrl) {
+      console.error("[Upscale] Re-host failed — refunding");
+      pendingOp = null;
+      await op.fail("STORE_FAILED");
+      return NextResponse.json(
+        { error: "Couldn't save the upscaled image. Credits refunded — please try again." },
+        { status: 500 }
+      );
     }
-    const finalUrl = persistedUrl ?? result.imageUrl;
+    pendingOp = null; // delivered (stored) — no refund from here on
 
     // Save to database
     const saveResult = await saveGeneration({
@@ -259,6 +257,7 @@ export async function POST(request: Request) {
     if (!saveResult.success) {
       console.error("Failed to save upscaled image:", saveResult.error);
     }
+    await op.succeed(saveResult.generation?.id ?? null);
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
 
@@ -283,10 +282,11 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("[Upscale] Unexpected error:", error);
-    // Refund credits on unexpected error (only if provider had not delivered)
-    if (creditsDeducted && userId) {
-      creditsDeducted = false;
-      await refundCredits(userId, creditCost);
+    // Refund on an unexpected error (only before the result was stored)
+    if (pendingOp) {
+      const op = pendingOp;
+      pendingOp = null;
+      await op.fail("UNEXPECTED");
     }
     return NextResponse.json(
       { error: "Upscaling failed. Please try again." },

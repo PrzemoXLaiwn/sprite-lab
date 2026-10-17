@@ -52,11 +52,11 @@ export default function ResetPasswordPage() {
           title="Check your email"
           subtitle={
             <>
-              We sent a password reset link to <span className="font-medium text-[#ECEEF3]">{email}</span>.
+              We sent a password reset link to <span className="font-medium text-[#FFF1E8]">{email}</span>.
             </>
           }
         />
-        <p className="font-mono text-[11px] leading-relaxed text-[#7A8294]">
+        <p className="font-mono text-[11px] leading-relaxed text-[#8A92BF]">
           Didn&apos;t receive it? Check your spam folder or try again.
         </p>
         <div className="mt-6 space-y-2.5">
@@ -65,7 +65,7 @@ export default function ResetPasswordPage() {
           </button>
           <Link
             href="/login"
-            className="flex h-11 w-full items-center justify-center gap-2 rounded-xl text-[14px] text-[#8B93A5] transition-colors hover:bg-white/[0.04] hover:text-white"
+            className="flex h-11 w-full items-center justify-center gap-2 rounded-xl text-[14px] text-[#9AA1CC] transition-colors hover:bg-white/[0.04] hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to sign in
@@ -79,7 +79,7 @@ export default function ResetPasswordPage() {
     <div>
       <Link
         href="/login"
-        className="mb-6 inline-flex items-center gap-1.5 text-[13px] text-[#8B93A5] transition-colors hover:text-white"
+        className="mb-6 inline-flex items-center gap-1.5 text-[13px] text-[#9AA1CC] transition-colors hover:text-white"
       >
         <ArrowLeft className="h-4 w-4" />
         Back to sign in
@@ -117,7 +117,7 @@ export default function ResetPasswordPage() {
         </PrimaryButton>
       </form>
 
-      <p className="mt-6 text-center text-[13px] text-[#8B93A5]">
+      <p className="mt-6 text-center text-[13px] text-[#9AA1CC]">
         Remember your password?{" "}
         <Link href="/login" className={linkCls}>
           Sign in

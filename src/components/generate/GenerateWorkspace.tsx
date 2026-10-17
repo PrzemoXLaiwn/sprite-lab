@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useMemo, useEffect, Suspense } from "react";
+import { STYLE_MATCH_CREDITS } from "@/config/tool-prices";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -14,22 +15,29 @@ import {
   Lock,
   Unlock,
   Info,
-  Dices,
   ChevronDown,
   Eye,
   X,
   Film,
+  Paintbrush,
+  PartyPopper,
 } from "lucide-react";
 import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
 import { triggerUpgradeModal } from "@/components/dashboard/UpgradeModal";
+import {
+  Field, Chip, ToolTabs, ErrorNote, IconButton, Elapsed, SECONDARY_BTN, saveBlobAs, creditLabel,
+} from "@/components/tools/ToolWorkspace";
+import { SpriteStage, STAGE_SCENES, type StageSceneId } from "@/components/generate/SpriteStage";
+import { RecipeBar } from "@/components/generate/RecipeBar";
 import { track, FUNNEL } from "@/lib/analytics";
 import { GENERATE_CATEGORIES, SUBTYPE_PLACEHOLDERS, type GenerateCategory, type GenerateSubcategory } from "@/data/generate-categories";
 import { GENERATE_STYLES, ALL_GENERATE_STYLE_IDS } from "@/data/generate-styles";
 import { SHOWCASE, isPixelShowcase } from "@/data/showcase";
-
-// =============================================================================
-// GENERATOR DATA (imported from src/data/)
-// =============================================================================
+import { useAutoSettings } from "@/hooks/useAutoSettings";
+import { AutoSettingsBar, AutoBadge, autoFlash } from "@/components/generate/AutoSettingsBar";
+import { useCreateSession, type CreateRestore } from "@/components/generate/useCreateSession";
+import { HistoryButton, HistoryPanel } from "@/components/workspace/HistoryPanel";
+import { ContinueBanner, RestoredNote } from "@/components/workspace/ContinueBanner";
 
 // =============================================================================
 // VIEW + DETAIL
@@ -68,12 +76,12 @@ function detectViewInText(text: string): Exclude<ViewId, "none"> | null {
 
 // Must match CREDIT_COSTS in src/lib/services/generation.ts
 const DETAIL_OPTIONS = [
-  { id: "normal", label: "Standard", description: "1 credit · ~8s · clean sprite" },
-  { id: "hd",     label: "HD",       description: "3 credits · ~25s · best detail & prompt accuracy" },
+  { id: "normal", label: "Standard", description: "Fast & clean · ~8s" },
+  { id: "hd",     label: "HD",       description: "Best detail & accuracy · ~25s" },
 ] as const;
 
 const DETAIL_CREDITS: Record<DetailId, number> = { normal: 1, hd: 3 };
-const DETAIL_ETA: Record<DetailId, string> = { normal: "~8 seconds", hd: "~25 seconds" };
+const DETAIL_SECONDS: Record<DetailId, number> = { normal: 8, hd: 25 };
 
 type DetailId = (typeof DETAIL_OPTIONS)[number]["id"];
 
@@ -110,22 +118,6 @@ const PALETTE_OPTIONS = [
 ] as const;
 
 type PaletteId = (typeof PALETTE_OPTIONS)[number]["id"];
-
-// Background preview modes
-const BG_MODES = [
-  { id: "checker", label: "Transparent", style: { backgroundImage: "repeating-conic-gradient(#80808015 0% 25%, transparent 0% 50%)", backgroundSize: "24px 24px" } },
-  { id: "dark",    label: "Dark",        style: { background: "#111827" } },
-  { id: "light",   label: "Light",       style: { background: "#f3f4f6" } },
-  { id: "game",    label: "Game",        style: { background: "#1e293b", backgroundImage: "repeating-conic-gradient(#ffffff08 0% 25%, transparent 0% 50%)", backgroundSize: "32px 32px" } },
-] as const;
-
-type BgModeId = (typeof BG_MODES)[number]["id"];
-
-// SUBTYPE_PLACEHOLDERS imported from @/data/generate-categories
-
-// =============================================================================
-// PROMPT QUALITY INDICATOR
-// =============================================================================
 
 // =============================================================================
 // TYPES
@@ -242,16 +234,28 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
   }, [projectId]);
   const [detail, setDetail]               = useState<DetailId>("normal");
   const [prompt, setPrompt]               = useState(urlPrompt);
+  // Style reference: new sprites are drawn in this sprite's exact art style
+  const [styleRef, setStyleRef]           = useState<{ id: string; imageUrl: string } | null>(null);
   const [seed, setSeed]                   = useState("");
   const [palette, setPalette]              = useState<PaletteId>("auto");
   const [pose, setPose]                    = useState<PoseId>("auto");
-  const [batchSize, setBatchSize]          = useState<1 | 2 | 4>(1);
-  const [bgMode, setBgMode]               = useState<BgModeId>("checker");
+  // Stage scene (remembered per browser) and side-by-side comparison
+  const [scene, setScene]                 = useState<StageSceneId>("checker");
+  const [compare, setCompare]             = useState(false);
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem("sl:stage-scene");
+      if (saved && STAGE_SCENES.some((x) => x.id === saved)) setScene(saved as StageSceneId);
+    } catch { /* storage unavailable */ }
+  }, []);
+  const chooseScene = (id: StageSceneId) => {
+    setScene(id);
+    try { window.localStorage.setItem("sl:stage-scene", id); } catch { /* storage unavailable */ }
+  };
   const [seedLocked, setSeedLocked]       = useState(false);
 
   const [status, setStatus]               = useState<"idle" | "generating" | "error">("idle");
   const [errorMessage, setErrorMessage]   = useState<string | null>(null);
-  const [, setNoCredits]                  = useState(false);
 
   const [history, setHistory]             = useState<GeneratedResult[]>(initialHistory);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -259,29 +263,51 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
   const [seedCopied, setSeedCopied]       = useState(false);
   const seedRef                           = useRef("");
 
-  const isGenerating = status === "generating";
+  // Auto-settings: the prompt picks asset type, style, view, palette and pose.
+  // Never overrides a control set by hand (or by a shared link) this session.
+  const auto = useAutoSettings({
+    prompt,
+    values: { groupId: selectedCategory.id, subcategoryId: selectedSubcategoryId, styleId, view, palette, pose },
+    apply: (p) => {
+      const cat = p.groupId ? GENERATE_CATEGORIES.find((c) => c.id === p.groupId) : undefined;
+      if (cat) setSelectedCategory(cat);
+      if (p.subcategoryId) setSelectedSubcategoryId(p.subcategoryId);
+      if (p.styleId) setStyleId(p.styleId);
+      if (p.view) setView(p.view as ViewId);
+      if (p.palette) setPalette(p.palette as PaletteId);
+      if (p.pose) setPose(p.pose as PoseId);
+    },
+    initiallyUserSet: urlPrompt
+      ? [...(urlCatId || urlSubId ? ["type" as const] : []), ...(urlStyleId ? ["style" as const] : []), ...(urlView ? ["view" as const] : [])]
+      : [],
+  });
 
-  // Live progress timer — without it the user has no signal how long the
-  // request has been running, and a 30s wait feels like a 2-minute hang.
-  const [elapsedMs, setElapsedMs] = useState(0);
-  useEffect(() => {
-    if (!isGenerating) {
-      setElapsedMs(0);
-      return;
+  // Continue where you left off: draft / ?result= restore + history panel (see useCreateSession)
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const applySession = useCallback((p: CreateRestore) => {
+    const f = p.form ?? {};
+    const sub = f.subcategoryId;
+    const hasSub = (c: GenerateCategory) => !!sub && c.subcategories.some((s) => s.subcategoryId === sub);
+    const group = GENERATE_CATEGORIES.find((c) => c.id === f.groupId && (!sub || hasSub(c))) ?? GENERATE_CATEGORIES.find(hasSub);
+    if (group) {
+      setSelectedCategory(group);
+      setSelectedSubcategoryId(hasSub(group) ? sub! : group.subcategories[0].subcategoryId);
     }
-    const start = Date.now();
-    const id = setInterval(() => setElapsedMs(Date.now() - start), 200);
-    return () => clearInterval(id);
-  }, [isGenerating]);
+    if (f.styleId && (ALL_GENERATE_STYLE_IDS as readonly string[]).includes(f.styleId)) setStyleId(f.styleId);
+    if (VIEW_OPTIONS.some((o) => o.id === f.view)) setView(f.view as ViewId);
+    if (DETAIL_OPTIONS.some((o) => o.id === f.detail)) setDetail(f.detail as DetailId);
+    if (PALETTE_OPTIONS.some((o) => o.id === f.palette)) setPalette(f.palette as PaletteId);
+    if (POSE_OPTIONS.some((o) => o.id === f.pose)) setPose(f.pose as PoseId);
+    if (typeof f.prompt === "string") setPrompt(f.prompt);
+    if (p.results) setHistory(p.results);
+    if (typeof p.selectedIndex === "number") setSelectedIndex(p.selectedIndex);
+  }, []);
+  const session = useCreateSession({
+    state: { prompt, groupId: selectedCategory.id, subcategoryId: selectedSubcategoryId, styleId, view, detail, palette, pose },
+    results: history, selectedIndex, projectId, apply: applySession,
+  });
 
-  const elapsedSeconds = Math.floor(elapsedMs / 1000);
-  const progressStage =
-    elapsedSeconds < 3 ? "Preparing the prompt…" :
-    elapsedSeconds < 8 ? "Sending to the model…" :
-    elapsedSeconds < 18 ? "Generating pixels…" :
-    elapsedSeconds < 30 ? "Removing background…" :
-    elapsedSeconds < 60 ? "Almost there — model is busy…" :
-    "Hang tight, this one is taking a while…";
+  const isGenerating = status === "generating";
   const activeResult = history[selectedIndex] ?? null;
   const selectedSub  = selectedCategory.subcategories.find((s) => s.subcategoryId === selectedSubcategoryId) ?? selectedCategory.subcategories[0];
   // Camera view only changes the result for figures and world objects — items,
@@ -290,7 +316,6 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
   const effectiveView: ViewId = viewApplies ? view : "none";
   const placeholder  = SUBTYPE_PLACEHOLDERS[selectedSubcategoryId] ?? "Describe your asset...";
   const isFormValid  = prompt.trim().length >= 3;
-  const activeBg = BG_MODES.find((b) => b.id === bgMode)!;
 
   // Live view detection — warns user when prompt contains a view keyword that
   // differs from the UI selector. Backend honors the prompt (user text wins),
@@ -365,7 +390,6 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
 
     setStatus("generating");
     setErrorMessage(null);
-    setNoCredits(false);
 
     const isFirstAttempt = history.length === 0;
     track(FUNNEL.generationAttempt, { styleId, categoryId: selectedSub.categoryId, qualityPreset: detail });
@@ -403,6 +427,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
           // to actual colour tokens.
           colorPaletteId: palette === "auto" ? undefined : palette,
           pose,
+          styleReferenceId: styleRef?.id,
           seed:           seedRef.current.trim() || undefined,
           // Project mode does NOT file the sprite on generation — the user
           // reviews it first and Accept files it (POST /api/projects/:id/assets).
@@ -413,9 +438,9 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
 
       if (!response.ok) {
         if (response.status === 402 || data.noCredits) {
-          setNoCredits(true);
           setStatus("error");
-          setErrorMessage("You don't have enough credits to generate.");
+          const needed = styleRef ? STYLE_MATCH_CREDITS : DETAIL_CREDITS[detail];
+          setErrorMessage(`Not enough credits — this needs ${creditLabel(needed)}.${!styleRef && detail === "hd" ? " Switch to Standard (1 credit) or top up." : " Top up to keep creating."}`);
           triggerUpgradeModal();
           return;
         }
@@ -483,7 +508,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
     } finally {
       clearTimeout(timeoutId);
     }
-  }, [isFormValid, isGenerating, effectiveView, pose, prompt, selectedSub, selectedSubcategoryId, styleId, detail, palette, styleLocked, projectId, history.length]);
+  }, [isFormValid, isGenerating, effectiveView, pose, prompt, selectedSub, selectedSubcategoryId, styleId, detail, palette, styleLocked, projectId, history.length, styleRef]);
 
   // ── Project review: Accept files the sprite into the project, Decline just
   // leaves it out (it stays in My Assets). Both are reversible here.
@@ -594,19 +619,13 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
     if (!activeResult) return;
     try {
       const response = await fetch(activeResult.imageUrl);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const blob = await response.blob();
       const filename = `${buildBaseFilename(size)}.png`;
 
       // Native size (1024) — skip the resize round-trip.
       if (size === 1024) {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        saveBlobAs(blob, filename);
         return;
       }
 
@@ -626,16 +645,9 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
           "image/png"
         );
       });
-      const url = URL.createObjectURL(resizedBlob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      saveBlobAs(resizedBlob, filename);
     } catch {
-      window.open(activeResult.imageUrl, "_blank");
+      window.open(activeResult.imageUrl, "_blank", "noopener");
     }
   };
 
@@ -688,16 +700,9 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
       const outBlob = await new Promise<Blob>((resolve, reject) =>
         out.toBlob((b) => (b ? resolve(b) : reject(new Error("canvas-toblob-failed"))), "image/png")
       );
-      const url = URL.createObjectURL(outBlob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${buildBaseFilename(size)}.png`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      saveBlobAs(outBlob, `${buildBaseFilename(size)}.png`);
     } catch {
-      window.open(activeResult.imageUrl, "_blank");
+      window.open(activeResult.imageUrl, "_blank", "noopener");
     }
   };
 
@@ -729,31 +734,24 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
       warnings: activeResult.warnings,
       sourceUrl: activeResult.imageUrl,
     };
-    const blob = new Blob([JSON.stringify(sidecar, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${buildBaseFilename(1024)}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const blob = new Blob([JSON.stringify(sidecar, null, 2)], { type: "application/json" });
+    saveBlobAs(blob, `${buildBaseFilename(1024)}.json`);
   };
 
   const handleCopySeed = () => {
     if (!activeResult) return;
-    navigator.clipboard.writeText(String(activeResult.seed));
-    setSeedCopied(true);
-    setTimeout(() => setSeedCopied(false), 2000);
+    (navigator.clipboard?.writeText(String(activeResult.seed)) ?? Promise.reject(new Error("no clipboard")))
+      .then(() => {
+        setSeedCopied(true);
+        setTimeout(() => setSeedCopied(false), 2000);
+      })
+      .catch(() => {});
   };
 
   // ==========================================================================
   // RENDER — workspace (Meshy / Tripo style): controls · canvas · history
   // ==========================================================================
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [showAllStyles, setShowAllStyles] = useState(false);
   const [sizesOpen, setSizesOpen] = useState(false);
   const isWelcome = searchParams.get("welcome") === "1";
   const checkoutSuccess = searchParams.get("success") === "true";
@@ -764,17 +762,35 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
   // Generate immediately. Without this nudge new signups stare at an empty
   // form and bounce.
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const seen = window.localStorage.getItem("spritelab_seen_first_run");
-    if (seen) return;
+    try {
+      if (window.localStorage.getItem("spritelab_seen_first_run")) return;
+      window.localStorage.setItem("spritelab_seen_first_run", "1");
+    } catch {
+      return; // storage blocked — skip the onboarding nudge
+    }
     if (!urlPrompt && !prompt) {
       const placeholderExample = SUBTYPE_PLACEHOLDERS[selectedSub.subcategoryId];
-      setPrompt(placeholderExample || `${selectedSub.label.toLowerCase()} with detail`);
+      setPrompt((placeholderExample ?? "").replace(/^e\.g\.\s*/i, "") || `${selectedSub.label.toLowerCase()} with detail`);
     }
-    window.localStorage.setItem("spritelab_seen_first_run", "1");
     // Run once on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // "Other sizes" menu: close on outside click / Escape.
+  const sizesRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!sizesOpen) return;
+    const onDown = (e: PointerEvent) => {
+      if (!sizesRef.current?.contains(e.target as Node)) setSizesOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setSizesOpen(false); };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [sizesOpen]);
 
   // On stacked (mobile) layouts the canvas sits below the form — bring it
   // into view when a generation starts so the user sees progress.
@@ -785,12 +801,8 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
     }
   }, [isGenerating]);
 
-  const cost = DETAIL_CREDITS[detail];
+  const cost = styleRef ? STYLE_MATCH_CREDITS : DETAIL_CREDITS[detail];
   const isCreature = selectedCategory.id === "CHARACTERS" || selectedCategory.id === "CREATURES";
-  const firstStyles = GENERATE_STYLES.slice(0, 6);
-  const visibleStyles = showAllStyles || firstStyles.some((s) => s.id === styleId)
-    ? (showAllStyles ? GENERATE_STYLES : firstStyles)
-    : [...firstStyles.slice(0, 5), GENERATE_STYLES.find((s) => s.id === styleId)!];
   const styleName = (id: string) => GENERATE_STYLES.find((s) => s.id === id)?.name ?? id;
 
   const surpriseMe = () => {
@@ -807,493 +819,321 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
     if (cat) handleCategoryChange(cat);
   };
 
+  const planName = checkoutPlan ? (CHECKOUT_PLAN_NAMES[checkoutPlan.toLowerCase()] ?? null) : null;
+  const defaultSubId = selectedCategory.subcategories[0].subcategoryId;
+  // How many "More options" differ from their defaults (shown on the closed toggle)
+  const advancedSet = [palette !== "auto", isCreature && pose !== "auto", seed.trim() !== "", selectedSubcategoryId !== defaultSubId].filter(Boolean).length;
+
   return (
-    <div className="flex min-h-screen flex-col bg-[#0B0D12] text-[#ECEEF3] lg:h-screen lg:flex-row lg:overflow-hidden">
+    <div className="flex min-h-screen flex-col bg-[#131A31] text-[#FFF1E8] lg:h-screen lg:flex-row lg:overflow-hidden">
 
-      {showWelcomeBanner && (
-        <div className="fixed left-0 right-0 top-0 z-[60] flex items-center justify-center gap-3 bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] px-4 py-2.5 text-sm font-semibold text-black shadow-lg">
-          {checkoutSuccess ? (
-            <span>🎉 Payment confirmed{checkoutPlan ? ` — ${checkoutPlan} plan active` : ""}. Your credits are loaded — start creating!</span>
-          ) : (
-            <span>👋 Welcome to SpriteLab! 10 free credits are ready — we filled in an example, just press <b>Generate</b>.</span>
-          )}
-          <button type="button" aria-label="Dismiss" onClick={() => setShowWelcomeBanner(false)}
-            className="ml-2 rounded bg-black/15 px-2 py-0.5 text-xs font-bold transition-colors hover:bg-black/25">✕</button>
+      {/* ═══ MAIN — header · stage · actions · recipe ═══════════════════ */}
+      <section aria-label="Create a sprite" className="flex min-w-0 flex-1 flex-col lg:min-h-0">
+        <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-white/[0.06] px-4 py-3 sm:px-5">
+          <h1 className="font-display text-[20px] font-semibold text-[#FFF1E8]">Create</h1>
+          <div className="min-w-0 flex-1 basis-[260px] [&>div]:mt-0"><ToolTabs active="generate" generationId={activeResult?.generationId} /></div>
+          <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto">
+            <div role="group" aria-label="Scene" className="flex max-w-full overflow-x-auto rounded-[8px] border border-white/[0.1] bg-[#19223F] p-0.5">
+              {STAGE_SCENES.map((s) => (
+                <button key={s.id} type="button" onClick={() => chooseScene(s.id)} aria-pressed={scene === s.id} title={`${s.label} scene`}
+                  className={`h-9 shrink-0 rounded-[6px] px-2.5 text-[12.5px] font-medium transition-colors ${scene === s.id ? "bg-[#FFA300] text-[#131A31]" : "text-[#C8CCE8] hover:text-white"}`}>
+                  {s.label}
+                </button>
+              ))}
+            </div>
+            {history.length > 1 && (
+              <button type="button" onClick={() => setCompare((v) => !v)} aria-pressed={compare} title="Stand the previous sprite next to this one, at the same scale"
+                className={`h-10 rounded-[8px] border px-3 text-[12.5px] font-medium transition-colors ${compare ? "border-[#29ADFF] bg-[#29ADFF]/15 text-[#FFF1E8]" : "border-white/[0.1] text-[#C8CCE8] hover:text-white"}`}>
+                Compare
+              </button>
+            )}
+            <HistoryButton onClick={() => setHistoryOpen(true)} />
+          </div>
+        </header>
+
+        {(showWelcomeBanner || (!projectId && !showWelcomeBanner) || session.restoredNote || projectId) && (
+          <div className="space-y-2 px-4 pt-3 sm:px-5 empty:hidden">
+            {showWelcomeBanner && (
+              <div role="status" className="flex items-start gap-2.5 rounded-[10px] border border-[#FFA300]/30 bg-[#FFA300]/[0.08] py-2.5 pl-3 pr-1.5">
+                <PartyPopper className="mt-0.5 h-4 w-4 shrink-0 text-[#FFA300]" aria-hidden />
+                <p className="min-w-0 flex-1 text-[13px] leading-snug text-[#FFF1E8]">
+                  {checkoutSuccess
+                    ? <>Payment confirmed{planName ? ` — your ${planName} plan is active` : ""}. Your credits are ready to use.</>
+                    : <>Welcome to SpriteLab! Your free credits are ready. We filled in an example, so just press <b className="font-semibold text-white">Create sprite</b>.</>}
+                </p>
+                <button type="button" aria-label="Dismiss message" onClick={() => setShowWelcomeBanner(false)}
+                  className="-my-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] text-[#C8CCE8] transition-colors hover:bg-white/[0.06] hover:text-white">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+            {!showWelcomeBanner && !projectId && <ContinueBanner current="create" />}
+            {session.restoredNote && <RestoredNote onStartFresh={session.startFresh} onDismiss={session.dismissRestoredNote} />}
+            {projectId && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[10px] border border-[#FFA300]/30 bg-[#FFA300]/[0.06] px-3 py-2">
+                {projectError ? (
+                  <p role="alert" className="text-[12.5px] text-red-200">
+                    {projectError} <Link href="/projects" className="font-semibold text-[#FFC857] hover:text-white">Open projects</Link>
+                  </p>
+                ) : (
+                  <>
+                    <p className="min-w-0 text-[13px] text-[#C8CCE8]">Project <Link href={`/projects/${encodeURIComponent(projectId)}`} className="font-semibold text-[#FFF1E8] underline-offset-2 hover:underline">{project?.name ?? "Loading…"}</Link></p>
+                    <label className="flex items-center gap-2 text-[12.5px] text-[#A7ADD4]">
+                      Accept into
+                      <select value={targetFolderId} onChange={(e) => setTargetFolderId(e.target.value)} disabled={!project}
+                        className="h-9 rounded-[7px] border border-white/[0.1] bg-[#212B4E] px-2 text-[12.5px] text-white outline-none focus:border-[#FFA300] disabled:opacity-60">
+                        <option value="">Auto-sort by type</option>
+                        {project?.folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+                      </select>
+                    </label>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Recipe */}
+        <div className="px-4 pt-3 sm:px-5">
+          <RecipeBar
+            prompt={prompt} onPrompt={setPrompt} placeholder={placeholder}
+            onSubmit={handleGenerate} onSurprise={surpriseMe}
+            generating={isGenerating} canSubmit={isFormValid} cost={cost} costLabel={creditLabel(cost)}
+            loadingLabel={<>Creating… <Elapsed /></>}
+            styles={GENERATE_STYLES} styleId={styleId} onStyle={setStyleId} isPixel={isPixelStyle}
+            categories={GENERATE_CATEGORIES} categoryId={selectedCategory.id} onCategory={handleCategoryChange}
+            subcategoryId={selectedSubcategoryId}
+            onSubcategory={(id) => { const s = selectedCategory.subcategories.find((x) => x.subcategoryId === id); if (s) handleSubcategoryChange(s); }}
+            views={viewApplies ? { options: VIEW_OPTIONS, value: view, onChange: (id) => setView(id as ViewId) } : undefined}
+            poses={isCreature ? { options: POSE_OPTIONS, value: pose, onChange: (id) => setPose(id as PoseId) } : undefined}
+            quality={{ options: DETAIL_OPTIONS.map((d) => ({ id: d.id, label: d.label, desc: d.description })), value: detail, onChange: (id) => setDetail(id as DetailId), credits: DETAIL_CREDITS, disabled: !!styleRef }}
+            isAuto={(slot) => slot !== "quality" && auto.isAuto(slot)}
+            tools={
+              <button type="button" onClick={() => setShowAdvanced((v) => !v)} aria-expanded={showAdvanced} aria-controls="generate-more-options"
+                className="flex min-h-10 items-center gap-1 rounded-[7px] px-2.5 text-[12.5px] font-medium text-[#A7ADD4] transition-colors hover:bg-white/[0.05] hover:text-white">
+                More{advancedSet > 0 ? ` · ${advancedSet}` : ""} <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showAdvanced ? "rotate-180" : ""}`} aria-hidden />
+              </button>
+            }
+            extras={
+              <div className="mt-2 space-y-2 empty:hidden">
+                {styleRef && (
+                  <div className="flex items-center gap-2.5 rounded-[10px] border border-[#FFA300]/40 bg-[#FFA300]/[0.06] p-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={styleRef.imageUrl} alt="" className="pixel-perfect h-10 w-10 shrink-0 rounded-[6px] bg-[#131A31] object-contain p-0.5" />
+                    <span className="min-w-0 flex-1 text-[12.5px] text-[#FFF1E8]">Matching this sprite&apos;s style <span className="text-[#A7ADD4]">· {STYLE_MATCH_CREDITS} credits per sprite</span></span>
+                    <button type="button" onClick={() => setStyleRef(null)} aria-label="Stop matching this style"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[7px] text-[#A7ADD4] hover:bg-white/[0.06] hover:text-white"><X className="h-4 w-4" /></button>
+                  </div>
+                )}
+                {promptQuality && promptQuality.level !== "good" && (
+                  <p className={`px-1 text-[12.5px] ${promptQuality.level === "ok" ? "text-amber-200/85" : "text-rose-200/85"}`}>{promptQuality.hint}</p>
+                )}
+                <AutoSettingsBar enabled={auto.enabled} onToggle={auto.setEnabled} changes={auto.changes} onUndo={auto.undo}
+                  labels={{ view: VIEW_OPTIONS, palette: PALETTE_OPTIONS, pose: POSE_OPTIONS }} />
+                {viewConflict && detectedView && detectedViewLabel && (
+                  <button type="button" onClick={() => setView(detectedView)}
+                    className="flex w-full items-start gap-2 rounded-[8px] border border-amber-400/20 bg-amber-400/[0.06] px-3 py-2 text-left text-[12.5px] text-amber-100/90 hover:bg-amber-400/[0.1]">
+                    <Eye className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" aria-hidden />
+                    <span>Your description mentions a <b>{detectedViewLabel}</b> view. Tap to set the view to match.</span>
+                  </button>
+                )}
+                {showAdvanced && (
+                  <div id="generate-more-options" className="grid gap-4 rounded-[10px] border border-white/[0.08] p-3 sm:grid-cols-2">
+                    <Field label={<>Color palette<AutoBadge show={auto.isAuto("palette")} /></>} hint={palette === "auto" ? "Auto lets the style choose the colours." : PALETTE_OPTIONS.find((p) => p.id === palette)?.label}>
+                      <div className={`flex flex-wrap gap-1${autoFlash(auto.isFlashing("palette"))}`}>
+                        {PALETTE_OPTIONS.map((p) => {
+                          const active = p.id === palette;
+                          return p.id === "auto" ? (
+                            <button key={p.id} type="button" onClick={() => setPalette(p.id)} aria-pressed={active}
+                              className={`flex h-10 items-center rounded-[7px] border-2 px-3 text-[12px] font-medium text-[#C8CCE8] ${active ? "border-white bg-white/[0.08]" : "border-transparent bg-white/[0.06] hover:border-white/40"}`}>Auto</button>
+                          ) : (
+                            <button key={p.id} type="button" onClick={() => setPalette(p.id)} title={p.label} aria-label={`${p.label} palette`} aria-pressed={active}
+                              className="group flex h-10 w-10 items-center justify-center rounded-[7px]">
+                              <span aria-hidden className={`block h-7 w-7 rounded-[5px] border-2 ${active ? "border-white" : "border-transparent group-hover:border-white/40"}`} style={{ background: PALETTE_SWATCH[p.id] }} />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </Field>
+                    <Field label="Seed" labelFor="generate-seed"
+                      hint={seedDriftWarning
+                        ? <span className="text-amber-200/90">Seed is locked but you changed <b>{seedDriftWarning.join(", ")}</b>, so the result will differ.</span>
+                        : "Same seed + same settings = the same sprite. Leave empty for a new one each time."}>
+                      <div className="flex gap-2">
+                        <input id="generate-seed" type="number" inputMode="numeric" min={0} max={2147483647} placeholder="Random" value={seed}
+                          onChange={(e) => { setSeed(e.target.value); seedRef.current = e.target.value; setSeedLocked(false); }}
+                          className="h-10 min-w-0 flex-1 rounded-[8px] border border-white/[0.1] bg-[#131A31] px-3 text-[13px] text-white outline-none placeholder:text-[#8A92BF] focus:border-[#FFA300]" />
+                        {activeResult && (
+                          <button type="button" onClick={handleLockSeed} aria-pressed={seedLocked} aria-label={seedLocked ? "Unlock the seed" : "Reuse the seed of the current sprite"}
+                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] border ${seedLocked ? "border-[#FFA300]/50 bg-[#FFA300]/10 text-[#FFC857]" : "border-white/[0.1] text-[#A7ADD4] hover:text-white"}`}>
+                            {seedLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+                          </button>
+                        )}
+                      </div>
+                    </Field>
+                  </div>
+                )}
+                {status === "error" && errorMessage && <ErrorNote>{errorMessage}</ErrorNote>}
+              </div>
+            }
+          />
         </div>
-      )}
+        {/* Stage */}
+        <div ref={canvasRef as React.RefObject<HTMLDivElement>} className="relative mx-4 mt-3 aspect-[4/3] sm:mx-5 lg:aspect-auto lg:min-h-[280px] lg:flex-1">
+          <SpriteStage imageUrl={activeResult?.imageUrl ?? null} pixel={activeResult ? isPixelStyle(activeResult.styleId) : false}
+            compareUrl={compare ? history[selectedIndex + 1]?.imageUrl ?? history[0]?.imageUrl : null}
+            comparePixel={compare ? isPixelStyle((history[selectedIndex + 1] ?? history[0])?.styleId ?? "") : false}
+            scene={scene} dim={isGenerating} alt={activeResult?.prompt ?? ""}>
+            {activeResult && (
+              <div className="pointer-events-none absolute left-2.5 top-2.5 flex flex-wrap gap-1">
+                <Chip>{styleName(activeResult.styleId)}</Chip>
+                <Chip>{activeResult.qualityPreset === "hd" ? "HD" : "Standard"}</Chip>
+                {activeResult.resolvedView && activeResult.resolvedView !== "DEFAULT" && <Chip>{VIEW_LABEL_BY_KEY[activeResult.resolvedView] ?? activeResult.resolvedView} view</Chip>}
+              </div>
+            )}
+            {isGenerating && <GenerateProgress expectedSeconds={DETAIL_SECONDS[detail]} />}
+            {!activeResult && !isGenerating && (
+              <div className="absolute inset-x-0 top-0 flex flex-col items-center gap-3 p-4 pt-[8%] sm:gap-4">
+                <p className="rounded-[8px] bg-[#131A31]/80 px-3 py-1.5 text-center font-display text-[18px] font-semibold text-[#FFF1E8] sm:text-[22px]">What goes on stage first?</p>
+                <div className="grid w-full max-w-[300px] grid-cols-3 gap-2 sm:max-w-md">
+                  {SHOWCASE.slice(0, 6).map((ex) => (
+                    <button key={ex.id} type="button" onClick={() => applyExample(ex)} title={`Use: ${ex.prompt}`} aria-label={`Use example: ${ex.prompt}`}
+                      className="checker checker-sm relative aspect-square overflow-hidden rounded-[8px] border border-white/[0.12] transition-colors hover:border-[#FFA300]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={ex.imageUrl} alt="" decoding="async" className={`absolute inset-0 h-full w-full object-contain p-2.5 ${isPixelShowcase(ex) ? "pixel-perfect" : ""}`} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </SpriteStage>
+        </div>
 
-      {/* ═══ LEFT — controls ═══════════════════════════════════════════ */}
-      <section className={`flex w-full shrink-0 flex-col bg-[#0E1016] lg:w-[380px] lg:border-r lg:border-white/[0.06] ${showWelcomeBanner ? "lg:pt-10" : ""}`}>
-        <div className="px-5 pb-3 pt-5">
-          <div className="flex items-center justify-between">
-            <h1 className="font-display text-[20px] font-semibold text-white">Create a sprite</h1>
-            <span className="px-corners bg-[#FF8A3D]/15 px-2.5 py-1 font-mono text-[11px] font-semibold text-[#FFB27A]">
-              {cost} credit{cost === 1 ? "" : "s"}
-            </span>
-          </div>
-          <div className="mt-4 grid grid-cols-4 gap-1 rounded-xl bg-white/[0.04] p-1 font-mono text-[11px] font-medium">
-            <span className="rounded-lg bg-white/[0.09] px-2 py-1.5 text-center text-white shadow-sm">Create</span>
-            <Link href={activeResult?.generationId ? `/animate?id=${encodeURIComponent(activeResult.generationId)}` : "/animate"} className="rounded-lg px-2 py-1.5 text-center text-[#8B93A5] transition-colors hover:text-white">Animate</Link>
-            <Link href="/remove-bg" className="rounded-lg px-2 py-1.5 text-center text-[#8B93A5] transition-colors hover:text-white">Remove BG</Link>
-            <Link href="/upscale" className="rounded-lg px-2 py-1.5 text-center text-[#8B93A5] transition-colors hover:text-white">Upscale</Link>
-          </div>
-
-          {/* Project mode banner — results get Accept / Decline */}
-          {projectId && (
-            <div className="mt-4 rounded-xl border border-[#FF8A3D]/30 bg-[#FF8A3D]/[0.06] p-3">
-              {projectError ? (
-                <p className="text-[12px] text-red-200">{projectError}</p>
+        {/* Under the stage: project review, actions, notes */}
+        <div className="px-4 pb-24 pt-2 sm:px-5 lg:pb-4">
+          {activeResult?.projectStatus && (
+            <div aria-live="polite" className="mb-2 flex flex-wrap items-center gap-2">
+              {activeResult.projectStatus === "accepted" ? (
+                <>
+                  <span className="flex min-h-10 items-center gap-2 rounded-[8px] border border-emerald-400/30 bg-emerald-500/[0.08] px-3 text-[13px] font-medium text-emerald-200">
+                    <Check className="h-4 w-4 shrink-0" aria-hidden /> Added to {activeResult.acceptedFolderName ?? "the project"}
+                  </span>
+                  <button type="button" onClick={() => declineResult(activeResult)} className="h-10 rounded-[8px] px-3 text-[13px] font-medium text-[#A7ADD4] hover:text-white">Undo</button>
+                </>
+              ) : activeResult.projectStatus === "declined" ? (
+                <>
+                  <span className="flex min-h-10 items-center gap-2 rounded-[8px] border border-white/[0.1] px-3 text-[13px] text-[#A7ADD4]">
+                    <X className="h-4 w-4 shrink-0" aria-hidden /> Declined, not added to the project
+                  </span>
+                  <button type="button" onClick={() => acceptResult(activeResult)} className="h-10 rounded-[8px] px-3 text-[13px] font-medium text-[#FFC857] hover:text-white">Accept instead</button>
+                </>
               ) : (
                 <>
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="min-w-0 truncate text-[12px] text-[#C9CFDB]">
-                      <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-[#FFB27A]">project</span>{" "}
-                      <span className="font-semibold text-white">{project?.name ?? "Loading…"}</span>
-                    </p>
-                    <Link href={`/projects/${encodeURIComponent(projectId)}`} className="shrink-0 text-[11px] text-[#FFB27A] hover:text-white">
-                      Open →
-                    </Link>
-                  </div>
-                  <label className="mt-2 block">
-                    <span className="sr-only">Folder for accepted sprites</span>
-                    <select value={targetFolderId} onChange={(e) => setTargetFolderId(e.target.value)} disabled={!project}
-                      className="w-full rounded-lg border border-white/[0.08] bg-[#151922] px-2.5 py-2 text-[12px] text-white outline-none focus:border-[#FF8A3D]/50">
-                      <option value="">Accept into: auto-sort (recommended)</option>
-                      {project?.folders.map((f) => <option key={f.id} value={f.id}>Accept into: {f.name}</option>)}
-                    </select>
-                  </label>
-                  <p className="mt-1.5 text-[11px] leading-snug text-[#8B93A5]">
-                    Review each sprite — <b className="text-emerald-300">Accept</b> files it into the right folder by type (a new folder is made if needed), <b className="text-[#C9CFDB]">Decline</b> keeps it out.
-                  </p>
+                  <button type="button" onClick={() => acceptResult(activeResult)} disabled={activeResult.projectStatus === "accepting"}
+                    className="flex h-10 min-w-[120px] items-center justify-center gap-2 rounded-[8px] bg-[#00E436] px-4 text-[13.5px] font-semibold text-[#131A31] transition hover:brightness-110 disabled:opacity-60">
+                    {activeResult.projectStatus === "accepting" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Check className="h-4 w-4" aria-hidden />} Accept
+                  </button>
+                  <button type="button" onClick={() => declineResult(activeResult)} disabled={activeResult.projectStatus === "accepting"}
+                    className="flex h-10 items-center gap-2 rounded-[8px] border border-white/[0.14] px-4 text-[13.5px] font-medium text-[#C8CCE8] hover:text-white disabled:opacity-60">
+                    <X className="h-4 w-4" aria-hidden /> Decline
+                  </button>
+                  {pendingResults.length > 1 && (
+                    <button type="button" onClick={acceptAllPending} className="h-10 rounded-[8px] px-3 text-[13px] font-medium text-[#A7ADD4] hover:text-white">Accept all ({pendingResults.length})</button>
+                  )}
                 </>
               )}
             </div>
           )}
-        </div>
 
-        <div className="flex-1 space-y-6 px-5 pb-6 pt-2 lg:min-h-0 lg:overflow-y-auto">
-
-          {/* Prompt */}
-          <div>
-            <div className="rounded-2xl border border-white/[0.08] bg-[#151922] transition-colors focus-within:border-[#FF8A3D]/50">
-              <textarea
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); handleGenerate(); }
-                }}
-                placeholder={placeholder}
-                maxLength={500}
-                rows={4}
-                className="w-full resize-none bg-transparent px-4 pt-3.5 text-[14px] leading-relaxed text-white outline-none placeholder:text-[#7A8294]"
-              />
-              <div className="flex items-center justify-between px-2.5 pb-2.5">
-                <button type="button" onClick={surpriseMe}
-                  className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[12px] font-medium text-[#9BA3B4] transition-colors hover:bg-white/[0.05] hover:text-white">
-                  <Dices className="h-3.5 w-3.5" /> Surprise me
-                </button>
-                <span className="pr-1.5 text-[11px] tabular-nums text-[#7A8294]">{prompt.length}/500</span>
-              </div>
-            </div>
-            {promptQuality && promptQuality.level !== "good" && (
-              <p className={`mt-2 px-1 text-[11px] ${promptQuality.level === "ok" ? "text-amber-300/80" : "text-rose-300/80"}`}>
-                {promptQuality.hint}
-              </p>
-            )}
-            {viewConflict && detectedView && detectedViewLabel && (
-              <button type="button" onClick={() => setView(detectedView)}
-                className="mt-2 flex w-full items-start gap-2 rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-3 py-2 text-left text-[11px] text-amber-100/90 hover:bg-amber-400/[0.1]">
-                <Eye className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" />
-                <span>Your prompt mentions <b>{detectedViewLabel}</b> — click to set the View to match.</span>
+          {activeResult && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button type="button" onClick={isPixelStyle(activeResult.styleId) ? downloadNative : handleDownload}
+                title={isPixelStyle(activeResult.styleId) ? "Download at the sprite's real pixel size (engine-ready)" : "Download as a 1024px PNG"}
+                className="flex h-10 items-center gap-2 rounded-[8px] bg-[#FFF1E8] px-3.5 text-[13px] font-semibold text-[#131A31] transition hover:bg-white">
+                <Download className="h-4 w-4" aria-hidden /> Download PNG
               </button>
-            )}
-          </div>
-
-          {/* Style */}
-          <Field label="Style" action={
-            <button type="button" onClick={() => setShowAllStyles((v) => !v)}
-              className="text-[11px] font-medium text-[#9BA3B4] hover:text-white">
-              {showAllStyles ? "Show less" : `All styles (${GENERATE_STYLES.length})`}
-            </button>
-          }>
-            <div className="grid grid-cols-3 gap-2">
-              {visibleStyles.map((s) => {
-                const active = s.id === styleId;
-                return (
-                  <button key={s.id} type="button" onClick={() => setStyleId(s.id)} title={s.description}
-                    className={`group relative aspect-square overflow-hidden rounded-xl border bg-[#151922] transition-all ${
-                      active ? "border-[#FF8A3D] ring-2 ring-[#FF8A3D]/25" : "border-white/[0.06] hover:border-white/20"
-                    }`}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={`/styles/${s.id.toLowerCase()}.png`} alt="" loading="lazy"
-                      className={`absolute inset-0 h-full w-full object-contain p-2 pb-5 transition-transform duration-300 group-hover:scale-105 ${isPixelStyle(s.id) ? "pixel-perfect" : ""}`} />
-                    <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/50 to-transparent px-1.5 pb-1.5 pt-4 text-center text-[10.5px] font-medium leading-tight text-white">
-                      {s.name}
-                    </span>
-                    {active && <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#FF8A3D]"><Check className="h-2.5 w-2.5 text-black" strokeWidth={3} /></span>}
-                  </button>
-                );
-              })}
-            </div>
-          </Field>
-
-          {/* Asset type */}
-          <Field label="Asset type">
-            <div className="flex flex-wrap gap-1.5">
-              {GENERATE_CATEGORIES.map((c) => {
-                const active = c.id === selectedCategory.id;
-                const Icon = c.icon;
-                return (
-                  <button key={c.id} type="button" onClick={() => handleCategoryChange(c)}
-                    className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors ${
-                      active ? "border-[#FF8A3D]/60 bg-[#FF8A3D]/12 text-white" : "border-white/[0.08] text-[#9BA3B4] hover:border-white/20 hover:text-white"
-                    }`}>
-                    <Icon className={`h-3.5 w-3.5 ${active ? "text-[#FF8A3D]" : ""}`} /> {c.label}
-                  </button>
-                );
-              })}
-            </div>
-          </Field>
-
-          {/* View */}
-          {viewApplies && <Field label="Camera view">
-            <div className="grid grid-cols-4 gap-1 rounded-xl bg-white/[0.04] p-1">
-              {VIEW_OPTIONS.map((v) => (
-                <button key={v.id} type="button" onClick={() => setView(v.id)} title={v.desc}
-                  className={`rounded-lg py-1.5 text-[12px] font-medium transition-colors ${
-                    view === v.id ? "bg-white/[0.1] text-white shadow-sm" : "text-[#8B93A5] hover:text-white"
-                  }`}>
-                  {v.label}
+              <div className="relative" ref={sizesRef}>
+                <button type="button" onClick={() => setSizesOpen((v) => !v)} aria-haspopup="menu" aria-expanded={sizesOpen} className={SECONDARY_BTN}>
+                  Sizes <ChevronDown className={`h-3.5 w-3.5 transition-transform ${sizesOpen ? "rotate-180" : ""}`} aria-hidden />
                 </button>
-              ))}
-            </div>
-          </Field>}
-
-          {/* Quality */}
-          <Field label="Quality">
-            <div className="grid grid-cols-2 gap-2">
-              {DETAIL_OPTIONS.map((d) => {
-                const active = d.id === detail;
-                return (
-                  <button key={d.id} type="button" onClick={() => setDetail(d.id)}
-                    className={`rounded-xl border p-3 text-left transition-colors ${
-                      active ? "border-[#FF8A3D]/70 bg-[#FF8A3D]/[0.08]" : "border-white/[0.08] hover:border-white/20"
-                    }`}>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[13px] font-semibold text-white">{d.label}</span>
-                      <span className={`font-mono text-[11px] font-semibold ${active ? "text-[#FFB27A]" : "text-[#8B93A5]"}`}>
-                        {DETAIL_CREDITS[d.id]} cr
-                      </span>
-                    </div>
-                    <p className="mt-1 text-[11px] leading-snug text-[#8B93A5]">{d.id === "hd" ? "Best detail & accuracy · ~25s" : "Fast & clean · ~8s"}</p>
-                  </button>
-                );
-              })}
-            </div>
-          </Field>
-
-          {/* More options */}
-          <div className="rounded-2xl border border-white/[0.06]">
-            <button type="button" onClick={() => setShowAdvanced((v) => !v)}
-              className="flex w-full items-center justify-between px-4 py-3 text-[12px] font-medium text-[#9BA3B4] hover:text-white">
-              More options
-              <ChevronDown className={`h-4 w-4 transition-transform ${showAdvanced ? "rotate-180" : ""}`} />
-            </button>
-            {showAdvanced && (
-              <div className="space-y-5 border-t border-white/[0.06] px-4 pb-4 pt-4">
-                <Field label="Color palette">
-                  <div className="flex flex-wrap gap-2">
-                    {PALETTE_OPTIONS.map((p) => {
-                      const active = p.id === palette;
-                      return (
-                        <button key={p.id} type="button" onClick={() => setPalette(p.id)} title={p.label}
-                          className={`h-7 rounded-full border-2 transition-all ${p.id === "auto" ? "px-2.5 text-[11px] font-medium text-[#C9CFDB]" : "w-7"} ${
-                            active ? "border-white scale-110" : "border-transparent hover:border-white/40"
-                          }`}
-                          style={p.id === "auto" ? { background: "rgba(255,255,255,0.06)" } : { background: PALETTE_SWATCH[p.id] }}>
-                          {p.id === "auto" ? "Auto" : null}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </Field>
-
-                <Field label="Type">
-                  <select value={selectedSubcategoryId}
-                    onChange={(e) => { const s = selectedCategory.subcategories.find((x) => x.subcategoryId === e.target.value); if (s) handleSubcategoryChange(s); }}
-                    className="w-full rounded-xl border border-white/[0.08] bg-[#151922] px-3 py-2.5 text-[13px] text-white outline-none focus:border-[#FF8A3D]/50">
-                    {selectedCategory.subcategories.map((s) => <option key={s.subcategoryId} value={s.subcategoryId}>{s.label}</option>)}
-                  </select>
-                </Field>
-
-                {isCreature && (
-                  <Field label="Pose">
-                    <div className="grid grid-cols-4 gap-1 rounded-xl bg-white/[0.04] p-1">
-                      {POSE_OPTIONS.map((p) => (
-                        <button key={p.id} type="button" onClick={() => setPose(p.id)} title={p.desc}
-                          className={`rounded-lg py-1.5 text-[11.5px] font-medium transition-colors ${
-                            pose === p.id ? "bg-white/[0.1] text-white" : "text-[#8B93A5] hover:text-white"
-                          }`}>
-                          {p.label}
-                        </button>
-                      ))}
-                    </div>
-                  </Field>
-                )}
-
-                <Field label="Seed">
-                  <div className="flex gap-2">
-                    <input type="number" min={0} max={2147483647} placeholder="Random" value={seed}
-                      onChange={(e) => { setSeed(e.target.value); seedRef.current = e.target.value; setSeedLocked(false); }}
-                      className="flex-1 rounded-xl border border-white/[0.08] bg-[#151922] px-3 py-2.5 text-[13px] text-white outline-none placeholder:text-[#7A8294] focus:border-[#FF8A3D]/50" />
-                    {activeResult && (
-                      <button type="button" onClick={handleLockSeed} title={seedLocked ? "Unlock seed" : "Lock seed of the current result"}
-                        className={`rounded-xl border px-3 transition-colors ${seedLocked ? "border-[#FF8A3D]/50 bg-[#FF8A3D]/10 text-[#FFB27A]" : "border-white/[0.08] text-[#8B93A5] hover:text-white"}`}>
-                        {seedLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+                {sizesOpen && (
+                  <div role="menu" aria-label="Download sizes" className="absolute bottom-12 left-0 z-20 w-56 rounded-[10px] border border-white/[0.1] bg-[#1B2446] p-1.5 shadow-2xl">
+                    {isPixelStyle(activeResult.styleId) && (
+                      <button type="button" role="menuitem" onClick={() => { setSizesOpen(false); downloadNative(); }}
+                        className="flex min-h-10 w-full items-center justify-between rounded-[7px] px-3 text-[13px] text-white hover:bg-white/[0.06]">
+                        Real pixel size <span className="text-[11.5px] text-[#00E436]">engine-ready</span>
                       </button>
                     )}
+                    {[32, 64, 128, 256, 512, 1024].map((size) => (
+                      <button key={size} type="button" role="menuitem" onClick={() => { setSizesOpen(false); downloadAtSize(size); }}
+                        className="flex min-h-10 w-full items-center rounded-[7px] px-3 font-mono text-[13px] text-[#C8CCE8] hover:bg-white/[0.06] hover:text-white">
+                        {size} × {size} px
+                      </button>
+                    ))}
+                    <button type="button" role="menuitem" onClick={() => { setSizesOpen(false); handleDownloadMetadata(); }}
+                      className="mt-1 flex min-h-10 w-full items-center rounded-[7px] border-t border-white/[0.06] px-3 text-[12.5px] text-[#A7ADD4] hover:bg-white/[0.06] hover:text-white">
+                      Settings file (.json)
+                    </button>
                   </div>
-                  {seedDriftWarning && (
-                    <p className="mt-2 text-[11px] leading-snug text-amber-200/80">
-                      Seed is locked but you changed <b>{seedDriftWarning.join(", ")}</b> — the result will differ.
-                    </p>
-                  )}
-                </Field>
+                )}
               </div>
-            )}
-          </div>
-        </div>
-
-        {/* Generate */}
-        <div className="border-t border-white/[0.06] bg-[#0E1016] p-4">
-          <button type="button" onClick={handleGenerate} disabled={!isFormValid || isGenerating}
-            className="px-corners group relative flex h-12 w-full items-center justify-center gap-2 overflow-hidden bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] text-[15px] font-semibold text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40">
-            {isGenerating ? (
-              <><Loader2 className="h-4 w-4 animate-spin" /> Generating… {elapsedSeconds}s</>
-            ) : (
-              <><Sparkles className="h-4 w-4" /> Generate <span className="font-normal opacity-80">· {cost} credit{cost === 1 ? "" : "s"}</span></>
-            )}
-          </button>
-          <p className="mt-2 text-center font-mono text-[10.5px] text-[#7A8294]">{DETAIL_ETA[detail]} · ctrl+enter</p>
-          {status === "error" && errorMessage && (
-            <p className="mt-3 rounded-xl border border-red-500/20 bg-red-500/[0.06] px-3 py-2 text-[12px] text-red-300">{errorMessage}</p>
+              {activeResult.generationId && (
+                <Link href={`/animate?id=${encodeURIComponent(activeResult.generationId)}`}
+                  className="flex h-10 items-center gap-1.5 rounded-[8px] border border-[#FFA300]/50 bg-[#FFA300]/10 px-3 text-[13px] font-semibold text-[#FFC857] transition hover:bg-[#FFA300]/20">
+                  <Film className="h-4 w-4" aria-hidden /> Animate
+                </Link>
+              )}
+              {activeResult.generationId && styleRef?.id !== activeResult.generationId && (
+                <button type="button" title={`Make new sprites in this exact style (${STYLE_MATCH_CREDITS} credits each)`}
+                  onClick={() => setStyleRef({ id: activeResult.generationId!, imageUrl: activeResult.imageUrl })} className={SECONDARY_BTN}>
+                  <Paintbrush className="h-4 w-4" aria-hidden /> Match style
+                </button>
+              )}
+              <IconButton label="Generate again with the same settings" onClick={handleRegenerate} disabled={isGenerating || !isFormValid}>
+                <RefreshCw className={`h-4 w-4 ${isGenerating ? "animate-spin" : ""}`} />
+              </IconButton>
+              <IconButton label={seedCopied ? "Seed copied" : `Copy seed ${activeResult.seed}`} onClick={handleCopySeed}>
+                {seedCopied ? <Check className="h-4 w-4 text-[#00E436]" /> : <Copy className="h-4 w-4" />}
+              </IconButton>
+            </div>
           )}
-        </div>
-      </section>
 
-      {/* ═══ CENTER — canvas ═══════════════════════════════════════════ */}
-      <section ref={canvasRef} className="relative flex flex-1 scroll-mt-14 flex-col lg:min-h-0">
-        {/* Top bar */}
-        <div className="flex items-center justify-between gap-3 px-5 py-3 lg:px-6">
-          <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-[11px]">
-            {activeResult ? (
-              <>
-                <Chip>{styleName(activeResult.styleId)}</Chip>
-                <Chip>{activeResult.qualityPreset === "hd" ? "HD" : "Standard"}</Chip>
-                {activeResult.resolvedView && activeResult.resolvedView !== "DEFAULT" && (
-                  <Chip>{VIEW_LABEL_BY_KEY[activeResult.resolvedView] ?? activeResult.resolvedView} view</Chip>
-                )}
-                <Chip>seed {activeResult.seed}</Chip>
-              </>
-            ) : (
-              <span className="text-[12px] text-[#7A8294]">Your sprite will appear here</span>
-            )}
-          </div>
-          <div className="flex shrink-0 items-center gap-1 rounded-xl bg-white/[0.04] p-1">
-            {BG_MODES.map((mode) => (
-              <button key={mode.id} type="button" onClick={() => setBgMode(mode.id)} title={`${mode.label} backdrop`}
-                className={`h-7 w-7 rounded-lg border-2 transition-all ${bgMode === mode.id ? "border-[#FF8A3D]" : "border-transparent hover:border-white/30"}`}
-                style={{ ...(mode.style as React.CSSProperties), backgroundSize: "8px 8px" }} />
-            ))}
-          </div>
-        </div>
-
-        {/* Canvas */}
-        <div className="flex flex-1 items-center justify-center px-5 pb-4 lg:min-h-0 lg:px-6">
-          <div className="relative aspect-square w-full max-w-[min(68vh,680px)] overflow-hidden rounded-3xl border border-white/[0.06] shadow-[0_30px_80px_-40px_rgba(0,0,0,0.8)]"
-            style={activeBg.style as React.CSSProperties}>
-            {activeResult && (
-              <Image src={activeResult.imageUrl} alt={activeResult.prompt} fill unoptimized
-                className={`object-contain p-[8%] transition-opacity duration-300 ${isPixelStyle(activeResult.styleId) ? "pixel-perfect" : ""} ${isGenerating ? "opacity-15" : "opacity-100"}`} />
-            )}
-
-            {isGenerating && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-[#0B0D12]/40 px-6 backdrop-blur-[2px]">
-                <div className="relative h-14 w-14">
-                  <div className="absolute inset-0 rounded-full border-2 border-white/10" />
-                  <div className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-[#FF8A3D]" />
-                  <Sparkles className="absolute inset-0 m-auto h-5 w-5 text-[#FF8A3D]" />
-                </div>
-                <div className="text-center">
-                  <p className="text-[14px] font-medium text-white">{progressStage}</p>
-                  <p className="mt-1 text-[12px] tabular-nums text-[#8B93A5]">{elapsedSeconds}s · usually {detail === "hd" ? "~25" : "~8"}s</p>
-                </div>
-                <div className="h-1 w-48 overflow-hidden rounded-full bg-white/[0.08]">
-                  <div className="h-full bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] transition-[width] duration-300 ease-linear"
-                    style={{ width: `${Math.min(95, (elapsedMs / ((detail === "hd" ? 25 : 8) * 1000)) * 90)}%` }} />
-                </div>
-              </div>
-            )}
-
-            {!activeResult && !isGenerating && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 p-8">
-                <div className="text-center">
-                  <p className="font-display text-[24px] font-semibold text-white">What will you create?<span className="caret" /></p>
-                  <p className="mt-1.5 text-[13px] text-[#8B93A5]">Describe it on the left, or start from an example</p>
-                </div>
-                <div className="grid w-full max-w-md grid-cols-3 gap-2.5">
-                  {SHOWCASE.slice(0, 6).map((ex) => (
-                    <button key={ex.id} type="button" onClick={() => applyExample(ex)} title={`Use: ${ex.prompt}`}
-                      className="group relative aspect-square overflow-hidden rounded-2xl border border-white/[0.06] bg-[#151922]/80 transition-all hover:border-[#FF8A3D]/50">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={ex.imageUrl} alt={ex.prompt}
-                        className={`absolute inset-0 h-full w-full object-contain p-3 transition-transform duration-300 group-hover:scale-110 ${isPixelShowcase(ex) ? "pixel-perfect" : ""}`} />
-                      <span className="absolute inset-x-0 bottom-0 translate-y-full bg-black/75 px-2 py-1 text-[10px] text-white transition-transform group-hover:translate-y-0">
-                        {ex.prompt}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Project review bar */}
-        {activeResult?.projectStatus && (
-          <div className="mx-auto mb-2 flex w-full max-w-[680px] flex-wrap items-center justify-center gap-2 px-5">
-            {activeResult.projectStatus === "accepted" ? (
-              <>
-                <span className="flex h-10 items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-500/[0.08] px-4 text-[13px] font-medium text-emerald-200">
-                  <Check className="h-4 w-4" /> Added to {activeResult.acceptedFolderName ?? "project"}
-                </span>
-                <button type="button" onClick={() => declineResult(activeResult)}
-                  className="h-10 rounded-xl px-3 text-[12px] text-[#8B93A5] hover:text-white">Undo</button>
-              </>
-            ) : activeResult.projectStatus === "declined" ? (
-              <>
-                <span className="flex h-10 items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-[13px] text-[#8B93A5]">
-                  <X className="h-4 w-4" /> Declined — kept out of the project
-                </span>
-                <button type="button" onClick={() => acceptResult(activeResult)}
-                  className="h-10 rounded-xl px-3 text-[12px] text-[#FFB27A] hover:text-white">Accept instead</button>
-              </>
-            ) : (
-              <>
-                <button type="button" onClick={() => acceptResult(activeResult)} disabled={activeResult.projectStatus === "accepting"}
-                  className="flex h-11 min-w-[140px] items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 text-[14px] font-semibold text-black transition hover:bg-emerald-400 disabled:opacity-60">
-                  {activeResult.projectStatus === "accepting" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Accept
-                </button>
-                <button type="button" onClick={() => declineResult(activeResult)} disabled={activeResult.projectStatus === "accepting"}
-                  className="flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.04] px-5 text-[14px] font-medium text-[#C9CFDB] transition hover:bg-white/[0.08] disabled:opacity-60">
-                  <X className="h-4 w-4" /> Decline
-                </button>
-                {pendingResults.length > 1 && (
-                  <button type="button" onClick={acceptAllPending}
-                    className="h-11 rounded-xl px-3 text-[12px] text-[#8B93A5] hover:text-white">
-                    Accept all ({pendingResults.length})
-                  </button>
-                )}
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Action bar */}
-        {activeResult && (
-          <div className="flex flex-wrap items-center justify-center gap-2 px-5 pb-3">
-            <button type="button" onClick={isPixelStyle(activeResult.styleId) ? downloadNative : handleDownload}
-              className="flex h-10 items-center gap-2 rounded-xl bg-white px-4 text-[13px] font-semibold text-black transition hover:bg-white/90">
-              <Download className="h-4 w-4" /> Download PNG
-            </button>
-            <div className="relative">
-              <button type="button" onClick={() => setSizesOpen((v) => !v)}
-                className="flex h-10 items-center gap-1.5 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 text-[13px] text-[#C9CFDB] transition hover:bg-white/[0.08]">
-                Sizes <ChevronDown className={`h-3.5 w-3.5 transition-transform ${sizesOpen ? "rotate-180" : ""}`} />
-              </button>
-              {sizesOpen && (
-                <div className="absolute bottom-12 left-1/2 z-20 w-52 -translate-x-1/2 rounded-xl border border-white/[0.08] bg-[#161A22] p-1.5 shadow-2xl">
-                  {isPixelStyle(activeResult.styleId) && (
-                    <button type="button" onClick={() => { setSizesOpen(false); downloadNative(); }}
-                      className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-[12px] text-white hover:bg-white/[0.06]">
-                      Native pixel size <span className="text-[10px] text-emerald-300">engine-ready</span>
-                    </button>
+          {activeResult && ((activeResult.warnings?.length ?? 0) > 0 || activeResult.translatedPrompt) && (
+            <div className="mt-2 space-y-1.5">
+              {activeResult.warnings?.map((w, i) => (
+                <p key={i} className="flex items-start gap-2 rounded-[8px] border border-amber-400/20 bg-amber-400/[0.05] px-3 py-2 text-[12.5px] text-amber-100/90">
+                  <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" aria-hidden /> <span className="flex-1">{w}</span>
+                  {/use Animate/i.test(w) && activeResult.generationId && (
+                    <Link href={`/animate?id=${encodeURIComponent(activeResult.generationId)}`} className="-my-2 inline-flex min-h-9 shrink-0 items-center font-semibold text-[#FFC857] hover:text-white">Animate it</Link>
                   )}
-                  {[32, 64, 128, 256, 512, 1024].map((size) => (
-                    <button key={size} type="button" onClick={() => { setSizesOpen(false); downloadAtSize(size); }}
-                      className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-[12px] text-[#C9CFDB] hover:bg-white/[0.06]">
-                      {size} × {size}px
-                    </button>
-                  ))}
-                  <button type="button" onClick={() => { setSizesOpen(false); handleDownloadMetadata(); }}
-                    className="mt-1 flex w-full items-center rounded-lg border-t border-white/[0.06] px-3 py-2 text-[12px] text-[#8B93A5] hover:bg-white/[0.06]">
-                    Metadata (.json)
-                  </button>
-                </div>
+                </p>
+              ))}
+              {activeResult.translatedPrompt && (
+                <p className="flex items-center gap-2 rounded-[8px] bg-white/[0.04] py-1 pl-3 pr-1 text-[12.5px] text-[#A7ADD4]">
+                  <span className="font-semibold text-[#C8CCE8]" title="Translated to English">EN</span>
+                  <span className="min-w-0 flex-1 truncate" title={activeResult.translatedPrompt}>{activeResult.translatedPrompt}</span>
+                  <button type="button" onClick={() => activeResult.translatedPrompt && setPrompt(activeResult.translatedPrompt)} title="Put the English version in the prompt box"
+                    className="min-h-10 shrink-0 rounded-[7px] px-3 font-semibold text-[#FFC857] hover:bg-white/[0.04] hover:text-white">Use</button>
+                </p>
               )}
             </div>
-            {activeResult.generationId && (
-              <Link href={`/animate?id=${encodeURIComponent(activeResult.generationId)}`}
-                className="flex h-10 items-center gap-1.5 rounded-xl border border-[#FF8A3D]/40 bg-[#FF8A3D]/10 px-3 text-[13px] font-medium text-[#FFB27A] transition hover:bg-[#FF8A3D]/20">
-                <Film className="h-4 w-4" /> Animate
-              </Link>
-            )}
-            <IconButton title="Regenerate with the same settings" onClick={handleRegenerate} disabled={isGenerating}>
-              <RefreshCw className={`h-4 w-4 ${isGenerating ? "animate-spin" : ""}`} />
-            </IconButton>
-            <IconButton title="Copy seed" onClick={handleCopySeed}>
-              {seedCopied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
-            </IconButton>
-          </div>
-        )}
+          )}
 
-        {/* Notes: warnings / translation */}
-        {activeResult && ((activeResult.warnings?.length ?? 0) > 0 || activeResult.translatedPrompt) && (
-          <div className="mx-auto w-full max-w-[680px] space-y-1.5 px-5 pb-3">
-            {activeResult.warnings?.map((w, i) => (
-              <p key={i} className="flex items-start gap-2 rounded-xl border border-amber-400/20 bg-amber-400/[0.05] px-3 py-2 text-[11.5px] text-amber-100/90">
-                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" /> {w}
-              </p>
-            ))}
-            {activeResult.translatedPrompt && (
-              <p className="flex items-center gap-2 rounded-xl bg-white/[0.04] px-3 py-2 text-[11.5px] text-[#9BA3B4]">
-                <span className="font-semibold text-[#C9CFDB]">EN</span>
-                <span className="flex-1 truncate">{activeResult.translatedPrompt}</span>
-                <button type="button" onClick={() => activeResult.translatedPrompt && setPrompt(activeResult.translatedPrompt)}
-                  className="shrink-0 font-semibold text-[#FFB27A] hover:text-[#FFD0A8]">Use</button>
-              </p>
-            )}
-          </div>
-        )}
+          {history.length > 0 && (
+            <div role="group" aria-label="This session" className="mt-2 flex gap-1.5 overflow-x-auto pb-1 xl:hidden">
+              {history.map((item, index) => (
+                <HistoryThumb key={item.id} item={item} active={selectedIndex === index} pixel={isPixelStyle(item.styleId)}
+                  onClick={() => setSelectedIndex(index)} className="h-14 w-14 shrink-0" />
+              ))}
+            </div>
+          )}
+        </div>
 
-        {/* History strip (when there's no right panel) */}
-        {history.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto px-5 pb-5 2xl:hidden">
-            {history.map((item, index) => (
-              <HistoryThumb key={item.id} item={item} active={selectedIndex === index} pixel={isPixelStyle(item.styleId)}
-                onClick={() => setSelectedIndex(index)} className="h-16 w-16 shrink-0" />
-            ))}
-          </div>
-        )}
       </section>
 
-      {/* ═══ RIGHT — session history (wide screens) ═════════════════════ */}
-      <aside className="hidden w-[248px] shrink-0 flex-col border-l border-white/[0.06] bg-[#0E1016] 2xl:flex">
-        <div className="flex items-center justify-between px-4 py-4">
-          <p className="text-[13px] font-semibold text-white">This session</p>
-          <Link href="/assets" className="text-[11px] text-[#8B93A5] hover:text-white">All assets →</Link>
-        </div>
-        {history.length === 0 ? (
-          <p className="px-4 text-[12px] leading-relaxed text-[#7A8294]">Generations appear here. Everything is also saved to your Assets.</p>
-        ) : (
-          <div className="grid grid-cols-2 gap-2 overflow-y-auto px-4 pb-4">
-            {history.map((item, index) => (
-              <HistoryThumb key={item.id} item={item} active={selectedIndex === index} pixel={isPixelStyle(item.styleId)}
-                onClick={() => setSelectedIndex(index)} className="aspect-square w-full" />
-            ))}
-          </div>
-        )}
-      </aside>
+      {/* ═══ RIGHT — inventory (column from xl, bottom sheet below) ═══ */}
+      <HistoryPanel tool="create" open={historyOpen} onOpenChange={setHistoryOpen} onSelect={session.openFromHistory}
+        activeIds={[session.activeGenerationId]} refreshKey={history[0]?.generationId} />
     </div>
   );
 }
@@ -1302,48 +1142,66 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
 // SMALL PRESENTATIONAL HELPERS
 // =============================================================================
 
-function Field({ label, action, children }: { label: string; action?: React.ReactNode; children: React.ReactNode }) {
+const CHECKOUT_PLAN_NAMES: Record<string, string> = { starter: "Starter", pro: "Pro", unlimited: "Studio", studio: "Studio", lifetime: "Lifetime" };
+
+const PROGRESS_STAGES: [number, string][] = [
+  [3, "Preparing the prompt…"],
+  [8, "Sending to the model…"],
+  [18, "Drawing your sprite…"],
+  [30, "Cleaning up the background…"],
+  [60, "Almost there — the model is busy…"],
+];
+
+/**
+ * Canvas overlay while a sprite generates. Owns its timer so the ticking
+ * clock re-renders only this overlay, not the whole workspace.
+ */
+function GenerateProgress({ expectedSeconds }: { expectedSeconds: number }) {
+  const [ms, setMs] = useState(0);
+  useEffect(() => {
+    const start = Date.now();
+    const id = setInterval(() => setMs(Date.now() - start), 250);
+    return () => clearInterval(id);
+  }, []);
+  const seconds = Math.floor(ms / 1000);
+  const stage = PROGRESS_STAGES.find(([until]) => seconds < until)?.[1] ?? "Hang tight — this one is taking a while…";
   return (
-    <div>
-      <div className="mb-2 flex items-center justify-between">
-        <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">{label}</p>
-        {action}
+    <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-[#131A31]/40 px-6 backdrop-blur-[2px]">
+      <div className="relative h-14 w-14" aria-hidden>
+        <div className="absolute inset-0 rounded-full border-2 border-white/10" />
+        <div className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-[#FFA300]" />
+        <Sparkles className="absolute inset-0 m-auto h-5 w-5 text-[#FFA300]" />
       </div>
-      {children}
+      <div className="text-center">
+        <p role="status" className="text-[14px] font-medium text-white">{stage}</p>
+        <p className="mt-1 font-mono text-[12px] tabular-nums text-[#9AA1CC]">{seconds}s · usually ~{expectedSeconds}s</p>
+      </div>
+      <div className="h-1 w-48 overflow-hidden rounded-full bg-white/[0.08]" aria-hidden>
+        <div className="h-full bg-[#FFA300] transition-[width] duration-300 ease-linear"
+          style={{ width: `${Math.min(95, (ms / (expectedSeconds * 1000)) * 90)}%` }} />
+      </div>
     </div>
-  );
-}
-
-function Chip({ children }: { children: React.ReactNode }) {
-  return <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[10.5px] text-[#C9CFDB]">{children}</span>;
-}
-
-function IconButton({ title, onClick, disabled, children }: { title: string; onClick: () => void; disabled?: boolean; children: React.ReactNode }) {
-  return (
-    <button type="button" title={title} onClick={onClick} disabled={disabled}
-      className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.1] bg-white/[0.04] text-[#C9CFDB] transition hover:bg-white/[0.08] hover:text-white disabled:opacity-40">
-      {children}
-    </button>
   );
 }
 
 function HistoryThumb({ item, active, pixel, onClick, className }: {
   item: GeneratedResult; active: boolean; pixel: boolean; onClick: () => void; className?: string;
 }) {
+  const reviewState = item.projectStatus === "accepted" ? " (accepted)" : item.projectStatus === "pending" ? " (awaiting review)" : item.projectStatus === "declined" ? " (declined)" : "";
   return (
-    <button type="button" onClick={onClick} title={item.prompt}
-      className={`relative overflow-hidden rounded-xl border bg-[#151922] transition-all ${
-        active ? "border-[#FF8A3D] ring-2 ring-[#FF8A3D]/25" : "border-white/[0.06] opacity-70 hover:opacity-100"
+    <button type="button" onClick={onClick} title={item.prompt} aria-label={`${item.prompt}${reviewState}`} aria-pressed={active}
+      className={`relative overflow-hidden rounded-xl border bg-[#212B4E] transition-all ${
+        active ? "border-[#FFA300] ring-2 ring-[#FFA300]/25" : "border-white/[0.06] opacity-70 hover:opacity-100"
       } ${className ?? ""}`}
       style={{ backgroundImage: "repeating-conic-gradient(#ffffff08 0% 25%, transparent 0% 50%)", backgroundSize: "10px 10px" }}>
-      <Image src={item.imageUrl} alt="" fill unoptimized loading="lazy" className={`object-contain p-1.5 ${pixel ? "pixel-perfect" : ""} ${item.projectStatus === "declined" ? "opacity-30" : ""}`} />
+      <Image src={item.imageUrl} alt="" fill unoptimized loading="lazy" sizes="120px" className={`object-contain p-1.5 ${pixel ? "pixel-perfect" : ""} ${item.projectStatus === "declined" ? "opacity-30" : ""}`} />
       {item.projectStatus === "accepted" && (
-        <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-400" aria-label="Accepted">
+        <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-400" aria-hidden>
           <Check className="h-2.5 w-2.5 text-black" strokeWidth={3} />
         </span>
       )}
       {item.projectStatus === "pending" && (
-        <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-[#FF8A3D]" aria-label="Awaiting review" />
+        <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-[#FFA300]" aria-hidden />
       )}
     </button>
   );

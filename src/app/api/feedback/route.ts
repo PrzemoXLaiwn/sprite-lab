@@ -99,6 +99,8 @@ export async function POST(request: Request) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         embeds: [embed],
+        // User-supplied text must never ping @everyone / roles / users
+        allowed_mentions: { parse: [] },
       }),
     });
 

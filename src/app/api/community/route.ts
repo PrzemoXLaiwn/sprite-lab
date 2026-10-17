@@ -1,106 +1,28 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import type { Prisma } from "@prisma/client";
+import { fetchCommunityPage } from "@/lib/community-gallery";
 
 // ===========================================
-// GET - Fetch public community gallery
-// Note: Requires migration to add isPublic/likes fields
+// GET - Fetch public community gallery (filters + infinite scroll)
 // ===========================================
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const parsedLimit = parseInt(searchParams.get("limit") || "50", 10);
     const parsedOffset = parseInt(searchParams.get("offset") || "0", 10);
-    // Max 100: the community page requests limit=100 and has no pagination.
-    const limit = Number.isFinite(parsedLimit)
-      ? Math.min(Math.max(parsedLimit, 1), 100)
-      : 50;
-    const offset = Number.isFinite(parsedOffset)
-      ? Math.min(Math.max(parsedOffset, 0), 10000)
-      : 0;
-    const categoryId = searchParams.get("category");
-    const filterType = searchParams.get("type"); // "2d" | "3d" | "all"
-    const sortBy = searchParams.get("sort") || "newest"; // "newest" | "popular"
+    const limit = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 100) : 50;
+    const offset = Number.isFinite(parsedOffset) ? Math.min(Math.max(parsedOffset, 0), 10000) : 0;
 
-    // Build where clause - isPublic will work after migration
-    const where: Record<string, unknown> = {
-      isPublic: true,
-    };
-
-    if (categoryId && categoryId !== "all") {
-      where.categoryId = categoryId;
-    }
-
-    // Filter by type (2D vs 3D)
-    if (filterType === "2d") {
-      where.styleId = {
-        not: {
-          startsWith: "3D_",
-        },
-      };
-    } else if (filterType === "3d") {
-      where.styleId = {
-        startsWith: "3D_",
-      };
-    }
-
-    // Build orderBy
-    const orderBy: Prisma.GenerationOrderByWithRelationInput[] | Prisma.GenerationOrderByWithRelationInput = sortBy === "popular"
-      ? [{ likes: "desc" }, { createdAt: "desc" }]
-      : { createdAt: "desc" };
-
-    // Fetch public generations
-    const generations = await prisma.generation.findMany({
-      where,
-      orderBy,
-      take: limit,
-      skip: offset,
-      select: {
-        id: true,
-        prompt: true,
-        imageUrl: true,
-        categoryId: true,
-        subcategoryId: true,
-        styleId: true,
-        seed: true,
-        likes: true,
-        createdAt: true,
-        // Internal user id intentionally not exposed publicly
-        user: {
-          select: {
-            name: true,
-            avatarUrl: true,
-          },
-        },
-      },
-    });
-
-    // Get total count
-    const total = await prisma.generation.count({ where });
-
-    // Get category counts
-    const categoryCounts = await prisma.generation.groupBy({
-      by: ["categoryId"],
-      where: { isPublic: true },
-      _count: true,
-    });
-
-    return NextResponse.json({
-      success: true,
-      generations,
-      total,
+    const page = await fetchCommunityPage({
+      category: searchParams.get("category"),
+      type: searchParams.get("type"),
+      sort: searchParams.get("sort") || "newest",
       limit,
       offset,
-      categoryCounts: categoryCounts.reduce((acc, item) => {
-        acc[item.categoryId] = item._count;
-        return acc;
-      }, {} as Record<string, number>),
     });
+
+    return NextResponse.json({ success: true, ...page, limit, offset });
   } catch (error) {
     console.error("[Community] Error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch community gallery" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch community gallery" }, { status: 500 });
   }
 }

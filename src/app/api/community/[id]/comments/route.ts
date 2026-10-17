@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { randomUUID } from "crypto";
-import { rateLimitUserGeneration } from "@/lib/rate-limit";
+import { rateLimitUserAction } from "@/lib/rate-limit";
 
 const MAX_COMMENT_LENGTH = 500;
 
@@ -83,7 +83,7 @@ export async function POST(
     // Per-user rate limit. rate-limit.ts has no dedicated comment limiter, so
     // reuse the 30/hour per-user limiter under a namespaced identifier — this
     // gives comments their own bucket separate from generation quota.
-    const { blocked } = await rateLimitUserGeneration(`comment:${user.id}`);
+    const { blocked } = await rateLimitUserAction("comment", user.id);
     if (blocked) return blocked;
 
     const generationId = params.id;

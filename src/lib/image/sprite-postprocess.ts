@@ -23,6 +23,8 @@
 import sharp from "sharp";
 
 export interface SpritePostprocessOptions {
+  /** Painted styles: treat enclosed, perfectly flat key-colour patches as background. */
+  flatGaps?: boolean;
   /** Pixel-art grid (longest side of the sprite in "art pixels"). Omit for non-pixel styles. */
   pixelGrid?: number;
   /** Max colours for pixel styles. Default 24. */
@@ -73,6 +75,10 @@ export async function postprocessSprite(
   // Work at ≤1024px — model outputs can be larger and nothing below needs more.
   const raw = await toRaw(input, 1024);
 
+  // Chroma key (magenta for pale subjects)? Read it from the corners before keying
+  const key = cornerColor(raw);
+  const chromaKey = Math.max(...key) - Math.min(...key) > 110 ? key : null;
+
   // 1. Background → alpha
   let backgroundRemoved: boolean;
   if (options.trustInputAlpha && hasMeaningfulAlpha(raw)) {
@@ -80,7 +86,11 @@ export async function postprocessSprite(
     backgroundRemoved = true;
   } else {
     // 32: tight enough to keep pale glows/highlights touching the background
-    backgroundRemoved = keyOutBackground(raw, options.bgTolerance ?? 32);
+    // Painted styles: an enclosed patch of perfectly flat key colour is
+    // background even without a dark outline around it. Flat-colour styles
+    // (pixel, cartoon, vector) draw white cloth exactly as flat as the key,
+    // so they keep the outline rule (pale subjects get a magenta key instead).
+    backgroundRemoved = keyOutBackground(raw, options.bgTolerance ?? 32, 1, 1, options.flatGaps ?? false);
   }
 
   // 2. Crop to subject
@@ -122,7 +132,10 @@ export async function postprocessSprite(
   // sprites must share ONE pixel size on screen, so a chunky 40-pixel potion
   // next to a fine 120-pixel knight is resampled onto the common grid.
   const nativeSide = Math.max(nativeW, nativeH);
-  if (sourcePixel && nativeSide <= inner && nativeSide >= Math.max(28, inner * 0.8)) {
+  // A little over the target is fine too (the canvas grows a bit): resampling
+  // a clean model grid onto a slightly different one is what makes ragged
+  // edges and broken thin lines (a sword blade).
+  if (sourcePixel && nativeSide <= inner * 1.3 && nativeSide >= Math.max(28, inner * 0.8)) {
     cellsW = Math.max(1, nativeW);
     cellsH = Math.max(1, nativeH);
     canvasSize = Math.max(Math.max(cellsW, cellsH) + 2, Math.round(Math.max(cellsW, cellsH) / (1 - padding * 2)));
@@ -133,8 +146,14 @@ export async function postprocessSprite(
   }
 
   const palette = kmeansPalette(cropped, paletteSize);
-  const sprite = majorityDownsample(cropped, cellsW, cellsH, palette);
+  // Exact model grid → pick each art pixel by majority. Otherwise (resampling
+  // onto a new grid) average the area first: majority voting on misaligned
+  // cells is what makes speckled shading and ragged outlines.
+  const keepNative = cellsW === Math.max(1, nativeW) && cellsH === Math.max(1, nativeH) && sourcePixel !== null;
+  const sprite = keepNative ? majorityDownsample(cropped, cellsW, cellsH, palette) : averageDownsample(cropped, cellsW, cellsH, palette);
   despeckle(sprite);
+  // Key spill that survived inside edge art pixels: clean the 1-art-pixel rim
+  if (chromaKey) despillEdges(sprite, chromaKey[0], chromaKey[1], chromaKey[2], 1);
   fillPinholes(sprite);
 
   // Centre on a square transparent canvas
@@ -332,9 +351,16 @@ function thresholdAlpha(raw: Raw, cutoff: number): void {
  */
 export function keySpriteBackground(
   raw: Raw,
-  opts: { tolerance?: number; fringePasses?: number; /** Image area one sprite occupies (1/frames for a sheet). */ areaScale?: number } = {}
+  opts: {
+    tolerance?: number;
+    fringePasses?: number;
+    /** Image area one sprite occupies (1/frames for a sheet). */
+    areaScale?: number;
+    /** Treat enclosed patches of perfectly flat key colour as background (painted styles). */
+    flatGaps?: boolean;
+  } = {}
 ): boolean {
-  return keyOutBackground(raw, opts.tolerance ?? 32, opts.fringePasses ?? 1, opts.areaScale ?? 1);
+  return keyOutBackground(raw, opts.tolerance ?? 32, opts.fringePasses ?? 1, opts.areaScale ?? 1, opts.flatGaps ?? false);
 }
 
 /**
@@ -343,7 +369,7 @@ export function keySpriteBackground(
  * the image untouched) when the border is not a flat colour — e.g. the model
  * ignored the instruction and drew a scene.
  */
-function keyOutBackground(raw: Raw, tolerance: number, fringePasses = 1, areaScale = 1): boolean {
+function keyOutBackground(raw: Raw, tolerance: number, fringePasses = 1, areaScale = 1, flatGaps = false): boolean {
   const { width, height, data } = raw;
   const border: number[] = [];
   for (let x = 0; x < width; x++) border.push(x, (height - 1) * width + x);
@@ -362,8 +388,19 @@ function keyOutBackground(raw: Raw, tolerance: number, fringePasses = 1, areaSca
   let best: { n: number; r: number; g: number; b: number } | undefined;
   for (const e of buckets.values()) if (!best || e.n > best.n) best = e;
   if (!best) return true; // border already transparent
-  if (best.n < border.length * 0.5) return false; // no flat background
-  const br = best.r / best.n, bg = best.g / best.n, bb = best.b / best.n;
+  // The mode bucket can split a soft gradient (a chroma key often shades a
+  // little); gather every border pixel close to it before deciding.
+  let mr = best.r / best.n, mg = best.g / best.n, mb = best.b / best.n;
+  let near = 0, sr = 0, sg = 0, sb = 0;
+  for (const p of border) {
+    const i = p * 4;
+    if (data[i + 3] < 128) continue;
+    const dr = data[i] - mr, dg = data[i + 1] - mg, db = data[i + 2] - mb;
+    if (dr * dr + dg * dg + db * db <= 40 * 40) { near++; sr += data[i]; sg += data[i + 1]; sb += data[i + 2]; }
+  }
+  if (near < border.length * 0.5) return false; // no flat background
+  mr = sr / near; mg = sg / near; mb = sb / near;
+  const br = mr, bg = mg, bb = mb;
 
   const tol2 = tolerance * tolerance;
   const isBg = (p: number) => {
@@ -407,9 +444,46 @@ function keyOutBackground(raw: Raw, tolerance: number, fringePasses = 1, areaSca
     for (const p of clear) data[p * 4 + 3] = 0;
   }
 
-  removeEnclosedBackground(raw, br, bg, bb, areaScale);
+  removeEnclosedBackground(raw, br, bg, bb, areaScale, flatGaps);
+  if (Math.max(br, bg, bb) - Math.min(br, bg, bb) > 110) despillEdges(raw, br, bg, bb);
   removeGroundShadow(raw);
   return true;
+}
+
+/**
+ * Chroma key spill: edge pixels blended with the key (a purple rim around a
+ * silver bow on magenta). Within 4 px of the cleared background, take back
+ * the key colour's excess (within 4 px): for magenta, red and blue above green.
+ * Applied only with a chroma key, never with the white key.
+ */
+/** Mean colour of the four corner pixels (the key, before any keying). */
+function cornerColor(raw: Raw): [number, number, number] {
+  const { width: w, height: h, data } = raw;
+  const idx = [0, w - 1, (h - 1) * w, h * w - 1].map((p) => p * 4);
+  return [0, 1, 2].map((c) => idx.reduce((a, i) => a + data[i + c], 0) / 4) as [number, number, number];
+}
+
+function despillEdges(raw: Raw, br: number, bg: number, bb: number, range = 4): void {
+  const { width, height, data } = raw;
+  // Which channels the key is strong in (magenta: R and B; green: G)
+  const strong = [br, bg, bb].map((v) => v > 180);
+  const weak = [br, bg, bb].map((v) => v < 90);
+  if (!strong.some(Boolean) || !weak.some(Boolean)) return;
+  const near = new Uint8Array(width * height);
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+    const p = y * width + x;
+    if (data[p * 4 + 3] !== 0) continue;
+    for (let oy = -range; oy <= range; oy++) for (let ox = -range; ox <= range; ox++) {
+      const nx = x + ox, ny = y + oy;
+      if (nx >= 0 && ny >= 0 && nx < width && ny < height) near[ny * width + nx] = 1;
+    }
+  }
+  for (let p = 0; p < width * height; p++) {
+    const i = p * 4;
+    if (!near[p] || data[i + 3] === 0) continue;
+    const weakMax = Math.max(...[0, 1, 2].filter((c) => weak[c]).map((c) => data[i + c]));
+    for (let c = 0; c < 3; c++) if (strong[c] && data[i + c] > weakMax) data[i + c] = weakMax + Math.round((data[i + c] - weakMax) * 0.25);
+  }
 }
 
 /**
@@ -432,8 +506,19 @@ function removeGroundShadow(raw: Raw): void {
     const r = data[i], g = data[i + 1], bl = data[i + 2];
     const max = Math.max(r, g, bl), min = Math.min(r, g, bl);
     const luma = 0.299 * r + 0.587 * g + 0.114 * bl;
-    // Grey band only: near-white (≥233) is subject (ghost, cloth) not shadow
-    return luma >= 150 && luma <= 232 && max - min <= 28;
+    // Grey only, from the pale outer ring of a soft shadow (it fades into the
+    // white key) down to its mid-grey core. White cloth or a ghost reached
+    // here is part of a tall region and is kept by the flat/small check below.
+    if (luma < 95 || max - min > 28) return false;
+    // Soft: a shadow is a smooth gradient. Textured grey (scaly legs, chain
+    // mail, stone) next to it must not join the region and make it "tall".
+    const x = p % width;
+    for (const q of [x > 0 ? p - 1 : -1, x < width - 1 ? p + 1 : -1, p - width, p + width]) {
+      if (q < 0 || q >= width * height || data[q * 4 + 3] === 0) continue;
+      const j = q * 4;
+      if (Math.abs(data[j] - r) > 14 || Math.abs(data[j + 1] - g) > 14 || Math.abs(data[j + 2] - bl) > 14) return false;
+    }
+    return true;
   };
   const stack: number[] = [];
   const seen = new Uint8Array(width * height);
@@ -447,16 +532,38 @@ function removeGroundShadow(raw: Raw): void {
       if (touchesClear) { seen[p] = 1; stack.push(p); }
     }
   }
-  while (stack.length) {
-    const p = stack.pop()!;
-    data[p * 4 + 3] = 0;
-    const x = p % width;
-    const next = [x > 0 ? p - 1 : -1, x < width - 1 ? p + 1 : -1, p - width, p + width];
-    for (const q of next) {
-      if (q < 0 || q >= width * height || seen[q] || !isShadow(q)) continue;
-      seen[q] = 1;
-      stack.push(q);
+  // Grow each connected candidate first: a contact shadow is a flat, small
+  // smear at the feet. A tall or large light-grey region is clothing (cream
+  // trousers, silver armour) reached through a gap — leave it alone.
+  const subjectH = b.y1 - b.y0 + 1;
+  const subjectArea = subjectH * (b.x1 - b.x0 + 1);
+  const owner = new Int32Array(width * height).fill(-1);
+  const regions: number[][] = [];
+  for (const seed of stack) {
+    if (owner[seed] >= 0) continue;
+    const id = regions.length;
+    const region: number[] = [];
+    const queue = [seed];
+    owner[seed] = id;
+    while (queue.length) {
+      const p = queue.pop()!;
+      region.push(p);
+      const x = p % width;
+      const next = [x > 0 ? p - 1 : -1, x < width - 1 ? p + 1 : -1, p - width, p + width];
+      for (const q of next) {
+        if (q < 0 || q >= width * height || owner[q] >= 0 || !isShadow(q)) continue;
+        owner[q] = id;
+        queue.push(q);
+      }
     }
+    regions.push(region);
+  }
+  for (const region of regions) {
+    let top = height, bottom = -1;
+    for (const p of region) { const y = Math.floor(p / width); if (y < top) top = y; if (y > bottom) bottom = y; }
+    const flat = bottom - top + 1 <= subjectH * 0.14;
+    const small = region.length <= subjectArea * 0.08;
+    if (flat && small) for (const p of region) data[p * 4 + 3] = 0;
   }
 }
 
@@ -466,12 +573,15 @@ function removeGroundShadow(raw: Raw): void {
  * regions that are almost exactly the key colour and large enough not to be
  * a highlight or an eye.
  */
-function removeEnclosedBackground(raw: Raw, br: number, bg: number, bb: number, areaScale = 1): void {
+function removeEnclosedBackground(raw: Raw, br: number, bg: number, bb: number, areaScale = 1, flatGaps = false): void {
   const { width, height, data } = raw;
-  const tight2 = 18 * 18;
+  // Painted styles also catch gaps the model shaded a little (GPT Image paints
+  // the key seen between a bow and its string ~12 levels darker)
+  const tight2 = flatGaps ? 28 * 28 : 18 * 18;
   // 0.4% of the canvas: large gaps go, glints on glass/crystal/eyes stay
   const minArea = Math.round(width * height * areaScale * 0.004);
   const minOutlinedArea = Math.round(width * height * areaScale * 0.0002);
+  const minFlatArea = Math.round(width * height * areaScale * 0.00008);
   const seen = new Uint8Array(width * height);
   const near = (p: number) => {
     const i = p * 4;
@@ -494,18 +604,63 @@ function removeEnclosedBackground(raw: Raw, br: number, bg: number, bb: number, 
     // Large regions are background gaps. Small ones are background only when
     // they are fenced by the subject's dark outline (a gap between arm and
     // staff); highlights on glass/metal border on mid-tones instead.
+    // White cloth, fur or highlights are bordered by the subject's own light
+    // shades; a real gap shows dark outline or mid/dark colours around it.
+    const border = borderStats(raw, region, [br, bg, bb]);
+    // The key background is perfectly flat; painted highlights (metal, glass,
+    // eyes) always carry some shading. Measured on a painted parrot: the gap
+    // between arm and body was 96% exact key colour, armour glints 2-4%. A
+    // white highlight on cream cloth is fenced by near-white shades (pale);
+    // the gap was fenced by red feathers and silver armour (32% pale).
+    // With an off-white key (GPT Image paints ~238), a patch that matches the
+    // key almost exactly can't be white cloth, even inside a whiter halo.
+    const offWhiteKey = 0.299 * br + 0.587 * bg + 0.114 * bb < 246;
+    const exactKey = offWhiteKey && meanDistance(raw, region, br, bg, bb) <= 8;
+    const flat = flatGaps && region.length >= minFlatArea && (border.pale < 0.6 || exactKey) && flatShare(raw, region) >= 0.8;
+    // Outside the flat rule, keep the original, tighter colour match
+    const keyLike = !flatGaps || meanDistance(raw, region, br, bg, bb) <= 18;
+    // A chroma key (magenta, used for pale subjects) never occurs in the
+    // subject itself, so every enclosed patch of it is background.
+    const chroma = Math.max(br, bg, bb) - Math.min(br, bg, bb) > 110;
     const isGap =
-      region.length >= minArea ||
-      (region.length >= minOutlinedArea && darkBorderRatio(raw, region) >= 0.6);
+      (chroma && region.length >= 4) ||
+      flat ||
+      (keyLike && region.length >= minArea && border.light < 0.5) ||
+      (keyLike && region.length >= minOutlinedArea && border.dark >= 0.6);
     if (isGap) for (const p of region) data[p * 4 + 3] = 0;
   }
 }
 
-/** Share of the region's outer boundary pixels that are dark (outline-like). */
-function darkBorderRatio(raw: Raw, region: number[]): number {
+/** Share of the region's pixels within a few levels of the region's own mean (a background patch is uniform). */
+function flatShare(raw: Raw, region: number[]): number {
+  const { data } = raw;
+  if (!region.length) return 0;
+  let r = 0, g = 0, b = 0;
+  for (const p of region) { r += data[p * 4]; g += data[p * 4 + 1]; b += data[p * 4 + 2]; }
+  r /= region.length; g /= region.length; b /= region.length;
+  let n = 0;
+  for (const p of region) {
+    const i = p * 4;
+    const dr = data[i] - r, dg = data[i + 1] - g, db = data[i + 2] - b;
+    if (dr * dr + dg * dg + db * db <= 8 * 8) n++;
+  }
+  return n / region.length;
+}
+
+/** Distance from the region's mean colour to the key. */
+function meanDistance(raw: Raw, region: number[], br: number, bg: number, bb: number): number {
+  const { data } = raw;
+  let r = 0, g = 0, b = 0;
+  for (const p of region) { r += data[p * 4]; g += data[p * 4 + 1]; b += data[p * 4 + 2]; }
+  const n = Math.max(1, region.length);
+  return Math.hypot(r / n - br, g / n - bg, b / n - bb);
+}
+
+/** Shares of the region's outer boundary pixels that are dark (outline-like) and light (cloth, fur). */
+function borderStats(raw: Raw, region: number[], key?: [number, number, number]): { dark: number; light: number; pale: number } {
   const { width, height, data } = raw;
   const member = new Set(region);
-  let dark = 0, total = 0;
+  let dark = 0, light = 0, pale = 0, total = 0;
   for (const p of region) {
     const x = p % width, y = (p - x) / width;
     const next = [x > 0 ? p - 1 : -1, x < width - 1 ? p + 1 : -1, y > 0 ? p - width : -1, y < height - 1 ? p + width : -1];
@@ -516,9 +671,15 @@ function darkBorderRatio(raw: Raw, region: number[]): number {
       total++;
       const luma = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
       if (luma < 70) dark++;
+      else if (luma >= 185) light++;
+      // Pale = the subject's own near-white shades. The anti-aliased ring
+      // between a gap and the subject is close to the key itself (an off-white
+      // GPT key sits at ~238), so it doesn't count.
+      const keyish = key ? Math.hypot(data[i] - key[0], data[i + 1] - key[1], data[i + 2] - key[2]) <= 30 : false;
+      if (luma >= 225 && !keyish) pale++;
     }
   }
-  return total === 0 ? 0 : dark / total;
+  return total === 0 ? { dark: 0, light: 0, pale: 0 } : { dark: dark / total, light: light / total, pale: pale / total };
 }
 
 // -----------------------------------------------------------------------------
@@ -598,6 +759,32 @@ function nearest(c: RGB, palette: RGB[]): number {
  * Each output pixel = majority palette colour among the opaque source pixels
  * of its cell; transparent when most of the cell is transparent.
  */
+/** Area-average (premultiplied) each cell, then snap to the palette. */
+function averageDownsample(raw: Raw, outW: number, outH: number, palette: RGB[]): Raw {
+  const out = blank(outW, outH);
+  for (let cy = 0; cy < outH; cy++) {
+    const sy0 = (cy * raw.height) / outH, sy1 = ((cy + 1) * raw.height) / outH;
+    for (let cx = 0; cx < outW; cx++) {
+      const sx0 = (cx * raw.width) / outW, sx1 = ((cx + 1) * raw.width) / outW;
+      let r = 0, g = 0, b = 0, a = 0, area = 0;
+      for (let y = Math.floor(sy0); y < Math.ceil(sy1); y++) {
+        const wy = Math.min(y + 1, sy1) - Math.max(y, sy0);
+        for (let x = Math.floor(sx0); x < Math.ceil(sx1); x++) {
+          const w = wy * (Math.min(x + 1, sx1) - Math.max(x, sx0));
+          const i = (y * raw.width + x) * 4;
+          const al = raw.data[i + 3] >= 128 ? 1 : 0;
+          r += raw.data[i] * al * w; g += raw.data[i + 1] * al * w; b += raw.data[i + 2] * al * w; a += al * w; area += w;
+        }
+      }
+      if (a < area * 0.35) continue;
+      const c = palette[nearest([r / a, g / a, b / a], palette)];
+      const o = (cy * outW + cx) * 4;
+      out.data[o] = c[0]; out.data[o + 1] = c[1]; out.data[o + 2] = c[2]; out.data[o + 3] = 255;
+    }
+  }
+  return out;
+}
+
 function majorityDownsample(raw: Raw, outW: number, outH: number, palette: RGB[]): Raw {
   const out = blank(outW, outH);
   const counts = new Int32Array(palette.length);
@@ -618,7 +805,9 @@ function majorityDownsample(raw: Raw, outW: number, outH: number, palette: RGB[]
           counts[nearest([raw.data[i], raw.data[i + 1], raw.data[i + 2]], palette)]++;
         }
       }
-      if (opaque * 2 < total) continue; // stays transparent
+      // 35% coverage, not 50%: thin details (blades, staffs, antennae)
+      // narrower than one art pixel would otherwise vanish
+      if (opaque * 100 < total * 35) continue; // stays transparent
       let best = 0;
       for (let c = 1; c < counts.length; c++) if (counts[c] > counts[best]) best = c;
       const o = (cy * outW + cx) * 4;
@@ -758,7 +947,7 @@ async function finalizeNonPixel(
   padding: number,
   backgroundRemoved: boolean
 ): Promise<SpritePostprocessResult> {
-  const inner = Math.round(outputSize * (1 - padding * 2));
+  const inner = Math.max(1, Math.round(outputSize * (1 - padding * 2)));
   const subject = await fromRaw(raw)
     .resize(inner, inner, { fit: "inside", kernel: "lanczos3" })
     .png()
@@ -776,4 +965,32 @@ async function finalizeNonPixel(
     .png({ compressionLevel: 9 })
     .toBuffer();
   return { png, width: outputSize, height: outputSize, backgroundRemoved };
+}
+
+/**
+ * Art-pixel canvas of a stored pixel-art sprite (e.g. 64 for a 64-grid
+ * sprite upscaled to 1024), or null when it isn't a clean integer upscale.
+ * Used to give a style-matched sprite the reference's exact pixel size.
+ */
+export async function pixelCanvasOf(png: Buffer): Promise<number | null> {
+  const { data, info } = await sharp(png).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const W = info.width, H = info.height;
+  for (const f of [32, 24, 20, 16, 14, 12, 10, 8, 7, 6, 5, 4, 3, 2]) {
+    if (W % f || H % f) continue;
+    let same = 0, total = 0;
+    // Start at 1: a sample on the block origin would trivially match itself
+    for (let y = 1; y < H; y += 3) {
+      for (let x = 1; x < W; x += 3) {
+        const bx = x - (x % f), by = y - (y % f);
+        if (bx === x && by === y) continue;
+        const a = (y * W + x) * 4, c = (by * W + bx) * 4;
+        total++;
+        if (Math.abs(data[a] - data[c]) + Math.abs(data[a + 1] - data[c + 1]) + Math.abs(data[a + 2] - data[c + 2]) + Math.abs(data[a + 3] - data[c + 3]) < 8) same++;
+      }
+    }
+    if (total > 0 && same / total > 0.99) return Math.max(W, H) / f;
+  }
+  // Already at native size (small, hard-edged sprite)
+  if (Math.max(W, H) <= 256) return Math.max(W, H);
+  return null;
 }

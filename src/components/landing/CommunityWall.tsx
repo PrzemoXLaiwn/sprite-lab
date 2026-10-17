@@ -5,25 +5,25 @@ import Link from "next/link";
 import { Wand2 } from "lucide-react";
 import type { FeaturedGeneration } from "@/lib/featured-generations";
 import { HERO_PROMPT_EVENT } from "./HeroPrompt";
-
-const CHECKER = {
-  backgroundImage: "repeating-conic-gradient(#ffffff06 0% 25%, transparent 0% 50%)",
-  backgroundSize: "14px 14px",
-};
+import { SectionHeader } from "./SectionHeader";
 
 /**
  * Meshy-style "Explore" wall on the landing page: dense grid of sprites made
  * with SpriteLab, filterable by category. "Try this prompt" fills the hero
  * input so visitors can remix without an account.
  */
-export function CommunityWall({ items, registerUrl }: { items: FeaturedGeneration[]; registerUrl: string }) {
+export function CommunityWall({ items }: { items: FeaturedGeneration[]; registerUrl?: string }) {
   const categories = useMemo(() => {
     const counts = new Map<string, number>();
     for (const i of items) counts.set(i.category, (counts.get(i.category) ?? 0) + 1);
     return ["All", ...[...counts.entries()].filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1]).map(([c]) => c)];
   }, [items]);
   const [active, setActive] = useState("All");
-  const visible = active === "All" ? items : items.filter((i) => i.category === active);
+  // "All" is trimmed to full rows (2/3/4/6 columns all divide 12) so the
+  // wall never ends on a ragged half-row.
+  const visible = active === "All"
+    ? items.slice(0, items.length >= 12 ? items.length - (items.length % 12) : items.length)
+    : items.filter((i) => i.category === active);
 
   const tryPrompt = (item: FeaturedGeneration) => {
     window.dispatchEvent(
@@ -34,18 +34,17 @@ export function CommunityWall({ items, registerUrl }: { items: FeaturedGeneratio
   if (items.length === 0) return null;
 
   return (
-    <section id="explore" className="relative mx-auto w-full max-w-[1400px] px-5 py-16 lg:px-8">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[#8B93A5]">{"// explore"}</p>
-          <h2 className="mt-1 font-display text-[28px] font-semibold text-white sm:text-[34px]">Made with SpriteLab</h2>
-          <p className="mt-1 text-[14px] text-[#8B93A5]">Hover any sprite to reuse its prompt — no account needed.</p>
-        </div>
-        <div className="flex flex-wrap gap-1.5">
+    <section id="explore" className="relative mx-auto w-full max-w-6xl scroll-mt-16 px-4 pb-16 pt-16 sm:px-5 sm:pb-20">
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-x-8 gap-y-5">
+        <SectionHeader
+          title="Sprites people made here"
+          intro="Tap one to copy its prompt into the box above, then change it to fit your game."
+        />
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by category">
           {categories.map((c) => (
-            <button key={c} type="button" onClick={() => setActive(c)}
-              className={`rounded-full border px-3 py-1.5 font-mono text-[12px] transition-colors ${
-                active === c ? "border-[#FF8A3D]/60 bg-[#FF8A3D]/12 text-white" : "border-white/[0.08] text-[#8B93A5] hover:border-white/20 hover:text-white"
+            <button key={c} type="button" onClick={() => setActive(c)} aria-pressed={active === c}
+              className={`h-10 rounded-[6px] border px-3.5 text-[13px] font-medium transition-colors ${
+                active === c ? "border-[#FFA300] bg-[#FFA300] text-[#131A31]" : "border-white/[0.12] text-[#C8CCE8] hover:border-white/25 hover:text-white"
               }`}>
               {c}
             </button>
@@ -53,33 +52,34 @@ export function CommunityWall({ items, registerUrl }: { items: FeaturedGeneratio
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-        {visible.map((item) => {
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[10px] border border-white/[0.09] bg-white/[0.09] sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+        {visible.map((item, idx) => {
           const pixel = item.styleId.includes("PIXEL");
           return (
-            <div key={item.id} className="group relative aspect-square overflow-hidden rounded-2xl border border-white/[0.06] bg-[#12151C] transition-colors hover:border-white/20" style={CHECKER}>
+            <button key={item.id} type="button" onClick={() => tryPrompt(item)}
+              aria-label={`Use this prompt: ${item.prompt.slice(0, 120)}`}
+              className={`checker group relative aspect-square overflow-hidden text-left outline-offset-[-2px] ${idx >= 8 ? "hidden sm:block" : ""}`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={item.imageUrl} alt={item.prompt.slice(0, 80)} loading="lazy"
-                className={`absolute inset-0 h-full w-full object-contain p-[10%] transition-transform duration-300 group-hover:scale-[1.06] ${pixel ? "pixel-perfect" : ""}`} />
-              <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/90 via-black/40 to-transparent p-3 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-                <p className="line-clamp-2 text-[12px] leading-snug text-white">{item.prompt}</p>
-                <div className="mt-2 flex items-center justify-between gap-2">
-                  <span className="font-mono text-[10px] text-[#FFB27A]">{item.style}</span>
-                  <button type="button" onClick={() => tryPrompt(item)}
-                    className="px-corners flex items-center gap-1 bg-white px-2 py-1 text-[11px] font-semibold text-black">
-                    <Wand2 className="h-3 w-3" /> Try
-                  </button>
-                </div>
-              </div>
-            </div>
+              <img src={item.imageUrl} alt="" loading="lazy"
+                className={`absolute inset-0 h-full w-full object-contain p-[10%]  ${pixel ? "pixel-perfect" : ""}`} />
+              <span aria-hidden="true" className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/90 via-black/40 to-transparent p-3 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100">
+                <span className="line-clamp-2 text-[12px] leading-snug text-white">{item.prompt}</span>
+                <span className="mt-2 flex items-center justify-between gap-2">
+                  <span className="truncate text-[11px] text-[#FFC857]">{item.style}</span>
+                  <span className="flex shrink-0 items-center gap-1 rounded-[4px] bg-[#FFA300] px-2 py-1 text-[11px] font-semibold text-[#131A31]">
+                    <Wand2 className="h-3 w-3" /> Use prompt
+                  </span>
+                </span>
+              </span>
+            </button>
           );
         })}
       </div>
 
-      <div className="mt-8 flex justify-center">
-        <Link href={registerUrl}
-          className="rounded-xl border border-white/[0.1] bg-white/[0.04] px-5 py-2.5 text-[13px] text-[#C9CFDB] transition hover:bg-white/[0.08]">
-          Sign up to explore the full community gallery →
+      <div className="mt-6">
+        <Link href="/community"
+          className="inline-flex h-11 items-center rounded-[8px] border border-white/[0.14] px-5 text-[14px] font-medium text-[#FFF1E8] transition hover:bg-white/[0.06]">
+          Browse the full community gallery
         </Link>
       </div>
     </section>

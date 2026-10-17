@@ -1,14 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import {
-  getCategoryById,
-  getSubcategoryById,
-  STYLES_2D_FULL,
-  buildUltimatePrompt,
-} from "@/config";
+import { buildUltimatePrompt } from "@/config";
 import { persistImage } from "@/lib/storage";
-import { generateImage, removeBackground, type RunwareModelId } from "@/lib/runware";
+import { generateImage, removeBackground } from "@/lib/runware";
 import Replicate from "replicate";
+import { PRICE } from "@/lib/billing/features";
+import { replicateCall } from "@/lib/billing/replicate";
 import { timingSafeEqual } from "crypto";
 
 const replicate = new Replicate({
@@ -301,7 +298,7 @@ async function process3DGeneration(job: {
   const referencePrompt = `professional 3D render, ${prompt}, single object, white background,
     game asset, isolated subject, clean silhouette, studio lighting, high quality, 8K detailed`;
 
-  const refOutput = await replicate.run("black-forest-labs/flux-dev", {
+  const refOutput = await replicateCall({ model: "black-forest-labs/flux-dev", task: "3d_reference", estCostUsd: PRICE.replicateRef }, () => replicate.run("black-forest-labs/flux-dev", {
     input: {
       prompt: referencePrompt,
       seed: usedSeed,
@@ -313,7 +310,7 @@ async function process3DGeneration(job: {
       num_inference_steps: 28,
     },
     signal: AbortSignal.timeout(REPLICATE_STEP_TIMEOUT_MS),
-  });
+  }));
 
   const referenceImageUrl = extractUrl(refOutput);
   if (!referenceImageUrl) {
@@ -327,10 +324,10 @@ async function process3DGeneration(job: {
   const modelConfig = get3DModelConfig(model3DId || "rodin");
   const input3D = modelConfig.getInput(referenceImageUrl, quality3D || "medium");
 
-  const output3D = await replicate.run(
+  const output3D = await replicateCall({ model: modelConfig.replicateModel, task: "3d_model", estCostUsd: PRICE.replicate3d }, () => replicate.run(
     modelConfig.replicateModel as `${string}/${string}`,
     { input: input3D, signal: AbortSignal.timeout(REPLICATE_STEP_TIMEOUT_MS) }
-  );
+  ));
 
   const modelUrl = modelConfig.parseOutput(output3D);
   if (!modelUrl) {

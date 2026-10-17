@@ -11,7 +11,7 @@ import { generateHref, type ProjectAsset, type ProjectDetail } from "@/component
 type Toast = { id: number; kind: "error" | "info"; msg: string };
 
 const secondaryBtn =
-  "inline-flex h-10 items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 text-[13px] font-medium text-[#C9CFDB] transition-colors hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white/[0.04]";
+  "inline-flex h-10 items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 text-[13px] font-medium text-[#C8CCE8] transition-colors hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white/[0.04]";
 
 export default function ProjectDetailPage() {
   const params = useParams<{ id: string }>();
@@ -209,14 +209,14 @@ export default function ProjectDetailPage() {
   const backLink = (
     <Link
       href="/projects"
-      className="inline-flex items-center gap-1.5 rounded-lg text-[12.5px] font-medium text-[#8B93A5] transition-colors hover:text-white"
+      className="-my-1 inline-flex min-h-10 items-center gap-1.5 rounded-lg text-[13px] font-medium text-[#9AA1CC] transition-colors hover:text-white sm:min-h-0 sm:text-[12.5px]"
     >
       <ArrowLeft className="h-3.5 w-3.5" /> Projects
     </Link>
   );
 
   return (
-    <div className="min-h-screen bg-[#0B0D12] text-[#ECEEF3]">
+    <div className="min-h-screen bg-[#131A31] text-[#FFF1E8]">
       <div className="mx-auto max-w-[1400px] px-5 py-6 lg:px-8">
         {backLink}
 
@@ -225,10 +225,10 @@ export default function ProjectDetailPage() {
         {status === "notfound" && (
           <div className="pixel-grid mt-6 flex flex-col items-center justify-center rounded-3xl border border-white/[0.06] px-6 py-24 text-center">
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.04]">
-              <FolderOpen className="h-5 w-5 text-[#FF8A3D]" />
+              <FolderOpen className="h-5 w-5 text-[#FFA300]" />
             </div>
             <h1 className="font-display text-[20px] font-semibold text-white">Project not found</h1>
-            <p className="mt-1 max-w-sm text-[13px] text-[#8B93A5]">It may have been deleted, or it belongs to another account.</p>
+            <p className="mt-1 max-w-sm text-[13px] text-[#9AA1CC]">It may have been deleted, or it belongs to another account.</p>
             <Link href="/projects" className={`${secondaryBtn} mt-5`}>
               <ArrowLeft className="h-4 w-4" /> Back to projects
             </Link>
@@ -238,9 +238,9 @@ export default function ProjectDetailPage() {
         {status === "error" && (
           <div className="mt-6 flex flex-col items-center justify-center rounded-3xl border border-white/[0.06] px-6 py-20 text-center" role="alert">
             <h1 className="font-display text-[20px] font-semibold text-white">Couldn&apos;t load this project</h1>
-            <p className="mt-1 text-[13px] text-[#8B93A5]">Check your connection and try again.</p>
+            <p className="mt-1 text-[13px] text-[#9AA1CC]">Check your connection and try again.</p>
             <button type="button" onClick={load} className={`${secondaryBtn} mt-5`}>
-              Retry
+              Try again
             </button>
           </div>
         )}
@@ -250,22 +250,22 @@ export default function ProjectDetailPage() {
             {/* Header */}
             <header className="mt-3 mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div className="min-w-0">
-                <h1 className="break-words font-display text-[26px] font-semibold leading-tight text-white">{project.name}</h1>
+                <h1 className="break-words font-display text-[24px] font-semibold leading-tight tracking-tight text-white">{project.name}</h1>
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
                   {[project.gameType, project.artStyle, project.perspective, project.mood]
                     .filter((c): c is string => Boolean(c))
                     .map((c, i) => (
                       <span
                         key={`${c}-${i}`}
-                        className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] leading-none text-[#C9CFDB]"
+                        className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] leading-none text-[#C8CCE8]"
                       >
                         {c}
                       </span>
                     ))}
-                  <span className="ml-1 font-mono text-[11.5px] text-[#8B93A5]">
-                    <span className="text-[#C9CFDB]">{assets.length}</span> asset{assets.length === 1 ? "" : "s"}
-                    <span className="mx-1.5 text-[#7A8294]">·</span>
-                    <span className="text-[#C9CFDB]">{folders.length}</span> folder{folders.length === 1 ? "" : "s"}
+                  <span className="ml-1 font-mono text-[11.5px] text-[#9AA1CC]">
+                    <span className="text-[#C8CCE8]">{assets.length}</span> asset{assets.length === 1 ? "" : "s"}
+                    <span className="mx-1.5 text-[#8A92BF]">·</span>
+                    <span className="text-[#C8CCE8]">{folders.length}</span> folder{folders.length === 1 ? "" : "s"}
                   </span>
                 </div>
               </div>
@@ -273,7 +273,7 @@ export default function ProjectDetailPage() {
               <div className="flex shrink-0 flex-wrap items-center gap-2">
                 <Link
                   href={generateHref(project.id)}
-                  className="px-corners inline-flex h-10 items-center gap-2 bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] px-4 text-[13px] font-semibold text-white transition hover:brightness-110"
+                  className="px-corners inline-flex h-10 items-center gap-2 bg-[#FFA300] px-4 text-[13px] font-semibold text-[#131A31] transition hover:bg-[#FFB733]"
                 >
                   <Sparkles className="h-4 w-4" />
                   Generate for this project
@@ -314,21 +314,21 @@ export default function ProjectDetailPage() {
                     aria-haspopup="menu"
                     aria-expanded={menuOpen}
                     disabled={deleting}
-                    className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.1] bg-white/[0.04] text-[#C9CFDB] transition-colors hover:bg-white/[0.08] hover:text-white disabled:opacity-50"
+                    className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.1] bg-white/[0.04] text-[#C8CCE8] transition-colors hover:bg-white/[0.08] hover:text-white disabled:opacity-50"
                   >
                     {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
                   </button>
                   {menuOpen && (
                     <div
                       role="menu"
-                      className="absolute right-0 top-12 z-40 w-48 rounded-xl border border-white/[0.08] bg-[#0E1016] p-1 shadow-2xl"
+                      className="absolute right-0 top-12 z-40 w-48 rounded-xl border border-white/[0.08] bg-[#19223F] p-1 shadow-2xl"
                     >
                       <button
                         type="button"
                         role="menuitem"
                         autoFocus
                         onClick={handleDelete}
-                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12.5px] text-red-300 transition-colors hover:bg-red-500/10 focus-visible:bg-red-500/10 focus-visible:outline-none"
+                        className="flex min-h-10 w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] text-red-300 sm:min-h-0 sm:text-[12.5px] transition-colors hover:bg-red-500/10 focus-visible:bg-red-500/10 focus-visible:outline-none"
                       >
                         <Trash2 className="h-3.5 w-3.5" /> Delete project
                       </button>
@@ -366,12 +366,12 @@ export default function ProjectDetailPage() {
               {folders.length === 0 && unsorted.length === 0 && (
                 <div className="pixel-grid flex flex-col items-center justify-center rounded-3xl border border-white/[0.06] px-6 py-20 text-center">
                   <h2 className="font-display text-[16px] font-semibold text-white">No sprites yet</h2>
-                  <p className="mt-1 max-w-sm text-[13px] text-[#8B93A5]">
+                  <p className="mt-1 max-w-sm text-[13px] text-[#9AA1CC]">
                     Generate sprites for this project and accept the ones you like — they&apos;ll show up here.
                   </p>
                   <Link
                     href={generateHref(project.id)}
-                    className="px-corners mt-5 inline-flex h-10 items-center gap-2 bg-gradient-to-r from-[#FF7A1A] to-[#FF9F43] px-4 text-[13px] font-semibold text-white transition hover:brightness-110"
+                    className="px-corners mt-5 inline-flex h-10 items-center gap-2 bg-[#FFA300] px-4 text-[13px] font-semibold text-[#131A31] transition hover:bg-[#FFB733]"
                   >
                     <Sparkles className="h-4 w-4" /> Generate for this project
                   </Link>
@@ -383,12 +383,12 @@ export default function ProjectDetailPage() {
       </div>
 
       {/* Toasts */}
-      <div className="pointer-events-none fixed inset-x-0 bottom-4 z-[80] flex flex-col items-center gap-2 px-4" role="status" aria-live="polite">
+      <div className="pointer-events-none fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-[80] flex flex-col items-center gap-2 px-4 md:bottom-4 md:pl-[76px]" role="status" aria-live="polite">
         {toasts.map((t) => (
           <div
             key={t.id}
             className={`pointer-events-auto flex max-w-md items-start gap-3 rounded-xl border px-4 py-3 text-[13px] shadow-2xl ${
-              t.kind === "error" ? "border-red-500/30 bg-[#1A1116] text-red-200" : "border-white/[0.08] bg-[#151922] text-[#ECEEF3]"
+              t.kind === "error" ? "border-red-500/30 bg-[#1A1116] text-red-200" : "border-white/[0.08] bg-[#212B4E] text-[#FFF1E8]"
             }`}
           >
             <span className="flex-1">{t.msg}</span>
@@ -396,7 +396,7 @@ export default function ProjectDetailPage() {
               type="button"
               onClick={() => setToasts((list) => list.filter((x) => x.id !== t.id))}
               aria-label="Dismiss"
-              className="-mr-1 flex h-5 w-5 shrink-0 items-center justify-center rounded text-[#8B93A5] hover:text-white"
+              className="-my-1.5 -mr-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#9AA1CC] hover:text-white"
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -418,7 +418,7 @@ function LoadingSkeleton() {
       </div>
       <div className="mt-6 flex flex-col gap-4">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="rounded-2xl border border-white/[0.06] bg-[#0E1016] p-5">
+          <div key={i} className="rounded-2xl border border-white/[0.06] bg-[#19223F] p-5">
             <div className="h-5 w-40 animate-pulse rounded bg-white/[0.06]" />
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
               {Array.from({ length: 5 }).map((_, j) => (
