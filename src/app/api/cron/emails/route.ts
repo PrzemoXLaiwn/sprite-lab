@@ -7,6 +7,7 @@ import { stripe, PLANS, CREDIT_PACKS } from "@/lib/stripe";
 import { Prisma } from "@prisma/client";
 import { relaunchActive } from "@/config/relaunch";
 import { MARKETING_OFF_RESPONSE, legacyMarketingEnabled } from "@/lib/email/flags";
+import { comebackPromoCode, welcomePromoCode } from "@/lib/email/promo-codes";
 import { marketingBlockedByPrefs } from "@/lib/email/suppression";
 
 // Vercel Cron Job - Automated email campaigns
@@ -291,12 +292,12 @@ export async function GET(request: NextRequest) {
         offerTitle = "We miss your creativity!";
         offerDescription = `It's been ${daysSinceActive} days since you created something amazing. Come back and see what's new!`;
         discountPercent = 20;
-        promoCode = "COMEBACK20";
+        promoCode = comebackPromoCode();
       } else if (daysSinceActive > 14) {
         offerTitle = "Your next creation awaits!";
         offerDescription = "You used all your free credits - we've added new art styles and improved quality since your last visit.";
         discountPercent = 15;
-        promoCode = "WELCOME15";
+        promoCode = welcomePromoCode();
       } else {
         offerTitle = "Ready to create more?";
         offerDescription = "You've used all your free credits. SpriteLab is a one-person indie project - every purchase supports development!";
