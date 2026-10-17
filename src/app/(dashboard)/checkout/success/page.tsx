@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { CheckoutError, CreditChip, PageSpinner, SuccessShell } from "../_components/checkout-ui";
+import { STARTER_FIRST_MONTH_OFFER, starterFirstMonthIntroGbp } from "@/config/starter-first-month";
 
 // Declare gtag for TypeScript
 declare global {
@@ -39,6 +40,7 @@ const planPrices: Record<string, number> = {
 function SuccessContent() {
   const searchParams = useSearchParams();
   const plan = searchParams.get("plan")?.toUpperCase() || "STARTER";
+  const introOffer = searchParams.get("offer") === STARTER_FIRST_MONTH_OFFER && plan === "STARTER";
   const sessionId = searchParams.get("session_id") || "";
   const setupIntentId = searchParams.get("setup_intent");
   const redirectStatus = searchParams.get("redirect_status");
@@ -76,7 +78,7 @@ function SuccessContent() {
   useEffect(() => {
     if (conversionTracked) return;
 
-    const value = planPrices[plan] || 5.0;
+    const value = introOffer ? starterFirstMonthIntroGbp() : planPrices[plan] || 5.0;
 
     const trackConversion = () => {
       if (typeof window !== "undefined" && window.gtag) {
@@ -110,7 +112,7 @@ function SuccessContent() {
     }, 500);
 
     return () => clearInterval(interval);
-  }, [plan, sessionId, conversionTracked]);
+  }, [plan, sessionId, conversionTracked, introOffer]);
 
   useEffect(() => {
     const timer = setInterval(() => {

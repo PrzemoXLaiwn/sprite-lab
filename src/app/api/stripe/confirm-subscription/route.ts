@@ -10,6 +10,12 @@ import {
   isUniqueViolation,
   stripeId,
 } from "../_lib/fulfillment";
+import { loadStarterFirstMonthEligibility } from "@/lib/billing/starter-first-month";
+import {
+  STARTER_FIRST_MONTH_OFFER,
+  readStarterFirstMonthCouponId,
+  resolveStarterFirstMonthDiscount,
+} from "@/config/starter-first-month";
 
 // Creates the subscription after the client confirmed a SetupIntent from
 // create-subscription-intent.
@@ -108,6 +114,19 @@ export async function POST(request: Request) {
       },
     });
 
+    // The offer flag was written by create-subscription-intent. Body fields
+    // (`offer`, `coupon`, `discounts`) are not read — a client cannot name a coupon.
+    const couponId = readStarterFirstMonthCouponId(process.env);
+    const eligible = setupIntent.metadata?.offer === STARTER_FIRST_MONTH_OFFER && couponId
+      ? await loadStarterFirstMonthEligibility(user.id)
+      : false;
+    const firstMonth = resolveStarterFirstMonthDiscount({
+      requestedOffer: setupIntent.metadata?.offer,
+      plan,
+      eligible,
+      couponId,
+    });
+
     // Create the subscription (idempotent per SetupIntent for 24h on Stripe's side)
     let subscription: Stripe.Subscription;
     try {
@@ -117,9 +136,11 @@ export async function POST(request: Request) {
           items: [{ price: selectedPlan.priceId }],
           default_payment_method: paymentMethodId,
           payment_behavior: "error_if_incomplete",
+          ...(firstMonth.apply ? { discounts: [{ coupon: firstMonth.couponId }] } : {}),
           metadata: {
             userId: user.id,
             plan,
+            ...(firstMonth.apply ? { offer: STARTER_FIRST_MONTH_OFFER } : {}),
           },
           expand: ["latest_invoice"],
         },

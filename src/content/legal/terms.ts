@@ -27,6 +27,7 @@
 //       unless LIFETIME_SALES_ENABLED=true. Confirm the public sentence.
 
 import { LICENCE_CHANGE_DATE } from "@/config/licence";
+import { SIGNUP_CREDITS } from "@/config/signup";
 
 export const TERMS_MARKDOWN = `
 # Terms of Service
@@ -63,7 +64,7 @@ SpriteLab is an online tool that uses artificial intelligence to generate and ed
 
 5.1 **Credits.** Most actions use credits. The credit cost of each action is shown before you confirm it and on our [Pricing](/pricing) page. If a generation fails, the credits are returned to your balance automatically.
 
-5.2 **Free credits.** New accounts receive 10 free credits. Free credits have no cash value.
+5.2 **Free credits.** New accounts receive ${SIGNUP_CREDITS} free credits. Free credits have no cash value.
 
 5.3 **Subscriptions.** We currently offer these monthly subscriptions. Prices are in pounds sterling.
 

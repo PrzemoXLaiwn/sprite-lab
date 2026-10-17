@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useMemo, useEffect, Suspense } from "react";
 import { STYLE_MATCH_CREDITS } from "@/config/tool-prices";
+import { SIGNUP_CREDITS } from "@/config/signup";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -859,7 +860,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                 <p className="min-w-0 flex-1 text-[13px] leading-snug text-[#FFF1E8]">
                   {checkoutSuccess
                     ? <>Payment confirmed{planName ? ` — your ${planName} plan is active` : ""}. Your credits are ready to use.</>
-                    : <>Welcome to SpriteLab! Your free credits are ready. We filled in an example, so just press <b className="font-semibold text-white">Create sprite</b>.</>}
+                    : <>Welcome to SpriteLab! {SIGNUP_CREDITS} free credits are ready. We filled in an example, so just press <b className="font-semibold text-white">Create sprite</b>.</>}
                 </p>
                 <button type="button" aria-label="Dismiss message" onClick={() => setShowWelcomeBanner(false)}
                   className="-my-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] text-[#C8CCE8] transition-colors hover:bg-white/[0.06] hover:text-white">

@@ -3,6 +3,7 @@ import { SeoLanding } from "@/components/landing/SeoLanding";
 import { COMMERCIAL_LICENCE_ANSWER } from "@/config/licence";
 import { LANDING_SPECS } from "@/data/landing-specs";
 import { SHOWCASE } from "@/data/showcase";
+import { SIGNUP_CREDITS, SIGNUP_CTA, SIGNUP_ON_SIGNUP } from "@/config/signup";
 
 export const metadata: Metadata = {
   title: { absolute: "AI RPG Character Creator: Heroes & Monsters | SpriteLab" },
@@ -70,7 +71,7 @@ export default function RPGCharacterCreatorPage() {
         </>
       }
       subtitle="Generate unique heroes, villains, NPCs and monsters for your RPG. Any class, any race, any fantasy style — just describe your character."
-      trust={["3 free tries, no account", "10 credits on signup", "transparent png", "commercial licence on paid plans"]}
+      trust={[SIGNUP_ON_SIGNUP, "No card", "transparent png", "commercial licence on paid plans"]}
       floating={[
         { src: "/showcase/knight.png", alt: "", pixel: true, cls: "left-[7%] top-[30%] w-24 animate-float" },
         { src: "/showcase/slime.png", alt: "", pixel: true, cls: "left-[15%] top-[62%] w-16 animate-float [animation-delay:1.2s]" },
@@ -193,7 +194,7 @@ export default function RPGCharacterCreatorPage() {
         },
         {
           q: "Is the RPG character creator free?",
-          a: "You can try it on this page without an account. Signing up gives you 10 free credits, no credit card required.",
+          a: `Sign up free for ${SIGNUP_CREDITS} credits. No card needed.`,
         },
       ]}
       cta={{
@@ -203,7 +204,7 @@ export default function RPGCharacterCreatorPage() {
           </>
         ),
         body: "Stop searching for character assets. Create exactly what your RPG needs.",
-        button: "Get 10 free credits",
+        button: SIGNUP_CTA,
       }}
     />
   );

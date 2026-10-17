@@ -1,14 +1,13 @@
 // =============================================================================
-// Auth → database user sync (shared by the OAuth/email callback and One Tap)
+// Profile fields and the welcome email shared by the OAuth callback and One Tap
 // =============================================================================
-// Creates the users row on first sign-in, applies a referral code for new
-// accounts, and sends the (transactional) welcome email once for new accounts.
+// The users-row insert and the referral live in src/lib/auth/first-login.ts.
+// Callers send this email only when that insert reports a new row.
 // =============================================================================
 
 import type { User } from "@supabase/supabase-js";
-import { prisma } from "@/lib/prisma";
 import { sendWelcomeEmail } from "@/lib/email/send";
-import { RELAUNCH, relaunchActive } from "@/config/relaunch";
+import { SIGNUP_CREDITS } from "@/config/signup";
 
 // user_metadata is user-writable via the anon key (supabase.auth.updateUser),
 // so it is only trusted for the initial profile on account creation, and only
@@ -44,61 +43,22 @@ export function sanitizeAvatarUrl(metadata: Record<string, unknown> | undefined)
   }
 }
 
-
-/** Upserts the DB user and applies a referral for new accounts. Never throws. */
-export async function syncAuthUser(user: User, referralCode: string | null): Promise<{ isNewUser: boolean }> {
-  let isNewUser = false;
-  try {
-    const existingUser = await prisma.user.findUnique({ where: { id: user.id }, select: { id: true } });
-    isNewUser = !existingUser;
-  } catch (err) {
-    console.error("[Auth Sync] Lookup failed:", err);
-  }
-  try {
-    await prisma.user.upsert({
-      where: { id: user.id },
-      // Never overwrite name/avatar on login: user_metadata is
-      // user-controlled, so it only seeds the profile on creation.
-      update: {},
-      create: {
-        id: user.id,
-        email: user.email!,
-        name: sanitizeName(user.user_metadata),
-        avatarUrl: sanitizeAvatarUrl(user.user_metadata),
-        credits: 10,
-        plan: "FREE",
-        role: "USER",
-        isActive: true,
-      },
-    });
-    if (isNewUser && referralCode) {
-      try {
-        const referrer = await prisma.user.findUnique({ where: { referralCode: referralCode.toUpperCase() }, select: { id: true } });
-        if (referrer && referrer.id !== user.id) {
-          await prisma.$transaction([
-            prisma.user.update({ where: { id: user.id }, data: { referredBy: referrer.id } }),
-            prisma.user.update({ where: { id: referrer.id }, data: { referralCount: { increment: 1 } } }),
-          ]);
-          console.log(`[Auth Sync] Referral applied: ${user.id} referred by ${referrer.id}`);
-        }
-      } catch (refErr) {
-        console.error("[Auth Sync] Failed to apply referral:", refErr);
-      }
-    }
-  } catch (err) {
-    console.error("[Auth Sync] Failed to sync user to DB:", err);
-  }
-  return { isNewUser };
-}
-
-/** Fire-and-forget welcome email for a new account. */
-export function sendWelcomeFor(user: User): void {
+/**
+ * Welcome email for an account row that was just created.
+ * Returns the send promise so route handlers can pass it to `after()`.
+ * The amount is SIGNUP_CREDITS, the same grant the users row is inserted with.
+ */
+export async function sendWelcomeFor(user: User): Promise<void> {
   if (!user.email) return;
-  sendWelcomeEmail(
-    user.email,
-    sanitizeName(user.user_metadata) ?? undefined,
-    // The relaunch bonus is added on their first app visit
-    RELAUNCH.SIGNUP_CREDITS + (relaunchActive() ? RELAUNCH.NEW_USER_BONUS : 0),
-    user.id
-  ).catch((err) => console.error("[Auth Sync] Welcome email failed:", err));
+  try {
+    await sendWelcomeEmail(
+      user.email,
+      sanitizeName(user.user_metadata) ?? undefined,
+      SIGNUP_CREDITS,
+      user.id
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "welcome email failed";
+    console.error("[Auth] welcome email failed:", message);
+  }
 }

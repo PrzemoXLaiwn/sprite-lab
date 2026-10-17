@@ -11,7 +11,8 @@
 // the server, so UIs must gate bonus display on fetchLaunchPromoStatus().
 // =============================================================================
 
-import { PLAN_FEATURES } from "@/config/plan-features";
+import { PLAN_FEATURES, PLAN_MONTHLY_CREDITS, PLAN_MONTHLY_PRICE_GBP } from "@/config/plan-features";
+import { SIGNUP_CREDITS } from "@/config/signup";
 
 export type SubscriptionPlanId = "FREE" | "STARTER" | "PRO" | "UNLIMITED";
 
@@ -35,7 +36,7 @@ export const PLAN_CARDS: readonly PlanCard[] = [
     name: "Free",
     price: 0,
     oldPrice: null,
-    credits: 10,
+    credits: SIGNUP_CREDITS,
     description: "Try it free",
     features: PLAN_FEATURES.FREE,
     cta: "Start creating",
@@ -44,9 +45,9 @@ export const PLAN_CARDS: readonly PlanCard[] = [
   {
     id: "STARTER",
     name: "Starter",
-    price: 5,
+    price: PLAN_MONTHLY_PRICE_GBP.STARTER,
     oldPrice: null,
-    credits: 250,
+    credits: PLAN_MONTHLY_CREDITS.STARTER,
     description: "Perfect for indie devs",
     features: PLAN_FEATURES.STARTER,
     cta: "Get Starter",
@@ -55,9 +56,9 @@ export const PLAN_CARDS: readonly PlanCard[] = [
   {
     id: "PRO",
     name: "Pro",
-    price: 12,
+    price: PLAN_MONTHLY_PRICE_GBP.PRO,
     oldPrice: null,
-    credits: 500,
+    credits: PLAN_MONTHLY_CREDITS.PRO,
     description: "For serious creators",
     features: PLAN_FEATURES.PRO,
     cta: "Go Pro",
@@ -66,9 +67,9 @@ export const PLAN_CARDS: readonly PlanCard[] = [
   {
     id: "UNLIMITED",
     name: "Studio",
-    price: 25,
+    price: PLAN_MONTHLY_PRICE_GBP.UNLIMITED,
     oldPrice: null,
-    credits: 1200,
+    credits: PLAN_MONTHLY_CREDITS.UNLIMITED,
     description: "For teams & studios",
     features: PLAN_FEATURES.UNLIMITED,
     cta: "Go Studio",

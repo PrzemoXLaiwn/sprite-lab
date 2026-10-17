@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { checkoutPurchaseLabel } from "@/lib/checkout-intent";
 import { isCheckoutReturn, safeRedirectPath } from "@/lib/safe-redirect";
 import { Gift, MailCheck } from "lucide-react";
+import { SIGNUP_CREDITS } from "@/config/signup";
 import {
   AuthHeading,
   DiscordButton,
@@ -245,7 +246,7 @@ export default function RegisterPage() {
 
   return (
     <div>
-      <AuthHeading title="Create your account" subtitle="Start with 10 free credits. No card required." />
+      <AuthHeading title="Create your account" subtitle={`Start with ${SIGNUP_CREDITS} free credits. No card required.`} />
 
       {purchaseLabel && (
         <p className="mb-6 rounded-xl border border-[#FFA300]/20 bg-[#FFA300]/[0.06] px-3.5 py-3 text-[13px] leading-relaxed text-[#FFC857]">

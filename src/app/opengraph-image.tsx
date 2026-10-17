@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { SIGNUP_FREE_CREDITS } from "@/config/signup";
 
 // =============================================================================
 // SpriteLab — Default Open Graph image
@@ -135,7 +136,7 @@ export default async function Image() {
             zIndex: 1,
           }}
         >
-          Pixel art · Dark fantasy · Anime · Transparent PNG · 10 free credits
+          Pixel art · Dark fantasy · Anime · Transparent PNG · {SIGNUP_FREE_CREDITS}
         </div>
       </div>
     ),

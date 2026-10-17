@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { isAdmin } from "@/lib/admin";
+import { getRedisRestEnv, isRedisRestConfigured } from "@/lib/redis-env";
 
 export const dynamic = "force-dynamic";
 
@@ -102,11 +103,22 @@ export async function GET() {
   // ── Upstash (rate limiting) ───────────────────────────────────────────────
   // Optional: without it guest generation uses an in-memory limiter and
   // authenticated routes rely on credits — degraded, not broken.
-  const upstash = envGroup("Upstash rate limiter", [
-    "UPSTASH_REDIS_REST_URL",
-    "UPSTASH_REDIS_REST_TOKEN",
-  ]);
-  checks.rate_limiting = upstash.status === "MISSING" ? { ...upstash, status: "PARTIAL" } : upstash;
+  // Configured when any accepted REST pair is set (see getRedisRestEnv).
+  const redis = getRedisRestEnv();
+  if (isRedisRestConfigured()) {
+    checks.rate_limiting = { status: "OK" };
+  } else if (redis.url || redis.token) {
+    checks.rate_limiting = {
+      status: "PARTIAL",
+      detail: "Upstash rate limiter partially configured",
+      missing: [redis.url ? "UPSTASH_REDIS_REST_TOKEN" : "UPSTASH_REDIS_REST_URL"],
+    };
+  } else {
+    checks.rate_limiting = {
+      status: "PARTIAL",
+      detail: "Upstash rate limiter not configured",
+    };
+  }
 
   // ── Replicate (guest TryItNow + 3D) ───────────────────────────────────────
   checks.replicate = process.env.REPLICATE_API_TOKEN

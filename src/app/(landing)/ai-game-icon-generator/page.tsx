@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { SeoLanding } from "@/components/landing/SeoLanding";
 import { COMMERCIAL_LICENCE_ANSWER } from "@/config/licence";
+import { SIGNUP_CTA } from "@/config/signup";
 import { LANDING_SPECS } from "@/data/landing-specs";
 
 const URL = "https://www.sprite-lab.com/ai-game-icon-generator";
@@ -126,7 +127,7 @@ export default function GameIconGeneratorPage() {
           </>
         ),
         body: "Generate a full icon set in minutes.",
-        button: "Get 10 free credits",
+        button: SIGNUP_CTA,
       }}
     />
   );

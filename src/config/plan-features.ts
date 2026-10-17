@@ -11,9 +11,26 @@
 // monthly allowance.
 // =============================================================================
 
+import { SIGNUP_CREDITS } from "@/config/signup";
+
+/** Monthly credit allowance for paid plans. Free signup credits live in signup.ts. */
+export const PLAN_MONTHLY_CREDITS = {
+  STARTER: 250,
+  PRO: 500,
+  UNLIMITED: 1200,
+} as const;
+
+/** Recurring monthly price in GBP. The Starter intro price is not this number. */
+export const PLAN_MONTHLY_PRICE_GBP = {
+  STARTER: 5,
+  PRO: 12,
+  UNLIMITED: 25,
+} as const;
+
 export const PLAN_FEATURES = {
   FREE: [
-    "10 credits to start",
+    `${SIGNUP_CREDITS} credits to start`,
+    "Earn extra credits with quests",
     "All 12 art styles, Standard & HD",
     "Transparent PNG on every sprite",
     "Animations, 4 & 8 directions, AI editing",
@@ -21,19 +38,19 @@ export const PLAN_FEATURES = {
     "Personal, non-commercial use",
   ],
   STARTER: [
-    "250 credits / month",
+    `${PLAN_MONTHLY_CREDITS.STARTER} credits / month`,
     "Everything in Free",
     "Commercial licence",
   ],
   PRO: [
-    "500 credits / month",
+    `${PLAN_MONTHLY_CREDITS.PRO} credits / month`,
     "Everything in Starter",
     "AI upscale 2× / 4×",
     "Variations",
     "Commercial licence",
   ],
   UNLIMITED: [
-    "1,200 credits / month",
+    `${PLAN_MONTHLY_CREDITS.UNLIMITED.toLocaleString("en-GB")} credits / month`,
     "Everything in Pro",
     "Most credits per month",
     "Commercial licence",

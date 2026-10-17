@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SeoLanding } from "@/components/landing/SeoLanding";
+import { SIGNUP_CTA } from "@/config/signup";
 import { LANDING_SPECS } from "@/data/landing-specs";
 
 const URL = "https://www.sprite-lab.com/ai-tileset-generator";
@@ -125,7 +126,7 @@ export default function TileGeneratorPage() {
           </>
         ),
         body: "Generate seamless floors and walls that match your sprites.",
-        button: "Get 10 free credits",
+        button: SIGNUP_CTA,
       }}
     />
   );

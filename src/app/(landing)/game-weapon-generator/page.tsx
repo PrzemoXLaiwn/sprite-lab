@@ -3,6 +3,7 @@ import { SeoLanding } from "@/components/landing/SeoLanding";
 import { COMMERCIAL_LICENCE_ANSWER } from "@/config/licence";
 import { LANDING_SPECS } from "@/data/landing-specs";
 import { SHOWCASE } from "@/data/showcase";
+import { SIGNUP_CREDITS, SIGNUP_CTA, SIGNUP_ON_SIGNUP } from "@/config/signup";
 
 export const metadata: Metadata = {
   title: { absolute: "AI Game Weapon Generator — Swords & Guns | SpriteLab" },
@@ -58,7 +59,7 @@ export default function GameWeaponGeneratorPage() {
         </>
       }
       subtitle="Create unique swords, guns, staffs, shields and more for your game. Any style, any fantasy — just describe your weapon."
-      trust={["3 free tries, no account", "10 credits on signup", "transparent png", "commercial licence on paid plans"]}
+      trust={[SIGNUP_ON_SIGNUP, "No card", "transparent png", "commercial licence on paid plans"]}
       floating={[
         { src: "/showcase/fire-sword.png", alt: "", pixel: true, cls: "left-[7%] top-[30%] w-24 animate-float" },
         { src: "/showcase/ice-staff.png", alt: "", pixel: true, cls: "left-[14%] top-[60%] w-20 animate-float [animation-delay:1.2s]" },
@@ -169,7 +170,7 @@ export default function GameWeaponGeneratorPage() {
         },
         {
           q: "Is it free to try?",
-          a: "Yes. You can try the generator on this page without an account, and signing up gives you 10 free credits — no credit card required.",
+          a: `Yes. Sign up free for ${SIGNUP_CREDITS} credits. No card needed.`,
         },
       ]}
       cta={{
@@ -179,7 +180,7 @@ export default function GameWeaponGeneratorPage() {
           </>
         ),
         body: "Stop searching for weapon assets. Generate exactly what you need in seconds.",
-        button: "Get 10 free credits",
+        button: SIGNUP_CTA,
       }}
     />
   );

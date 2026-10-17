@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { loadStripe } from "@stripe/stripe-js";
 import {
   Elements,
@@ -24,6 +24,12 @@ import {
   InlineSuccess,
   CreditChip,
 } from "../_components/checkout-ui";
+import {
+  STARTER_FIRST_MONTH_OFFER,
+  starterCheckoutOfferLine,
+  starterFirstMonthIntroGbp,
+} from "@/config/starter-first-month";
+import { track, FUNNEL } from "@/lib/analytics";
 
 // Load Stripe outside of component to avoid recreating on every render
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
@@ -33,6 +39,7 @@ interface PlanDetails {
   price: number;
   credits: number;
   priceId: string;
+  firstMonthApplied: boolean;
 }
 
 function CheckoutForm({ plan, planDetails }: { plan: string; planDetails: PlanDetails }) {
@@ -54,13 +61,18 @@ function CheckoutForm({ plan, planDetails }: { plan: string; planDetails: PlanDe
     setError(null);
 
     try {
+      const successPath = planDetails.firstMonthApplied
+        ? `/checkout/success?plan=${encodeURIComponent(plan)}&offer=${STARTER_FIRST_MONTH_OFFER}`
+        : `/checkout/success?plan=${encodeURIComponent(plan)}`;
+
       // Confirm the SetupIntent
       const { error: submitError, setupIntent } = await stripe.confirmSetup({
         elements,
         confirmParams: {
           // If a redirect (e.g. 3DS) is needed, the success page finishes the
           // subscription using the setup_intent query param Stripe appends.
-          return_url: `${window.location.origin}/checkout/success?plan=${encodeURIComponent(plan)}`,
+          // The intro coupon itself is on the SetupIntent metadata, not this URL.
+          return_url: `${window.location.origin}${successPath}`,
         },
         redirect: "if_required",
       });
@@ -93,7 +105,7 @@ function CheckoutForm({ plan, planDetails }: { plan: string; planDetails: PlanDe
 
         setSuccess(true);
         setTimeout(() => {
-          router.push("/checkout/success?plan=" + plan);
+          router.push(successPath);
         }, 1500);
       }
     } catch (err) {
@@ -120,7 +132,7 @@ function CheckoutForm({ plan, planDetails }: { plan: string; planDetails: PlanDe
       <button
         type="submit"
         disabled={!stripe || isLoading}
-        className={`flex h-12 w-full items-center justify-center gap-2 text-[14px] ${BTN_PRIMARY}`}
+        className={`flex h-12 w-full items-center justify-center gap-2 px-3 text-center text-[14px] ${BTN_PRIMARY}`}
       >
         {isLoading ? (
           <>
@@ -129,7 +141,10 @@ function CheckoutForm({ plan, planDetails }: { plan: string; planDetails: PlanDe
           </>
         ) : (
           <>
-            Subscribe to {planDetails.name} · <span className="font-mono">£{planDetails.price}/month</span>
+            Subscribe to {planDetails.name} ·{" "}
+            <span className="font-mono">
+              {planDetails.firstMonthApplied ? `£${starterFirstMonthIntroGbp()} today` : `£${planDetails.price}/month`}
+            </span>
           </>
         )}
       </button>
@@ -150,16 +165,29 @@ const PLAN_URL_MAP: Record<string, string> = {
   unlimited: "UNLIMITED",
 };
 
-export default function CheckoutPage() {
+function CheckoutPageInner() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const urlPlan = (params.plan as string)?.toLowerCase();
   const plan = PLAN_URL_MAP[urlPlan] || urlPlan?.toUpperCase();
+  const offer = searchParams.get("offer") === STARTER_FIRST_MONTH_OFFER ? STARTER_FIRST_MONTH_OFFER : null;
 
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [planDetails, setPlanDetails] = useState<PlanDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const offerTracked = useRef(false);
+  const requestKey = `${plan ?? ""}:${offer ?? ""}`;
+  const [activeKey, setActiveKey] = useState(requestKey);
+  // A new plan or offer must not keep the previous Payment Element on screen.
+  if (activeKey !== requestKey) {
+    setActiveKey(requestKey);
+    setLoading(true);
+    setError(null);
+    setClientSecret(null);
+    setPlanDetails(null);
+  }
 
   useEffect(() => {
     if (!plan || !["STARTER", "PRO", "UNLIMITED"].includes(plan)) {
@@ -167,30 +195,41 @@ export default function CheckoutPage() {
       return;
     }
 
-    // Create SetupIntent
+    let cancelled = false;
+
+    // Create SetupIntent. `offer` is only the literal code — the server
+    // decides eligibility and reads the coupon id from the environment.
     fetch("/api/stripe/create-subscription-intent", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ plan }),
+      body: JSON.stringify({ plan, ...(offer ? { offer } : {}) }),
     })
       .then((res) => res.json())
       .then((data) => {
+        if (cancelled) return;
         if (data.error) {
           setError(data.error);
         } else {
+          const firstMonthApplied = data.firstMonthOffer?.applied === true;
           setClientSecret(data.clientSecret);
-          setPlanDetails(data.plan);
-          // Track checkout initiation for TikTok
-          // TikTok tracking removed
+          setPlanDetails({ ...data.plan, firstMonthApplied });
+          if (firstMonthApplied && !offerTracked.current) {
+            offerTracked.current = true;
+            track(FUNNEL.offerApplied, { offer: STARTER_FIRST_MONTH_OFFER, plan: "STARTER" });
+          }
         }
       })
       .catch((err) => {
-        setError(err.message);
+        if (!cancelled) setError(err.message);
       })
       .finally(() => {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       });
-  }, [plan, router]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [plan, router, offer]);
 
 
   if (loading) {
@@ -205,27 +244,42 @@ export default function CheckoutPage() {
     return null;
   }
 
+  const offerApplied = planDetails.firstMonthApplied;
+
   return (
     <CheckoutShell
       title={`Subscribe to ${planDetails.name}`}
-      subtitle="Monthly subscription. Cancel anytime from your settings."
+      subtitle={offerApplied ? "Cancel anytime from your settings." : "Monthly subscription. Cancel anytime from your settings."}
       summary={
         <>
           <SummaryCard highlight>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="font-display text-[18px] font-semibold text-white">{planDetails.name} plan</h2>
-                <p className="mt-0.5 text-[13px] text-[#9AA1CC]">Billed monthly</p>
+                <p className="mt-0.5 text-[13px] text-[#9AA1CC]">{offerApplied ? "Cancel anytime" : "Billed monthly"}</p>
               </div>
               <CreditChip>{planDetails.credits} credits/mo</CreditChip>
             </div>
-            <div className="mt-5 flex items-baseline gap-1.5">
-              <span className="font-sans tracking-tight tabular-nums text-[32px] font-semibold leading-none text-white">£{planDetails.price}</span>
-              <span className="font-mono text-[12px] text-[#9AA1CC]">/month</span>
-            </div>
+            {offerApplied ? (
+              <p className="mt-5 font-sans text-[26px] font-semibold leading-tight tracking-tight text-white sm:text-[28px]">
+                {starterCheckoutOfferLine()}
+              </p>
+            ) : (
+              <div className="mt-5 flex items-baseline gap-1.5">
+                <span className="font-sans tracking-tight tabular-nums text-[32px] font-semibold leading-none text-white">£{planDetails.price}</span>
+                <span className="font-mono text-[12px] text-[#9AA1CC]">/month</span>
+              </div>
+            )}
             <div className="mt-5 border-t border-white/[0.06] pt-2">
               <SummaryRow label="Credits" value={`${planDetails.credits} / month`} />
-              <SummaryRow label="Price" value={`£${planDetails.price} / month`} strong />
+              {offerApplied ? (
+                <>
+                  <SummaryRow label="Today" value={`£${starterFirstMonthIntroGbp()}`} strong />
+                  <SummaryRow label="Then" value={`£${planDetails.price} / month`} />
+                </>
+              ) : (
+                <SummaryRow label="Price" value={`£${planDetails.price} / month`} strong />
+              )}
             </div>
           </SummaryCard>
 
@@ -253,5 +307,13 @@ export default function CheckoutPage() {
         <CheckoutForm plan={plan} planDetails={planDetails} />
       </Elements>
     </CheckoutShell>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<PageSpinner />}>
+      <CheckoutPageInner />
+    </Suspense>
   );
 }

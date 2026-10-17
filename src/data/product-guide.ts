@@ -6,19 +6,13 @@
 
 import { CREDIT_COSTS, STYLE_MATCH_CREDITS } from "@/lib/services/generation";
 import { ANIMATION_FRAME_OPTIONS, RIG_CREDITS, ROTATIONS, animationCredits } from "@/config/animations";
-import { RELAUNCH, relaunchActive } from "@/config/relaunch";
+import { RELAUNCH } from "@/config/relaunch";
 
 export const SIGNUP_CREDITS = RELAUNCH.SIGNUP_CREDITS;
-export const GUEST_TRIES = 3;
 
-/** "10 free credits" or "10 free credits + 10 launch bonus" while the relaunch runs. */
-export function signupOffer(now = new Date()): { credits: number; bonus: number; bonusUntil: string | null } {
-  const active = relaunchActive(now);
-  return {
-    credits: SIGNUP_CREDITS,
-    bonus: active ? RELAUNCH.NEW_USER_BONUS : 0,
-    bonusUntil: active ? new Date(RELAUNCH.ENDS_AT).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : null,
-  };
+/** Public signup offer. The legacy +10 is not advertised: new accounts already start with SIGNUP_CREDITS. */
+export function signupOffer(): { credits: number; bonus: number; bonusUntil: string | null } {
+  return { credits: SIGNUP_CREDITS, bonus: 0, bonusUntil: null };
 }
 
 const frames = ANIMATION_FRAME_OPTIONS.map((o) => o.frames);
@@ -108,7 +102,7 @@ export const GUIDE: GuideSection[] = [
     title: "What things cost",
     lead: "Credits are the only currency. You always see the price on the button before you click.",
     steps: [
-      { title: "Free to start", body: `${GUEST_TRIES} tries without an account, then ${SIGNUP_CREDITS} free credits when you sign up — no card.` },
+      { title: "Free to start", body: `${SIGNUP_CREDITS} free credits when you sign up — no card.` },
       { title: "Failed? Refunded", body: "If a generation fails, its credits go straight back to your balance." },
       { title: "Track your usage", body: "The Usage page lists every generation and what it cost." },
       { title: "Top up any time", body: "Monthly plans from £5 for 250 credits, or one-off packs that never expire." },

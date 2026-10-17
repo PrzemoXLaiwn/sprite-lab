@@ -3,26 +3,26 @@
 // =============================================================================
 // Uses Upstash Redis + @upstash/ratelimit (sliding window).
 //
-// FAIL-OPEN DESIGN: If Redis is not configured (UPSTASH_REDIS_REST_URL /
-// UPSTASH_REDIS_REST_TOKEN env vars absent), every call to checkRateLimit()
-// returns null (= allowed). This means:
+// FAIL-OPEN DESIGN: If Redis is not configured (no REST url + write token;
+// see getRedisRestEnv), every call to checkRateLimit() returns null
+// (= allowed). This means:
 //   - Local development works with no Redis setup
 //   - Production with Redis missing fails open (requests pass through)
-//   - Rate limiting activates automatically once env vars are set
+//   - A Redis error also fails open (in-memory fallback on fail-closed routes)
+//   - Rate limiting activates automatically once any accepted env pair is set
 // EXCEPTION: guest generation (unauthenticated, no credits) never fails open
 // in production — without Upstash it uses a per-instance in-memory limiter
 // with a global hourly cap (see memoryCheck).
 //
-// Required env vars (add to Vercel dashboard when ready):
-//   UPSTASH_REDIS_REST_URL=https://xxx.upstash.io
-//   UPSTASH_REDIS_REST_TOKEN=AXxx...
-//
-// To provision: https://console.upstash.com → Create Database → REST API
-// Free tier is sufficient for this usage pattern.
+// Accepted env pairs (first set value wins; never a read-only token):
+//   UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN
+//   UPSTASH_REDIS_REST_KV_REST_API_URL + UPSTASH_REDIS_REST_KV_REST_API_TOKEN
+//   KV_REST_API_URL + KV_REST_API_TOKEN
 // =============================================================================
 
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
+import { getRedisRestEnv } from "@/lib/redis-env";
 
 // -----------------------------------------------------------------------------
 // REDIS CLIENT — lazy, only created when env vars are present
@@ -33,8 +33,7 @@ let redis: Redis | null = null;
 function getRedis(): Redis | null {
   if (redis) return redis;
 
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const { url, token } = getRedisRestEnv();
 
   if (!url || !token) {
     // Not configured — rate limiting disabled, fail open
@@ -435,4 +434,24 @@ export async function rateLimitFeedback(
   userId: string
 ): Promise<RateLimitResult> {
   return check("feedback", 10, 3600, userId);
+}
+
+/**
+ * One Tap account sync: 5 requests per minute per authenticated user id.
+ * Stops a signed-in caller from hammering first-login / referral writes.
+ * Missing Upstash credentials fail open (see `check`).
+ */
+export async function rateLimitAuthSync(userId: string): Promise<RateLimitResult> {
+  return check("auth:sync", 5, 60, userId);
+}
+
+/**
+ * Same route, before the session lookup: 5 requests per minute per client IP.
+ * The in-memory map in src/proxy.ts does not hold across Vercel instances.
+ * Credentials come from getRedisRestEnv(), including the Vercel integration
+ * names. When that helper has no url/token pair, `check` allows the request
+ * (fail open).
+ */
+export async function rateLimitAuthSyncByIp(request: Request): Promise<RateLimitResult> {
+  return check("auth:sync:ip", 5, 60, getClientIp(request));
 }
