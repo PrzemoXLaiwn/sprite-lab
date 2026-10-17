@@ -84,25 +84,28 @@ const nextConfig: NextConfig = {
             key: "Referrer-Policy",
             value: "strict-origin-when-cross-origin",
           },
-          // Permissions policy
+          // Permissions policy. identity-credentials-get lets FedCM (One Tap) run.
+          // On rebase, keep any extra permissions production already sets.
           {
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+            value: "camera=(), microphone=(), geolocation=(), interest-cohort=(), identity-credentials-get=(self)",
           },
           // Content Security Policy (Google AdSense hosts: ads on content pages for signed-out visitors)
           // accounts.google.com/gsi: Google One Tap sign-in on the landing page (only loaded when NEXT_PUBLIC_GOOGLE_CLIENT_ID is set)
+          // https://accounts.google.com (the origin, not only /gsi/) lets FedCM fetch /.well-known/web-identity.
+          // Every AdSense / googlesyndication / doubleclick / fundingchoices host stays.
           {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/client https://js.stripe.com https://*.js.stripe.com https://va.vercel-scripts.com https://vercel.live https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.google.com https://*.gstatic.com https://*.doubleclick.net https://*.googletagservices.com https://*.adtrafficquality.google https://fundingchoicesmessages.google.com https://www.googletagmanager.com",
-              "style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style",
+              "script-src 'self' 'unsafe-inline' https://accounts.google.com https://accounts.google.com/gsi/client https://js.stripe.com https://*.js.stripe.com https://va.vercel-scripts.com https://vercel.live https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.google.com https://*.gstatic.com https://*.doubleclick.net https://*.googletagservices.com https://*.adtrafficquality.google https://fundingchoicesmessages.google.com https://www.googletagmanager.com",
+              "style-src 'self' 'unsafe-inline' https://accounts.google.com https://accounts.google.com/gsi/style",
               "font-src 'self' data:",
               "img-src 'self' data: blob: https:",
               // R2 (*.r2.dev) + Runware hosts: client-side "Download PNG" fetches
               // the image bytes; data:/blob: for guest fallbacks and canvas exports.
-              "connect-src 'self' data: blob: https://accounts.google.com/gsi/ https://*.r2.dev https://im.runware.ai https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://replicate.delivery https://*.replicate.delivery https://va.vercel-scripts.com https://vitals.vercel-insights.com https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.google.com https://*.gstatic.com https://*.doubleclick.net https://*.googletagservices.com https://*.adtrafficquality.google https://fundingchoicesmessages.google.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com",
-              "frame-src 'self' https://accounts.google.com/gsi/ https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com https://vercel.live https://*.doubleclick.net https://*.googlesyndication.com https://*.google.com https://*.adtrafficquality.google",
+              "connect-src 'self' data: blob: https://accounts.google.com https://accounts.google.com/gsi/ https://*.r2.dev https://im.runware.ai https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://replicate.delivery https://*.replicate.delivery https://va.vercel-scripts.com https://vitals.vercel-insights.com https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.google.com https://*.gstatic.com https://*.doubleclick.net https://*.googletagservices.com https://*.adtrafficquality.google https://fundingchoicesmessages.google.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com",
+              "frame-src 'self' https://accounts.google.com https://accounts.google.com/gsi/ https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com https://vercel.live https://*.doubleclick.net https://*.googlesyndication.com https://*.google.com https://*.adtrafficquality.google",
               "worker-src 'self' blob:",
               "media-src 'self' blob: https:",
               "object-src 'none'",

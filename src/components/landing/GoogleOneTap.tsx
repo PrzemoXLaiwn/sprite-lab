@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import Script from "next/script";
+import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { track, FUNNEL } from "@/lib/analytics";
 
@@ -20,7 +20,12 @@ interface GsiIdApi {
     use_fedcm_for_prompt?: boolean;
     context?: "signin" | "signup" | "use";
   }): void;
-  prompt(): void;
+  prompt(momentListener?: (moment: {
+    isNotDisplayed(): boolean;
+    getNotDisplayedReason(): string;
+    isSkippedMoment(): boolean;
+    getSkippedReason(): string;
+  }) => void): void;
   cancel(): void;
 }
 declare global {
@@ -30,6 +35,34 @@ declare global {
 }
 
 const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
+const GSI_SRC = "https://accounts.google.com/gsi/client";
+/** Portrait phones. The One Tap prompt covers a large slice of that first screen. */
+const SMALL_SCREEN_QUERY = "(max-width: 767px)";
+const BLOCKED_PREFIXES = ["/login", "/register", "/auth", "/reset-password", "/update-password"];
+
+function oneTapAllowed(pathname: string): boolean {
+  return !BLOCKED_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+let gsiPromise: Promise<void> | null = null;
+
+function loadGsi(): Promise<void> {
+  if (window.google?.accounts?.id) return Promise.resolve();
+  if (gsiPromise) return gsiPromise;
+  gsiPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = GSI_SRC;
+    script.async = true;
+    script.dataset.slGsi = "1";
+    script.onload = () => resolve();
+    script.onerror = () => {
+      gsiPromise = null;
+      reject(new Error("gsi failed"));
+    };
+    document.body.appendChild(script);
+  });
+  return gsiPromise;
+}
 
 /** An account created this recently is treated as a new signup. */
 const NEW_ACCOUNT_WINDOW_MS = 2 * 60 * 1000;
@@ -103,16 +136,77 @@ export function GoogleOneTap() {
           }
         },
       });
-      gsi.prompt();
+      // Empty Google account list and FedCM NetworkError show up as a
+      // not-displayed or skipped moment. Do not prompt again.
+      gsi.prompt((moment) => {
+        if (!moment.isNotDisplayed() && !moment.isSkippedMoment()) return;
+        const reason = moment.isNotDisplayed() ? moment.getNotDisplayedReason() : moment.getSkippedReason();
+        if (reason === "unregistered_origin") {
+          console.warn("[OneTap] Google client is not allowed on this origin");
+        }
+      });
     } catch (err) {
-      console.error("[OneTap] init failed:", err instanceof Error ? err.message : err);
+      console.warn("[OneTap] prompt skipped:", err instanceof Error ? err.message : err);
     }
   }, []);
 
+  const pathname = usePathname();
+
   useEffect(() => {
-    // Client-side navigation back to the page: the script is already loaded.
-    if (CLIENT_ID && window.google?.accounts?.id) void init();
+    if (!CLIENT_ID || !oneTapAllowed(pathname)) return;
+
+    let cancelled = false;
+    let idleId = 0;
+    let timerId = 0;
+
+    const scheduleIdle = () => {
+      if (cancelled) return;
+      if (typeof window.requestIdleCallback === "function") {
+        idleId = window.requestIdleCallback(() => void begin(), { timeout: 4000 });
+      } else {
+        timerId = window.setTimeout(() => void begin(), 1500);
+      }
+    };
+
+    const onInteract = () => {
+      window.removeEventListener("pointerdown", onInteract);
+      window.removeEventListener("keydown", onInteract);
+      if (document.readyState === "complete") scheduleIdle();
+      else window.addEventListener("load", scheduleIdle, { once: true });
+    };
+
+    async function begin() {
+      if (cancelled) return;
+      try {
+        const { data: { session } } = await createClient().auth.getSession();
+        if (cancelled || session) return;
+        await loadGsi();
+        if (!cancelled) await init();
+      } catch (err) {
+        console.warn("[OneTap] load skipped:", err instanceof Error ? err.message : err);
+      }
+    }
+
+    const smallScreen = window.matchMedia(SMALL_SCREEN_QUERY).matches;
+    if (smallScreen) {
+      // No download and no prompt until a gesture, so the first screen stays clear.
+      window.addEventListener("pointerdown", onInteract, { passive: true });
+      window.addEventListener("keydown", onInteract);
+    } else if (window.google?.accounts?.id) {
+      void init();
+    } else if (document.readyState === "complete") {
+      scheduleIdle();
+    } else {
+      window.addEventListener("load", scheduleIdle, { once: true });
+    }
+
     return () => {
+      cancelled = true;
+      window.removeEventListener("pointerdown", onInteract);
+      window.removeEventListener("keydown", onInteract);
+      window.removeEventListener("load", scheduleIdle);
+      if (idleId) window.cancelIdleCallback(idleId);
+      if (timerId) window.clearTimeout(timerId);
       try {
         window.google?.accounts?.id?.cancel();
       } catch {
@@ -120,14 +214,7 @@ export function GoogleOneTap() {
       }
       started.current = false;
     };
-  }, [init]);
+  }, [init, pathname]);
 
-  if (!CLIENT_ID) return null;
-  return (
-    <Script
-      src="https://accounts.google.com/gsi/client"
-      strategy="afterInteractive"
-      onReady={() => void init()}
-    />
-  );
+  return null;
 }
