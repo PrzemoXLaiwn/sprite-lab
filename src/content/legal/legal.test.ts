@@ -56,6 +56,33 @@ describe("legal pages", () => {
     }
   });
 
+  it("renders a link nested in bold, and bold nested in a link label", () => {
+    const html = renderToStaticMarkup(
+      createElement(LegalDocument, {
+        markdown:
+          "# Title\n\nEmail **[support@sprite-lab.com](mailto:support@sprite-lab.com)** or see [the **Privacy Policy**](/privacy). Use `**not bold**` as code.",
+      }),
+    );
+    expect(html).toContain('<a href="mailto:support@sprite-lab.com"');
+    expect(html).toContain('<a href="/privacy"');
+    expect(html).toContain("<strong");
+    expect(html).toContain(">Privacy Policy<");
+    expect(html).not.toContain("[support@sprite-lab.com]");
+    expect(html).not.toContain("](mailto:");
+    expect(html).toContain("**not bold**");
+  });
+
+  it("does not leave raw markdown links on the four policies", () => {
+    for (const page of PAGES) {
+      const html = renderToStaticMarkup(createElement(LegalDocument, { markdown: page }));
+      expect(html).not.toMatch(/\[[^\]]+\]\([^)]+\)/);
+      expect(html).toContain('href="mailto:support@sprite-lab.com"');
+    }
+    expect(PRIVACY_MARKDOWN).not.toContain("spritelab.contact@gmail.com");
+    expect(COOKIES_MARKDOWN).not.toContain("choose by category");
+    expect(COOKIES_MARKDOWN).toContain("clearing cookies");
+  });
+
   it("limits the commercial licence to paid plans and keeps the resale restriction contractual", () => {
     expect(TERMS_MARKDOWN).toContain("personal, non-commercial use only");
     expect(TERMS_MARKDOWN).toContain("Starter, Pro and Studio");

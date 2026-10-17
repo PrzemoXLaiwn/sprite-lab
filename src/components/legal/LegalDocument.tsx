@@ -121,42 +121,76 @@ function LegalLink({ href, children }: { href: string; children: ReactNode }) {
   );
 }
 
+function earliest(text: string, from: number, markers: string[]): { at: number; marker: string } | null {
+  let best: { at: number; marker: string } | null = null;
+  for (const marker of markers) {
+    const at = text.indexOf(marker, from);
+    if (at === -1) continue;
+    if (!best || at < best.at) best = { at, marker };
+  }
+  return best;
+}
+
+/** Bold, code and links, including a link nested in bold (or bold in a link label). Code stays literal. */
 function renderInline(text: string, keyPrefix: string): ReactNode[] {
-  const re = /(\*\*[^*]+?\*\*|`[^`]+`|\[[^\]]+\]\([^)\s]+\))/g;
   const out: ReactNode[] = [];
-  let last = 0;
-  let match: RegExpExecArray | null;
+  let i = 0;
   let index = 0;
-  while ((match = re.exec(text))) {
-    if (match.index > last) out.push(text.slice(last, match.index));
-    const token = match[0];
+
+  while (i < text.length) {
+    const next = earliest(text, i, ["**", "`", "["]);
+    if (!next) {
+      out.push(text.slice(i));
+      break;
+    }
+    if (next.at > i) out.push(text.slice(i, next.at));
     const key = `${keyPrefix}-${index}`;
-    if (token.startsWith("**")) {
+    index += 1;
+
+    if (next.marker === "**") {
+      const end = text.indexOf("**", next.at + 2);
+      if (end === -1) {
+        out.push(text.slice(next.at));
+        break;
+      }
       out.push(
         <strong key={key} className="font-semibold text-[#FFF1E8]">
-          {token.slice(2, -2)}
+          {renderInline(text.slice(next.at + 2, end), key)}
         </strong>,
       );
-    } else if (token.startsWith("`")) {
+      i = end + 2;
+      continue;
+    }
+
+    if (next.marker === "`") {
+      const end = text.indexOf("`", next.at + 1);
+      if (end === -1) {
+        out.push(text.slice(next.at));
+        break;
+      }
       out.push(
         <code key={key} className="font-code text-[0.92em] text-[#FFF1E8]">
-          {token.slice(1, -1)}
+          {text.slice(next.at + 1, end)}
         </code>,
       );
-    } else {
-      const link = token.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
-      if (link) {
-        out.push(
-          <LegalLink key={key} href={link[2]}>
-            {link[1]}
-          </LegalLink>,
-        );
-      }
+      i = end + 1;
+      continue;
     }
-    last = match.index + token.length;
-    index += 1;
+
+    const link = text.slice(next.at).match(/^\[([^\]]+)\]\(([^)\s]+)\)/);
+    if (!link) {
+      out.push("[");
+      i = next.at + 1;
+      continue;
+    }
+    out.push(
+      <LegalLink key={key} href={link[2]}>
+        {renderInline(link[1], key)}
+      </LegalLink>,
+    );
+    i = next.at + link[0].length;
   }
-  if (last < text.length) out.push(text.slice(last));
+
   return out;
 }
 

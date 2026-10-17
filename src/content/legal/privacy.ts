@@ -14,8 +14,8 @@
 // TODO: Runware legal entity and country.
 // TODO: Replicate / hyper3d rodin. 3D generation is retired and has no UI caller,
 //       so the row is omitted. The /api/generate-3d routes still exist in the repo.
-// TODO: Whether support mail is handled in Gmail. The contact line still notes the
-//       current spritelab.contact@gmail.com address from the draft.
+// TODO: Whether support mail is handled in Gmail. The public contact is
+//       support@sprite-lab.com only; the Gmail address is not published.
 // TODO: Backup retention period (draft suggested 90 days).
 // TODO: Support, refund and complaint correspondence retention (draft suggested 2 years).
 // TODO: Security and server log retention (draft suggested 30–90 days).
@@ -46,7 +46,7 @@ SpriteLab is run by **Przemek Lawin** trading as "SpriteLab", of **69 Haybridge 
 
 We are the **controller** of the personal data described in this policy.
 
-- Privacy contact: **[support@sprite-lab.com](mailto:support@sprite-lab.com)** (currently spritelab.contact@gmail.com)
+- Privacy contact: **[support@sprite-lab.com](mailto:support@sprite-lab.com)**
 - Postal address: 69 Haybridge Avenue, Telford, TF1 5JT, United Kingdom
 
 We have not appointed a Data Protection Officer because we are not required to.

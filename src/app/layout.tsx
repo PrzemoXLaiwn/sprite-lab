@@ -197,7 +197,7 @@ const jsonLd = {
         "Seamless floor and wall tiles",
         "Projects with automatic folder sorting and ZIP pack export",
         "Free pixel-perfect upscaling",
-        "Commercial use of generated assets",
+        "Commercial use on paid plans",
       ],
     },
   ],
