@@ -33,3 +33,32 @@ describe("key colour", () => {
     expect(keyBackgroundFor("red goblin", "PIXEL_ART_16")).not.toMatch(/magenta/);
   });
 });
+
+describe("framing and armed stance", () => {
+  it("asks for a margin so feet, blades and glow are never cut off", () => {
+    const p = buildSpritePrompt({ subject: "a four-armed samurai boss", styleId: "REALISTIC_PAINTED", categoryId: "CHARACTERS", pose: "auto" });
+    expect(p).toMatch(/wide empty margin on every side/);
+    expect(p).toMatch(/nothing touches or crosses the edges/);
+  });
+  it("figures holding weapons get the armed stance instead of open hands, creatures too", () => {
+    for (const categoryId of ["CHARACTERS", "CREATURES"]) {
+      const p = buildSpritePrompt({ subject: "a four-armed samurai boss with a katana in each hand", original: "4 hands boss with samurai sword in each hand", styleId: "REALISTIC_PAINTED", categoryId, pose: "auto" });
+      expect(p, categoryId).toMatch(/held out and away from the body/);
+      expect(p, categoryId).not.toMatch(/A-pose|open hands|standing calmly/);
+    }
+  });
+  it("unarmed creatures keep the calm pose", () => {
+    const p = buildSpritePrompt({ subject: "a green slime", original: "green slime", styleId: "PIXEL_ART_16", categoryId: "CREATURES", pose: "auto" });
+    expect(p).toMatch(/standing calmly/);
+  });
+});
+
+describe("long subjects", () => {
+  it("are cut at a word boundary, never mid-word", () => {
+    const subject = Array.from({ length: 80 }, (_, i) => `word${i}`).join(" ");
+    const p = buildSpritePrompt({ subject, styleId: "PIXEL_ART_16", categoryId: "CHARACTERS" });
+    const s = p.slice("A 2D video game sprite of ".length, p.indexOf(". "));
+    expect(s.length).toBeLessThanOrEqual(400);
+    expect(subject.split(" ")).toContain(s.split(" ").at(-1));
+  });
+});

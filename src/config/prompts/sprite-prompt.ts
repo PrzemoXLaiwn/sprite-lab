@@ -80,6 +80,9 @@ const DEFAULT_FIGURE_VIEW = "facing the viewer at a slight three-quarter angle";
 // "auto" is the game-ready default the UI promises: a calm A-pose, ready to
 // rig and animate (combat poses only when the user picks Dynamic)
 const A_POSE = "standing upright in a relaxed A-pose: arms hanging slightly away from the body, open hands, feet shoulder-width apart, calm neutral expression";
+// Something in the hands (the user asked for it): an A-pose with "open hands"
+// drops the weapons, so the calm game-ready stance holds them out instead
+const ARMED_STANCE = "standing upright in a steady, symmetrical ready stance, not attacking, every hand gripping its weapon or item held out and away from the body so each blade, handle and tip is fully visible";
 const POSE_LINES: Record<string, string> = {
   auto: A_POSE,
   "a-pose": A_POSE,
@@ -128,6 +131,14 @@ export function isPixelStyle(styleId: string): boolean {
   return normalizeStyleId(styleId).includes("PIXEL");
 }
 
+/** Cut at the last comma or space before `max`, never mid-word. */
+function clip(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const at = Math.max(cut.lastIndexOf(", "), cut.lastIndexOf(" "));
+  return (at > max * 0.6 ? cut.slice(0, at) : cut).replace(/[,\s]+$/, "");
+}
+
 export function buildSpritePrompt(input: SpritePromptInput): string {
   const { subject, categoryId, view, colorHint, pose } = input;
   let { styleId } = input;
@@ -146,22 +157,30 @@ export function buildSpritePrompt(input: SpritePromptInput): string {
     ].join(" ");
   }
   const figure = category === "CHARACTERS" || category === "CREATURES";
-  // Creatures (animals, monsters) aren't put in an A-pose: a calm standing pose instead
-  const posed = figure && pose
-    ? category === "CREATURES" && (pose === "auto" || pose === "a-pose")
-      ? "standing calmly in a neutral pose, not attacking"
-      : POSE_LINES[pose]
-    : undefined;
   // Game-ready by default: nothing in the hands unless the user asked for it
-  const emptyHands = figure && pose !== "dynamic" && !asksForHeldItem(input.original ?? subject);
+  const holds = asksForHeldItem(input.original ?? subject);
+  const emptyHands = figure && pose !== "dynamic" && !holds;
+  // Creatures (animals, monsters) aren't put in an A-pose: a calm standing pose
+  // instead. Anything holding weapons gets the armed stance.
+  const calm = pose === "auto" || pose === "a-pose";
+  const posed = figure && pose
+    ? calm && holds
+      ? ARMED_STANCE
+      : category === "CREATURES" && calm
+        ? "standing calmly in a neutral pose, not attacking"
+        : POSE_LINES[pose]
+    : undefined;
   const framing = (CATEGORY_FRAMING[category] ?? "single subject shown whole") + (posed ? `, ${posed}` : "");
   const views = view ? VIEW_LINES[view.toUpperCase()] : undefined;
   const viewLine = views ? (figure ? views.figure : views.object) : figure ? DEFAULT_FIGURE_VIEW : undefined;
-  const cleanSubject = subject.trim().replace(/\s+/g, " ").slice(0, 400);
+  const cleanSubject = clip(subject.trim().replace(/\s+/g, " "), 400);
 
   return [
     `A 2D video game sprite of ${cleanSubject}.`,
     `${framing}${viewLine ? `, ${viewLine}` : ""}, centered with empty space around it.`,
+    // Models fill the canvas edge to edge; anything they draw past it is lost
+    // for good (cut feet, flat-topped auras), so the margin is spelled out
+    `Leave a wide empty margin on every side: the whole ${figure ? "figure" : "subject"}, including ${figure ? "feet, " : ""}weapon tips, flames and any glow, fits well inside the image at about two thirds of its height, and nothing touches or crosses the edges.`,
     `Style: ${style}.`,
     // Sprites of one game must match each other: same pixel density and the
     // same outline no matter whether it's a knight, an ore or an icon.

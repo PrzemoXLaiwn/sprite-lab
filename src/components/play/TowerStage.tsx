@@ -57,7 +57,9 @@ interface Props {
   onDone?: () => void;
 }
 
+/** Hero height in logical pixels; phones draw heroes bigger (the sprites carry their own transparent margin). */
 const HERO = 30;
+const HERO_PHONE = 40;
 type Mode = "idle" | "attack" | "walk" | "hurt" | "defeat" | "static";
 const IMPACT_MS = 140;
 
@@ -102,7 +104,7 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fontRef = useRef<HTMLSpanElement>(null);
-  const sizeRef = useRef({ s: 3, vw: 200, vh: 150 });
+  const sizeRef = useRef({ s: 3, vw: 200, vh: 150, hero: HERO });
   const imagesRef = useRef(new Map<string, HTMLImageElement>());
   const geoRef = useRef(new Map<string, SheetGeometry>());
   const speedRef = useRef(speed);
@@ -151,15 +153,17 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
       const cw = Math.max(1, Math.round(wrap.clientWidth * dpr)), ch = Math.max(1, Math.round(wrap.clientHeight * dpr));
       // Whole-number scale: the tower fits the width, a room and a half fits the height.
       // Below ×2 (narrow low-density screens) draw at ×2 on a larger canvas and let CSS fit it.
-      const natural = Math.min(Math.floor(cw / (TOWER_W + 16)), Math.floor(ch / (ROOM_H * 1.5)));
+      // Phones: let the outer walls run off the edges so the heroes get a bigger whole-number scale
+      const fitW = wrap.clientWidth < 520 ? TOWER_W - 10 : TOWER_W + 16;
+      const natural = Math.min(Math.floor(cw / fitW), Math.floor(ch / (ROOM_H * 1.5)));
       const s = Math.max(2, natural);
-      const k = natural >= 2 ? 1 : Math.max(1, ((TOWER_W + 16) * 2) / cw);
+      const k = natural >= 2 ? 1 : Math.max(1, (fitW * 2) / cw);
       const bw = Math.round(cw * k), bh = Math.round(ch * k);
       canvas.width = bw;
       canvas.height = bh;
       canvas.style.width = `${wrap.clientWidth}px`;
       canvas.style.height = `${wrap.clientHeight}px`;
-      sizeRef.current = { s, vw: Math.ceil(bw / s), vh: Math.ceil(bh / s) };
+      sizeRef.current = { s, vw: Math.ceil(bw / s), vh: Math.ceil(bh / s), hero: wrap.clientWidth < 520 ? HERO_PHONE : HERO };
       drawRef.current();
     };
     fit();
@@ -239,7 +243,8 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
         const img = image(m.hero.id);
         if (img) src = { img, sx: 0, sy: 0, sw: img.naturalWidth, sh: img.naturalHeight };
       }
-      const h = HERO, w = src ? Math.max(8, Math.round((HERO * src.sw) / src.sh)) : HERO;
+      const H = sizeRef.current.hero;
+      const h = H, w = src ? Math.max(8, Math.round((H * src.sw) / src.sh)) : H;
       const left = Math.round(x - w / 2), top = Math.round(groundY - h);
       px(ctx, s, x - 9, groundY - 1, 18, 2, "rgba(0,0,0,0.35)");
       ctx.globalAlpha = o.alpha ?? 1;
@@ -511,20 +516,20 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
           // Leech: the attacker heals, in green
           if (a.leech) {
             const me = heroSpot(a.actor);
-            text(`+${a.leech}`, x0 + me.x, ground + me.dy - HERO - 8 - rise, "#00E436", 8, true);
+            text(`+${a.leech}`, x0 + me.x, ground + me.dy - sizeRef.current.hero - 8 - rise, "#00E436", 8, true);
           }
         } else if (a.kind === "hit") {
           const spot = heroSpot(a.target);
-          show(x0 + spot.x, ground + spot.dy - HERO - 8, a.amount, a.crit, a.matchup, a.element, true, 0);
-          if (a.taunt) text("Taunt!", x0 + spot.x, ground + spot.dy - HERO - 22 - rise, "#29ADFF", 6, true);
+          show(x0 + spot.x, ground + spot.dy - sizeRef.current.hero - 8, a.amount, a.crit, a.matchup, a.element, true, 0);
+          if (a.taunt) text("Taunt!", x0 + spot.x, ground + spot.dy - sizeRef.current.hero - 22 - rise, "#29ADFF", 6, true);
           if (a.ward) text("Ward", x0 + spot.x, ground + spot.dy + 9, ELEMENT_DEFS[a.element].color, 6, true);
         } else if (a.kind === "revive") {
           const spot = heroSpot(a.target);
-          text("REVIVED!", x0 + spot.x, ground + spot.dy - HERO - 10 - rise, "#FFE36B", 10, true);
-          text(`+${a.amount} HP`, x0 + spot.x, ground + spot.dy - HERO + 1 - rise, "#00E436", 7, true);
+          text("REVIVED!", x0 + spot.x, ground + spot.dy - sizeRef.current.hero - 10 - rise, "#FFE36B", 10, true);
+          text(`+${a.amount} HP`, x0 + spot.x, ground + spot.dy - sizeRef.current.hero + 1 - rise, "#00E436", 7, true);
         } else {
           const spot = heroSpot(a.target);
-          text(`+${a.amount}`, x0 + spot.x, ground + spot.dy - HERO - 8 - rise, "#00E436", 8, true);
+          text(`+${a.amount}`, x0 + spot.x, ground + spot.dy - sizeRef.current.hero - 8 - rise, "#00E436", 8, true);
           burst(idx * 7, x0 + spot.x, ground + spot.dy - 10, k, "#00E436", 8, 0.8, 400);
         }
       }
@@ -551,8 +556,8 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
         text("Phoenix feather", cx, BY, "#FFE36B", 9, true);
         if (e >= 300) {
           const r = Math.round(Math.min(1, (e - 300) / 500) * 12);
-          text("REVIVED!", x0 + spot.x, ground + spot.dy - HERO - 10 - r, "#FFE36B", 10, true);
-          text(`+${st.event.amount} HP`, x0 + spot.x, ground + spot.dy - HERO + 1 - r, "#00E436", 7, true);
+          text("REVIVED!", x0 + spot.x, ground + spot.dy - sizeRef.current.hero - 10 - r, "#FFE36B", 10, true);
+          text(`+${st.event.amount} HP`, x0 + spot.x, ground + spot.dy - sizeRef.current.hero + 1 - r, "#00E436", 7, true);
         }
       } else if (st?.kind === "clear") {
         text(`Floor ${st.floor} cleared`, cx, BY, "#00E436", 8, true);
@@ -560,7 +565,7 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
         st.restHeal?.forEach((h, i) => {
           if (h <= 0) return;
           const spot = heroSpot(i);
-          text(`+${h}`, x0 + spot.x, ground + spot.dy - HERO - 8 - Math.round(t * 12), "#00E436", 8, true);
+          text(`+${h}`, x0 + spot.x, ground + spot.dy - sizeRef.current.hero - 8 - Math.round(t * 12), "#00E436", 8, true);
         });
       } else if (st?.kind === "chest" && st.chest) {
         const chestX = x0 + 106, drop = Math.round((1 - ease(t / 0.35)) * 40);

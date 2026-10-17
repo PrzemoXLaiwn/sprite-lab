@@ -1,6 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { MobileMenu } from "./MobileMenu";
+import { isNewFeature } from "@/config/new-features";
+import { NewBadge } from "@/components/dashboard/NewBadge";
 
 const PRIMARY =
   "px-corners inline-flex h-10 items-center bg-[#FFA300] px-4 text-[13px] font-semibold text-[#131A31] transition hover:bg-[#FFB733]";
@@ -38,8 +40,13 @@ export function SiteNav({ registerUrl = "/register", anchorsOnHome = false, sign
         <div className="flex items-center gap-1 sm:gap-2">
           {signedIn ? (
             <>
-              <Link href="/assets" className={`${QUIET} hidden sm:inline-flex`}>My assets</Link>
-              <Link href="/generate" className={PRIMARY}>Open app</Link>
+              {/* Signed-in only (search engines never see it) */}
+              <Link href="/play" className={`${QUIET} gap-1.5 whitespace-nowrap`}>
+                Dungeon
+                {isNewFeature("/play") && <NewBadge />}
+              </Link>
+              <Link href="/assets" className={`${QUIET.replace("inline-flex", "hidden sm:inline-flex")} whitespace-nowrap`}>My assets</Link>
+              <Link href="/generate" className={`${PRIMARY} whitespace-nowrap`}>Open app</Link>
             </>
           ) : (
             <>
