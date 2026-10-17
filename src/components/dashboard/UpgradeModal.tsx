@@ -33,8 +33,11 @@ const PLANS = [
     slug: "starter",
     price: 5,
     credits: 250,
-    // Skip the credits line (shown separately) — first 3 remaining features
-    features: PLAN_FEATURES.STARTER.slice(1, 4),
+    // Credits are the Starter differentiator. Do not use slice(1, 4): after
+    // "Background removal" left this list, that slice would show "Commercial
+    // license", which is still waiting on legal review. AI upscale is Pro and
+    // up, and AI editing is already on Free, so neither belongs here.
+    features: PLAN_FEATURES.STARTER.filter((feature) => feature !== "Commercial license").slice(0, 3),
     popular: false,
   },
   {
