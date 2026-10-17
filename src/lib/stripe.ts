@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import { PLAN_FEATURES } from "@/config/plan-features";
+import { SIGNUP_CREDITS } from "@/config/signup";
 
 // =============================================================================
 // Stripe client — lazy-initialised
@@ -60,10 +61,12 @@ export const stripe = new Proxy({} as Stripe, {
 // Cheapest credit we sell nets ~£0.019 (~$0.024) after Stripe (Starter /
 // Studio). Credit prices of every action are set so each keeps ≥35% margin
 // at that rate — see ANIMATION_FRAME_OPTIONS in src/config/animations.ts.
+// FREE.credits is SIGNUP_CREDITS (src/config/signup.ts). Paid plan counts,
+// prices and price IDs below are unchanged.
 export const PLANS = {
   FREE: {
     name: "Free",
-    credits: 10,
+    credits: SIGNUP_CREDITS,
     price: 0,
     priceId: null,
     features: [...PLAN_FEATURES.FREE],

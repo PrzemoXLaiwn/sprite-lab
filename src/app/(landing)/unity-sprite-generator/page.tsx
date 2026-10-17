@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SeoLanding } from "@/components/landing/SeoLanding";
+import { SIGNUP_CTA } from "@/config/signup";
 import { ENGINE_GUIDES } from "@/data/geo-content";
 import { SHOWCASE } from "@/data/showcase";
 
@@ -116,7 +117,7 @@ export default function UnitySpritesPage() {
           </>
         ),
         body: "Generate sprites and animations for your Unity project.",
-        button: "Get 10 free credits",
+        button: SIGNUP_CTA,
       }}
     />
   );

@@ -4,6 +4,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { relaunchActive, relaunchBonusFor } from "@/config/relaunch";
+import { SIGNUP_CREDITS } from "@/config/signup";
 
 export type RelaunchClaim =
   | { granted: true; amount: number; kind: "returning" | "new"; credits: number }
@@ -12,8 +13,15 @@ export type RelaunchClaim =
 export async function claimRelaunchBonus(userId: string): Promise<RelaunchClaim> {
   if (!relaunchActive()) return { granted: false, reason: "inactive" };
 
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { createdAt: true } });
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { createdAt: true, emailPreferences: true },
+  });
   if (!user) return { granted: false, reason: "no-user" };
+  const prefs = user.emailPreferences as { signupCredits?: number } | null;
+  // Flat signup grant already written. Never add the campaign new-user bonus
+  // on top, even if the relaunchBonusAt stamp was missed.
+  if (prefs?.signupCredits === SIGNUP_CREDITS) return { granted: false, reason: "claimed" };
   const bonus = relaunchBonusFor(user.createdAt);
 
   // One conditional UPDATE: adds the credits and stamps the marker only if the

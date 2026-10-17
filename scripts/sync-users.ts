@@ -3,6 +3,10 @@
 
 import { PrismaClient } from "@prisma/client";
 import * as dotenv from "dotenv";
+import { SIGNUP_CREDITS } from "../src/config/signup";
+
+// Matches RELAUNCH.STARTS_AT. Kept local so this script does not import
+// the app alias (@/) that relaunch.ts uses.
 
 dotenv.config({ path: ".env.local" });
 
@@ -59,17 +63,30 @@ async function syncUsers() {
   for (const authUser of usersToAdd) {
     try {
       const metadata = authUser.raw_user_meta_data || {};
+      const createdAt = new Date(authUser.created_at);
+      // Pre-campaign accounts keep the historical 10 so the one-time +15
+      // welcome-back bonus can still be claimed. Later accounts get the
+      // flat signup grant and are stamped so it cannot stack.
+      const returning = createdAt < new Date("2026-10-07T00:00:00Z");
       await prisma.user.create({
         data: {
           id: authUser.id,
           email: authUser.email!,
           name: metadata.full_name || metadata.name || null,
           avatarUrl: metadata.avatar_url || null,
-          credits: 10, // Default free credits
+          credits: returning ? 10 : SIGNUP_CREDITS,
           plan: "FREE",
           role: "USER",
           isActive: true,
-          createdAt: new Date(authUser.created_at),
+          createdAt,
+          ...(returning
+            ? {}
+            : {
+                emailPreferences: {
+                  relaunchBonusAt: new Date().toISOString(),
+                  signupCredits: SIGNUP_CREDITS,
+                },
+              }),
         },
       });
       added++;

@@ -6,6 +6,7 @@ import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
 import Script from "next/script";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
+import { SIGNUP_OFFER } from "@/config/signup";
 
 // Optimized font loading with next/font (no render-blocking!)
 // Body + UI: built for legibility (distinct I/l/1, 0/O) — small labels and
@@ -153,7 +154,7 @@ const jsonLd = {
           price: "0",
           priceCurrency: "GBP",
           name: "Free",
-          description: "10 free credits on signup, plus 3 tries without an account",
+          description: `${SIGNUP_OFFER}`,
         },
         {
           "@type": "Offer",

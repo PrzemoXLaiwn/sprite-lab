@@ -13,13 +13,14 @@ import {
   Text,
 } from "@react-email/components";
 import * as React from "react";
+import { SIGNUP_CREDITS } from "@/config/signup";
 
 interface WelcomeEmailProps {
   userName?: string;
   credits: number;
 }
 
-export function WelcomeEmail({ userName, credits = 10 }: WelcomeEmailProps) {
+export function WelcomeEmail({ userName, credits = SIGNUP_CREDITS }: WelcomeEmailProps) {
   const previewText = `Welcome to SpriteLab! Your ${credits} free credits are ready`;
 
   return (
