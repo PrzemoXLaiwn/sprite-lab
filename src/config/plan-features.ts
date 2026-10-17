@@ -14,6 +14,7 @@ import { SIGNUP_CREDITS } from "@/config/signup";
 export const PLAN_FEATURES = {
   FREE: [
     `${SIGNUP_CREDITS} credits to start`,
+    "Earn extra credits with quests",
     "All 12 art styles, Standard & HD",
     "Transparent PNG on every sprite",
     "Animations, 4 & 8 directions, AI editing",

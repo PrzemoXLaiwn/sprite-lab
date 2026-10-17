@@ -19,6 +19,11 @@ const animationPrices = ANIMATION_FRAME_OPTIONS.map((o) => `${o.frames} key pose
 const smoothPrices = ANIMATION_FRAME_OPTIONS.map((o) => String(animationCredits(o.frames, true))).join(", ");
 const directionPrices = ROTATIONS.map((r) => `${r.label} ${r.credits}`).join(", ");
 
+export const QUESTS_FAQ: Faq = {
+  q: "Can I earn more free credits?",
+  a: "You can earn more free credits by completing onboarding and weekly quests in the app.",
+};
+
 export const RETURNING_BONUS_FAQ: Faq = {
   q: "I got an email about 15 bonus credits. Is that different?",
   a: `That email was the welcome-back offer for accounts created before 7 October 2026. Those accounts now get ${RELAUNCH.RETURNING_BONUS} credits the first time they open the app before 31 December 2026. If you already received ${RELAUNCH.PREVIOUS_RETURNING_BONUS}, the next visit adds ${RELAUNCH.RETURNING_TOP_UP}, so the welcome-back total is ${RELAUNCH.RETURNING_BONUS}. New accounts get ${SIGNUP_CREDITS} free credits on signup.`,
@@ -76,6 +81,7 @@ export const HOME_FAQ: Faq[] = [
     a: COST_ANSWER,
   },
   RETURNING_BONUS_FAQ,
+  QUESTS_FAQ,
   {
     q: "Do credits expire?",
     a: "Free credits and credit packs never expire. Subscription credits refresh every month.",

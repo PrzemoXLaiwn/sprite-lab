@@ -11,7 +11,7 @@ import Link from "next/link";
 import { Check, ChevronDown, Coins, Shield, X } from "lucide-react";
 import { CREDIT_PACKS, LIFETIME_DEALS, PLANS, isLaunchPromoActive } from "@/lib/stripe";
 import { SIGNUP_CREDITS } from "@/config/signup";
-import { RETURNING_BONUS_FAQ } from "@/data/geo-content";
+import { QUESTS_FAQ, RETURNING_BONUS_FAQ } from "@/data/geo-content";
 import { ANIMATION_FRAME_OPTIONS, RIG_CREDITS, ROTATIONS, animationCredits } from "@/config/animations";
 import { featureCredits } from "@/config/economics";
 import { CREDIT_PACK_CARDS, LIFETIME_CARDS, PLAN_CARDS, formatPence, type CreditPackCard, type LifetimeCard, type PlanCard } from "./pricing-data";
@@ -90,6 +90,7 @@ const FAQS = [
     a: "Subscription credits reset every month. Want credits that never expire? Buy a one-time credit pack instead.",
   },
   RETURNING_BONUS_FAQ,
+  QUESTS_FAQ,
   {
     q: "Can I cancel anytime?",
     a: "Yes. Cancel any time from your account — no contract. You keep your plan until the end of the billing period.",
