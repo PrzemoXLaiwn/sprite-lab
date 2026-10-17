@@ -132,7 +132,7 @@ addons/
 
 - Documentation: [sprite-lab.com/docs](https://sprite-lab.com/docs)
 - Discord: [discord.gg/spritelab](https://discord.gg/spritelab)
-- Email: spritelab.contact@gmail.com
+- Email: support@sprite-lab.com
 
 ## License
 

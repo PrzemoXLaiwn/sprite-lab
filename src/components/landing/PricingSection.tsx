@@ -309,7 +309,7 @@ export function PricingSection() {
             Check our FAQ
           </a>{" "}
           or{" "}
-          <a href="mailto:spritelab.contact@gmail.com" className="text-[#FFC857] underline-offset-4 hover:underline">
+          <a href="mailto:support@sprite-lab.com" className="text-[#FFC857] underline-offset-4 hover:underline">
             contact us
           </a>
           .
