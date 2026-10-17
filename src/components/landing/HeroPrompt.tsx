@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Dices, Download, Loader2, Sparkles, ArrowRight } from "lucide-react";
 import { track, FUNNEL } from "@/lib/analytics";
 import { SIGNUP_CREDITS, SIGNUP_CTA } from "@/config/signup";
+import { showcaseIconSrc } from "@/lib/image/sprite-thumb";
 import { readGuestTokens, rememberGuestToken } from "@/lib/guest-claim/local-tokens";
 
 const IDEAS = [
@@ -188,8 +189,9 @@ export function HeroPrompt({ registerUrl, signedIn = false }: { registerUrl: str
             <button key={q.label} type="button"
               onClick={() => { setPrompt(q.prompt); void generate(q.prompt); }}
               className="flex h-10 items-center gap-2 rounded-full border border-white/[0.1] bg-white/[0.03] pl-2 pr-3.5 text-[13px] text-[#C8CCE8] transition-colors hover:border-[#FFA300]/50 hover:text-white sm:h-9">
+              {/* 40px derivative, lazy: these chips are not the LCP image and must not preload the full PNGs. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={q.icon} alt="" width={20} height={20} className="pixel-perfect h-5 w-5 object-contain" />
+              <img src={showcaseIconSrc(q.icon)} alt="" width={20} height={20} loading="lazy" decoding="async" className="pixel-perfect h-5 w-5 object-contain" />
               {q.label}
             </button>
           ))}
