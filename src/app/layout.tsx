@@ -7,6 +7,7 @@ import Script from "next/script";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 import { SIGNUP_OFFER } from "@/config/signup";
+import { PLAN_MONTHLY_CREDITS, PLAN_MONTHLY_PRICE_GBP } from "@/config/plan-features";
 
 // Optimized font loading with next/font (no render-blocking!)
 // Body + UI: built for legibility (distinct I/l/1, 0/O) — small labels and
@@ -158,26 +159,26 @@ const jsonLd = {
         },
         {
           "@type": "Offer",
-          price: "5.00",
+          price: PLAN_MONTHLY_PRICE_GBP.STARTER.toFixed(2),
           priceCurrency: "GBP",
           name: "Starter",
-          description: "250 credits per month",
+          description: `${PLAN_MONTHLY_CREDITS.STARTER} credits per month`,
           priceValidUntil: "2027-12-31",
         },
         {
           "@type": "Offer",
-          price: "12.00",
+          price: PLAN_MONTHLY_PRICE_GBP.PRO.toFixed(2),
           priceCurrency: "GBP",
           name: "Pro",
-          description: "500 credits per month",
+          description: `${PLAN_MONTHLY_CREDITS.PRO} credits per month`,
           priceValidUntil: "2027-12-31",
         },
         {
           "@type": "Offer",
-          price: "25.00",
+          price: PLAN_MONTHLY_PRICE_GBP.UNLIMITED.toFixed(2),
           priceCurrency: "GBP",
           name: "Studio",
-          description: "1,200 credits per month",
+          description: `${PLAN_MONTHLY_CREDITS.UNLIMITED.toLocaleString("en-GB")} credits per month`,
           priceValidUntil: "2027-12-31",
         },
       ],

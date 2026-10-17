@@ -63,7 +63,7 @@ Costs are what the server charges. Defaults are the UI's initial state.
 | 8 directions | 10 | **2** | No. This is a real product on this tree (a static turnaround, not an 8-direction walk) | `rotate8` |
 | 4-direction walk | 12 | **1** (8 left) | No | `walk4dir` |
 
-The comment in `src/config/animations.ts` prices a 1024 grid at about $0.07 and a 2048 grid at about $0.10, plus about $0.02 for the pose planner, and says each option keeps at least a 35% margin at the cheapest credit sold (~$0.024).
+The comment in `src/config/animations.ts` prices a 1024 grid at about $0.07 and a 2048 grid at about $0.10, plus about $0.02 for the pose planner. The most expensive credit costs about $0.015, and Studio at 1,500 credits is about $0.022 per credit at the shelf price. Feature credit prices were not raised with the October 2026 allowance change. The old "at least 35% at the cheapest credit (~$0.024)" note does not hold on the provider-cost model; several Studio rows are under 20%, and the worst modelled case is negative. Those rows are listed in `src/config/economics-known.ts`.
 
 ## API cost of spending the 20
 

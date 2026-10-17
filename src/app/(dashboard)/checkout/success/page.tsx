@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { CheckoutError, CreditChip, PageSpinner, SuccessShell } from "../_components/checkout-ui";
 import { STARTER_FIRST_MONTH_OFFER, starterFirstMonthIntroGbp } from "@/config/starter-first-month";
+import { PLAN_MONTHLY_CREDITS, PLAN_MONTHLY_PRICE_GBP } from "@/config/plan-features";
 
 // Declare gtag for TypeScript
 declare global {
@@ -13,10 +14,9 @@ declare global {
   }
 }
 
-// Single source of truth for plan-name + credits + price metadata. Mirrors
-// `PLANS` in `src/lib/stripe.ts` exactly — kept in sync because this page is
-// the receipt the user reads after paying. Drift here means showing the
-// wrong credit count or price after a successful charge ⇒ refunds.
+// Plan name, credits and price for the receipt and the Google Ads conversion
+// value. Credits and prices come from plan-features (the same numbers PLANS
+// charges). The Starter intro price is applied below when the offer is on.
 const planNames: Record<string, string> = {
   STARTER: "Starter",
   PRO: "Pro",
@@ -24,17 +24,15 @@ const planNames: Record<string, string> = {
 };
 
 const planCredits: Record<string, number> = {
-  STARTER: 250,
-  PRO: 500,
-  UNLIMITED: 1200,
+  STARTER: PLAN_MONTHLY_CREDITS.STARTER,
+  PRO: PLAN_MONTHLY_CREDITS.PRO,
+  UNLIMITED: PLAN_MONTHLY_CREDITS.UNLIMITED,
 };
 
-// Plan prices in GBP — used for Google Ads conversion value, must match
-// the actual Stripe charge.
 const planPrices: Record<string, number> = {
-  STARTER: 5.0,
-  PRO: 12.0,
-  UNLIMITED: 25.0,
+  STARTER: PLAN_MONTHLY_PRICE_GBP.STARTER,
+  PRO: PLAN_MONTHLY_PRICE_GBP.PRO,
+  UNLIMITED: PLAN_MONTHLY_PRICE_GBP.UNLIMITED,
 };
 
 function SuccessContent() {

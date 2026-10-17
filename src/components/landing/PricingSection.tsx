@@ -14,6 +14,7 @@ import {
 } from "@/app/(public-app)/pricing/pricing-data";
 import { fetchLaunchPromoStatus } from "@/app/(public-app)/pricing/page.actions";
 import { SectionHeader } from "./SectionHeader";
+import { lowestMonthlyPricePerCredit } from "@/config/plan-features";
 
 // Display data comes from pricing-data.ts, a client-safe mirror of
 // src/lib/stripe.ts (the source of truth for what is actually charged).
@@ -75,14 +76,8 @@ export function PricingSection() {
       .catch(console.error);
   }, []);
 
-  // Lowest price per credit among paid monthly plans. Starter (£5 / 250)
-  // is cheaper per credit than Pro or Studio — do not highlight Studio here.
-  const lowestPerCredit = PLAN_CARDS.reduce<{ rate: number; name: string } | null>((best, plan) => {
-    if (plan.price <= 0 || plan.credits <= 0) return best;
-    const rate = plan.price / plan.credits;
-    if (!best || rate < best.rate) return { rate, name: plan.name };
-    return best;
-  }, null);
+  // Lowest shelf price per credit among paid monthly plans (Studio, £25 / 1,500).
+  const lowestPerCredit = lowestMonthlyPricePerCredit();
 
   return (
     <section id="pricing" className="relative scroll-mt-16 py-16 sm:py-20">
@@ -293,12 +288,10 @@ export function PricingSection() {
               <p className="font-sans tracking-tight tabular-nums text-[22px] font-semibold text-[#C8CCE8]">2–8 hours</p>
               <p className="mt-1 text-[12px] text-[#9AA1CC]">if you create it yourself</p>
             </div>
-            {lowestPerCredit && (
-              <div className="rounded-xl border border-[#FFA300]/40 bg-[#FFA300]/[0.06] p-4">
-                <p className="font-sans tracking-tight tabular-nums text-[22px] font-semibold text-white">£{lowestPerCredit.rate.toFixed(3)}</p>
-                <p className="mt-1 text-[12px] text-[#9AA1CC]">per credit with SpriteLab {lowestPerCredit.name}</p>
-              </div>
-            )}
+            <div className="rounded-xl border border-[#FFA300]/40 bg-[#FFA300]/[0.06] p-4">
+              <p className="font-sans tracking-tight tabular-nums text-[22px] font-semibold text-white">from £{lowestPerCredit.gbp.toFixed(3)}</p>
+              <p className="mt-1 text-[12px] text-[#9AA1CC]">per credit ({lowestPerCredit.name})</p>
+            </div>
           </div>
         </div>
 
