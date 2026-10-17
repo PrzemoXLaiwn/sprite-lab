@@ -2,14 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Wand2, Images, FolderOpen, Settings, Shield, ShieldCheck, Trophy } from "lucide-react";
+import { Home, Wand2, Images, FolderOpen, Settings, Shield, ShieldCheck, Trophy, Gamepad2 } from "lucide-react";
 import { useQuestClaimable } from "@/hooks/useQuestClaimable";
+import { isNewFeature } from "@/config/new-features";
+import { NewBadge } from "@/components/dashboard/NewBadge";
 
 const ITEMS = [
   { href: "/", label: "Home", icon: Home },
   { href: "/generate", label: "Create", icon: Wand2 },
   { href: "/assets", label: "Assets", icon: Images },
   { href: "/quests", label: "Quests", icon: Trophy },
+  { href: "/play", label: "Dungeon", icon: Gamepad2 },
   { href: "/projects", label: "Projects", icon: FolderOpen },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
@@ -24,7 +27,7 @@ export function MobileBottomNav({ role = "USER" }: { role?: string }) {
   const isAdmin = role === "ADMIN" || role === "OWNER";
   const staff = isAdmin ? { href: "/admin", label: "Admin", icon: Shield } : role === "MODERATOR" ? { href: "/moderator", label: "Mod", icon: ShieldCheck } : null;
   const claimable = useQuestClaimable();
-  const items = staff ? [...ITEMS.slice(1, 5), staff, ITEMS[5]] : ITEMS;
+  const items = staff ? [...ITEMS.slice(1, 6), staff, ITEMS[6]] : ITEMS;
   const isActive = (href: string) =>
     href === "/"
       ? pathname === "/"
@@ -49,6 +52,7 @@ export function MobileBottomNav({ role = "USER" }: { role?: string }) {
                   {item.href === "/quests" && claimable > 0 && (
                     <span className="absolute -right-1.5 -top-1 h-2.5 w-2.5 rounded-full bg-[#00E436] ring-2 ring-[#19223F]" aria-label={`${claimable} rewards to claim`} />
                   )}
+                  {isNewFeature(item.href) && <NewBadge className="absolute -right-5 -top-2" />}
                 </span>
                 {item.label}
               </Link>

@@ -20,8 +20,12 @@ import {
   LogOut,
   Sparkles,
   CircleHelp,
+  Trophy,
+  Gamepad2,
 } from "lucide-react";
 import { fetchUserData } from "@/app/(dashboard)/layout.actions";
+import { isNewFeature } from "@/config/new-features";
+import { NewBadge } from "@/components/dashboard/NewBadge";
 
 // Mirrors the desktop AppRail (src/components/dashboard/AppRail.tsx).
 const NAV = [
@@ -29,6 +33,8 @@ const NAV = [
   { href: "/generate", label: "Create", icon: Wand2 },
   { href: "/assets", label: "Assets", icon: Images },
   { href: "/projects", label: "Projects", icon: FolderOpen },
+  { href: "/quests", label: "Quests", icon: Trophy },
+  { href: "/play", label: "Dungeon", icon: Gamepad2 },
   { href: "/community", label: "Explore", icon: Users },
   { href: "/usage", label: "Usage", icon: BarChart3 },
   { href: "/how-it-works", label: "Guide", icon: CircleHelp },
@@ -214,6 +220,7 @@ export function MobileMenu({ userEmail, userPlan = "FREE", userRole = "USER" }: 
                   strokeWidth={isActive ? 2.2 : 1.8}
                 />
                 {item.label}
+                {isNewFeature(item.href) && <NewBadge className="ml-auto" />}
               </Link>
             );
           })}

@@ -22,6 +22,8 @@ import {
   Gamepad2,
 } from "lucide-react";
 import { useQuestClaimable } from "@/hooks/useQuestClaimable";
+import { isNewFeature } from "@/config/new-features";
+import { NewBadge } from "@/components/dashboard/NewBadge";
 import { fetchUserData } from "@/app/(dashboard)/layout.actions";
 import { checkAdminAccess } from "@/app/(dashboard)/admin/page.actions";
 
@@ -117,6 +119,7 @@ export function AppRail({ email }: { email: string }) {
                 {item.href === "/quests" && claimable > 0 && (
                   <span className="absolute -right-1.5 -top-1 h-2.5 w-2.5 rounded-full bg-[#00E436] ring-2 ring-[#131A31]" aria-label={`${claimable} rewards to claim`} />
                 )}
+                {isNewFeature(item.href) && <NewBadge className="absolute -right-6 -top-2" />}
               </span>
               <span className="text-[10px] font-medium leading-none">{item.label}</span>
             </Link>
