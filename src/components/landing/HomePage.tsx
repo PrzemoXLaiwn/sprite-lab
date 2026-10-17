@@ -47,6 +47,7 @@ export async function HomePage({ signedIn }: { signedIn: boolean }) {
           <div className="min-w-0">
             <h1 className="font-display text-[40px] font-semibold leading-[1.02] tracking-[-0.02em] text-[#FFF1E8] min-[400px]:text-[44px] sm:text-[60px] lg:text-[68px]">
               Type a character.
+              <span className="sr-only"> </span>
               <br />
               Get a sprite sheet.
             </h1>
@@ -191,15 +192,14 @@ function HeroWorkbench() {
         </div>
         <div className="checker relative flex aspect-[4/3] items-center justify-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/showcase/anim-knight-idle.webp" alt="Animated pixel-art dark knight, idle loop" width={256} height={256}
+          <img src="/showcase/anim-knight-idle.webp" alt="" aria-hidden="true" width={256} height={256}
             fetchPriority="high" className="pixel-perfect h-[78%] w-auto" />
         </div>
         <div className="grid grid-cols-4 border-t border-white/[0.07]">
           {DIRECTIONS.map((d, i) => (
             <div key={d} className={`flex flex-col items-center gap-1.5 px-1 pb-2.5 pt-2 ${i ? "border-l border-white/[0.07]" : ""}`}>
               <span
-                role="img"
-                aria-label={`Knight facing ${d.toLowerCase()}`}
+                aria-hidden="true"
                 className="checker checker-sm pixel-perfect block h-14 w-14 rounded-[4px] sm:h-16 sm:w-16"
                 style={{ backgroundImage: "url(/showcase/rotate-knight.png), " + CHECKER_LAYERS, backgroundSize: `400% 100%, 10px 10px, 10px 10px`, backgroundPosition: `${(i / 3) * 100}% 0, 0 0, 5px 5px` }}
               />

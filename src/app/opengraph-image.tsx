@@ -1,24 +1,38 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { ImageResponse } from "next/og";
 import { SIGNUP_FREE_CREDITS } from "@/config/signup";
 
-// =============================================================================
-// SpriteLab — Default Open Graph image
-// =============================================================================
-// Generated at request time by Next's ImageResponse helper. Replaces the
-// missing /public/og-image.png that the layout's metadata used to point at —
-// every social share (Twitter, Discord, Slack, LinkedIn) was unfurling a
-// broken image until this landed.
-//
-// Per-route OG images can be added by dropping an `opengraph-image.tsx`
-// (or .png) into that route's folder; this file is the default fallback.
-// =============================================================================
-
-export const runtime = "edge";
+// Node renderer on purpose. The edge runtime plus `backgroundClip` returned a
+// 0-byte PNG. Same ImageResponse path as `renderOgImage`, without that CSS.
+export const runtime = "nodejs";
 export const alt = "SpriteLab — Generate game-ready sprites in seconds";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
+/** Credits line on the homepage share image. The grant comes from signup config. */
+const HOME_OG_CREDITS_SUBTITLE = `Pixel art · Dark fantasy · Anime · Transparent PNG · ${SIGNUP_FREE_CREDITS}`;
+
+const BG = "#131A31";
+const ACCENT = "#FFA300";
+const INK = "#FFF1E8";
+const MUTED = "#9AA1CC";
+
+const FONT_DIR = path.join(process.cwd(), "src/lib/og/fonts");
+
+function fontFile(name: string) {
+  return readFile(path.join(FONT_DIR, name));
+}
+
 export default async function Image() {
+  const [tektur, atkinson, atkinsonMedium, logo] = await Promise.all([
+    fontFile("Tektur-600.ttf"),
+    fontFile("Atkinson-400.ttf"),
+    fontFile("Atkinson-500.ttf"),
+    readFile(path.join(process.cwd(), "public/logo.png")),
+  ]);
+  const logoSrc = `data:image/png;base64,${logo.toString("base64")}`;
+
   return new ImageResponse(
     (
       <div
@@ -27,119 +41,125 @@ export default async function Image() {
           height: "100%",
           display: "flex",
           flexDirection: "column",
-          alignItems: "flex-start",
-          justifyContent: "center",
-          padding: "80px",
-          background:
-            "linear-gradient(135deg, #0F1529 0%, #121826 50%, #0F1529 100%)",
-          fontFamily: "system-ui, sans-serif",
+          justifyContent: "space-between",
+          background: BG,
+          padding: "72px 84px 64px",
           position: "relative",
         }}
       >
-        {/* Glow accents */}
         <div
           style={{
             position: "absolute",
-            top: "-200px",
-            left: "-200px",
-            width: "600px",
-            height: "600px",
-            borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(249,115,22,0.18) 0%, transparent 70%)",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            backgroundImage:
+              "linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px)",
+            backgroundSize: "32px 32px",
           }}
         />
         <div
           style={{
             position: "absolute",
-            bottom: "-200px",
-            right: "-200px",
-            width: "500px",
-            height: "500px",
-            borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 70%)",
+            top: -220,
+            left: -80,
+            width: 720,
+            height: 520,
+            borderRadius: 360,
+            background: "radial-gradient(circle, rgba(255,163,0,0.16) 0%, transparent 68%)",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: 8,
+            height: "100%",
+            background: ACCENT,
           }}
         />
 
-        {/* Brand row */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <img alt="" src={logoSrc} width={64} height={64} style={{ width: 64, height: 64 }} />
+          <div
+            style={{
+              display: "flex",
+              fontFamily: "Tektur",
+              fontSize: 40,
+              fontWeight: 600,
+              color: "#ffffff",
+              letterSpacing: -0.5,
+            }}
+          >
+            Sprite<span style={{ color: ACCENT }}>Lab</span>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <div
+            style={{
+              display: "flex",
+              fontFamily: "Tektur",
+              fontSize: 76,
+              fontWeight: 600,
+              lineHeight: 1,
+              letterSpacing: -1.5,
+              color: INK,
+            }}
+          >
+            Type a character.
+          </div>
+          <div
+            style={{
+              display: "flex",
+              fontFamily: "Tektur",
+              fontSize: 76,
+              fontWeight: 600,
+              lineHeight: 1,
+              letterSpacing: -1.5,
+              color: INK,
+              marginTop: 10,
+            }}
+          >
+            Get a sprite sheet.
+          </div>
+          <div style={{ width: 120, height: 6, background: ACCENT, marginTop: 28 }} />
+          <div
+            style={{
+              display: "flex",
+              fontFamily: "Atkinson Hyperlegible Next",
+              fontSize: 30,
+              fontWeight: 500,
+              color: ACCENT,
+              marginTop: 22,
+            }}
+          >
+            AI sprite generator for Unity, Godot & GameMaker
+          </div>
+        </div>
+
         <div
           style={{
             display: "flex",
-            alignItems: "center",
-            gap: "16px",
-            marginBottom: "40px",
-            zIndex: 1,
+            fontFamily: "Atkinson Hyperlegible Next",
+            fontSize: 26,
+            fontWeight: 400,
+            color: MUTED,
           }}
         >
-          <div
-            style={{
-              width: "56px",
-              height: "56px",
-              borderRadius: "14px",
-              background: "linear-gradient(135deg, #F97316 0%, #FB923C 100%)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "32px",
-              fontWeight: 900,
-              color: "#0F1529",
-            }}
-          >
-            S
-          </div>
-          <div
-            style={{
-              fontSize: "32px",
-              fontWeight: 700,
-              color: "#ffffff",
-              letterSpacing: "-0.02em",
-            }}
-          >
-            Sprite<span style={{ color: "#F97316" }}>Lab</span>
-          </div>
-        </div>
-
-        {/* Headline */}
-        <div
-          style={{
-            fontSize: "84px",
-            fontWeight: 900,
-            color: "#ffffff",
-            lineHeight: 1.05,
-            letterSpacing: "-0.03em",
-            marginBottom: "24px",
-            zIndex: 1,
-          }}
-        >
-          Generate Game Assets
-        </div>
-        <div
-          style={{
-            fontSize: "84px",
-            fontWeight: 900,
-            background: "linear-gradient(90deg, #F97316 0%, #FB923C 100%)",
-            backgroundClip: "text",
-            color: "transparent",
-            lineHeight: 1.05,
-            letterSpacing: "-0.03em",
-            marginBottom: "40px",
-            zIndex: 1,
-          }}
-        >
-          Ready in Seconds
-        </div>
-
-        {/* Subline */}
-        <div
-          style={{
-            fontSize: "28px",
-            color: "#94A3B8",
-            zIndex: 1,
-          }}
-        >
-          Pixel art · Dark fantasy · Anime · Transparent PNG · {SIGNUP_FREE_CREDITS}
+          {HOME_OG_CREDITS_SUBTITLE}
         </div>
       </div>
     ),
-    { ...size }
+    {
+      ...size,
+      fonts: [
+        { name: "Tektur", data: tektur, weight: 600, style: "normal" },
+        { name: "Atkinson Hyperlegible Next", data: atkinson, weight: 400, style: "normal" },
+        { name: "Atkinson Hyperlegible Next", data: atkinsonMedium, weight: 500, style: "normal" },
+      ],
+    },
   );
 }

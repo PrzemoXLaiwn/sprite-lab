@@ -34,6 +34,7 @@ export default function TileGeneratorPage() {
       h1={
         <>
           Seamless game tiles
+          <span className="sr-only">: </span>
           <br />
           from a sentence
         </>

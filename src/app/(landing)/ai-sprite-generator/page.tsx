@@ -37,6 +37,7 @@ export default function AiSpriteGeneratorPage() {
       h1={
         <>
           AI Sprite Generator —
+          <span className="sr-only"> </span>
           <br />
           the online sprite maker for 2D games
         </>

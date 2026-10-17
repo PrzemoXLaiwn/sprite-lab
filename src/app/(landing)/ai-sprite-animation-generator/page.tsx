@@ -34,6 +34,7 @@ export default function SpriteAnimationPage() {
       h1={
         <>
           Animate any sprite
+          <span className="sr-only">: </span>
           <br />
           with AI
         </>

@@ -36,6 +36,7 @@ export default function UnitySpritesPage() {
       h1={
         <>
           AI sprites for Unity
+          <span className="sr-only">: </span>
           <br />
           prompt → PNG → scene
         </>
