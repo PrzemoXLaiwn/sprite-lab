@@ -5,15 +5,19 @@ import { LANDING_SPECS } from "@/data/landing-specs";
 import { SHOWCASE, isPixelShowcase } from "@/data/showcase";
 
 export const metadata: Metadata = {
-  title: { absolute: "Free AI Pixel Art Generator for Game Sprites | SpriteLab" },
+  title: { absolute: "Free AI Pixel Art Generator — 8-bit & 16-bit | SpriteLab" },
   description:
-    "Generate pixel art game sprites with AI, snapped to a real pixel grid with a limited palette. 16-bit retro, HD and isometric styles. Free to try.",
+    "Free AI pixel art generator for game sprites: a real pixel grid, at most 32 colours, 12 palettes, 8-bit, 16-bit, HD and isometric looks. 3 tries, no account.",
   keywords: [
     "pixel art generator",
     "free pixel art maker",
     "AI pixel art",
     "retro game sprites",
     "8-bit sprite generator",
+    "free AI pixel art generator",
+    "pixel art sprite generator",
+    "16x16 pixel art",
+    "32x32 sprite",
     "16-bit pixel art",
     "game pixel art",
     "pixel art characters",
@@ -21,7 +25,7 @@ export const metadata: Metadata = {
     "indie game art",
   ],
   openGraph: {
-    title: "Free AI Pixel Art Generator - Create Game Sprites in Seconds",
+    title: "Free AI Pixel Art Generator — 8-bit & 16-bit | SpriteLab",
     description:
       "Generate pixel art sprites for your games instantly. 8-bit, 16-bit, 32-bit styles. No art skills needed.",
     url: "https://www.sprite-lab.com/pixel-art-generator",
@@ -29,8 +33,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Free AI Pixel Art Generator for Game Sprites | SpriteLab",
-    description: "Generate pixel art game sprites with AI, snapped to a real pixel grid with a limited palette. 16-bit retro, HD and isometric styles. Free to try.",
+    title: "Free AI Pixel Art Generator — 8-bit & 16-bit | SpriteLab",
+    description: "Free AI pixel art generator for game sprites: a real pixel grid, at most 32 colours, 12 palettes, 8-bit, 16-bit, HD and isometric looks. 3 tries, no account.",
   },
   alternates: {
     canonical: "https://www.sprite-lab.com/pixel-art-generator",
@@ -48,12 +52,12 @@ export default function PixelArtGeneratorPage() {
       heroLine="ai pixel art generator"
       h1={
         <>
-          AI Pixel Art Generator
+          Free AI pixel art generator
           <br />
-          sprites in seconds
+          for 8-bit and 16-bit sprites
         </>
       }
-      subtitle="Generate 8-bit, 16-bit and 32-bit pixel art sprites for your games. No art skills required — just describe what you want."
+      subtitle="Describe a character, monster or item and get pixel art on a real grid with a limited palette, as a transparent PNG. Retro 8-bit and 16-bit looks, HD pixel art and isometric. No art skills needed."
       trust={["3 free tries, no account", "10 credits on signup", "transparent png", "real pixel grid"]}
       floating={[
         { src: "/showcase/knight.png", alt: "", pixel: true, cls: "left-[7%] top-[30%] w-24 animate-float" },
@@ -95,6 +99,55 @@ export default function PixelArtGeneratorPage() {
           ],
         },
         { kind: "gallery", items: pixelShowcase },
+        {
+          kind: "cards",
+          id: "sizes",
+          eyebrow: "16×16, 32×32 or 64×64",
+          title: <>Which sprite size, and how to get there</>,
+          intro: "SpriteLab draws pixel sprites on a 128×128 art-pixel canvas, with the subject about 110 art pixels tall, and delivers them scaled up by a whole number. That is finer than classic retro sizes, so here is what each size takes.",
+          cols: 3,
+          cards: [
+            {
+              title: "16×16",
+              tag: "8-bit",
+              body: "NES and Game Boy-sized characters, tiles and pickups. At this size every pixel is a design decision, so treat the generated sprite as reference: open it next to a 16×16 canvas in Aseprite and block the shapes and colours in by hand.",
+              items: ["Tiles and pickups", "Overworld characters", "Redraw from reference"],
+            },
+            {
+              title: "32×32",
+              tag: "16-bit",
+              body: "The common middle for indie games. Shrink the PNG back to its 128-pixel grid with nearest-neighbour, scale that down to 32×32, then redraw the outline and the small details (eyes, buckles, blade edges) that merge at that size.",
+              items: ["Platformer heroes", "RPG party members", "Scale down, then tidy"],
+            },
+            {
+              title: "64×64 and up",
+              tag: "HD pixel",
+              body: "Bosses, portraits and HD pixel-art games. Closest to SpriteLab's own density: use the sprite as it is, or halve it with nearest-neighbour and tidy the outline.",
+              items: ["Bosses and big enemies", "Portraits and menus", "Use as is or halve"],
+            },
+          ],
+        },
+        {
+          kind: "checklist",
+          id: "palettes",
+          eyebrow: "palettes",
+          title: <>Limited palettes, chosen per sprite</>,
+          intro: "Every pixel sprite is reduced to at most 32 colours. Leave the palette on Auto to let the style decide, or steer the colours with one of 12 palettes:",
+          items: [
+            "Fantasy gold",
+            "Ice / cool",
+            "Dark & muted",
+            "Fire / vibrant",
+            "Earthy / forest",
+            "Neon / cyber",
+            "Pastel",
+            "Ocean deep",
+            "Autumn",
+            "Black & white",
+            "Game Boy green",
+            "Sunset",
+          ],
+        },
         {
           kind: "features",
           id: "features",
@@ -155,7 +208,15 @@ export default function PixelArtGeneratorPage() {
         },
         {
           q: "Can I make 8-bit and 16-bit pixel art?",
-          a: "Yes. The Pixel 16-bit style produces classic retro sprites with a limited palette, Pixel HD gives you more detailed 32-bit pixel art, and Isometric Pixel covers strategy-style views.",
+          a: "Yes. The Pixel 16-bit style makes classic retro sprites with a limited palette, and combined with the Game Boy green or Black & white palette it gives an 8-bit look. Pixel HD gives more detailed 32-bit-style pixel art, and Isometric Pixel covers strategy-style views. Hardware limits such as the NES's three colours per sprite aren't enforced; reduce the colours in a pixel editor if you need them.",
+        },
+        {
+          q: "What size are the pixel art sprites?",
+          a: "They're drawn on a 128×128 art-pixel canvas, with the subject about 110 art pixels tall, and delivered scaled up by a whole number. For 64×64, halve them with nearest-neighbour; for 32×32 scale down and tidy the details; for 16×16, redraw using the sprite as reference.",
+        },
+        {
+          q: "Can I choose the colour palette?",
+          a: "Yes. Pick one of 12 palettes, such as Game Boy green, Pastel or Dark & muted, or leave it on Auto. Every pixel sprite ends up with at most 32 colours. For an exact fixed palette such as PICO-8, index the PNG to it in your pixel editor.",
         },
         {
           q: "Can I use the pixel art in commercial games?",
