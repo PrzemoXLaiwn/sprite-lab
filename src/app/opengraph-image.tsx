@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { ImageResponse } from "next/og";
+import { SIGNUP_FREE_CREDITS } from "@/config/signup";
 
 // Node renderer on purpose. The edge runtime plus `backgroundClip` returned a
 // 0-byte PNG. Same ImageResponse path as `renderOgImage`, without that CSS.
@@ -9,13 +10,8 @@ export const alt = "SpriteLab — Generate game-ready sprites in seconds";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-/**
- * Credits line on the homepage share image.
- * Another PR changes this wording — edit only this constant.
- * After the rebase onto PR #6 this should read from SIGNUP_FREE_CREDITS.
- */
-const HOME_OG_CREDITS_SUBTITLE =
-  "Pixel art · Dark fantasy · Anime · Transparent PNG · 10 free credits";
+/** Credits line on the homepage share image. The grant comes from signup config. */
+const HOME_OG_CREDITS_SUBTITLE = `Pixel art · Dark fantasy · Anime · Transparent PNG · ${SIGNUP_FREE_CREDITS}`;
 
 const BG = "#131A31";
 const ACCENT = "#FFA300";

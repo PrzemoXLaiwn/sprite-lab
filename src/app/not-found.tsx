@@ -14,6 +14,9 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Page not found | SpriteLab",
     description: "This page does not exist.",
+    siteName: "SpriteLab",
+    locale: "en_US",
+    type: "website",
   },
 };
 
