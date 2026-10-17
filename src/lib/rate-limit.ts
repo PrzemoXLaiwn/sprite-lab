@@ -448,8 +448,9 @@ export async function rateLimitAuthSync(userId: string): Promise<RateLimitResult
 /**
  * Same route, before the session lookup: 5 requests per minute per client IP.
  * The in-memory map in src/proxy.ts does not hold across Vercel instances.
- * When UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN are unset, `check`
- * allows the request, so behavior stays as it is until those vars exist.
+ * Credentials come from getRedisRestEnv(), including the Vercel integration
+ * names. When that helper has no url/token pair, `check` allows the request
+ * (fail open).
  */
 export async function rateLimitAuthSyncByIp(request: Request): Promise<RateLimitResult> {
   return check("auth:sync:ip", 5, 60, getClientIp(request));
