@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { track, FUNNEL } from "@/lib/analytics";
+import { toast } from "@/components/ui/use-toast";
 
 // Google Identity Services — just the parts we call (no extra dependency).
 interface GsiCredentialResponse {
@@ -64,8 +65,36 @@ function loadGsi(): Promise<void> {
   return gsiPromise;
 }
 
-/** An account created this recently is treated as a new signup. */
-const NEW_ACCOUNT_WINDOW_MS = 2 * 60 * 1000;
+const SYNC_RETRY_DELAYS_MS = [0, 400, 1200];
+
+/**
+ * Profile + referral. Retries transient failures so a dropped response does
+ * not lose the referral. 401/403/429 are not retried.
+ */
+async function syncAccount(ref: string | null): Promise<{ isNewUser: boolean }> {
+  let lastStatus = 0;
+  for (let attempt = 0; attempt < SYNC_RETRY_DELAYS_MS.length; attempt++) {
+    const wait = SYNC_RETRY_DELAYS_MS[attempt];
+    if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
+    try {
+      const res = await fetch("/api/auth/sync", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ref }),
+      });
+      if (res.ok) {
+        const body = (await res.json().catch(() => null)) as { isNewUser?: unknown } | null;
+        return { isNewUser: body?.isNewUser === true };
+      }
+      lastStatus = res.status;
+      if (res.status === 401 || res.status === 403 || res.status === 429) break;
+    } catch {
+      lastStatus = 0;
+    }
+  }
+  throw new Error(lastStatus ? `account sync failed (${lastStatus})` : "account sync failed");
+}
 
 /**
  * Raw nonce for Supabase, SHA-256 hex of it for Google: Supabase hashes the
@@ -120,19 +149,26 @@ export function GoogleOneTap() {
             // Same account setup as the normal Google button (/auth/callback):
             // profile row, referral code from ?ref=, welcome email for new accounts.
             const ref = new URLSearchParams(window.location.search).get("ref");
-            const sync = await fetch("/api/auth/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ref }) })
-              .then((r) => (r.ok ? r.json() : null))
-              .catch(() => null);
-            const createdAt = Date.parse(data.user.created_at);
-            const isNew = sync?.isNewUser === true || (Number.isFinite(createdAt) && Date.now() - createdAt < NEW_ACCOUNT_WINDOW_MS);
-            track(FUNNEL.oneTapSignIn, { isNew });
-            if (isNew && window.gtag) {
+            let sync: { isNewUser: boolean };
+            try {
+              sync = await syncAccount(ref);
+            } catch (err) {
+              console.error("[OneTap]", err instanceof Error ? err.message : "account sync failed");
+              toast({
+                variant: "destructive",
+                title: "Account setup didn't finish",
+                description: "You're signed in, but your referral wasn't saved after several tries. Open the app from the menu, and contact support if you used a referral link.",
+              });
+              return;
+            }
+            track(FUNNEL.oneTapSignIn, { isNew: sync.isNewUser });
+            if (sync.isNewUser && window.gtag) {
               window.gtag("event", "sign_up", { method: "google_one_tap", send_to: "AW-17802754923" });
             }
-            window.location.href = isNew ? "/auth/confirm" : "/generate";
+            window.location.href = sync.isNewUser ? "/auth/confirm" : "/generate";
           } catch (err) {
             // The regular "Sign up" buttons still work; don't interrupt the visitor.
-            console.error("[OneTap] sign-in failed:", err instanceof Error ? err.message : err);
+            console.error("[OneTap] sign-in failed:", err instanceof Error ? err.message : "sign-in failed");
           }
         },
       });

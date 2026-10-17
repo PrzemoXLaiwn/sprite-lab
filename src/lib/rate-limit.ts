@@ -435,3 +435,11 @@ export async function rateLimitFeedback(
 ): Promise<RateLimitResult> {
   return check("feedback", 10, 3600, userId);
 }
+
+/**
+ * One Tap account sync: 5 requests per minute per authenticated user id.
+ * Stops a signed-in caller from hammering first-login / referral writes.
+ */
+export async function rateLimitAuthSync(userId: string): Promise<RateLimitResult> {
+  return check("auth:sync", 5, 60, userId);
+}
