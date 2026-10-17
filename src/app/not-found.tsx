@@ -1,6 +1,21 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, Home } from "lucide-react";
+
+// The root layout's robots tag is `index, follow`. Next also injects
+// `noindex` when this page renders, so a 404 used to ship both. This export
+// replaces the inherited robots value; the page stays noindex.
+export const metadata: Metadata = {
+  title: { absolute: "Page not found | SpriteLab" },
+  robots: { index: false, follow: false },
+  // A child openGraph object replaces the layout's, whose og:url is the
+  // homepage. This page has no URL of its own, so omit url.
+  openGraph: {
+    title: "Page not found | SpriteLab",
+    description: "This page does not exist.",
+  },
+};
 
 export default function NotFound() {
   return (

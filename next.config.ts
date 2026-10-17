@@ -206,6 +206,10 @@ const nextConfig: NextConfig = {
         destination: "/usage",
         permanent: true,
       },
+      // Common URLs people type. permanent is a 308.
+      { source: "/signup", destination: "/register", permanent: true },
+      { source: "/sign-up", destination: "/register", permanent: true },
+      { source: "/faq", destination: "/#faq", permanent: true },
     ];
   },
 

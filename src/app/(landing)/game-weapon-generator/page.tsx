@@ -53,6 +53,7 @@ export default function GameWeaponGeneratorPage() {
       h1={
         <>
           AI Game Weapon Generator
+          <span className="sr-only">: </span>
           <br />
           forge epic weapons
         </>

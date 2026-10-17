@@ -54,6 +54,7 @@ export default function PixelArtGeneratorPage() {
       h1={
         <>
           Free AI pixel art generator
+          <span className="sr-only">: </span>
           <br />
           for 8-bit and 16-bit sprites
         </>

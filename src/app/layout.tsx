@@ -131,7 +131,7 @@ const jsonLd = {
       foundingDate: "2024",
       // sameAs: list SpriteLab's own social profiles here once they exist
       // (a handle we don't control would tell search engines it's ours).
-      sameAs: ["https://github.com/PrzemoXLaiwn/sprite-lab", "https://www.tiktok.com/@spritelab1"],
+      sameAs: ["https://www.tiktok.com/@spritelab1"],
       contactPoint: {
         "@type": "ContactPoint",
         email: "support@sprite-lab.com",
