@@ -6,7 +6,9 @@ import type { FeaturedGeneration } from "@/lib/featured-generations";
  * Curated showcase made with the current sprite pipeline (FLUX.2 klein /
  * GPT Image Mini + deterministic post-processing). Static files in
  * /public/showcase — pixel sprites are stored at native resolution and
- * rendered with nearest-neighbour scaling. Used for the landing page so first
+ * rendered with nearest-neighbour scaling. 20px chips must use
+ * showcaseIconSrc() (public/showcase/w40), not these full files.
+ * Used for the landing page so first
  * impressions reflect today's quality (older community generations predate
  * the pipeline) and the page doesn't depend on the database.
  */

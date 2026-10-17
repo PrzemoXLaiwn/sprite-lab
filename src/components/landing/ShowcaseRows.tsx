@@ -120,7 +120,7 @@ function DirectionsVisual() {
         {dirs.map((d, i) => (
           <figure key={d} className="overflow-hidden rounded-[8px] border border-white/[0.06] bg-[#131A31]">
             <div role="img" aria-label={`Lizard warrior facing ${d}`} className="aspect-square"
-              style={{ backgroundImage: "url(/showcase/rotate-lizard.png)", backgroundSize: "800% 100%", backgroundPosition: `${(i / 7) * 100}% 0`, backgroundRepeat: "no-repeat" }} />
+              style={{ backgroundImage: "url(/showcase/rotate-lizard.webp)", backgroundSize: "800% 100%", backgroundPosition: `${(i / 7) * 100}% 0`, backgroundRepeat: "no-repeat" }} />
             <figcaption className="border-t border-white/[0.05] py-1 text-center font-mono text-[10.5px] text-[#FFC857]">{d}</figcaption>
           </figure>
         ))}

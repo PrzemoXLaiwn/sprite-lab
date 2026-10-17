@@ -537,7 +537,7 @@ func _physics_process(_delta: float) -> void:
           "SpriteLab's Animate tool has a '4-direction walk' option for characters and creatures (12 credits). It draws the walk facing the viewer, facing right and facing away — 4 steps each — from the sprite you already made, and builds the left row by mirroring the right row, so the asymmetry caveats above apply. The result is a 4×4 sheet in the order down, right, up, left at 6 fps, with every frame the same size on one ground line. The engine pack splits it into walk_down, walk_right, walk_up and walk_left for Godot, Unity and GameMaker.",
           "For standing poses, the separate '4 directions' option (6 credits) draws the same sprite from the front, right, back and left in a neutral stance — useful as idle frames. SpriteLab does not make a different idle animation per direction, and it cannot guarantee that a held item stays in the correct hand after mirroring; check those frames and fix them in a pixel editor if your character carries something distinctive.",
         ],
-        image: { src: "/showcase/rotate-lizard.png", alt: "Pixel art lizard creature drawn from four directions at the same size", pixel: true },
+        image: { src: "/showcase/rotate-lizard.webp", alt: "Pixel art lizard creature drawn from four directions at the same size", pixel: true },
       },
     ],
     faq: [

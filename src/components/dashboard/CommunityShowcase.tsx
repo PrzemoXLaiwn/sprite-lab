@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Users, ArrowRight, Heart, Sparkles } from "lucide-react";
 import { CHECKERBOARD, isPixelStyleId } from "@/components/community/shared";
+import { PixelThumb } from "@/components/media/PixelThumb";
 
 interface CommunityGeneration {
   id: string;
@@ -108,12 +109,14 @@ export function CommunityShowcase() {
             className="group relative aspect-square overflow-hidden rounded-xl border border-white/[0.06] bg-[#212B4E] transition-colors hover:border-white/20"
             style={CHECKERBOARD}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <PixelThumb
               src={gen.imageUrl}
               alt={gen.prompt}
-              className={`h-full w-full object-contain p-[10%] transition-transform duration-300 group-hover:scale-105 ${isPixelStyleId(gen.styleId) ? "pixel-perfect" : ""}`}
-              loading="lazy"
+              sizes="120px"
+              pixel={isPixelStyleId(gen.styleId)}
+              width={120}
+              height={120}
+              className="h-full w-full object-contain p-[10%] transition-transform duration-300 group-hover:scale-105"
             />
 
             {/* Hover overlay */}

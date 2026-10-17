@@ -14,6 +14,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { CHECKERBOARD, isPixelStyleId } from "@/components/community/shared";
+import { PixelThumb } from "@/components/media/PixelThumb";
 import { shouldIndexProfile } from "@/lib/profile-indexing";
 
 interface ProfilePageProps {
@@ -256,12 +257,14 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
                   className="group relative aspect-square overflow-hidden rounded-2xl border border-white/[0.06] bg-[#212B4E] transition-colors hover:border-white/20"
                   style={CHECKERBOARD}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <PixelThumb
                     src={gen.imageUrl}
                     alt={gen.prompt}
-                    loading="lazy"
-                    className={`absolute inset-0 h-full w-full object-contain p-[10%] pb-[20%] transition-transform duration-300 group-hover:scale-105 ${isPixelStyleId(gen.styleId) ? "pixel-perfect" : ""}`}
+                    sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 184px"
+                    pixel={isPixelStyleId(gen.styleId)}
+                    width={184}
+                    height={184}
+                    className="absolute inset-0 h-full w-full object-contain p-[10%] pb-[20%] transition-transform duration-300 group-hover:scale-105"
                   />
                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent px-3 pb-2.5 pt-8">
                     <p className="line-clamp-1 text-[12px] font-medium text-white">{gen.prompt}</p>

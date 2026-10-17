@@ -134,9 +134,11 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-      // API routes - short cache for dynamic content
+      // API routes - short cache for dynamic content.
+      // sprite-thumb sets its own Cache-Control on 200s (immutable derivatives).
+      // A global no-store here would override that and re-fetch multi-MB originals.
       {
-        source: "/api/(.*)",
+        source: "/api/((?!sprite-thumb).*)",
         headers: [
           {
             key: "Cache-Control",
@@ -203,6 +205,17 @@ const nextConfig: NextConfig = {
         source: "/dashboard",
         destination: "/usage",
         permanent: true,
+      },
+    ];
+  },
+
+  // 8-frame direction sheet. The PNG is gone; callers use the lossless WebP.
+  // This rewrite covers any leftover request for the old path.
+  async rewrites() {
+    return [
+      {
+        source: "/showcase/rotate-lizard.png",
+        destination: "/showcase/rotate-lizard.webp",
       },
     ];
   },
