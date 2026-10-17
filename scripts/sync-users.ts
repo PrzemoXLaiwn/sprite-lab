@@ -64,9 +64,10 @@ async function syncUsers() {
     try {
       const metadata = authUser.raw_user_meta_data || {};
       const createdAt = new Date(authUser.created_at);
-      // Pre-campaign accounts keep the historical 10 so the one-time +15
-      // welcome-back bonus can still be claimed. Later accounts get the
-      // flat signup grant and are stamped so it cannot stack.
+      // Pre-campaign accounts keep the historical 10 and no stamp, so the
+      // one-time +20 welcome-back (or the +5 top-up, if 15 was already
+      // claimed) can still be applied on the next app visit. Later accounts
+      // get the flat signup grant and are stamped so it cannot stack.
       const returning = createdAt < new Date("2026-10-07T00:00:00Z");
       await prisma.user.create({
         data: {

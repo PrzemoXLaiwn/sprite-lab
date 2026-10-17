@@ -10,7 +10,7 @@ import { TikTokCommunity } from "@/components/landing/TikTokCommunity";
 import { ShowcaseRows } from "@/components/landing/ShowcaseRows";
 import { GuideTabs } from "@/components/landing/GuideTabs";
 import { Footer } from "@/components/layout/Footer";
-import { GUIDE, PRICE_LIST, signupOffer, GUEST_TRIES } from "@/data/product-guide";
+import { GUIDE, PRICE_LIST, signupOffer } from "@/data/product-guide";
 import { SHOWCASE, getFeaturedGenerationsSafe } from "@/lib/featured-generations";
 import { HOME_FAQ } from "@/data/geo-content";
 import { RefCapture } from "@/components/landing/RefCapture";
@@ -59,7 +59,7 @@ export async function HomePage({ signedIn }: { signedIn: boolean }) {
             </div>
 
             <p className="mt-5 text-[13.5px] leading-relaxed text-[#A7ADD4]">
-              {GUEST_TRIES} tries without an account. Sign up for {offer.credits + offer.bonus} free credits, no card.
+              Sign up for {offer.credits} free credits. No card.
               <span className="hidden sm:inline"> Over 1,000 people have made an account so far.</span>
             </p>
           </div>
@@ -121,7 +121,7 @@ export async function HomePage({ signedIn }: { signedIn: boolean }) {
               Make the first sprite for your game now.
             </h2>
             <p className="mt-4 text-[15.5px] leading-relaxed text-[#C8CCE8]">
-              Try it {GUEST_TRIES} times without an account. Sign up and get {offer.credits} free credits{offer.bonus ? `, plus ${offer.bonus} bonus credits until ${offer.bonusUntil}` : ""}. No card needed.
+              Sign up and get {offer.credits} free credits. No card needed.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link href={registerUrl}

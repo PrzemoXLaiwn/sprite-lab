@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SeoLanding } from "@/components/landing/SeoLanding";
+import { SIGNUP_CTA } from "@/config/signup";
 import { LANDING_SPECS } from "@/data/landing-specs";
 
 const URL = "https://www.sprite-lab.com/ai-sprite-animation-generator";
@@ -129,7 +130,7 @@ export default function SpriteAnimationPage() {
           </>
         ),
         body: "Generate a sprite and animate it in under two minutes.",
-        button: "Get 10 free credits",
+        button: SIGNUP_CTA,
       }}
     />
   );

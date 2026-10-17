@@ -7,6 +7,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { primaryBtnCls } from "@/app/(auth)/_components/auth-ui";
 import { track, FUNNEL } from "@/lib/analytics";
+import { SIGNUP_CREDITS } from "@/config/signup";
 import { isCheckoutReturn, safeRedirectPath } from "@/lib/safe-redirect";
 
 export default function EmailConfirmedPage() {
@@ -58,7 +59,7 @@ export default function EmailConfirmedPage() {
 
           <div className="mt-5 inline-flex items-center gap-2 rounded-lg border border-[#FFA300]/20 bg-[#FFA300]/[0.06] px-3 py-1.5 text-[13px] text-[#FFC857]">
             <Zap className="h-3.5 w-3.5" />
-            10 free credits ready to use
+            {SIGNUP_CREDITS} free credits ready to use
           </div>
 
           <p className="mt-5 text-[13px] leading-relaxed text-[#C8CCE8]">

@@ -4,7 +4,27 @@
 // assistants get the same (true) answers.
 // =============================================================================
 
+import { SIGNUP_CREDITS } from "@/config/signup";
+import { RELAUNCH } from "@/config/relaunch";
+import { ANIMATION_FRAME_OPTIONS, RIG_CREDITS, ROTATIONS, animationCredits } from "@/config/animations";
+
+// Same numbers as CREDIT_COSTS in src/lib/services/generation.ts. That module
+// pulls the image pipeline, so the public FAQ does not import it.
+const STANDARD_CREDITS = 1;
+const HD_CREDITS = 3;
+
 export interface Faq { q: string; a: string }
+
+const animationPrices = ANIMATION_FRAME_OPTIONS.map((o) => `${o.frames} key poses ${o.credits}`).join(", ");
+const smoothPrices = ANIMATION_FRAME_OPTIONS.map((o) => String(animationCredits(o.frames, true))).join(", ");
+const directionPrices = ROTATIONS.map((r) => `${r.label} ${r.credits}`).join(", ");
+
+export const RETURNING_BONUS_FAQ: Faq = {
+  q: "I got an email about 15 bonus credits. Is that different?",
+  a: `That email was the welcome-back offer for accounts created before 7 October 2026. Those accounts now get ${RELAUNCH.RETURNING_BONUS} credits the first time they open the app before 31 December 2026. If you already received ${RELAUNCH.PREVIOUS_RETURNING_BONUS}, the next visit adds ${RELAUNCH.RETURNING_TOP_UP}, so the welcome-back total is ${RELAUNCH.RETURNING_BONUS}. New accounts get ${SIGNUP_CREDITS} free credits on signup.`,
+};
+
+const COST_ANSWER = `Sign up and you get ${SIGNUP_CREDITS} free credits, no credit card needed. A Standard sprite costs ${STANDARD_CREDITS} credit and HD costs ${HD_CREDITS}. A rigged idle loop costs ${RIG_CREDITS} credits. AI animations cost ${animationPrices} credits, and smooth mode (on by default) brings those to ${smoothPrices}. Direction sheets cost ${directionPrices} credits. Monthly plans start at £5 for 250 credits, and one-off credit packs never expire.`;
 
 export const HOME_FAQ: Faq[] = [
   {
@@ -53,8 +73,9 @@ export const HOME_FAQ: Faq[] = [
   },
   {
     q: "How much does it cost?",
-    a: "You can try it 3 times without an account and get 10 free credits when you sign up — no credit card needed. A standard sprite costs 1 credit, HD quality 3 credits an idle loop 3 credits and other animations 7–12 credits. Monthly plans start at £5 for 250 credits, and one-off credit packs are available.",
+    a: COST_ANSWER,
   },
+  RETURNING_BONUS_FAQ,
   {
     q: "Do credits expire?",
     a: "Free credits and credit packs never expire. Subscription credits refresh every month.",

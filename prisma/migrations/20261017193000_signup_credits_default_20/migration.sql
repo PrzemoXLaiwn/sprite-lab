@@ -1,8 +1,12 @@
 -- Flat signup grant: new rows default to 20 credits (src/config/signup.ts).
 --
 -- This changes ONLY the column default. It does not add or remove credits
--- on existing accounts. Production was deployed from the CLI and may be
--- ahead of this repo — review the live default before applying.
+-- on existing accounts. Checked against the schema synced from production
+-- (prisma/schema.prisma: users.credits, mapped column "credits", default 10
+-- before this migration). The welcome-back +5 top-up is applied in
+-- src/lib/relaunch.ts on the next app visit, not here.
+-- Production was deployed from the CLI and may still be ahead of this repo
+-- — review the live default before applying.
 --
 -- Do NOT run the commented statement below as part of this migration.
 -- It is a manual option for accounts created during the relaunch campaign

@@ -4,7 +4,7 @@
 // credits is SIGNUP_CREDITS (the flat grant). relaunchBonusAt is set in the
 // same write so claimRelaunchBonus cannot add the campaign new-user bonus
 // on top. Returning accounts are never inserted here — they already exist
-// and still claim RETURNING_BONUS once, unchanged.
+// and still claim RETURNING_BONUS once (20, or +5 if they already took 15).
 
 import { SIGNUP_CREDITS } from "@/config/signup";
 

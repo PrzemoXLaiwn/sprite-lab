@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Dices, Download, Loader2, Sparkles, ArrowRight } from "lucide-react";
 import { track, FUNNEL } from "@/lib/analytics";
+import { SIGNUP_CREDITS, SIGNUP_CTA } from "@/config/signup";
 import { readGuestTokens, rememberGuestToken } from "@/lib/guest-claim/local-tokens";
 
 const IDEAS = [
@@ -99,8 +100,8 @@ export function HeroPrompt({ registerUrl, signedIn = false }: { registerUrl: str
         setError(
           res.status === 429
             ? keepable
-              ? "You've used your free tries for now. Sign up to keep your sprites and get 10 free credits."
-              : "You've used your free tries for now. Sign up to keep creating (10 free credits)."
+              ? `You've used your free tries for now. Sign up to keep your sprites and get ${SIGNUP_CREDITS} free credits.`
+              : `You've used your free tries for now. Sign up to keep creating (${SIGNUP_CREDITS} free credits).`
             : data.error || "Generation failed. Please try again."
         );
         return;
@@ -218,8 +219,8 @@ export function HeroPrompt({ registerUrl, signedIn = false }: { registerUrl: str
             <p className="text-[15px] font-semibold text-white">{isGenerating ? "Generating…" : "Here's your sprite"}</p>
             <p className="mt-1 text-[13px] leading-relaxed text-[#9AA1CC]">
               {hasKeepable
-                ? "Transparent PNG, ready for your engine. Sign up and this sprite goes straight into your Assets, plus 10 free credits, 12 art styles and HD quality."
-                : "Transparent PNG, ready for your engine. Create a free account for 10 credits, 12 art styles, HD quality and your own asset library."}
+                ? `Transparent PNG, ready for your engine. Sign up and this sprite goes straight into your Assets, plus ${SIGNUP_CREDITS} free credits, 12 art styles and HD quality.`
+                : `Transparent PNG, ready for your engine. Create a free account for ${SIGNUP_CREDITS} credits, 12 art styles, HD quality and your own asset library.`}
             </p>
             {image && (
               <div className="mt-4 flex flex-wrap justify-center gap-2 sm:justify-start">
@@ -230,7 +231,7 @@ export function HeroPrompt({ registerUrl, signedIn = false }: { registerUrl: str
                 <Link href={registerUrl}
                   onClick={() => track(FUNNEL.guestSignupClick, { source: "result", keepable: hasKeepable })}
                   className="px-corners flex h-10 items-center gap-2 bg-[#FFA300] px-4 text-[13px] font-semibold text-[#131A31] transition hover:bg-[#FFB733]">
-                  {hasKeepable ? "Sign up to keep this sprite" : "Get 10 free credits"} <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  {hasKeepable ? "Sign up to keep this sprite" : SIGNUP_CTA} <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
               </div>
             )}

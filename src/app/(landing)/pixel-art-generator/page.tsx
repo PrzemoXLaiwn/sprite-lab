@@ -3,11 +3,12 @@ import { Zap, Palette, Download, Grid3x3, Shield, Layers } from "lucide-react";
 import { SeoLanding } from "@/components/landing/SeoLanding";
 import { LANDING_SPECS } from "@/data/landing-specs";
 import { SHOWCASE, isPixelShowcase } from "@/data/showcase";
+import { SIGNUP_CREDITS, SIGNUP_CTA, SIGNUP_ON_SIGNUP } from "@/config/signup";
 
 export const metadata: Metadata = {
   title: { absolute: "Free AI Pixel Art Generator — 8-bit & 16-bit | SpriteLab" },
   description:
-    "Free AI pixel art generator for game sprites: a real pixel grid, at most 32 colours, 12 palettes, 8-bit, 16-bit, HD and isometric looks. 3 tries, no account.",
+    `Free AI pixel art generator for game sprites: a real pixel grid, at most 32 colours, 12 palettes, 8-bit, 16-bit, HD and isometric looks. ${SIGNUP_CREDITS} free credits on signup.`,
   keywords: [
     "pixel art generator",
     "free pixel art maker",
@@ -34,7 +35,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Free AI Pixel Art Generator — 8-bit & 16-bit | SpriteLab",
-    description: "Free AI pixel art generator for game sprites: a real pixel grid, at most 32 colours, 12 palettes, 8-bit, 16-bit, HD and isometric looks. 3 tries, no account.",
+    description: `Free AI pixel art generator for game sprites: a real pixel grid, at most 32 colours, 12 palettes, 8-bit, 16-bit, HD and isometric looks. ${SIGNUP_CREDITS} free credits on signup.`,
   },
   alternates: {
     canonical: "https://www.sprite-lab.com/pixel-art-generator",
@@ -58,7 +59,7 @@ export default function PixelArtGeneratorPage() {
         </>
       }
       subtitle="Describe a character, monster or item and get pixel art on a real grid with a limited palette, as a transparent PNG. Retro 8-bit and 16-bit looks, HD pixel art and isometric. No art skills needed."
-      trust={["3 free tries, no account", "10 credits on signup", "transparent png", "real pixel grid"]}
+      trust={[SIGNUP_ON_SIGNUP, "No card", "transparent png", "real pixel grid"]}
       floating={[
         { src: "/showcase/knight.png", alt: "", pixel: true, cls: "left-[7%] top-[30%] w-24 animate-float" },
         { src: "/showcase/health-potion.png", alt: "", pixel: true, cls: "left-[15%] top-[62%] w-14 animate-float [animation-delay:1.2s]" },
@@ -204,7 +205,7 @@ export default function PixelArtGeneratorPage() {
       faq={[
         {
           q: "Is the AI pixel art generator free?",
-          a: "You can try it right on this page without an account. Signing up gives you 10 free credits, no credit card required.",
+          a: `Sign up free for ${SIGNUP_CREDITS} credits. No card needed.`,
         },
         {
           q: "Can I make 8-bit and 16-bit pixel art?",
@@ -234,7 +235,7 @@ export default function PixelArtGeneratorPage() {
           </>
         ),
         body: "Build your game faster with AI-generated pixel art — no artists needed.",
-        button: "Get 10 free credits",
+        button: SIGNUP_CTA,
       }}
     />
   );

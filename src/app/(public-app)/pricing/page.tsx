@@ -10,6 +10,8 @@
 import Link from "next/link";
 import { Check, ChevronDown, Coins, Shield, X } from "lucide-react";
 import { CREDIT_PACKS, LIFETIME_DEALS, PLANS, isLaunchPromoActive } from "@/lib/stripe";
+import { SIGNUP_CREDITS } from "@/config/signup";
+import { RETURNING_BONUS_FAQ } from "@/data/geo-content";
 import { ANIMATION_FRAME_OPTIONS, RIG_CREDITS, ROTATIONS, animationCredits } from "@/config/animations";
 import { featureCredits } from "@/config/economics";
 import { CREDIT_PACK_CARDS, LIFETIME_CARDS, PLAN_CARDS, formatPence, type CreditPackCard, type LifetimeCard, type PlanCard } from "./pricing-data";
@@ -87,6 +89,7 @@ const FAQS = [
     q: "Do unused credits roll over?",
     a: "Subscription credits reset every month. Want credits that never expire? Buy a one-time credit pack instead.",
   },
+  RETURNING_BONUS_FAQ,
   {
     q: "Can I cancel anytime?",
     a: "Yes. Cancel any time from your account — no contract. You keep your plan until the end of the billing period.",
@@ -133,7 +136,7 @@ export default function PricingPage() {
                 </h1>
                 <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-[#9AA1CC]">
                   Every plan gets all 12 styles in Standard and HD; plans differ in monthly credits and a few extra tools. Cancel anytime. New
-                  accounts start with 10 free credits, no card required.
+                  accounts start with {SIGNUP_CREDITS} free credits, no card required.
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -293,7 +296,7 @@ export default function PricingPage() {
               <Link href="/ai-sprite-generator" className="text-[#FFC857] underline-offset-4 hover:underline">
                 AI sprite generator
               </Link>{" "}
-              without an account.
+              page.
             </p>
           </section>
 
