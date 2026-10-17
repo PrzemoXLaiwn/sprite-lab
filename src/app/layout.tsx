@@ -70,7 +70,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "SpriteLab — AI Game Asset Generator for Indie Developers",
     description:
-      "Game-ready sprites, pixel art, sprite-sheet animations and seamless tiles from a text prompt. Transparent PNG, commercial license included.",
+      "Game-ready sprites, pixel art, sprite-sheet animations and seamless tiles from a text prompt. Transparent PNG. Commercial licence on paid plans.",
     url: baseUrl,
     siteName: "SpriteLab",
     // Image is generated dynamically by `src/app/opengraph-image.tsx` —
@@ -197,7 +197,7 @@ const jsonLd = {
         "Seamless floor and wall tiles",
         "Projects with automatic folder sorting and ZIP pack export",
         "Free pixel-perfect upscaling",
-        "Commercial use of generated assets",
+        "Commercial use on paid plans",
       ],
     },
   ],

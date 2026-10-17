@@ -4,6 +4,7 @@
 // assistants get the same (true) answers.
 // =============================================================================
 
+import { COMMERCIAL_LICENCE_ANSWER } from "@/config/licence";
 import { SIGNUP_CREDITS } from "@/config/signup";
 import { RELAUNCH } from "@/config/relaunch";
 import { ANIMATION_FRAME_OPTIONS, RIG_CREDITS, ROTATIONS, animationCredits } from "@/config/animations";
@@ -54,7 +55,7 @@ export const HOME_FAQ: Faq[] = [
   },
   {
     q: "Can I use the assets in a commercial game?",
-    a: "Yes. Assets you generate can be used in commercial projects, with no attribution required.",
+    a: COMMERCIAL_LICENCE_ANSWER,
   },
   {
     q: "Can SpriteLab animate sprites?",
