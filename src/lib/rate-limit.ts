@@ -14,7 +14,7 @@
 // in production — without Upstash it uses a per-instance in-memory limiter
 // with a global hourly cap (see memoryCheck).
 //
-// Accepted env pairs (first set value wins; never a read-only token):
+// Accepted env pairs (first prefix with BOTH sides set; never mixed, never a read-only token):
 //   UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN
 //   UPSTASH_REDIS_REST_KV_REST_API_URL + UPSTASH_REDIS_REST_KV_REST_API_TOKEN
 //   KV_REST_API_URL + KV_REST_API_TOKEN
@@ -22,7 +22,7 @@
 
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
-import { getRedisRestEnv } from "@/lib/redis-env";
+import { getRedisRestEnv, redisErrorLogMessage } from "@/lib/redis-env";
 
 // -----------------------------------------------------------------------------
 // REDIS CLIENT — lazy, only created when env vars are present
@@ -275,12 +275,13 @@ async function check(
       ),
     };
   } catch (err) {
+    const message = redisErrorLogMessage(err);
     if (denyWhenUnavailable) {
-      console.error(`[RateLimit] Redis check failed — using in-memory fallback for "${limiterKey}":`, err);
+      console.error(`[RateLimit] Redis check failed — using in-memory fallback for "${limiterKey}":`, message);
       return memoryCheck(limiterKey, requests, windowSeconds, identifier);
     }
-    // Redis error — fail open, log warning
-    console.warn("[RateLimit] Redis check failed, allowing request:", err);
+    // Redis error — fail open, log warning. Message only: the error object can carry the token.
+    console.warn("[RateLimit] Redis check failed, allowing request:", message);
     return { blocked: null };
   }
 }
@@ -341,7 +342,7 @@ export async function rateLimitUserGeneration(
         ),
       };
     } catch (err) {
-      console.warn("[RateLimit] Upstash failed — counting charges in the database instead:", err);
+      console.warn("[RateLimit] Upstash failed — counting charges in the database instead:", redisErrorLogMessage(err));
     }
   }
   return dbChargeLimit(userId, requests, 3600);
