@@ -254,14 +254,25 @@ export function LifetimeSection({ deals }: { deals: readonly LifetimeCard[] }) {
   );
 }
 
-/** Floating "Get Pro" button on phones, hidden for Pro and Studio members. */
+/**
+ * Phone shortcut to Pro. It sits in normal flow just under the plan cards
+ * (so it never covers a feature list) and then sticks to the bottom of the
+ * screen — above the app tab bar when that bar is present. Hidden from `sm`
+ * up, and for people already on Pro or Studio.
+ */
 export function MobileProCta({ price }: { price: number }) {
-  const { currentPlan, startCheckout } = useContext(PricingContext);
+  const { currentPlan, loadingPlan, startCheckout } = useContext(PricingContext);
   if (currentPlan === "PRO" || currentPlan === "UNLIMITED") return null;
+  const loading = loadingPlan === "PRO";
   return (
-    <div className="fixed bottom-16 left-1/2 z-30 -translate-x-1/2 sm:hidden">
-      <button type="button" onClick={() => startCheckout("PRO")} className={`flex items-center gap-2 whitespace-nowrap px-6 py-3 text-[14px] ${BTN_PRIMARY}`}>
-        <Zap className="h-4 w-4" aria-hidden="true" />
+    <div className="sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 mt-5 sm:hidden [.app-main_&]:bottom-[calc(3.75rem+env(safe-area-inset-bottom))]">
+      <button
+        type="button"
+        onClick={() => startCheckout("PRO")}
+        disabled={loading}
+        className={`flex h-12 w-full items-center justify-center gap-2 px-6 text-[15px] shadow-[0_10px_28px_-12px_rgba(0,0,0,0.85)] ${BTN_PRIMARY}`}
+      >
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-label="Opening checkout" /> : <Zap className="h-4 w-4" aria-hidden="true" />}
         Get Pro · <span className="font-mono">£{price}/mo</span>
       </button>
     </div>

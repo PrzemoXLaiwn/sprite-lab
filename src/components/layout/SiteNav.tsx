@@ -31,9 +31,9 @@ export function SiteNav({ registerUrl = "/register", anchorsOnHome = false, sign
           </span>
         </Link>
 
-        <div className="hidden items-center gap-6 text-[14px] font-medium lg:flex">
+        <div className="hidden items-center gap-1 text-[14px] font-medium lg:flex">
           {links.map((l) => (
-            <a key={l.label} href={l.href} className="text-[#C8CCE8] transition-colors hover:text-white">{l.label}</a>
+            <a key={l.label} href={l.href} className="inline-flex min-h-11 items-center px-2.5 text-[#C8CCE8] transition-colors hover:text-white">{l.label}</a>
           ))}
         </div>
 

@@ -70,6 +70,10 @@ function costRows(): [string, string, string][] {
   ];
 }
 
+/** Inline links need a cue besides colour (Lighthouse) and a 24px target. */
+const TEXT_LINK =
+  "inline-flex min-h-6 items-center text-[#FFC857] underline decoration-[#FFC857]/80 underline-offset-[3px] transition-colors hover:text-white";
+
 const FAQS = [
   {
     q: "What is a generation credit?",
@@ -156,7 +160,7 @@ export default function PricingPage() {
           </div>
         </div>
 
-        <div className="mx-auto max-w-[1200px] px-5 py-8 lg:px-8">
+        <div className="mx-auto max-w-[1200px] px-5 py-8 pb-[max(2rem,calc(6.5rem+env(safe-area-inset-bottom)))] sm:pb-8 lg:px-8">
           {/* ═══ SUBSCRIPTIONS ══════════════════════════════════ */}
           <section id="subscriptions" aria-labelledby="subscriptions-heading" className="scroll-mt-24">
             <h2 id="subscriptions-heading" className="text-[17px] font-semibold tracking-tight text-white">
@@ -201,6 +205,9 @@ export default function PricingPage() {
               ))}
             </div>
           </section>
+
+          {/* In flow under the cards, then sticks while the rest of the page scrolls. */}
+          <MobileProCta price={proPrice} />
 
           {/* ═══ CREDIT PACKS ═══════════════════════════════════ */}
           <section id="credit-packs" aria-labelledby="packs-heading" className="mt-14 scroll-mt-24">
@@ -284,13 +291,13 @@ export default function PricingPage() {
                 </tbody>
               </table>
             </div>
-            <p className="mt-3 text-[13px] text-[#9AA1CC]">
+            <p className="mt-3 text-[14px] leading-7 text-[#9AA1CC]">
               New to SpriteLab?{" "}
-              <Link href="/how-it-works" className="text-[#FFC857] underline-offset-4 hover:underline">
+              <Link href="/how-it-works" className={TEXT_LINK}>
                 See how it works
               </Link>{" "}
               or try a sprite on the{" "}
-              <Link href="/ai-sprite-generator" className="text-[#FFC857] underline-offset-4 hover:underline">
+              <Link href="/ai-sprite-generator" className={TEXT_LINK}>
                 AI sprite generator
               </Link>{" "}
               without an account.
@@ -343,9 +350,9 @@ export default function PricingPage() {
             </div>
             <div>
               <h2 className="text-[15px] font-semibold text-white">7-day refund</h2>
-              <p className="mt-0.5 text-[13px] leading-relaxed text-[#9AA1CC]">
+              <p className="mt-0.5 text-[14px] leading-7 text-[#9AA1CC]">
                 Not happy? Ask for a refund within 7 days of purchase if you&apos;ve used less than 10% of your credits.{" "}
-                <Link href="/terms" className="text-[#FFC857] underline-offset-4 hover:underline">
+                <Link href="/terms" className={TEXT_LINK}>
                   See the terms
                 </Link>
                 .
@@ -370,9 +377,6 @@ export default function PricingPage() {
           </section>
         </div>
 
-        <MobileProCta price={proPrice} />
-        {/* Bottom padding for the mobile CTA */}
-        <div className="h-20 sm:hidden" />
       </div>
     </PricingProvider>
   );
@@ -380,7 +384,7 @@ export default function PricingPage() {
 
 function FeatureItem({ children }: { children: React.ReactNode }) {
   return (
-    <li className="flex items-start gap-2.5 text-[13px] text-[#C8CCE8]">
+    <li className="flex items-start gap-2.5 text-[14px] leading-snug text-[#C8CCE8]">
       <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#FFA300]" strokeWidth={2.5} aria-hidden="true" />
       <span>{children}</span>
     </li>

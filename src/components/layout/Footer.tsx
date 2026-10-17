@@ -72,12 +72,12 @@ export function Footer() {
                 {col.links.map((l) => (
                   <li key={l.href}>
                     {l.href.startsWith("mailto:") || l.href.startsWith("https://") ? (
-                      <a href={l.href} className="inline-flex min-h-10 items-center py-2 leading-snug text-[#9AA1CC] transition-colors hover:text-white sm:min-h-0 sm:py-1"
+                      <a href={l.href} className="inline-flex min-h-10 items-center py-2 leading-snug text-[#9AA1CC] transition-colors hover:text-white sm:min-h-6 sm:py-1"
                         {...(l.href.startsWith("https://") ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
                         {l.label}{l.href.startsWith("https://") && <span className="sr-only"> (opens in a new tab)</span>}
                       </a>
                     ) : (
-                      <Link href={l.href} className="inline-flex min-h-10 items-center py-2 leading-snug text-[#9AA1CC] transition-colors hover:text-white sm:min-h-0 sm:py-1">
+                      <Link href={l.href} className="inline-flex min-h-10 items-center py-2 leading-snug text-[#9AA1CC] transition-colors hover:text-white sm:min-h-6 sm:py-1">
                         {l.label}
                       </Link>
                     )}

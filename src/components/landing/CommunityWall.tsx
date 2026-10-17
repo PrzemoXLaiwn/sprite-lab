@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Wand2 } from "lucide-react";
 import type { FeaturedGeneration } from "@/lib/featured-generations";
+import { GalleryImage } from "@/components/community/GalleryImage";
 import { HERO_PROMPT_EVENT } from "./HeroPrompt";
 import { SectionHeader } from "./SectionHeader";
 
@@ -59,14 +60,13 @@ export function CommunityWall({ items }: { items: FeaturedGeneration[]; register
             <button key={item.id} type="button" onClick={() => tryPrompt(item)}
               aria-label={`Use this prompt: ${item.prompt.slice(0, 120)}`}
               className={`checker group relative aspect-square overflow-hidden text-left outline-offset-[-2px] ${idx >= 8 ? "hidden sm:block" : ""}`}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={item.imageUrl} alt="" loading="lazy"
-                className={`absolute inset-0 h-full w-full object-contain p-[10%]  ${pixel ? "pixel-perfect" : ""}`} />
+              <GalleryImage src={item.imageUrl} alt=""
+                className={`absolute inset-0 h-full w-full object-contain p-[10%] ${pixel ? "pixel-perfect" : ""}`} />
               <span aria-hidden="true" className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/90 via-black/40 to-transparent p-3 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100">
-                <span className="line-clamp-2 text-[12px] leading-snug text-white">{item.prompt}</span>
+                <span className="line-clamp-2 text-[13px] leading-snug text-white">{item.prompt}</span>
                 <span className="mt-2 flex items-center justify-between gap-2">
-                  <span className="truncate text-[11px] text-[#FFC857]">{item.style}</span>
-                  <span className="flex shrink-0 items-center gap-1 rounded-[4px] bg-[#FFA300] px-2 py-1 text-[11px] font-semibold text-[#131A31]">
+                  <span className="truncate text-[12px] text-[#FFC857]">{item.style}</span>
+                  <span className="flex shrink-0 items-center gap-1 rounded-[4px] bg-[#FFA300] px-2 py-1 text-[12px] font-semibold text-[#131A31]">
                     <Wand2 className="h-3 w-3" /> Use prompt
                   </span>
                 </span>

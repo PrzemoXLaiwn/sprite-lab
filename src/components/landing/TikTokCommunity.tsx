@@ -52,12 +52,12 @@ export async function TikTokCommunity() {
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent" />
                   {i === 0 && v.views !== null && (
-                    <span className="absolute left-2 top-2 rounded-md bg-[#FFA300] px-1.5 py-0.5 font-mono text-[10px] font-semibold text-black">most viewed</span>
+                    <span className="absolute left-2 top-2 rounded-md bg-[#FFA300] px-1.5 py-0.5 font-mono text-[12px] font-semibold text-black">most viewed</span>
                   )}
                   <Play className="absolute left-1/2 top-1/2 h-8 w-8 -translate-x-1/2 -translate-y-1/2 fill-white/90 text-white/90 opacity-0 transition group-hover:opacity-100" />
                   <div className="absolute inset-x-0 bottom-0 p-2.5 sm:p-3">
                     {v.views !== null && (
-                      <div className="flex items-center gap-2.5 font-mono text-[11px] text-white">
+                      <div className="flex items-center gap-2.5 font-mono text-[12px] text-white">
                         <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{compact(v.views)}</span>
                         {v.likes !== null && <span className="flex items-center gap-1"><Heart className="h-3 w-3" />{compact(v.likes)}</span>}
                       </div>
@@ -71,8 +71,8 @@ export async function TikTokCommunity() {
                   <InViewVideo src={c.src} poster={c.poster} label={c.title}
                     className="absolute inset-0 h-full w-full object-cover" />
                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-2.5 pt-10 sm:p-3 sm:pt-12">
-                    <p className="line-clamp-2 text-[11px] font-medium leading-snug text-white sm:text-[12px]">{c.title}</p>
-                    <p className="mt-1 flex items-center gap-1 font-mono text-[10px] text-white/70"><TikTokIcon className="h-3 w-3" />@{TIKTOK_HANDLE}</p>
+                    <p className="line-clamp-2 text-[13px] font-medium leading-snug text-white sm:text-[14px]">{c.title}</p>
+                    <p className="mt-1 flex items-center gap-1 font-mono text-[12px] text-white/70"><TikTokIcon className="h-3 w-3" />@{TIKTOK_HANDLE}</p>
                   </div>
                 </a>
               ))}

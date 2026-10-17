@@ -59,9 +59,9 @@ function CreateVisual() {
   return (
     <Panel>
       <div className="rounded-[8px] border border-white/[0.08] bg-[#131A31] px-4 py-3.5">
-        <p className="font-mono text-[11px] text-[#8A92BF]">prompt</p>
+        <p className="font-mono text-[12px] text-[#8A92BF]">prompt</p>
         <p className="mt-1 text-[15px] text-white">a flaming sword with a glowing orange blade<span className="caret" /></p>
-        <div className="mt-3 flex flex-wrap gap-1.5 font-mono text-[11px]">
+        <div className="mt-3 flex flex-wrap gap-1.5 font-mono text-[13px]">
           <span className="rounded-md border border-[#FFA300]/50 bg-[#FFA300]/10 px-2 py-1 text-white">Pixel 16-bit</span>
           <span className="rounded-md border border-white/[0.08] px-2 py-1 text-[#9AA1CC]">Weapons</span>
           <span className="rounded-md border border-white/[0.08] px-2 py-1 text-[#9AA1CC]">Standard · {CREDIT_COSTS.normal} credit</span>
@@ -72,7 +72,7 @@ function CreateVisual() {
           <div key={o.src} className={`relative aspect-square rounded-[8px] border ${i === 0 ? "border-[#FFA300]/50" : "border-white/[0.06]"}`} style={CHECKER}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={o.src} alt={o.alt} loading="lazy" className="pixel-perfect absolute inset-0 h-full w-full object-contain p-[14%]" />
-            {i === 0 && <span className="absolute bottom-2 left-2 whitespace-nowrap rounded-md bg-black/70 px-1.5 py-0.5 font-mono text-[10px] text-white">PNG<span className="hidden sm:inline"> · transparent</span></span>}
+            {i === 0 && <span className="absolute bottom-2 left-2 whitespace-nowrap rounded-md bg-black/70 px-1.5 py-0.5 font-mono text-[12px] text-white">PNG<span className="hidden sm:inline"> · transparent</span></span>}
           </div>
         ))}
       </div>
@@ -100,7 +100,7 @@ function AnimateVisual() {
               <img src={a.src} alt={`Animated pixel art ${a.label} that ${a.motion}`} loading="lazy"
                 className={`pixel-perfect absolute inset-0 h-full w-full object-contain ${"wide" in a ? "p-1" : "scale-[1.35]"}`} />
             </div>
-            <figcaption className="flex items-center justify-between border-t border-white/[0.05] px-2.5 py-1.5 font-mono text-[10.5px]">
+            <figcaption className="flex items-center justify-between border-t border-white/[0.05] px-2.5 py-1.5 font-mono text-[13px]">
               <span className="text-[#9AA1CC]">{a.label}</span>
               <span className="text-[#FFC857]">{a.motion}</span>
             </figcaption>
@@ -121,7 +121,7 @@ function DirectionsVisual() {
           <figure key={d} className="overflow-hidden rounded-[8px] border border-white/[0.06] bg-[#131A31]">
             <div role="img" aria-label={`Lizard warrior facing ${d}`} className="aspect-square"
               style={{ backgroundImage: "url(/showcase/rotate-lizard.png)", backgroundSize: "800% 100%", backgroundPosition: `${(i / 7) * 100}% 0`, backgroundRepeat: "no-repeat" }} />
-            <figcaption className="border-t border-white/[0.05] py-1 text-center font-mono text-[10.5px] text-[#FFC857]">{d}</figcaption>
+            <figcaption className="border-t border-white/[0.05] py-1.5 text-center font-mono text-[13px] text-[#FFC857]">{d}</figcaption>
           </figure>
         ))}
       </div>
@@ -144,11 +144,11 @@ function TilesVisual() {
             <div role="img" aria-label={`Seamless ${t.label} tile repeated 2 by 2`}
               className="aspect-square rounded-[8px] border border-white/[0.06]"
               style={{ backgroundImage: `url(${t.src})`, backgroundSize: "50% 50%", backgroundRepeat: "repeat", imageRendering: "pixelated" }} />
-            <figcaption className="mt-2 text-center font-mono text-[11px] text-[#9AA1CC]">{t.label}</figcaption>
+            <figcaption className="mt-2 text-center font-mono text-[13px] text-[#9AA1CC]">{t.label}</figcaption>
           </figure>
         ))}
       </div>
-      <p className="mt-3 text-center font-mono text-[11px] text-[#8A92BF]">one tile, repeated 2 × 2 — no visible seams</p>
+      <p className="mt-3 text-center font-mono text-[13px] text-[#8A92BF]">one tile, repeated 2 × 2 — no visible seams</p>
     </Panel>
   );
 }
@@ -168,14 +168,14 @@ function ProjectsVisual() {
       <div className="flex items-center justify-between gap-3 border-b border-white/[0.06] pb-3">
         <div>
           <p className="text-[14px] font-semibold text-white">Dungeon crawler</p>
-          <p className="font-mono text-[11px] text-[#8A92BF]">7 assets · 4 folders</p>
+          <p className="font-mono text-[13px] text-[#8A92BF]">7 assets · 4 folders</p>
         </div>
         <span className="flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-[12px] font-semibold text-black">
           <Download className="h-3.5 w-3.5" /> Download ZIP
         </span>
       </div>
       <div className="mt-3 grid grid-cols-[130px_1fr] gap-3 sm:grid-cols-[150px_1fr]">
-        <ul className="space-y-1 font-mono text-[12px]">
+        <ul className="space-y-1 font-mono text-[13px]">
           {folders.map((f) => (
             <li key={f.name} className={`flex items-center justify-between rounded-lg px-2 py-1.5 ${f.open ? "bg-white/[0.06] text-white" : "text-[#9AA1CC]"}`}>
               <span className="flex items-center gap-1.5">{f.open ? <FolderOpen className="h-3.5 w-3.5 text-[#FFA300]" /> : <Folder className="h-3.5 w-3.5" />}{f.name}</span>

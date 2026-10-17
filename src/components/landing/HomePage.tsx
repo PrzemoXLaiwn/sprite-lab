@@ -84,20 +84,30 @@ export async function HomePage({ signedIn }: { signedIn: boolean }) {
       <PricingSection />
 
       {/* ═══ FAQ ══════════════════════════════════════════════ */}
-      <section id="faq" className="relative scroll-mt-16 py-16 sm:py-20">
+      <section id="faq" className="relative scroll-mt-16 py-12 sm:py-20">
         <div className="mx-auto max-w-3xl px-4 sm:px-5">
-          <SectionHeader eyebrow="faq" title="Questions people ask before signing up" className="mb-10" />
+          <SectionHeader eyebrow="faq" title="Questions people ask before signing up" className="mb-8 sm:mb-10" />
 
           <div className="divide-y divide-white/[0.06] rounded-2xl border border-white/[0.07] bg-[#19223F]">
-            {HOME_FAQ.map((faq, i) => (
-              <details key={i} className="group px-5 sm:px-6" open={i === 0}>
-                <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 py-4 [&::-webkit-details-marker]:hidden">
-                  <h3 className="text-[15px] font-medium leading-snug text-white">{faq.q}</h3>
-                  <Plus className="h-4 w-4 shrink-0 text-[#9AA1CC] transition-transform duration-200 group-open:rotate-45" aria-hidden="true" />
-                </summary>
-                <p className="-mt-1 pb-5 pr-8 text-[14px] leading-relaxed text-[#9AA1CC]">{faq.a}</p>
-              </details>
+            {HOME_FAQ.slice(0, FAQ_PREVIEW).map((faq) => (
+              <FaqItem key={faq.q} faq={faq} />
             ))}
+            <div className="hidden sm:contents">
+              {HOME_FAQ.slice(FAQ_PREVIEW).map((faq) => (
+                <FaqItem key={faq.q} faq={faq} />
+              ))}
+            </div>
+            <details className="group/more px-5 sm:hidden">
+              <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 py-4 [&::-webkit-details-marker]:hidden">
+                <span className="text-[15px] font-medium leading-snug text-white">More questions</span>
+                <Plus className="h-4 w-4 shrink-0 text-[#9AA1CC] transition-transform duration-200 group-open/more:rotate-45" aria-hidden="true" />
+              </summary>
+              <div className="-mt-1 divide-y divide-white/[0.06] border-t border-white/[0.06]">
+                {HOME_FAQ.slice(FAQ_PREVIEW).map((faq) => (
+                  <FaqItem key={faq.q} faq={faq} flush />
+                ))}
+              </div>
+            </details>
           </div>
         </div>
         {/* FAQPage structured data — the same Q&A that is visible above */}
@@ -155,6 +165,21 @@ export async function HomePage({ signedIn }: { signedIn: boolean }) {
  * de-duplicated (near-identical prompts, too many of one category) so the
  * wall stays varied.
  */
+/** First questions stay visible on phones; the rest sit behind "More questions". */
+const FAQ_PREVIEW = 5;
+
+function FaqItem({ faq, flush = false }: { faq: { q: string; a: string }; flush?: boolean }) {
+  return (
+    <details className={`group/faq ${flush ? "" : "px-5 sm:px-6"}`}>
+      <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 py-4 [&::-webkit-details-marker]:hidden">
+        <h3 className="text-[15px] font-medium leading-snug text-white">{faq.q}</h3>
+        <Plus className="h-4 w-4 shrink-0 text-[#9AA1CC] transition-transform duration-200 group-open/faq:rotate-45" aria-hidden="true" />
+      </summary>
+      <p className="-mt-1 pb-5 pr-8 text-[14px] leading-relaxed text-[#9AA1CC]">{faq.a}</p>
+    </details>
+  );
+}
+
 function curateWall<T extends { imageUrl: string; prompt: string; category: string }>(items: T[], max = 18, perCategory = 6): T[] {
   const out: T[] = [];
   const urls = new Set<string>();
@@ -187,7 +212,7 @@ function HeroWorkbench() {
       <div className="overflow-hidden rounded-[10px] border border-white/[0.09] bg-[#19223F] shadow-[0_24px_60px_-20px_rgba(0,0,0,0.6)]">
         <div className="flex items-center justify-between gap-3 border-b border-white/[0.07] px-4 py-2.5">
           <span className="text-[13px] font-medium text-[#FFF1E8]">Dark knight, idle loop</span>
-          <span className="font-mono text-[12px] text-[#A7ADD4]">256 × 256 px</span>
+          <span className="font-mono text-[13px] text-[#A7ADD4]">256 × 256 px</span>
         </div>
         <div className="checker relative flex aspect-[4/3] items-center justify-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -203,14 +228,14 @@ function HeroWorkbench() {
                 className="checker checker-sm pixel-perfect block h-14 w-14 rounded-[4px] sm:h-16 sm:w-16"
                 style={{ backgroundImage: "url(/showcase/rotate-knight.png), " + CHECKER_LAYERS, backgroundSize: `400% 100%, 10px 10px, 10px 10px`, backgroundPosition: `${(i / 3) * 100}% 0, 0 0, 5px 5px` }}
               />
-              <span className="text-[12px] text-[#A7ADD4]">{d}</span>
+              <span className="text-[13px] text-[#A7ADD4]">{d}</span>
             </div>
           ))}
         </div>
         <div className="flex flex-wrap items-center gap-2 border-t border-white/[0.07] px-4 py-3">
-          <span className="mr-1 text-[12.5px] text-[#A7ADD4]">Exports to</span>
+          <span className="mr-1 text-[14px] text-[#A7ADD4]">Exports to</span>
           {["Unity", "Godot", "GameMaker", "PNG sheet"].map((e) => (
-            <span key={e} className="rounded-[4px] border border-white/[0.1] bg-[#212B4E] px-2 py-1 text-[12px] font-medium text-[#FFF1E8]">{e}</span>
+            <span key={e} className="rounded-[4px] border border-white/[0.1] bg-[#212B4E] px-2 py-1 text-[13px] font-medium text-[#FFF1E8]">{e}</span>
           ))}
         </div>
       </div>

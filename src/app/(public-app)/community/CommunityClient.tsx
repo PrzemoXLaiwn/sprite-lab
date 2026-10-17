@@ -33,6 +33,7 @@ import {
   Plus,
 } from "lucide-react";
 import { CHECKERBOARD, CommunityAvatar, isPixelStyleId } from "@/components/community/shared";
+import { GalleryImage } from "@/components/community/GalleryImage";
 import { GENERATE_STYLES } from "@/data/generate-styles";
 import { COMMUNITY_PAGE_SIZE, type CommunityItem, type CommunityPage } from "@/lib/community-gallery-types";
 
@@ -509,11 +510,11 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div className="min-w-0">
               <h1 className="font-display text-[24px] font-semibold leading-tight tracking-tight text-white">Community gallery</h1>
-              <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-[#9AA1CC]">
+              <p className="mt-1 max-w-2xl text-[15px] leading-relaxed text-[#9AA1CC]">
                 Sprites, pixel art and animations made with SpriteLab and shared by the people who made them. Open any piece to see its full
                 prompt and style, like it or leave a comment.
               </p>
-              <p className="mt-1.5 font-mono text-[11.5px] text-[#9AA1CC]">
+              <p className="mt-1.5 font-mono text-[13px] text-[#9AA1CC]">
                 <span className="mr-1.5 text-[#FFA300]">&gt;</span>
                 <span className="font-mono tabular-nums text-[#C8CCE8]">{total}</span> creations
                 <span className="mx-1.5 text-[#8A92BF]">·</span>
@@ -585,22 +586,20 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                         {is3D ? (
                           <FileBox className="absolute inset-0 m-auto h-6 w-6 text-[#FFA300]" />
                         ) : (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
+                          <GalleryImage
                             src={gen.imageUrl}
                             alt={altFor(gen)}
-                            loading="lazy"
                             className={`h-full w-full object-contain p-1.5 transition-transform duration-300 group-hover:scale-110 ${isPixelStyleId(gen.styleId) ? "pixel-perfect" : ""}`}
                           />
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[13px] font-medium text-white">{cleanPrompt(gen.prompt)}</p>
-                        <p className="mt-0.5 truncate text-[12px] text-[#9AA1CC]">by {gen.user?.name || "Anonymous"}</p>
+                        <p className="truncate text-[14px] font-medium text-white">{cleanPrompt(gen.prompt)}</p>
+                        <p className="mt-0.5 truncate text-[13px] text-[#9AA1CC]">by {gen.user?.name || "Anonymous"}</p>
                       </div>
                       <div className="flex shrink-0 flex-col items-end gap-1">
-                        <span className="text-[11px] font-semibold font-mono tabular-nums text-[#8A92BF]">#{index + 1}</span>
-                        <span className="flex items-center gap-1 text-[12px] font-mono tabular-nums text-[#C8CCE8]">
+                        <span className="text-[12px] font-semibold font-mono tabular-nums text-[#8A92BF]">#{index + 1}</span>
+                        <span className="flex items-center gap-1 text-[13px] font-mono tabular-nums text-[#C8CCE8]">
                           <Heart className="h-3 w-3 fill-rose-400 text-rose-400" />
                           {gen.likes}
                         </span>
@@ -647,7 +646,7 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                       type="button"
                       onClick={() => setFilterType(tab.id)}
                       aria-pressed={active}
-                      className={`flex min-h-10 items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12.5px] font-medium transition-colors lg:min-h-0 lg:text-[12px] ${
+                      className={`flex min-h-10 items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors lg:min-h-8 ${
                         active ? "bg-white/[0.1] text-white shadow-sm" : "text-[#9AA1CC] hover:text-white"
                       }`}
                     >
@@ -670,7 +669,7 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                       type="button"
                       onClick={() => setSortBy(tab.id)}
                       aria-pressed={active}
-                      className={`flex min-h-10 items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12.5px] font-medium transition-colors lg:min-h-0 lg:text-[12px] ${
+                      className={`flex min-h-10 items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors lg:min-h-8 ${
                         active ? "bg-white/[0.1] text-white shadow-sm" : "text-[#9AA1CC] hover:text-white"
                       }`}
                     >
@@ -695,7 +694,7 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                   type="button"
                   onClick={() => setFilterCategory(cat.id)}
                   aria-pressed={active}
-                  className={`flex min-h-10 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] font-medium transition-colors lg:min-h-0 lg:text-[12px] ${
+                  className={`flex min-h-10 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors lg:min-h-8 ${
                     active
                       ? "border-[#FFA300]/60 bg-[#FFA300]/12 text-white"
                       : "border-white/[0.08] text-[#A7ADD4] hover:border-white/20 hover:text-white"
@@ -714,7 +713,7 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
           {/* ═══ Gallery ══════════════════════════════════════════════ */}
           <div className="mt-5">
             {!loading && searchQuery && filteredGenerations.length > 0 && (
-              <p className="mb-3 text-[12px] text-[#9AA1CC]">
+              <p className="mb-3 text-[14px] text-[#9AA1CC]">
                 {filteredGenerations.length} result{filteredGenerations.length === 1 ? "" : "s"} for{" "}
                 <span className="text-[#C8CCE8]">&ldquo;{searchQuery}&rdquo;</span>
               </p>
@@ -738,7 +737,7 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                 <h3 className="text-[15px] font-semibold text-white">
                   {hasFilters ? "No matches" : "Nothing shared yet"}
                 </h3>
-                <p className="mt-1 max-w-sm text-[13px] text-[#9AA1CC]">
+                <p className="mt-1 max-w-sm text-[14px] text-[#9AA1CC]">
                   {hasFilters
                     ? "Nothing matches these filters. Try another word or a different category."
                     : "Nothing has been shared yet. Share a sprite from your assets and it shows up here."}
@@ -779,21 +778,19 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.04]">
                             <FileBox className="h-7 w-7 text-[#FFA300]" />
                           </div>
-                          <span className="text-[11px] text-[#9AA1CC]">{getModelName(gen.styleId)}</span>
+                          <span className="text-[13px] text-[#9AA1CC]">{getModelName(gen.styleId)}</span>
                         </div>
                       ) : (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
+                        <GalleryImage
                           src={gen.imageUrl}
                           alt={altFor(gen)}
-                          loading="lazy"
-                          className={`absolute inset-0 h-full w-full object-contain p-[10%] pb-[20%] transition-transform duration-300 group-hover:scale-105 ${isPixelStyleId(gen.styleId) ? "pixel-perfect" : ""}`}
+                          className={`absolute inset-0 h-full w-full object-contain p-[10%] pb-[28%] transition-transform duration-300 group-hover:scale-105 ${isPixelStyleId(gen.styleId) ? "pixel-perfect" : ""}`}
                         />
                       )}
 
                       {/* Type chip — only 3D is called out; 2D is the default */}
                       {is3D && (
-                        <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full border border-white/[0.08] bg-black/45 px-2 py-0.5 font-mono text-[10px] font-medium text-[#C8CCE8] backdrop-blur-sm">
+                        <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full border border-white/[0.08] bg-black/45 px-2 py-0.5 font-mono text-[12px] font-medium text-[#C8CCE8] backdrop-blur-sm">
                           <Cuboid className="h-3 w-3 text-[#FFA300]" />
                           {format3D}
                         </span>
@@ -828,15 +825,15 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                       </div>
 
                       {/* Bottom info */}
-                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent px-3 pb-2.5 pt-8">
-                        <p className="line-clamp-1 text-[12px] font-medium text-white">{cleanPrompt(gen.prompt)}</p>
-                        <p className="mt-0.5 truncate font-mono text-[10.5px] text-[#A7ADD4]">{styleName(gen.styleId)}</p>
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/55 to-transparent px-3 pb-2.5 pt-10">
+                        <p className="line-clamp-2 text-[13px] font-medium leading-snug text-white">{cleanPrompt(gen.prompt)}</p>
+                        <p className="mt-0.5 truncate font-mono text-[12px] text-[#A7ADD4]">{styleName(gen.styleId)}</p>
                         <div className="mt-1.5 flex items-center justify-between gap-2">
                           <div className="flex min-w-0 items-center gap-1.5">
-                            <CommunityAvatar src={gen.user?.avatarUrl} name={gen.user?.name} size={16} />
-                            <span className="truncate text-[11px] text-[#C8CCE8]">{gen.user?.name || "Anonymous"}</span>
+                            <CommunityAvatar src={gen.user?.avatarUrl} name={gen.user?.name} size={18} />
+                            <span className="truncate text-[12px] text-[#C8CCE8]">{gen.user?.name || "Anonymous"}</span>
                           </div>
-                          <span className={`flex shrink-0 items-center gap-1 text-[11px] font-mono tabular-nums ${gen.likes > 0 ? "text-[#FFF1E8]" : "text-[#9AA1CC]"}`}>
+                          <span className={`flex shrink-0 items-center gap-1 text-[12px] font-mono tabular-nums ${gen.likes > 0 ? "text-[#FFF1E8]" : "text-[#9AA1CC]"}`}>
                             <Heart className={`h-3 w-3 ${gen.likes > 0 ? "fill-rose-400 text-rose-400" : ""}`} />
                             {gen.likes}
                           </span>
@@ -881,7 +878,7 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
             </div>
             <div>
               <h3 className="text-[14px] font-semibold text-white">Live chat</h3>
-              <p className="flex items-center gap-1.5 font-mono text-[10.5px] text-[#9AA1CC]">
+              <p className="flex items-center gap-1.5 font-mono text-[12px] text-[#9AA1CC]">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                 {chatMessages.length} messages
               </p>
@@ -917,7 +914,7 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                 <MessageSquare className="h-5 w-5 text-[#9AA1CC]" />
               </div>
               <p className="text-[13px] font-medium text-white">No messages yet</p>
-              <p className="mt-1 text-[12px] text-[#9AA1CC]">Be the first to say hello!</p>
+              <p className="mt-1 text-[14px] text-[#9AA1CC]">Be the first to say hello!</p>
             </div>
           ) : (
             chatMessages.map((msg) => {

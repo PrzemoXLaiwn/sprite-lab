@@ -33,13 +33,63 @@ const BTN_PRIMARY =
 const BTN_SECONDARY =
   "rounded-xl border border-white/[0.1] bg-white/[0.04] text-[#C8CCE8] font-semibold hover:bg-white/[0.08] hover:text-white transition-colors";
 const CARD = "relative flex flex-col rounded-2xl border bg-[#212B4E] p-5 transition-colors";
-const CHIP = "rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] text-[#FFF1E8]";
+const CHIP = "rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[12px] text-[#FFF1E8]";
+const TEXT_LINK =
+  "inline-flex min-h-6 items-center text-[#FFC857] underline decoration-[#FFC857]/80 underline-offset-[3px] transition-colors hover:text-white";
 
 function PopularPill({ children }: { children: React.ReactNode }) {
   return (
     <span className="px-corners absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap bg-[#FFA300] px-3 py-1 font-mono text-[11px] font-semibold text-black">
       {children}
     </span>
+  );
+}
+
+/** Phone home: names, prices and the same CTAs, without the full feature lists. */
+function MobilePlanTeaser() {
+  return (
+    <div className="mt-8 sm:hidden">
+      <ul className="divide-y divide-white/[0.06] overflow-hidden rounded-2xl border border-white/[0.08] bg-[#212B4E]">
+        {PLAN_CARDS.map((plan) => (
+          <li key={plan.id} className="flex items-center gap-3 px-4 py-3.5 text-left">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-baseline gap-x-2">
+                <h3 className="font-display text-[16px] font-semibold text-white">{plan.name}</h3>
+                {plan.featured && <span className="text-[13px] font-medium text-[#FFC857]">Most popular</span>}
+              </div>
+              <p className="mt-0.5 text-[14px] text-[#9AA1CC]">{plan.description}</p>
+              <p className="mt-1 text-[14px] text-[#C8CCE8]">
+                <span className="font-semibold tabular-nums text-white">£{plan.price}</span>
+                <span className="text-[#9AA1CC]">{plan.price === 0 ? " forever" : "/month"}</span>
+                <span className="text-[#8A92BF]"> · </span>
+                {plan.credits.toLocaleString()} credits{plan.price === 0 ? "" : "/mo"}
+              </p>
+            </div>
+            {plan.id === "FREE" ? (
+              <Link href="/register" className={`inline-flex h-11 shrink-0 items-center whitespace-nowrap px-3.5 text-[14px] ${BTN_SECONDARY}`}>
+                Start free
+              </Link>
+            ) : (
+              <Link
+                href={`/checkout/${PLAN_CHECKOUT_SLUG[plan.id]}`}
+                className={`inline-flex h-11 shrink-0 items-center whitespace-nowrap px-3.5 text-[14px] ${plan.featured ? BTN_PRIMARY : BTN_SECONDARY}`}
+              >
+                {plan.cta}
+              </Link>
+            )}
+          </li>
+        ))}
+      </ul>
+      <p className="mt-4 text-center text-[14px] leading-7 text-[#9AA1CC]">
+        <Link href="/pricing" className={TEXT_LINK}>
+          See full pricing
+        </Link>
+        <span> · </span>
+        <Link href="/pricing#credit-packs" className={TEXT_LINK}>
+          Credit packs
+        </Link>
+      </p>
+    </div>
   );
 }
 
@@ -89,7 +139,7 @@ export function PricingSection() {
             intro="Every generation has a fixed credit price, shown before you click. Start free — subscribe or buy a pack when you need more. Cancel anytime."
           />
 
-          <div role="tablist" aria-label="Pricing options" className="mt-8 inline-grid grid-cols-3 gap-1 rounded-xl bg-white/[0.04] p-1 text-[13px] font-medium">
+          <div role="tablist" aria-label="Pricing options" className="mt-8 hidden grid-cols-3 gap-1 rounded-xl bg-white/[0.04] p-1 text-[13px] font-medium sm:inline-grid">
             {TABS.filter((t) => t.id !== "lifetime" || lifetimeOn).map((t) => (
               <button
                 key={t.id}
@@ -107,6 +157,9 @@ export function PricingSection() {
           </div>
         </div>
 
+        <MobilePlanTeaser />
+
+        <div className="hidden sm:block">
         <div className="mt-10">
           {/* Subscriptions */}
           {tab === "subscriptions" && (
@@ -281,29 +334,30 @@ export function PricingSection() {
           <div className="mt-5 grid grid-cols-1 gap-3 text-center sm:grid-cols-3">
             <div className="rounded-xl border border-white/[0.06] bg-[#212B4E] p-4">
               <p className="font-sans tracking-tight tabular-nums text-[22px] font-semibold text-[#C8CCE8]">£40–160</p>
-              <p className="mt-1 text-[12px] text-[#9AA1CC]">per asset from a freelancer</p>
+              <p className="mt-1 text-[14px] text-[#9AA1CC]">per asset from a freelancer</p>
             </div>
             <div className="rounded-xl border border-white/[0.06] bg-[#212B4E] p-4">
               <p className="font-sans tracking-tight tabular-nums text-[22px] font-semibold text-[#C8CCE8]">2–8 hours</p>
-              <p className="mt-1 text-[12px] text-[#9AA1CC]">if you create it yourself</p>
+              <p className="mt-1 text-[14px] text-[#9AA1CC]">if you create it yourself</p>
             </div>
             {studioPerCredit && (
               <div className="rounded-xl border border-[#FFA300]/40 bg-[#FFA300]/[0.06] p-4">
                 <p className="font-sans tracking-tight tabular-nums text-[22px] font-semibold text-white">£{studioPerCredit}</p>
-                <p className="mt-1 text-[12px] text-[#9AA1CC]">per credit with SpriteLab Studio</p>
+                <p className="mt-1 text-[14px] text-[#9AA1CC]">per credit with SpriteLab Studio</p>
               </div>
             )}
           </div>
         </div>
+        </div>
 
         {/* FAQ teaser */}
-        <p className="mt-8 text-center text-[13px] text-[#9AA1CC]">
+        <p className="mt-8 text-center text-[14px] leading-8 text-[#9AA1CC]">
           Have questions?{" "}
-          <a href="#faq" className="text-[#FFC857] underline-offset-4 hover:underline">
+          <a href="#faq" className={TEXT_LINK}>
             Check our FAQ
           </a>{" "}
           or{" "}
-          <a href="mailto:spritelab.contact@gmail.com" className="text-[#FFC857] underline-offset-4 hover:underline">
+          <a href="mailto:spritelab.contact@gmail.com" className={TEXT_LINK}>
             contact us
           </a>
           .

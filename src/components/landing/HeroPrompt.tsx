@@ -206,7 +206,7 @@ export function HeroPrompt({ registerUrl, signedIn = false }: { registerUrl: str
             {isGenerating ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-[#9AA1CC]">
                 <Loader2 className="h-6 w-6 animate-spin text-[#FFA300]" />
-                <span className="text-[12px]">Drawing your sprite…</span>
+                <span className="text-[14px]">Drawing your sprite…</span>
               </div>
             ) : image ? (
               // eslint-disable-next-line @next/next/no-img-element
