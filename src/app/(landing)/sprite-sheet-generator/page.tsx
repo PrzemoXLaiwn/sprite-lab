@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { SeoLanding } from "@/components/landing/SeoLanding";
 import { ANIMATION_FRAME_OPTIONS, ROTATIONS, animationCredits } from "@/config/animations";
+import { SIGNUP_CREDITS, SIGNUP_CTA } from "@/config/signup";
 
 const URL = "https://www.sprite-lab.com/sprite-sheet-generator";
 const TITLE = "Sprite Sheet Generator — AI Frames to PNG Atlas | SpriteLab";
@@ -107,7 +108,7 @@ export default function SpriteSheetGeneratorPage() {
           eyebrow: "how to make one",
           title: <>From a sentence to a sprite sheet</>,
           steps: [
-            { title: "Make the sprite", body: "Describe it, pick a style and get a transparent sprite. Try it without an account, or sign up for 10 free credits." },
+            { title: "Make the sprite", body: `Describe it, pick a style and get a transparent sprite. Sign up for ${SIGNUP_CREDITS} free credits.` },
             { title: "Pick the motion", body: "Idle, walk, run, attack, jump, cast, hurt, a turnaround or your own move. Choose 4, 6 or 9 frames and turn on smooth mode if you want in-betweens." },
             { title: "Download the sheet", body: "Sheet PNG, frames ZIP, GIF or the engine pack. Every result is saved in your assets, so you can come back for another format later." },
           ],
@@ -118,13 +119,13 @@ export default function SpriteSheetGeneratorPage() {
         { q: "Are all frames the same size?", a: "Yes. Every frame in a sheet has the same width and height, laid out in one row with no padding, so you can slice it by cell size in any engine." },
         { q: "How do I cut the sheet in Unity or Godot?", a: "Unity: set Sprite Mode to Multiple, open the Sprite Editor and use Slice → Grid By Cell Size with the frame width and height. Godot 4: in an AnimatedSprite2D's SpriteFrames, click 'Add frames from sprite sheet' and set Horizontal to the number of frames and Vertical to 1. Or skip slicing and use the engine pack." },
         { q: "Can I upload my own sprite and turn it into a sheet?", a: "Not at the moment. Animations start from a sprite made in SpriteLab, so the style, outline and transparency are already right for animating." },
-        { q: "How much does a sprite sheet cost?", a: `Animations cost ${sheetPrices}. Smooth mode doubles the frames: ${smoothPrices} credits. Turnarounds cost ${rotation("rotate4").credits} credits for 4 directions and ${rotation("rotate8").credits} for 8, and a 4-direction walk ${rotation("walk4dir").credits}. You get 10 free credits when you sign up, no card needed.` },
+        { q: "How much does a sprite sheet cost?", a: `Animations cost ${sheetPrices}. Smooth mode doubles the frames: ${smoothPrices} credits. Turnarounds cost ${rotation("rotate4").credits} credits for 4 directions and ${rotation("rotate8").credits} for 8, and a 4-direction walk ${rotation("walk4dir").credits}. You get ${SIGNUP_CREDITS} free credits when you sign up, no card needed.` },
         { q: "What's the difference between a sprite sheet and a sprite atlas?", a: "A sprite sheet usually holds the frames of one animation in a regular grid; an atlas packs many different sprites into one texture, often at irregular positions with a data file. SpriteLab exports regular sheets, which every engine can slice without a data file." },
       ]}
       cta={{
         title: <>Make your first sprite sheet</>,
         body: "Generate a sprite, animate it and download the sheet in a couple of minutes.",
-        button: "Get 10 free credits",
+        button: SIGNUP_CTA,
       }}
     />
   );

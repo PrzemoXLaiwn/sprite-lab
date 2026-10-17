@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { SiteNav } from "@/components/layout/SiteNav";
 import { Footer } from "@/components/layout/Footer";
 import { COMPARISONS, COMPARE_CHECKED_ON, COMPARE_CHECKED_ON_LABEL } from "@/data/compare";
+import { SIGNUP_CREDITS } from "@/config/signup";
 import { CONTAINER, CompareCta, Disclaimer, JsonLd, SITE, SectionHead } from "../_ui";
 
 // Roundup of the tools compared one-to-one under /compare. Every competitor
@@ -45,7 +46,7 @@ const TOOLS: Tool[] = [
     animation: "Yes, 4–18 frames, sheet + GIF + engine pack",
     directions: "4 and 8 static views, 4-direction walk",
     api: "No",
-    free: "3 tries without an account, 10 credits on signup",
+    free: `${SIGNUP_CREDITS} credits on signup, no card`,
     paid: "From £5/month",
   },
   {
@@ -126,7 +127,7 @@ const PICKS: { need: string; pick: string; why: string }[] = [
 
 const FAQ: { q: string; a: string }[] = [
   { q: "What is the best AI sprite generator in 2026?", a: "It depends on the game. For fast prompt-to-sprite in many styles with animation, SpriteLab; for pixel-art-only workflows with directional characters and tilesets, PixelLab or Retro Diffusion; for an all-in-one suite with 3D and audio, Ludo.ai; for custom-trained studio styles, Scenario." },
-  { q: "Which AI sprite generators are free?", a: "All six have a free way in: SpriteLab gives 3 tries without an account and 10 credits on signup, PixelLab a free trial, Retro Diffusion starter credits, Ludo.ai 30 credits, Scenario 50 daily credits and Leonardo AI 150 tokens a day. Limits and commercial-use rules differ, so check each pricing page." },
+  { q: "Which AI sprite generators are free?", a: `All six have a free way in: SpriteLab gives ${SIGNUP_CREDITS} credits on signup with no card, PixelLab a free trial, Retro Diffusion starter credits, Ludo.ai 30 credits, Scenario 50 daily credits and Leonardo AI 150 tokens a day. Limits and commercial-use rules differ, so check each pricing page.` },
   { q: "Which one makes real pixel art?", a: "SpriteLab, PixelLab and Retro Diffusion snap results to a real pixel grid with a limited palette. General image generators produce pixel-art-looking images whose pixels are often uneven and blurred, which need cleaning before they scale cleanly in an engine." },
   { q: "Can AI generate sprite sheets?", a: "Yes. SpriteLab, PixelLab, Retro Diffusion and Ludo.ai animate sprites into frames. SpriteLab exports one row of equal-size frames, a GIF and an engine pack for Godot, Unity and GameMaker." },
   { q: "Is this comparison biased?", a: "We make SpriteLab, so read it with that in mind. Every competitor detail comes from that tool's own website, and the table says where another tool is the better choice." },

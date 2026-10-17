@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import { SeoLanding } from "@/components/landing/SeoLanding";
 import { LANDING_SPECS } from "@/data/landing-specs";
 import { SHOWCASE } from "@/data/showcase";
+import { SIGNUP_CREDITS, SIGNUP_CTA, SIGNUP_ON_SIGNUP } from "@/config/signup";
 
 const URL = "https://www.sprite-lab.com/ai-sprite-generator";
 
 export const metadata: Metadata = {
   title: { absolute: "Sprite Maker & AI Sprite Generator for 2D Games | SpriteLab" },
   description:
-    "Free online sprite maker: describe a character, monster, weapon or item and get a 2D game sprite as a transparent PNG. 3 tries without an account.",
+    `Free online sprite maker: describe a character, monster, weapon or item and get a 2D game sprite as a transparent PNG. ${SIGNUP_CREDITS} free credits on signup.`,
   keywords: ["sprite maker", "sprite creator", "AI sprite generator", "2D sprite maker", "game sprite generator", "create sprites online", "free sprite maker", "sprite maker online", "2D sprite generator"],
   openGraph: {
     title: "Sprite Maker & AI Sprite Generator for 2D Games | SpriteLab",
@@ -19,7 +20,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Sprite Maker & AI Sprite Generator for 2D Games | SpriteLab",
-    description: "Free online sprite maker: describe a character, monster, weapon or item and get a 2D game sprite as a transparent PNG. 3 tries without an account.",
+    description: `Free online sprite maker: describe a character, monster, weapon or item and get a 2D game sprite as a transparent PNG. ${SIGNUP_CREDITS} free credits on signup.`,
   },
   alternates: { canonical: URL },
 };
@@ -40,7 +41,7 @@ export default function AiSpriteGeneratorPage() {
         </>
       }
       subtitle="Create sprites online from one sentence: describe a character, monster, weapon or item and get a clean transparent PNG, on a real pixel grid for pixel art, ready for your engine. No drawing and nothing to install."
-      trust={["3 free tries, no account", "10 credits on signup", "transparent png", "commercial use"]}
+      trust={[SIGNUP_ON_SIGNUP, "No card", "transparent png", "commercial use"]}
       floating={[
         { src: "/showcase/knight.png", alt: "", pixel: true, cls: "left-[7%] top-[30%] w-24 animate-float" },
         { src: "/showcase/health-potion.png", alt: "", pixel: true, cls: "left-[14%] top-[62%] w-14 animate-float [animation-delay:1.2s]" },
@@ -88,7 +89,7 @@ export default function AiSpriteGeneratorPage() {
           id: "how-to-use",
           eyebrow: "how to use the sprite maker",
           title: <>Make a sprite in three steps</>,
-          intro: "Works in any browser on a computer or a phone. Try it three times without an account.",
+          intro: "Works in any browser on a computer or a phone.",
           steps: [
             { title: "Describe the sprite", body: "Type what it is and what makes it yours: “a goblin archer with a crooked bow and a leather hood”. Materials, colours and mood help; the view and pose are set for you (a calm A-pose for characters, ready to animate)." },
             { title: "Pick the type and style", body: "Character, creature, weapon, item, icon, environment or tile, in one of 12 styles from 16-bit pixel art to hand-painted. The style decides the outline, palette and shading." },
@@ -137,7 +138,7 @@ export default function AiSpriteGeneratorPage() {
       faq={[
         { q: "What is an AI sprite generator?", a: "It is a tool that creates game sprites — characters, items, weapons and props — from a text description. SpriteLab is built for game developers: results come out as transparent PNGs, and pixel art is snapped to a real pixel grid." },
         { q: "Are the sprites transparent?", a: "Yes. The background is removed automatically on every sprite, including enclosed gaps, so you get a clean PNG with an alpha channel." },
-        { q: "Is this sprite maker free?", a: "You can make 3 sprites without an account, and you get 10 free credits when you sign up, with no card needed. After that there are monthly plans and one-off credit packs." },
+        { q: "Is this sprite maker free?", a: `Sign up free for ${SIGNUP_CREDITS} credits. No card needed. After that there are monthly plans and one-off credit packs.` },
         { q: "Is it a sprite editor like Aseprite or Piskel?", a: "No. In a sprite editor you draw every pixel yourself; SpriteLab generates the whole sprite from a description. The results are ordinary PNGs, so you can open them in Aseprite, Piskel or any editor to touch up details." },
         { q: "Can I animate the sprites?", a: "Yes. Open any sprite in Animate, pick a suggested motion (idle, walk, attack, jump…) or describe your own, and download a sprite sheet, the frames and a GIF.", link: { label: "See the sprite sheet format", href: "/sprite-sheet-generator" } },
         { q: "Can I use the sprites commercially?", a: "Yes, assets you generate can be used in commercial games with no attribution required." },
@@ -148,8 +149,8 @@ export default function AiSpriteGeneratorPage() {
             Make your first sprite
           </>
         ),
-        body: "Three free tries without an account, 10 free credits when you sign up.",
-        button: "Get 10 free credits",
+        body: `Sign up free for ${SIGNUP_CREDITS} credits. No card needed.`,
+        button: SIGNUP_CTA,
       }}
     />
   );

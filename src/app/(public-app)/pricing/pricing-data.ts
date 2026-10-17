@@ -12,6 +12,7 @@
 // =============================================================================
 
 import { PLAN_FEATURES } from "@/config/plan-features";
+import { SIGNUP_CREDITS } from "@/config/signup";
 
 export type SubscriptionPlanId = "FREE" | "STARTER" | "PRO" | "UNLIMITED";
 
@@ -35,7 +36,7 @@ export const PLAN_CARDS: readonly PlanCard[] = [
     name: "Free",
     price: 0,
     oldPrice: null,
-    credits: 10,
+    credits: SIGNUP_CREDITS,
     description: "Try it free",
     features: PLAN_FEATURES.FREE,
     cta: "Start creating",

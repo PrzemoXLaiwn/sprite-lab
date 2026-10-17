@@ -1,4 +1,8 @@
 import { SEO_PAGES } from "@/data/seo-pages";
+import { SIGNUP_CREDITS } from "@/config/signup";
+import { RELAUNCH } from "@/config/relaunch";
+import { CREDIT_COSTS } from "@/lib/services/generation";
+import { ANIMATION_FRAME_OPTIONS, RIG_CREDITS, ROTATIONS, animationCredits } from "@/config/animations";
 import { GUIDES } from "@/data/guides";
 import { COMPARISONS, COMPARE_CHECKED_ON } from "@/data/compare";
 
@@ -42,7 +46,7 @@ Any sprite can be animated: idle, walk, run, attack, jump, cast, hurt, defeat, f
 Output is standard PNG / sprite-sheet PNG / GIF, which works in Unity, Godot, GameMaker, Phaser, Construct, RPG Maker and any engine that loads images. Sprite sheets are horizontal strips of equal-size frames, so they can be sliced by cell size in Unity's Sprite Editor or used as SpriteFrames in Godot.
 
 ## Pricing
-Free: 3 tries without an account, 10 credits on signup (no credit card). Paid plans from £5/month (Starter, 250 credits), Pro £12/month (500 credits), Studio £25/month (1,200 credits); one-off credit packs are also available. A standard sprite costs 1 credit, HD quality 3 credits, an idle loop 3 credits and other animations 7–12 credits (smooth mode 12–19). Assets can be used in commercial projects.
+Free: ${SIGNUP_CREDITS} credits on signup (no credit card). Accounts created before 7 October 2026 get a one-time welcome-back of ${RELAUNCH.RETURNING_BONUS} credits the first time they open the app before 31 December 2026. Accounts that already received ${RELAUNCH.PREVIOUS_RETURNING_BONUS} get ${RELAUNCH.RETURNING_TOP_UP} more on the next visit, so the welcome-back total is ${RELAUNCH.RETURNING_BONUS}. Paid plans from £5/month (Starter, 250 credits), Pro £12/month (500 credits), Studio £25/month (1,200 credits); one-off credit packs are also available. A standard sprite costs ${CREDIT_COSTS.normal} credit, HD quality ${CREDIT_COSTS.hd} credits, a rigged idle loop ${RIG_CREDITS} credits. AI animations cost ${ANIMATION_FRAME_OPTIONS.map((o) => `${o.credits}`).join("/")} credits for 4/6/9 key poses; smooth mode (on by default) makes those ${ANIMATION_FRAME_OPTIONS.map((o) => animationCredits(o.frames, true)).join("/")}. Direction sheets: ${ROTATIONS.map((r) => `${r.label} ${r.credits}`).join(", ")}. Assets can be used in commercial projects.
 
 ## Not offered
 SpriteLab does not currently offer a public REST API, an MCP server, 3D model generation, per-direction walk animations (it makes static 4- and 8-direction views), autotile (47-tile) tilesets or engine-specific project files. It is a web app (sprite-lab.com).

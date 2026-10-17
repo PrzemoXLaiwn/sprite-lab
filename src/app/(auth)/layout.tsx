@@ -3,6 +3,7 @@ import Image from "next/image";
 import type { Metadata } from "next";
 import { ArrowUp, Check } from "lucide-react";
 import { SHOWCASE, isPixelShowcase } from "@/data/showcase";
+import { SIGNUP_FREE_CREDITS } from "@/config/signup";
 
 export const metadata: Metadata = {
   title: {
@@ -102,7 +103,7 @@ export default function AuthLayout({
               </div>
 
               <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 font-mono text-[12px] text-[#9AA1CC]">
-                {["10 free credits", "No card required", "Commercial license"].map((t) => (
+                {[SIGNUP_FREE_CREDITS, "No card required", "Commercial license"].map((t) => (
                   <span key={t} className="flex items-center gap-1.5">
                     <Check className="h-3.5 w-3.5 text-[#FFA300]" />
                     {t}

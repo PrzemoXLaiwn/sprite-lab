@@ -8,7 +8,8 @@
 import type { User } from "@supabase/supabase-js";
 import { prisma } from "@/lib/prisma";
 import { sendWelcomeEmail } from "@/lib/email/send";
-import { RELAUNCH, relaunchActive } from "@/config/relaunch";
+import { SIGNUP_CREDITS } from "@/config/signup";
+import { newAccountGrant } from "@/lib/signup-grant";
 
 // user_metadata is user-writable via the anon key (supabase.auth.updateUser),
 // so it is only trusted for the initial profile on account creation, and only
@@ -65,7 +66,7 @@ export async function syncAuthUser(user: User, referralCode: string | null): Pro
         email: user.email!,
         name: sanitizeName(user.user_metadata),
         avatarUrl: sanitizeAvatarUrl(user.user_metadata),
-        credits: 10,
+        ...newAccountGrant(),
         plan: "FREE",
         role: "USER",
         isActive: true,
@@ -97,8 +98,7 @@ export function sendWelcomeFor(user: User): void {
   sendWelcomeEmail(
     user.email,
     sanitizeName(user.user_metadata) ?? undefined,
-    // The relaunch bonus is added on their first app visit
-    RELAUNCH.SIGNUP_CREDITS + (relaunchActive() ? RELAUNCH.NEW_USER_BONUS : 0),
+    SIGNUP_CREDITS,
     user.id
   ).catch((err) => console.error("[Auth Sync] Welcome email failed:", err));
 }

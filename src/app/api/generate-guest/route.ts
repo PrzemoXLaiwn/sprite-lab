@@ -6,6 +6,7 @@ import {
   generateGuestAsset,
   GenerationError,
 } from "@/lib/services/generation";
+import { SIGNUP_CREDITS } from "@/config/signup";
 
 // =============================================================================
 // GUEST GENERATION API
@@ -126,6 +127,6 @@ export async function GET() {
   return NextResponse.json({
     max,
     remaining: max,
-    signupBonus: 10,
+    signupBonus: SIGNUP_CREDITS,
   });
 }

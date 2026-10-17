@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SeoLanding } from "@/components/landing/SeoLanding";
+import { SIGNUP_CTA } from "@/config/signup";
 import { ENGINE_GUIDES } from "@/data/geo-content";
 import { SHOWCASE } from "@/data/showcase";
 
@@ -117,7 +118,7 @@ export default function GodotSpritesPage() {
           </>
         ),
         body: "Generate sprites, animations and tiles for your project.",
-        button: "Get 10 free credits",
+        button: SIGNUP_CTA,
       }}
     />
   );
