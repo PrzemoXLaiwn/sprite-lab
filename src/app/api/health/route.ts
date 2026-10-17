@@ -2,12 +2,21 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { isAdmin } from "@/lib/admin";
-import { getRedisRestEnv, isRedisRestConfigured } from "@/lib/redis-env";
+import { summarizeHealth } from "@/lib/health/summary";
+import { checkRedisHealth } from "@/lib/redis-health";
 
 export const dynamic = "force-dynamic";
 
 type CheckStatus = "OK" | "MISSING" | "PARTIAL" | "ERROR";
-type Check = { status: CheckStatus; detail?: string; missing?: string[] };
+type Check = {
+  status: CheckStatus;
+  detail?: string;
+  missing?: string[];
+  source?: string;
+  host?: string;
+  latencyMs?: number;
+  error?: string;
+};
 
 function envGroup(name: string, vars: string[]): Check {
   const missing = vars.filter((v) => !process.env[v]);
@@ -103,21 +112,11 @@ export async function GET() {
   // ── Upstash (rate limiting) ───────────────────────────────────────────────
   // Optional: without it guest generation uses an in-memory limiter and
   // authenticated routes rely on credits — degraded, not broken.
-  // Configured when any accepted REST pair is set (see getRedisRestEnv).
-  const redis = getRedisRestEnv();
-  if (isRedisRestConfigured()) {
-    checks.rate_limiting = { status: "OK" };
-  } else if (redis.url || redis.token) {
-    checks.rate_limiting = {
-      status: "PARTIAL",
-      detail: "Upstash rate limiter partially configured",
-      missing: [redis.url ? "UPSTASH_REDIS_REST_TOKEN" : "UPSTASH_REDIS_REST_URL"],
-    };
-  } else {
-    checks.rate_limiting = {
-      status: "PARTIAL",
-      detail: "Upstash rate limiter not configured",
-    };
+  // A failed ping is ERROR on this check but only degrades the overall status.
+  const redisCheck = await checkRedisHealth();
+  checks.rate_limiting = redisCheck;
+  if (redisCheck.status === "ERROR") {
+    console.warn("[Health] Redis ping failed:", redisCheck.error);
   }
 
   // ── Replicate (guest TryItNow + 3D) ───────────────────────────────────────
@@ -133,26 +132,24 @@ export async function GET() {
   // ── Aggregate ─────────────────────────────────────────────────────────────
   // A missing PARTIAL service degrades but does not break the platform.
   // A MISSING or ERROR check returns 503 so monitoring tools alert.
-  const statuses = Object.values(checks).map((c) => c.status);
-  const hasFailure = statuses.includes("MISSING") || statuses.includes("ERROR");
-  const hasDegraded = statuses.includes("PARTIAL");
-  const overall = hasFailure ? "unhealthy" : hasDegraded ? "degraded" : "healthy";
+  // Redis ping failures are the exception: the site still serves, so they degrade.
+  const summary = summarizeHealth(checks);
 
   // Public callers get a single status word — no env-var inventory, no
   // missing-list, no DB error strings. Admins see the full breakdown.
   if (!(await callerCanSeeDetails())) {
     return NextResponse.json(
-      { status: overall, timestamp: new Date().toISOString() },
-      { status: hasFailure ? 503 : 200 }
+      { status: summary.status, timestamp: new Date().toISOString() },
+      { status: summary.httpStatus }
     );
   }
 
   return NextResponse.json(
     {
-      status: overall,
+      status: summary.status,
       timestamp: new Date().toISOString(),
       checks,
     },
-    { status: hasFailure ? 503 : 200 }
+    { status: summary.httpStatus }
   );
 }
