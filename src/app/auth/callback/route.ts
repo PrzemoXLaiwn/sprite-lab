@@ -1,22 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { sendWelcomeFor, syncAuthUser } from "@/lib/auth/sync-user";
-
-// Only allow same-origin relative paths. `${origin}${next}` with next="@evil.com"
-// or ".evil.com" would otherwise redirect to an attacker-controlled host.
-function safeRedirectPath(next: string | null, origin: string): string {
-  const fallback = "/generate";
-  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) {
-    return fallback;
-  }
-  try {
-    const url = new URL(next, origin);
-    if (url.origin !== origin) return fallback;
-    return `${url.pathname}${url.search}${url.hash}`;
-  } catch {
-    return fallback;
-  }
-}
+import { isCheckoutReturn, safeRedirectPath } from "@/lib/safe-redirect";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -45,6 +30,11 @@ export async function GET(request: Request) {
       // already computed above to detect first-time users.
       if (type === "signup" || isNewUser) {
         if (user) sendWelcomeFor(user);
+        // A plan or credit pack chosen before sign-up has to survive email
+        // confirmation and OAuth. Other first-time users still see /auth/confirm.
+        if (isCheckoutReturn(next)) {
+          return NextResponse.redirect(`${origin}${next}`);
+        }
         return NextResponse.redirect(`${origin}/auth/confirm`);
       }
       // Otherwise redirect to the next page
@@ -52,6 +42,13 @@ export async function GET(request: Request) {
     }
   }
 
-  // Return the user to an error page with instructions
+  // Return the user to an error page with instructions. Keep a chosen plan on
+  // the login link so retrying doesn't drop it.
+  if (isCheckoutReturn(next)) {
+    const failed = new URL("/login", origin);
+    failed.searchParams.set("error", "Could not authenticate");
+    failed.searchParams.set("redirectTo", next);
+    return NextResponse.redirect(failed);
+  }
   return NextResponse.redirect(`${origin}/login?error=Could not authenticate`);
 }

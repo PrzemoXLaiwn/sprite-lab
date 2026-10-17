@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { checkoutPurchaseLabel } from "@/lib/checkout-intent";
+import { isCheckoutReturn, safeRedirectPath } from "@/lib/safe-redirect";
 import {
   AuthHeading,
   DiscordButton,
@@ -17,23 +19,26 @@ import {
   linkCls,
 } from "../_components/auth-ui";
 
-/** Where to go after signing in: ?redirectTo= when it's a same-site path. */
-function afterLogin(): string {
-  if (typeof window === "undefined") return "/generate";
-  const target = new URLSearchParams(window.location.search).get("redirectTo") ?? "";
-  if (!target.startsWith("/")) return "/generate";
-  // Resolve like the browser will (it strips tabs/newlines, so "/%09/evil.com"
-  // would become //evil.com) and only accept our own origin
-  try {
-    const url = new URL(target, window.location.origin);
-    return url.origin === window.location.origin ? url.pathname + url.search + url.hash : "/generate";
-  } catch {
-    return "/generate";
-  }
+function subscribeToSearch(onChange: () => void) {
+  window.addEventListener("popstate", onChange);
+  return () => window.removeEventListener("popstate", onChange);
 }
 
 export default function LoginPage() {
   const router = useRouter();
+  // Read the query after hydration so /login still server-renders the form.
+  // useSearchParams() would bail the whole page out to a client loading shell.
+  const search = useSyncExternalStore(subscribeToSearch, () => window.location.search, () => "");
+  const searchParams = new URLSearchParams(search);
+  const returnPath = safeRedirectPath(searchParams.get("redirectTo"));
+  const purchaseLabel = checkoutPurchaseLabel(searchParams.get("redirectTo"));
+  const referralCode = searchParams.get("ref");
+  const registerParams = new URLSearchParams();
+  if (isCheckoutReturn(returnPath)) {
+    registerParams.set("next", returnPath);
+    if (referralCode) registerParams.set("ref", referralCode);
+  }
+  const registerHref = registerParams.size > 0 ? `/register?${registerParams}` : "/register";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -58,7 +63,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.push(afterLogin());
+    router.push(returnPath);
     router.refresh();
   };
 
@@ -68,7 +73,7 @@ export default function LoginPage() {
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(afterLogin())}`,
+        redirectTo: `${window.location.origin}/auth/callback?${new URLSearchParams({ next: returnPath })}`,
       },
     });
   };
@@ -79,7 +84,7 @@ export default function LoginPage() {
     await supabase.auth.signInWithOAuth({
       provider: "discord",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(afterLogin())}`,
+        redirectTo: `${window.location.origin}/auth/callback?${new URLSearchParams({ next: returnPath })}`,
       },
     });
   };
@@ -87,6 +92,12 @@ export default function LoginPage() {
   return (
     <div>
       <AuthHeading title="Welcome back" subtitle="Sign in to keep creating game-ready sprites." />
+
+      {purchaseLabel && (
+        <p className="mb-6 rounded-xl border border-[#FFA300]/20 bg-[#FFA300]/[0.06] px-3.5 py-3 text-[13px] leading-relaxed text-[#FFC857]">
+          Sign in to buy {purchaseLabel}.
+        </p>
+      )}
 
       <div className="space-y-2.5">
         <GoogleButton onClick={handleGoogleLogin} />
@@ -138,7 +149,7 @@ export default function LoginPage() {
 
       <p className="mt-6 text-center text-[13px] text-[#9AA1CC]">
         Don&apos;t have an account?{" "}
-        <Link href="/register" className={linkCls}>
+        <Link href={registerHref} className={linkCls}>
           Sign up free
         </Link>
       </p>

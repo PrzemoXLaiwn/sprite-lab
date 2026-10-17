@@ -3,11 +3,16 @@
 import { ArrowRight, CheckCircle2, Zap } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { primaryBtnCls } from "@/app/(auth)/_components/auth-ui";
 import { track, FUNNEL } from "@/lib/analytics";
+import { isCheckoutReturn, safeRedirectPath } from "@/lib/safe-redirect";
 
 export default function EmailConfirmedPage() {
+  const searchParams = useSearchParams();
+  const next = safeRedirectPath(searchParams.get("next"));
+  const destination = isCheckoutReturn(next) ? next : "/generate?welcome=1";
   const [countdown, setCountdown] = useState(5);
 
   // Only brand-new accounts land here (email confirmation, or first OAuth
@@ -21,7 +26,7 @@ export default function EmailConfirmedPage() {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          window.location.href = "/generate?welcome=1";
+          window.location.href = destination;
           return 0;
         }
         return prev - 1;
@@ -29,7 +34,7 @@ export default function EmailConfirmedPage() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [destination]);
 
   return (
     <div className="relative flex min-h-screen items-center justify-center bg-[#131A31] px-4 py-10 text-[#FFF1E8]">
@@ -60,8 +65,8 @@ export default function EmailConfirmedPage() {
             We&apos;ll guide you through creating your first game asset in about 30 seconds.
           </p>
 
-          <Link href="/generate?welcome=1" className={`${primaryBtnCls} mt-6`}>
-            Start creating
+          <Link href={destination} className={`${primaryBtnCls} mt-6`}>
+            {isCheckoutReturn(next) ? "Continue to checkout" : "Start creating"}
             <ArrowRight className="h-4 w-4" />
           </Link>
 
