@@ -193,12 +193,7 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       { source: "/home", destination: "/", permanent: false },
-      // RFC 9116: security.txt is expected under /.well-known/
-      {
-        source: "/.well-known/security.txt",
-        destination: "/security.txt",
-        permanent: false,
-      },
+      // /.well-known/security.txt is served directly from public/ (RFC 9116).
       {
         source: "/gallery",
         destination: "/assets",
