@@ -37,9 +37,9 @@ describe("special-offer promo codes", () => {
         promoCode: visiblePromoCode(undefined),
       })
     );
-    expect(html).toContain("20% OFF");
+    expect(html).toMatch(/20(?:<!-- -->)?% OFF/);
     expect(html).not.toContain("Use code");
-    expect(html).not.toContain("undefined");
+    expect(html.toLowerCase()).not.toContain("undefined");
   });
 
   it("prints a configured code and still hides a literal undefined", async () => {
@@ -58,8 +58,8 @@ describe("special-offer promo codes", () => {
         promoCode: "undefined",
       })
     );
-    expect(hidden).toContain("15% OFF");
+    expect(hidden).toMatch(/15(?:<!-- -->)?% OFF/);
     expect(hidden).not.toContain("Use code");
-    expect(hidden).not.toContain(">undefined<");
+    expect(hidden.toLowerCase()).not.toContain("undefined");
   });
 });
