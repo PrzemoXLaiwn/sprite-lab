@@ -376,8 +376,8 @@ export default function PricingPage() {
         </div>
 
         <MobileProCta price={proPrice} />
-        {/* Bottom padding for the mobile CTA */}
-        <div className="h-20 sm:hidden" />
+        {/* Clears the mobile Pro bar, including the home-indicator safe area. */}
+        <div className="h-[calc(5rem+env(safe-area-inset-bottom))] sm:hidden" aria-hidden="true" />
       </div>
     </PricingProvider>
   );
