@@ -15,6 +15,8 @@ type PixelThumbProps = {
   /** Layout width/height in CSS pixels. Reserves the box (no CLS). */
   width?: number;
   height?: number;
+  /** Hide a decorative tile that repeats an adjacent label. */
+  "aria-hidden"?: boolean;
 };
 
 function srcSetFor(src: string, pixel: boolean): string | undefined {
@@ -33,7 +35,7 @@ function srcSetFor(src: string, pixel: boolean): string | undefined {
  * The derivative is always nearest-neighbor. Pixel styles also get
  * `pixel-perfect` (crisp-edges). Not priority — the LCP image opts in elsewhere.
  */
-export function PixelThumb({ src, alt, sizes, pixel = false, className = "", width, height }: PixelThumbProps) {
+export function PixelThumb({ src, alt, sizes, pixel = false, className = "", width, height, "aria-hidden": ariaHidden }: PixelThumbProps) {
   // 20px chips have a committed 40×40 file. Don't request the full PNG.
   const iconCandidate = width !== undefined && width <= 40 ? showcaseIconSrc(src) : undefined;
   const icon = iconCandidate && iconCandidate !== src ? iconCandidate : undefined;
@@ -49,6 +51,7 @@ export function PixelThumb({ src, alt, sizes, pixel = false, className = "", wid
       srcSet={srcSet}
       sizes={srcSet ? sizes : undefined}
       alt={alt}
+      aria-hidden={ariaHidden || undefined}
       width={width}
       height={height}
       loading="lazy"

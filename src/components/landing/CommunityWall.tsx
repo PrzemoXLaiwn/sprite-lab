@@ -63,6 +63,7 @@ export function CommunityWall({ items }: { items: FeaturedGeneration[]; register
               <PixelThumb
                 src={item.imageUrl}
                 alt=""
+                aria-hidden
                 sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 184px"
                 pixel={pixel}
                 width={184}

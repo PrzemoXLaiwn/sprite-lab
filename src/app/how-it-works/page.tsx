@@ -253,8 +253,8 @@ export default function HowItWorksPage() {
                 </ul>
               </div>
               <div className="rounded-2xl border border-white/[0.07] bg-[#19223F] p-5">
-                <p className="text-[15px] font-semibold text-white">Yours to use commercially</p>
-                <p className="mt-1 text-[14px] leading-relaxed text-[#9AA1CC]">Use everything you generate in free or paid games. No attribution required.</p>
+                <p className="text-[15px] font-semibold text-white">Commercial licence on paid plans</p>
+                <p className="mt-1 text-[14px] leading-relaxed text-[#9AA1CC]">Starter, Pro and Studio include commercial use, with no attribution required. The Free plan is personal, non-commercial use. Assets generated on the Free plan before 17 October 2026 keep the licence that applied when they were created.</p>
               </div>
             </div>
           </section>

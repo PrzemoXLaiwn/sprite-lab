@@ -174,7 +174,7 @@ export default function AboutPage() {
           <section className="mt-14">
             <h2 className="font-display text-[26px] font-semibold leading-tight text-white">Ownership, ads and money</h2>
             <p className="mt-4 text-[16px] leading-[1.75] text-[#A7ADD4]">
-              Assets you generate can be used in commercial games without attribution; the details are in the{" "}
+              Commercial use is included on Starter, Pro and Studio; the Free plan is personal, non-commercial use. The details are in the{" "}
               <Link href="/terms" className="text-[#FFC857] underline underline-offset-2">terms</Link>. SpriteLab is paid
               for by credit plans and packs (see <Link href="/pricing" className="text-[#FFC857] underline underline-offset-2">pricing</Link>)
               and by ads shown on guide articles and comparisons to visitors who are not signed in. Members never see ads,

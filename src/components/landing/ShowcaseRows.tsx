@@ -97,7 +97,7 @@ function AnimateVisual() {
           <figure key={a.src} className="overflow-hidden rounded-[8px] border border-white/[0.06] bg-[#131A31]">
             <div className="relative aspect-[4/3]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={a.src} alt={`Animated pixel art ${a.label} that ${a.motion}`} loading="lazy"
+              <img src={a.src} alt="" aria-hidden="true" loading="lazy"
                 className={`pixel-perfect absolute inset-0 h-full w-full object-contain ${"wide" in a ? "p-1" : "scale-[1.35]"}`} />
             </div>
             <figcaption className="flex items-center justify-between border-t border-white/[0.05] px-2.5 py-1.5 font-mono text-[10.5px]">
@@ -119,7 +119,7 @@ function DirectionsVisual() {
       <div className="grid grid-cols-4 gap-2.5">
         {dirs.map((d, i) => (
           <figure key={d} className="overflow-hidden rounded-[8px] border border-white/[0.06] bg-[#131A31]">
-            <div role="img" aria-label={`Lizard warrior facing ${d}`} className="aspect-square"
+            <div aria-hidden="true" className="aspect-square"
               style={{ backgroundImage: "url(/showcase/rotate-lizard.webp)", backgroundSize: "800% 100%", backgroundPosition: `${(i / 7) * 100}% 0`, backgroundRepeat: "no-repeat" }} />
             <figcaption className="border-t border-white/[0.05] py-1 text-center font-mono text-[10.5px] text-[#FFC857]">{d}</figcaption>
           </figure>
@@ -141,7 +141,7 @@ function TilesVisual() {
       <div className="grid grid-cols-3 gap-3">
         {tiles.map((t) => (
           <figure key={t.src}>
-            <div role="img" aria-label={`Seamless ${t.label} tile repeated 2 by 2`}
+            <div aria-hidden="true"
               className="aspect-square rounded-[8px] border border-white/[0.06]"
               style={{ backgroundImage: `url(${t.src})`, backgroundSize: "50% 50%", backgroundRepeat: "repeat", imageRendering: "pixelated" }} />
             <figcaption className="mt-2 text-center font-mono text-[11px] text-[#9AA1CC]">{t.label}</figcaption>
