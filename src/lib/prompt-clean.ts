@@ -9,6 +9,9 @@
 //     that fight our own instructions and produce several figures
 // =============================================================================
 
+import { detectIntent } from "@/lib/prompt-intent";
+import { GENERATE_CATEGORIES } from "@/data/generate-categories";
+
 export interface CleanPrompt {
   prompt: string;
   /** Category to use instead of the selected one, when the prompt clearly says otherwise. */
@@ -58,7 +61,20 @@ export function cleanUserPrompt(raw: string, categoryId: string): CleanPrompt {
     if (BUILDING.test(head)) category = { categoryId: "ENVIRONMENT", subcategoryId: "BUILDINGS" };
     else if (UI.test(head)) category = { categoryId: "UI_ELEMENTS", subcategoryId: "ITEM_ICONS" };
     else if (CHARACTER.test(head)) category = { categoryId: "CHARACTERS", subcategoryId: "HEROES" };
+    // The word lists above miss plenty ("young male doctor", "a nurse"): ask the
+    // same detector the Generate panel's Auto uses, and trust it when it is sure
+    else category = detectedNonItem(p);
   }
 
   return { prompt: p, category, wantsSheet };
+}
+
+/** A confident non-item asset type from the prompt (character, creature, building, UI), else null. */
+function detectedNonItem(prompt: string): CleanPrompt["category"] {
+  const intent = detectIntent(prompt);
+  if (!intent.categoryId || intent.confidence < 0.6) return null;
+  const group = GENERATE_CATEGORIES.find((c) => c.id === intent.categoryId);
+  const sub = group?.subcategories.find((x) => x.subcategoryId === intent.subcategoryId);
+  if (!sub || ITEM_CATEGORIES.has(sub.categoryId.toUpperCase())) return null;
+  return { categoryId: sub.categoryId, subcategoryId: sub.subcategoryId };
 }

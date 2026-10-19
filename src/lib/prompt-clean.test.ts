@@ -33,3 +33,12 @@ describe("cleanUserPrompt", () => {
     expect(cleanUserPrompt("Create a", "CHARACTERS").prompt.length).toBeGreaterThan(0);
   });
 });
+
+describe("asset type left on Weapons, beyond the word list", () => {
+  it("reroutes characters the word list misses", () => {
+    expect(cleanUserPrompt("young male doctor resembling Stardew Valley doctor", "WEAPONS").category?.categoryId).toBe("CHARACTERS");
+  });
+  it("keeps real weapons", () => {
+    expect(cleanUserPrompt("iron sword with red gem in the hilt", "WEAPONS").category).toBeNull();
+  });
+});
