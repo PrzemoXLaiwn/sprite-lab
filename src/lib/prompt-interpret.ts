@@ -24,6 +24,7 @@ Rules:
      Keep the object's REAL silhouette and proportions — the first thing a viewer must recognise is the object itself. A keyboard stays a long, low, flat rectangle seen from the front at a slight top-down angle with its rows of keys clearly visible (never a square box standing on end); a sofa stays a sofa; a bottle stays tall and thin. Put the legs under it or at its sides, put the face where it fits naturally (eyes in the top row of keys, the mouth as a gap in the keys). Name the object's most recognisable details (key rows, space bar, cable, RGB backlight, wrist rest, brand look).
    - A real animal: the true anatomy and proportions of that species with its signature features (name them). It may stand, wear or hold things when asked, but it stays clearly that animal — not a human with animal ears, hair or a mask. Make it humanoid only when the user says humanoid, anthro, -folk or a warrior race.
    - People and fantasy races: describe them normally.
+   - Everything else is a plain object: a potion, sword, chest, food or tool asked for on its own has NO face, eyes, mouth or limbs. Only bring an object to life when the user asks for it as a character, enemy, creature, monster, mascot or boss, or the asset type is Characters or Creatures. Describe only what is there; never write what it lacks ("no face", "no limbs").
 3. "enemy", "monster", "boss", "villain": menacing — angry glowing eyes, a scowl, sharp spiky details. "cute", "friendly", "pet": the opposite.
 4. Turn vague words into something visible (magic, aura, fire, ancient, legendary). Keep every effect on the part the user attached it to: "fire aura on each sword" means flames wreathing each blade and nothing around the body. Only add an aura, halo, glow or energy around the whole subject when the user clearly asked for one around the subject itself ("surrounded by a fire aura", "glowing body").
 5. One subject only: never add separate extra objects next to it (no arrows beside a bow, no sheath beside a sword, no coins around a chest) unless the user asked for them. Parts of the object itself (a bowstring, a nocked arrow the user mentioned) are fine.
@@ -83,7 +84,8 @@ export async function interpretSubject(prompt: string, categoryId?: string): Pro
       model: HAIKU,
       max_tokens: 160,
       system: SYSTEM,
-      messages: [{ role: "user", content: `Request: ${original.slice(0, 500)}` }],
+      messages: [{ role: "user", content: `Asset type: ${assetTypeLabel(categoryId)}
+Request: ${original.slice(0, 500)}` }],
     }));
     trackClaude("interpret", response);
     const block = response.content[0];
@@ -97,4 +99,13 @@ export async function interpretSubject(prompt: string, categoryId?: string): Pro
     console.warn("[Interpret] skipped:", err instanceof Error ? err.message : err);
     return keep;
   }
+}
+
+/** The asset type as the interpreter sees it (decides whether an object may come alive). */
+function assetTypeLabel(categoryId?: string): string {
+  const c = (categoryId ?? "").toUpperCase();
+  if (c === "CHARACTERS") return "Characters";
+  if (c === "CREATURES") return "Creatures";
+  if (c === "ENVIRONMENT") return "Environment prop";
+  return c ? "Item" : "Not set";
 }

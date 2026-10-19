@@ -1,3 +1,4 @@
+import { fetchImage } from "@/lib/cors-image";
 // =============================================================================
 // Engine pack — sprite sheets → files a game engine imports directly (browser)
 // =============================================================================
@@ -35,7 +36,7 @@ const DIR_ROWS = ["down", "right", "up", "left"];
 const safe = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 40) || "anim";
 
 async function loadImage(url: string): Promise<ImageBitmap> {
-  const blob = await (await fetch(url)).blob();
+  const blob = await (await fetchImage(url)).blob();
   return createImageBitmap(blob);
 }
 

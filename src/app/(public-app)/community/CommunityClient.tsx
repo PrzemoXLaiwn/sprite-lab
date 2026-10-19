@@ -35,6 +35,7 @@ import {
 import { CHECKERBOARD, CommunityAvatar, isPixelStyleId } from "@/components/community/shared";
 import { GENERATE_STYLES } from "@/data/generate-styles";
 import { COMMUNITY_PAGE_SIZE, type CommunityItem, type CommunityPage } from "@/lib/community-gallery-types";
+import { fetchImage } from "@/lib/cors-image";
 
 // ===========================================
 // TYPES
@@ -460,7 +461,7 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
 
   const handleDownload = async (gen: Generation) => {
     try {
-      const response = await fetch(gen.imageUrl);
+      const response = await fetchImage(gen.imageUrl);
       const blob = await response.blob();
       const blobUrl = window.URL.createObjectURL(blob);
       const a = document.createElement("a");

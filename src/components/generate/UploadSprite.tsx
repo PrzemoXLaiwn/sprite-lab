@@ -33,7 +33,34 @@ export function UploadSpriteButton({ then = "create", className = "", label = "U
   );
 }
 
-function UploadSpriteDialog({ then, onClose }: { then: "create" | "animate" | "edit"; onClose: () => void }) {
+/**
+ * The prominent entry on the Create page's left panel: click to choose a file
+ * or drop one straight onto it. Opens the same dialog as the toolbar button.
+ */
+export function UploadSpriteCard() {
+  const [open, setOpen] = useState(false);
+  const [dropped, setDropped] = useState<File | null>(null);
+  const [over, setOver] = useState(false);
+  return (
+    <>
+      <button type="button" onClick={() => { setDropped(null); setOpen(true); }} aria-haspopup="dialog"
+        onDragOver={(e) => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)}
+        onDrop={(e) => { e.preventDefault(); setOver(false); const f = e.dataTransfer.files?.[0]; if (f) { setDropped(f); setOpen(true); } }}
+        className={`group flex w-full items-center gap-3 rounded-[12px] border border-dashed p-3 text-left transition-colors ${over ? "border-[#FFA300] bg-[#FFA300]/[0.1]" : "border-[#FFA300]/45 bg-[#19223F] hover:border-[#FFA300] hover:bg-[#FFA300]/[0.06]"}`}>
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[10px] bg-[#FFA300]/[0.14] text-[#FFA300] transition-colors group-hover:bg-[#FFA300] group-hover:text-[#131A31]">
+          <Upload className="h-5 w-5" aria-hidden />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-[14.5px] font-semibold text-[#FFF1E8]">Upload your sprite</span>
+          <span className="block text-[12.5px] leading-snug text-[#A7ADD4]">Drop or choose a PNG, JPG or WebP, then animate or edit it</span>
+        </span>
+      </button>
+      {open && <UploadSpriteDialog then="create" initialFile={dropped} onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
+function UploadSpriteDialog({ then, onClose, initialFile = null }: { then: "create" | "animate" | "edit"; onClose: () => void; initialFile?: File | null }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -49,6 +76,12 @@ function UploadSpriteDialog({ then, onClose }: { then: "create" | "animate" | "e
     return () => document.removeEventListener("keydown", onKey);
   }, [busy, onClose]);
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
+  // A file dropped on the card opens the dialog with it already chosen
+  const takenInitial = useRef(false);
+  useEffect(() => {
+    if (initialFile && !takenInitial.current) { takenInitial.current = true; pick(initialFile); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialFile]);
 
   const pick = (f: File | undefined) => {
     if (!f) return;

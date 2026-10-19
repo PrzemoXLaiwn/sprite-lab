@@ -6,6 +6,7 @@ import { Download, FolderInput, Check, X } from "lucide-react";
 import { isPixelStyleId } from "@/lib/client/sprite-native";
 import { saveBlob, spriteFilename } from "./pack";
 import type { ProjectAsset, ProjectFolder } from "./types";
+import { fetchImage } from "@/lib/cors-image";
 
 const CHECKER = {
   backgroundImage: "repeating-conic-gradient(#80808015 0% 25%, transparent 0% 50%)",
@@ -56,7 +57,7 @@ export function ProjectSpriteCard({
   const download = async () => {
     setDownloading(true);
     try {
-      const res = await fetch(asset.imageUrl);
+      const res = await fetchImage(asset.imageUrl);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       saveBlob(await res.blob(), spriteFilename(asset));
     } catch {

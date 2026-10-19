@@ -14,6 +14,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertCircle, ArrowLeft, Download, ImageIcon, Loader2, MoveHorizontal } from "lucide-react";
 import { triggerUpgradeModal } from "@/components/dashboard/UpgradeModal";
+import { fetchImage } from "@/lib/cors-image";
 
 // =============================================================================
 // HELPERS
@@ -114,7 +115,7 @@ export function toolErrorMessage(res: Response, data: { error?: unknown; noCredi
  */
 export async function downloadImage(url: string, filename: string): Promise<void> {
   try {
-    const res = await fetch(url);
+    const res = await fetchImage(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     saveBlobAs(await res.blob(), filename);
   } catch {

@@ -24,6 +24,7 @@ import {
 import { ANIMATION_FRAME_OPTIONS, DEFAULT_ANIMATION_FRAMES, RIG_CREDITS, RIG_FRAMES, ROTATIONS, rotationFor, supportsRotation, animationCredits, animationFrameOption, animationPresetsFor, rigMotionFor } from "@/config/animations";
 import { UploadSpriteButton } from "@/components/generate/UploadSprite";
 import type { SuggestedMotion } from "@/lib/animation-suggest";
+import { fetchImage } from "@/lib/cors-image";
 
 const CUSTOM_EXAMPLES = [
   "breathes a stream of fire forward",
@@ -47,7 +48,7 @@ const TRAVELS = /\b(walk|run|jog|sprint|trot|gallop|march|crawl|slither|fly|flig
 
 /** Splits the sheet into individual frame PNGs and zips them. */
 async function downloadFramesZip(result: AnimationResult, baseName: string) {
-  const blob = await (await fetch(result.sheetUrl)).blob();
+  const blob = await (await fetchImage(result.sheetUrl)).blob();
   const bitmap = await createImageBitmap(blob);
   const JSZip = (await import("jszip")).default;
   const zip = new JSZip();

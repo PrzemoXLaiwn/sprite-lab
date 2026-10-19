@@ -58,7 +58,8 @@ export function GettingStarted({ done }: { done: { generate: boolean; animate: b
       setCostsSeen(read(COSTS_KEY) === "1");
       const o = read(OPEN_KEY);
       // Collapsed by default on phones so it never covers the workspace
-      setOpen(o ? o === "1" : window.innerWidth >= 768);
+      // …and on the Create page, where it would sit over the left panel
+      setOpen(o ? o === "1" : window.innerWidth >= 768 && !window.location.pathname.startsWith("/generate"));
       setReady(true);
     });
     return () => cancelAnimationFrame(id);
