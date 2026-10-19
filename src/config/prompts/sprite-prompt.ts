@@ -179,8 +179,10 @@ export function buildSpritePrompt(input: SpritePromptInput): string {
     `A 2D video game sprite of ${cleanSubject}.`,
     `${framing}${viewLine ? `, ${viewLine}` : ""}, centered with empty space around it.`,
     // Models fill the canvas edge to edge; anything they draw past it is lost
-    // for good (cut feet, flat-topped auras), so the margin is spelled out
-    `Leave a wide empty margin on every side: the whole ${figure ? "figure" : "subject"}, including ${figure ? "feet, " : ""}weapon tips, flames and any glow, fits well inside the image at about two thirds of its height, and nothing touches or crosses the edges.`,
+    // for good (cut feet, flat-topped auras), so the margin is spelled out.
+    // Never name example parts here ("weapon tips, flames"): models read them as
+    // things to draw and hand torches to doctors.
+    `Leave a wide empty margin on every side: the whole ${figure ? "figure from head to feet" : "subject"} fits well inside the image at about two thirds of its height, and no part of it touches or crosses the edges.`,
     `Style: ${style}.`,
     // Sprites of one game must match each other: same pixel density and the
     // same outline no matter whether it's a knight, an ore or an icon.

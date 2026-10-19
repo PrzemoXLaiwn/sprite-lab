@@ -38,7 +38,7 @@ describe("framing and armed stance", () => {
   it("asks for a margin so feet, blades and glow are never cut off", () => {
     const p = buildSpritePrompt({ subject: "a four-armed samurai boss", styleId: "REALISTIC_PAINTED", categoryId: "CHARACTERS", pose: "auto" });
     expect(p).toMatch(/wide empty margin on every side/);
-    expect(p).toMatch(/nothing touches or crosses the edges/);
+    expect(p).toMatch(/no part of it touches or crosses the edges/);
   });
   it("figures holding weapons get the armed stance instead of open hands, creatures too", () => {
     for (const categoryId of ["CHARACTERS", "CREATURES"]) {
@@ -60,5 +60,21 @@ describe("long subjects", () => {
     const s = p.slice("A 2D video game sprite of ".length, p.indexOf(". "));
     expect(s.length).toBeLessThanOrEqual(400);
     expect(subject.split(" ")).toContain(s.split(" ").at(-1));
+  });
+});
+
+describe("no invented props", () => {
+  // Regression: a margin line naming "weapon tips, flames and any glow" made the
+  // model add torches and flaming swords to doctors, ogres and textures.
+  it("never names weapons, flames or glow for subjects that don't have them", () => {
+    const cases = [
+      { subject: "a young male doctor in a white lab coat", original: "young male doctor", categoryId: "CHARACTERS", pose: "auto" },
+      { subject: "a stocky green ogre in tattered rags", original: "green ogre", categoryId: "CREATURES", pose: "auto" },
+      { subject: "a leather money pouch", original: "money pouch", categoryId: "QUEST_ITEMS" },
+    ];
+    for (const c of cases) {
+      const p = buildSpritePrompt({ ...c, styleId: "PIXEL_ART_16" });
+      expect(p, c.subject).not.toMatch(/weapon tips|flames|glow|torch/i);
+    }
   });
 });
