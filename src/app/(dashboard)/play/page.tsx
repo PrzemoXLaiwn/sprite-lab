@@ -188,7 +188,7 @@ export default function PlayPage() {
   const choose = async (blessingId: string) => {
     if (!view) return;
     unlockAudio();
-    play("pick");
+    play(view.offer?.find((b) => b.id === blessingId)?.tier === "epic" ? "pickEpic" : "pick");
     setBusy(blessingId);
     try {
       const res = await fetch("/api/play/run/choose", {

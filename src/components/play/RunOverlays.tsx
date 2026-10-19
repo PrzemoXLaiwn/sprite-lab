@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Castle, Crown, Droplet, Eye, Feather, Flame, Heart, Loader2, RotateCcw, Share2, Shield, Sword, Swords, Target, Zap } from "lucide-react";
+import { useEffect } from "react";
+import { Castle, Crown, Droplet, Drum, Eye, Feather, Flag, Flame, Heart, Loader2, RotateCcw, Share2, Shield, Skull, Sparkles, Sword, Swords, Target, Zap } from "lucide-react";
+import { BLESSING_TIER_COLOR, BLESSING_TIER_LABEL } from "@/lib/dungeon/blessings";
 import { BLESSING_EVERY, BOSS_EVERY, ELEMENT_DEFS, type GearSlot } from "@/lib/dungeon/config";
 import { FUNNEL, track } from "@/lib/analytics";
 import { markDungeonReturn } from "./dungeon-return";
@@ -11,25 +13,40 @@ import { SpriteImg } from "./Sheet";
 
 export const BLESSING_ICONS: Record<string, typeof Sword> = {
   sword: Sword, shield: Shield, heart: Heart, crown: Crown, castle: Castle, eye: Eye, target: Target, droplet: Droplet, feather: Feather, zap: Zap, flame: Flame,
+  skull: Skull, drum: Drum, flag: Flag, swords: Swords, sparkles: Sparkles,
 };
 
 export function BlessingChoice({ floor, offer, chosen, busy, onChoose }: {
   floor: number; offer: BlessingCard[]; chosen: BlessingCard[]; busy: string | null; onChoose: (id: string) => void;
 }) {
+  // Keys 1–3 pick a card (the cards are buttons too: Tab + Enter works)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (busy !== null || e.altKey || e.ctrlKey || e.metaKey) return;
+      const k = Number(e.key);
+      if (k >= 1 && k <= offer.length) onChoose(offer[k - 1].id);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [offer, busy, onChoose]);
   return (
     <div className="absolute inset-0 z-10 flex flex-col items-center justify-center overflow-y-auto bg-[#0B1022]/75 px-3 py-4" role="dialog" aria-modal="true" aria-labelledby="bless-h">
       <p className="text-[13px] text-[#C8CCE8]">Floor {floor} cleared</p>
       <h2 id="bless-h" className="mt-0.5 font-display text-[22px] font-semibold text-[#FFF1E8] sm:text-[26px]">Choose a blessing</h2>
       <ul className="mt-3 grid w-full max-w-[640px] grid-cols-3 gap-2 sm:gap-3">
-        {offer.map((b) => {
+        {offer.map((b, k) => {
           const Icon = BLESSING_ICONS[b.icon] ?? Sword;
-          const color = b.element ? ELEMENT_DEFS[b.element].color : "#FFA300";
+          const tier = b.tier ?? "common";
+          const tierColor = BLESSING_TIER_COLOR[tier];
+          const color = b.element ? ELEMENT_DEFS[b.element].color : tier === "common" ? "#FFA300" : tierColor;
           return (
             <li key={b.id}>
-              <button type="button" onClick={() => onChoose(b.id)} disabled={busy !== null}
+              <button type="button" onClick={() => onChoose(b.id)} disabled={busy !== null} aria-keyshortcuts={String(k + 1)}
+                style={tier === "common" ? undefined : { borderColor: `${tierColor}99` }}
                 className="group flex h-full min-h-[170px] w-full flex-col items-center rounded-[8px] border border-white/[0.12] bg-[#19223F] px-2 pb-3 pt-0 text-center shadow-[0_4px_0_0_rgba(0,0,0,0.35)] transition hover:-translate-y-1 hover:border-[#FFA300]/80 focus-visible:-translate-y-1 disabled:opacity-60 disabled:hover:translate-y-0">
                 <span className="h-[3px] w-full rounded-b-[2px]" style={{ background: color }} aria-hidden />
-                <span className="mt-3 flex h-11 w-11 items-center justify-center rounded-[8px] bg-[#212B4E]" style={{ color }}>
+                <span className="mt-2 text-[11px] font-semibold" style={{ color: tierColor }}>{BLESSING_TIER_LABEL[tier]}</span>
+                <span className="mt-1.5 flex h-11 w-11 items-center justify-center rounded-[8px] bg-[#212B4E]" style={{ color }}>
                   {busy === b.id ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : <Icon className="h-5 w-5" aria-hidden />}
                 </span>
                 <span className="mt-2 font-display text-[14px] font-semibold leading-tight text-[#FFF1E8] sm:text-[16px]">{b.name}</span>

@@ -14,7 +14,7 @@ import { pickAnimations, type AnimRef, type AnimRow, type HeroAnims } from "./an
 import { skillScores, type CachedScore } from "./skill-analyse";
 import { NEUTRAL_SCORE, isSkillLabel, resolveSkills, skillName, type SkillMetrics } from "./skills";
 import { parseAnimationPrompt } from "@/lib/workspace/history";
-import { blessingView } from "./blessings";
+import { blessingView, type BlessingTier } from "./blessings";
 import { GEAR_SLOTS, LEADERBOARD_SIZE, PARTY_SIZE, RUN_IDLE_MS, RUNS_PER_DAY, SKILL_SLOTS, type GearSlot, type SkillSlot, type SpriteSlot, type Tier } from "./config";
 import { autoEquip, parseSlots, referencedIds, validateSlots, type SlotIds } from "./party";
 import { runSeed } from "./rng";
@@ -288,6 +288,7 @@ export interface BlessingCard {
   text: string;
   icon: string;
   element: Element | null;
+  tier: BlessingTier;
 }
 
 export interface RunView {

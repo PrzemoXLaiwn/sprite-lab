@@ -74,6 +74,12 @@ function enemySpot(i: number, e: EnemyUnit): { x: number; dy: number } {
   if (e.boss) return { x: 176, dy: 0 };
   return { x: 142 + i * 19, dy: i % 2 === 1 ? -6 : 0 };
 }
+/** A party hit that knocks out a boss (its main target or one hit by the same attack). */
+function bossFalls(st: Step): boolean {
+  const a = st.action;
+  if (!a || a.side !== "party" || a.kind !== "hit") return false;
+  return Boolean((a.ko && st.enemies[a.target]?.boss) || a.extra?.some((x) => x.ko && st.enemies[x.target]?.boss));
+}
 const zoneId = (floor: number): ZoneId => zoneFor(Math.max(1, floor)).id;
 const ease = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x * x * (3 - 2 * x));
 /** Hit tint for enemy pixels: halfway to white (a flash that keeps the shape readable). */
@@ -287,13 +293,13 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
       for (const dx of [-half, half - 3]) px(ctx, s, x + dx, y + 1, 3, 1, "#FF004D");
     };
 
-    const drawEnemy = (e: EnemyUnit, x: number, groundY: number, hp: number, flash: boolean, alpha: number) => {
+    const drawEnemy = (e: EnemyUnit, x: number, groundY: number, hp: number, flash: boolean, alpha: number, bob = 0) => {
       const { s } = sizeRef.current;
       const art = ENEMY_ART[e.kind];
       const pal = paletteFor(art, e.element);
       const p = enemyScale(e);
       const { w, h } = artSize(art);
-      const left = Math.round(x - (w * p) / 2), top = Math.round(groundY - h * p);
+      const left = Math.round(x - (w * p) / 2), top = Math.round(groundY - h * p) - bob;
       px(ctx, s, left + 2, groundY - 1, w * p - 4, 2, "rgba(0,0,0,0.35)");
       ctx.globalAlpha = alpha;
       art.rows.forEach((row, ry) => {
@@ -309,12 +315,14 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
       }
       ctx.globalAlpha = 1;
       if (hp > 0) {
-        const bw = e.boss ? 26 : 12, bx = Math.round(x - bw / 2), by = top - (e.boss ? 13 : 5);
-        px(ctx, s, bx - 1, by - 1, bw + 2, 4, "#0B1022");
-        px(ctx, s, bx, by, bw, 2, "#2A3460");
+        // Bosses get a long, thick bar with their name above it
+        const bw = e.boss ? 40 : 12, bh = e.boss ? 3 : 2, bx = Math.round(x - bw / 2), by = top - (e.boss ? 13 : 5) + bob;
+        px(ctx, s, bx - 1, by - 1, bw + 2, bh + 2, "#0B1022");
+        px(ctx, s, bx, by, bw, bh, "#2A3460");
         const fill = Math.ceil((hp / e.hp) * bw);
-        if (fill > 0) px(ctx, s, bx, by, fill, 2, "#FF004D");
-        if (e.element !== "neutral") px(ctx, s, bx + bw + 2, by - 1, 3, 3, ELEMENT_DEFS[e.element].color);
+        if (fill > 0) px(ctx, s, bx, by, fill, bh, hp / e.hp < 0.3 ? "#FF5A3C" : "#FF004D");
+        if (e.element !== "neutral") px(ctx, s, bx + bw + 2, by - 1, 3, bh + 1, ELEMENT_DEFS[e.element].color);
+        if (e.boss) text(e.name, x, by - 3, "#FFA300", 6, true);
       }
     };
 
@@ -353,6 +361,12 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
         }
         if (st.kind === "gate" && t > 0.15 && t < 0.75) shake = [1, -1][Math.floor(e / 50) % 2];
         if (st.kind === "act" && a?.skill?.rule === "legendary" && e >= IMPACT_MS && e < IMPACT_MS + 240) shake = [3, -3, 2, -2, 1, -1][Math.floor((e - IMPACT_MS) / 40) % 6];
+        // A boss's blow lands heavy
+        if (st.kind === "act" && a?.side === "enemy" && a.kind === "hit" && st.enemies[a.actor]?.boss && e >= IMPACT_MS && e < IMPACT_MS + 180) {
+          shake = [2, -2, 2, -1, 1, -1][Math.floor((e - IMPACT_MS) / 30) % 6];
+        }
+        // The boss lands as it enters
+        if (st.kind === "intro" && st.boss && t > 0.75 && t < 0.95) shake = [2, -2, 1, -1][Math.floor(e / 40) % 4];
       }
       // Never show more than a strip of ground below the tower (the start button sits there)
       const camTop = Math.min(Math.round(cy - vh / 2), SLAB + 54 - vh);
@@ -376,7 +390,8 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
         if (z) text(z.name, x0 + TOWER_W - 34, ceilingY(f) - camTop + SLAB + 9, "rgba(255,241,232,0.55)", 6);
         // Flags: your best, this week's top 3
         fl.filter((g) => g.floor === f).forEach((g, k) => {
-          const fx = x0 + WALL + 4 + k * 40, fy = ceilingY(f) - camTop + SLAB + 4;
+          // Labels run ~50 px wide: flags on one floor sit far enough apart not to overlap
+          const fx = x0 + WALL + 4 + k * 56, fy = ceilingY(f) - camTop + SLAB + 4;
           px(ctx, s, fx, fy, 1, 16, "#C8CCE8");
           px(ctx, s, fx + 1, fy, 9, 6, g.you ? "#FFA300" : "#29ADFF");
           px(ctx, s, fx + 1, fy + 6, 5, 2, g.you ? "#FFA300" : "#29ADFF");
@@ -464,12 +479,14 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
           if (st.kind === "end" && enemyHpNow[i] <= 0) return;
           const spot = enemySpot(i, en);
           const isActor = a?.side === "enemy" && a.actor === i;
-          const lunge = isActor ? Math.round(Math.sin(Math.PI * Math.min(1, e / (IMPACT_MS * 2))) * 7) : 0;
+          const lunge = isActor ? Math.round(Math.sin(Math.PI * Math.min(1, e / (IMPACT_MS * 2))) * (en.boss ? 14 : 7)) : 0;
+          // A boss breathes while it waits (whole pixels; off with reduced motion)
+          const bob = en.boss && !isActor && !rm ? Math.round((Math.sin(performance.now() / 260) + 1)) : 0;
           const slide = Math.round((1 - appear) * 30);
           const struck = a?.side === "party" && a.kind === "hit" && (a.target === i || a.extra?.some((x) => x.target === i));
           const flash = Boolean(struck) && e >= IMPACT_MS && e < IMPACT_MS + 90 && !rm;
           const fade = fallingNow && e >= IMPACT_MS + 60 ? Math.max(0, Math.round((1 - (e - IMPACT_MS - 60) / 240) * 4) / 4) : 1;
-          drawEnemy(en, x0 + spot.x - lunge + slide, ground + spot.dy, enemyHpNow[i] ?? 0, flash, (st.kind === "intro" ? Math.round(appear * 4) / 4 : 1) * fade);
+          drawEnemy(en, x0 + spot.x - lunge + slide, ground + spot.dy, enemyHpNow[i] ?? 0, flash, (st.kind === "intro" ? Math.round(appear * 4) / 4 : 1) * fade, bob);
           const eh = artSize(ENEMY_ART[en.kind]).h * enemyScale(en);
           if (isActor && st.kind === "act") actorMark(x0 + spot.x - lunge, ground + spot.dy - eh - (en.boss ? 18 : 9));
           if (struck && e >= IMPACT_MS && e < IMPACT_MS + 260) targetMark(x0 + spot.x, ground + spot.dy, en.boss ? 18 : 10);
@@ -491,6 +508,47 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
         });
       }
 
+      // ── Strike effects: a bolt from casters and healers, a slash for melee, claws on heroes ──
+      if (st?.kind === "act" && a?.kind === "hit") {
+        const elColor = a.element === "neutral" ? "#FFF1E8" : ELEMENT_DEFS[a.element].color;
+        if (a.side === "party") {
+          const en = st.enemies[a.target];
+          if (en) {
+            const me = heroSpot(a.actor), to = enemySpot(a.target, en);
+            const eh = artSize(ENEMY_ART[en.kind]).h * enemyScale(en);
+            const tx = x0 + to.x, ty = ground + to.dy - Math.round(eh / 2);
+            const cls = members[a.actor]?.stats.classId;
+            const ranged = cls === "caster" || cls === "healer";
+            if (ranged && e < IMPACT_MS) {
+              const u = e / IMPACT_MS;
+              const fx = x0 + me.x + 6, fy = ground + me.dy - Math.round(sizeRef.current.hero * 0.6);
+              const bx = Math.round(fx + (tx - fx) * u), by = Math.round(fy + (ty - fy) * u - Math.sin(Math.PI * u) * 6);
+              ctx.globalAlpha = 0.5;
+              px(ctx, s, bx - 5, by, 3, 1, elColor);
+              ctx.globalAlpha = 1;
+              px(ctx, s, bx - 1, by - 1, 3, 3, elColor);
+              px(ctx, s, bx, by, 1, 1, "#FFF1E8");
+            }
+            if (!ranged && e >= IMPACT_MS && e < IMPACT_MS + 150) {
+              // Three frames of a diagonal cut across the target, whole pixels
+              const f = Math.floor((e - IMPACT_MS) / 50);
+              const len = en.boss ? 14 : 9;
+              for (let k = 0; k < len; k++) {
+                const sx = tx - Math.floor(len / 2) + k + f, sy = ty - Math.floor(len / 2) + k - f;
+                px(ctx, s, sx, sy, 1, 1, k === Math.floor(len / 2) ? "#FFF1E8" : elColor);
+                if (f === 1) px(ctx, s, sx + 1, sy, 1, 1, elColor);
+              }
+            }
+          }
+        } else if (e >= IMPACT_MS && e < IMPACT_MS + 170) {
+          // Claw marks on the hero that was hit
+          const me = heroSpot(a.target);
+          const hx = x0 + me.x, hy = ground + me.dy - Math.round(sizeRef.current.hero / 2);
+          const claw = st.enemies[a.actor]?.boss ? "#FF5A3C" : "#FF8A8A";
+          for (let c = -1; c <= 1; c++) for (let k = 0; k < 6; k++) px(ctx, s, hx + c * 3 + k - 3, hy + k - 3, 1, 1, claw);
+        }
+      }
+
       // ── Action numbers and sparks ─────────────────────────────────────────
       if (st?.kind === "act" && a && e >= IMPACT_MS) {
         const k = e - IMPACT_MS;
@@ -509,10 +567,22 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
             const en = st.enemies[tg.target];
             if (!en) return;
             const spot = enemySpot(tg.target, en);
-            const h = artSize(ENEMY_ART[en.kind]).h * enemyScale(en);
+            // Above a boss's name and bar, not on them
+            const h = artSize(ENEMY_ART[en.kind]).h * enemyScale(en) + (en.boss ? 18 : 0);
             show(x0 + spot.x, ground + spot.dy - h - 6, tg.amount, a.crit, tg.matchup, a.element, false, n);
-            if (a.ambush && n === 0) text("Ambush!", x0 + spot.x, ground + spot.dy - h - 26 - rise, "#FFA300", 6, true);
+            if (n === 0) {
+              // Run upgrades that touched this hit, one tag each, stacked above the number
+              const tags: [string, string][] = [];
+              if (a.ambush) tags.push(["Ambush!", "#FFA300"]);
+              if (a.execute) tags.push(["Execute!", "#FF5A3C"]);
+              if (a.double) tags.push(["Twin strike!", "#B35CFF"]);
+              tags.forEach(([label, col], k) => text(label, x0 + spot.x, ground + spot.dy - h - 26 - k * 8 - rise, col, 6, true));
+            }
           });
+          if (a.lastStand) {
+            const me = heroSpot(a.actor);
+            text("Last stand!", x0 + me.x, ground + me.dy + 9, "#FF5A3C", 6, true);
+          }
           // Leech: the attacker heals, in green
           if (a.leech) {
             const me = heroSpot(a.actor);
@@ -522,6 +592,7 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
           const spot = heroSpot(a.target);
           show(x0 + spot.x, ground + spot.dy - sizeRef.current.hero - 8, a.amount, a.crit, a.matchup, a.element, true, 0);
           if (a.taunt) text("Taunt!", x0 + spot.x, ground + spot.dy - sizeRef.current.hero - 22 - rise, "#29ADFF", 6, true);
+          if (a.rally) text("Vengeance!", vw / 2, 66, "#FF5A3C", 9, true);
           if (a.ward) text("Ward", x0 + spot.x, ground + spot.dy + 9, ELEMENT_DEFS[a.element].color, 6, true);
         } else if (a.kind === "revive") {
           const spot = heroSpot(a.target);
@@ -538,9 +609,17 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
       const cx = vw / 2;
       const BY = 50; // banners sit below the HUD plates
       if (st?.kind === "gate") {
+        // The boss hall: the tower dims, then the boss is named
         const boss = st.enemies.find((en) => en.boss);
-        text(`Floor ${st.floor}`, cx, BY, "#FFF1E8", 9, true);
-        if (boss) text(boss.name, cx, BY + 15, "#FFA300", 13, true);
+        const dim = rm ? 0.4 : (Math.round(Math.min(1, t * 2.5) * 4) / 4) * 0.45;
+        ctx.fillStyle = `rgba(11,16,34,${dim})`;
+        ctx.fillRect(0, 0, vw * s, vh * s);
+        text(`Floor ${st.floor}`, cx, BY - 4, "#C8CCE8", 7, true);
+        if (boss) {
+          text("BOSS", cx, BY + 8, "#FF004D", 8, true);
+          text(boss.name, cx, BY + 24, "#FFA300", 15, true);
+          text(zoneFor(st.floor).name, cx, BY + 35, "#C8CCE8", 6);
+        }
       } else if (st?.kind === "climb" && t > 0.6) {
         text(`Floor ${st.floor}`, cx, BY, "#FFF1E8", 10, true);
       } else if (st?.kind === "record") {
@@ -589,6 +668,20 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
           ctx.fillRect(0, 0, vw * s, vh * s);
         }
       }
+      // A boss falls: gold flash, then the banner over the slow-motion knock-out
+      if (st?.kind === "act" && bossFalls(st) && e >= IMPACT_MS) {
+        const k = e - IMPACT_MS;
+        if (!rm && k < 90) {
+          ctx.fillStyle = "rgba(255,163,0,0.25)";
+          ctx.fillRect(0, 0, vw * s, vh * s);
+        }
+        if (k >= 160) {
+          const pop = rm ? 0 : Math.round(Math.max(0, 1 - (k - 160) / 160) * 6);
+          text("BOSS DEFEATED", cx, vh / 2 - 10 - pop, "#FFA300", 15, true);
+          const boss = st.enemies.find((en) => en.boss);
+          if (boss) text(boss.name, cx, vh / 2 + 3 - pop, "#FFF1E8", 7, true);
+        }
+      }
       // Revive flash (gold, short)
       const revFlashAt = st?.kind === "revive" ? 300 : st?.action?.kind === "revive" ? IMPACT_MS : -1;
       if (!rm && revFlashAt >= 0 && e >= revFlashAt && e < revFlashAt + 80) {
@@ -629,9 +722,16 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
       if (st.kind === "gate") return "boss";
       if (st.kind === "chest") return "chest";
       if (st.kind === "fall") return st.partyHp.every((h) => h <= 0) ? "fall" : null;
-      if (st.kind === "act" && a?.kind === "hit" && a.skill && a.skill.rule !== "basic") return a.skill.rule === "legendary" ? "record" : "crit";
-      if (st.kind === "act" && a?.kind === "hit") return a.ko ? "ko" : a.crit ? "crit" : a.matchup === "weak" ? "weak" : "hit";
-      return null;
+      if (st.kind !== "act" || !a) return null;
+      if (a.kind === "heal") return "heal";
+      if (a.kind === "stunned") return "stun";
+      if (a.kind !== "hit") return null;
+      if (a.side === "enemy") return a.rally ? "rally" : st.enemies[a.actor]?.boss ? "bossHit" : a.ko ? "ko" : "hit";
+      if (bossFalls(st)) return "bossDown";
+      if (a.skill && a.skill.rule !== "basic") return a.skill.rule === "legendary" ? "record" : "crit";
+      if (a.execute) return "execute";
+      if (a.double) return "double";
+      return a.ko ? "ko" : a.crit ? "crit" : a.matchup === "weak" ? "weak" : "hit";
     };
 
     const draw = () => {
@@ -643,7 +743,7 @@ export function TowerStage({ members, floors, restFloor, restHp, bestBefore, fla
       const t = st.ms > 0 ? Math.min(1, (tNow - st.start) / st.ms) : 1;
       scene(st, t, steps, idx);
       if (idx !== lastStep) {
-        if (idx === lastStep + 1) { const sfx = sfxFor(st); if (sfx) play(sfx); }
+        if (idx === lastStep + 1) { const sfx = sfxFor(st); if (sfx) play(sfx, idx); }
         lastStep = idx;
         const hp = st.partyHp.reduce((x, y) => x + Math.max(0, y), 0);
         cbRef.current.onProgress?.({ floor: st.floor, zone: zoneFor(Math.max(1, st.floor)).name, hp, maxHp, combo: st.combo, line: describe(st), done: st.kind === "end" });
