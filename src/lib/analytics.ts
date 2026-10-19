@@ -58,4 +58,16 @@ export const FUNNEL = {
   // Export step of the funnel (kind/format only — never prompts or images)
   assetDownload: "asset_download",
   spriteUploaded: "sprite_uploaded",
+  // Sprite Dungeon (floors, kinds and blessing ids only — never prompts or images)
+  dungeonViewed: "dungeon_viewed",
+  dungeonIntroDismissed: "dungeon_intro_dismissed",
+  dungeonRunStarted: "dungeon_run_started",
+  dungeonRunResumed: "dungeon_run_resumed",
+  dungeonBlessingShown: "dungeon_blessing_shown",
+  dungeonBlessingSelected: "dungeon_blessing_selected",
+  dungeonRunFinished: "dungeon_run_finished",
+  dungeonUpgradeShown: "dungeon_upgrade_shown",
+  dungeonUpgradeClicked: "dungeon_upgrade_clicked",
+  dungeonReturnClicked: "dungeon_return_clicked",
+  dungeonShareCard: "dungeon_share_card",
 } as const;

@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { Castle, Crown, Droplet, Eye, Feather, Flame, Heart, Loader2, RotateCcw, Share2, Shield, Sword, Target, Zap } from "lucide-react";
-import { ELEMENT_DEFS, type GearSlot } from "@/lib/dungeon/config";
+import { Castle, Crown, Droplet, Eye, Feather, Flame, Heart, Loader2, RotateCcw, Share2, Shield, Sword, Swords, Target, Zap } from "lucide-react";
+import { BLESSING_EVERY, BOSS_EVERY, ELEMENT_DEFS, type GearSlot } from "@/lib/dungeon/config";
+import { FUNNEL, track } from "@/lib/analytics";
+import { markDungeonReturn } from "./dungeon-return";
 import type { BlessingCard, PartyMember } from "@/lib/dungeon/store";
 import type { RunReport, RunTip } from "@/lib/dungeon/summary";
 import { SpriteImg } from "./Sheet";
@@ -54,8 +56,8 @@ export function ResultReport({ report, members, runsLeft, starting, onTryAgain, 
     ? report.rankBefore && report.rankBefore !== report.rankAfter ? `#${report.rankBefore} → #${report.rankAfter}` : `#${report.rankAfter} of ${report.players}`
     : "Not ranked yet";
   const tipButton = (t: RunTip) => t.href
-    ? <Link href={t.href} className="inline-flex h-10 shrink-0 items-center rounded-[7px] bg-[#212B4E] px-3 text-[13px] font-semibold text-[#FFC857] hover:bg-[#2A3560]">{t.action}</Link>
-    : <button type="button" onClick={() => t.picker && onTip(t.picker)} className="inline-flex h-10 shrink-0 items-center rounded-[7px] bg-[#212B4E] px-3 text-[13px] font-semibold text-[#FFC857] hover:bg-[#2A3560]">{t.action}</button>;
+    ? <Link href={t.href} onClick={() => { track(FUNNEL.dungeonUpgradeClicked, { kind: "report_tip", action: t.action }); markDungeonReturn("report_tip"); }} className="inline-flex h-10 shrink-0 items-center rounded-[7px] bg-[#212B4E] px-3 text-[13px] font-semibold text-[#FFC857] hover:bg-[#2A3560]">{t.action}</Link>
+    : <button type="button" onClick={() => { track(FUNNEL.dungeonUpgradeClicked, { kind: "report_tip", action: t.action }); if (t.picker) onTip(t.picker); }} className="inline-flex h-10 shrink-0 items-center rounded-[7px] bg-[#212B4E] px-3 text-[13px] font-semibold text-[#FFC857] hover:bg-[#2A3560]">{t.action}</button>;
 
   return (
     <div className="absolute inset-0 z-10 flex items-end justify-center overflow-y-auto bg-[#0B1022]/70 p-2 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="result-h">
@@ -113,6 +115,30 @@ export function ResultReport({ report, members, runsLeft, starting, onTryAgain, 
           <button type="button" onClick={onClose} className="inline-flex h-12 items-center rounded-[8px] px-3 text-[14px] text-[#C8CCE8] hover:bg-white/[0.06]">
             Edit party
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** First visit: the three things to know, then straight into the first climb. Reopened from the "?" by the title. */
+export function DungeonIntro({ canStart, starting, runsLeft, onStart, onClose }: {
+  canStart: boolean; starting: boolean; runsLeft: number; onStart: () => void; onClose: () => void;
+}) {
+  return (
+    <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#0B1022]/70 p-3" role="dialog" aria-modal="true" aria-labelledby="intro-h">
+      <div className="sl-panel w-full max-w-[420px] p-4 sm:p-5">
+        <h2 id="intro-h" className="font-display text-[22px] font-semibold leading-tight text-[#FFF1E8]">Your sprites are your heroes</h2>
+        <ul className="mt-3 space-y-2.5 text-[14px] leading-snug text-[#C8CCE8]">
+          <li><span className="font-semibold text-[#FFF1E8]">Your party is ready.</span> Characters and creatures you made fight; weapons, armor and items you made are their gear.</li>
+          <li><span className="font-semibold text-[#FFF1E8]">Battles play themselves.</span> Watch the climb, speed it up or skip. Every {BLESSING_EVERY} floors you pick a blessing, every {BOSS_EVERY}th floor is a boss.</li>
+          <li><span className="font-semibold text-[#FFF1E8]">Make them stronger in SpriteLab.</span> Animate a hero or make it a weapon, then climb higher. {runsLeft} climbs left today.</li>
+        </ul>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button type="button" onClick={onStart} disabled={!canStart} className="btn btn-primary h-12 flex-1 px-5 text-[16px]">
+            {starting ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : <Swords className="h-5 w-5" aria-hidden />} Start climb
+          </button>
+          <button type="button" onClick={onClose} className="btn btn-ghost h-12 px-4">Look around first</button>
         </div>
       </div>
     </div>

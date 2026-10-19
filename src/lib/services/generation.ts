@@ -74,14 +74,10 @@ export type QualityPreset = "draft" | "normal" | "hd";
 // HD runs on GPT Image Mini (~$0.036/image ≈ the price of 1 credit in the
 // cheapest pack), so it costs 3 credits to keep a margin. Surfacing the cost
 // in the UI is the caller's job (see CREDIT_COSTS export below).
-export const CREDIT_COSTS: Record<QualityPreset, number> = {
-  draft: 1,
-  normal: 1,
-  hd: 3,
-};
+export const CREDIT_COSTS: Record<QualityPreset, number> = SPRITE_CREDIT_COSTS;
 
 /** Matching a reference sprite's style runs on the image-edit model (~$0.07). */
-import { STYLE_MATCH_CREDITS } from "@/config/tool-prices";
+import { SPRITE_CREDIT_COSTS, STYLE_MATCH_CREDITS } from "@/config/tool-prices";
 export { STYLE_MATCH_CREDITS };
 
 export function creditsForPreset(preset?: QualityPreset): number {

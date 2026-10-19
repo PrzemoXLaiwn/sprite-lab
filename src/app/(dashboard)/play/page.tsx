@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FastForward, Info, Loader2, SkipForward, Swords, Volume2, VolumeX } from "lucide-react";
+import { FastForward, HelpCircle, Info, Loader2, SkipForward, Swords, Volume2, VolumeX } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { TowerStage, type StageProgress, type TowerFlag } from "@/components/play/TowerStage";
 import { PartyPanel, Picker, SkillSheet, WhySheet, type PickerMode } from "@/components/play/PartyPanel";
-import { BLESSING_ICONS, BlessingChoice, ResultReport } from "@/components/play/RunOverlays";
+import { BLESSING_ICONS, BlessingChoice, DungeonIntro, ResultReport } from "@/components/play/RunOverlays";
 import { ELEMENT_DEFS, type SkillSlot } from "@/lib/dungeon/config";
 import { Badges, DamageSheet, LeaderboardPanel, TowerWeekPanel } from "@/components/play/InfoPanels";
 import { boardAfterRun, removeHero, setGear, setHero, setSkill, toSlots } from "@/components/play/party-edit";
@@ -13,6 +13,14 @@ import { loadMuted, play, setMuted as storeMuted, unlockAudio } from "@/componen
 import type { SlotIds } from "@/lib/dungeon/party";
 import type { DungeonSprite, Leaderboard, PartyMember, Records, RunView, Trophy } from "@/lib/dungeon/store";
 import type { ZoneWeek } from "@/lib/dungeon/tower";
+import type { Upgrade } from "@/lib/dungeon/upgrades";
+import { UpgradeCards } from "@/components/play/UpgradeCards";
+import { ShareCardSheet } from "@/components/play/ShareCard";
+import { FUNNEL, track } from "@/lib/analytics";
+
+const INTRO_KEY = "sl:dungeon-intro-seen";
+const introSeen = () => { try { return localStorage.getItem(INTRO_KEY) === "1"; } catch { return true; } };
+const markIntroSeen = () => { try { localStorage.setItem(INTRO_KEY, "1"); } catch { /* storage blocked */ } };
 
 interface PlayData {
   roster: DungeonSprite[];
@@ -23,6 +31,7 @@ interface PlayData {
   trophies: Trophy[];
   runsPerDay: number;
   runsLeft: number;
+  upgrades?: Upgrade[];
 }
 
 type Phase = "idle" | "replaying" | "choosing" | "result";
@@ -52,7 +61,16 @@ export default function PlayPage() {
   const [progress, setProgress] = useState<StageProgress | null>(null);
   const [muted, setMutedState] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [intro, setIntro] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const partyRef = useRef<HTMLElement>(null);
+  // Analytics: each event once per real transition, never again on a re-render
+  const sent = useRef(new Set<string>());
+  const once = useCallback((key: string, event: string, props?: Record<string, string | number | boolean>) => {
+    if (sent.current.has(key)) return;
+    sent.current.add(key);
+    track(event, props);
+  }, []);
 
   useEffect(() => {
     setMutedState(loadMuted());
@@ -82,7 +100,12 @@ export default function PlayPage() {
       const d = json as unknown as PlayData;
       setData(d);
       setError(null);
+      const firstVisit = d.records.bestEver === null && d.records.runsWeek === 0;
+      once("viewed", FUNNEL.dungeonViewed, { first_visit: firstVisit, party: d.party.length, resumable: Boolean(d.active) });
+      if (d.upgrades?.length) once("upgrades", FUNNEL.dungeonUpgradeShown, { count: d.upgrades.length, kinds: d.upgrades.map((u) => u.kind).join(",") });
+      if (firstVisit && !d.active && !introSeen()) setIntro(true);
       if (d.active) {
+        once(`resume:${d.active.id}`, FUNNEL.dungeonRunResumed, { floor: d.active.floor, at: d.active.status });
         // An unfinished climb: continue from its blessing choice
         setView(d.active);
         setBestBefore(d.records.bestEver);
@@ -91,7 +114,7 @@ export default function PlayPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't open the tower.");
     }
-  }, []);
+  }, [once]);
 
   useEffect(() => { void load(); void loadBoard(); }, [load, loadBoard]);
   useEffect(() => {
@@ -149,6 +172,10 @@ export default function PlayPage() {
         throw new Error(typeof json.error === "string" ? json.error : "Couldn't start the climb.");
       }
       if (!json.resumed) setBestBefore(data.records.bestEver);
+      if (intro) { setIntro(false); markIntroSeen(); }
+      const v = json.view as RunView;
+      if (json.resumed) once(`resume:${v.id}`, FUNNEL.dungeonRunResumed, { floor: v.floor, at: v.status });
+      else once(`start:${v.id}`, FUNNEL.dungeonRunStarted, { first_run: data.records.bestEver === null, runs_left: Number(json.runsLeft) });
       setData({ ...data, runsLeft: Number(json.runsLeft) });
       applyView(json.view as RunView);
     } catch (e) {
@@ -172,6 +199,7 @@ export default function PlayPage() {
         if (res.status === 409) { await load(); }
         throw new Error(typeof json.error === "string" ? json.error : "Couldn't continue the climb.");
       }
+      once(`bless:${view.id}:${view.floor}`, FUNNEL.dungeonBlessingSelected, { floor: view.floor, blessing: blessingId });
       applyView(json.view as RunView);
     } catch (e) {
       toast({ title: "Blessing not applied", description: e instanceof Error ? e.message : "Try again in a moment.", variant: "destructive" });
@@ -179,6 +207,17 @@ export default function PlayPage() {
       setBusy(null);
     }
   };
+
+  // A blessing choice on screen, and a finished climb (with its real report)
+  useEffect(() => {
+    if (!view) return;
+    if (phase === "choosing") once(`shown:${view.id}:${view.floor}`, FUNNEL.dungeonBlessingShown, { floor: view.floor });
+    if (phase === "result" && view.report) {
+      once(`done:${view.id}`, FUNNEL.dungeonRunFinished, {
+        floor: view.report.floor, new_best: view.report.newBest, boss_stop: view.report.bossStop, first_run: view.report.bestBefore === null,
+      });
+    }
+  }, [phase, view, once]);
 
   const viewRef = useRef<RunView | null>(null);
   useEffect(() => { viewRef.current = view; }, [view]);
@@ -191,19 +230,6 @@ export default function PlayPage() {
       if (v.records) setData((d) => (d ? { ...d, records: v.records! } : d));
     }
   }, []);
-
-  const share = async () => {
-    const floor = view?.report?.floor ?? view?.floor ?? data?.records.bestWeek ?? 0;
-    const text = `I reached floor ${floor} of the Sprite Dungeon tower with sprites I made on sprite-lab.com/play`;
-    try {
-      if (navigator.share) { await navigator.share({ title: "Sprite Dungeon", text, url: "https://www.sprite-lab.com/play" }); return; }
-      await navigator.clipboard.writeText(text);
-      toast({ title: "Copied", description: "Paste it anywhere to share your climb." });
-    } catch (e) {
-      if (e instanceof DOMException && e.name === "AbortError") return;
-      toast({ title: "Couldn't share", description: text });
-    }
-  };
 
   const toggleMute = () => {
     unlockAudio();
@@ -242,7 +268,11 @@ export default function PlayPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 pb-28 pt-3 sm:px-6 sm:pt-6">
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-1">
-        <h1 className="font-display text-[24px] font-semibold leading-none text-[#FFF1E8] sm:text-[30px]">Sprite Dungeon</h1>
+        <div className="flex items-center gap-1">
+          <h1 className="font-display text-[24px] font-semibold leading-none text-[#FFF1E8] sm:text-[30px]">Sprite Dungeon</h1>
+          <button type="button" onClick={() => setIntro(true)} aria-label="How the Dungeon works" title="How the Dungeon works"
+            className="btn btn-ghost btn-icon h-10 w-10"><HelpCircle className="h-5 w-5" aria-hidden /></button>
+        </div>
         <dl className="flex gap-5 text-[12.5px] text-[#A7ADD4]">
           <div><dt>Best floor</dt><dd className="font-display text-[17px] text-[#FFF1E8]">{rec.bestEver ?? "–"}</dd></div>
           <div><dt>This week</dt><dd className="font-display text-[17px] text-[#FFF1E8]">{rec.bestWeek ?? "–"}</dd></div>
@@ -332,18 +362,26 @@ export default function PlayPage() {
           </button>
         </div>
 
+        {phase === "idle" && intro && (
+          <DungeonIntro canStart={canStart} starting={starting} runsLeft={data.runsLeft}
+            onStart={() => void startClimb()}
+            onClose={() => { setIntro(false); markIntroSeen(); once("intro-dismissed", FUNNEL.dungeonIntroDismissed); }} />
+        )}
         {phase === "choosing" && view?.offer && (
           <BlessingChoice floor={view.floor} offer={view.offer} chosen={view.blessings} busy={busy} onChoose={(id) => void choose(id)} />
         )}
         {phase === "result" && view?.report && (
           <ResultReport report={view.report} members={view.members} runsLeft={data.runsLeft} starting={starting}
             onTryAgain={() => { setPhase("idle"); setView(null); void startClimb(); }}
-            onShare={() => void share()}
+            onShare={() => setShareOpen(true)}
             onTip={(p) => { setPhase("idle"); setView(null); setPicker({ kind: p.slot, index: p.index }); }}
             onClose={() => { setPhase("idle"); setView(null); partyRef.current?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" }); }} />
         )}
       </section>
       <p className="mt-1.5 min-h-[20px] truncate text-[13px] text-[#C8CCE8]" aria-live="polite">{progress?.line ?? ""}</p>
+      {phase === "idle" && data.upgrades && (
+        <UpgradeCards upgrades={data.upgrades} members={data.party} onPicker={(p) => setPicker({ kind: p.slot, index: p.index })} />
+      )}
 
       <div className="mt-4 grid gap-8 lg:grid-cols-[1.5fr_1fr]">
         <section ref={partyRef} aria-labelledby="party-h">
@@ -382,6 +420,7 @@ export default function PlayPage() {
         <WhySheet m={data.party[why]} onClose={() => setWhy(null)} onEquip={(slot) => { const i = why; setWhy(null); setPicker({ kind: slot, index: i }); }} />
       )}
       {damageInfo && <DamageSheet onClose={() => setDamageInfo(false)} />}
+      {shareOpen && view?.report && <ShareCardSheet report={view.report} members={view.members} onClose={() => setShareOpen(false)} />}
       {skillSheet && data.party[skillSheet.index] && (
         <SkillSheet m={data.party[skillSheet.index]} slot={skillSheet.slot} onClose={() => setSkillSheet(null)}
           onAssign={(id) => { const k = skillSheet; setSkillSheet(null); void save({ slots: setSkill(slots, k.index, k.slot, id) }); }} />

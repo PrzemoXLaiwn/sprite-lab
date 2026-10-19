@@ -9,6 +9,7 @@ import { AppRail } from "@/components/dashboard/AppRail";
 import { RelaunchBonus } from "@/components/dashboard/RelaunchBonus";
 import { GettingStarted } from "@/components/dashboard/GettingStarted";
 import { GuestSpriteClaim } from "@/components/dashboard/GuestSpriteClaim";
+import { DungeonReturn } from "@/components/play/DungeonReturn";
 import { prisma } from "@/lib/prisma";
 import { relaunchActive, relaunchBonusFor } from "@/config/relaunch";
 
@@ -74,6 +75,7 @@ export async function AppShell({ user, children }: { user: User; children: React
 
       <NotificationPopup />
       <GuestSpriteClaim />
+      <DungeonReturn />
       <UpgradeModal />
       {showRelaunchBonus && <RelaunchBonus />}
       <GettingStarted done={{ generate: Boolean(firstSprite), animate: Boolean(firstAnimation), project: Boolean(firstProject) }} />

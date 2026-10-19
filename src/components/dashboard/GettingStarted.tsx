@@ -58,8 +58,8 @@ export function GettingStarted({ done }: { done: { generate: boolean; animate: b
       setCostsSeen(read(COSTS_KEY) === "1");
       const o = read(OPEN_KEY);
       // Collapsed by default on phones so it never covers the workspace
-      // …and on Create and the tool pages, where it would sit over the panel and its main button
-      setOpen(o ? o === "1" : window.innerWidth >= 768 && !/^\/(generate|animate|edit|remove-bg|upscale)/.test(window.location.pathname));
+      // …and on Create, the tool pages and the Dungeon, where it would sit over the panel, its main button or the tower
+      setOpen(o ? o === "1" : window.innerWidth >= 768 && !/^\/(generate|animate|edit|remove-bg|upscale|play)/.test(window.location.pathname));
       setReady(true);
     });
     return () => cancelAnimationFrame(id);
