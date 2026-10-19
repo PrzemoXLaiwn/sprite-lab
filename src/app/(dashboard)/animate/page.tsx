@@ -79,6 +79,8 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
   const [loading, setLoading] = useState(false);
   const [zipping, setZipping] = useState(false);
   const [error, setError] = useState("");
+  /** Server note about a finished run (e.g. a stiff walk that was refunded). */
+  const [notice, setNotice] = useState("");
   const [result, setResult] = useState<AnimationResult | null>(null);
   const [view, setView] = useState<"play" | "game" | "sheet">("play");
   // What the last result shows (file names + the game view: does it travel?)
@@ -277,6 +279,7 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
     }
     setLoading(true);
     setError("");
+    setNotice("");
     setResult(null);
     try {
       const res = await fetch("/api/animate", {
@@ -293,6 +296,7 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
       if (!res.ok) throw new Error(toolErrorMessage(res, data, "Animation failed."));
       if (!data?.sheetUrl) throw new Error("The animation finished but returned no sprite sheet. Please try again.");
       setResult(data);
+      if (typeof data.notice === "string") setNotice(data.notice);
       // Address bar → this animation, so a reload or a later visit reopens it
       const newId = typeof data.generationId === "string" ? data.generationId : null;
       if (newId) rememberSourceLink(newId, generationId);
@@ -360,6 +364,9 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
               {outFrames} frames · sprite sheet + GIF
             </FooterHint>
             {shownError && <ErrorNote>{shownError}</ErrorNote>}
+            {notice && !shownError && (
+              <p role="status" className="rounded-[8px] border border-[#FFA300]/35 bg-[#FFA300]/[0.08] px-3 py-2 text-[13px] leading-snug text-[#FFF1E8]">{notice}</p>
+            )}
           </>
         }
       >

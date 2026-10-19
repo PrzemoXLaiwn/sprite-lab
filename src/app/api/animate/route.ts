@@ -264,7 +264,7 @@ export async function POST(request: Request) {
   const op = started.op;
 
   try {
-    const { anim, plan: motionPlan, prompt, cost, smoothed } = await op.run(() => makeAnimation({
+    const { anim, plan: motionPlan, prompt, cost, smoothed, stiffWalk } = await op.run(() => makeAnimation({
       reference,
       prompt: source.prompt,
       categoryId: source.categoryId,
@@ -279,6 +279,9 @@ export async function POST(request: Request) {
     // The in-between pass didn't line up — the user got key frames only
     // (idempotent: an operation never refunds more than it charged)
     if (smooth && !smoothed) await op.refund(credits - option.credits, "smooth_pass_unavailable");
+    // The legs still barely move after a redraw: the user keeps the result but
+    // doesn't pay for a walk they didn't get
+    if (stiffWalk) await op.refund(credits, "walk_stiff");
 
     const [sheet, gif] = await Promise.all([
       uploadGenerationBufferToR2(anim.sheetPng, user.id, "png"),
@@ -300,7 +303,8 @@ export async function POST(request: Request) {
       sourceGenerationId: source.id,
     });
     const savedId = saved.success && "generation" in saved && saved.generation ? saved.generation.id : undefined;
-    if (smooth && !smoothed) await op.partial(savedId ?? null, "smooth_pass_unavailable");
+    if (stiffWalk) await op.partial(savedId ?? null, "walk_stiff");
+    else if (smooth && !smoothed) await op.partial(savedId ?? null, "smooth_pass_unavailable");
     else await op.succeed(savedId);
 
     return NextResponse.json({
@@ -314,7 +318,8 @@ export async function POST(request: Request) {
       generationId: savedId,
         sourceGenerationId: source.id,
       smoothed,
-      creditsUsed: smooth && !smoothed ? option.credits : credits,
+      creditsUsed: stiffWalk ? 0 : smooth && !smoothed ? option.credits : credits,
+      ...(stiffWalk ? { notice: "The legs barely move in this walk, so it's free — your credits were refunded. Try 6 frames, or make the sprite in side view first." } : {}),
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

@@ -69,6 +69,8 @@ export interface MakeAnimationOutput {
   cost: number;
   /** False when smooth was requested but the in-between pass didn't line up. */
   smoothed: boolean;
+  /** A walk/run whose legs still barely move after one redraw (the caller refunds it). */
+  stiffWalk?: boolean;
 }
 
 /**
@@ -118,7 +120,7 @@ export async function makeAnimation(input: MakeAnimationInput): Promise<MakeAnim
       const keyGrid = await generateAnimationGrid({ prompt, reference: input.reference, size: option.size });
       cost += keyGrid.cost;
       input.onGrid?.("keys", keyGrid.image);
-      found = await extractFrames(keyGrid.image, option.cols, option.rows);
+      found = fitFrames(await extractFrames(keyGrid.image, option.cols, option.rows), option.frames);
     } catch (err) {
       // A failed redraw must not throw away usable frames from the first try
       if (attempt === 0 || keys.length < 2) throw err;
@@ -131,21 +133,46 @@ export async function makeAnimation(input: MakeAnimationInput): Promise<MakeAnim
   }
   const baseFps = option.frames >= 9 ? 12 : option.frames >= 6 ? 10 : 8;
 
+  // Walks and runs where the legs barely move (measured: a quarter of 4-frame
+  // walks in Oct 2026): one redraw with every stride pose spelled out
+  let stiffWalk = false;
+  const walkView = isWalkMotion(input.motion) ? walkViewFor(input.prompt) : null;
+  if (walkView && keys.length >= 3 && walkRowFrozen(keys, walkView)) {
+    stiffWalk = true;
+    if (option.frames === 4 && Date.now() - startedAt < REDRAW_BUDGET_MS && canSpend(PRICE.grid1024)) {
+      try {
+        console.warn(`[Animate] Stiff ${walkView} walk — redrawing the stride`);
+        const grid = await generateAnimationGrid({ prompt: buildWalkRowPrompt({ pixel: input.pixel, subject: plan.subject || input.prompt, view: walkView }), reference: await frameOnWhite(keys[0]), size: 1024 });
+        cost += grid.cost;
+        input.onGrid?.("keys", grid.image);
+        const found = fitFrames(await extractFrames(grid.image, 2, 2), 4);
+        if (framesLookRight(found, 4)) {
+          const k = median(keys.map((f) => f.height)) / median(found.map((f) => f.height));
+          const redrawn = await Promise.all(found.map((f) => scaleFrame(f, k, input.pixel)));
+          if (walkRowScore(redrawn) > walkRowScore(keys)) keys = redrawn;
+        }
+      } catch (err) {
+        console.warn("[Animate] Stride redraw failed:", err instanceof Error ? err.message : err);
+      }
+      stiffWalk = walkRowFrozen(keys, walkView);
+    }
+  }
+
   if (!input.smooth) {
     const anim = await assembleAnimation(keys, { pixel: input.pixel, frameSize: 256, fps: baseFps, anchor });
-    return { anim, plan, prompt, cost, smoothed: false };
+    return { anim, plan, prompt, cost, smoothed: false, stiffWalk };
   }
 
   // Smooth: show the assembled key poses to the model, get the in-betweens
   const keyAnim = await assembleAnimation(keys, { pixel: input.pixel, frameSize: 256, fps: baseFps, anchor });
   if (Date.now() - startedAt > SMOOTH_BUDGET_MS) {
     console.warn("[Animate] Smoothing skipped: out of time");
-    return { anim: keyAnim, plan, prompt, cost, smoothed: false };
+    return { anim: keyAnim, plan, prompt, cost, smoothed: false, stiffWalk };
   }
   const layout = gridFor(keyAnim.frames.length);
   if (!canSpend(passPrice(layout.size))) {
     console.warn("[Animate] Smoothing skipped: operation cost cap reached");
-    return { anim: keyAnim, plan, prompt, cost, smoothed: false };
+    return { anim: keyAnim, plan, prompt, cost, smoothed: false, stiffWalk };
   }
   try {
     const sheet = await referenceGrid(keyAnim.frames, layout.cols, layout.rows, 1024);
@@ -167,10 +194,10 @@ export async function makeAnimation(input: MakeAnimationInput): Promise<MakeAnim
     if (!framesLookRight(betweens, keys.length)) throw new Error(`in-betweens don't line up (${betweens.length}/${keys.length})`);
     const all = await interleave(keys, betweens);
     const anim = await assembleAnimation(all, { pixel: input.pixel, frameSize: 256, fps: baseFps * 2, anchor });
-    return { anim, plan, prompt, cost, smoothed: true };
+    return { anim, plan, prompt, cost, smoothed: true, stiffWalk };
   } catch (err) {
     console.warn("[Animate] Smoothing skipped:", err instanceof Error ? err.message : err);
-    return { anim: keyAnim, plan, prompt, cost, smoothed: false };
+    return { anim: keyAnim, plan, prompt, cost, smoothed: false, stiffWalk };
   }
 }
 
@@ -196,7 +223,7 @@ export async function makeRotation(input: { reference: Buffer; prompt: string; p
       const grid = await generateAnimationGrid({ prompt, reference: input.reference, size: r.size });
       cost += grid.cost;
       input.onGrid?.("keys", grid.image);
-      found = (await extractFrames(grid.image, r.cols, r.rows)).slice(0, expected);
+      found = fitFrames(await extractFrames(grid.image, r.cols, r.rows), expected);
     } catch (err) {
       // Keep a complete first attempt rather than failing the whole request
       if (attempt === 0 || views.length < expected) throw err;
@@ -349,6 +376,37 @@ function framesLookRight(frames: Frame[], expected: number): boolean {
 
 /** For picking the better of two attempts. */
 function frameScore(frames: Frame[], expected: number): number {
-  if (frames.length === 0) return -1;
+  // An empty list must lose to any attempt — an off-by-one attempt (also -1)
+  // used to never replace it, so 7-of-6 poses ended as "too few frames"
+  if (frames.length === 0) return -Infinity;
   return (framesLookRight(frames, expected) ? 100 : 0) - Math.abs(frames.length - expected);
+}
+
+/**
+ * More pieces than poses: a detached effect (a splash, a spark) cut out as its
+ * own frame, or one pose too many. Drop pieces much lighter than the typical
+ * pose first; if none stand out, keep the first `expected` in reading order.
+ */
+export function fitFrames(frames: Frame[], expected: number): Frame[] {
+  if (frames.length <= expected) return frames;
+  const mass = (f: Frame) => { let n = 0; for (let i = 3; i < f.data.length; i += 4) if (f.data[i] >= 128) n++; return n; };
+  const masses = frames.map(mass);
+  const typical = median(masses);
+  const order = masses.map((m, i) => ({ m, i })).sort((a, b) => a.m - b.m);
+  const drop = new Set<number>();
+  for (const { m, i } of order) {
+    if (frames.length - drop.size <= expected) break;
+    if (m < typical * 0.5) drop.add(i);
+  }
+  return frames.filter((_, i) => !drop.has(i)).slice(0, expected);
+}
+
+/** Walks and runs get the stride check. */
+export function isWalkMotion(motion: string): boolean {
+  return /\b(walk|walking|walks|run|running|runs|jog|jogging|march|marching|stride|sprint)\b/i.test(motion);
+}
+
+/** Side walks for side-view sprites, front walks otherwise (the default view is three-quarter front). */
+function walkViewFor(prompt: string): "side" | "front" {
+  return /\b(side[- ]?view|profile|facing (right|left)|platformer|side[- ]scroll)/i.test(prompt) ? "side" : "front";
 }

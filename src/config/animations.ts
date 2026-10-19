@@ -131,6 +131,7 @@ export function buildWalkRowPrompt(opts: { pixel: boolean; subject: string; view
     `Using the reference image, draw 4 frames of EXACTLY this same ${style} character (${opts.subject.slice(0, 200)}) walking in place, ${facing}.`,
     "Identical design, colors, proportions, outline, size and art style in every frame. Held items stay in the same hand.",
     "The four poses must be clearly different from each other — the legs must visibly move:",
+    "If a robe, dress, coat or cloak covers the legs, each foot still clearly steps out from under the hem in turn, the hem swings to the side of the leading foot and the body bobs up and down.",
     ...poses,
     "Layout: 2 rows of 2 figures on one blank white page, in reading order, evenly spaced with wide empty white space so no two figures touch; every figure is the same height and stands on the same invisible ground level.",
     "Plain flat solid pure white background, like a blank sheet of paper. Do not draw any lines on the background: no grid, no guide lines, no boxes, no arrows, no labels or text of any kind, no ground, no shadows, no motion blur.",
