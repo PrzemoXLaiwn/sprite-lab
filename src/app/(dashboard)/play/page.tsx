@@ -1,9 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FastForward, HelpCircle, Info, Loader2, SkipForward, Swords, Volume2, VolumeX } from "lucide-react";
+import Link from "next/link";
+import { Crown, FastForward, Flame, Gem, HelpCircle, Info, Loader2, Lock, Orbit, Pause, Play, Skull, SkipForward, Swords, Volume2, VolumeX } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
-import { TowerStage, type StageProgress, type TowerFlag } from "@/components/play/TowerStage";
+import { ArenaStage, type StageProgress } from "@/components/play/ArenaStage";
+import { floorEnemies, type ZoneWeek } from "@/lib/dungeon/tower";
+import { markDungeonReturn } from "@/components/play/dungeon-return";
 import { PartyPanel, Picker, SkillSheet, WhySheet, type PickerMode } from "@/components/play/PartyPanel";
 import { BLESSING_ICONS, BlessingChoice, DungeonIntro, ResultReport } from "@/components/play/RunOverlays";
 import { ELEMENT_DEFS, type SkillSlot } from "@/lib/dungeon/config";
@@ -12,7 +15,6 @@ import { boardAfterRun, removeHero, setGear, setHero, setSkill, toSlots } from "
 import { loadMuted, play, setMuted as storeMuted, unlockAudio } from "@/components/play/sfx";
 import type { SlotIds } from "@/lib/dungeon/party";
 import type { DungeonSprite, Leaderboard, PartyMember, Records, RunView, Trophy } from "@/lib/dungeon/store";
-import type { ZoneWeek } from "@/lib/dungeon/tower";
 import type { Upgrade } from "@/lib/dungeon/upgrades";
 import { UpgradeCards } from "@/components/play/UpgradeCards";
 import { ShareCardSheet } from "@/components/play/ShareCard";
@@ -35,7 +37,9 @@ interface PlayData {
 }
 
 type Phase = "idle" | "replaying" | "choosing" | "result";
-const SPEEDS = [1, 2, 4];
+const SPEEDS = [0.5, 1, 2, 4];
+const ZONE_ICON = { cells: Lock, crypt: Skull, crystal: Gem, forge: Flame, abyss: Orbit } as const;
+const PLATE = "rounded-[10px] border border-[#29ADFF]/25 bg-[#0B1022]/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-[2px]";
 
 async function readJson(res: Response): Promise<Record<string, unknown>> {
   return (await res.json().catch(() => ({}))) as Record<string, unknown>;
@@ -57,6 +61,7 @@ export default function PlayPage() {
   const [skillSheet, setSkillSheet] = useState<{ index: number; slot: SkillSlot } | null>(null);
   const [damageInfo, setDamageInfo] = useState(false);
   const [speed, setSpeed] = useState(2);
+  const [paused, setPaused] = useState(false);
   const [skipToken, setSkipToken] = useState(0);
   const [progress, setProgress] = useState<StageProgress | null>(null);
   const [muted, setMutedState] = useState(false);
@@ -238,13 +243,6 @@ export default function PlayPage() {
     storeMuted(m);
   };
 
-  const flags = useMemo<TowerFlag[]>(() => {
-    const out: TowerFlag[] = [];
-    if (data?.records.bestEver) out.push({ floor: data.records.bestEver, label: "Your best", you: true });
-    for (const r of board?.top.slice(0, 3) ?? []) if (!r.you) out.push({ floor: r.floor, label: `#${r.rank} ${r.name.slice(0, 12)}`, you: false });
-    return out;
-  }, [data?.records.bestEver, board]);
-
   if (error && !data) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
@@ -264,6 +262,11 @@ export default function PlayPage() {
   const hud = progress ?? { floor: 0, zone: "Entrance", hp: 0, maxHp: 0, combo: 0, line: "", done: true };
   const rec = data.records;
   const canStart = data.party.length > 0 && data.runsLeft > 0 && !starting && !saving;
+  const restFloor = view && phase !== "idle" ? view.floor : 0;
+  const hudFloor = progress?.floor ?? restFloor;
+  const zoneNow = zoneOf(data.tower.zones, Math.max(1, hudFloor));
+  // While standing: the real line-up waiting on the next floor of this week's tower
+  const preview = phase === "idle" ? floorEnemies(data.tower.week, restFloor + 1) : [];
 
   return (
     <div className="mx-auto max-w-6xl px-4 pb-28 pt-3 sm:px-6 sm:pt-6">
@@ -280,16 +283,17 @@ export default function PlayPage() {
         </dl>
       </div>
 
-      {/* The tower */}
-      <section aria-label="The tower" className="relative mt-3 h-[62vh] min-h-[400px] max-h-[760px] overflow-hidden lg:h-[74vh] lg:max-h-[860px] rounded-[10px] border border-white/[0.1] bg-[#0B1022]">
-        <TowerStage
+      {/* The arena */}
+      <section aria-label="The arena" className="relative mt-3 h-[380px] overflow-hidden rounded-[14px] border border-[#29ADFF]/30 bg-[#0B1022] shadow-[0_0_0_1px_rgba(41,173,255,0.06),0_24px_60px_-24px_rgba(41,173,255,0.45)] sm:h-auto sm:aspect-[16/9] lg:aspect-[2.15/1]">
+        <ArenaStage
           members={members}
           floors={phase === "replaying" && view ? view.floors : null}
-          restFloor={view && phase !== "idle" ? view.floor : 0}
+          restFloor={restFloor}
           restHp={view && phase !== "idle" ? view.hp : null}
+          previewEnemies={preview}
           bestBefore={bestBefore}
-          flags={flags}
           speed={speed}
+          paused={paused}
           skipToken={skipToken}
           reducedMotion={reducedMotion}
           onProgress={setProgress}
@@ -297,14 +301,25 @@ export default function PlayPage() {
         />
 
         {/* HUD */}
-        <div className="pointer-events-none absolute inset-x-2 top-2 flex items-start justify-between gap-2">
-          <div className="flex flex-col items-start gap-1">
-            <div className="rounded-[6px] border border-white/[0.1] bg-[#131A31]/85 px-2.5 py-1.5">
-              <p className="font-display text-[20px] font-semibold leading-none text-[#FFF1E8]">{hud.floor > 0 ? `Floor ${hud.floor}` : "Ground floor"}</p>
-              <p className="mt-0.5 text-[12px] text-[#A7ADD4]">{hud.zone}</p>
+        <div className="pointer-events-none absolute inset-x-2 top-2 flex items-start justify-between gap-2 sm:inset-x-3 sm:top-3">
+          <div className="flex flex-col items-start gap-1.5">
+            <div className={`${PLATE} flex items-center gap-2 px-2 py-1.5 sm:gap-2.5 sm:px-3 sm:py-2`}>
+              <ZoneIconBadge zone={zoneNow} />
+              <div>
+                <p className="whitespace-nowrap font-display text-[14px] font-semibold leading-none text-[#FFF1E8] sm:text-[18px]">{zoneNow?.name ?? "Entrance"}</p>
+                <p className="mt-1 text-[12px] text-[#C8CCE8]">
+                  {hudFloor > 0 ? <>Floor {hudFloor}{zoneNow?.to ? <span className="text-[#A7ADD4]"> / {zoneNow.to}</span> : null}</> : "Ground floor"}
+                </p>
+              </div>
+              {zoneNow && zoneNow.element !== "neutral" && (
+                <span className="ml-1 hidden items-center gap-1 self-start rounded-[5px] bg-white/[0.06] px-1.5 py-0.5 text-[11px] text-[#C8CCE8] sm:inline-flex">
+                  <span className="h-2 w-2 rounded-[2px]" style={{ background: ELEMENT_DEFS[zoneNow.element].color }} aria-hidden />
+                  {ELEMENT_DEFS[zoneNow.element].label}
+                </span>
+              )}
             </div>
             {view && phase !== "idle" && view.blessings.length + view.buffs.length > 0 && (
-              <ul className="pointer-events-auto flex max-w-[176px] flex-wrap gap-1" aria-label="Active blessings">
+              <ul className="pointer-events-auto flex max-w-[220px] flex-wrap gap-1" aria-label="Active blessings">
                 {[...view.blessings, ...view.buffs].map((b) => {
                   const Icon = BLESSING_ICONS[b.icon] ?? Swords;
                   const color = b.element ? ELEMENT_DEFS[b.element].color : "#FFA300";
@@ -312,7 +327,7 @@ export default function PlayPage() {
                     <li key={b.id}>
                       <button type="button" title={`${b.name}: ${b.text}`} aria-label={`${b.name}: ${b.text}`}
                         onClick={() => toast({ title: b.name, description: b.text })}
-                        className="flex h-10 w-10 items-center justify-center rounded-[6px] border border-white/[0.1] bg-[#131A31]/85 hover:bg-[#212B4E]">
+                        className={`${PLATE} flex h-10 w-10 items-center justify-center hover:bg-[#212B4E]`}>
                         <Icon className="h-4 w-4" style={{ color }} aria-hidden />
                       </button>
                     </li>
@@ -321,10 +336,10 @@ export default function PlayPage() {
               </ul>
             )}
           </div>
-          <div className="flex flex-col items-end gap-1 rounded-[6px] border border-white/[0.1] bg-[#131A31]/85 px-2.5 py-1.5">
-            <div className="flex w-[132px] gap-[2px] sm:w-[180px]" role="progressbar" aria-label="Party HP" aria-valuemin={0} aria-valuemax={hud.maxHp} aria-valuenow={hud.hp}>
-              {Array.from({ length: 16 }, (_, i) => (
-                <span key={i} className={`h-2.5 flex-1 rounded-[1px] ${hud.maxHp > 0 && i < Math.ceil((hud.hp / hud.maxHp) * 16) ? "bg-[#00E436]" : "bg-white/[0.1]"}`} />
+          <div className={`${PLATE} flex flex-col items-end gap-1 px-2.5 py-2`}>
+            <div className="flex w-[84px] gap-[2px] sm:w-[200px]" role="progressbar" aria-label="Party HP" aria-valuemin={0} aria-valuemax={hud.maxHp} aria-valuenow={hud.hp}>
+              {Array.from({ length: 18 }, (_, i) => (
+                <span key={i} className={`h-2.5 flex-1 rounded-[1px] ${hud.maxHp > 0 && i < Math.ceil((hud.hp / hud.maxHp) * 18) ? (hud.hp / hud.maxHp < 0.3 ? "bg-[#FFA300]" : "bg-[#00E436]") : "bg-white/[0.1]"}`} />
               ))}
             </div>
             <p className="text-[12px] text-[#A7ADD4]">
@@ -333,31 +348,38 @@ export default function PlayPage() {
           </div>
         </div>
 
-        {/* Controls */}
-        <div className="absolute inset-x-2 bottom-2 flex items-end justify-between gap-2">
-          <div className="flex gap-2">
-            {phase === "replaying" && (
-              <>
-                <button type="button" onClick={() => setSpeed((s) => SPEEDS[(SPEEDS.indexOf(s) + 1) % SPEEDS.length])}
-                  className="inline-flex h-11 items-center gap-1.5 rounded-[7px] border border-white/[0.14] bg-[#131A31]/90 px-3 text-[14px] text-[#FFF1E8] hover:bg-[#212B4E]">
-                  <FastForward className="h-4 w-4" aria-hidden /> ×{speed}
-                </button>
-                <button type="button" onClick={() => setSkipToken((n) => n + 1)}
-                  className="inline-flex h-11 items-center gap-1.5 rounded-[7px] border border-white/[0.14] bg-[#131A31]/90 px-3 text-[14px] text-[#FFF1E8] hover:bg-[#212B4E]">
-                  <SkipForward className="h-4 w-4" aria-hidden /> Skip
-                </button>
-              </>
-            )}
+        {/* Playback: speed, pause, skip (they act on the real replay) */}
+        {phase === "replaying" && (
+          <div className="absolute bottom-2 left-2 z-[1] flex gap-1.5 sm:bottom-auto sm:left-3 sm:top-1/2 sm:-translate-y-1/2 sm:flex-col">
+            <button type="button" onClick={() => setSpeed((v) => SPEEDS[(SPEEDS.indexOf(v) + 1) % SPEEDS.length])} aria-label={`Speed ${speed}×, change`}
+              className={`${PLATE} inline-flex h-11 w-12 items-center justify-center gap-0.5 font-display text-[14px] text-[#FFF1E8] hover:bg-[#212B4E]`}>
+              <FastForward className="h-3.5 w-3.5" aria-hidden />{speed}×
+            </button>
+            <button type="button" onClick={() => setPaused((v) => !v)} aria-label={paused ? "Play" : "Pause"} aria-pressed={paused}
+              className={`${PLATE} inline-flex h-11 w-12 items-center justify-center text-[#FFF1E8] hover:bg-[#212B4E]`}>
+              {paused ? <Play className="h-4 w-4" aria-hidden /> : <Pause className="h-4 w-4" aria-hidden />}
+            </button>
+            <button type="button" onClick={() => { setPaused(false); setSkipToken((n) => n + 1); }} aria-label="Skip to the end of this climb"
+              className={`${PLATE} inline-flex h-11 w-12 flex-col items-center justify-center text-[10.5px] text-[#FFF1E8] hover:bg-[#212B4E]`}>
+              <SkipForward className="h-4 w-4" aria-hidden /> Skip
+            </button>
           </div>
+        )}
+
+        {/* Combat log, start, sound */}
+        <div className="absolute inset-x-2 bottom-2 flex items-end justify-between gap-2 sm:inset-x-3 sm:bottom-3">
+          <p className={`${PLATE} max-w-[62%] truncate px-3 py-2 text-[12.5px] max-sm:sr-only text-[#C8CCE8] ${phase === "replaying" && progress?.line ? "" : "invisible"}`} aria-live="polite">
+            {progress?.line ?? ""}
+          </p>
           {phase === "idle" && (
             <button type="button" onClick={() => void startClimb()} disabled={!canStart}
-              className="absolute bottom-0 left-1/2 inline-flex h-12 -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-[8px] bg-[#FFA300] px-6 text-[16px] font-semibold text-[#131A31] shadow-[0_4px_0_0_#B36F00] transition hover:bg-[#FFB733] active:translate-y-[2px] active:shadow-[0_2px_0_0_#B36F00] disabled:cursor-not-allowed disabled:opacity-60">
+              className="btn btn-primary absolute bottom-0 left-1/2 h-12 -translate-x-1/2 whitespace-nowrap px-6 text-[16px]">
               {starting ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : <Swords className="h-5 w-5" aria-hidden />}
               {data.runsLeft === 0 ? "No climbs left today" : data.party.length === 0 ? "Add a hero to climb" : `Start climb (${data.runsLeft} left)`}
             </button>
           )}
           <button type="button" onClick={toggleMute} aria-label={muted ? "Turn sound on" : "Turn sound off"} aria-pressed={!muted}
-            className="ml-auto inline-flex h-11 w-11 items-center justify-center rounded-[7px] border border-white/[0.14] bg-[#131A31]/90 text-[#FFF1E8] hover:bg-[#212B4E]">
+            className={`${PLATE} ml-auto inline-flex h-11 w-11 shrink-0 items-center justify-center text-[#FFF1E8] hover:bg-[#212B4E]`}>
             {muted ? <VolumeX className="h-5 w-5" aria-hidden /> : <Volume2 className="h-5 w-5" aria-hidden />}
           </button>
         </div>
@@ -378,40 +400,49 @@ export default function PlayPage() {
             onClose={() => { setPhase("idle"); setView(null); partyRef.current?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" }); }} />
         )}
       </section>
-      <p className="mt-1.5 min-h-[20px] truncate text-[13px] text-[#C8CCE8]" aria-live="polite">{progress?.line ?? ""}</p>
       {phase === "idle" && data.upgrades && (
         <UpgradeCards upgrades={data.upgrades} members={data.party} onPicker={(p) => setPicker({ kind: p.slot, index: p.index })} />
       )}
 
-      <div className="mt-4 grid gap-8 lg:grid-cols-[1.5fr_1fr]">
-        <section ref={partyRef} aria-labelledby="party-h">
-          <h2 id="party-h" className="font-display text-[20px] font-semibold text-[#FFF1E8]">Your party</h2>
-          <p className="mb-2 text-[13px] text-[#A7ADD4]">Characters and creatures you made are heroes; weapons, armor and items are their gear. New sprites join as you make them.</p>
+      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.9fr)_minmax(0,1fr)_minmax(0,1fr)]">
+        <section ref={partyRef} aria-labelledby="party-h" className="sl-panel p-3 sm:p-4">
+          <h2 id="party-h" className="font-display text-[19px] font-semibold text-[#FFF1E8]">Your party</h2>
+          <p className="mb-2 text-[12.5px] text-[#A7ADD4]">Characters and creatures you made are heroes; weapons, armor and items are their gear. New sprites join as you make them.</p>
           <PartyPanel members={data.party} figures={figures} hasItems={hasItems} locked={inRun} saving={saving}
             onPick={setPicker} onWhy={setWhy} onAuto={() => void save({ auto: true })} onSkill={(index, slot) => setSkillSheet({ index, slot })} />
         </section>
 
-        <div className="space-y-7">
-          <section aria-labelledby="tower-h">
-            <div className="flex items-center justify-between gap-2">
-              <h2 id="tower-h" className="font-display text-[20px] font-semibold text-[#FFF1E8]">This week&apos;s tower</h2>
-              <button type="button" onClick={() => setDamageInfo(true)} className="inline-flex h-10 items-center gap-1.5 rounded-[7px] px-2 text-[13px] text-[#C8CCE8] hover:bg-white/[0.06]">
-                <Info className="h-4 w-4" aria-hidden /> How damage works
-              </button>
-            </div>
-            <p className="text-[12.5px] text-[#A7ADD4]">The same tower for everyone until Monday. Bring weapons of the elements each zone is weak to.</p>
-            <TowerWeekPanel zones={data.tower.zones} />
-          </section>
-          <section aria-labelledby="board-h">
-            <h2 id="board-h" className="font-display text-[20px] font-semibold text-[#FFF1E8]">Leaderboard</h2>
+        <section aria-labelledby="tower-h" className="sl-panel p-3 sm:p-4">
+          <div className="flex items-center justify-between gap-2">
+            <h2 id="tower-h" className="whitespace-nowrap font-display text-[19px] font-semibold text-[#FFF1E8]">This week&apos;s tower</h2>
+            <button type="button" onClick={() => setDamageInfo(true)} aria-label="How damage works" title="How damage works" className="btn btn-ghost btn-icon h-10 w-10">
+              <Info className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
+          <p className="text-[12.5px] text-[#A7ADD4]">The same tower for everyone until Monday. Bring weapons of the elements each zone is weak to.</p>
+          <TowerWeekPanel zones={data.tower.zones} />
+        </section>
+
+        <div className="space-y-4">
+          <section aria-labelledby="board-h" className="sl-panel p-3 sm:p-4">
+            <h2 id="board-h" className="font-display text-[19px] font-semibold text-[#FFF1E8]">Leaderboard</h2>
             <LeaderboardPanel board={board} error={boardError} onRetry={() => void loadBoard()} />
           </section>
           {data.trophies.length > 0 && (
-            <section aria-labelledby="badges-h">
-              <h2 id="badges-h" className="font-display text-[20px] font-semibold text-[#FFF1E8]">Your badges</h2>
+            <section aria-labelledby="badges-h" className="sl-panel p-3 sm:p-4">
+              <h2 id="badges-h" className="font-display text-[19px] font-semibold text-[#FFF1E8]">Your badges</h2>
               <Badges trophies={data.trophies} />
             </section>
           )}
+          <section aria-labelledby="make-h" className="sl-panel flex items-center gap-3 p-3 sm:p-4">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[#FFA300]/40 bg-[#FFA300]/10 text-[#FFA300]"><Crown className="h-6 w-6" aria-hidden /></span>
+            <div className="min-w-0">
+              <h2 id="make-h" className="text-[14px] font-semibold text-[#FFF1E8]">Make your own heroes</h2>
+              <p className="text-[12.5px] leading-snug text-[#A7ADD4]">Create, animate and equip your sprites to go further in the tower.</p>
+              <Link href="/generate?categoryId=CHARACTERS" onClick={() => { markDungeonReturn("make-heroes"); track(FUNNEL.dungeonUpgradeClicked, { kind: "make_heroes" }); }}
+                className="btn btn-primary mt-2 h-10 px-4 text-[13.5px]">Go to SpriteLab</Link>
+            </div>
+          </section>
         </div>
       </div>
 
@@ -426,5 +457,19 @@ export default function PlayPage() {
           onAssign={(id) => { const k = skillSheet; setSkillSheet(null); void save({ slots: setSkill(slots, k.index, k.slot, id) }); }} />
       )}
     </div>
+  );
+}
+
+function zoneOf(zones: ZoneWeek[], floor: number): ZoneWeek | undefined {
+  return zones.find((z) => floor >= z.from && (z.to === null || floor <= z.to));
+}
+
+function ZoneIconBadge({ zone }: { zone: ZoneWeek | undefined }) {
+  const Icon = zone ? ZONE_ICON[zone.id] : Lock;
+  const color = zone && zone.element !== "neutral" ? ELEMENT_DEFS[zone.element].color : "#FFA300";
+  return (
+    <span className="flex h-9 w-9 items-center justify-center rounded-[8px] border border-white/[0.1] bg-[#131A31]" style={{ color }}>
+      <Icon className="h-5 w-5" aria-hidden />
+    </span>
   );
 }

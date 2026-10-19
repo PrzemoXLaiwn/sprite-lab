@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { Check, Film, Gem, Loader2, Plus, Shield, Sparkles, Star, Sword, Wand2 } from "lucide-react";
+import { Check, Film, Footprints, Gem, Loader2, PersonStanding, Plus, Shield, Sparkles, Star, Sword, Swords, Wand2 } from "lucide-react";
 import {
   ANIMATION_DECAY, ANIMATION_FIRST_BONUS, CLASSES, ELEMENT_DEFS, GEAR_LABEL, GEAR_MAKE_CATEGORY, GEAR_SLOTS, HD_MULTIPLIER, HERO_MAKE_CATEGORY,
   MAX_COUNTED_ANIMATIONS, PARTY_SIZE, SKILL_POWER, SKILL_RULES, SKILL_SLOTS, SLOT_LABEL, SLOT_MIN_TIER, TIER_COLOR, TIER_LABEL,
@@ -13,6 +13,8 @@ import { slotAccepts } from "@/lib/dungeon/skills";
 import type { SlotIds } from "@/lib/dungeon/party";
 import type { DungeonSprite, PartyMember, PartySkill } from "@/lib/dungeon/store";
 import { ElementTag, Sheet, SpriteImg, Stars } from "./Sheet";
+import { markDungeonReturn } from "./dungeon-return";
+import { FUNNEL, track } from "@/lib/analytics";
 import { wornBy } from "./party-edit";
 
 export type PickerMode = { kind: "hero"; index: number } | { kind: GearSlot; index: number };
@@ -57,17 +59,16 @@ function HeroCard({ m, index, locked, onPick, onWhy, onSkill }: {
   onSkill: (index: number, slot: SkillSlot) => void;
 }) {
   const s = m.stats;
+  const glow = s.attackElement !== "neutral" ? ELEMENT_DEFS[s.attackElement].color : "#29ADFF";
   return (
-    <li className="flex flex-col rounded-[8px] border border-white/[0.1] bg-[#19223F] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+    <li className="flex flex-col rounded-[10px] border border-[#29ADFF]/20 bg-[#19223F] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
       <button type="button" disabled={locked} onClick={() => onPick({ kind: "hero", index })} aria-label={`Swap ${m.hero.name}`}
-        className="checker checker-sm relative block aspect-square overflow-hidden rounded-[6px] transition hover:ring-2 hover:ring-[#FFA300]/70 disabled:opacity-80">
-        <SpriteImg s={m.hero} />
-        <span className="absolute left-1 top-1 rounded-[4px] bg-[#131A31]/85 px-1.5 py-0.5 text-[11.5px] font-semibold text-[#FFF1E8]">{CLASSES[s.classId].label}</span>
-        {m.hero.animated && (
-          <span className="absolute bottom-1 left-1 inline-flex items-center gap-1 rounded-[4px] bg-[#131A31]/85 px-1.5 py-0.5 text-[11px] font-semibold text-[#00E436]">
-            <Film className="h-3 w-3" aria-hidden /> Animated
-          </span>
-        )}
+        style={{ background: `radial-gradient(circle at 50% 70%, ${glow}40 0%, #131A31 68%)` }}
+        className="relative block aspect-square overflow-hidden rounded-[8px] border border-white/[0.06] transition hover:ring-2 hover:ring-[#FFA300]/70 disabled:opacity-80">
+        <span className="absolute inset-x-0 bottom-[8%] mx-auto h-[8%] w-[60%] rounded-[50%] bg-black/40" aria-hidden />
+        <span className="absolute inset-[6%] block"><SpriteImg s={m.hero} /></span>
+        <span className="absolute left-1 top-1 max-w-[calc(100%-8px)] truncate rounded-[4px] bg-[#0B1022]/80 px-1.5 py-0.5 text-[11.5px] font-semibold text-[#FFF1E8]">{shortName(m.hero.name)}</span>
+        <span className="absolute bottom-1 left-1 rounded-[4px] bg-[#0B1022]/80 px-1.5 py-0.5 text-[10.5px] font-semibold text-[#C8CCE8]">{CLASSES[s.classId].label}</span>
       </button>
       <button type="button" onClick={() => onWhy(index)} aria-label={`Why power ${s.power}? Show the breakdown`}
         className="mt-1 flex min-h-11 flex-col items-start gap-0.5 rounded-[6px] px-1 py-1 text-left hover:bg-white/[0.05]">
@@ -85,6 +86,7 @@ function HeroCard({ m, index, locked, onPick, onWhy, onSkill }: {
           <span className="text-[11px] leading-tight text-[#A7ADD4]">Attacks with {ELEMENT_DEFS[s.attackElement].label} (weapon)</span>
         )}
       </button>
+      <AnimRow m={m} />
       <div className="mt-1 grid grid-cols-3 gap-1">
         {GEAR_SLOTS.map((g) => {
           const item = m[g];
@@ -120,6 +122,44 @@ function HeroCard({ m, index, locked, onPick, onWhy, onSkill }: {
         })}
       </div>
     </li>
+  );
+}
+
+/** "fox mage in a purple robe" → "Fox mage" (the card shows the whole prompt on hover via the picker). */
+function shortName(name: string): string {
+  const w = name.replace(/[^A-Za-z0-9' -]/g, " ").trim().split(/\s+/).slice(0, 2).join(" ");
+  return w ? w.charAt(0).toUpperCase() + w.slice(1) : "Hero";
+}
+
+const ANIM_ROLES = [["idle", "Idle", PersonStanding], ["walk", "Walk", Footprints], ["attack", "Attack", Swords]] as const;
+
+/** Which of the hero's animations play in the tower (green) and which aren't made yet, with a way to make them. */
+function AnimRow({ m }: { m: PartyMember }) {
+  const missing = ANIM_ROLES.filter(([role]) => !m.anims?.[role]);
+  const have = ANIM_ROLES.length - missing.length;
+  const icons = (
+    <span className="flex items-center gap-1">
+        {ANIM_ROLES.map(([role, label, Icon]) => {
+          const ok = Boolean(m.anims?.[role]);
+          return (
+            <span key={role} title={ok ? `${label}: plays in the tower` : `${label}: not made yet`} aria-label={`${label} ${ok ? "made" : "missing"}`}
+              className={`flex h-5 w-5 items-center justify-center rounded-[4px] ${ok ? "bg-[#00E436]/15 text-[#00E436]" : "bg-white/[0.05] text-[#5F6696]"}`}>
+              <Icon className="h-3 w-3" aria-hidden />
+            </span>
+          );
+        })}
+    </span>
+  );
+  // Something missing: the whole row opens the animator for this hero
+  if (!missing.length) return <div className="mt-1 flex h-10 items-center px-1" aria-label={`All ${have} tower animations made`}>{icons}</div>;
+  return (
+    <Link href={`/animate?id=${encodeURIComponent(m.hero.id)}`} aria-label={`Animate ${m.hero.name}: missing ${missing.map(([, l]) => l.toLowerCase()).join(", ")}`}
+      title={`Missing: ${missing.map(([, l]) => l).join(", ")}. Animate this hero`}
+      onClick={() => { markDungeonReturn("party-animate"); track(FUNNEL.dungeonUpgradeClicked, { kind: "party_animate", missing: missing.map(([role]) => role).join(",") }); }}
+      className="mt-1 flex h-10 items-center justify-between gap-1 rounded-[7px] px-1 hover:bg-white/[0.06]">
+      {icons}
+      <Film className="h-4 w-4 shrink-0 text-[#FFC857]" aria-hidden />
+    </Link>
   );
 }
 
