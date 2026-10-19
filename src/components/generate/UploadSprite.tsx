@@ -9,6 +9,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Upload, X } from "lucide-react";
+import { track, FUNNEL } from "@/lib/analytics";
 
 const KINDS = [
   { id: "character", label: "Character" },
@@ -105,6 +106,7 @@ function UploadSpriteDialog({ then, onClose, initialFile = null }: { then: "crea
       const res = await fetch("/api/import-sprite", { method: "POST", body });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.generationId) throw new Error(data?.error ?? "Upload failed. Please try again.");
+      track(FUNNEL.spriteUploaded, { pixel: !!data.pixel, then });
       const id = encodeURIComponent(data.generationId);
       router.push(then === "animate" ? `/animate?id=${id}` : then === "edit" ? `/edit?id=${id}` : `/generate?result=${id}`);
       onClose();

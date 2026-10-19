@@ -3,9 +3,9 @@ import { Atkinson_Hyperlegible_Next, JetBrains_Mono, Tektur } from "next/font/go
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
-import Script from "next/script";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
+import { BRAND_DEFINITION, BRAND_SUMMARY, FEATURE_LIST } from "@/data/brand";
 
 // Optimized font loading with next/font (no render-blocking!)
 // Body + UI: built for legibility (distinct I/l/1, 0/O) — small labels and
@@ -112,8 +112,9 @@ const jsonLd = {
       "@id": `${baseUrl}/#website`,
       url: baseUrl,
       name: "SpriteLab",
-      description: "AI game asset generator for indie game developers",
+      description: BRAND_DEFINITION,
       publisher: { "@id": `${baseUrl}/#organization` },
+      inLanguage: "en",
     },
     {
       "@type": "Organization",
@@ -126,7 +127,7 @@ const jsonLd = {
         width: 512,
         height: 512,
       },
-      description: "SpriteLab makes an AI game asset generator for indie game developers.",
+      description: "SpriteLab makes an AI 2D game asset creator for game developers (sprite-lab.com). Not affiliated with Code.org's Sprite Lab.",
       foundingDate: "2024",
       // sameAs: list SpriteLab's own social profiles here once they exist
       // (a handle we don't control would tell search engines it's ours).
@@ -143,7 +144,7 @@ const jsonLd = {
       "@id": `${baseUrl}/#software`,
       name: "SpriteLab",
       applicationCategory: "DesignApplication",
-      applicationSubCategory: "Game asset generator",
+      applicationSubCategory: "2D game asset creator",
       operatingSystem: "Web Browser",
       browserRequirements: "Requires JavaScript. Requires HTML5.",
       publisher: { "@id": `${baseUrl}/#organization` },
@@ -180,24 +181,12 @@ const jsonLd = {
           priceValidUntil: "2027-12-31",
         },
       ],
-      description:
-        "SpriteLab is an AI game asset generator for indie game developers. It turns a text prompt into game-ready 2D sprites — characters, creatures, weapons, armor, items, icons, props and seamless tiles — as transparent PNGs, and animates them into sprite sheets and GIFs.",
+      description: BRAND_SUMMARY,
       url: baseUrl,
       screenshot: `${baseUrl}/opengraph-image`,
       // aggregateRating intentionally omitted until we have real verifiable
       // reviews. Google penalises fabricated rich-result data.
-      featureList: [
-        "Text-to-sprite generation for 2D games",
-        "Transparent PNG output",
-        "Pixel art on a real pixel grid with a limited palette",
-        "12 art styles including 16-bit pixel art, HD pixel art, anime, dark fantasy, cartoon and hand-painted",
-        "Sprite animation: idle, walk, run, attack, jump, cast and custom motions",
-        "Horizontal sprite sheet + GIF export, 4 to 18 frames",
-        "Seamless floor and wall tiles",
-        "Projects with automatic folder sorting and ZIP pack export",
-        "Free pixel-perfect upscaling",
-        "Commercial use of generated assets",
-      ],
+      featureList: [...FEATURE_LIST],
     },
   ],
 };

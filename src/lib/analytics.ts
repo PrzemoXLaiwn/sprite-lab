@@ -55,4 +55,7 @@ export const FUNNEL = {
   guestSignupClick: "guest_signup_click",
   guestSpriteClaimed: "guest_sprite_claimed",
   oneTapSignIn: "one_tap_sign_in",
+  // Export step of the funnel (kind/format only — never prompts or images)
+  assetDownload: "asset_download",
+  spriteUploaded: "sprite_uploaded",
 } as const;

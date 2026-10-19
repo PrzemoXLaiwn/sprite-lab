@@ -130,7 +130,7 @@ export default function RPGCharacterCreatorPage() {
               One hero, every style
             </>
           ),
-          intro: "The same knight prompt rendered in eight of SpriteLab's art styles — pick the one that fits your RPG.",
+          intro: "The same knight prompt rendered in eight of SpriteLab's art styles, from retro pixel art to stylized painted looks and a realistic render. Pick the one that fits your game.",
           cols: 4,
           cards: STYLES.map((s) => ({
             title: s.name,
@@ -178,6 +178,7 @@ export default function RPGCharacterCreatorPage() {
         LANDING_SPECS["rpg-character-creator"],
       ]}
       faq={[
+        { q: "Can I make realistic characters, not only pixel art?", a: "Yes. Pick the Realistic style for true-to-life proportions, faces and materials, a painted or cartoon style for a stylized game, or a pixel style for retro and HD pixel art. Every style gives a transparent PNG you can animate." },
         {
           q: "What kinds of RPG characters can I create?",
           a: "Heroes and villains of any class — warriors, mages, rangers — plus NPCs like merchants, villagers and guards, and monsters and bosses such as dragons, demons, undead and liches.",

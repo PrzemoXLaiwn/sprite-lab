@@ -309,15 +309,19 @@ function Section({ section }: { section: SeoSection }) {
 export function SeoLanding(props: SeoLandingProps) {
   const url = `${SITE}/${props.slug}`;
   const jsonLd = [
+    // A page about one feature of the single SpriteLab app (defined once, in the
+    // root layout) — not a second app with its own name and offers
     {
       "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      name: props.appName,
-      description: props.appDescription,
+      "@type": "WebPage",
+      "@id": `${url}#webpage`,
       url,
-      applicationCategory: "DesignApplication",
-      operatingSystem: "Web",
-      offers: { "@type": "Offer", price: "0", priceCurrency: "GBP", description: "10 free credits on signup" },
+      name: props.appName.replace(/^SpriteLab\s+(—\s+)?/, ""),
+      description: props.appDescription,
+      inLanguage: "en",
+      isPartOf: { "@id": `${SITE}/#website` },
+      about: { "@id": `${SITE}/#software` },
+      publisher: { "@id": `${SITE}/#organization` },
     },
     {
       "@context": "https://schema.org",

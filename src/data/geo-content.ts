@@ -17,7 +17,7 @@ export const HOME_FAQ: Faq[] = [
   },
   {
     q: "What is SpriteLab?",
-    a: "SpriteLab is an AI game asset generator for indie game developers. You describe an asset in a sentence and get a game-ready 2D sprite — a transparent PNG, with pixel art snapped to a real pixel grid — that you can animate into a sprite sheet and drop into Unity, Godot or GameMaker.",
+    a: "SpriteLab is an AI 2D game asset creator for game developers. You describe a character, creature, item, icon or tile and get a game-ready transparent PNG in one of 12 styles, from pixel art to hand-painted and realistic. You can then animate it into a sprite sheet, turn it to face 4 or 8 directions, edit it by describing a change, or upload your own sprite and do the same, and export it for Unity, Godot or GameMaker.",
   },
   {
     q: "Is SpriteLab related to Code.org's Sprite Lab?",
@@ -53,7 +53,7 @@ export const HOME_FAQ: Faq[] = [
   },
   {
     q: "How much does it cost?",
-    a: "You can try it 3 times without an account and get 10 free credits when you sign up — no credit card needed. A standard sprite costs 1 credit, HD quality 3 credits an idle loop 3 credits and other animations 7–12 credits. Monthly plans start at £5 for 250 credits, and one-off credit packs are available.",
+    a: "You can try it 3 times without an account and get 10 free credits when you sign up — no credit card needed. A standard sprite costs 1 credit, HD quality 3 credits, an idle loop 3 credits and other animations 7–12 credits. Monthly plans start at £5 for 250 credits, and one-off credit packs are available.",
   },
   {
     q: "Do credits expire?",

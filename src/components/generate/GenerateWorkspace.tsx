@@ -626,6 +626,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
    */
   const downloadAtSize = async (size: number) => {
     if (!activeResult) return;
+    track(FUNNEL.assetDownload, { kind: "sprite", format: `png_${size}` });
     try {
       const response = await fetchImage(activeResult.imageUrl);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -669,6 +670,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
    */
   const downloadNative = async () => {
     if (!activeResult) return;
+    track(FUNNEL.assetDownload, { kind: "sprite", format: "png_native" });
     try {
       const blob = await (await fetchImage(activeResult.imageUrl)).blob();
       const bitmap = await createImageBitmap(blob);

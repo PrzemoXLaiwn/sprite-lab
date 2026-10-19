@@ -25,6 +25,7 @@ import { ANIMATION_FRAME_OPTIONS, DEFAULT_ANIMATION_FRAMES, RIG_CREDITS, RIG_FRA
 import { UploadSpriteButton } from "@/components/generate/UploadSprite";
 import type { SuggestedMotion } from "@/lib/animation-suggest";
 import { fetchImage } from "@/lib/cors-image";
+import { track, FUNNEL } from "@/lib/analytics";
 
 const CUSTOM_EXAMPLES = [
   "breathes a stream of fire forward",
@@ -325,6 +326,7 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
   const [packing, setPacking] = useState(false);
   const downloadEngine = async () => {
     if (!result || packing) return;
+    track(FUNNEL.assetDownload, { kind: "animation", format: "engine_pack" });
     setPacking(true);
     try {
       const name = (resultMotion.id || "animation").replace(/^ai-/, "");
@@ -344,6 +346,7 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
     if (!result || zipping) return;
     setZipping(true);
     try {
+      track(FUNNEL.assetDownload, { kind: "animation", format: "frames_zip" });
       await downloadFramesZip(result, baseName());
     } catch {
       setError("Couldn't build the frames .zip. Download the sprite sheet instead, or try again.");
@@ -558,9 +561,9 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
         actions={
           result ? (
             <>
-              <DownloadButton label="Sprite sheet" onClick={() => downloadImage(result.sheetUrl, `${baseName()}_sheet.png`)} />
+              <DownloadButton label="Sprite sheet" onClick={() => { track(FUNNEL.assetDownload, { kind: "animation", format: "sheet" }); downloadImage(result.sheetUrl, `${baseName()}_sheet.png`); }} />
               {result.gifUrl && (
-                <SecondaryButton onClick={() => downloadImage(result.gifUrl!, `${baseName()}.gif`)}>GIF</SecondaryButton>
+                <SecondaryButton onClick={() => { track(FUNNEL.assetDownload, { kind: "animation", format: "gif" }); downloadImage(result.gifUrl!, `${baseName()}.gif`); }}>GIF</SecondaryButton>
               )}
               <SecondaryButton onClick={downloadEngine} disabled={packing} title="Godot SpriteFrames, Unity frames, GameMaker strip and hitboxes">
                 {packing && <Loader2 className="h-4 w-4 animate-spin" />} Engine pack
