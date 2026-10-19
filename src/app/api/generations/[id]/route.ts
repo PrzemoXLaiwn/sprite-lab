@@ -1,3 +1,4 @@
+import { isUploadedPrompt } from "@/lib/image/import-sprite";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
@@ -120,6 +121,20 @@ export async function PATCH(
         { error: "You don't have permission to update this generation." },
         { status: 403 }
       );
+    }
+
+    // Uploaded images (and animations or edits made from them) stay private:
+    // we can't vouch for who owns the original art
+    if (isPublic === true) {
+      const source = generation.sourceGenerationId
+        ? await prisma.generation.findUnique({ where: { id: generation.sourceGenerationId }, select: { fullPrompt: true } })
+        : null;
+      if (isUploadedPrompt(generation.fullPrompt) || isUploadedPrompt(source?.fullPrompt)) {
+        return NextResponse.json(
+          { error: "Sprites made from an uploaded image can't be shared to the community gallery." },
+          { status: 403 }
+        );
+      }
     }
 
     // Update the generation - isPublic field will work after migration

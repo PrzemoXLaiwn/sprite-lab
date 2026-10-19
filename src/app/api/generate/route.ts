@@ -309,7 +309,7 @@ export async function POST(request: Request) {
       warnings: [
         ...(asset.warnings ?? []),
         ...(cleaned.category ? [`This looked like ${cleaned.category.categoryId === "CHARACTERS" ? "a character" : cleaned.category.categoryId === "ENVIRONMENT" ? "a building" : "a UI icon"}, so it was generated as one — pick the asset type to override.`] : []),
-        ...(cleaned.wantsSheet ? ["The generator makes one sprite at a time — use Animate to turn it into frames."] : []),
+        ...(cleaned.wantsSheet ? ["You asked for a sprite sheet. Here is the sprite first — use Animate to turn it into frames (idle, walk, attack or your own move)."] : []),
       ],
       resolvedView: asset.resolvedView ?? view,
       style: {

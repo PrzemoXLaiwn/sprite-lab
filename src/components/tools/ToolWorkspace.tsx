@@ -186,6 +186,7 @@ export function ToolShell({ children }: { children: React.ReactNode }) {
 const TABS = [
   { id: "generate",  label: "Create",    href: "/generate" },
   { id: "animate",   label: "Animate",   href: "/animate" },
+  { id: "edit",      label: "Edit",      href: "/edit" },
   { id: "remove-bg", label: "Remove BG", href: "/remove-bg" },
   { id: "upscale",   label: "Upscale",   href: "/upscale" },
 ] as const;
@@ -195,17 +196,17 @@ export type ToolTabId = (typeof TABS)[number]["id"];
 /** Segmented tab row shared by every tool. Carries the current sprite along. */
 export function ToolTabs({ active, generationId }: { active: ToolTabId; generationId?: string | null }) {
   return (
-    <nav aria-label="Tools" className="mt-4 grid grid-cols-4 gap-1 rounded-xl bg-white/[0.04] p-1 text-[12px] font-medium">
+    <nav aria-label="Tools" className="mt-4 flex gap-1 overflow-x-auto rounded-xl bg-white/[0.04] p-1 text-[12px] font-medium [scrollbar-width:none]">
       {TABS.map((t) =>
         t.id === active ? (
           <span key={t.id} aria-current="page"
-            className="flex min-h-9 items-center justify-center rounded-lg bg-white/[0.1] px-1.5 text-center text-white shadow-sm lg:min-h-8">
+            className="flex min-h-9 flex-1 shrink-0 items-center justify-center whitespace-nowrap rounded-lg bg-white/[0.1] px-2.5 text-center text-white shadow-sm lg:min-h-8">
             {t.label}
           </span>
         ) : (
           <Link key={t.id}
             href={generationId && t.id !== "generate" ? `${t.href}?id=${encodeURIComponent(generationId)}` : t.href}
-            className="flex min-h-9 items-center justify-center rounded-lg px-1.5 text-center text-[#9AA1CC] transition-colors hover:bg-white/[0.04] hover:text-white lg:min-h-8">
+            className="flex min-h-9 flex-1 shrink-0 items-center justify-center whitespace-nowrap rounded-lg px-2.5 text-center text-[#9AA1CC] transition-colors hover:bg-white/[0.04] hover:text-white lg:min-h-8">
             {t.label}
           </Link>
         )

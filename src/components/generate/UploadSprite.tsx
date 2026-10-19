@@ -1,0 +1,139 @@
+"use client";
+
+/**
+ * "Upload your sprite": bring your own character or item into SpriteLab and
+ * use it in Animate, Edit and Directions like a generated sprite. Free and
+ * private. The server keys out a plain background and trims the image.
+ */
+
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Loader2, Upload, X } from "lucide-react";
+
+const KINDS = [
+  { id: "character", label: "Character" },
+  { id: "creature", label: "Creature" },
+  { id: "object", label: "Item or object" },
+] as const;
+
+const nameFromFile = (f: File) =>
+  f.name.replace(/\.[a-z0-9]+$/i, "").replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
+
+/** Button that opens the upload dialog. `then` decides where to go with the new sprite. */
+export function UploadSpriteButton({ then = "create", className = "", label = "Upload sprite" }: { then?: "create" | "animate" | "edit"; className?: string; label?: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog"
+        className={`flex h-10 shrink-0 items-center gap-1.5 rounded-[8px] border border-white/[0.1] px-3 text-[13px] font-medium text-[#C8CCE8] transition hover:bg-white/[0.06] hover:text-white ${className}`}>
+        <Upload className="h-4 w-4" aria-hidden /> {label}
+      </button>
+      {open && <UploadSpriteDialog then={then} onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
+function UploadSpriteDialog({ then, onClose }: { then: "create" | "animate" | "edit"; onClose: () => void }) {
+  const router = useRouter();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const [kind, setKind] = useState<(typeof KINDS)[number]["id"]>("character");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && !busy) onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [busy, onClose]);
+  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
+
+  const pick = (f: File | undefined) => {
+    if (!f) return;
+    setError("");
+    if (!/^image\/(png|jpeg|webp)$/.test(f.type)) { setError("Use a PNG, JPG or WebP image."); return; }
+    if (f.size > 8 * 1024 * 1024) { setError("That file is over 8 MB."); return; }
+    setFile(f);
+    setPreview(URL.createObjectURL(f));
+    if (!name) setName(nameFromFile(f));
+  };
+
+  const submit = async () => {
+    if (!file || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const body = new FormData();
+      body.set("file", file);
+      body.set("name", name);
+      body.set("kind", kind);
+      const res = await fetch("/api/import-sprite", { method: "POST", body });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.generationId) throw new Error(data?.error ?? "Upload failed. Please try again.");
+      const id = encodeURIComponent(data.generationId);
+      router.push(then === "animate" ? `/animate?id=${id}` : then === "edit" ? `/edit?id=${id}` : `/generate?result=${id}`);
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Upload failed. Please try again.");
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-[#0B1022]/75 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="upload-h"
+      onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) onClose(); }}>
+      <div className="w-full max-w-[460px] rounded-t-[14px] border border-white/[0.1] bg-[#19223F] p-4 shadow-2xl sm:rounded-[12px] sm:p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 id="upload-h" className="font-display text-[19px] font-semibold text-[#FFF1E8]">Upload your sprite</h2>
+            <p className="mt-1 text-[13px] leading-snug text-[#A7ADD4]">Animate, edit or turn your own character. Free, and only you can see it.</p>
+          </div>
+          <button type="button" onClick={onClose} disabled={busy} aria-label="Close" className="-mr-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[#9AA1CC] hover:bg-white/[0.06] hover:text-white">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <button type="button" onClick={() => inputRef.current?.click()}
+          onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); pick(e.dataTransfer.files?.[0]); }}
+          className="checker mt-4 flex h-48 w-full items-center justify-center overflow-hidden rounded-[10px] border border-dashed border-white/[0.2] transition hover:border-[#FFA300]/60">
+          {preview ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={preview} alt="" className="pixel-perfect max-h-full max-w-full object-contain p-3" />
+          ) : (
+            <span className="flex flex-col items-center gap-1.5 text-[13.5px] text-[#C8CCE8]">
+              <Upload className="h-5 w-5 text-[#FFA300]" aria-hidden />
+              Choose or drop a PNG, JPG or WebP
+              <span className="text-[12px] text-[#A7ADD4]">Up to 8 MB. A plain background is removed for you.</span>
+            </span>
+          )}
+        </button>
+        <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => pick(e.target.files?.[0])} />
+
+        <label className="mt-4 block text-[12.5px] font-semibold text-[#C8CCE8]" htmlFor="upload-name">What is it?</label>
+        <input id="upload-name" value={name} onChange={(e) => setName(e.target.value.slice(0, 200))} placeholder="e.g. a knight in silver armour"
+          className="mt-1.5 h-11 w-full rounded-[8px] border border-white/[0.1] bg-[#212B4E] px-3 text-[14px] text-[#FFF1E8] placeholder:text-[#7F86B5] focus:border-[#FFA300]/60 focus:outline-none" />
+        <p className="mt-1 text-[12px] text-[#A7ADD4]">A few words help Animate pick the right moves.</p>
+
+        <div role="radiogroup" aria-label="Type" className="mt-3 grid grid-cols-3 gap-1.5">
+          {KINDS.map((k) => (
+            <button key={k.id} type="button" role="radio" aria-checked={kind === k.id} onClick={() => setKind(k.id)}
+              className={`min-h-10 rounded-[8px] border px-2 text-[12.5px] font-medium transition ${kind === k.id ? "border-[#FFA300] bg-[#FFA300]/15 text-[#FFF1E8]" : "border-white/[0.1] text-[#C8CCE8] hover:text-white"}`}>
+              {k.label}
+            </button>
+          ))}
+        </div>
+
+        {error && <p role="alert" className="mt-3 text-[13px] text-[#FF8A8A]">{error}</p>}
+
+        <button type="button" onClick={submit} disabled={!file || busy}
+          className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-[8px] bg-[#FFA300] text-[15px] font-semibold text-[#131A31] transition hover:bg-[#FFB733] disabled:cursor-not-allowed disabled:opacity-50">
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Upload className="h-4 w-4" aria-hidden />}
+          {busy ? "Uploading…" : then === "animate" ? "Upload and animate" : then === "edit" ? "Upload and edit" : "Upload"}
+        </button>
+        <p className="mt-2 text-center text-[11.5px] text-[#7F86B5]">Upload only art you made or have the rights to use.</p>
+      </div>
+    </div>
+  );
+}

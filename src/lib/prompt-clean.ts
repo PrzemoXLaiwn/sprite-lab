@@ -51,6 +51,17 @@ export function cleanUserPrompt(raw: string, categoryId: string): CleanPrompt {
     .replace(/\s{2,}/g, " ")
     .replace(/^[\s,.:;-]+|[\s,;-]+$/g, "")
     .trim();
+  // Asking for a sheet in the sprite prompt makes the model draw several tiny
+  // copies: generate one clean sprite, the page then offers Animate for frames
+  if (wantsSheet) {
+    p = p
+      .replace(/\b(an?\s+)?(animated\s+)?(polished\s+)?(sprite ?sheets?|spritesheets?)(\s+(of|for|with))?\s*/gi, "")
+      .replace(/\b\d+\s*(sequential\s+)?(animation\s+)?frames?(\s+(of|for|with))?\s*/gi, "")
+      .replace(/\b(animation frames|multiple frames|various poses|frame[- ]by[- ]frame( animation)?|animated gif|turnaround)\b[,.]?\s*/gi, "")
+      .replace(/\s{2,}/g, " ")
+      .replace(/^[\s,.:;-]+|[\s,;-]+$/g, "")
+      .trim();
+  }
   if (p.length < 3) p = raw.trim();
 
   // Asset type: only move away from an item category, and only when the

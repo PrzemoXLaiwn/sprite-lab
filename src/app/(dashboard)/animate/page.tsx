@@ -22,6 +22,7 @@ import {
   isPixelStyleId, useSourceGeneration, toolErrorMessage, downloadImage, saveBlobAs, type ToolBgModeId,
 } from "@/components/tools/ToolWorkspace";
 import { ANIMATION_FRAME_OPTIONS, DEFAULT_ANIMATION_FRAMES, RIG_CREDITS, RIG_FRAMES, ROTATIONS, rotationFor, supportsRotation, animationCredits, animationFrameOption, animationPresetsFor, rigMotionFor } from "@/config/animations";
+import { UploadSpriteButton } from "@/components/generate/UploadSprite";
 import type { SuggestedMotion } from "@/lib/animation-suggest";
 
 const CUSTOM_EXAMPLES = [
@@ -75,6 +76,11 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
   const router = useRouter();
   const { source, loading: loadingSource, error: sourceError } = useSourceGeneration(generationId);
   const [action, setAction] = useState<string>("");
+  // Deep links from the Create page ("Directions" → ?do=rotate4) pick the option up front
+  useEffect(() => {
+    const wanted = new URLSearchParams(window.location.search).get("do");
+    if (wanted && rotationFor(wanted)) setAction(wanted);
+  }, []);
   const [customMotion, setCustomMotion] = useState("");
   const [loading, setLoading] = useState(false);
   const [zipping, setZipping] = useState(false);
@@ -374,6 +380,7 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
 
         <Field label="Sprite">
           <SourceCard imageUrl={source?.imageUrl ?? null} loading={loadingSource} prompt={source?.prompt} pixel={pixel} />
+          <UploadSpriteButton then="animate" label="Animate your own sprite" className="mt-2 w-full justify-center" />
           {!generationId && result && (
             <p className="mt-2 text-[11.5px] leading-snug text-[#9AA1CC]">
               We couldn&apos;t find the sprite this animation was made from. Pick it from your history to animate it again.

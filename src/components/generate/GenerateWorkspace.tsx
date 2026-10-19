@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useMemo, useEffect, Suspense } from "react";
 import { STYLE_MATCH_CREDITS } from "@/config/tool-prices";
+import { supportsRotation } from "@/config/animations";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -21,6 +22,10 @@ import {
   Film,
   Paintbrush,
   PartyPopper,
+  Compass,
+  Pencil,
+  Eraser,
+  Maximize2,
 } from "lucide-react";
 import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
 import { triggerUpgradeModal } from "@/components/dashboard/UpgradeModal";
@@ -29,6 +34,7 @@ import {
 } from "@/components/tools/ToolWorkspace";
 import { SpriteStage, STAGE_SCENES, type StageSceneId } from "@/components/generate/SpriteStage";
 import { RecipeBar } from "@/components/generate/RecipeBar";
+import { UploadSpriteButton } from "@/components/generate/UploadSprite";
 import { track, FUNNEL } from "@/lib/analytics";
 import { GENERATE_CATEGORIES, SUBTYPE_PLACEHOLDERS, type GenerateCategory, type GenerateSubcategory } from "@/data/generate-categories";
 import { GENERATE_STYLES, ALL_GENERATE_STYLE_IDS } from "@/data/generate-styles";
@@ -847,6 +853,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                 Compare
               </button>
             )}
+            <UploadSpriteButton />
             <HistoryButton onClick={() => setHistoryOpen(true)} />
           </div>
         </header>
@@ -1045,62 +1052,102 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
             </div>
           )}
 
-          {activeResult && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <button type="button" onClick={isPixelStyle(activeResult.styleId) ? downloadNative : handleDownload}
-                title={isPixelStyle(activeResult.styleId) ? "Download at the sprite's real pixel size (engine-ready)" : "Download as a 1024px PNG"}
-                className="flex h-10 items-center gap-2 rounded-[8px] bg-[#FFF1E8] px-3.5 text-[13px] font-semibold text-[#131A31] transition hover:bg-white">
-                <Download className="h-4 w-4" aria-hidden /> Download PNG
-              </button>
-              <div className="relative" ref={sizesRef}>
-                <button type="button" onClick={() => setSizesOpen((v) => !v)} aria-haspopup="menu" aria-expanded={sizesOpen} className={SECONDARY_BTN}>
-                  Sizes <ChevronDown className={`h-3.5 w-3.5 transition-transform ${sizesOpen ? "rotate-180" : ""}`} aria-hidden />
-                </button>
-                {sizesOpen && (
-                  <div role="menu" aria-label="Download sizes" className="absolute bottom-12 left-0 z-20 w-56 rounded-[10px] border border-white/[0.1] bg-[#1B2446] p-1.5 shadow-2xl">
-                    {isPixelStyle(activeResult.styleId) && (
-                      <button type="button" role="menuitem" onClick={() => { setSizesOpen(false); downloadNative(); }}
-                        className="flex min-h-10 w-full items-center justify-between rounded-[7px] px-3 text-[13px] text-white hover:bg-white/[0.06]">
-                        Real pixel size <span className="text-[11.5px] text-[#00E436]">engine-ready</span>
-                      </button>
-                    )}
-                    {[32, 64, 128, 256, 512, 1024].map((size) => (
-                      <button key={size} type="button" role="menuitem" onClick={() => { setSizesOpen(false); downloadAtSize(size); }}
-                        className="flex min-h-10 w-full items-center rounded-[7px] px-3 font-mono text-[13px] text-[#C8CCE8] hover:bg-white/[0.06] hover:text-white">
-                        {size} × {size} px
-                      </button>
-                    ))}
-                    <button type="button" role="menuitem" onClick={() => { setSizesOpen(false); handleDownloadMetadata(); }}
-                      className="mt-1 flex min-h-10 w-full items-center rounded-[7px] border-t border-white/[0.06] px-3 text-[12.5px] text-[#A7ADD4] hover:bg-white/[0.06] hover:text-white">
-                      Settings file (.json)
-                    </button>
-                  </div>
+          {activeResult && (() => {
+            const gid = activeResult.generationId ? encodeURIComponent(activeResult.generationId) : null;
+            const canTurn = supportsRotation(activeResult.categoryId);
+            return (
+            // Everything you can do next with this sprite, in three groups: move it, change it, take it
+            <div className="grid gap-2 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.5fr)_minmax(0,1fr)]">
+              <ActionGroup title="Animate it">
+                {gid && (
+                  <Link href={`/animate?id=${gid}`}
+                    className="flex h-10 items-center gap-1.5 rounded-[8px] bg-[#FFA300] px-3 text-[13px] font-semibold text-[#131A31] transition hover:bg-[#FFB733]">
+                    <Film className="h-4 w-4" aria-hidden /> Animate · sprite sheet
+                  </Link>
                 )}
-              </div>
-              {activeResult.generationId && (
-                <Link href={`/animate?id=${encodeURIComponent(activeResult.generationId)}`}
-                  className="flex h-10 items-center gap-1.5 rounded-[8px] border border-[#FFA300]/50 bg-[#FFA300]/10 px-3 text-[13px] font-semibold text-[#FFC857] transition hover:bg-[#FFA300]/20">
-                  <Film className="h-4 w-4" aria-hidden /> Animate
-                </Link>
-              )}
-              {activeResult.generationId && styleRef?.id !== activeResult.generationId && (
-                <button type="button" title={`Make new sprites in this exact style (${STYLE_MATCH_CREDITS} credits each)`}
-                  onClick={() => setStyleRef({ id: activeResult.generationId!, imageUrl: activeResult.imageUrl })} className={SECONDARY_BTN}>
-                  <Paintbrush className="h-4 w-4" aria-hidden /> Match style
+                {gid && canTurn && (
+                  <Link href={`/animate?id=${gid}&do=rotate4`} title="The same sprite from the front, sides and back" className={SECONDARY_BTN}>
+                    <Compass className="h-4 w-4" aria-hidden /> Directions
+                  </Link>
+                )}
+              </ActionGroup>
+              <ActionGroup title="Change it">
+                {gid && (
+                  <Link href={`/edit?id=${gid}`} title="Change colours, clothes or details by describing them" className={SECONDARY_BTN}>
+                    <Pencil className="h-4 w-4" aria-hidden /> Edit
+                  </Link>
+                )}
+                {activeResult.generationId && styleRef?.id !== activeResult.generationId && (
+                  <button type="button" title={`Make new sprites in this exact style (${STYLE_MATCH_CREDITS} credits each)`}
+                    onClick={() => setStyleRef({ id: activeResult.generationId!, imageUrl: activeResult.imageUrl })} className={SECONDARY_BTN}>
+                    <Paintbrush className="h-4 w-4" aria-hidden /> Match style
+                  </button>
+                )}
+                {gid && (
+                  <Link href={`/remove-bg?id=${gid}`} title="Clean up the background" className={SECONDARY_BTN}>
+                    <Eraser className="h-4 w-4" aria-hidden /> Remove BG
+                  </Link>
+                )}
+                {gid && (
+                  <Link href={`/upscale?id=${gid}`} title="Bigger, sharper copy" className={SECONDARY_BTN}>
+                    <Maximize2 className="h-4 w-4" aria-hidden /> Upscale
+                  </Link>
+                )}
+                <IconButton label="Generate again with the same settings" onClick={handleRegenerate} disabled={isGenerating || !isFormValid}>
+                  <RefreshCw className={`h-4 w-4 ${isGenerating ? "animate-spin" : ""}`} />
+                </IconButton>
+              </ActionGroup>
+              <ActionGroup title="Download">
+                <button type="button" onClick={isPixelStyle(activeResult.styleId) ? downloadNative : handleDownload}
+                  title={isPixelStyle(activeResult.styleId) ? "Download at the sprite's real pixel size (engine-ready)" : "Download as a 1024px PNG"}
+                  className="flex h-10 items-center gap-2 rounded-[8px] bg-[#FFF1E8] px-3.5 text-[13px] font-semibold text-[#131A31] transition hover:bg-white">
+                  <Download className="h-4 w-4" aria-hidden /> PNG
                 </button>
-              )}
-              <IconButton label="Generate again with the same settings" onClick={handleRegenerate} disabled={isGenerating || !isFormValid}>
-                <RefreshCw className={`h-4 w-4 ${isGenerating ? "animate-spin" : ""}`} />
-              </IconButton>
-              <IconButton label={seedCopied ? "Seed copied" : `Copy seed ${activeResult.seed}`} onClick={handleCopySeed}>
-                {seedCopied ? <Check className="h-4 w-4 text-[#00E436]" /> : <Copy className="h-4 w-4" />}
-              </IconButton>
+                <div className="relative" ref={sizesRef}>
+                  <button type="button" onClick={() => setSizesOpen((v) => !v)} aria-haspopup="menu" aria-expanded={sizesOpen} className={SECONDARY_BTN}>
+                    Sizes <ChevronDown className={`h-3.5 w-3.5 transition-transform ${sizesOpen ? "rotate-180" : ""}`} aria-hidden />
+                  </button>
+                  {sizesOpen && (
+                    <div role="menu" aria-label="Download sizes" className="absolute bottom-12 right-0 z-20 w-56 rounded-[10px] border border-white/[0.1] bg-[#1B2446] p-1.5 shadow-2xl">
+                      {isPixelStyle(activeResult.styleId) && (
+                        <button type="button" role="menuitem" onClick={() => { setSizesOpen(false); downloadNative(); }}
+                          className="flex min-h-10 w-full items-center justify-between rounded-[7px] px-3 text-[13px] text-white hover:bg-white/[0.06]">
+                          Real pixel size <span className="text-[11.5px] text-[#00E436]">engine-ready</span>
+                        </button>
+                      )}
+                      {[32, 64, 128, 256, 512, 1024].map((size) => (
+                        <button key={size} type="button" role="menuitem" onClick={() => { setSizesOpen(false); downloadAtSize(size); }}
+                          className="flex min-h-10 w-full items-center rounded-[7px] px-3 font-mono text-[13px] text-[#C8CCE8] hover:bg-white/[0.06] hover:text-white">
+                          {size} × {size} px
+                        </button>
+                      ))}
+                      <button type="button" role="menuitem" onClick={() => { setSizesOpen(false); handleDownloadMetadata(); }}
+                        className="mt-1 flex min-h-10 w-full items-center rounded-[7px] border-t border-white/[0.06] px-3 text-[12.5px] text-[#A7ADD4] hover:bg-white/[0.06] hover:text-white">
+                        Settings file (.json)
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <IconButton label={seedCopied ? "Seed copied" : `Copy seed ${activeResult.seed}`} onClick={handleCopySeed}>
+                  {seedCopied ? <Check className="h-4 w-4 text-[#00E436]" /> : <Copy className="h-4 w-4" />}
+                </IconButton>
+              </ActionGroup>
             </div>
-          )}
+            );
+          })()}
 
           {activeResult && ((activeResult.warnings?.length ?? 0) > 0 || activeResult.translatedPrompt) && (
             <div className="mt-2 space-y-1.5">
-              {activeResult.warnings?.map((w, i) => (
+              {activeResult.warnings?.map((w, i) => /use Animate/i.test(w) && activeResult.generationId ? (
+                // The prompt asked for a sheet: make the next step impossible to miss
+                <div key={i} className="flex flex-col gap-2 rounded-[10px] border border-[#FFA300]/45 bg-[#FFA300]/[0.08] p-3 sm:flex-row sm:items-center">
+                  <p className="min-w-0 flex-1 text-[13.5px] leading-snug text-[#FFF1E8]">{w}</p>
+                  <Link href={`/animate?id=${encodeURIComponent(activeResult.generationId)}`}
+                    className="flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-[8px] bg-[#FFA300] px-4 text-[14px] font-semibold text-[#131A31] transition hover:bg-[#FFB733]">
+                    <Film className="h-4 w-4" aria-hidden /> Make the sprite sheet
+                  </Link>
+                </div>
+              ) : (
                 <p key={i} className="flex items-start gap-2 rounded-[8px] border border-amber-400/20 bg-amber-400/[0.05] px-3 py-2 text-[12.5px] text-amber-100/90">
                   <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" aria-hidden /> <span className="flex-1">{w}</span>
                   {/use Animate/i.test(w) && activeResult.generationId && (
@@ -1232,3 +1279,13 @@ const SURPRISE_PROMPTS: Record<string, string[]> = {
   CREATURES: ["green slime with big eyes", "fire-breathing baby dragon", "skeleton warrior with a rusty sword", "giant spider with glowing eyes"],
   DEFAULT: ["treasure chest overflowing with gold", "magic crystal on a stone pedestal", "wooden signpost with two arrows", "glowing campfire with logs"],
 };
+
+/** One labelled cluster of next-step actions under the stage. */
+function ActionGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section aria-label={title} className="min-w-0 rounded-[10px] border border-white/[0.07] bg-[#19223F] p-2">
+      <h3 className="px-1 pb-1.5 text-[12px] font-semibold text-[#A7ADD4]">{title}</h3>
+      <div className="flex flex-wrap items-center gap-1.5">{children}</div>
+    </section>
+  );
+}
