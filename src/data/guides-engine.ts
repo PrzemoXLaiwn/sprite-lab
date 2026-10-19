@@ -142,7 +142,7 @@ if (is_struct(_box)) {
           "SpriteLab does not make GameMaker projects or objects; it makes the art and a predictable file layout. When you animate a sprite in SpriteLab and download the engine pack, the gamemaker folder contains one strip per animation already named with the frame count, such as attack_strip6.png. A 4-direction walk comes out as four strips: walk_down_strip4, walk_right_strip4, walk_up_strip4 and walk_left_strip4. Import them as above; you still set the origin, the mask and the code yourself.",
           "Animation frames are delivered at 256 pixels tall. For pixel art that is a 128-pixel grid scaled 2× with nearest-neighbour, so if your game uses a smaller sprite size, scale the strip down by a whole number in a pixel editor before importing rather than scaling the instance in GameMaker.",
         ],
-        image: { src: "/showcase/anim-knight-idle.webp", alt: "Pixel art knight idle animation exported as an equal-width strip", pixel: true },
+        image: { src: "/showcase/sheet-witch-walk.png", alt: "Pixel art witch walk cycle exported as an equal-width strip of six frames", pixel: true },
       },
     ],
     faq: [

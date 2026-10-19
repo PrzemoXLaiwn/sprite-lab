@@ -70,4 +70,24 @@ describe("keySpriteBackground", () => {
     expect(c.alpha(120, 100)).toBe(255);
     expect(c.alpha(5, 5)).toBe(0);
   });
+
+  it("removes a white gap behind a grey anti-aliased rim inside a dark cloak (Pixel HD lantern case)", () => {
+    const c = canvas(300, 300);
+    const CLOAK: RGB = [40, 42, 48], RIM: RGB = [200, 202, 205];
+    c.rect(40, 40, 260, 260, CLOAK);
+    c.rect(100, 80, 160, 200, RIM); // 2 px grey rim around the gap
+    c.rect(102, 82, 158, 198, WHITE); // background seen between cloak and arm
+    keySpriteBackground(c.raw);
+    expect(c.alpha(130, 140)).toBe(0);
+  });
+
+  it("keeps white cloth shaded with a wide grey band", () => {
+    const c = canvas(300, 300);
+    const GREY: RGB = [190, 192, 196];
+    c.rect(40, 40, 260, 260, OUTLINE);
+    c.rect(44, 44, 256, 256, GREY); // wide shading band (> 3 px) around the white
+    c.rect(60, 60, 240, 240, WHITE);
+    keySpriteBackground(c.raw);
+    expect(c.alpha(150, 150)).toBe(255);
+  });
 });

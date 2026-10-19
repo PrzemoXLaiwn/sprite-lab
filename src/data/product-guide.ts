@@ -6,18 +6,18 @@
 
 import { CREDIT_COSTS, STYLE_MATCH_CREDITS } from "@/lib/services/generation";
 import { ANIMATION_FRAME_OPTIONS, RIG_CREDITS, ROTATIONS, animationCredits } from "@/config/animations";
-import { RELAUNCH, relaunchActive } from "@/config/relaunch";
+import { RELAUNCH, newSignupBonus } from "@/config/relaunch";
 
 export const SIGNUP_CREDITS = RELAUNCH.SIGNUP_CREDITS;
 export const GUEST_TRIES = 3;
 
 /** "10 free credits" or "10 free credits + 10 launch bonus" while the relaunch runs. */
 export function signupOffer(now = new Date()): { credits: number; bonus: number; bonusUntil: string | null } {
-  const active = relaunchActive(now);
+  const bonus = newSignupBonus(now);
   return {
     credits: SIGNUP_CREDITS,
-    bonus: active ? RELAUNCH.NEW_USER_BONUS : 0,
-    bonusUntil: active ? new Date(RELAUNCH.ENDS_AT).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : null,
+    bonus,
+    bonusUntil: bonus > 0 ? new Date(RELAUNCH.ENDS_AT).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : null,
   };
 }
 

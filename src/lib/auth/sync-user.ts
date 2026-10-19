@@ -8,7 +8,7 @@
 import type { User } from "@supabase/supabase-js";
 import { prisma } from "@/lib/prisma";
 import { sendWelcomeEmail } from "@/lib/email/send";
-import { RELAUNCH, relaunchActive } from "@/config/relaunch";
+import { RELAUNCH, newSignupBonus } from "@/config/relaunch";
 
 // user_metadata is user-writable via the anon key (supabase.auth.updateUser),
 // so it is only trusted for the initial profile on account creation, and only
@@ -98,7 +98,7 @@ export function sendWelcomeFor(user: User): void {
     user.email,
     sanitizeName(user.user_metadata) ?? undefined,
     // The relaunch bonus is added on their first app visit
-    RELAUNCH.SIGNUP_CREDITS + (relaunchActive() ? RELAUNCH.NEW_USER_BONUS : 0),
+    RELAUNCH.SIGNUP_CREDITS + newSignupBonus(),
     user.id
   ).catch((err) => console.error("[Auth Sync] Welcome email failed:", err));
 }

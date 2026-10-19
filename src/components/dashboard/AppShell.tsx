@@ -10,7 +10,7 @@ import { RelaunchBonus } from "@/components/dashboard/RelaunchBonus";
 import { GettingStarted } from "@/components/dashboard/GettingStarted";
 import { GuestSpriteClaim } from "@/components/dashboard/GuestSpriteClaim";
 import { prisma } from "@/lib/prisma";
-import { relaunchActive } from "@/config/relaunch";
+import { relaunchActive, relaunchBonusFor } from "@/config/relaunch";
 
 /**
  * The signed-in app chrome: icon rail, mobile header + bottom nav, global
@@ -20,10 +20,11 @@ import { relaunchActive } from "@/config/relaunch";
 export async function AppShell({ user, children }: { user: User; children: React.ReactNode }) {
   const dbUser = await prisma.user.findUnique({
     where: { id: user.id },
-    select: { plan: true, role: true, emailPreferences: true },
+    select: { plan: true, role: true, emailPreferences: true, createdAt: true },
   }).catch(() => null); // database down: the frame still renders
   const prefs = dbUser?.emailPreferences as { relaunchBonusAt?: string } | null;
-  const showRelaunchBonus = Boolean(dbUser) && relaunchActive() && !prefs?.relaunchBonusAt;
+  // Only accounts that still have a bonus to claim (none for signups after NEW_USER_BONUS_UNTIL)
+  const showRelaunchBonus = Boolean(dbUser) && relaunchActive() && !prefs?.relaunchBonusAt && relaunchBonusFor(dbUser!.createdAt).amount > 0;
 
   // Getting-started checklist: ticks from real activity (3 indexed lookups,
   // once per layout render — layouts don't re-render on client navigation).

@@ -550,3 +550,13 @@ select:-webkit-autofill {
     top: 3rem;
   }
 }
+
+/* Hero: step through a 4-frame direction sheet (front, right, back, left) */
+@keyframes turnaround {
+  from { background-position: 0% 0; }
+  to { background-position: 133.333% 0; }
+}
+.turnaround { animation: turnaround 4.8s steps(4) infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .turnaround { animation: none; background-position: 0% 0; }
+}

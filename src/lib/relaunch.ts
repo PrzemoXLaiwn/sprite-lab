@@ -15,6 +15,7 @@ export async function claimRelaunchBonus(userId: string): Promise<RelaunchClaim>
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { createdAt: true } });
   if (!user) return { granted: false, reason: "no-user" };
   const bonus = relaunchBonusFor(user.createdAt);
+  if (bonus.amount <= 0) return { granted: false, reason: "inactive" };
 
   // One conditional UPDATE: adds the credits and stamps the marker only if the
   // marker isn't there yet, so parallel requests can't claim twice.

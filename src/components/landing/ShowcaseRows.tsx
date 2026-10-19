@@ -87,7 +87,6 @@ function AnimateVisual() {
     { src: "/showcase/anim-dog-jump.gif", label: "dog", motion: "jumps" },
     { src: "/showcase/anim-car-drive.gif", label: "car", motion: "drives", wide: true },
     { src: "/showcase/anim-witch-walk.webp", label: "witch", motion: "walks" },
-    { src: "/showcase/anim-knight-idle.webp", label: "knight", motion: "idle" },
     { src: "/showcase/anim-water.gif", label: "water tile", motion: "loops" },
   ];
   return (

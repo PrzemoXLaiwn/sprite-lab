@@ -183,16 +183,17 @@ const DIRECTIONS = ["Down", "Left", "Up", "Right"] as const;
 
 function HeroWorkbench() {
   return (
-    <figure className="relative min-w-0" aria-label="A knight sprite generated with SpriteLab: idle animation, four directions and engine export formats">
+    <figure className="relative min-w-0" aria-label="A knight sprite generated with SpriteLab: turning through four directions, and the engine formats it exports to">
       <div className="overflow-hidden rounded-[10px] border border-white/[0.09] bg-[#19223F] shadow-[0_24px_60px_-20px_rgba(0,0,0,0.6)]">
         <div className="flex items-center justify-between gap-3 border-b border-white/[0.07] px-4 py-2.5">
-          <span className="text-[13px] font-medium text-[#FFF1E8]">Dark knight, idle loop</span>
+          <span className="text-[13px] font-medium text-[#FFF1E8]">Armored knight, 4 directions</span>
           <span className="font-mono text-[12px] text-[#A7ADD4]">256 × 256 px</span>
         </div>
         <div className="checker relative flex aspect-[4/3] items-center justify-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/showcase/anim-knight-idle.webp" alt="Animated pixel-art dark knight, idle loop" width={256} height={256}
-            fetchPriority="high" className="pixel-perfect h-[78%] w-auto" />
+          {/* The real 4-direction output, turning slowly (front only with reduced motion) */}
+          <span role="img" aria-label="Pixel-art armored knight turning to face front, right, back and left"
+            className="turnaround pixel-perfect block aspect-square h-[78%]"
+            style={{ backgroundImage: "url(/showcase/rotate-knight.png)", backgroundSize: "400% 100%", backgroundRepeat: "no-repeat" }} />
         </div>
         <div className="grid grid-cols-4 border-t border-white/[0.07]">
           {DIRECTIONS.map((d, i) => (

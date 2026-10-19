@@ -661,11 +661,32 @@ function borderStats(raw: Raw, region: number[], key?: [number, number, number])
   const { width, height, data } = raw;
   const member = new Set(region);
   let dark = 0, light = 0, pale = 0, total = 0;
+  const lumaAt = (q: number) => 0.299 * data[q * 4] + 0.587 * data[q * 4 + 1] + 0.114 * data[q * 4 + 2];
+  // The grey anti-aliased rim between a key-colour gap and a dark cloak (1-3 px)
+  // isn't the subject: step past it and judge what lies behind. Near-white
+  // (>= 225) and coloured shades are the subject's own and are judged as is.
+  const rim = (q: number) => {
+    const i = q * 4;
+    const chroma = Math.max(data[i], data[i + 1], data[i + 2]) - Math.min(data[i], data[i + 1], data[i + 2]);
+    const l = lumaAt(q);
+    return data[i + 3] > 0 && chroma < 20 && l >= 150 && l < 225;
+  };
   for (const p of region) {
     const x = p % width, y = (p - x) / width;
-    const next = [x > 0 ? p - 1 : -1, x < width - 1 ? p + 1 : -1, y > 0 ? p - width : -1, y < height - 1 ? p + width : -1];
-    for (const q of next) {
-      if (q < 0 || member.has(q)) continue;
+    const steps: [number, number][] = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+    for (const [dx, dy] of steps) {
+      let qx = x + dx, qy = y + dy;
+      if (qx < 0 || qy < 0 || qx >= width || qy >= height) continue;
+      let q = qy * width + qx;
+      if (member.has(q)) continue;
+      for (let k = 0; k < 3 && rim(q); k++) {
+        const nx = qx + dx, ny = qy + dy;
+        if (nx < 0 || ny < 0 || nx >= width || ny >= height) break;
+        const n = ny * width + nx;
+        if (rim(n) && k === 2) break; // a wide grey band is shading, not a rim
+        qx = nx; qy = ny; q = n;
+        if (!rim(q)) break;
+      }
       const i = q * 4;
       if (data[i + 3] === 0) continue; // touches already-cleared background
       total++;

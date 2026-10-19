@@ -371,7 +371,7 @@ const BASE_GUIDES: Guide[] = [
           "When you drag several sliced sprites into the Scene at once, Unity asks where to save a new Animation clip and creates a GameObject with a Sprite Renderer and an Animator. Open Window → Animation → Animation to preview it. If the sample rate field is hidden, enable 'Show Sample Rate' from the window's options menu and set 8–12 for most pixel art.",
           "To combine several animations (idle, walk, attack) on one character, add each clip to the same Animator Controller and connect them with transitions driven by parameters such as a 'Speed' float. For snappy 2D games, turn off 'Has Exit Time' and set transition duration to 0 so frames switch instantly.",
         ],
-        image: { src: "/showcase/anim-knight-idle.webp", alt: "Pixel art knight idle animation ready to slice into Unity sprites", pixel: true },
+        image: { src: "/showcase/sheet-witch-walk.png", alt: "Pixel art witch walk cycle sprite sheet ready to slice into Unity sprites", pixel: true },
       },
       {
         heading: "Using a folder of frames instead of a sheet",

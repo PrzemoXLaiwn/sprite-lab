@@ -113,8 +113,8 @@ export function RelaunchEmail({ userName, bonus, lastPrompt, ctaUrl, retryUrl, u
               </Column>
               <Column style={{ width: "50%", paddingLeft: "6px" }}>
                 <Section style={tile}>
-                  <Img src={`${SITE}/showcase/anim-knight-idle.webp`} alt="Animated knight idle" width="200" style={tileImg} />
-                  <Text style={tileLabel}>Idle · smooth, 8 frames</Text>
+                  <Img src={`${SITE}/showcase/anim-witch-walk.gif`} alt="Animated witch walk" width="200" style={tileImg} />
+                  <Text style={tileLabel}>Walk · 6 frames</Text>
                 </Section>
               </Column>
             </Row>

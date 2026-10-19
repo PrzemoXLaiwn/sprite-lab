@@ -41,7 +41,7 @@ export default function UnitySpritesPage() {
       subtitle="Generate characters, items and tiles, animate them into sprite sheets, and import them into Unity 2D with the usual Sprite Editor workflow — no plugins needed."
       trust={["transparent png", "equal-size frames", "point-filter ready", "commercial use"]}
       floating={[
-        { src: "/showcase/anim-knight-idle.webp", alt: "", pixel: true, cls: "left-[6%] top-[28%] w-28 animate-float" },
+        { src: "/showcase/anim-dog-jump.gif", alt: "", pixel: true, cls: "left-[6%] top-[28%] w-28 animate-float" },
         { src: "/showcase/fire-sword.png", alt: "", pixel: true, cls: "left-[14%] top-[62%] w-16 animate-float [animation-delay:1.2s]" },
         { src: "/showcase/anim-dog-jump.gif", alt: "", pixel: true, cls: "right-[6%] top-[24%] w-28 animate-float [animation-delay:0.6s]" },
         { src: "/showcase/health-potion.png", alt: "", pixel: true, cls: "right-[15%] top-[60%] w-14 animate-float [animation-delay:1.8s]" },
