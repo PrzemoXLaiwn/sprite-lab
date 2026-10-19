@@ -25,7 +25,7 @@ export function UploadSpriteButton({ then = "create", className = "", label = "U
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog"
-        className={`flex h-10 shrink-0 items-center gap-1.5 rounded-[8px] border border-white/[0.1] px-3 text-[13px] font-medium text-[#C8CCE8] transition hover:bg-white/[0.06] hover:text-white ${className}`}>
+        className={`btn btn-secondary shrink-0 ${className}`}>
         <Upload className="h-4 w-4" aria-hidden /> {label}
       </button>
       {open && <UploadSpriteDialog then={then} onClose={() => setOpen(false)} />}
@@ -46,8 +46,8 @@ export function UploadSpriteCard() {
       <button type="button" onClick={() => { setDropped(null); setOpen(true); }} aria-haspopup="dialog"
         onDragOver={(e) => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)}
         onDrop={(e) => { e.preventDefault(); setOver(false); const f = e.dataTransfer.files?.[0]; if (f) { setDropped(f); setOpen(true); } }}
-        className={`group flex w-full items-center gap-3 rounded-[12px] border border-dashed p-3 text-left transition-colors ${over ? "border-[#FFA300] bg-[#FFA300]/[0.1]" : "border-[#FFA300]/45 bg-[#19223F] hover:border-[#FFA300] hover:bg-[#FFA300]/[0.06]"}`}>
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[10px] bg-[#FFA300]/[0.14] text-[#FFA300] transition-colors group-hover:bg-[#FFA300] group-hover:text-[#131A31]">
+        className={`group flex w-full items-center gap-3 rounded-[14px] border border-dashed p-3 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_14px_30px_-22px_rgba(4,7,20,0.9)] transition-[border-color,background-color,transform,box-shadow] duration-150 hover:-translate-y-px ${over ? "border-[#FFA300] bg-[#FFA300]/[0.12] shadow-[0_0_0_1px_rgba(255,163,0,0.35),0_8px_24px_-10px_rgba(255,163,0,0.55)]" : "border-[#FFA300]/50 bg-[linear-gradient(180deg,#1E2849,#192241)] hover:border-[#FFA300] hover:shadow-[0_0_0_1px_rgba(255,163,0,0.25),0_10px_26px_-12px_rgba(255,163,0,0.45)]"}`}>
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[11px] border border-[#FFA300]/35 bg-[linear-gradient(180deg,rgba(255,163,0,0.22),rgba(255,163,0,0.08))] text-[#FFB733] shadow-[inset_0_1px_0_rgba(255,220,160,0.25)] transition-colors group-hover:bg-[linear-gradient(180deg,#FFBE45,#F28E00)] group-hover:text-[#131A31]">
           <Upload className="h-5 w-5" aria-hidden />
         </span>
         <span className="min-w-0">
@@ -117,7 +117,7 @@ function UploadSpriteDialog({ then, onClose, initialFile = null }: { then: "crea
   return (
     <div className="fixed inset-0 z-[120] flex items-end justify-center bg-[#0B1022]/75 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="upload-h"
       onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) onClose(); }}>
-      <div className="w-full max-w-[460px] rounded-t-[14px] border border-white/[0.1] bg-[#19223F] p-4 shadow-2xl sm:rounded-[12px] sm:p-5">
+      <div className="sl-panel w-full max-w-[460px] rounded-b-none p-4 sm:rounded-[14px] sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 id="upload-h" className="font-display text-[19px] font-semibold text-[#FFF1E8]">Upload your sprite</h2>
@@ -146,13 +146,13 @@ function UploadSpriteDialog({ then, onClose, initialFile = null }: { then: "crea
 
         <label className="mt-4 block text-[12.5px] font-semibold text-[#C8CCE8]" htmlFor="upload-name">What is it?</label>
         <input id="upload-name" value={name} onChange={(e) => setName(e.target.value.slice(0, 200))} placeholder="e.g. a knight in silver armour"
-          className="mt-1.5 h-11 w-full rounded-[8px] border border-white/[0.1] bg-[#212B4E] px-3 text-[14px] text-[#FFF1E8] placeholder:text-[#7F86B5] focus:border-[#FFA300]/60 focus:outline-none" />
+          className="sl-inset mt-1.5 h-11 w-full px-3 text-[14px] text-[#FFF1E8] placeholder:text-[#8F96C4] focus:border-[#FFA300] focus:outline-none" />
         <p className="mt-1 text-[12px] text-[#A7ADD4]">A few words help Animate pick the right moves.</p>
 
         <div role="radiogroup" aria-label="Type" className="mt-3 grid grid-cols-3 gap-1.5">
           {KINDS.map((k) => (
             <button key={k.id} type="button" role="radio" aria-checked={kind === k.id} onClick={() => setKind(k.id)}
-              className={`min-h-10 rounded-[8px] border px-2 text-[12.5px] font-medium transition ${kind === k.id ? "border-[#FFA300] bg-[#FFA300]/15 text-[#FFF1E8]" : "border-white/[0.1] text-[#C8CCE8] hover:text-white"}`}>
+              className={`btn btn-secondary px-2 text-[12.5px] ${kind === k.id ? "is-active" : ""}`}>
               {k.label}
             </button>
           ))}
@@ -161,7 +161,7 @@ function UploadSpriteDialog({ then, onClose, initialFile = null }: { then: "crea
         {error && <p role="alert" className="mt-3 text-[13px] text-[#FF8A8A]">{error}</p>}
 
         <button type="button" onClick={submit} disabled={!file || busy}
-          className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-[8px] bg-[#FFA300] text-[15px] font-semibold text-[#131A31] transition hover:bg-[#FFB733] disabled:cursor-not-allowed disabled:opacity-50">
+          className="btn btn-primary mt-4 h-12 w-full text-[15px]">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Upload className="h-4 w-4" aria-hidden />}
           {busy ? "Uploading…" : then === "animate" ? "Upload and animate" : then === "edit" ? "Upload and edit" : "Upload"}
         </button>

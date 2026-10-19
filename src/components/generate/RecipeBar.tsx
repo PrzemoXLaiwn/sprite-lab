@@ -54,9 +54,7 @@ function Slot({ id, label, value, open, auto, onOpen, wide }: { id: SlotId; labe
   // Looks like a dropdown on purpose: label on top, value + chevron below
   return (
     <button type="button" onClick={() => onOpen(id)} aria-haspopup="dialog" aria-expanded={open} title={`Change ${label.toLowerCase()}`}
-      className={`group relative flex min-h-[52px] items-center justify-between gap-3 rounded-[8px] border px-3 py-1.5 text-left shadow-[0_2px_0_rgba(0,0,0,0.35)] transition-all hover:-translate-y-px ${wide ? "w-full min-w-0" : "min-w-[112px]"} ${
-        open ? "border-[#FFA300] bg-[#FFA300]/[0.12]" : "border-white/[0.16] bg-[#212B4E] hover:border-[#FFA300]/70 hover:bg-[#263260]"
-      }`}>
+      className={`sl-select group relative flex min-h-[52px] items-center justify-between gap-3 px-3 py-1.5 text-left ${wide ? "w-full min-w-0" : "min-w-[112px]"}`}>
       <span className="flex flex-col leading-tight">
         <span className="flex items-center gap-1.5 text-[11.5px] font-medium text-[#A7ADD4]">
           {label}
@@ -74,9 +72,7 @@ function OptionList({ options, value, onPick }: { options: readonly Option[]; va
     <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
       {options.map((o) => (
         <button key={o.id} type="button" onClick={() => onPick(o.id)} aria-pressed={o.id === value}
-          className={`flex min-h-12 flex-col items-start justify-center rounded-[8px] border px-3 py-2 text-left transition-colors ${
-            o.id === value ? "border-[#FFA300] bg-[#FFA300]/[0.1]" : "border-white/[0.1] hover:border-white/30"
-          }`}>
+          className="btn btn-secondary min-h-12 flex-col !items-start !justify-center !gap-0.5 px-3 py-2 text-left font-normal !whitespace-normal !leading-tight">
           <span className="text-[13.5px] font-semibold text-[#FFF1E8]">{o.label}</span>
           {o.desc && <span className="text-[12px] text-[#A7ADD4]">{o.desc}</span>}
         </button>
@@ -110,7 +106,7 @@ export function RecipeBar(p: RecipeBarProps) {
 
   const picker = open && (
     <div role="dialog" aria-label={`Choose ${open}`}
-      className={`fixed inset-x-0 bottom-0 z-40 max-h-[70dvh] overflow-y-auto rounded-t-[16px] border-t border-white/[0.1] bg-[#1B2446] p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-[0_-24px_60px_-20px_rgba(0,0,0,0.8)] lg:absolute lg:bottom-auto lg:max-h-[70vh] lg:rounded-[12px] lg:border ${
+      className={`fixed inset-x-0 bottom-0 z-40 max-h-[70dvh] overflow-y-auto rounded-t-[16px] border-t border-[rgba(124,140,214,0.22)] bg-[linear-gradient(180deg,#1E2849,#192241)] p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-[0_-24px_60px_-20px_rgba(0,0,0,0.8)] lg:absolute lg:bottom-auto lg:max-h-[70vh] lg:rounded-[12px] lg:border ${
         panel ? "lg:fixed lg:inset-x-auto lg:left-[456px] lg:top-[76px] lg:w-[min(680px,calc(100vw-480px))]" : "lg:inset-x-0 lg:top-full lg:mt-2"}`}>
       <div className="mb-3 flex items-center justify-between">
         <p className="font-display text-[16px] font-semibold capitalize text-[#FFF1E8]">{open === "type" ? "Asset type" : open}</p>
@@ -165,18 +161,18 @@ export function RecipeBar(p: RecipeBarProps) {
   );
 
   return (
-    <div ref={boxRef} className="relative rounded-[12px] border border-white/[0.1] bg-[#19223F] p-3 sm:p-4">
+    <div ref={boxRef} className="sl-panel relative p-3 sm:p-4">
       {picker}
       <div className={`flex flex-col gap-3 ${panel ? "" : "lg:flex-row lg:items-stretch"}`}>
-        <div className="min-w-0 flex-1 rounded-[10px] border border-white/[0.1] bg-[#131A31] transition-colors focus-within:border-[#FFA300]">
+        <div className="sl-inset min-w-0 flex-1">
           <label htmlFor="generate-prompt" className="sr-only">Describe your sprite</label>
           <textarea id="generate-prompt" value={p.prompt} onChange={(e) => p.onPrompt(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); p.onSubmit(); } }}
             placeholder={p.placeholder} maxLength={500} rows={panel ? 3 : 2}
-            className="block w-full resize-none bg-transparent px-3.5 pt-3 text-[15px] leading-relaxed text-[#FFF1E8] outline-none placeholder:text-[#8A92BF]" />
+            className="block w-full resize-none bg-transparent px-3.5 pt-3 text-[15px] leading-relaxed text-[#FFF1E8] outline-none placeholder:text-[#8F96C4] focus-visible:outline-none" />
           <div className="flex items-center justify-between gap-2 px-1.5 pb-1.5">
             <button type="button" onClick={p.onSurprise} title="Fill in a random idea for this asset type"
-              className="flex min-h-10 items-center gap-1.5 rounded-[7px] px-2.5 text-[12.5px] font-medium text-[#A7ADD4] transition-colors hover:bg-white/[0.05] hover:text-white">
+              className="btn btn-ghost px-2.5 text-[12.5px]">
               <Dices className="h-4 w-4" aria-hidden /> Surprise me
             </button>
             <div className="flex items-center gap-1">
@@ -186,8 +182,7 @@ export function RecipeBar(p: RecipeBarProps) {
           </div>
         </div>
         <button type="button" onClick={p.onSubmit} disabled={!p.canSubmit || p.generating}
-          className={`px-corners flex h-14 shrink-0 items-center justify-center gap-2 bg-[#FFA300] px-6 text-[15px] font-semibold text-[#131A31] transition hover:bg-[#FFB733] disabled:cursor-not-allowed disabled:opacity-50 ${
-            panel ? "w-full shadow-[0_0_28px_-8px_rgba(255,163,0,0.6)] hover:shadow-[0_0_32px_-6px_rgba(255,163,0,0.75)] disabled:shadow-none" : "lg:h-auto lg:min-h-[88px] lg:w-[180px] lg:flex-col lg:gap-1"}`}>
+          className={`btn btn-primary h-14 shrink-0 gap-2 px-6 text-[15px] ${panel ? "w-full" : "lg:h-auto lg:min-h-[88px] lg:w-[180px] lg:flex-col lg:gap-1"}`}>
           {p.generating ? <><Loader2 className="h-5 w-5 animate-spin" aria-hidden /> <span>{p.loadingLabel}</span></>
             : <><Sparkles className="h-5 w-5" aria-hidden /> <span>Create sprite</span><span className={`text-[12.5px] font-medium opacity-80 ${panel ? "" : "lg:block"}`}>{p.costLabel}</span></>}
         </button>

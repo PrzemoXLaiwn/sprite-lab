@@ -916,7 +916,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
               isAuto={(slot) => slot !== "quality" && auto.isAuto(slot)}
               tools={
                 <button type="button" onClick={() => setShowAdvanced((v) => !v)} aria-expanded={showAdvanced} aria-controls="generate-more-options"
-                  className="flex min-h-10 items-center gap-1 rounded-[7px] px-2.5 text-[12.5px] font-medium text-[#A7ADD4] transition-colors hover:bg-white/[0.05] hover:text-white">
+                  className="btn btn-ghost gap-1 px-2.5 text-[12.5px]">
                   More{advancedSet > 0 ? ` · ${advancedSet}` : ""} <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showAdvanced ? "rotate-180" : ""}`} aria-hidden />
                 </button>
               }
@@ -990,29 +990,29 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
           <div className="flex min-w-0 flex-1 flex-col lg:min-h-0 lg:overflow-y-auto">
           {/* Canvas toolbar: scene, compare, zoom */}
           <div className="flex flex-wrap items-center gap-1.5 px-4 pt-3 sm:px-5">
-            <div role="group" aria-label="Scene" className="flex max-w-full overflow-x-auto rounded-[8px] border border-white/[0.1] bg-[#19223F] p-0.5">
+            <div role="group" aria-label="Scene" className="sl-track max-w-full overflow-x-auto">
               {STAGE_SCENES.map((s) => (
                 <button key={s.id} type="button" onClick={() => chooseScene(s.id)} aria-pressed={scene === s.id} title={`${s.label} scene`}
-                  className={`h-9 shrink-0 rounded-[6px] px-2.5 text-[12.5px] font-medium transition-colors ${scene === s.id ? "bg-[#FFA300] text-[#131A31] shadow-[0_0_14px_-4px_rgba(255,163,0,0.7)]" : "text-[#C8CCE8] hover:text-white"}`}>
+                  className="sl-seg sl-seg-solid shrink-0">
                   {s.label}
                 </button>
               ))}
             </div>
             {history.length > 1 && (
               <button type="button" onClick={() => setCompare((v) => !v)} aria-pressed={compare} title="Stand the previous sprite next to this one, at the same scale"
-                className={`h-10 rounded-[8px] border px-3 text-[12.5px] font-medium transition-colors ${compare ? "border-[#29ADFF] bg-[#29ADFF]/15 text-[#FFF1E8]" : "border-white/[0.1] text-[#C8CCE8] hover:text-white"}`}>
+                className="btn btn-secondary">
                 Compare
               </button>
             )}
             {activeResult && (
-              <div role="group" aria-label="Zoom" className="ml-auto flex items-center rounded-[8px] border border-white/[0.1] bg-[#19223F] p-0.5">
+              <div role="group" aria-label="Zoom" className="sl-track ml-auto items-center">
                 <button type="button" onClick={() => setZoom((z) => Math.max(-3, z - 1))} disabled={zoom <= -3 || (fitK !== null && fitK + zoom <= 1)} aria-label="Zoom out"
-                  className="flex h-9 w-9 items-center justify-center rounded-[6px] text-[#C8CCE8] hover:bg-white/[0.06] hover:text-white disabled:opacity-40"><ZoomOut className="h-4 w-4" /></button>
+                  className="sl-seg w-9 px-0 disabled:pointer-events-none disabled:opacity-40"><ZoomOut className="h-4 w-4" /></button>
                 <span className="min-w-[3.25rem] text-center font-mono text-[12px] text-[#FFF1E8]" aria-live="polite">{zoomLabel(zoom, activeResult ? isPixelStyle(activeResult.styleId) : false, fitK)}</span>
                 <button type="button" onClick={() => setZoom((z) => Math.min(8, z + 1))} disabled={zoom >= 8} aria-label="Zoom in"
-                  className="flex h-9 w-9 items-center justify-center rounded-[6px] text-[#C8CCE8] hover:bg-white/[0.06] hover:text-white disabled:opacity-40"><ZoomIn className="h-4 w-4" /></button>
+                  className="sl-seg w-9 px-0 disabled:pointer-events-none disabled:opacity-40"><ZoomIn className="h-4 w-4" /></button>
                 <button type="button" onClick={() => setZoom(0)} disabled={zoom === 0} title="Fit the sprite to the stage"
-                  className="h-9 rounded-[6px] px-2.5 text-[12.5px] font-medium text-[#C8CCE8] hover:bg-white/[0.06] hover:text-white disabled:opacity-40">Fit</button>
+                  className="sl-seg disabled:pointer-events-none disabled:opacity-40">Fit</button>
               </div>
             )}
           </div>
@@ -1092,7 +1092,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                 <ActionGroup title="Animate it">
                   {gid && (
                     <Link href={`/animate?id=${gid}`}
-                      className="flex h-10 items-center gap-1.5 whitespace-nowrap rounded-[8px] bg-[#FFA300] px-3 text-[13px] font-semibold text-[#131A31] shadow-[0_0_18px_-6px_rgba(255,163,0,0.65)] transition hover:bg-[#FFB733]">
+                      className="btn btn-primary">
                       <Film className="h-4 w-4" aria-hidden /> Animate · sprite sheet
                     </Link>
                   )}
@@ -1131,7 +1131,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                 <ActionGroup title="Download">
                   <button type="button" onClick={isPixelStyle(activeResult.styleId) ? downloadNative : handleDownload}
                     title={isPixelStyle(activeResult.styleId) ? "Download at the sprite's real pixel size (engine-ready)" : "Download as a 1024px PNG"}
-                    className="flex h-10 items-center gap-2 rounded-[8px] bg-[#FFF1E8] px-3.5 text-[13px] font-semibold text-[#131A31] transition hover:bg-white">
+                    className="btn btn-light">
                     <Download className="h-4 w-4" aria-hidden /> PNG
                   </button>
                   <div className="relative" ref={sizesRef}>
@@ -1174,7 +1174,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                   <div key={i} className="flex flex-col gap-2 rounded-[10px] border border-[#FFA300]/45 bg-[#FFA300]/[0.08] p-3 sm:flex-row sm:items-center">
                     <p className="min-w-0 flex-1 text-[13.5px] leading-snug text-[#FFF1E8]">{w}</p>
                     <Link href={`/animate?id=${encodeURIComponent(activeResult.generationId)}`}
-                      className="flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-[8px] bg-[#FFA300] px-4 text-[14px] font-semibold text-[#131A31] transition hover:bg-[#FFB733]">
+                      className="btn btn-primary h-11 shrink-0 text-[14px]">
                       <Film className="h-4 w-4" aria-hidden /> Make the sprite sheet
                     </Link>
                   </div>
@@ -1270,10 +1270,7 @@ function HistoryThumb({ item, active, pixel, onClick, className }: {
   const reviewState = item.projectStatus === "accepted" ? " (accepted)" : item.projectStatus === "pending" ? " (awaiting review)" : item.projectStatus === "declined" ? " (declined)" : "";
   return (
     <button type="button" onClick={onClick} title={item.prompt} aria-label={`${item.prompt}${reviewState}`} aria-pressed={active}
-      className={`relative overflow-hidden rounded-xl border bg-[#212B4E] transition-all ${
-        active ? "border-[#FFA300] ring-2 ring-[#FFA300]/25" : "border-white/[0.06] opacity-70 hover:opacity-100"
-      } ${className ?? ""}`}
-      style={{ backgroundImage: "repeating-conic-gradient(#ffffff08 0% 25%, transparent 0% 50%)", backgroundSize: "10px 10px" }}>
+      className={`checker checker-sm sl-thumb relative overflow-hidden ${active ? "" : "opacity-80 hover:opacity-100"} ${className ?? ""}`}>
       <Image src={item.imageUrl} alt="" fill unoptimized loading="lazy" sizes="120px" className={`object-contain p-1.5 ${pixel ? "pixel-perfect" : ""} ${item.projectStatus === "declined" ? "opacity-30" : ""}`} />
       {item.projectStatus === "accepted" && (
         <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-400" aria-hidden>
@@ -1316,8 +1313,8 @@ const SURPRISE_PROMPTS: Record<string, string[]> = {
 /** One labelled cluster of next-step actions under the stage. */
 function ActionGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section aria-label={title} className="min-w-0 rounded-[10px] border border-white/[0.07] bg-[#19223F] p-2">
-      <h3 className="px-1 pb-1.5 text-[12px] font-semibold text-[#A7ADD4]">{title}</h3>
+    <section aria-label={title} className="sl-panel min-w-0 p-2.5">
+      <h3 className="sl-label px-0.5 pb-2">{title}</h3>
       <div className="flex flex-wrap items-center gap-1.5">{children}</div>
     </section>
   );

@@ -51,8 +51,8 @@ export function AutoSettingsBar({ enabled, onToggle, changes, onUndo, labels }: 
           ? "Auto-settings on: asset type, style and view follow your prompt. Anything you pick by hand stays as you set it."
           : "Auto-settings off: settings only change when you pick them. Turning it on lets the prompt set them again."}
         className="-ml-1 flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg px-1.5 text-[#A7ADD4] transition-colors hover:text-white">
-        <span aria-hidden className={`relative h-4 w-7 rounded-full transition-colors ${enabled ? "bg-[#FFA300]" : "bg-white/[0.12]"}`}>
-          <span className={`absolute top-0.5 h-3 w-3 rounded-full bg-white shadow transition-[left] ${enabled ? "left-3.5" : "left-0.5"}`} />
+        <span aria-hidden className={`relative h-5 w-9 rounded-full border transition-colors ${enabled ? "border-[#FFC85E]/60 bg-[linear-gradient(180deg,#FFBE45,#F28E00)] shadow-[0_0_12px_-3px_rgba(255,163,0,0.7)]" : "border-[rgba(124,140,214,0.25)] bg-[#111831] shadow-[inset_0_2px_4px_rgba(4,7,20,0.5)]"}`}>
+          <span className={`absolute top-[2px] h-3.5 w-3.5 rounded-full bg-white shadow-[0_1px_2px_rgba(0,0,0,0.4)] transition-[left] duration-150 ${enabled ? "left-[18px]" : "left-[2px]"}`} />
         </span>
         <span className="text-[12.5px] font-semibold">Auto</span>
       </button>

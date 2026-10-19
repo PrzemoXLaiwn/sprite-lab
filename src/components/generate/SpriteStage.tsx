@@ -194,7 +194,7 @@ export function SpriteStage({ imageUrl, pixel, compareUrl, comparePixel, scene, 
   useEffect(() => { onFit?.(onGridMain && stage.w > 0 ? kFit : null); }, [onFit, onGridMain, kFit, stage.w]);
 
   return (
-    <div ref={ref} className="relative h-full w-full overflow-hidden rounded-[12px] border border-white/[0.09]">
+    <div ref={ref} className="relative h-full w-full overflow-hidden rounded-[14px] border border-[rgba(124,140,214,0.22)] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_0_0_1px_rgba(4,7,20,0.45),0_28px_60px_-34px_rgba(4,7,20,1)]">
       <SceneBackdrop scene={scene} />
       {imageUrl && main && stage.w > 0 && (
         <StandingSprite url={imageUrl} pixel={pixel} metrics={main} stage={stage} k={kZoom} height={room * (artH(main) / tallest) * hZoom} x={comparing ? 0.66 : 0.5} dim={dim} alt={alt} boost={hZoom} />
