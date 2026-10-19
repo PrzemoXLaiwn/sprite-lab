@@ -47,6 +47,31 @@ describe("keySpriteBackground", () => {
     expect(c.alpha(30, 287)).toBe(0); // shadow goes
   });
 
+  it("removes a realistic studio floor under and between the legs, rim included", () => {
+    const c = canvas(300, 400);
+    c.rect(80, 40, 220, 300, OUTLINE); // body down to a skirt hem at y=300
+    c.rect(40, 320, 260, 372, SHADE); // floor plane: wider than the body, deep
+    c.rect(100, 300, 200, 320, SHADE); // floor seen between the legs, up to the hem
+    c.rect(90, 300, 120, 360, OUTLINE); // left leg standing on the floor
+    c.rect(180, 300, 210, 360, OUTLINE); // right leg
+    for (let x = 40; x < 260; x += 3) c.rect(x, 372, x + 1, 373, [228, 222, 214]); // rough pale rim
+    keySpriteBackground(c.raw);
+    expect(c.alpha(50, 350)).toBe(0); // floor beside the feet
+    expect(c.alpha(150, 310)).toBe(0); // floor between the legs
+    expect(c.alpha(40, 372)).toBe(0); // dotted rim
+    expect(c.alpha(100, 340)).toBe(255); // legs stay
+    expect(c.alpha(150, 200)).toBe(255); // body stays
+  });
+
+  it("keeps pale trousers that run up past the bottom band", () => {
+    const c = canvas(300, 400);
+    c.rect(100, 40, 200, 180, SKIN);
+    c.rect(100, 180, 200, 372, SHADE); // long pale trousers down to the bottom
+    keySpriteBackground(c.raw);
+    expect(c.alpha(150, 360)).toBe(255);
+    expect(c.alpha(150, 250)).toBe(255);
+  });
+
   it("painted styles: removes a flat key-colour gap fenced by mid tones, keeps a white highlight on cream", () => {
     const c = canvas(200, 300);
     c.rect(40, 40, 160, 260, SKIN);

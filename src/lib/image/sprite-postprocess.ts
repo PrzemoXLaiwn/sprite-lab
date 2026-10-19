@@ -558,12 +558,51 @@ function removeGroundShadow(raw: Raw): void {
     }
     regions.push(region);
   }
+  // Box around removed shadows and floors, for the rim clean-up below
+  let fx0 = width, fy0 = height, fx1 = -1, fy1 = -1;
   for (const region of regions) {
-    let top = height, bottom = -1;
-    for (const p of region) { const y = Math.floor(p / width); if (y < top) top = y; if (y > bottom) bottom = y; }
+    let top = height, bottom = -1, left = width, right = -1;
+    for (const p of region) {
+      const y = Math.floor(p / width), x = p % width;
+      if (y < top) top = y; if (y > bottom) bottom = y;
+      if (x < left) left = x; if (x > right) right = x;
+    }
     const flat = bottom - top + 1 <= subjectH * 0.14;
     const small = region.length <= subjectArea * 0.08;
-    if (flat && small) for (const p of region) data[p * 4 + 3] = 0;
+    // A studio floor (realistic renders): a larger pale plane under the feet,
+    // also showing between the legs. It ends inside the bottom band (clothing
+    // reached from here runs on up past the band's top) and runs down to the
+    // lowest point of the sprite, where the floor is.
+    const insideBand = top > yMin + subjectH * 0.02;
+    const reachesBottom = bottom >= b.y1 - subjectH * 0.03;
+    const floor = insideBand && reachesBottom && region.length <= subjectArea * 0.2;
+    if (!((flat && small) || floor)) continue;
+    for (const p of region) data[p * 4 + 3] = 0;
+    {
+      fx0 = Math.min(fx0, left); fy0 = Math.min(fy0, top); fx1 = Math.max(fx1, right); fy1 = Math.max(fy1, bottom);
+    }
+  }
+  if (fx1 < 0) return;
+  // The rough rim of a removed shadow or floor fails the smoothness test and
+  // stays as a dotted outline or a thin pale line under the soles: pale grey
+  // pixels mostly surrounded by cleared ones, or with nothing below them, go
+  // too (3 px at most; a dark sole stops it)
+  for (let pass = 0; pass < 3; pass++) {
+    const drop: number[] = [];
+    for (let y = Math.max(1, fy0 - 3); y < Math.min(height - 1, fy1 + 4); y++) {
+      for (let x = Math.max(1, fx0 - 3); x < Math.min(width - 1, fx1 + 4); x++) {
+        const p = y * width + x, i = p * 4;
+        if (data[i + 3] === 0) continue;
+        const r = data[i], g = data[i + 1], bl = data[i + 2];
+        if (0.299 * r + 0.587 * g + 0.114 * bl < 150 || Math.max(r, g, bl) - Math.min(r, g, bl) > 40) continue;
+        let clear = 0;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && data[(p + dy * width + dx) * 4 + 3] === 0) clear++;
+        const below = data[(p + width - 1) * 4 + 3] === 0 && data[(p + width) * 4 + 3] === 0 && data[(p + width + 1) * 4 + 3] === 0;
+        if (clear >= 4 || below) drop.push(p);
+      }
+    }
+    if (!drop.length) break;
+    for (const p of drop) data[p * 4 + 3] = 0;
   }
 }
 

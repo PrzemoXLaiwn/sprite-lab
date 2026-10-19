@@ -47,6 +47,24 @@ describe("framing and armed stance", () => {
       expect(p, categoryId).not.toMatch(/A-pose|open hands|standing calmly/);
     }
   });
+  it("an A-pose picked explicitly wins over the armed stance, for creatures too", () => {
+    for (const categoryId of ["CHARACTERS", "CREATURES"]) {
+      const p = buildSpritePrompt({ subject: "a living toaster with a sword", original: "angry toaster with a sword", styleId: "REALISTIC_PAINTED", categoryId, pose: "a-pose" });
+      expect(p, categoryId).toMatch(/A-pose/);
+      expect(p, categoryId).toMatch(/pointing down along the side/);
+      expect(p, categoryId).not.toMatch(/held out and away|standing calmly/);
+    }
+  });
+  it("a picked view comes right after the subject, before the pose", () => {
+    const p = buildSpritePrompt({ subject: "a knight", original: "knight", styleId: "REALISTIC_PAINTED", categoryId: "CHARACTERS", pose: "a-pose", view: "FRONT" });
+    expect(p.indexOf("Camera: perfectly straight-on front view")).toBeGreaterThan(0);
+    expect(p.indexOf("Camera:")).toBeLessThan(p.indexOf("A-pose"));
+    expect(p).toMatch(/its sides are hidden/);
+    expect(p.match(/straight-on front view/g)).toHaveLength(1);
+  });
+  it("tells every sprite there is no floor or contact shadow", () => {
+    expect(buildSpritePrompt({ subject: "a knight", styleId: "REALISTIC_PAINTED", categoryId: "CHARACTERS", pose: "auto" })).toMatch(/no floor plane, no cast or contact shadow/);
+  });
   it("unarmed creatures keep the calm pose", () => {
     const p = buildSpritePrompt({ subject: "a green slime", original: "green slime", styleId: "PIXEL_ART_16", categoryId: "CREATURES", pose: "auto" });
     expect(p).toMatch(/standing calmly/);
