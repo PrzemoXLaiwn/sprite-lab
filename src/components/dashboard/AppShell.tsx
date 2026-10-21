@@ -11,6 +11,7 @@ import { GettingStarted } from "@/components/dashboard/GettingStarted";
 import { GuestSpriteClaim } from "@/components/dashboard/GuestSpriteClaim";
 import { DungeonReturn } from "@/components/play/DungeonReturn";
 import { prisma } from "@/lib/prisma";
+import { NOT_UPLOADED } from "@/lib/upload-marker";
 import { relaunchActive, relaunchBonusFor } from "@/config/relaunch";
 
 /**
@@ -30,7 +31,7 @@ export async function AppShell({ user, children }: { user: User; children: React
   // Getting-started checklist: ticks from real activity (3 indexed lookups,
   // once per layout render — layouts don't re-render on client navigation).
   const [firstSprite, firstAnimation, firstProject] = await Promise.all([
-    prisma.generation.findFirst({ where: { userId: user.id, NOT: { subcategoryId: "ANIMATION" } }, select: { id: true } }),
+    prisma.generation.findFirst({ where: { userId: user.id, NOT: { subcategoryId: "ANIMATION" }, ...NOT_UPLOADED }, select: { id: true } }),
     prisma.generation.findFirst({ where: { userId: user.id, subcategoryId: "ANIMATION" }, select: { id: true } }),
     prisma.project.findFirst({ where: { userId: user.id }, select: { id: true } }),
   ]).catch(() => [null, null, null] as const);

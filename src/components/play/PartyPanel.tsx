@@ -95,7 +95,7 @@ function HeroCard({ m, index, locked, onPick, onWhy, onSkill }: {
             <button key={g} type="button" disabled={locked} onClick={() => onPick({ kind: g, index })}
               aria-label={item ? `${GEAR_LABEL[g]}: ${item.name}. Change` : `Empty ${GEAR_LABEL[g].toLowerCase()} slot`}
               title={item ? `${GEAR_LABEL[g]}: ${item.bonus?.text ?? ""}` : `${GEAR_LABEL[g]} (empty)`}
-              className={`relative flex aspect-square min-h-10 items-center justify-center overflow-hidden rounded-[5px] transition disabled:opacity-70 ${item ? "checker checker-sm border border-white/[0.1] hover:ring-2 hover:ring-[#FFA300]/70" : "border border-dashed border-white/[0.18] text-[#7F86B5] hover:border-[#FFA300]/70 hover:text-[#FFF1E8]"}`}>
+              className={`relative flex aspect-square min-h-10 min-w-0 items-center justify-center overflow-hidden rounded-[5px] transition disabled:opacity-70 ${item ? "checker checker-sm border border-white/[0.1] hover:ring-2 hover:ring-[#FFA300]/70" : "border border-dashed border-white/[0.18] text-[#7F86B5] hover:border-[#FFA300]/70 hover:text-[#FFF1E8]"}`}>
               {item ? <SpriteImg s={item} /> : <Icon className="h-4 w-4" aria-hidden />}
               {item && pipFor(g, item) && (
                 <span className="absolute right-0.5 top-0.5 h-2.5 w-2.5 rounded-[2px] ring-1 ring-[#131A31]" style={{ background: ELEMENT_DEFS[pipFor(g, item)!].color }}
@@ -113,9 +113,9 @@ function HeroCard({ m, index, locked, onPick, onWhy, onSkill }: {
             <button key={slot} type="button" disabled={locked} onClick={() => onSkill(index, slot)}
               aria-label={k ? `${SLOT_LABEL[slot]} skill: ${k.name}, ${TIER_LABEL[k.tier]}. Details` : `Empty ${SLOT_LABEL[slot]} skill slot`}
               title={k ? `${SLOT_LABEL[slot]}: ${k.name} (${TIER_LABEL[k.tier]} ${k.score})` : `${SLOT_LABEL[slot]} skill (empty)`}
-              className={`relative flex aspect-square min-h-10 items-center justify-center overflow-hidden rounded-[5px] transition disabled:opacity-70 ${k ? "checker checker-sm" : "border border-dashed"}`}
+              className={`relative flex aspect-square min-h-10 min-w-0 items-center justify-center overflow-hidden rounded-[5px] transition disabled:opacity-70 ${k ? "checker checker-sm" : "border border-dashed"}`}
               style={{ boxShadow: k ? `inset 0 0 0 2px ${color}` : undefined, borderColor: k ? undefined : color }}>
-              {k ? <SkillPreview anim={k.anim} pixel={m.hero.pixel} /> : <span className="text-[10.5px] leading-tight text-[#7F86B5]">{SLOT_LABEL[slot]}</span>}
+              {k ? <SkillPreview anim={k.anim} pixel={m.hero.pixel} /> : <span className="text-[10.5px] leading-tight text-[#7F86B5]">{SLOT_SHORT[slot]}</span>}
               {k?.pending && <Loader2 className="absolute right-0.5 top-0.5 h-3 w-3 animate-spin text-[#C8CCE8]" aria-hidden />}
             </button>
           );
@@ -124,6 +124,9 @@ function HeroCard({ m, index, locked, onPick, onWhy, onSkill }: {
     </li>
   );
 }
+
+/** Empty skill tiles are ~32–42px wide: short names (the full one is in the title and aria-label). */
+const SLOT_SHORT: Record<(typeof SKILL_SLOTS)[number], string> = { basic: "Basic", special: "Spec.", legendary: "Leg." };
 
 /** "fox mage in a purple robe" → "Fox mage" (the card shows the whole prompt on hover via the picker). */
 function shortName(name: string): string {

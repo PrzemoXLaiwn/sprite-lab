@@ -87,7 +87,7 @@ export async function HomePage({ signedIn }: { signedIn: boolean }) {
       <TikTokCommunity />
 
       {/* ═══ PRICING ═════════════════════════════════════════ */}
-      <PricingSection />
+      <PricingSection signedIn={signedIn} />
 
       {/* ═══ FAQ ══════════════════════════════════════════════ */}
       <section id="faq" className="relative scroll-mt-16 py-16 sm:py-20">

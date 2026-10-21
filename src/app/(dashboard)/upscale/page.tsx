@@ -10,6 +10,7 @@ import {
   SourceCard, RecentAssetPicker, ProcessingOverlay, SourceMissing, Segmented, PageFallback, Elapsed,
   isPixelStyleId, useSourceGeneration, toolErrorMessage, downloadImage, creditLabel, type ToolBgModeId,
 } from "@/components/tools/ToolWorkspace";
+import { userErrorMessage } from "@/lib/user-error";
 
 // Must match /api/upscale: "pixel" = free nearest-neighbour (any plan),
 // "runware" = AI upscale (Pro and up), 1 credit at 2×, 2 credits at 4×.
@@ -73,7 +74,7 @@ function UpscalePageContent({ generationId }: { generationId: string | null }) {
       setView("compare");
       triggerCreditsRefresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setError(userErrorMessage(err, "Something went wrong. Please try again."));
     } finally {
       setLoading(false);
     }

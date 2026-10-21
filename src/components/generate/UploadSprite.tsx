@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Upload, X } from "lucide-react";
 import { track, FUNNEL } from "@/lib/analytics";
+import { userErrorMessage } from "@/lib/user-error";
 
 const KINDS = [
   { id: "character", label: "Character" },
@@ -20,8 +21,11 @@ const KINDS = [
 const nameFromFile = (f: File) =>
   f.name.replace(/\.[a-z0-9]+$/i, "").replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
 
+/** Called with the new sprite's generation id once the upload is saved (before navigating). */
+type OnUploaded = (generationId: string) => void;
+
 /** Button that opens the upload dialog. `then` decides where to go with the new sprite. */
-export function UploadSpriteButton({ then = "create", className = "", label = "Upload sprite" }: { then?: "create" | "animate" | "edit"; className?: string; label?: string }) {
+export function UploadSpriteButton({ then = "create", className = "", label = "Upload sprite", onUploaded }: { then?: "create" | "animate" | "edit"; className?: string; label?: string; onUploaded?: OnUploaded }) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -29,7 +33,7 @@ export function UploadSpriteButton({ then = "create", className = "", label = "U
         className={`btn btn-secondary shrink-0 ${className}`}>
         <Upload className="h-4 w-4" aria-hidden /> {label}
       </button>
-      {open && <UploadSpriteDialog then={then} onClose={() => setOpen(false)} />}
+      {open && <UploadSpriteDialog then={then} onUploaded={onUploaded} onClose={() => setOpen(false)} />}
     </>
   );
 }
@@ -38,7 +42,7 @@ export function UploadSpriteButton({ then = "create", className = "", label = "U
  * The prominent entry on the Create page's left panel: click to choose a file
  * or drop one straight onto it. Opens the same dialog as the toolbar button.
  */
-export function UploadSpriteCard() {
+export function UploadSpriteCard({ onUploaded }: { onUploaded?: OnUploaded } = {}) {
   const [open, setOpen] = useState(false);
   const [dropped, setDropped] = useState<File | null>(null);
   const [over, setOver] = useState(false);
@@ -56,12 +60,12 @@ export function UploadSpriteCard() {
           <span className="block text-[12.5px] leading-snug text-[#A7ADD4]">Drop or choose a PNG, JPG or WebP, then animate or edit it</span>
         </span>
       </button>
-      {open && <UploadSpriteDialog then="create" initialFile={dropped} onClose={() => setOpen(false)} />}
+      {open && <UploadSpriteDialog then="create" initialFile={dropped} onUploaded={onUploaded} onClose={() => setOpen(false)} />}
     </>
   );
 }
 
-function UploadSpriteDialog({ then, onClose, initialFile = null }: { then: "create" | "animate" | "edit"; onClose: () => void; initialFile?: File | null }) {
+function UploadSpriteDialog({ then, onClose, onUploaded, initialFile = null }: { then: "create" | "animate" | "edit"; onClose: () => void; onUploaded?: OnUploaded; initialFile?: File | null }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -107,11 +111,12 @@ function UploadSpriteDialog({ then, onClose, initialFile = null }: { then: "crea
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.generationId) throw new Error(data?.error ?? "Upload failed. Please try again.");
       track(FUNNEL.spriteUploaded, { pixel: !!data.pixel, then });
+      onUploaded?.(String(data.generationId));
       const id = encodeURIComponent(data.generationId);
       router.push(then === "animate" ? `/animate?id=${id}` : then === "edit" ? `/edit?id=${id}` : `/generate?result=${id}`);
       onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Upload failed. Please try again.");
+      setError(userErrorMessage(e, "Upload failed. Please try again."));
       setBusy(false);
     }
   };
@@ -131,6 +136,7 @@ function UploadSpriteDialog({ then, onClose, initialFile = null }: { then: "crea
         </div>
 
         <button type="button" onClick={() => inputRef.current?.click()}
+          aria-label={preview ? `Chosen image${file ? `: ${file.name}` : ""}. Choose a different file` : undefined}
           onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); pick(e.dataTransfer.files?.[0]); }}
           className="checker mt-4 flex h-48 w-full items-center justify-center overflow-hidden rounded-[10px] border border-dashed border-white/[0.2] transition hover:border-[#FFA300]/60">
           {preview ? (

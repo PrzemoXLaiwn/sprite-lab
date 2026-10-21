@@ -177,6 +177,12 @@ export const bgStyle = (id: ToolBgModeId) =>
 // =============================================================================
 
 export function ToolShell({ children }: { children: React.ReactNode }) {
+  // Stacked (phone / tablet) layouts: a client navigation from a scrolled page
+  // (e.g. Create's next steps → Animate) keeps the old scroll position and
+  // opens mid-page. Start a tool at its top.
+  useEffect(() => {
+    if (window.innerWidth < 1024 && window.scrollY > 0) window.scrollTo(0, 0);
+  }, []);
   return (
     <div className="flex min-h-screen flex-col bg-[#131A31] text-[#FFF1E8] lg:h-screen lg:flex-row lg:overflow-hidden">
       {children}

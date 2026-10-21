@@ -40,8 +40,9 @@ export function SiteNav({ registerUrl = "/register", anchorsOnHome = false, sign
         <div className="flex items-center gap-1 sm:gap-2">
           {signedIn ? (
             <>
-              {/* Signed-in only (search engines never see it) */}
-              <Link href="/play" className={`${QUIET} gap-1.5 whitespace-nowrap`}>
+              {/* Signed-in only (search engines never see it). Below sm the row
+                  has no room for Dungeon / My assets: they move into the menu. */}
+              <Link href="/play" className={`${QUIET.replace("inline-flex", "hidden sm:inline-flex")} gap-1.5 whitespace-nowrap`}>
                 Dungeon
                 {isNewFeature("/play") && <NewBadge />}
               </Link>
@@ -54,7 +55,7 @@ export function SiteNav({ registerUrl = "/register", anchorsOnHome = false, sign
               <Link href={registerUrl} className={PRIMARY}>Start free</Link>
             </>
           )}
-          <MobileMenu links={links} />
+          <MobileMenu links={signedIn ? [{ href: "/play", label: "Dungeon" }, { href: "/assets", label: "My assets" }, ...links] : links} />
         </div>
       </div>
     </nav>

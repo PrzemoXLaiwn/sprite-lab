@@ -20,6 +20,7 @@ import {
 } from "@/lib/workspace/session";
 import { fetchOwnGeneration, type SavedGeneration } from "@/components/workspace/restore";
 import type { HistoryItem } from "@/components/workspace/HistoryPanel";
+import { isUploadedPrompt } from "@/lib/upload-marker";
 
 export interface CreateFormState {
   prompt: string;
@@ -65,8 +66,13 @@ export function snapshotFromGeneration(g: Pick<SavedGeneration, "id" | "imageUrl
   };
 }
 
-/** Form fields a saved generation implies (edits keep the current prompt: theirs is an instruction). */
-function formFromGeneration(g: Pick<SavedGeneration, "prompt" | "subcategoryId" | "styleId">): Partial<CreateFormState> {
+/**
+ * Form fields a saved generation implies (edits keep the current prompt: theirs
+ * is an instruction). An uploaded sprite implies nothing: its name is a file
+ * name, not a prompt, so the user's draft prompt and settings stay as they are.
+ */
+function formFromGeneration(g: Pick<SavedGeneration, "prompt" | "subcategoryId" | "styleId"> & { fullPrompt?: string | null }): Partial<CreateFormState> {
+  if (isUploadedPrompt(g.fullPrompt)) return {};
   const form: Partial<CreateFormState> = { subcategoryId: g.subcategoryId, styleId: g.styleId };
   if (classifyGeneration(g) !== "edit") form.prompt = cleanGenerationPrompt(g.prompt);
   return form;

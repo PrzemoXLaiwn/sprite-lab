@@ -10,6 +10,7 @@ import {
   SourceCard, RecentAssetPicker, ProcessingOverlay, SourceMissing, Segmented, PageFallback, Elapsed,
   isPixelStyleId, useSourceGeneration, toolErrorMessage, downloadImage, type ToolBgModeId,
 } from "@/components/tools/ToolWorkspace";
+import { userErrorMessage } from "@/lib/user-error";
 
 // Must match /api/remove-bg (1 credit, Starter plan and up)
 const COST = 1;
@@ -54,7 +55,7 @@ function RemoveBgPageContent({ generationId }: { generationId: string | null }) 
       setView("compare");
       triggerCreditsRefresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setError(userErrorMessage(err, "Something went wrong. Please try again."));
     } finally {
       setLoading(false);
     }

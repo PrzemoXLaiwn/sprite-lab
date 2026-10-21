@@ -114,9 +114,5 @@ export async function importSprite(input: Buffer): Promise<ImportedSprite> {
   return { png: await sharp(out).png({ compressionLevel: 9 }).toBuffer(), width: size, height: size, pixel, background };
 }
 
-/** Uploads are stored with this marker in full_prompt: never shared to the community gallery. */
-export const UPLOAD_MARKER = "[upload]";
-
-export function isUploadedPrompt(fullPrompt: string | null | undefined): boolean {
-  return (fullPrompt ?? "").startsWith(UPLOAD_MARKER);
-}
+// Uploads are marked in full_prompt (see src/lib/upload-marker.ts)
+export { UPLOAD_MARKER, isUploadedPrompt } from "@/lib/upload-marker";

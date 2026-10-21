@@ -76,7 +76,7 @@ function IconAction({
         e.stopPropagation();
         onClick();
       }}
-      className={`flex h-8 w-8 items-center justify-center rounded-lg border backdrop-blur-md transition-colors ${
+      className={`flex h-8 w-8 items-center justify-center rounded-lg border backdrop-blur-md pointer-coarse:h-10 pointer-coarse:w-10 transition-colors ${
         danger
           ? "border-white/[0.1] bg-black/50 text-[#C8CCE8] hover:border-red-400/30 hover:bg-red-500/20 hover:text-red-200"
           : active

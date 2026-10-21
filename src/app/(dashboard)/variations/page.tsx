@@ -10,6 +10,7 @@ import {
   SourceCard, RecentAssetPicker, ProcessingOverlay, SourceMissing, PageFallback, Elapsed,
   isPixelStyleId, useSourceGeneration, toolErrorMessage, downloadImage, type ToolBgModeId,
 } from "@/components/tools/ToolWorkspace";
+import { userErrorMessage } from "@/lib/user-error";
 
 type Similarity = "low" | "medium" | "high";
 
@@ -65,7 +66,7 @@ function VariationsPageContent({ generationId }: { generationId: string | null }
       setSelected(0);
       triggerCreditsRefresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setError(userErrorMessage(err, "Something went wrong. Please try again."));
     } finally {
       setLoading(false);
     }

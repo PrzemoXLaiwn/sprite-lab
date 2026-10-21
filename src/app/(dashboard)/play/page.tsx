@@ -440,7 +440,7 @@ export default function PlayPage() {
               <h2 id="make-h" className="text-[14px] font-semibold text-[#FFF1E8]">Make your own heroes</h2>
               <p className="text-[12.5px] leading-snug text-[#A7ADD4]">Create, animate and equip your sprites to go further in the tower.</p>
               <Link href="/generate?categoryId=CHARACTERS" onClick={() => { markDungeonReturn("make-heroes"); track(FUNNEL.dungeonUpgradeClicked, { kind: "make_heroes" }); }}
-                className="btn btn-primary mt-2 h-10 px-4 text-[13.5px]">Go to SpriteLab</Link>
+                className="btn btn-primary mt-2 h-10 px-4 text-[13.5px]">Create a hero</Link>
             </div>
           </section>
         </div>

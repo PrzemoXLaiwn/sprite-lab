@@ -21,6 +21,7 @@ import {
   ToolTabs, SourceCard, RecentAssetPicker, ProcessingOverlay, SourceMissing, Segmented, PageFallback, Elapsed,
   isPixelStyleId, useSourceGeneration, toolErrorMessage, downloadImage, type ToolBgModeId,
 } from "@/components/tools/ToolWorkspace";
+import { userErrorMessage } from "@/lib/user-error";
 
 const COST = EDIT_CREDITS;
 
@@ -180,7 +181,7 @@ function EditPageContent({ generationId, resultId }: { generationId: string | nu
       showResultInUrl(newId);
       triggerCreditsRefresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setError(userErrorMessage(err, "Something went wrong. Please try again."));
     } finally {
       setLoading(false);
     }

@@ -14,15 +14,16 @@
 import { prisma } from "@/lib/prisma";
 import { QUEST_BY_ID, type QuestStats } from "./definitions";
 import { claimKey, questStates, weekStart } from "./progress";
+import { NOT_UPLOADED_SQL } from "@/lib/upload-marker";
 
-/** All-time counters. $1 = user id. */
+/** All-time counters. $1 = user id. Uploaded sprites are free and not our work: never counted. */
 export const STATS_ALL_SQL = `
   SELECT
     count(*) FILTER (WHERE subcategory_id <> 'ANIMATION' AND (prompt NOT LIKE '[%' OR prompt LIKE '[No BG]%'))::int AS sprites,
     count(*) FILTER (WHERE subcategory_id = 'ANIMATION')::int AS animations,
     count(*) FILTER (WHERE is_public)::int AS shared,
     count(*) FILTER (WHERE project_id IS NOT NULL)::int AS in_projects
-  FROM generations WHERE user_id = $1`;
+  FROM generations WHERE user_id = $1 AND ${NOT_UPLOADED_SQL}`;
 
 /** This week's paid, delivered work. $1 = user id, $2 = week start, $3 = sprite features, $4 = animation features. */
 export const STATS_WEEK_SQL = `

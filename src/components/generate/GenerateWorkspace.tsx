@@ -48,6 +48,7 @@ import { useCreateSession, type CreateRestore } from "@/components/generate/useC
 import { HistoryButton, HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { ContinueBanner, RestoredNote } from "@/components/workspace/ContinueBanner";
 import { fetchImage } from "@/lib/cors-image";
+import { userErrorMessage } from "@/lib/user-error";
 
 // =============================================================================
 // VIEW + DETAIL
@@ -512,7 +513,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
       const isAbort = err instanceof DOMException && err.name === "AbortError";
       const msg = isAbort
         ? "Generation timed out after 90 seconds. The service may be busy — please try again."
-        : err instanceof Error ? err.message : "Something went wrong. Please try again.";
+        : userErrorMessage(err, "Something went wrong. Please try again.");
       setErrorMessage(msg);
       track(FUNNEL.generationError, { reason: isAbort ? "timeout" : "api_error", styleId });
     } finally {
@@ -548,7 +549,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
       }
     } catch (e) {
       updateResult(result.id, { projectStatus: "pending" });
-      setErrorMessage(e instanceof Error ? e.message : "Couldn't add to project");
+      setErrorMessage(userErrorMessage(e, "Couldn't add to project"));
       setStatus("error");
     }
   };
@@ -840,6 +841,15 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
       canvasRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }, [isGenerating]);
+  // …and when an upload made here opens on the stage (it arrives via ?result=)
+  const uploadedIdRef = useRef<string | null>(null);
+  const onUploaded = useCallback((id: string) => { uploadedIdRef.current = id; }, []);
+  const activeGenId = activeResult?.generationId ?? null;
+  useEffect(() => {
+    if (!activeGenId || activeGenId !== uploadedIdRef.current) return;
+    uploadedIdRef.current = null;
+    if (window.innerWidth < 1024) canvasRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [activeGenId]);
 
   const cost = styleRef ? STYLE_MATCH_CREDITS : DETAIL_CREDITS[detail];
   const isCreature = selectedCategory.id === "CHARACTERS" || selectedCategory.id === "CREATURES";
@@ -873,7 +883,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
           <h1 className="font-display text-[20px] font-semibold text-[#FFF1E8]">Create</h1>
           <div className="min-w-0 flex-1 basis-[260px] [&>div]:mt-0"><ToolTabs active="generate" generationId={activeResult?.generationId} /></div>
           <div className="flex flex-wrap items-center gap-1.5">
-            <UploadSpriteButton />
+            <UploadSpriteButton onUploaded={onUploaded} />
             <HistoryButton onClick={() => setHistoryOpen(true)} />
           </div>
         </header>
@@ -881,7 +891,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
         <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
           {/* LEFT — upload or describe, then the recipe */}
           <aside aria-label="Make a sprite" className="space-y-3 px-4 pt-3 sm:px-5 lg:w-[368px] lg:shrink-0 lg:overflow-y-auto lg:border-r lg:border-white/[0.06] lg:px-4 lg:pb-24">
-            <UploadSpriteCard />
+            <UploadSpriteCard onUploaded={onUploaded} />
           {(showWelcomeBanner || (!projectId && !showWelcomeBanner) || session.restoredNote || projectId) && (
             <div className="space-y-2 empty:hidden">
               {showWelcomeBanner && (
@@ -1036,10 +1046,10 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
             {activeResult && (
               <div role="group" aria-label="Zoom" className="sl-track ml-auto items-center">
                 <button type="button" onClick={() => setZoom((z) => Math.max(-3, z - 1))} disabled={zoom <= -3 || (fitK !== null && fitK + zoom <= 1)} aria-label="Zoom out"
-                  className="sl-seg w-9 px-0 disabled:pointer-events-none disabled:opacity-40"><ZoomOut className="h-4 w-4" /></button>
+                  className="sl-seg w-9 px-0 pointer-coarse:w-10 disabled:pointer-events-none disabled:opacity-40"><ZoomOut className="h-4 w-4" /></button>
                 <span className="min-w-[3.25rem] text-center font-mono text-[12px] text-[#FFF1E8]" aria-live="polite">{zoomLabel(zoom, activeResult ? isPixelStyle(activeResult.styleId) : false, fitK)}</span>
                 <button type="button" onClick={() => setZoom((z) => Math.min(8, z + 1))} disabled={zoom >= 8} aria-label="Zoom in"
-                  className="sl-seg w-9 px-0 disabled:pointer-events-none disabled:opacity-40"><ZoomIn className="h-4 w-4" /></button>
+                  className="sl-seg w-9 px-0 pointer-coarse:w-10 disabled:pointer-events-none disabled:opacity-40"><ZoomIn className="h-4 w-4" /></button>
                 <button type="button" onClick={() => setZoom(0)} disabled={zoom === 0} title="Fit the sprite to the stage"
                   className="sl-seg disabled:pointer-events-none disabled:opacity-40">Fit</button>
               </div>

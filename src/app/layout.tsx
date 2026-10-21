@@ -224,7 +224,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className="font-sans antialiased min-h-screen bg-background text-foreground pb-10"
+        className="font-sans antialiased min-h-screen bg-background text-foreground pb-10 md:has-[.app-main]:pb-0"
         suppressHydrationWarning
       >
         {children}

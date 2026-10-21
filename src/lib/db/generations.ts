@@ -7,6 +7,7 @@
 // =============================================================================
 
 import { prisma } from "@/lib/prisma";
+import { NOT_UPLOADED } from "@/lib/upload-marker";
 
 // -----------------------------------------------------------------------------
 // TYPES
@@ -49,10 +50,12 @@ export async function getUserGenerations(userId: string, limit?: number) {
 export async function getUserStats(userId: string) {
   try {
     const [totalGenerations, recentGenerations, user] = await Promise.all([
-      prisma.generation.count({ where: { userId } }),
+      // "Generated" = made by us; free uploads aren't counted
+      prisma.generation.count({ where: { userId, ...NOT_UPLOADED } }),
       prisma.generation.count({
         where: {
           userId,
+          ...NOT_UPLOADED,
           createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
         },
       }),

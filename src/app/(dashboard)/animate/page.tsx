@@ -26,6 +26,7 @@ import { UploadSpriteButton } from "@/components/generate/UploadSprite";
 import type { SuggestedMotion } from "@/lib/animation-suggest";
 import { fetchImage } from "@/lib/cors-image";
 import { track, FUNNEL } from "@/lib/analytics";
+import { userErrorMessage } from "@/lib/user-error";
 
 const CUSTOM_EXAMPLES = [
   "breathes a stream of fire forward",
@@ -315,7 +316,7 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
       setView("play");
       triggerCreditsRefresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Animation failed. Please try again.");
+      setError(userErrorMessage(e, "Animation failed. Please try again."));
     } finally {
       setLoading(false);
     }

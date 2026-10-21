@@ -21,6 +21,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
+import { userErrorMessage } from "@/lib/user-error";
 
 // ===========================================
 // TYPES
@@ -462,7 +463,7 @@ export function SpriteEditor({
       setShowResult(true);
       triggerCreditsRefresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Inpainting failed");
+      setError(userErrorMessage(err, "Inpainting failed"));
     } finally {
       setLoading(false);
     }
