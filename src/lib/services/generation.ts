@@ -50,6 +50,8 @@ import { interpretSubject } from "@/lib/prompt-interpret";
 
 /** Shaded styles where a perfectly flat key-coloured patch can only be background. */
 const PAINTERLY_STYLES = new Set(["REALISTIC_PAINTED", "HAND_PAINTED", "DARK_SOULS"]);
+/** Painted styles: time allowed for the matte that settles ambiguous gaps (typically ~3 s). */
+const GAP_MATTE_TIMEOUT_MS = 12_000;
 import { storeGuestSprite } from "@/lib/guest-claim/server";
 
 // =============================================================================
@@ -601,7 +603,16 @@ async function generateSingle2D(request: GenerationRequest): Promise<{ asset: Ge
       png = generated.image;
     }
   } else try {
-    const processed = await postprocessSprite(generated.image, { pixelGrid, paletteSize, flatGaps: PAINTERLY_STYLES.has(styleId) });
+    const painted = PAINTERLY_STYLES.has(styleId);
+    const image = generated.image;
+    const processed = await postprocessSprite(image, {
+      pixelGrid,
+      paletteSize,
+      flatGaps: painted,
+      // Painted styles: a white glint on armour and a gap between arm and body
+      // key the same; an AI matte settles each such patch (see arbitrateGaps)
+      gapMatte: painted ? () => removeBackgroundFromBuffer(image, GAP_MATTE_TIMEOUT_MS) : undefined,
+    });
     png = processed.png;
     if (!processed.backgroundRemoved) {
       // Model drew a scene despite the instruction — fall back to the AI
@@ -649,13 +660,13 @@ async function generateSingle2D(request: GenerationRequest): Promise<{ asset: Ge
   };
 }
 
-/** AI background removal for a buffer (fallback path). Returns PNG or null. */
-async function removeBackgroundFromBuffer(image: Buffer): Promise<Buffer | null> {
+/** AI background removal for a buffer (fallback path, gap matte). Returns PNG or null. */
+async function removeBackgroundFromBuffer(image: Buffer, timeoutMs = 20_000): Promise<Buffer | null> {
   try {
     const dataUri = `data:image/png;base64,${image.toString("base64")}`;
-    const result = await removeBackground(dataUri);
+    const result = await removeBackground(dataUri, { timeoutMs });
     if (!result.success || !result.imageUrl) return null;
-    const res = await fetch(result.imageUrl, { signal: AbortSignal.timeout(30_000) });
+    const res = await fetch(result.imageUrl, { signal: AbortSignal.timeout(Math.min(30_000, timeoutMs)) });
     return res.ok ? Buffer.from(await res.arrayBuffer()) : null;
   } catch {
     return null;

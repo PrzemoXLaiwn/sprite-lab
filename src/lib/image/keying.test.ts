@@ -1,7 +1,8 @@
 // Background keying must keep light clothing: white shirt highlights are not
 // "gaps", and cream trousers are not a "ground shadow".
 import { describe, expect, it } from "vitest";
-import { keySpriteBackground } from "./sprite-postprocess";
+import sharp from "sharp";
+import { keySpriteBackground, postprocessSprite } from "./sprite-postprocess";
 
 type RGB = [number, number, number];
 function canvas(w: number, h: number, fill: RGB = [255, 255, 255]) {
@@ -134,5 +135,58 @@ describe("keySpriteBackground", () => {
     c.rect(60, 60, 240, 240, WHITE);
     keySpriteBackground(c.raw);
     expect(c.alpha(150, 150)).toBe(255);
+  });
+});
+
+// Painted styles: a flat white glint on silver armour keys like a gap between
+// arm and body. With a matte on offer, such a patch is settled by the matte;
+// a gap fenced by dark outline never needs one.
+describe("postprocessSprite gap matte (painted styles)", () => {
+  const W = 200, H = 300;
+  async function scenePng(): Promise<Buffer> {
+    const c = canvas(W, H);
+    c.rect(40, 40, 160, 260, SKIN);
+    c.rect(56, 56, 94, 124, OUTLINE);
+    c.rect(60, 60, 90, 120, [255, 255, 255]); // background seen between arm and body, dark fence
+    c.rect(110, 60, 150, 120, [190, 192, 198]); // silver pauldron
+    c.rect(118, 70, 142, 110, WHITE); // flat glint on it
+    return sharp(c.raw.data, { raw: { width: W, height: H, channels: 4 } }).png().toBuffer();
+  }
+  /** Only the alpha matters: subject opaque, background and the fenced gap clear, the glint as asked. */
+  async function matte(glintIsSubject: boolean): Promise<Buffer> {
+    const data = Buffer.alloc(W * H * 4);
+    const fill = (x0: number, y0: number, x1: number, y1: number, a: number) => {
+      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) data[(y * W + x) * 4 + 3] = a;
+    };
+    fill(40, 40, 160, 260, 255);
+    fill(56, 56, 94, 124, 0);
+    fill(118, 70, 142, 110, glintIsSubject ? 255 : 0);
+    return sharp(data, { raw: { width: W, height: H, channels: 4 } }).png().toBuffer();
+  }
+  async function transparent(png: Buffer): Promise<number> {
+    const { data } = await sharp(png).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    let n = 0;
+    for (let i = 3; i < data.length; i += 4) if (data[i] < 128) n++;
+    return n;
+  }
+
+  it("keeps the glint the matte calls subject, clears the one it calls background, the fenced gap goes either way", async () => {
+    const base = await postprocessSprite(await scenePng(), { flatGaps: true });
+    const kept = await postprocessSprite(await scenePng(), { flatGaps: true, gapMatte: async () => matte(true) });
+    const cut = await postprocessSprite(await scenePng(), { flatGaps: true, gapMatte: async () => matte(false) });
+    const nBase = await transparent(base.png), nKept = await transparent(kept.png), nCut = await transparent(cut.png);
+    expect(nCut).toBe(nBase);
+    // The 120×220 subject fills 901 px of the 1024 output (×4.1 each way): the glint
+    // (24×40 source px) is ~16000 output px; the gap (30×60) would add ~30000 more
+    expect(nBase - nKept).toBeGreaterThan(10000);
+    expect(nBase - nKept).toBeLessThan(25000);
+  });
+
+  it("without a usable matte the output is exactly the old one", async () => {
+    const base = await postprocessSprite(await scenePng(), { flatGaps: true });
+    const none = await postprocessSprite(await scenePng(), { flatGaps: true, gapMatte: async () => null });
+    const failing = await postprocessSprite(await scenePng(), { flatGaps: true, gapMatte: async () => { throw new Error("timed out"); } });
+    expect(none.png.equals(base.png)).toBe(true);
+    expect(failing.png.equals(base.png)).toBe(true);
   });
 });

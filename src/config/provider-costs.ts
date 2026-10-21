@@ -29,9 +29,13 @@ const P1024 = 0.0692, P2048 = 0.1029; // measured per-pass prices (Nano Banana)
 // Haiku prompt interpreter on every sprite (≈900 in / 90 out tokens; max = 2× in, 160 out)
 const INTERPRET = 0.0014, INTERPRET_MAX = 0.0026;
 
+// Painted styles (13% of sprites in the week to 2026-10-21) also run the background
+// remover once, to tell a gap from a white glint (sprite-postprocess arbitrateGaps)
+const PAINTED_SHARE = 0.13;
+
 export const FEATURE_COSTS: Record<string, FeatureCost> = {
-  sprite: { runwareUsd: 0.0008, runwareMaxUsd: 0.0008, n: 94, status: "measured", claudeUsd: INTERPRET, claudeMaxUsd: INTERPRET_MAX },
-  sprite_hd: { runwareUsd: 0.036, runwareMaxUsd: 0.036, n: 31, status: "measured", claudeUsd: INTERPRET, claudeMaxUsd: INTERPRET_MAX },
+  sprite: { runwareUsd: 0.0008 + PAINTED_SHARE * PRICE.removeBg, runwareMaxUsd: 0.0008 + PRICE.removeBg, n: 94, status: "measured", claudeUsd: INTERPRET, claudeMaxUsd: INTERPRET_MAX },
+  sprite_hd: { runwareUsd: 0.036 + PAINTED_SHARE * PRICE.removeBg, runwareMaxUsd: 0.036 + PRICE.removeBg, n: 31, status: "measured", claudeUsd: INTERPRET, claudeMaxUsd: INTERPRET_MAX },
   style_match: { runwareUsd: P1024, runwareMaxUsd: 2 * P1024, n: 0, status: "derived", claudeUsd: 0, claudeMaxUsd: 0 }, // no interpreter: the reference sets the look
   edit: { runwareUsd: P1024, runwareMaxUsd: 2 * P1024, n: 0, status: "derived", claudeUsd: 0, claudeMaxUsd: 0 },
   rig: { runwareUsd: 0, runwareMaxUsd: 0, n: 9, status: "estimate", claudeUsd: 0.04, claudeMaxUsd: 0.07 },

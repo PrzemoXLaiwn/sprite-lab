@@ -40,6 +40,15 @@ export interface SpritePostprocessOptions {
    * background remover), skip flood-fill keying and threshold that alpha.
    */
   trustInputAlpha?: boolean;
+  /**
+   * Painted styles: an enclosed flat patch of key colour is ambiguous — a gap
+   * between arm and body, or a white highlight on armour / a white coat (see
+   * removeEnclosedBackground). When given, returns an AI background-removal
+   * matte (PNG with alpha) of the SAME input, and each such patch is cleared
+   * only when the matte calls most of it background. Null (failed, timed
+   * out) → the patches are cleared as without a matte.
+   */
+  gapMatte?: () => Promise<Buffer | null>;
 }
 
 export interface SpritePostprocessResult {
@@ -60,6 +69,9 @@ interface Raw {
   width: number;
   height: number;
 }
+
+/** Outcome of the flood-fill keying; `key` is the border colour the later passes need (null: nothing to do). */
+type KeyResult = { removed: boolean; key: [number, number, number] | null };
 
 // -----------------------------------------------------------------------------
 // Public API
@@ -90,7 +102,12 @@ export async function postprocessSprite(
     // background even without a dark outline around it. Flat-colour styles
     // (pixel, cartoon, vector) draw white cloth exactly as flat as the key,
     // so they keep the outline rule (pale subjects get a magenta key instead).
-    backgroundRemoved = keyOutBackground(raw, options.bgTolerance ?? 32, 1, 1, options.flatGaps ?? false);
+    const gapMatte = options.gapMatte;
+    const uncertain: number[][] = [];
+    const keyed = keyOutBackground(raw, options.bgTolerance ?? 32, 1, 1, options.flatGaps ?? false, gapMatte ? uncertain : undefined);
+    if (keyed.key && gapMatte && uncertain.length) await arbitrateGaps(raw, uncertain, gapMatte);
+    if (keyed.key) finishKeying(raw, keyed.key);
+    backgroundRemoved = keyed.removed;
   }
 
   // 2. Crop to subject
@@ -360,16 +377,19 @@ export function keySpriteBackground(
     flatGaps?: boolean;
   } = {}
 ): boolean {
-  return keyOutBackground(raw, opts.tolerance ?? 32, opts.fringePasses ?? 1, opts.areaScale ?? 1, opts.flatGaps ?? false);
+  const keyed = keyOutBackground(raw, opts.tolerance ?? 32, opts.fringePasses ?? 1, opts.areaScale ?? 1, opts.flatGaps ?? false);
+  if (keyed.key) finishKeying(raw, keyed.key);
+  return keyed.removed;
 }
 
 /**
  * Flood-fills from every border pixel over pixels within `tolerance` of the
- * dominant border colour and makes them transparent. Returns false (and leaves
+ * dominant border colour and makes them transparent. `removed` is false (and
  * the image untouched) when the border is not a flat colour — e.g. the model
- * ignored the instruction and drew a scene.
+ * ignored the instruction and drew a scene. The caller runs finishKeying with
+ * the returned key once the enclosed patches are settled.
  */
-function keyOutBackground(raw: Raw, tolerance: number, fringePasses = 1, areaScale = 1, flatGaps = false): boolean {
+function keyOutBackground(raw: Raw, tolerance: number, fringePasses = 1, areaScale = 1, flatGaps = false, uncertain?: number[][]): KeyResult {
   const { width, height, data } = raw;
   const border: number[] = [];
   for (let x = 0; x < width; x++) border.push(x, (height - 1) * width + x);
@@ -387,7 +407,7 @@ function keyOutBackground(raw: Raw, tolerance: number, fringePasses = 1, areaSca
   }
   let best: { n: number; r: number; g: number; b: number } | undefined;
   for (const e of buckets.values()) if (!best || e.n > best.n) best = e;
-  if (!best) return true; // border already transparent
+  if (!best) return { removed: true, key: null }; // border already transparent
   // The mode bucket can split a soft gradient (a chroma key often shades a
   // little); gather every border pixel close to it before deciding.
   let mr = best.r / best.n, mg = best.g / best.n, mb = best.b / best.n;
@@ -398,7 +418,7 @@ function keyOutBackground(raw: Raw, tolerance: number, fringePasses = 1, areaSca
     const dr = data[i] - mr, dg = data[i + 1] - mg, db = data[i + 2] - mb;
     if (dr * dr + dg * dg + db * db <= 40 * 40) { near++; sr += data[i]; sg += data[i + 1]; sb += data[i + 2]; }
   }
-  if (near < border.length * 0.5) return false; // no flat background
+  if (near < border.length * 0.5) return { removed: false, key: null }; // no flat background
   mr = sr / near; mg = sg / near; mb = sb / near;
   const br = mr, bg = mg, bb = mb;
 
@@ -444,10 +464,14 @@ function keyOutBackground(raw: Raw, tolerance: number, fringePasses = 1, areaSca
     for (const p of clear) data[p * 4 + 3] = 0;
   }
 
-  removeEnclosedBackground(raw, br, bg, bb, areaScale, flatGaps);
+  removeEnclosedBackground(raw, br, bg, bb, areaScale, flatGaps, uncertain);
+  return { removed: true, key: [br, bg, bb] };
+}
+
+/** The passes after the enclosed patches are settled: chroma-key despill, then the ground shadow. */
+function finishKeying(raw: Raw, [br, bg, bb]: [number, number, number]): void {
   if (Math.max(br, bg, bb) - Math.min(br, bg, bb) > 110) despillEdges(raw, br, bg, bb);
   removeGroundShadow(raw);
-  return true;
 }
 
 /**
@@ -621,9 +645,10 @@ function removeGroundShadow(raw: Raw): void {
  * Background visible through gaps inside the subject (between an arm and a
  * staff, inside a ring) is not reachable from the border. Clear connected
  * regions that are almost exactly the key colour and large enough not to be
- * a highlight or an eye.
+ * a highlight or an eye. With `uncertain`, the patches only the painted-style
+ * flat rule would clear are collected there instead (see arbitrateGaps).
  */
-function removeEnclosedBackground(raw: Raw, br: number, bg: number, bb: number, areaScale = 1, flatGaps = false): void {
+function removeEnclosedBackground(raw: Raw, br: number, bg: number, bb: number, areaScale = 1, flatGaps = false, uncertain?: number[][]): void {
   const { width, height, data } = raw;
   // Painted styles also catch gaps the model shaded a little (GPT Image paints
   // the key seen between a bow and its string ~12 levels darker)
@@ -678,12 +703,43 @@ function removeEnclosedBackground(raw: Raw, br: number, bg: number, bb: number, 
     // A chroma key (magenta, used for pale subjects) never occurs in the
     // subject itself, so every enclosed patch of it is background.
     const chroma = Math.max(br, bg, bb) - Math.min(br, bg, bb) > 110;
-    const isGap =
+    const sure =
       (chroma && region.length >= 4) ||
-      flat ||
       (keyLike && region.length >= minArea && border.light < 0.5) ||
       (keyLike && region.length >= minOutlinedArea && border.dark >= 0.6);
-    if (isGap) for (const p of region) data[p * 4 + 3] = 0;
+    // The flat rule alone can't tell a gap from a white glint on silver armour
+    // or a white coat: both flat, both key-coloured, both fenced by light
+    // shades (measured on a painted fox knight: the arm gap and the breastplate
+    // glint scored alike). With a matte on offer, leave those for it to decide.
+    if (sure || (flat && !uncertain)) for (const p of region) data[p * 4 + 3] = 0;
+    else if (flat && uncertain) uncertain.push(region);
+  }
+}
+
+/**
+ * Settle the ambiguous enclosed patches with an AI background-removal matte
+ * of the same image: a patch is background when the matte clears most of it.
+ * Judged per patch, not per pixel — the matte's edge is soft and a pixel or
+ * two off ours, so pixel voting left a key-coloured rim in every gap.
+ * Measured on 4 painted fox knights: 3 glints kept, 4 arm gaps cleared, one
+ * 12×20 px gap between the knees kept (the matte had filled it). Without a
+ * matte the flat rule's call stands, as before.
+ */
+async function arbitrateGaps(raw: Raw, regions: number[][], gapMatte: () => Promise<Buffer | null>): Promise<void> {
+  let matte: Raw | null = null;
+  try {
+    const png = await gapMatte();
+    if (png) {
+      const m = await toRaw(png, 1024);
+      if (m.width === raw.width && m.height === raw.height) matte = m;
+    }
+  } catch {
+    matte = null;
+  }
+  for (const region of regions) {
+    let cleared = 0;
+    if (matte) for (const p of region) if (matte.data[p * 4 + 3] < 128) cleared++;
+    if (!matte || cleared * 2 >= region.length) for (const p of region) raw.data[p * 4 + 3] = 0;
   }
 }
 

@@ -645,7 +645,8 @@ export async function upscaleImage(
 const BG_REMOVAL_TIMEOUT = 20000;
 
 export async function removeBackground(
-  imageUrl: string
+  imageUrl: string,
+  opts: { timeoutMs?: number } = {}
 ): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
   try {
     const runware = await getRunwareClient();
@@ -667,7 +668,7 @@ export async function removeBackground(
           includeCost: true,
           customTaskUUID: taskUUID,
         }) as Promise<unknown>,
-        BG_REMOVAL_TIMEOUT,
+        opts.timeoutMs ?? BG_REMOVAL_TIMEOUT,
         "Runware background removal"
       );
       logRunware({ ...log, reported: reportedCost(result) });
