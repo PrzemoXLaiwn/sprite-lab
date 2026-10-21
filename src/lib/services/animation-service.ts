@@ -39,6 +39,12 @@ import {
 } from "@/config/animations";
 import { walkRowFrozen, walkRowScore } from "@/lib/image/walk-check";
 import { canSpend } from "@/lib/billing/ledger";
+import {
+  AnimationTimeBudgetError,
+  canStartOptionalPass,
+  canStartRequiredPass,
+  workDeadline,
+} from "@/lib/services/animation-budget";
 import { PRICE } from "@/lib/billing/features";
 
 /** List price of one image pass at this sheet size — for the per-operation cost cap. */
@@ -60,6 +66,11 @@ export interface MakeAnimationInput {
   tile?: boolean;
   /** Debug: receives each raw grid the model returned (scripts only). */
   onGrid?: (stage: "keys" | "betweens" | "tile", image: Buffer) => void;
+  /**
+   * Epoch ms by which all image work must be done (see animation-budget.ts).
+   * The route passes workDeadline(request start); defaults to one from now.
+   */
+  deadline?: number;
 }
 
 export interface MakeAnimationOutput {
@@ -74,17 +85,15 @@ export interface MakeAnimationOutput {
 }
 
 /**
- * The /api/animate route has maxDuration 300 s and one image call can take up
- * to 150 s. A further call (redraw, in-betweens) only starts while it can
- * still finish — otherwise the function is killed before credits are refunded.
+ * The /api/animate route has maxDuration 300 s. Every image call is bounded by
+ * one deadline from the start of the request, and a further call (redraw,
+ * in-betweens) only starts while it can still finish — otherwise the function
+ * is killed before credits are refunded (see animation-budget.ts).
  */
-const REDRAW_BUDGET_MS = 90_000;
-const SMOOTH_BUDGET_MS = 120_000;
-
 export async function makeAnimation(input: MakeAnimationInput): Promise<MakeAnimationOutput> {
-  const startedAt = Date.now();
+  const deadline = input.deadline ?? workDeadline(Date.now());
   const option = animationFrameOption(input.frames);
-  if (input.tile) return makeTileAnimation(input);
+  if (input.tile) return makeTileAnimation({ ...input, deadline });
 
   const plan = await planAnimation({
     image: input.reference,
@@ -112,12 +121,13 @@ export async function makeAnimation(input: MakeAnimationInput): Promise<MakeAnim
   let cost = 0;
   let keys: Frame[] = [];
   for (let attempt = 0; attempt < 2; attempt++) {
-    if (attempt > 0 && keys.length >= 2 && Date.now() - startedAt > REDRAW_BUDGET_MS) break;
-    // A redraw only happens within the operation's cost cap
+    if (attempt === 0 && !canStartRequiredPass(deadline)) throw new AnimationTimeBudgetError("key frame");
+    // A redraw only happens while it can still finish, and within the operation's cost cap
+    if (attempt > 0 && !canStartOptionalPass(deadline, option.size)) break;
     if (attempt > 0 && !canSpend(passPrice(option.size))) break;
     let found: Frame[];
     try {
-      const keyGrid = await generateAnimationGrid({ prompt, reference: input.reference, size: option.size });
+      const keyGrid = await generateAnimationGrid({ prompt, reference: input.reference, size: option.size, deadline });
       cost += keyGrid.cost;
       input.onGrid?.("keys", keyGrid.image);
       found = fitFrames(await extractFrames(keyGrid.image, option.cols, option.rows), option.frames);
@@ -165,11 +175,11 @@ export async function makeAnimation(input: MakeAnimationInput): Promise<MakeAnim
 
   // Smooth: show the assembled key poses to the model, get the in-betweens
   const keyAnim = await assembleAnimation(keys, { pixel: input.pixel, frameSize: 256, fps: baseFps, anchor });
-  if (Date.now() - startedAt > SMOOTH_BUDGET_MS) {
+  const layout = gridFor(keyAnim.frames.length);
+  if (!canStartOptionalPass(deadline, layout.size)) {
     console.warn("[Animate] Smoothing skipped: out of time");
     return { anim: keyAnim, plan, prompt, cost, smoothed: false, stiffWalk };
   }
-  const layout = gridFor(keyAnim.frames.length);
   if (!canSpend(passPrice(layout.size))) {
     console.warn("[Animate] Smoothing skipped: operation cost cap reached");
     return { anim: keyAnim, plan, prompt, cost, smoothed: false, stiffWalk };
@@ -187,6 +197,7 @@ export async function makeAnimation(input: MakeAnimationInput): Promise<MakeAnim
       }),
       reference: sheet,
       size: layout.size,
+      deadline,
     });
     cost += betweenGrid.cost;
     input.onGrid?.("betweens", betweenGrid.image);
@@ -205,8 +216,9 @@ export async function makeAnimation(input: MakeAnimationInput): Promise<MakeAnim
  * Directional views (4 or 8) of the sprite in one pass. No planner: the
  * directions are the plan. Views share one ground line and scale.
  */
-export async function makeRotation(input: { reference: Buffer; prompt: string; pixel: boolean; rotation: RotationOption; onGrid?: MakeAnimationInput["onGrid"] }): Promise<{ anim: AnimationResult; prompt: string; cost: number }> {
+export async function makeRotation(input: { reference: Buffer; prompt: string; pixel: boolean; rotation: RotationOption; onGrid?: MakeAnimationInput["onGrid"]; deadline?: number }): Promise<{ anim: AnimationResult; prompt: string; cost: number }> {
   const r = input.rotation;
+  const deadline = input.deadline ?? workDeadline(Date.now());
   const prompt = r.kind === "walk"
     ? buildWalkSetPrompt({ pixel: input.pixel, subject: input.prompt })
     : buildRotationPrompt({ directions: r.directions, cols: r.cols, rows: r.rows, pixel: input.pixel, subject: input.prompt });
@@ -214,13 +226,13 @@ export async function makeRotation(input: { reference: Buffer; prompt: string; p
   const expected = r.kind === "walk" ? r.cols * r.rows : r.frames;
   let cost = 0;
   let views: Frame[] = [];
-  const startedAt = Date.now();
   for (let attempt = 0; attempt < 2; attempt++) {
-    if (attempt > 0 && views.length >= expected && Date.now() - startedAt > REDRAW_BUDGET_MS) break;
+    if (attempt === 0 && !canStartRequiredPass(deadline)) throw new AnimationTimeBudgetError("direction");
+    if (attempt > 0 && !canStartOptionalPass(deadline, r.size)) break;
     if (attempt > 0 && !canSpend(passPrice(r.size))) break;
     let found: Frame[];
     try {
-      const grid = await generateAnimationGrid({ prompt, reference: input.reference, size: r.size });
+      const grid = await generateAnimationGrid({ prompt, reference: input.reference, size: r.size, deadline });
       cost += grid.cost;
       input.onGrid?.("keys", grid.image);
       found = fitFrames(await extractFrames(grid.image, r.cols, r.rows), expected);
@@ -239,8 +251,8 @@ export async function makeRotation(input: { reference: Buffer; prompt: string; p
   if (!framesLookRight(views, expected)) throw new Error("direction views came back broken (sliced or merged figures)");
   if (r.kind === "walk") {
     // Row redraws only while there's time left before the route's 300 s limit
-    const fixed = Date.now() - startedAt < WALK_FIX_BUDGET_MS
-      ? await fixFrozenWalkRows(views, r.cols, { pixel: input.pixel, subject: input.prompt })
+    const fixed = canStartOptionalPass(deadline, 1024)
+      ? await fixFrozenWalkRows(views, r.cols, { pixel: input.pixel, subject: input.prompt, deadline })
       : { views, cost: 0 };
     views = fixed.views;
     cost += fixed.cost;
@@ -255,8 +267,6 @@ export async function makeRotation(input: { reference: Buffer; prompt: string; p
 }
 
 const WALK_VIEWS = ["front", "side", "back"] as const;
-/** Latest point (ms into the request) at which a frozen-row redraw (≤150 s) may still start. */
-const WALK_FIX_BUDGET_MS = 120_000;
 
 /**
  * The model sometimes draws one row of a walk set as the same pose four times
@@ -264,7 +274,7 @@ const WALK_FIX_BUDGET_MS = 120_000;
  * own, from one of their frames, with every pose spelled out — in parallel,
  * one small (1024) pass each. A redraw is only used when it walks better.
  */
-async function fixFrozenWalkRows(views: Frame[], cols: number, opts: { pixel: boolean; subject: string }): Promise<{ views: Frame[]; cost: number }> {
+async function fixFrozenWalkRows(views: Frame[], cols: number, opts: { pixel: boolean; subject: string; deadline: number }): Promise<{ views: Frame[]; cost: number }> {
   const rows = WALK_VIEWS.map((view, r) => ({ view, r, frames: views.slice(r * cols, r * cols + cols) }));
   const allFrozen = rows.filter((row) => walkRowFrozen(row.frames, row.view));
   if (!allFrozen.length) return { views, cost: 0 };
@@ -278,7 +288,7 @@ async function fixFrozenWalkRows(views: Frame[], cols: number, opts: { pixel: bo
   await Promise.all(frozen.map(async (row) => {
     try {
       const reference = await frameOnWhite(row.frames[0]);
-      const grid = await generateAnimationGrid({ prompt: buildWalkRowPrompt({ pixel: opts.pixel, subject: opts.subject, view: row.view }), reference, size: 1024 });
+      const grid = await generateAnimationGrid({ prompt: buildWalkRowPrompt({ pixel: opts.pixel, subject: opts.subject, view: row.view }), reference, size: 1024, deadline: opts.deadline });
       cost += grid.cost;
       const found = (await extractFrames(grid.image, 2, 2)).slice(0, cols);
       if (!framesLookRight(found, cols)) return;
@@ -343,7 +353,7 @@ async function gridSheet(frames: Buffer[], cols: number, w: number, h: number): 
     .toBuffer();
 }
 
-async function makeTileAnimation(input: MakeAnimationInput): Promise<MakeAnimationOutput> {
+async function makeTileAnimation(input: MakeAnimationInput & { deadline: number }): Promise<MakeAnimationOutput> {
   // Tiles don't need a pose planner or in-betweens — the motion is a texture
   // loop (a smooth request is refunded by the caller via smoothed: false)
   const option = animationFrameOption(input.frames);
@@ -354,7 +364,8 @@ async function makeTileAnimation(input: MakeAnimationInput): Promise<MakeAnimati
     cols: option.cols,
     rows: option.rows,
   });
-  const grid = await generateAnimationGrid({ prompt, reference: input.reference, size: option.size });
+  if (!canStartRequiredPass(input.deadline)) throw new AnimationTimeBudgetError("tile");
+  const grid = await generateAnimationGrid({ prompt, reference: input.reference, size: option.size, deadline: input.deadline });
   const frames = await extractTileFrames(grid.image, option.cols, option.rows);
   const anim = await assembleTileAnimation(frames, { pixel: input.pixel, frameSize: 256, fps: option.frames >= 6 ? 10 : 8 });
   const plan: AnimationPlan = { bodyType: "tile", subject: input.prompt, consistency: "", frames: [], planned: false };

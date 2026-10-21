@@ -9,6 +9,7 @@ import { rateLimitUserGeneration } from "@/lib/rate-limit";
 import { safeFetchImage } from "@/lib/safe-fetch";
 import { uploadGenerationBufferToR2 } from "@/lib/r2";
 import { makeAnimation, makeRotation } from "@/lib/services/animation-service";
+import { isOutOfTime, workDeadline } from "@/lib/services/animation-budget";
 import { makeRigAnimation } from "@/lib/image/rig-animation";
 import { makeItemMotion } from "@/lib/image/item-motion";
 import { makeSkeletonAnimation, makeSkeletonIdle } from "@/lib/image/skeleton-rig";
@@ -49,6 +50,8 @@ export const maxDuration = 300;
  * frames = 4 | 6 | 9 (credits scale with it); smooth = true adds AI in-betweens (2× frames, 2× credits).
  */
 export async function POST(request: Request) {
+  // Every image pass is planned against this (see animation-budget.ts)
+  const deadline = workDeadline(Date.now());
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Please log in." }, { status: 401 });
@@ -97,7 +100,7 @@ export async function POST(request: Request) {
     if (!started.ok) return NextResponse.json(started.body, { status: started.status });
     const op = started.op;
     try {
-      const { anim, prompt: rPrompt, cost } = await op.run(() => makeRotation({ reference: referenceR, prompt: source.prompt, pixel: pixelR, rotation }));
+      const { anim, prompt: rPrompt, cost } = await op.run(() => makeRotation({ reference: referenceR, prompt: source.prompt, pixel: pixelR, rotation, deadline }));
       const [sheet, gif] = await Promise.all([
         uploadGenerationBufferToR2(anim.sheetPng, user.id, "png"),
         uploadGenerationBufferToR2(anim.gif, user.id, "gif"),
@@ -138,9 +141,14 @@ export async function POST(request: Request) {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("[Rotate] Failed:", msg);
-      await op.fail(/insufficientCredits|insufficient credits|top-up/i.test(msg) ? "PROVIDER_BALANCE" : "ROTATION_FAILED");
-      if (/insufficientCredits|insufficient credits|top-up/i.test(msg)) {
+      const balance = /insufficientCredits|insufficient credits|top-up/i.test(msg);
+      const slow = !balance && isOutOfTime(err);
+      await op.fail(balance ? "PROVIDER_BALANCE" : slow ? "ROTATION_TIMEOUT" : "ROTATION_FAILED");
+      if (balance) {
         return NextResponse.json({ error: "Directions are paused for a short while — your credits were refunded." }, { status: 503 });
+      }
+      if (slow) {
+        return NextResponse.json({ error: "This took too long, so we stopped — your credits were refunded. Please try again in a minute." }, { status: 503 });
       }
       return NextResponse.json({ error: "Couldn't draw the directions — your credits were refunded. Please try again." }, { status: 502 });
     }
@@ -275,6 +283,7 @@ export async function POST(request: Request) {
       anchor,
       loop,
       tile: isTile,
+      deadline,
     }));
     // The in-between pass didn't line up — the user got key frames only
     // (idempotent: an operation never refunds more than it charged)
@@ -324,10 +333,15 @@ export async function POST(request: Request) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[Animate] Failed:", msg);
-    await op.fail(/insufficientCredits|insufficient credits|top-up/i.test(msg) ? "PROVIDER_BALANCE" : "ANIMATION_FAILED");
+    const balance = /insufficientCredits|insufficient credits|top-up/i.test(msg);
+    const slow = !balance && isOutOfTime(err);
+    await op.fail(balance ? "PROVIDER_BALANCE" : slow ? "ANIMATION_TIMEOUT" : "ANIMATION_FAILED");
     // Provider balance ran out: say so plainly instead of "try again"
-    if (/insufficientCredits|insufficient credits|top-up/i.test(msg)) {
+    if (balance) {
       return NextResponse.json({ error: "Animations are paused for a short while — your credits were refunded. Sprites still work." }, { status: 503 });
+    }
+    if (slow) {
+      return NextResponse.json({ error: "This took too long, so we stopped — your credits were refunded. Please try again in a minute." }, { status: 503 });
     }
     return NextResponse.json({ error: "Animation failed — your credits were refunded. Please try again." }, { status: 502 });
   }
