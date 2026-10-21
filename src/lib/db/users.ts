@@ -7,6 +7,7 @@
 // =============================================================================
 
 import { prisma } from "@/lib/prisma";
+import { publicGenerationWhere } from "@/lib/moderation/visibility";
 
 // -----------------------------------------------------------------------------
 // TYPES (re-exported so callers don't need a second import)
@@ -119,7 +120,7 @@ export async function getPublicProfile(username: string) {
         totalGenerationsPublic: true,
         createdAt: true,
         generations: {
-          where: { isPublic: true },
+          where: publicGenerationWhere(),
           orderBy: { createdAt: "desc" },
           take: 12,
           select: {
@@ -132,7 +133,7 @@ export async function getPublicProfile(username: string) {
         },
         _count: {
           select: {
-            generations: { where: { isPublic: true } },
+            generations: { where: publicGenerationWhere() },
             communityPosts: { where: { isHidden: false } },
           },
         },

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { publicGenerationWhere } from "@/lib/moderation/visibility";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -41,7 +42,7 @@ async function getProfile(username: string) {
       totalLikesReceived: true,
       createdAt: true,
       generations: {
-        where: { isPublic: true },
+        where: publicGenerationWhere(),
         orderBy: { createdAt: "desc" },
         take: 12,
         select: {
@@ -55,7 +56,7 @@ async function getProfile(username: string) {
       },
       _count: {
         select: {
-          generations: { where: { isPublic: true } },
+          generations: { where: publicGenerationWhere() },
         },
       },
     },

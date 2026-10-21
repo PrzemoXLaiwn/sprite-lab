@@ -1,5 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { publicGenerationWhere } from "@/lib/moderation/visibility";
+import type { Prisma } from "@prisma/client";
 
 export interface FeaturedGeneration {
   id: string;
@@ -58,7 +60,7 @@ async function queryFeaturedGenerations(
   limit: number,
   category?: string | null
 ): Promise<FeaturedGeneration[]> {
-  const where: { isPublic: boolean; categoryId?: string } = { isPublic: true };
+  const where: Prisma.GenerationWhereInput = publicGenerationWhere();
 
   if (category && category !== "All") {
     where.categoryId = CATEGORY_MAP[category] || category;

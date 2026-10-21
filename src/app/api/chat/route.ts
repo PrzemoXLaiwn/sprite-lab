@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { rateLimitChat } from "@/lib/rate-limit";
+import { BLOCKED_MESSAGE, isBlockedText } from "@/lib/moderation/content-filter";
 
 // =============================================================================
 // Community live chat
@@ -16,12 +17,12 @@ const MODERATOR_ROLES = new Set(["MODERATOR", "ADMIN", "OWNER"]);
 // Links are the main spam vector in an open chat
 const LINK = /(https?:\/\/|www\.|\b[a-z0-9-]+\.(com|net|org|io|gg|xyz|ru|co|me|link|ly)\b)/i;
 
-type Author = { name: string | null; username: string | null; avatarUrl: string | null; plan: string };
+type Author = { name: string | null; username: string | null; avatarUrl: string | null; plan: string; isActive: boolean };
 
 async function authors(ids: string[]): Promise<Map<string, Author>> {
   const users = await prisma.user.findMany({
     where: { id: { in: [...new Set(ids)] } },
-    select: { id: true, name: true, username: true, avatarUrl: true, plan: true },
+    select: { id: true, name: true, username: true, avatarUrl: true, plan: true, isActive: true },
   });
   return new Map(users.map((u) => [u.id, u]));
 }
@@ -43,7 +44,10 @@ export async function GET(req: NextRequest) {
   try {
     const rows = await prisma.chatMessage.findMany({ orderBy: { createdAt: "desc" }, take: limit });
     const byId = await authors(rows.map((r) => r.userId));
-    const messages = rows.reverse().map((r) => toDto(r, byId.get(r.userId)));
+    // Banned authors and anything the content filter catches are not shown
+    const messages = rows.reverse()
+      .filter((r) => byId.get(r.userId)?.isActive !== false && !isBlockedText(r.message))
+      .map((r) => toDto(r, byId.get(r.userId)));
     return NextResponse.json(
       { messages },
       { headers: { "Cache-Control": "public, s-maxage=5, stale-while-revalidate=25" } }
@@ -69,6 +73,7 @@ export async function POST(req: NextRequest) {
     : "";
   if (!message) return NextResponse.json({ error: "Type a message first." }, { status: 400 });
   if (message.length > MAX_LENGTH) return NextResponse.json({ error: `Max ${MAX_LENGTH} characters.` }, { status: 400 });
+  if (isBlockedText(message)) return NextResponse.json({ error: BLOCKED_MESSAGE }, { status: 400 });
   if (LINK.test(message)) return NextResponse.json({ error: "Links aren't allowed in chat — share sprites in the gallery instead." }, { status: 400 });
 
   const author = await prisma.user.findUnique({

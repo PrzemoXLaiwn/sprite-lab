@@ -180,11 +180,36 @@ export async function getReports(userId: string, status?: string, limit = 50) {
       },
     });
 
-    return { success: true, reports };
+    // Reported sprites (no relation on Report): one lookup for the thumbnails
+    const genIds = [...new Set(reports.map((r) => r.generationId).filter((x): x is string => !!x))];
+    const gens = genIds.length
+      ? await prisma.generation.findMany({
+          where: { id: { in: genIds } },
+          select: { id: true, prompt: true, imageUrl: true, isPublic: true, userId: true },
+        })
+      : [];
+    const genById = new Map(gens.map((g) => [g.id, g]));
+
+    return {
+      success: true,
+      reports: reports.map((r) => ({ ...r, generation: r.generationId ? genById.get(r.generationId) ?? null : null })),
+    };
   } catch (error) {
     console.error("Failed to fetch reports:", error);
     return { success: false, error, reports: [] };
   }
+}
+
+/** Accounts blocked from the community (most recently updated first). */
+export async function getBannedUsers(userId: string, limit = 100) {
+  if (!(await isModerator(userId))) return { success: false, users: [] };
+  const users = await prisma.user.findMany({
+    where: { isActive: false },
+    orderBy: { updatedAt: "desc" },
+    take: limit,
+    select: { id: true, name: true, username: true, email: true, avatarUrl: true },
+  });
+  return { success: true, users };
 }
 
 export async function updateReportStatus(

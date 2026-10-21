@@ -13,6 +13,7 @@
 
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { publicGenerationWhere } from "@/lib/moderation/visibility";
 import type { InspirationPick } from "./content";
 import type { SendStats } from "./limits";
 import { DAY, LIFECYCLE_LOG_TYPES, MARKETING_LOG_TYPES, gate, parseLifecyclePrefs, type SkipReason, type UserSnapshot } from "./rules";
@@ -118,7 +119,8 @@ export async function loadLifecycleAudience(now: Date): Promise<LifecycleAudienc
 
   const community = await prisma.generation.findMany({
     where: {
-      isPublic: true,
+      // Only what the public gallery may show (moderation/visibility)
+      AND: [publicGenerationWhere()],
       createdAt: { gte: new Date(now.getTime() - 30 * DAY) },
       NOT: [{ subcategoryId: "ANIMATION" }, { styleId: { startsWith: "3D_" } }],
       imageUrl: { startsWith: "https://" },

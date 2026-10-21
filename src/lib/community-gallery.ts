@@ -4,6 +4,7 @@
 // =============================================================================
 
 import { prisma } from "@/lib/prisma";
+import { publicGenerationWhere } from "@/lib/moderation/visibility";
 import type { Prisma } from "@prisma/client";
 import type { CommunityItem, CommunityPage } from "@/lib/community-gallery-types";
 
@@ -21,7 +22,8 @@ export interface CommunityQuery {
 }
 
 export async function fetchCommunityPage(q: CommunityQuery): Promise<CommunityPage> {
-  const where: Prisma.GenerationWhereInput = { isPublic: true };
+  // Shared, owner not banned, nothing from the content filter (see moderation/visibility)
+  const where: Prisma.GenerationWhereInput = publicGenerationWhere();
   if (q.category && q.category !== "all") where.categoryId = q.category;
   if (q.type === "2d") where.styleId = { not: { startsWith: "3D_" } };
   else if (q.type === "3d") where.styleId = { startsWith: "3D_" };
@@ -50,7 +52,7 @@ export async function fetchCommunityPage(q: CommunityQuery): Promise<CommunityPa
       },
     }),
     prisma.generation.count({ where }),
-    prisma.generation.groupBy({ by: ["categoryId"], where: { isPublic: true }, _count: true }),
+    prisma.generation.groupBy({ by: ["categoryId"], where: publicGenerationWhere(), _count: true }),
   ]);
 
   return {

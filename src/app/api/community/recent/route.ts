@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { publicGenerationWhere } from "@/lib/moderation/visibility";
 
 export async function GET(request: Request) {
   try {
@@ -11,9 +12,7 @@ export async function GET(request: Request) {
 
     // Fetch recent public generations with good ratings/likes
     const generations = await prisma.generation.findMany({
-      where: {
-        isPublic: true,
-      },
+      where: publicGenerationWhere(),
       select: {
         id: true,
         imageUrl: true,
