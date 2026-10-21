@@ -52,7 +52,7 @@ export async function HomePage({ signedIn }: { signedIn: boolean }) {
               Get a sprite sheet.
             </h1>
             <p className="mt-5 max-w-[34rem] text-pretty text-[16px] leading-relaxed text-[#C8CCE8] sm:text-[17px]">
-              SpriteLab draws game sprites from a sentence, animates them, turns them to face 4 or 8 directions and packs them for Unity, Godot or GameMaker. Transparent PNG, whole pixels, yours to sell.
+              SpriteLab draws game sprites from a sentence, animates them, turns them to face 4 or 8 directions and packs them for Unity, Godot or GameMaker. Transparent PNG, whole pixels; commercial licence on paid plans.
             </p>
 
             <div className="mt-8">
