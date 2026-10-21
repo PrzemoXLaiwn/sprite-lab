@@ -59,8 +59,14 @@ export async function HomePage({ signedIn }: { signedIn: boolean }) {
             </div>
 
             <p className="mt-5 text-[13.5px] leading-relaxed text-[#A7ADD4]">
-              {GUEST_TRIES} tries without an account. Sign up for {offer.credits + offer.bonus} free credits, no card.
-              <span className="hidden sm:inline"> Over 1,000 people have made an account so far.</span>
+              {signedIn ? (
+                <>You&apos;re signed in: what you describe opens in the creator and goes straight into your assets. <Link href="/generate" className="font-semibold text-[#FFC857] underline-offset-2 hover:underline">Open the creator</Link></>
+              ) : (
+                <>
+                  {GUEST_TRIES} tries without an account. Sign up for {offer.credits + offer.bonus} free credits, no card.
+                  <span className="hidden sm:inline"> Over 1,000 people have made an account so far.</span>
+                </>
+              )}
             </p>
           </div>
 
@@ -121,12 +127,12 @@ export async function HomePage({ signedIn }: { signedIn: boolean }) {
               Make the first sprite for your game now.
             </h2>
             <p className="mt-4 text-[15.5px] leading-relaxed text-[#C8CCE8]">
-              Try it {GUEST_TRIES} times without an account. Sign up and get {offer.credits} free credits{offer.bonus ? `, plus ${offer.bonus} bonus credits until ${offer.bonusUntil}` : ""}. No card needed.
+              {signedIn ? "Describe a character, a weapon or a tile, then animate it into a sprite sheet." : <>Try it {GUEST_TRIES} times without an account. Sign up and get {offer.credits} free credits{offer.bonus ? `, plus ${offer.bonus} bonus credits until ${offer.bonusUntil}` : ""}. No card needed.</>}
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link href={registerUrl}
+              <Link href={signedIn ? "/generate" : registerUrl}
                 className="px-corners inline-flex h-12 w-full items-center justify-center bg-[#FFA300] px-7 text-[15px] font-semibold text-[#131A31] transition hover:bg-[#FFB733] sm:w-auto">
-                Create a free account
+                {signedIn ? "Open the creator" : "Create a free account"}
               </Link>
               <Link href="/how-it-works"
                 className="inline-flex h-12 w-full items-center justify-center rounded-[8px] border border-white/[0.14] px-6 text-[15px] font-medium text-[#FFF1E8] transition hover:bg-white/[0.06] sm:w-auto">

@@ -65,6 +65,24 @@ describe("framing and armed stance", () => {
   it("tells every sprite there is no floor or contact shadow", () => {
     expect(buildSpritePrompt({ subject: "a knight", styleId: "REALISTIC_PAINTED", categoryId: "CHARACTERS", pose: "auto" })).toMatch(/no floor plane, no cast or contact shadow/);
   });
+  it("a posture the user wrote wins over the pose setting (no stance line)", () => {
+    const p = buildSpritePrompt({ subject: "a french bulldog sitting upright", original: "French Bulldog sprite, sitting upright and facing the viewer", styleId: "PIXEL_ART_16", categoryId: "CREATURES", pose: "auto" });
+    expect(p).not.toMatch(/standing calmly|A-pose|T-pose/);
+  });
+  it("animals never get a human A-pose or T-pose", () => {
+    for (const pose of ["a-pose", "t-pose"]) {
+      const p = buildSpritePrompt({ subject: "a french bulldog", original: "french bulldog", styleId: "PIXEL_ART_16", categoryId: "CREATURES", pose });
+      expect(p, pose).toMatch(/the way this animal really stands/);
+      expect(p, pose).not.toMatch(/A-pose|T-pose|arms stretched/);
+    }
+    // A non-animal creature (a living toaster) still honours a picked A-pose
+    expect(buildSpritePrompt({ subject: "a living toaster", original: "angry toaster", styleId: "PIXEL_ART_16", categoryId: "CREATURES", pose: "a-pose" })).toMatch(/A-pose/);
+  });
+  it("ghosts float instead of standing with their feet apart", () => {
+    const p = buildSpritePrompt({ subject: "a translucent white ghost", original: "kind ghost", styleId: "HAND_PAINTED", categoryId: "CHARACTERS", pose: "auto" });
+    expect(p).toMatch(/floating calmly in the air/);
+    expect(p).not.toMatch(/feet shoulder-width apart/);
+  });
   it("unarmed creatures keep the calm pose", () => {
     const p = buildSpritePrompt({ subject: "a green slime", original: "green slime", styleId: "PIXEL_ART_16", categoryId: "CREATURES", pose: "auto" });
     expect(p).toMatch(/standing calmly/);

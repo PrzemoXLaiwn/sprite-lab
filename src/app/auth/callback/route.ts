@@ -45,7 +45,8 @@ export async function GET(request: Request) {
       // already computed above to detect first-time users.
       if (type === "signup" || isNewUser) {
         if (user) sendWelcomeFor(user);
-        return NextResponse.redirect(`${origin}/auth/confirm`);
+        // Straight into the creator (no interstitial), set up for a character: what most people make first
+        return NextResponse.redirect(`${origin}/generate?welcome=1&categoryId=CHARACTERS`);
       }
       // Otherwise redirect to the next page
       return NextResponse.redirect(`${origin}${next}`);

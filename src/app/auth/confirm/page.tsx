@@ -5,23 +5,17 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { primaryBtnCls } from "@/app/(auth)/_components/auth-ui";
-import { track, FUNNEL } from "@/lib/analytics";
 
 export default function EmailConfirmedPage() {
   const [countdown, setCountdown] = useState(5);
 
-  // Only brand-new accounts land here (email confirmation, or first OAuth
-  // sign-in via /auth/callback), so this is the completed-signup conversion.
-  useEffect(() => {
-    track(FUNNEL.signupComplete);
-  }, []);
-
+  // Old confirmation links still land here; sign-up is counted in the creator (?welcome=1)
   useEffect(() => {
     const timer = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          window.location.href = "/generate?welcome=1";
+          window.location.href = "/generate?welcome=1&categoryId=CHARACTERS";
           return 0;
         }
         return prev - 1;
@@ -49,7 +43,7 @@ export default function EmailConfirmedPage() {
           </div>
 
           <h1 className="font-display text-[24px] font-semibold text-white">You&apos;re in</h1>
-          <p className="mt-2 text-[14px] text-[#9AA1CC]">Your email is confirmed and your account is active.</p>
+          <p className="mt-2 text-[14px] text-[#9AA1CC]">Your account is ready.</p>
 
           <div className="mt-5 inline-flex items-center gap-2 rounded-lg border border-[#FFA300]/20 bg-[#FFA300]/[0.06] px-3 py-1.5 text-[13px] text-[#FFC857]">
             <Zap className="h-3.5 w-3.5" />
@@ -60,7 +54,7 @@ export default function EmailConfirmedPage() {
             We&apos;ll guide you through creating your first game asset in about 30 seconds.
           </p>
 
-          <Link href="/generate?welcome=1" className={`${primaryBtnCls} mt-6`}>
+          <Link href="/generate?welcome=1&categoryId=CHARACTERS" className={`${primaryBtnCls} mt-6`}>
             Start creating
             <ArrowRight className="h-4 w-4" />
           </Link>

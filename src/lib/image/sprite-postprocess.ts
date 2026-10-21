@@ -654,10 +654,16 @@ function removeEnclosedBackground(raw: Raw, br: number, bg: number, bb: number, 
     // With an off-white key (GPT Image paints ~238), a patch that matches the
     // key almost exactly can't be white cloth, even inside a whiter halo.
     const offWhiteKey = 0.299 * br + 0.587 * bg + 0.114 * bb < 246;
-    const exactKey = offWhiteKey && meanDistance(raw, region, br, bg, bb) <= 8;
-    const flat = flatGaps && region.length >= minFlatArea && (border.pale < 0.6 || exactKey) && flatShare(raw, region) >= 0.8;
+    const dist = meanDistance(raw, region, br, bg, bb);
+    const exactKey = offWhiteKey && dist <= 8;
+    // A smooth tinted-white surface wholly inside the subject's own light shades,
+    // with no outline anywhere around it, is the subject (a ghost's body, snow, a
+    // white robe): measured on a painted ghost, 25 levels off the key, 100% light
+    // border, 0% dark. Real gaps match the key closely or show an outline.
+    const ownSurface = dist >= 16 && border.dark < 0.05 && border.light >= 0.9;
+    const flat = flatGaps && !ownSurface && region.length >= minFlatArea && (border.pale < 0.6 || exactKey) && flatShare(raw, region) >= 0.8;
     // Outside the flat rule, keep the original, tighter colour match
-    const keyLike = !flatGaps || meanDistance(raw, region, br, bg, bb) <= 18;
+    const keyLike = !flatGaps || dist <= 18;
     // A chroma key (magenta, used for pale subjects) never occurs in the
     // subject itself, so every enclosed patch of it is background.
     const chroma = Math.max(br, bg, bb) - Math.min(br, bg, bb) > 110;

@@ -96,7 +96,7 @@ export function GoogleOneTap() {
             if (isNew && window.gtag) {
               window.gtag("event", "sign_up", { method: "google_one_tap", send_to: "AW-17802754923" });
             }
-            window.location.href = isNew ? "/auth/confirm" : "/generate";
+            window.location.href = isNew ? "/generate?welcome=1&categoryId=CHARACTERS" : "/generate";
           } catch (err) {
             // The regular "Sign up" buttons still work; don't interrupt the visitor.
             console.error("[OneTap] sign-in failed:", err instanceof Error ? err.message : err);

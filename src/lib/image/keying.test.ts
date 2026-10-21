@@ -72,6 +72,15 @@ describe("keySpriteBackground", () => {
     expect(c.alpha(150, 250)).toBe(255);
   });
 
+  it("painted styles: keeps a smooth tinted-white surface wholly inside light shades (a ghost's body)", () => {
+    const c = canvas(300, 300);
+    c.rect(60, 40, 240, 270, [214, 224, 238]); // pale blue body edge, no dark outline anywhere
+    c.rect(90, 80, 210, 240, [236, 242, 250]); // smooth white body, 24 levels off the key
+    keySpriteBackground(c.raw, { flatGaps: true });
+    expect(c.alpha(150, 160)).toBe(255);
+    expect(c.alpha(5, 5)).toBe(0);
+  });
+
   it("painted styles: removes a flat key-colour gap fenced by mid tones, keeps a white highlight on cream", () => {
     const c = canvas(200, 300);
     c.rect(40, 40, 160, 260, SKIN);

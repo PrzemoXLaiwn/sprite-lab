@@ -106,6 +106,13 @@ export interface SpritePromptInput {
   original?: string;
 }
 
+/** The user described the posture themselves ("sitting", "flying"…): their words decide it. */
+const POSTURE = /\b(sit|sits|sitting|seated|lying|lies|laying|sleep|sleeps|sleeping|asleep|crouch\w*|kneel\w*|fly|flies|flying|soaring|swim|swims|swimming|run|runs|running|jump\w*|leap\w*|perched|curled|resting|lounging|walk|walks|walking|riding|rides|dancing|climbing|charging|pouncing)\b/i;
+/** Things that hover: no stance with feet. */
+const FLOATING = /\b(ghosts?|spirits?|wisps?|phantoms?|spect(?:er|re)s?|poltergeists?|jellyfish|floating|hovering|levitating|will-o)\b/i;
+/** Animals: an A-pose or T-pose turns them into people with arms. */
+const ANIMAL = /\b(dog|dogs|puppy|bulldog|terrier|corgi|cat|cats|kitten|horse|pony|wolf|wolves|bear|bears|frog|toad|pig|boar|cow|bull|deer|stag|rabbit|bunny|hare|mouse|rat|bird|owl|eagle|hawk|crow|duck|chicken|fish|shark|snake|serpent|lizard|crocodile|turtle|tortoise|spider|scorpion|beetle|ant|bee|crab|fox|lion|tiger|panther|leopard|cheetah|elephant|monkey|ape|gorilla|camel|goat|sheep|lamb|dinosaur|raptor|squirrel|hedgehog|otter|seal|penguin|whale|dolphin|bat)\b/i;
+
 /** Anything a character could hold or carry. */
 const HELD_ITEM = /\b(sword|blade|katana|sabre|saber|dagger|knife|axe|hatchet|hammer|mace|club|flail|spear|lance|halberd|pike|trident|scythe|sickle|bow|crossbow|arrows?|gun|pistol|rifle|shotgun|blaster|cannon|staff|wand|rod|scepter|sceptre|orb|tome|book|scroll|shield|buckler|torch|lantern|lamp|weapons?|armed|holding|holds|wielding|wields|carrying|carries|pickaxe|shovel|rake|fishing|guitar|instrument|potion|flask|bottle|mug|cup|bag|sack|basket|umbrella|broom|whip|chain|net|key|lute|banner|flag)\b/i;
 
@@ -165,17 +172,22 @@ export function buildSpritePrompt(input: SpritePromptInput): string {
   const emptyHands = figure && pose !== "dynamic" && !holds;
   // Creatures (animals, monsters) aren't put in an A-pose: a calm standing pose
   // instead. Anything holding weapons gets the armed stance.
-  // An explicitly picked A-pose is honoured for every figure, armed or not;
-  // only "auto" chooses a stance for armed figures and creatures
-  const posed = figure && pose
-    ? pose === "a-pose"
-      ? holds ? A_POSE_ARMED : A_POSE
-      : pose === "auto" && holds
-        ? ARMED_STANCE
-        : category === "CREATURES" && pose === "auto"
-          ? "standing calmly in a neutral pose, not attacking"
-          : POSE_LINES[pose]
-    : undefined;
+  // The user's own words win: a described posture gets no stance line, hovering
+  // things float, and animals never get a human A/T-pose. Otherwise an explicitly
+  // picked A-pose is honoured for every figure, armed or not; only "auto" chooses
+  // a stance for armed figures and creatures.
+  const said = input.original ?? subject;
+  const calmPick = pose === "auto" || pose === "a-pose";
+  const stance = (): string | undefined => {
+    if (!figure || !pose || POSTURE.test(said)) return undefined;
+    if (FLOATING.test(said) && calmPick) return "floating calmly in the air, with no legs or feet unless the description gives it some";
+    if (category === "CREATURES" && ANIMAL.test(said) && (pose === "a-pose" || pose === "t-pose")) return "standing naturally the way this animal really stands, with its own anatomy";
+    if (pose === "a-pose") return holds ? A_POSE_ARMED : A_POSE;
+    if (pose === "auto" && holds) return ARMED_STANCE;
+    if (category === "CREATURES" && pose === "auto") return "standing calmly in a neutral pose, not attacking";
+    return POSE_LINES[pose];
+  };
+  const posed = stance();
   const framing = (CATEGORY_FRAMING[category] ?? "single subject shown whole") + (posed ? `, ${posed}` : "");
   const views = view ? VIEW_LINES[view.toUpperCase()] : undefined;
   const viewLine = views ? (figure ? views.figure : views.object) : figure ? DEFAULT_FIGURE_VIEW : undefined;

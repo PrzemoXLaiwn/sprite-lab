@@ -773,6 +773,16 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
   const checkoutSuccess = searchParams.get("success") === "true";
   const checkoutPlan = searchParams.get("plan");
   const [showWelcomeBanner, setShowWelcomeBanner] = useState(isWelcome || checkoutSuccess);
+  // New accounts land here straight from sign-up (Google, One Tap, email): the
+  // completed-signup conversion, once per tab
+  useEffect(() => {
+    if (!isWelcome) return;
+    try {
+      if (window.sessionStorage.getItem("sl:signup-tracked")) return;
+      window.sessionStorage.setItem("sl:signup-tracked", "1");
+    } catch { /* storage blocked: still count it */ }
+    track(FUNNEL.signupComplete);
+  }, [isWelcome]);
 
   // First-run onboarding: pre-fill an example prompt so the user can hit
   // Generate immediately. Without this nudge new signups stare at an empty
@@ -866,7 +876,10 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                   <p className="min-w-0 flex-1 text-[13px] leading-snug text-[#FFF1E8]">
                     {checkoutSuccess
                       ? <>Payment confirmed{planName ? ` — your ${planName} plan is active` : ""}. Your credits are ready to use.</>
-                      : <>Welcome to SpriteLab! Your free credits are ready. We filled in an example, so just press <b className="font-semibold text-white">Create sprite</b>.</>}
+                      : history.length > 0
+                        // The sprite they made on the home page is on the stage
+                        ? <>Welcome to SpriteLab! Your sprite is saved and your free credits are ready. Bring it to life with <b className="font-semibold text-white">Animate</b>, or make another.</>
+                        : <>Welcome to SpriteLab! Your free credits are ready. We filled in an example, so just press <b className="font-semibold text-white">Create sprite</b>.</>}
                   </p>
                   <button type="button" aria-label="Dismiss message" onClick={() => setShowWelcomeBanner(false)}
                     className="-my-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] text-[#C8CCE8] transition-colors hover:bg-white/[0.06] hover:text-white">

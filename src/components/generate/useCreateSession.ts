@@ -133,6 +133,25 @@ export function useCreateSession({ state, results, selectedIndex, projectId, app
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── ?result= set later by this page's own links (upload, a claimed guest
+  // sprite): the page doesn't remount, so load and show it here ────────────
+  const urlResult = parseToolParams(searchParams).result ?? null;
+  useEffect(() => {
+    if (!ready || !urlResult) return;
+    const index = resultsRef.current.findIndex((r) => r.generationId === urlResult);
+    if (index >= 0) { applyRef.current({ selectedIndex: index }); return; }
+    let cancelled = false;
+    fetchOwnGeneration(urlResult).then((fetched) => {
+      if (cancelled || !fetched) return;
+      const kind = classifyGeneration(fetched.generation);
+      if (kind === "animation" || kind === "model") return;
+      const snap = snapshotFromGeneration(fetched.generation);
+      const prev = resultsRef.current.filter((r) => r.generationId !== snap.generationId);
+      applyRef.current({ form: formFromGeneration(fetched.generation), results: [snap, ...prev].slice(0, MAX_CREATE_RESULTS), selectedIndex: 0 });
+    });
+    return () => { cancelled = true; };
+  }, [ready, urlResult]);
+
   // ── Persist ──────────────────────────────────────────────────────────────
   const active = results[selectedIndex] ?? null;
   useEffect(() => {
