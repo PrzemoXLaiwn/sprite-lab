@@ -222,8 +222,9 @@ function fightFloor(party: UnitStats[], st: RunState, floor: number, mods: RunMo
       });
       // Twin strike: a free second hit on whoever stands in front now (one extra roll, only with the blessing)
       if (mods.doubleChance > 0 && enemiesAlive() && rng.next() < mods.doubleChance) {
-        executed = false;
         const t2 = ehp.findIndex((h) => h > 0);
+        // Executioner on the second hit: judged on its own target (the first may have fallen)
+        executed = mods.executeMul > 1 && ehp[t2] < enemies[t2].hp * EXECUTE_BELOW;
         const second = hitOne(t2, DOUBLE_SHARE, false);
         const leech2 = mods.lifesteal > 0 ? Math.min(u.hp - hp[i], Math.round(second.amount * mods.lifesteal)) : 0;
         if (leech2 > 0) { hp[i] += leech2; log.healed[i] += leech2; }

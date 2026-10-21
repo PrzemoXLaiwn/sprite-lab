@@ -107,11 +107,21 @@ export interface SpritePromptInput {
 }
 
 /** The user described the posture themselves ("sitting", "flying"…): their words decide it. */
-const POSTURE = /\b(sit|sits|sitting|seated|lying|lies|laying|sleep|sleeps|sleeping|asleep|crouch\w*|kneel\w*|fly|flies|flying|soaring|swim|swims|swimming|run|runs|running|jump\w*|leap\w*|perched|curled|resting|lounging|walk|walks|walking|riding|rides|dancing|climbing|charging|pouncing)\b/i;
+const POSTURE = /\b(sit|sits|sitting|seated|lying|lies|laying|sleep|sleeps|sleeping|asleep|crouch|crouches|crouching|crouched|kneel|kneels|kneeling|knelt|fly|flies|flying|soaring|swim|swims|swimming|run|runs|running|jump|jumps|jumping|leap|leaps|leaping|perched|curled|resting|lounging|walk|walks|walking|riding|rides|dancing|climbing|charging|pouncing)\b/i;
 /** Things that hover: no stance with feet. */
 const FLOATING = /\b(ghosts?|spirits?|wisps?|phantoms?|spect(?:er|re)s?|poltergeists?|jellyfish|floating|hovering|levitating|will-o)\b/i;
 /** Animals: an A-pose or T-pose turns them into people with arms. */
-const ANIMAL = /\b(dog|dogs|puppy|bulldog|terrier|corgi|cat|cats|kitten|horse|pony|wolf|wolves|bear|bears|frog|toad|pig|boar|cow|bull|deer|stag|rabbit|bunny|hare|mouse|rat|bird|owl|eagle|hawk|crow|duck|chicken|fish|shark|snake|serpent|lizard|crocodile|turtle|tortoise|spider|scorpion|beetle|ant|bee|crab|fox|lion|tiger|panther|leopard|cheetah|elephant|monkey|ape|gorilla|camel|goat|sheep|lamb|dinosaur|raptor|squirrel|hedgehog|otter|seal|penguin|whale|dolphin|bat)\b/i;
+const ANIMAL = /\b(dog|dogs|puppy|bulldog|terrier|corgi|cat|cats|kitten|horse|pony|wolf|wolves|bear|frog|toad|pig|boar|cow|bull|deer|stag|rabbit|bunny|hare|mouse|rat|bird|owl|eagle|hawk|crow|duck|chicken|fish|shark|snake|serpent|lizard|crocodile|turtle|tortoise|spider|scorpion|beetle|ant|bee|crab|fox|lion|tiger|panther|leopard|cheetah|elephant|monkey|ape|gorilla|camel|goat|sheep|lamb|dinosaur|raptor|squirrel|hedgehog|otter|penguin|whale|dolphin|bat)\b/i;
+/** People-shaped beings: a "lizard warrior" or "wolf knight" stands like a person. */
+const HUMANOID = /\b(warrior|knight|mage|wizard|witch|man|woman|men|women|boy|girl|king|queen|prince|princess|soldier|archer|rogue|hunter|ranger|paladin|priest|cleric|monk|samurai|ninja|pirate|chief|chieftain|shaman|humanoid|person|folk|guard|merchant|villager|lord|lady)\b/i;
+
+/**
+ * The part of a prompt that names the subject, before what it has or holds:
+ * "knight with a flying cape" → "knight", "orc brute with a baseball bat" → "orc brute".
+ */
+export function subjectHead(text: string): string {
+  return text.split(/\b(?:with|holding|wearing|carrying|wielding|on|in|of)\b|[,;:(]/i)[0] ?? text;
+}
 
 /** Anything a character could hold or carry. */
 const HELD_ITEM = /\b(sword|blade|katana|sabre|saber|dagger|knife|axe|hatchet|hammer|mace|club|flail|spear|lance|halberd|pike|trident|scythe|sickle|bow|crossbow|arrows?|gun|pistol|rifle|shotgun|blaster|cannon|staff|wand|rod|scepter|sceptre|orb|tome|book|scroll|shield|buckler|torch|lantern|lamp|weapons?|armed|holding|holds|wielding|wields|carrying|carries|pickaxe|shovel|rake|fishing|guitar|instrument|potion|flask|bottle|mug|cup|bag|sack|basket|umbrella|broom|whip|chain|net|key|lute|banner|flag)\b/i;
@@ -179,9 +189,13 @@ export function buildSpritePrompt(input: SpritePromptInput): string {
   const said = input.original ?? subject;
   const calmPick = pose === "auto" || pose === "a-pose";
   const stance = (): string | undefined => {
-    if (!figure || !pose || POSTURE.test(said)) return undefined;
-    if (FLOATING.test(said) && calmPick) return "floating calmly in the air, with no legs or feet unless the description gives it some";
-    if (category === "CREATURES" && ANIMAL.test(said) && (pose === "a-pose" || pose === "t-pose")) return "standing naturally the way this animal really stands, with its own anatomy";
+    if (!figure || !pose) return undefined;
+    // An explicitly picked pose always wins over a posture word; only the
+    // subject itself (not what it holds or wears) makes it float or an animal
+    const head = subjectHead(said);
+    if (pose === "auto" && POSTURE.test(said.replace(/\b(?:with|holding|wearing|carrying|wielding)\b[^,.;]*/gi, ""))) return undefined;
+    if (FLOATING.test(head) && calmPick) return "floating calmly in the air, with no legs or feet unless the description gives it some";
+    if (category === "CREATURES" && ANIMAL.test(head) && !HUMANOID.test(head) && (pose === "a-pose" || pose === "t-pose")) return "standing naturally the way this animal really stands, with its own anatomy";
     if (pose === "a-pose") return holds ? A_POSE_ARMED : A_POSE;
     if (pose === "auto" && holds) return ARMED_STANCE;
     if (category === "CREATURES" && pose === "auto") return "standing calmly in a neutral pose, not attacking";

@@ -53,7 +53,7 @@ describe("partyUpgrades", () => {
   it("asks to make gear only when none is owned, at the sprite price", () => {
     const ups = partyUpgrades([member(facts("knight", "CHARACTERS", 2), {}, 1)], [], COSTS);
     const make = ups.find((u) => u.kind === "make-gear")!;
-    expect(make.cost).toBe("1 credit");
+    expect(make.cost).toBe("1 credit (Standard)");
     expect(make.href).toBe("/generate?categoryId=WEAPONS");
     expect(ups.filter((u) => u.kind === "make-gear")).toHaveLength(1); // one per hero
   });

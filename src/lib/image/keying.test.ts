@@ -63,6 +63,17 @@ describe("keySpriteBackground", () => {
     expect(c.alpha(150, 200)).toBe(255); // body stays
   });
 
+  it("keeps pale knee boots: narrower than the figure, so not a floor (no outline)", () => {
+    const c = canvas(300, 400);
+    c.rect(100, 40, 200, 290, [120, 80, 50]); // brown body
+    c.rect(110, 290, 145, 372, [190, 192, 198]); // silver left boot down to the bottom
+    c.rect(155, 290, 190, 372, [190, 192, 198]); // silver right boot
+    keySpriteBackground(c.raw);
+    expect(c.alpha(127, 300)).toBe(255);
+    expect(c.alpha(127, 340)).toBe(255);
+    expect(c.alpha(127, 371)).toBe(255);
+  });
+
   it("keeps pale trousers that run up past the bottom band", () => {
     const c = canvas(300, 400);
     c.rect(100, 40, 200, 180, SKIN);

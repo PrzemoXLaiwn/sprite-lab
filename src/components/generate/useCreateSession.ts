@@ -174,9 +174,11 @@ export function useCreateSession({ state, results, selectedIndex, projectId, app
   const activeGenerationId = active?.generationId ?? null;
   useEffect(() => {
     if (!ready) return;
+    // A ?result= still loading (set by an upload or a claimed sprite) must not be stripped
+    if (!activeGenerationId && urlResult) return;
     const next = withResultParam(`${window.location.pathname}${window.location.search}${window.location.hash}`, activeGenerationId);
     if (next) window.history.replaceState(window.history.state, "", next);
-  }, [ready, activeGenerationId]);
+  }, [ready, activeGenerationId, urlResult]);
 
   // "Continue where you left off" points here once there is a result
   useEffect(() => {

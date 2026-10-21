@@ -31,7 +31,8 @@ export async function GET() {
     // Prices of the actions the suggestions lead to, from the same config the tools charge from
     const upgrades = partyUpgrades(party, roster, {
       sprite: SPRITE_CREDIT_COSTS.normal, hdSprite: SPRITE_CREDIT_COSTS.hd, animationMin: RIG_CREDITS,
-      animationMax: Math.max(...ANIMATION_FRAME_OPTIONS.map((o) => o.credits)),
+      // Smooth mode included: the card never shows less than the tool can charge
+      animationMax: Math.max(...ANIMATION_FRAME_OPTIONS.map((o) => o.credits + o.smoothExtra)),
       attackMin: Math.min(...ANIMATION_FRAME_OPTIONS.map((o) => o.credits)),
     });
     return NextResponse.json({

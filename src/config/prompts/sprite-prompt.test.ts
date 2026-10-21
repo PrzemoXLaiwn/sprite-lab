@@ -78,6 +78,22 @@ describe("framing and armed stance", () => {
     // A non-animal creature (a living toaster) still honours a picked A-pose
     expect(buildSpritePrompt({ subject: "a living toaster", original: "angry toaster", styleId: "PIXEL_ART_16", categoryId: "CREATURES", pose: "a-pose" })).toMatch(/A-pose/);
   });
+  it("doesn't misread what a figure holds or wears as its posture, kind or float (review cases)", () => {
+    const build = (original: string, pose: string, categoryId = "CHARACTERS") =>
+      buildSpritePrompt({ subject: original, original, styleId: "PIXEL_ART_16", categoryId, pose });
+    expect(build("mechanic in an orange jumpsuit", "a-pose")).toMatch(/A-pose/);
+    expect(build("knight with a flying cape", "t-pose")).toMatch(/T-pose/);
+    expect(build("knight with a flying cape", "auto")).toMatch(/A-pose/);
+    expect(build("shaman with a bear spirit totem", "auto")).not.toMatch(/floating calmly/);
+    expect(build("orc brute with a baseball bat", "a-pose", "CREATURES")).toMatch(/A-pose/);
+    expect(build("lizard warrior", "a-pose", "CREATURES")).toMatch(/A-pose/);
+    // …while the real cases still work
+    expect(build("French Bulldog sprite, sitting upright", "auto", "CREATURES")).not.toMatch(/standing calmly|A-pose/);
+    expect(build("a wizard with a staff, flying on a broom", "auto")).not.toMatch(/A-pose/);
+    expect(build("spirit of the forest", "auto")).toMatch(/floating calmly/);
+    // An explicit pick beats a posture word
+    expect(build("goblin sitting on a rock", "a-pose")).toMatch(/A-pose/);
+  });
   it("ghosts float instead of standing with their feet apart", () => {
     const p = buildSpritePrompt({ subject: "a translucent white ghost", original: "kind ghost", styleId: "HAND_PAINTED", categoryId: "CHARACTERS", pose: "auto" });
     expect(p).toMatch(/floating calmly in the air/);

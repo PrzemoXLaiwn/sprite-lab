@@ -790,6 +790,12 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
     if (touch) {
       void fetch("/api/user/source", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(touch) }).catch(() => {});
     }
+    // Counted: drop ?welcome=1 so a duplicated, restored or shared tab doesn't count it again
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("welcome")) {
+      url.searchParams.delete("welcome");
+      window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    }
   }, [isWelcome]);
 
   // First-run onboarding: pre-fill an example prompt so the user can hit

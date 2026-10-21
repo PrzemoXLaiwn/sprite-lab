@@ -48,7 +48,12 @@ export function GuestSpriteClaim() {
           // In the creator (where new accounts land): put the newest one on the
           // stage with its prompt, so the visitor carries on with the sprite they came for
           const newest = data.results?.find((x) => x.status === "claimed" && x.generationId)?.generationId;
-          if (newest && window.location.pathname === "/generate") router.replace(`/generate?result=${encodeURIComponent(newest)}`);
+          if (newest && window.location.pathname === "/generate") {
+            // Keep the creator's other settings in the address (type, style…)
+            const q = new URLSearchParams(window.location.search);
+            q.set("result", newest);
+            router.replace(`/generate?${q.toString()}`);
+          }
           toast({
             variant: "success",
             title: claimed === 1

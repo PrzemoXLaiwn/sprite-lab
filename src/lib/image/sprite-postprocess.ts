@@ -575,18 +575,29 @@ function removeGroundShadow(raw: Raw): void {
     // lowest point of the sprite, where the floor is.
     const insideBand = top > yMin + subjectH * 0.02;
     const reachesBottom = bottom >= b.y1 - subjectH * 0.03;
-    const floor = insideBand && reachesBottom && region.length <= subjectArea * 0.2;
+    // A floor spreads under and around the feet standing on it, across most of
+    // what is drawn in its rows; one pale boot or leg covers only part of them
+    let rowL = width, rowR = -1;
+    for (let y = top; y <= bottom; y++) {
+      for (let x = 0; x < width; x++) if (data[(y * width + x) * 4 + 3] > 0) { if (x < rowL) rowL = x; break; }
+      for (let x = width - 1; x >= 0; x--) if (data[(y * width + x) * 4 + 3] > 0) { if (x > rowR) rowR = x; break; }
+    }
+    // …or it lies flat: a floor is much wider than tall (toaster: 340×152 px,
+    // a boot 35×82). A hand or sword in the same rows widens the row span.
+    const lying = right - left + 1 >= (bottom - top + 1) * 1.5;
+    const wide = lying || (rowR >= rowL && right - left + 1 >= (rowR - rowL + 1) * 0.6);
+    const floor = insideBand && reachesBottom && wide && region.length <= subjectArea * 0.2;
     if (!((flat && small) || floor)) continue;
     for (const p of region) data[p * 4 + 3] = 0;
-    {
+    if (floor) {
       fx0 = Math.min(fx0, left); fy0 = Math.min(fy0, top); fx1 = Math.max(fx1, right); fy1 = Math.max(fy1, bottom);
     }
   }
   if (fx1 < 0) return;
-  // The rough rim of a removed shadow or floor fails the smoothness test and
-  // stays as a dotted outline or a thin pale line under the soles: pale grey
-  // pixels mostly surrounded by cleared ones, or with nothing below them, go
-  // too (3 px at most; a dark sole stops it)
+  // The rough rim of a removed floor fails the smoothness test and stays as a
+  // dotted outline or a thin pale line under the soles: pale grey pixels
+  // around the floor mostly surrounded by cleared ones, or with nothing below
+  // them, go too (3 px at most; a dark sole stops it)
   for (let pass = 0; pass < 3; pass++) {
     const drop: number[] = [];
     for (let y = Math.max(1, fy0 - 3); y < Math.min(height - 1, fy1 + 4); y++) {

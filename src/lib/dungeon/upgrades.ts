@@ -93,7 +93,7 @@ export function partyUpgrades(members: PartyMember[], roster: DungeonSprite[], c
           now: `${name} has no ${GEAR_LABEL[slot].toLowerCase()}`,
           effect: `Make one and equip it: ${NEW_GEAR_EFFECT[slot]}`,
           action: `Make ${slot === "armor" ? "armor" : `a ${GEAR_LABEL[slot].toLowerCase()}`}`,
-          cost: credits(costs.sprite), href: `/generate?categoryId=${GEAR_MAKE_CATEGORY[slot]}`,
+          cost: `${credits(costs.sprite)} (Standard)`, href: `/generate?categoryId=${GEAR_MAKE_CATEGORY[slot]}`,
         });
       }
     }
