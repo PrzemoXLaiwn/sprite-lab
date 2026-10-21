@@ -13,7 +13,7 @@ const OPEN_KEY = "sl:getting-started:open";
 // Tool pages keep their main button and settings where the card would sit
 // (bottom-left on desktop, above the tab bar on phones), so it isn't shown
 // there at all. /quests already is the full checklist.
-const HIDDEN_PATHS = ["/generate", "/animate", "/edit", "/remove-bg", "/upscale", "/variations", "/quests", "/admin", "/moderator"];
+const HIDDEN_PATHS = ["/generate", "/animate", "/edit", "/remove-bg", "/upscale", "/variations", "/quests", "/admin", "/moderator", "/checkout"];
 
 function read(key: string): string | null {
   try { return localStorage.getItem(key); } catch { return null; }
