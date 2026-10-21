@@ -3,6 +3,7 @@ import { Atkinson_Hyperlegible_Next, JetBrains_Mono, Tektur } from "next/font/go
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
+import { FirstTouch } from "@/components/analytics/FirstTouch";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 import { BRAND_DEFINITION, BRAND_SUMMARY, FEATURE_LIST } from "@/data/brand";
@@ -231,6 +232,7 @@ export default function RootLayout({
         <Analytics />
         <SpeedInsights />
         <GoogleAnalytics />
+        <FirstTouch />
 
       </body>
     </html>

@@ -38,6 +38,7 @@ import { SpriteStage, STAGE_SCENES, zoomLabel, type StageSceneId } from "@/compo
 import { RecipeBar } from "@/components/generate/RecipeBar";
 import { UploadSpriteButton, UploadSpriteCard } from "@/components/generate/UploadSprite";
 import { track, FUNNEL } from "@/lib/analytics";
+import { readFirstTouch } from "@/components/analytics/FirstTouch";
 import { GENERATE_CATEGORIES, SUBTYPE_PLACEHOLDERS, type GenerateCategory, type GenerateSubcategory } from "@/data/generate-categories";
 import { GENERATE_STYLES, ALL_GENERATE_STYLE_IDS } from "@/data/generate-styles";
 import { SHOWCASE, isPixelShowcase } from "@/data/showcase";
@@ -781,7 +782,14 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
       if (window.sessionStorage.getItem("sl:signup-tracked")) return;
       window.sessionStorage.setItem("sl:signup-tracked", "1");
     } catch { /* storage blocked: still count it */ }
-    track(FUNNEL.signupComplete);
+    // Where the account came from: on the event, and stored once on the account
+    const touch = readFirstTouch();
+    track(FUNNEL.signupComplete, touch
+      ? { source: touch.source, medium: touch.medium ?? "", campaign: touch.campaign ?? "", landing: touch.landing }
+      : { source: "unknown" });
+    if (touch) {
+      void fetch("/api/user/source", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(touch) }).catch(() => {});
+    }
   }, [isWelcome]);
 
   // First-run onboarding: pre-fill an example prompt so the user can hit
