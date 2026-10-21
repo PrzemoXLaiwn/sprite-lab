@@ -38,6 +38,8 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
       { label: "TikTok", href: TIKTOK_PROFILE_URL },
       { label: "Privacy", href: "/privacy" },
       { label: "Terms", href: "/terms" },
+      { label: "Cookies", href: "/cookies" },
+      { label: "Refunds & cancellation", href: "/refunds" },
       { label: "Site map", href: "/sitemap" },
     ],
   },
@@ -88,9 +90,20 @@ export function Footer() {
           ))}
         </div>
 
-        <div className="mt-10 flex flex-col items-center justify-between gap-2 border-t border-white/[0.06] pt-6 text-[12.5px] text-[#A7ADD4] sm:flex-row">
-          <p>&copy; {new Date().getFullYear()} SpriteLab. All rights reserved.</p>
-          <p>Made for indie game devs</p>
+        <div className="mt-10 space-y-3 border-t border-white/[0.06] pt-6 text-[12.5px] leading-relaxed text-[#A7ADD4]">
+          <p>
+            &copy; {new Date().getFullYear()} SpriteLab is a trading name of Przemek Lawin, 69 Haybridge Avenue, Telford, TF1 5JT, United Kingdom
+            {" · "}
+            <a href="mailto:support@sprite-lab.com" className="underline decoration-white/20 underline-offset-2 hover:text-white">
+              support@sprite-lab.com
+            </a>
+          </p>
+          <nav aria-label="Legal" className="flex flex-wrap gap-x-4 gap-y-1">
+            <Link href="/privacy" className="inline-flex min-h-10 items-center hover:text-white sm:min-h-0">Privacy</Link>
+            <Link href="/terms" className="inline-flex min-h-10 items-center hover:text-white sm:min-h-0">Terms</Link>
+            <Link href="/cookies" className="inline-flex min-h-10 items-center hover:text-white sm:min-h-0">Cookies</Link>
+            <Link href="/refunds" className="inline-flex min-h-10 items-center hover:text-white sm:min-h-0">Refunds &amp; cancellation</Link>
+          </nav>
         </div>
       </div>
     </footer>

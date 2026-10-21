@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { SeoLanding } from "@/components/landing/SeoLanding";
+import { COMMERCIAL_LICENCE_ANSWER } from "@/config/licence";
+import { SIGNUP_CTA } from "@/config/signup";
 import { LANDING_SPECS } from "@/data/landing-specs";
 
 const URL = "https://www.sprite-lab.com/ai-game-icon-generator";
@@ -33,12 +35,13 @@ export default function GameIconGeneratorPage() {
       h1={
         <>
           Game icons
+          <span className="sr-only">: </span>
           <br />
           for every slot in your UI
         </>
       }
       subtitle="Inventory items, skills, spells and status effects — framed, readable at thumbnail size and in the same style as the rest of your game."
-      trust={["item · skill · status icons", "pixel or painted", "transparent png", "commercial use"]}
+      trust={["item · skill · status icons", "pixel or painted", "transparent png", "commercial licence on paid plans"]}
       floating={[
         { src: "/showcase/icon-1.png", alt: "", pixel: true, cls: "left-[7%] top-[30%] w-20 animate-float" },
         { src: "/showcase/icon-3.png", alt: "", pixel: true, cls: "left-[14%] top-[62%] w-16 animate-float [animation-delay:1.2s]" },
@@ -116,7 +119,7 @@ export default function GameIconGeneratorPage() {
         { q: "Which asset type should I choose for icons?", a: "Pick Icons in the generator, then Item Icons, Skill Icons, Status Icons or UI Icons. The framing is tuned for square, readable icons." },
         { q: "Can I make a consistent icon set?", a: "Yes — keep the style and the frame description the same across prompts (for example “ornate golden frame”) and only change the subject." },
         { q: "What size are the icons?", a: "Icons are 1024×1024 PNGs. Pixel-art icons sit on a real pixel grid, so you can scale them down with nearest-neighbour for 32–64 px inventory slots." },
-        { q: "Can I use them commercially?", a: "Yes, generated icons can be used in commercial games with no attribution required." },
+        { q: "Can I use them commercially?", a: COMMERCIAL_LICENCE_ANSWER },
       ]}
       cta={{
         title: (
@@ -125,7 +128,7 @@ export default function GameIconGeneratorPage() {
           </>
         ),
         body: "Generate a full icon set in minutes.",
-        button: "Get 10 free credits",
+        button: SIGNUP_CTA,
       }}
     />
   );

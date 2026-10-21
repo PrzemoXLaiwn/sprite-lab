@@ -1,3 +1,5 @@
+import { SIGNUP_CREDITS } from "@/config/signup";
+
 /* ─────────────────────────────────────────────────────────────
    Comparison / alternatives data for /compare and /compare/[slug].
 
@@ -32,7 +34,7 @@ export const COMPARE_CHECKED_ON_LABEL = "8 Oct 2026";
 
 /** SpriteLab's own facts, shared across every comparison. */
 export const SPRITELAB_SUMMARY =
-  "SpriteLab is an AI game asset generator for indie developers. Type a prompt and get a transparent PNG 2D sprite in one of 12 art styles — pixel art is placed on a real pixel grid with a limited palette. Any sprite can be animated into a sprite sheet and GIF, and you can also make seamless and animated tiles and icons. 3 free tries without an account, 10 credits on signup, paid plans from £5/month, commercial use included.";
+  `SpriteLab is an AI game asset generator for indie developers. Type a prompt and get a transparent PNG 2D sprite in one of 12 art styles — pixel art is placed on a real pixel grid with a limited palette. Any sprite can be animated into a sprite sheet and GIF, and you can also make seamless and animated tiles and icons. ${SIGNUP_CREDITS} credits on signup, no card, paid plans from £5/month. Commercial use is included on Starter, Pro and Studio; the Free plan is personal, non-commercial use.`;
 
 const SL = {
   what: "2D game sprites, seamless tiles, animated tiles and icons as transparent PNGs",
@@ -45,9 +47,9 @@ const SL = {
   api: "No",
   mcp: "No",
   plugin: "No — web app",
-  free: "3 tries without an account + 10 credits on signup",
+  free: `${SIGNUP_CREDITS} credits on signup, no card`,
   price: "From £5/month",
-  commercial: "Yes",
+  commercial: "Yes on Starter, Pro and Studio. Free plan is personal, non-commercial use.",
   organise: "Projects with automatic folder sorting and ZIP export",
 };
 
@@ -68,7 +70,7 @@ export const COMPARISONS: Comparison[] = [
       { feature: "Animation", spritelab: SL.animation, competitor: "Yes — text prompts, skeleton-based controls or automatic character creator" },
       { feature: "Directional views", spritelab: SL.turnaround, competitor: "Yes — 4 and 8 directional views" },
       { feature: "Tilesets", spritelab: SL.tiles, competitor: "Yes — connectable Wang tilesets (export to Wang, dual-grid 15 and 3x3 formats); requires a paid tier" },
-      { feature: "Editing / inpainting", spritelab: "Yes — image editing on paid plans (Starter and up)", competitor: "Yes — inpainting with style-consistent generation" },
+      { feature: "Editing / inpainting", spritelab: "Yes — image editing on every plan", competitor: "Yes — inpainting with style-consistent generation" },
       { feature: "Editor plugin", spritelab: SL.plugin, competitor: "Yes — Aseprite extension (not available on the trial)" },
       { feature: "API", spritelab: SL.api, competitor: "Yes — priced per generation" },
       { feature: "MCP / vibe coding", spritelab: SL.mcp, competitor: "Yes" },
@@ -78,7 +80,7 @@ export const COMPARISONS: Comparison[] = [
     chooseSpriteLabIf: [
       "You want styles beyond pixel art — hand painted, anime, chibi, vector, cartoon or realistic — from the same tool.",
       "You want to type a prompt and get a transparent PNG quickly, then animate it into a sprite sheet and GIF.",
-      "You want to try it before signing up (3 free tries without an account).",
+      `You want ${SIGNUP_CREDITS} free credits on signup, with no card.`,
       "You like keeping assets in projects with automatic folder sorting and ZIP export.",
     ],
     chooseCompetitorIf: [
@@ -258,7 +260,7 @@ export const COMPARISONS: Comparison[] = [
       },
       {
         q: "Does Leonardo AI have a free plan?",
-        a: "Leonardo's help centre says free users get a daily allowance of 150 tokens that does not accumulate. SpriteLab gives 3 tries without an account and 10 credits on signup.",
+        a: `Leonardo's help centre says free users get a daily allowance of 150 tokens that does not accumulate. SpriteLab gives ${SIGNUP_CREDITS} credits on signup, no card.`,
       },
     ],
   },

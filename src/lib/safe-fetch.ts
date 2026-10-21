@@ -23,6 +23,7 @@ export type SafeFetchErrorCode =
   | "HOST_NOT_ALLOWED"
   | "TOO_MANY_REDIRECTS"
   | "UPSTREAM_ERROR"
+  | "NOT_FOUND"
   | "NOT_IMAGE"
   | "TOO_LARGE"
   | "TIMEOUT";
@@ -57,7 +58,12 @@ const DEFAULT_TIMEOUT_MS = 15_000;
 const DEFAULT_MAX_REDIRECTS = 3;
 
 // Exact hosts that are always allowed (provider output hosts).
-const STATIC_EXACT_HOSTS = ["im.runware.ai", "replicate.delivery"];
+const STATIC_EXACT_HOSTS = [
+  "im.runware.ai",
+  "replicate.delivery",
+  // Public sprite bucket. Also allowed when R2_PUBLIC_URL points here.
+  "pub-6411769b95ba423f9b01e8987f6d6e34.r2.dev",
+];
 // Suffixes — kept to provider-owned delivery domains only.
 const STATIC_HOST_SUFFIXES = [".replicate.delivery"];
 
@@ -220,6 +226,9 @@ export async function safeFetchImage(
 
       if (!response.ok) {
         try { await response.body?.cancel(); } catch { /* ignore */ }
+        if (response.status === 404 || response.status === 410) {
+          throw new SafeFetchError("NOT_FOUND", "Image not found");
+        }
         throw new SafeFetchError("UPSTREAM_ERROR", `Upstream responded ${response.status}`);
       }
 

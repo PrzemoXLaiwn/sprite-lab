@@ -254,12 +254,51 @@ export function LifetimeSection({ deals }: { deals: readonly LifetimeCard[] }) {
   );
 }
 
-/** Floating "Get Pro" button on phones, hidden for Pro and Studio members. */
+/**
+ * Phone shortcut to Pro. Hidden while the plan cards are on screen — including
+ * the Pro card and its own button — then docks to the bottom safe area (above
+ * the app tab bar when that bar is present). Pro and Studio members never see it.
+ * Checkout still goes through startCheckout, which records the funnel event.
+ */
 export function MobileProCta({ price }: { price: number }) {
   const { currentPlan, startCheckout } = useContext(PricingContext);
-  if (currentPlan === "PRO" || currentPlan === "UNLIMITED") return null;
+  const [visible, setVisible] = useState(false);
+  const [aboveTabBar, setAboveTabBar] = useState(false);
+
+  useEffect(() => {
+    const plans = document.getElementById("subscriptions");
+    const update = () => {
+      if (!plans) return;
+      const rect = plans.getBoundingClientRect();
+      // The whole plan block, including the Pro card and its button, is above the screen.
+      setVisible(rect.bottom <= 0);
+    };
+    // First measurement after paint (a sync setState in an effect cascades renders)
+    const first = setTimeout(() => {
+      setAboveTabBar(document.querySelector(".app-main") !== null);
+      update();
+    }, 0);
+    document.addEventListener("scroll", update, { passive: true, capture: true });
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      clearTimeout(first);
+      document.removeEventListener("scroll", update, true);
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, []);
+
+  if (currentPlan === "PRO" || currentPlan === "UNLIMITED" || !visible) return null;
+
   return (
-    <div className="fixed bottom-16 left-1/2 z-30 -translate-x-1/2 sm:hidden">
+    <div
+      className={`fixed left-1/2 z-30 w-max -translate-x-1/2 sm:hidden ${
+        aboveTabBar
+          ? "bottom-[calc(3.5rem+env(safe-area-inset-bottom))]"
+          : "bottom-[max(0.75rem,env(safe-area-inset-bottom))]"
+      }`}
+    >
       <button type="button" onClick={() => startCheckout("PRO")} className={`flex items-center gap-2 whitespace-nowrap px-6 py-3 text-[14px] ${BTN_PRIMARY}`}>
         <Zap className="h-4 w-4" aria-hidden="true" />
         Get Pro · <span className="font-mono">£{price}/mo</span>

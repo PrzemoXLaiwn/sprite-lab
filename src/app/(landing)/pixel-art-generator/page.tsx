@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import { Zap, Palette, Download, Grid3x3, Shield, Layers } from "lucide-react";
+import { COMMERCIAL_LICENCE_ANSWER } from "@/config/licence";
 import { SeoLanding } from "@/components/landing/SeoLanding";
 import { LANDING_SPECS } from "@/data/landing-specs";
 import { SHOWCASE, isPixelShowcase } from "@/data/showcase";
+import { SIGNUP_CREDITS, SIGNUP_CTA, SIGNUP_ON_SIGNUP } from "@/config/signup";
 
 export const metadata: Metadata = {
   title: { absolute: "Free AI Pixel Art Generator — 8-bit & 16-bit | SpriteLab" },
   description:
-    "Free AI pixel art generator for game sprites: a real pixel grid, at most 32 colours, 12 palettes, 8-bit, 16-bit, HD and isometric looks. 3 tries, no account.",
+    `Free AI pixel art generator for game sprites: a real pixel grid, at most 32 colours, 12 palettes, 8-bit, 16-bit, HD and isometric looks. ${SIGNUP_CREDITS} free credits on signup.`,
   keywords: [
     "pixel art generator",
     "free pixel art maker",
@@ -34,7 +36,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Free AI Pixel Art Generator — 8-bit & 16-bit | SpriteLab",
-    description: "Free AI pixel art generator for game sprites: a real pixel grid, at most 32 colours, 12 palettes, 8-bit, 16-bit, HD and isometric looks. 3 tries, no account.",
+    description: `Free AI pixel art generator for game sprites: a real pixel grid, at most 32 colours, 12 palettes, 8-bit, 16-bit, HD and isometric looks. ${SIGNUP_CREDITS} free credits on signup.`,
   },
   alternates: {
     canonical: "https://www.sprite-lab.com/pixel-art-generator",
@@ -48,17 +50,18 @@ export default function PixelArtGeneratorPage() {
     <SeoLanding
       slug="pixel-art-generator"
       appName="SpriteLab AI Pixel Art Generator"
-      appDescription="Generate 8-bit, 16-bit and 32-bit pixel art game sprites from a text prompt. Transparent PNG, commercial license."
+      appDescription="Generate 8-bit, 16-bit and 32-bit pixel art game sprites from a text prompt. Transparent PNG. Commercial licence on paid plans."
       heroLine="ai pixel art generator"
       h1={
         <>
           Free AI pixel art generator
+          <span className="sr-only">: </span>
           <br />
           for 8-bit and 16-bit sprites
         </>
       }
       subtitle="Describe a character, monster or item and get pixel art on a real grid with a limited palette, as a transparent PNG. Retro 8-bit and 16-bit looks, HD pixel art and isometric. No art skills needed."
-      trust={["3 free tries, no account", "10 credits on signup", "transparent png", "real pixel grid"]}
+      trust={[SIGNUP_ON_SIGNUP, "No card", "transparent png", "real pixel grid"]}
       floating={[
         { src: "/showcase/knight.png", alt: "", pixel: true, cls: "left-[7%] top-[30%] w-24 animate-float" },
         { src: "/showcase/health-potion.png", alt: "", pixel: true, cls: "left-[15%] top-[62%] w-14 animate-float [animation-delay:1.2s]" },
@@ -162,7 +165,7 @@ export default function PixelArtGeneratorPage() {
             { icon: Palette, title: "Multiple styles", body: "8-bit, 16-bit, 32-bit HD and isometric pixel art — plus 9 more non-pixel styles." },
             { icon: Download, title: "Ready to use", body: "PNG format with transparent backgrounds. Drop it straight into Unity, Godot or GameMaker." },
             { icon: Grid3x3, title: "Real pixel grid", body: "Sprites are stored at native resolution, so they scale up crisply with nearest-neighbour filtering." },
-            { icon: Shield, title: "Commercial license", body: "Use what you generate in commercial games on Steam, itch.io or mobile. No attribution required." },
+            { icon: Shield, title: "Commercial licence on paid plans", body: "Starter, Pro and Studio include commercial use in games on Steam, itch.io or mobile, with no attribution required. The Free plan is personal, non-commercial use." },
             { icon: Layers, title: "Asset library", body: "Keep every sprite organized by project in your own library once you sign up." },
           ],
         },
@@ -204,7 +207,7 @@ export default function PixelArtGeneratorPage() {
       faq={[
         {
           q: "Is the AI pixel art generator free?",
-          a: "You can try it right on this page without an account. Signing up gives you 10 free credits, no credit card required.",
+          a: `Sign up free for ${SIGNUP_CREDITS} credits. No card needed.`,
         },
         {
           q: "Can I make 8-bit and 16-bit pixel art?",
@@ -220,7 +223,7 @@ export default function PixelArtGeneratorPage() {
         },
         {
           q: "Can I use the pixel art in commercial games?",
-          a: "Yes. You get full ownership of every asset you generate and can use it in any commercial project — Steam, App Store, itch.io, anywhere. No attribution required.",
+          a: COMMERCIAL_LICENCE_ANSWER,
         },
         {
           q: "What format are the sprites?",
@@ -234,7 +237,7 @@ export default function PixelArtGeneratorPage() {
           </>
         ),
         body: "Build your game faster with AI-generated pixel art — no artists needed.",
-        button: "Get 10 free credits",
+        button: SIGNUP_CTA,
       }}
     />
   );

@@ -25,6 +25,7 @@ import {
   type HistoryFilterId,
   type WorkspaceTool,
 } from "@/lib/workspace/history";
+import { PixelThumb } from "@/components/media/PixelThumb";
 
 export interface HistoryItem {
   id: string;
@@ -221,9 +222,15 @@ function HistoryTile({ item, active, onSelect }: { item: HistoryItem; active: bo
       {kind === "animation" ? (
         <AnimationThumb item={item} playing={hover} />
       ) : (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={item.imageUrl} alt="" loading="lazy" decoding="async"
-          className={`absolute inset-0 h-full w-full object-contain p-2 transition-transform duration-300 group-hover:scale-105 ${isPixel(item.styleId) ? "pixel-perfect" : ""}`} />
+        <PixelThumb
+          src={item.imageUrl}
+          alt=""
+          sizes="160px"
+          pixel={isPixel(item.styleId)}
+          width={160}
+          height={160}
+          className="absolute inset-0 h-full w-full object-contain p-2 transition-transform duration-300 group-hover:scale-105"
+        />
       )}
       {badge && (
         <span className="pointer-events-none absolute bottom-1 left-1 max-w-[calc(100%-8px)] truncate rounded-[4px] bg-[#131A31]/85 px-1.5 py-0.5 text-[10.5px] font-semibold leading-tight text-[#FFF1E8]">

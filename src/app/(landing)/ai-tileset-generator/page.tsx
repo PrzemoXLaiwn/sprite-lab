@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SeoLanding } from "@/components/landing/SeoLanding";
+import { SIGNUP_CTA } from "@/config/signup";
 import { LANDING_SPECS } from "@/data/landing-specs";
 
 const URL = "https://www.sprite-lab.com/ai-tileset-generator";
@@ -33,12 +34,13 @@ export default function TileGeneratorPage() {
       h1={
         <>
           Seamless game tiles
+          <span className="sr-only">: </span>
           <br />
           from a sentence
         </>
       }
       subtitle="Floors, walls, water and lava as square tiles that repeat without visible seams — on a pixel grid for pixel-art games. Animate surfaces into looping frames."
-      trust={["repeats without seams", "pixel-art grid", "animated water & lava", "commercial use"]}
+      trust={["repeats without seams", "pixel-art grid", "animated water & lava", "commercial licence on paid plans"]}
       floating={[
         { src: "/showcase/tile-stone-wall.png", alt: "", pixel: true, cls: "left-[6%] top-[30%] w-24 animate-float" },
         { src: "/showcase/tile-grass.png", alt: "", pixel: true, cls: "left-[14%] top-[60%] w-20 animate-float [animation-delay:1.2s]" },
@@ -125,7 +127,7 @@ export default function TileGeneratorPage() {
           </>
         ),
         body: "Generate seamless floors and walls that match your sprites.",
-        button: "Get 10 free credits",
+        button: SIGNUP_CTA,
       }}
     />
   );

@@ -1,22 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
-import { sendWelcomeFor, syncAuthUser } from "@/lib/auth/sync-user";
-
-// Only allow same-origin relative paths. `${origin}${next}` with next="@evil.com"
-// or ".evil.com" would otherwise redirect to an attacker-controlled host.
-function safeRedirectPath(next: string | null, origin: string): string {
-  const fallback = "/generate";
-  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) {
-    return fallback;
-  }
-  try {
-    const url = new URL(next, origin);
-    if (url.origin !== origin) return fallback;
-    return `${url.pathname}${url.search}${url.hash}`;
-  } catch {
-    return fallback;
-  }
-}
+import { NextResponse, after } from "next/server";
+import { sendWelcomeFor } from "@/lib/auth/sync-user";
+import { establishFirstLogin } from "@/lib/auth/first-login";
+import { isCheckoutReturn, safeRedirectPath } from "@/lib/safe-redirect";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -33,7 +19,10 @@ export async function GET(request: Request) {
       // Get the authenticated user
       const { data: { user } } = await supabase.auth.getUser();
 
-      const isNewUser = user ? (await syncAuthUser(user, referralCode)).isNewUser : false;
+      // Insert result, not a prior lookup: parallel callbacks cannot each
+      // count as new. A database failure still lets the signed-in user through.
+      const firstLogin = user ? await establishFirstLogin(user, referralCode) : { ok: true as const, isNewUser: false };
+      const isNewUser = firstLogin.ok && firstLogin.isNewUser;
 
       // Password reset - redirect to update-password page
       if (type === "recovery" || next === "/update-password") {
@@ -41,11 +30,16 @@ export async function GET(request: Request) {
       }
       // Email confirmation OR fresh signup that just landed here for the
       // first time. Supabase PKCE does not consistently carry `type=signup`
-      // through the redirect, so fall back to the `isNewUser` flag we
-      // already computed above to detect first-time users.
+      // through the redirect, so fall back to the insert result above.
+      // The welcome email goes out only when the users row was created.
+      if (user && isNewUser) after(() => sendWelcomeFor(user));
       if (type === "signup" || isNewUser) {
-        if (user) sendWelcomeFor(user);
-        // Straight into the creator (no interstitial), set up for a character: what most people make first
+        // A plan or credit pack chosen before sign-up has to survive email
+        // confirmation and OAuth; everyone else lands straight in the creator
+        // (no interstitial), set up for a character: what most people make first
+        if (isCheckoutReturn(next)) {
+          return NextResponse.redirect(`${origin}${next}`);
+        }
         return NextResponse.redirect(`${origin}/generate?welcome=1&categoryId=CHARACTERS`);
       }
       // Otherwise redirect to the next page
@@ -53,6 +47,13 @@ export async function GET(request: Request) {
     }
   }
 
-  // Return the user to an error page with instructions
+  // Return the user to an error page with instructions. Keep a chosen plan on
+  // the login link so retrying doesn't drop it.
+  if (isCheckoutReturn(next)) {
+    const failed = new URL("/login", origin);
+    failed.searchParams.set("error", "Could not authenticate");
+    failed.searchParams.set("redirectTo", next);
+    return NextResponse.redirect(failed);
+  }
   return NextResponse.redirect(`${origin}/login?error=Could not authenticate`);
 }

@@ -8,6 +8,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { publicGenerationWhere } from "@/lib/moderation/visibility";
+import { newAccountGrant } from "@/lib/signup-grant";
 
 // -----------------------------------------------------------------------------
 // TYPES (re-exported so callers don't need a second import)
@@ -52,7 +53,7 @@ export async function getOrCreateUser(supabaseUserId: string, email: string) {
         data: {
           id: supabaseUserId,
           email,
-          credits: 10,
+          ...newAccountGrant(),
           plan: "FREE",
         },
       });

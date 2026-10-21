@@ -7,6 +7,7 @@ import { FirstTouch } from "@/components/analytics/FirstTouch";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 import { BRAND_DEFINITION, BRAND_SUMMARY, FEATURE_LIST } from "@/data/brand";
+import { SIGNUP_OFFER } from "@/config/signup";
 
 // Optimized font loading with next/font (no render-blocking!)
 // Body + UI: built for legibility (distinct I/l/1, 0/O) — small labels and
@@ -70,7 +71,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "SpriteLab — AI Game Asset Generator for Indie Developers",
     description:
-      "Game-ready sprites, pixel art, sprite-sheet animations and seamless tiles from a text prompt. Transparent PNG, commercial license included.",
+      "Game-ready sprites, pixel art, sprite-sheet animations and seamless tiles from a text prompt. Transparent PNG. Commercial licence on paid plans.",
     url: baseUrl,
     siteName: "SpriteLab",
     // Image is generated dynamically by `src/app/opengraph-image.tsx` —
@@ -132,10 +133,10 @@ const jsonLd = {
       foundingDate: "2024",
       // sameAs: list SpriteLab's own social profiles here once they exist
       // (a handle we don't control would tell search engines it's ours).
-      sameAs: ["https://github.com/PrzemoXLaiwn/sprite-lab", "https://www.tiktok.com/@spritelab1"],
+      sameAs: ["https://www.tiktok.com/@spritelab1"],
       contactPoint: {
         "@type": "ContactPoint",
-        email: "spritelab.contact@gmail.com",
+        email: "support@sprite-lab.com",
         contactType: "Customer Support",
         availableLanguage: ["English", "Polish"],
       },
@@ -155,7 +156,7 @@ const jsonLd = {
           price: "0",
           priceCurrency: "GBP",
           name: "Free",
-          description: "10 free credits on signup, plus 3 tries without an account",
+          description: `${SIGNUP_OFFER}`,
         },
         {
           "@type": "Offer",

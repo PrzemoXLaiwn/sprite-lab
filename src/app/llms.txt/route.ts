@@ -1,4 +1,8 @@
 import { SEO_PAGES } from "@/data/seo-pages";
+import { SIGNUP_CREDITS } from "@/config/signup";
+import { RELAUNCH } from "@/config/relaunch";
+import { CREDIT_COSTS } from "@/lib/services/generation";
+import { ANIMATION_FRAME_OPTIONS, RIG_CREDITS, ROTATIONS, animationCredits } from "@/config/animations";
 import { GUIDES } from "@/data/guides";
 import { COMPARISONS, COMPARE_CHECKED_ON } from "@/data/compare";
 import { BRAND_DEFINITION, BRAND_SUMMARY } from "@/data/brand";
@@ -43,13 +47,15 @@ Any sprite can be animated: idle, walk, run, attack, jump, cast, hurt, defeat, f
 
 ## Workflow features
 - Projects: generate assets for a game, accept or decline each result; accepted sprites are sorted into folders by type automatically; download the whole project as a ZIP pack.
+- Free pixel-perfect upscaling (nearest-neighbour, up to 4096 px).
+- AI upscaling (2× / 4×) is on Pro, Studio and Lifetime. Every plan, including Free, gets image editing and a transparent PNG on each generated sprite.
 - Community gallery of shared assets.
 
 ## Game engines
 Output is standard PNG / sprite-sheet PNG / GIF, which works in Unity, Godot, GameMaker, Phaser, Construct, RPG Maker and any engine that loads images. Sprite sheets are horizontal strips of equal-size frames, so they can be sliced by cell size in Unity's Sprite Editor or used as SpriteFrames in Godot. Animations can also be downloaded as an engine pack: a Godot SpriteFrames resource (.tres) with every animation, Unity folders of numbered frames, GameMaker strips named with their frame count, and hitboxes.json with a body box and a strike box per frame.
 
 ## Pricing
-Free: 3 tries without an account, 10 credits on signup (no credit card). Paid plans from £5/month (Starter, 250 credits), Pro £12/month (500 credits), Studio £25/month (1,200 credits); one-off credit packs are also available. A standard sprite costs 1 credit, HD quality 3 credits, an idle loop 3 credits and other animations 7–12 credits (smooth mode 12–19). Assets can be used in commercial projects.
+Free: ${SIGNUP_CREDITS} credits on signup (no credit card). Accounts created before 7 October 2026 get a one-time welcome-back of ${RELAUNCH.RETURNING_BONUS} credits the first time they open the app before 31 December 2026. Paid plans from £5/month (Starter, 250 credits), Pro £12/month (500 credits), Studio £25/month (1,200 credits); one-off credit packs are also available. A standard sprite costs ${CREDIT_COSTS.normal} credit, HD quality ${CREDIT_COSTS.hd} credits, a rigged idle loop ${RIG_CREDITS} credits. AI animations cost ${ANIMATION_FRAME_OPTIONS.map((o) => `${o.credits}`).join("/")} credits for 4/6/9 key poses; smooth mode (on by default) makes those ${ANIMATION_FRAME_OPTIONS.map((o) => animationCredits(o.frames, true)).join("/")}. Direction sheets: ${ROTATIONS.map((r) => `${r.label} ${r.credits}`).join(", ")}. Commercial use is included on Starter, Pro and Studio. The Free plan is personal, non-commercial use. Assets generated on the Free plan before 17 October 2026 keep the licence that applied when they were created.
 
 ## Not offered
 SpriteLab does not currently offer a public REST API, an MCP server, 3D model generation, 8-direction animations (it makes static 4- and 8-direction views and a 4-direction walk), autotile (47-tile) tilesets, whole engine project files or several different assets from one prompt. It is a web app (sprite-lab.com).
@@ -74,7 +80,7 @@ ${COMPARISONS.map((c) => `- [SpriteLab vs ${c.competitor}](${SITE}/compare/${c.s
 - [Changelog](${SITE}/changelog)
 
 ## Contact
-spritelab.contact@gmail.com
+support@sprite-lab.com
 `;
   return new Response(body, {
     headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=3600" },

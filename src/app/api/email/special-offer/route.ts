@@ -4,6 +4,7 @@ import { isAuthorizedCronRequest } from "@/lib/cron-auth";
 import { prisma } from "@/lib/prisma";
 import { sendSpecialOfferEmail } from "@/lib/email/send";
 import { MARKETING_OFF_RESPONSE, legacyMarketingEnabled } from "@/lib/email/flags";
+import { comebackPromoCode, welcomePromoCode } from "@/lib/email/promo-codes";
 import { Prisma } from "@prisma/client";
 
 // Special Offer Email API
@@ -133,13 +134,13 @@ export async function GET(request: NextRequest) {
         offerTitle = "We miss your creativity!";
         offerDescription = `It's been ${daysSinceActive} days since you created something amazing. SpriteLab keeps improving with new features and better AI. Come back and see what's new!`;
         discountPercent = 20;
-        promoCode = "COMEBACK20";
+        promoCode = comebackPromoCode();
       } else if (daysSinceActive > 14) {
         // Medium inactive
         offerTitle = "Your next creation awaits!";
         offerDescription = "You used all your free credits - that means you loved what you saw! We've added new art styles and improved generation quality since your last visit.";
         discountPercent = 15;
-        promoCode = "WELCOME15";
+        promoCode = welcomePromoCode();
       } else {
         // Recently ran out of credits
         offerTitle = "Ready to create more?";

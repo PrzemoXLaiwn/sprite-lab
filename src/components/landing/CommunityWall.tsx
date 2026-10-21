@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Wand2 } from "lucide-react";
 import type { FeaturedGeneration } from "@/lib/featured-generations";
+import { PixelThumb } from "@/components/media/PixelThumb";
 import { HERO_PROMPT_EVENT } from "./HeroPrompt";
 import { SectionHeader } from "./SectionHeader";
 
@@ -59,9 +60,16 @@ export function CommunityWall({ items }: { items: FeaturedGeneration[]; register
             <button key={item.id} type="button" onClick={() => tryPrompt(item)}
               aria-label={`Use this prompt: ${item.prompt.slice(0, 120)}`}
               className={`checker group relative aspect-square overflow-hidden text-left outline-offset-[-2px] ${idx >= 8 ? "hidden sm:block" : ""}`}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={item.imageUrl} alt="" loading="lazy"
-                className={`absolute inset-0 h-full w-full object-contain p-[10%]  ${pixel ? "pixel-perfect" : ""}`} />
+              <PixelThumb
+                src={item.imageUrl}
+                alt=""
+                aria-hidden
+                sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 184px"
+                pixel={pixel}
+                width={184}
+                height={184}
+                className="absolute inset-0 h-full w-full object-contain p-[10%]"
+              />
               <span aria-hidden="true" className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/90 via-black/40 to-transparent p-3 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100">
                 <span className="line-clamp-2 text-[12px] leading-snug text-white">{item.prompt}</span>
                 <span className="mt-2 flex items-center justify-between gap-2">

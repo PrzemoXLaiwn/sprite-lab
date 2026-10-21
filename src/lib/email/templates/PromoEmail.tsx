@@ -104,7 +104,7 @@ export function PromoEmail({
                 <span style={checkmark}>✓</span> All art styles included
               </Text>
               <Text style={benefitItem}>
-                <span style={checkmark}>✓</span> Commercial license
+                <span style={checkmark}>✓</span> Commercial licence on paid plans
               </Text>
               <Text style={benefitItem}>
                 <span style={checkmark}>✓</span> Instant download (PNG/GLB)

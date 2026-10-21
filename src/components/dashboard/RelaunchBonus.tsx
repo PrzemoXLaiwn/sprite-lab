@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Film, FolderOpen, Gift, Sparkles, X } from "lucide-react";
 import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
+import { RELAUNCH } from "@/config/relaunch";
 
 type Claim = { granted: true; amount: number; kind: "returning" | "new"; credits: number };
 
@@ -67,7 +68,7 @@ export function RelaunchBonus() {
         <p className="mt-2 text-[13.5px] leading-relaxed text-[#A7ADD4]">
           {returning
             ? "SpriteLab is back — rebuilt from the ground up. Thanks for sticking around; here's something to try the new generator with."
-            : "SpriteLab just relaunched. On top of your 10 starter credits, here are extra credits to explore everything."}
+            : `SpriteLab just relaunched. On top of your ${RELAUNCH.SIGNUP_CREDITS} starter credits, here are extra credits to explore everything.`}
           {" "}You now have <span className="font-semibold tabular-nums text-white">{claim.credits}</span> credits.
         </p>
         <ul className="mt-4 space-y-2 text-[13px] text-[#C8CCE8]">

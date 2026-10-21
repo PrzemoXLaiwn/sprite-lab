@@ -38,6 +38,8 @@ const PUBLIC = [
   "/llms-full.txt",
   "/privacy",
   "/terms",
+  "/cookies",
+  "/refunds",
 ];
 
 const PRIVATE = [

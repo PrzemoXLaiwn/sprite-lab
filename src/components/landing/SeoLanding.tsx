@@ -8,6 +8,7 @@ import { CommunityWall } from "@/components/landing/CommunityWall";
 import { PromptExamples } from "@/components/landing/PromptExamples";
 import { SectionHeader } from "@/components/landing/SectionHeader";
 import type { FeaturedGeneration } from "@/lib/featured-generations";
+import { SIGNUP_OFFER } from "@/config/signup";
 
 /* ─────────────────────────────────────────────────────────────
    Shared layout for the public SEO landing pages
@@ -299,7 +300,7 @@ function Section({ section }: { section: SeoSection }) {
         <>
           <PromptExamples prompts={section.prompts} />
           <p className="mt-4 font-mono text-[11.5px] text-[#8A92BF]">
-            {"Tap one to drop it into the generator above — no account needed"}
+            {"Tap one to drop it into the generator above"}
           </p>
         </>
       );
@@ -322,6 +323,9 @@ export function SeoLanding(props: SeoLandingProps) {
       isPartOf: { "@id": `${SITE}/#website` },
       about: { "@id": `${SITE}/#software` },
       publisher: { "@id": `${SITE}/#organization` },
+      applicationCategory: "DesignApplication",
+      operatingSystem: "Web",
+      offers: { "@type": "Offer", price: "0", priceCurrency: "GBP", description: SIGNUP_OFFER },
     },
     {
       "@context": "https://schema.org",
@@ -434,11 +438,8 @@ export function SeoLanding(props: SeoLandingProps) {
                   {props.cta.button}
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
-                <a href="#top" className={SECONDARY_BTN}>
-                  Try it without an account
-                </a>
               </div>
-              <p className="mt-5 font-mono text-[11.5px] text-[#8A92BF]">10 free credits on signup · no credit card required</p>
+              <p className="mt-5 font-mono text-[11.5px] text-[#8A92BF]">No credit card required</p>
             </div>
           </div>
         </div>

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowRight, Lightbulb, Check } from "lucide-react";
 import { SiteNav } from "@/components/layout/SiteNav";
 import { Footer } from "@/components/layout/Footer";
-import { GUIDE, PRICE_LIST, GUEST_TRIES, signupOffer } from "@/data/product-guide";
+import { GUIDE, PRICE_LIST, signupOffer } from "@/data/product-guide";
 
 const SITE = "https://www.sprite-lab.com";
 const URL = `${SITE}/how-it-works`;
@@ -113,8 +113,8 @@ export default function HowItWorksPage() {
           {/* Quick start */}
           <ol className="mt-10 grid gap-3 sm:grid-cols-3">
             {[
-              { t: "Describe a sprite", d: `Try it ${GUEST_TRIES}× right on the homepage — no account.` },
-              { t: "Sign up free", d: `Get ${offer.credits} credits${offer.bonus ? ` + ${offer.bonus} bonus` : ""}. No card.` },
+              { t: "Describe a sprite", d: "Type a character, weapon or tile and pick a style." },
+              { t: "Sign up free", d: `Get ${offer.credits} credits. No card.` },
               { t: "Animate & collect", d: "Animate your favourites and keep them in a project." },
             ].map((x, i) => (
               <li key={x.t} className="rounded-2xl border border-white/[0.07] bg-[#19223F] p-5">
@@ -253,8 +253,8 @@ export default function HowItWorksPage() {
                 </ul>
               </div>
               <div className="rounded-2xl border border-white/[0.07] bg-[#19223F] p-5">
-                <p className="text-[15px] font-semibold text-white">Yours to use commercially</p>
-                <p className="mt-1 text-[14px] leading-relaxed text-[#9AA1CC]">Use everything you generate in free or paid games. No attribution required.</p>
+                <p className="text-[15px] font-semibold text-white">Commercial licence on paid plans</p>
+                <p className="mt-1 text-[14px] leading-relaxed text-[#9AA1CC]">Starter, Pro and Studio include commercial use, with no attribution required. The Free plan is personal, non-commercial use. Assets generated on the Free plan before 17 October 2026 keep the licence that applied when they were created.</p>
               </div>
             </div>
           </section>
@@ -276,14 +276,11 @@ export default function HowItWorksPage() {
           <section className="rounded-3xl border border-white/[0.07] bg-[#19223F] p-8 text-center sm:p-10">
             <h2 className="text-balance font-display text-[28px] font-semibold leading-[1.1] tracking-[-0.01em] text-white sm:text-[34px]">Ready to make your first sprite?</h2>
             <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-[#9AA1CC]">
-              {offer.credits} free credits{offer.bonus ? ` + ${offer.bonus} launch bonus` : ""} when you sign up. No card needed.
+              Sign up for {offer.credits} free credits. No card needed.
             </p>
             <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
               <Link href="/register" className="px-corners inline-flex h-12 items-center justify-center gap-2 bg-[#FFA300] px-7 text-[15px] font-semibold text-[#131A31] transition hover:bg-[#FFB733]">
                 Start creating free <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link href="/" className="inline-flex h-12 items-center justify-center rounded-xl border border-white/[0.1] bg-white/[0.04] px-6 text-[15px] font-medium text-[#FFF1E8] transition hover:bg-white/[0.08]">
-                Try it without an account
               </Link>
             </div>
           </section>

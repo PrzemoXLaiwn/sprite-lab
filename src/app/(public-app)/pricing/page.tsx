@@ -9,7 +9,10 @@
 
 import Link from "next/link";
 import { Check, ChevronDown, Coins, Shield, X } from "lucide-react";
+import { COMMERCIAL_LICENCE_ANSWER } from "@/config/licence";
 import { CREDIT_PACKS, LIFETIME_DEALS, PLANS, isLaunchPromoActive } from "@/lib/stripe";
+import { SIGNUP_CREDITS } from "@/config/signup";
+import { QUESTS_FAQ, RETURNING_BONUS_FAQ } from "@/data/geo-content";
 import { ANIMATION_FRAME_OPTIONS, RIG_CREDITS, ROTATIONS, animationCredits } from "@/config/animations";
 import { featureCredits } from "@/config/economics";
 import { CREDIT_PACK_CARDS, LIFETIME_CARDS, PLAN_CARDS, formatPence, type CreditPackCard, type LifetimeCard, type PlanCard } from "./pricing-data";
@@ -81,19 +84,21 @@ const FAQS = [
   },
   {
     q: "Can I use assets commercially?",
-    a: "Yes. You own what you generate and can use it in games, apps or anything you sell — on any plan, with no attribution required.",
+    a: COMMERCIAL_LICENCE_ANSWER,
   },
   {
     q: "Do unused credits roll over?",
     a: "Subscription credits reset every month. Want credits that never expire? Buy a one-time credit pack instead.",
   },
+  RETURNING_BONUS_FAQ,
+  QUESTS_FAQ,
   {
     q: "Can I cancel anytime?",
     a: "Yes. Cancel any time from your account — no contract. You keep your plan until the end of the billing period.",
   },
   {
     q: "Do paid plans get better quality?",
-    a: "No — every plan, including Free, gets the same models, all 12 art styles and both Standard and HD quality. Plans differ in monthly credits and a few extra tools (background removal, AI upscale, variations).",
+    a: "No — every plan, including Free, gets the same models, all 12 art styles, both Standard and HD quality, and a transparent PNG on every sprite. Plans differ in monthly credits and a few extra tools (AI upscale, variations).",
   },
   {
     q: "What happens if a generation fails?",
@@ -133,7 +138,7 @@ export default function PricingPage() {
                 </h1>
                 <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-[#9AA1CC]">
                   Every plan gets all 12 styles in Standard and HD; plans differ in monthly credits and a few extra tools. Cancel anytime. New
-                  accounts start with 10 free credits, no card required.
+                  accounts start with {SIGNUP_CREDITS} free credits, no card required.
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -293,7 +298,7 @@ export default function PricingPage() {
               <Link href="/ai-sprite-generator" className="text-[#FFC857] underline-offset-4 hover:underline">
                 AI sprite generator
               </Link>{" "}
-              without an account.
+              page.
             </p>
           </section>
 
@@ -342,11 +347,11 @@ export default function PricingPage() {
               <Shield className="h-5 w-5 text-[#FFA300]" aria-hidden="true" />
             </div>
             <div>
-              <h2 className="text-[15px] font-semibold text-white">7-day refund</h2>
+              <h2 className="text-[15px] font-semibold text-white">14-day right to cancel</h2>
               <p className="mt-0.5 text-[13px] leading-relaxed text-[#9AA1CC]">
-                Not happy? Ask for a refund within 7 days of purchase if you&apos;ve used less than 10% of your credits.{" "}
-                <Link href="/terms" className="text-[#FFC857] underline-offset-4 hover:underline">
-                  See the terms
+                Changed your mind? Cancel within 14 days of a new subscription or credit pack: a full refund if you haven&apos;t used any of its credits, otherwise the price minus the credits used.{" "}
+                <Link href="/refunds" className="text-[#FFC857] underline-offset-4 hover:underline">
+                  Refund and cancellation policy
                 </Link>
                 .
               </p>
@@ -371,8 +376,8 @@ export default function PricingPage() {
         </div>
 
         <MobileProCta price={proPrice} />
-        {/* Bottom padding for the mobile CTA */}
-        <div className="h-20 sm:hidden" />
+        {/* Clears the mobile Pro bar, including the home-indicator safe area. */}
+        <div className="h-[calc(5rem+env(safe-area-inset-bottom))] sm:hidden" aria-hidden="true" />
       </div>
     </PricingProvider>
   );

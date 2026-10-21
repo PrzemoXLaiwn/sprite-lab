@@ -10,7 +10,7 @@ import { TikTokCommunity } from "@/components/landing/TikTokCommunity";
 import { ShowcaseRows } from "@/components/landing/ShowcaseRows";
 import { GuideTabs } from "@/components/landing/GuideTabs";
 import { Footer } from "@/components/layout/Footer";
-import { GUIDE, PRICE_LIST, signupOffer, GUEST_TRIES } from "@/data/product-guide";
+import { GUIDE, PRICE_LIST, signupOffer } from "@/data/product-guide";
 import { SHOWCASE, getFeaturedGenerationsSafe } from "@/lib/featured-generations";
 import { HOME_FAQ } from "@/data/geo-content";
 import { RefCapture } from "@/components/landing/RefCapture";
@@ -47,6 +47,7 @@ export async function HomePage({ signedIn }: { signedIn: boolean }) {
           <div className="min-w-0">
             <h1 className="font-display text-[40px] font-semibold leading-[1.02] tracking-[-0.02em] text-[#FFF1E8] min-[400px]:text-[44px] sm:text-[60px] lg:text-[68px]">
               Type a character.
+              <span className="sr-only"> </span>
               <br />
               Get a sprite sheet.
             </h1>
@@ -63,7 +64,7 @@ export async function HomePage({ signedIn }: { signedIn: boolean }) {
                 <>You&apos;re signed in: what you describe opens in the creator and goes straight into your assets. <Link href="/generate" className="font-semibold text-[#FFC857] underline-offset-2 hover:underline">Open the creator</Link></>
               ) : (
                 <>
-                  {GUEST_TRIES} tries without an account. Sign up for {offer.credits + offer.bonus} free credits, no card.
+                  Sign up for {offer.credits} free credits. No card.
                   <span className="hidden sm:inline"> Over 1,000 people have made an account so far.</span>
                 </>
               )}
@@ -127,7 +128,7 @@ export async function HomePage({ signedIn }: { signedIn: boolean }) {
               Make the first sprite for your game now.
             </h2>
             <p className="mt-4 text-[15.5px] leading-relaxed text-[#C8CCE8]">
-              {signedIn ? "Describe a character, a weapon or a tile, then animate it into a sprite sheet." : <>Try it {GUEST_TRIES} times without an account. Sign up and get {offer.credits} free credits{offer.bonus ? `, plus ${offer.bonus} bonus credits until ${offer.bonusUntil}` : ""}. No card needed.</>}
+              {signedIn ? "Describe a character, a weapon or a tile, then animate it into a sprite sheet." : <>Sign up and get {offer.credits} free credits. No card needed.</>}
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link href={signedIn ? "/generate" : registerUrl}
@@ -205,8 +206,7 @@ function HeroWorkbench() {
           {DIRECTIONS.map((d, i) => (
             <div key={d} className={`flex flex-col items-center gap-1.5 px-1 pb-2.5 pt-2 ${i ? "border-l border-white/[0.07]" : ""}`}>
               <span
-                role="img"
-                aria-label={`Knight facing ${d.toLowerCase()}`}
+                aria-hidden="true"
                 className="checker checker-sm pixel-perfect block h-14 w-14 rounded-[4px] sm:h-16 sm:w-16"
                 style={{ backgroundImage: "url(/showcase/rotate-knight.png), " + CHECKER_LAYERS, backgroundSize: `400% 100%, 10px 10px, 10px 10px`, backgroundPosition: `${(i / 3) * 100}% 0, 0 0, 5px 5px` }}
               />

@@ -252,7 +252,8 @@ export async function proxy(request: NextRequest) {
   // ===========================================
   const isAuthPath = pathname === "/login" || pathname === "/register" ||
                      pathname.startsWith("/auth/") ||
-                     pathname === "/api/auth/callback";
+                     pathname === "/api/auth/callback" ||
+                     pathname === "/api/auth/sync";
 
   if (isAuthPath && (method === "POST" || pathname.includes("callback"))) {
     const authLimit = isAuthRateLimited(ip);
@@ -334,6 +335,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - public folder assets
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|api/sprite-thumb|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

@@ -3,10 +3,16 @@
 import { ArrowRight, CheckCircle2, Zap } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { primaryBtnCls } from "@/app/(auth)/_components/auth-ui";
+import { SIGNUP_CREDITS } from "@/config/signup";
+import { isCheckoutReturn, safeRedirectPath } from "@/lib/safe-redirect";
 
 export default function EmailConfirmedPage() {
+  const searchParams = useSearchParams();
+  const next = safeRedirectPath(searchParams.get("next"));
+  const destination = isCheckoutReturn(next) ? next : "/generate?welcome=1&categoryId=CHARACTERS";
   const [countdown, setCountdown] = useState(5);
 
   // Old confirmation links still land here; sign-up is counted in the creator (?welcome=1)
@@ -15,7 +21,7 @@ export default function EmailConfirmedPage() {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          window.location.href = "/generate?welcome=1&categoryId=CHARACTERS";
+          window.location.href = destination;
           return 0;
         }
         return prev - 1;
@@ -23,7 +29,7 @@ export default function EmailConfirmedPage() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [destination]);
 
   return (
     <div className="relative flex min-h-screen items-center justify-center bg-[#131A31] px-4 py-10 text-[#FFF1E8]">
@@ -47,15 +53,15 @@ export default function EmailConfirmedPage() {
 
           <div className="mt-5 inline-flex items-center gap-2 rounded-lg border border-[#FFA300]/20 bg-[#FFA300]/[0.06] px-3 py-1.5 text-[13px] text-[#FFC857]">
             <Zap className="h-3.5 w-3.5" />
-            10 free credits ready to use
+            {SIGNUP_CREDITS} free credits ready to use
           </div>
 
           <p className="mt-5 text-[13px] leading-relaxed text-[#C8CCE8]">
             We&apos;ll guide you through creating your first game asset in about 30 seconds.
           </p>
 
-          <Link href="/generate?welcome=1&categoryId=CHARACTERS" className={`${primaryBtnCls} mt-6`}>
-            Start creating
+          <Link href={destination} className={`${primaryBtnCls} mt-6`}>
+            {isCheckoutReturn(next) ? "Continue to checkout" : "Start creating"}
             <ArrowRight className="h-4 w-4" />
           </Link>
 

@@ -111,9 +111,9 @@ public class MyScript : MonoBehaviour
 
 - Documentation: [sprite-lab.com/docs](https://sprite-lab.com/docs)
 - Discord: [discord.gg/spritelab](https://discord.gg/spritelab)
-- Email: spritelab.contact@gmail.com
+- Email: support@sprite-lab.com
 
 ## License
 
 This plugin is provided for use with a valid SpriteLab subscription.
-Generated assets can be used in commercial projects.
+Generated assets can be used in commercial projects on the Starter, Pro and Studio plans. The Free plan is personal, non-commercial use.

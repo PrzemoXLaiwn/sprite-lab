@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { SIGNUP_CREDITS, SIGNUP_CTA } from "@/config/signup";
 
 export const SITE = "https://www.sprite-lab.com";
 export const CONTAINER = "mx-auto max-w-[1200px] px-5 lg:px-8";
@@ -46,15 +47,15 @@ export function CompareCta() {
               See if SpriteLab fits your game
             </h2>
             <p className="mx-auto mt-4 max-w-lg text-[15px] leading-relaxed text-[#9AA1CC]">
-              The fastest way to compare is to generate a few sprites. 3 free tries without an account, 10 credits when you sign up.
+              The fastest way to compare is to generate a few sprites. Sign up free for {SIGNUP_CREDITS} credits. No card needed.
             </p>
             <div className="mt-8 flex justify-center">
               <Link href="/register" className={PRIMARY_BTN}>
-                Start free
+                {SIGNUP_CTA}
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
-            <p className="mt-5 font-mono text-[11.5px] text-[#8A92BF]">10 free credits on signup · no credit card required</p>
+            <p className="mt-5 font-mono text-[11.5px] text-[#8A92BF]">No credit card required</p>
           </div>
         </div>
       </div>

@@ -30,5 +30,5 @@ export const FEATURE_LIST = [
   "Match the style of an existing sprite",
   "Background removal and upscaling (free pixel-perfect upscaling; AI upscaling on Pro and Studio)",
   "Projects with automatic folder sorting and ZIP export",
-  "Commercial use of generated assets",
+  "Commercial use on paid plans",
 ] as const;

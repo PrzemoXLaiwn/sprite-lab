@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { SeoLanding } from "@/components/landing/SeoLanding";
+import { COMMERCIAL_LICENCE_ANSWER } from "@/config/licence";
+import { SIGNUP_CTA } from "@/config/signup";
 import { ENGINE_GUIDES } from "@/data/geo-content";
 import { SHOWCASE } from "@/data/showcase";
 
@@ -34,12 +36,13 @@ export default function UnitySpritesPage() {
       h1={
         <>
           AI sprites for Unity
+          <span className="sr-only">: </span>
           <br />
           prompt → PNG → scene
         </>
       }
       subtitle="Generate characters, items and tiles, animate them into sprite sheets, and import them into Unity 2D with the usual Sprite Editor workflow — no plugins needed."
-      trust={["transparent png", "equal-size frames", "point-filter ready", "commercial use"]}
+      trust={["transparent png", "equal-size frames", "point-filter ready", "commercial licence on paid plans"]}
       floating={[
         { src: "/showcase/anim-dog-jump.gif", alt: "", pixel: true, cls: "left-[6%] top-[28%] w-28 animate-float" },
         { src: "/showcase/fire-sword.png", alt: "", pixel: true, cls: "left-[14%] top-[62%] w-16 animate-float [animation-delay:1.2s]" },
@@ -107,7 +110,7 @@ export default function UnitySpritesPage() {
         { q: "How do I slice a SpriteLab sprite sheet in Unity?", a: "Set Sprite Mode to Multiple, open the Sprite Editor, choose Slice → Grid By Cell Size and enter the frame width and height — every frame in a SpriteLab sheet has the same size." },
         { q: "Why does my pixel art look blurry in Unity?", a: "Set the texture's Filter Mode to Point (no filter) and Compression to None. SpriteLab pixel art is on a real pixel grid, so it stays sharp with those settings." },
         { q: "What Pixels Per Unit should I use?", a: "Use one value for the whole game, usually your tile size in art pixels (16 or 32 for most pixel-art games). Match it in the Pixel Perfect Camera's Assets PPU so sprites line up with the tile grid and stay sharp." },
-        { q: "Can I use the assets in a commercial Unity game?", a: "Yes, assets you generate can be used in commercial projects." },
+        { q: "Can I use the assets in a commercial Unity game?", a: COMMERCIAL_LICENCE_ANSWER },
       ]}
       cta={{
         title: (
@@ -116,7 +119,7 @@ export default function UnitySpritesPage() {
           </>
         ),
         body: "Generate sprites and animations for your Unity project.",
-        button: "Get 10 free credits",
+        button: SIGNUP_CTA,
       }}
     />
   );

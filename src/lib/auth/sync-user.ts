@@ -6,7 +6,6 @@
 // =============================================================================
 
 import type { User } from "@supabase/supabase-js";
-import { prisma } from "@/lib/prisma";
 import { sendWelcomeEmail } from "@/lib/email/send";
 import { RELAUNCH, newSignupBonus } from "@/config/relaunch";
 
@@ -44,52 +43,6 @@ export function sanitizeAvatarUrl(metadata: Record<string, unknown> | undefined)
   }
 }
 
-
-/** Upserts the DB user and applies a referral for new accounts. Never throws. */
-export async function syncAuthUser(user: User, referralCode: string | null): Promise<{ isNewUser: boolean }> {
-  let isNewUser = false;
-  try {
-    const existingUser = await prisma.user.findUnique({ where: { id: user.id }, select: { id: true } });
-    isNewUser = !existingUser;
-  } catch (err) {
-    console.error("[Auth Sync] Lookup failed:", err);
-  }
-  try {
-    await prisma.user.upsert({
-      where: { id: user.id },
-      // Never overwrite name/avatar on login: user_metadata is
-      // user-controlled, so it only seeds the profile on creation.
-      update: {},
-      create: {
-        id: user.id,
-        email: user.email!,
-        name: sanitizeName(user.user_metadata),
-        avatarUrl: sanitizeAvatarUrl(user.user_metadata),
-        credits: 10,
-        plan: "FREE",
-        role: "USER",
-        isActive: true,
-      },
-    });
-    if (isNewUser && referralCode) {
-      try {
-        const referrer = await prisma.user.findUnique({ where: { referralCode: referralCode.toUpperCase() }, select: { id: true } });
-        if (referrer && referrer.id !== user.id) {
-          await prisma.$transaction([
-            prisma.user.update({ where: { id: user.id }, data: { referredBy: referrer.id } }),
-            prisma.user.update({ where: { id: referrer.id }, data: { referralCount: { increment: 1 } } }),
-          ]);
-          console.log(`[Auth Sync] Referral applied: ${user.id} referred by ${referrer.id}`);
-        }
-      } catch (refErr) {
-        console.error("[Auth Sync] Failed to apply referral:", refErr);
-      }
-    }
-  } catch (err) {
-    console.error("[Auth Sync] Failed to sync user to DB:", err);
-  }
-  return { isNewUser };
-}
 
 /** Fire-and-forget welcome email for a new account. */
 export function sendWelcomeFor(user: User): void {

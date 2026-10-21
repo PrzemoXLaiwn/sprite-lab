@@ -6,6 +6,7 @@ import { SiteNav } from "@/components/layout/SiteNav";
 import { Footer } from "@/components/layout/Footer";
 import { FIRST_PUBLISHED, GUIDES, getGuide, guideReadingMinutes, guideWordCount, type Guide } from "@/data/guides";
 import { GUIDE_INTROS } from "@/data/guide-intros";
+import { SIGNUP_CREDITS, SIGNUP_CTA } from "@/config/signup";
 
 const SITE = "https://www.sprite-lab.com";
 
@@ -367,14 +368,14 @@ export default async function GuidePage({ params }: Props) {
               Generate game-ready sprites from a sentence
             </h2>
             <p className="mt-2 text-[15px] leading-relaxed text-[#A7ADD4]">
-              Transparent PNGs, real pixel-grid pixel art, sprite sheets, seamless tiles and icons. 10 free credits on
-              signup, no card required.
+              Transparent PNGs, real pixel-grid pixel art, sprite sheets, seamless tiles and icons. Sign up free for {SIGNUP_CREDITS} credits.
+              No card required.
             </p>
             <Link
               href="/register"
               className="px-corners mt-6 inline-flex h-11 items-center gap-2 bg-[#FFA300] px-5 text-[14.5px] font-semibold text-[#131A31] transition hover:bg-[#FFB733]"
             >
-              Try it free
+              {SIGNUP_CTA}
               <ArrowRight className="h-4 w-4" />
             </Link>
           </aside>

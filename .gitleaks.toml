@@ -1,0 +1,6 @@
+title = "sprite-lab"
+
+# Default rules only. Add an [allowlist] when a new commit trips on an
+# obvious placeholder (example keys, YOUR_API_KEY, and similar).
+[extend]
+useDefault = true

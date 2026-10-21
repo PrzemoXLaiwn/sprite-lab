@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { checkAdminAccess } from "@/app/(dashboard)/admin/page.actions";
 import { CHECKERBOARD, CommunityAvatar, isPixelStyleId } from "@/components/community/shared";
+import { PixelThumb } from "@/components/media/PixelThumb";
 import { GENERATE_STYLES } from "@/data/generate-styles";
 import { COMMUNITY_PAGE_SIZE, type CommunityItem, type CommunityPage } from "@/lib/community-gallery-types";
 import { fetchImage } from "@/lib/cors-image";
@@ -669,12 +670,14 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                         {is3D ? (
                           <FileBox className="absolute inset-0 m-auto h-6 w-6 text-[#FFA300]" />
                         ) : (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
+                          <PixelThumb
                             src={gen.imageUrl}
                             alt={altFor(gen)}
-                            loading="lazy"
-                            className={`h-full w-full object-contain p-1.5 transition-transform duration-300 group-hover:scale-110 ${isPixelStyleId(gen.styleId) ? "pixel-perfect" : ""}`}
+                            sizes="64px"
+                            pixel={isPixelStyleId(gen.styleId)}
+                            width={64}
+                            height={64}
+                            className="h-full w-full object-contain p-1.5 transition-transform duration-300 group-hover:scale-110"
                           />
                         )}
                       </div>
@@ -866,12 +869,14 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                           <span className="text-[11px] text-[#9AA1CC]">{getModelName(gen.styleId)}</span>
                         </div>
                       ) : (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
+                        <PixelThumb
                           src={gen.imageUrl}
                           alt={altFor(gen)}
-                          loading="lazy"
-                          className={`absolute inset-0 h-full w-full object-contain p-[10%] pb-[20%] transition-transform duration-300 group-hover:scale-105 ${isPixelStyleId(gen.styleId) ? "pixel-perfect" : ""}`}
+                          sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 184px"
+                          pixel={isPixelStyleId(gen.styleId)}
+                          width={184}
+                          height={184}
+                          className="absolute inset-0 h-full w-full object-contain p-[10%] pb-[20%] transition-transform duration-300 group-hover:scale-105"
                         />
                       )}
 

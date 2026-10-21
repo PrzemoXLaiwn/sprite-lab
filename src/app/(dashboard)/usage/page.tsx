@@ -14,9 +14,10 @@ import {
   ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
 import { fetchDashboardData } from "./page.actions";
 import { CommunityShowcase } from "@/components/dashboard/CommunityShowcase";
+import { PixelThumb } from "@/components/media/PixelThumb";
+import { isPixelStyleId } from "@/components/community/shared";
 import { SHOWCASE, isPixelShowcase } from "@/data/showcase";
 
 interface DashboardData {
@@ -31,6 +32,7 @@ interface DashboardData {
     id: string;
     prompt: string;
     imageUrl: string;
+    styleId?: string | null;
     createdAt: Date;
   }>;
 }
@@ -332,13 +334,14 @@ export default function DashboardPage() {
                     className="group relative aspect-square overflow-hidden rounded-xl border border-white/[0.06] bg-[#212B4E] transition-colors hover:border-white/20"
                     style={CHECKER}
                   >
-                    <Image
+                    <PixelThumb
                       src={gen.imageUrl}
                       alt={gen.prompt}
-                      fill
-                      sizes="(max-width: 640px) 50vw, 200px"
-                      className="object-contain p-2"
-                      loading="lazy"
+                      sizes="(max-width: 640px) 30vw, 160px"
+                      pixel={isPixelStyleId(gen.styleId)}
+                      width={160}
+                      height={160}
+                      className="absolute inset-0 h-full w-full object-contain p-2"
                     />
                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/75 p-2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
                       <p className="line-clamp-2 text-center text-[12px] text-white">{gen.prompt}</p>
@@ -415,7 +418,7 @@ export default function DashboardPage() {
               <Zap className="mb-2 h-5 w-5 text-[#FFA300]" />
               <h3 className="text-[15px] font-semibold text-white">Upgrade to Pro</h3>
               <p className="mb-4 mt-1 text-[13px] text-[#C8CCE8]">
-                500 credits/month + higher quality + commercial rights
+                500 credits/month and a commercial licence
               </p>
               <Link href="/pricing" className={`${BTN_PRIMARY} w-full`}>
                 View plans <ArrowRight className="h-4 w-4" />

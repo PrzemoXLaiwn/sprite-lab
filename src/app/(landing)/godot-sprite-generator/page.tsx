@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { SeoLanding } from "@/components/landing/SeoLanding";
+import { COMMERCIAL_LICENCE_ANSWER } from "@/config/licence";
+import { SIGNUP_CTA } from "@/config/signup";
 import { ENGINE_GUIDES } from "@/data/geo-content";
 import { SHOWCASE } from "@/data/showcase";
 
@@ -34,12 +36,13 @@ export default function GodotSpritesPage() {
       h1={
         <>
           AI sprites for Godot
+          <span className="sr-only">: </span>
           <br />
           straight into SpriteFrames
         </>
       }
       subtitle="Generate characters, creatures, items and tiles, animate them into sprite sheets, and load them into Sprite2D or AnimatedSprite2D in a minute."
-      trust={["transparent png", "one-row sprite sheets", "nearest-filter ready", "commercial use"]}
+      trust={["transparent png", "one-row sprite sheets", "nearest-filter ready", "commercial licence on paid plans"]}
       floating={[
         { src: "/showcase/anim-witch-walk.webp", alt: "", pixel: true, cls: "left-[6%] top-[28%] w-24 animate-float" },
         { src: "/showcase/slime.png", alt: "", pixel: true, cls: "left-[14%] top-[62%] w-16 animate-float [animation-delay:1.2s]" },
@@ -108,7 +111,7 @@ export default function GodotSpritesPage() {
         { q: "Does Godot get the hitboxes too?", a: "The pack includes hitboxes.json with a body box and a strike box for every frame, in frame pixels. Godot doesn't read it on its own: load it with JSON.parse_string and apply the boxes to a CollisionShape2D or Area2D in your script." },
         { q: "Why is my pixel art blurry in Godot?", a: "Set Project Settings → Rendering → Textures → Default Texture Filter to Nearest (or set the node's Texture Filter to Nearest)." },
         { q: "Does SpriteLab export Godot TileSet resources?", a: "No — it exports PNG tiles and sprite sheets. Add a tile PNG as an atlas source in a TileSet to paint with it." },
-        { q: "Can I use the assets in a commercial Godot game?", a: "Yes, assets you generate can be used in commercial projects." },
+        { q: "Can I use the assets in a commercial Godot game?", a: COMMERCIAL_LICENCE_ANSWER },
       ]}
       cta={{
         title: (
@@ -117,7 +120,7 @@ export default function GodotSpritesPage() {
           </>
         ),
         body: "Generate sprites, animations and tiles for your project.",
-        button: "Get 10 free credits",
+        button: SIGNUP_CTA,
       }}
     />
   );

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SeoLanding } from "@/components/landing/SeoLanding";
+import { SIGNUP_CTA } from "@/config/signup";
 import { LANDING_SPECS } from "@/data/landing-specs";
 
 const URL = "https://www.sprite-lab.com/ai-sprite-animation-generator";
@@ -33,12 +34,13 @@ export default function SpriteAnimationPage() {
       h1={
         <>
           Animate any sprite
+          <span className="sr-only">: </span>
           <br />
           with AI
         </>
       }
       subtitle="Pick a sprite, choose how it moves and get a frame-aligned sprite sheet and GIF. A dragon breathes fire, a dog wags its tail, a car drifts — the motions are planned for each sprite."
-      trust={["4, 6 or 9 key poses", "smooth mode up to 18 frames", "sprite sheet + gif + frames", "commercial use"]}
+      trust={["4, 6 or 9 key poses", "smooth mode up to 18 frames", "sprite sheet + gif + frames", "commercial licence on paid plans"]}
       floating={[
         { src: "/showcase/anim-water.gif", alt: "", pixel: true, cls: "left-[5%] top-[28%] w-28 animate-float" },
         { src: "/showcase/anim-witch-walk.webp", alt: "", pixel: true, cls: "left-[13%] top-[58%] w-24 animate-float [animation-delay:1.2s]" },
@@ -128,7 +130,7 @@ export default function SpriteAnimationPage() {
           </>
         ),
         body: "Generate a sprite and animate it in under two minutes.",
-        button: "Get 10 free credits",
+        button: SIGNUP_CTA,
       }}
     />
   );

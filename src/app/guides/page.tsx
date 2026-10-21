@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { SiteNav } from "@/components/layout/SiteNav";
 import { Footer } from "@/components/layout/Footer";
 import { GUIDES, guideReadingMinutes } from "@/data/guides";
+import { SIGNUP_CREDITS, SIGNUP_CTA } from "@/config/signup";
 
 const SITE = "https://www.sprite-lab.com";
 const URL = `${SITE}/guides`;
@@ -92,14 +93,14 @@ export default function GuidesIndexPage() {
           <div className="mt-14 rounded-2xl border border-[#FFA300]/20 bg-[#FFA300]/[0.05] p-6 sm:p-8">
             <h2 className="font-display text-[22px] font-semibold leading-tight text-white">Try it in SpriteLab</h2>
             <p className="mt-2 text-[15px] leading-relaxed text-[#A7ADD4]">
-              Generate sprites, sprite sheets, seamless tiles and icons from a text prompt. 10 free credits on signup,
-              no card required.
+              Generate sprites, sprite sheets, seamless tiles and icons from a text prompt. Sign up free for {SIGNUP_CREDITS} credits.
+              No card required.
             </p>
             <Link
               href="/register"
               className="px-corners mt-5 inline-flex items-center gap-2 bg-[#FFA300] px-5 py-2.5 text-[14.5px] font-semibold text-[#131A31] transition hover:bg-[#FFB733]"
             >
-              Start free
+              {SIGNUP_CTA}
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
