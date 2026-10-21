@@ -149,10 +149,10 @@ export async function makeAnimation(input: MakeAnimationInput): Promise<MakeAnim
   const walkView = isWalkMotion(input.motion) ? walkViewFor(input.prompt) : null;
   if (walkView && keys.length >= 3 && walkRowFrozen(keys, walkView)) {
     stiffWalk = true;
-    if (option.frames === 4 && Date.now() - startedAt < REDRAW_BUDGET_MS && canSpend(PRICE.grid1024)) {
+    if (option.frames === 4 && canStartOptionalPass(deadline, 1024) && canSpend(PRICE.grid1024)) {
       try {
         console.warn(`[Animate] Stiff ${walkView} walk — redrawing the stride`);
-        const grid = await generateAnimationGrid({ prompt: buildWalkRowPrompt({ pixel: input.pixel, subject: plan.subject || input.prompt, view: walkView }), reference: await frameOnWhite(keys[0]), size: 1024 });
+        const grid = await generateAnimationGrid({ prompt: buildWalkRowPrompt({ pixel: input.pixel, subject: plan.subject || input.prompt, view: walkView }), reference: await frameOnWhite(keys[0]), size: 1024, deadline });
         cost += grid.cost;
         input.onGrid?.("keys", grid.image);
         const found = fitFrames(await extractFrames(grid.image, 2, 2), 4);
