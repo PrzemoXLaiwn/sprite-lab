@@ -184,32 +184,43 @@ export async function makeAnimation(input: MakeAnimationInput): Promise<MakeAnim
     console.warn("[Animate] Smoothing skipped: operation cost cap reached");
     return { anim: keyAnim, plan, prompt, cost, smoothed: false, stiffWalk };
   }
+  // Like the key poses, the in-between sheet gets one redraw when the first
+  // doesn't line up (measured Oct 2026: 6 of 26 smooth animations on paid
+  // plans fell back to key frames, every time after a single rejected sheet)
+  const betweenPrompt = buildInbetweenPrompt({
+    count: keyAnim.frames.length,
+    cols: layout.cols,
+    rows: layout.rows,
+    pixel: input.pixel,
+    subject: plan.subject || input.prompt,
+    loop: input.loop,
+  });
+  let sheet: Buffer;
   try {
-    const sheet = await referenceGrid(keyAnim.frames, layout.cols, layout.rows, 1024);
-    const betweenGrid = await generateAnimationGrid({
-      prompt: buildInbetweenPrompt({
-        count: keyAnim.frames.length,
-        cols: layout.cols,
-        rows: layout.rows,
-        pixel: input.pixel,
-        subject: plan.subject || input.prompt,
-        loop: input.loop,
-      }),
-      reference: sheet,
-      size: layout.size,
-      deadline,
-    });
-    cost += betweenGrid.cost;
-    input.onGrid?.("betweens", betweenGrid.image);
-    const betweens = await extractFrames(betweenGrid.image, layout.cols, layout.rows);
-    if (!framesLookRight(betweens, keys.length)) throw new Error(`in-betweens don't line up (${betweens.length}/${keys.length})`);
-    const all = await interleave(keys, betweens);
-    const anim = await assembleAnimation(all, { pixel: input.pixel, frameSize: 256, fps: baseFps * 2, anchor });
-    return { anim, plan, prompt, cost, smoothed: true, stiffWalk };
+    sheet = await referenceGrid(keyAnim.frames, layout.cols, layout.rows, 1024);
   } catch (err) {
     console.warn("[Animate] Smoothing skipped:", err instanceof Error ? err.message : err);
     return { anim: keyAnim, plan, prompt, cost, smoothed: false, stiffWalk };
   }
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt > 0 && !(canStartOptionalPass(deadline, layout.size) && canSpend(passPrice(layout.size)))) {
+      console.warn("[Animate] Smoothing skipped: no time or budget for a redraw");
+      break;
+    }
+    try {
+      const betweenGrid = await generateAnimationGrid({ prompt: betweenPrompt, reference: sheet, size: layout.size, deadline });
+      cost += betweenGrid.cost;
+      input.onGrid?.("betweens", betweenGrid.image);
+      const betweens = fitFrames(await extractFrames(betweenGrid.image, layout.cols, layout.rows), keys.length);
+      if (!framesLookRight(betweens, keys.length)) throw new Error(`in-betweens don't line up (${betweens.length}/${keys.length})`);
+      const all = await interleave(keys, betweens);
+      const anim = await assembleAnimation(all, { pixel: input.pixel, frameSize: 256, fps: baseFps * 2, anchor });
+      return { anim, plan, prompt, cost, smoothed: true, stiffWalk };
+    } catch (err) {
+      console.warn(`[Animate] Smoothing attempt ${attempt + 1} failed:`, err instanceof Error ? err.message : err);
+    }
+  }
+  return { anim: keyAnim, plan, prompt, cost, smoothed: false, stiffWalk };
 }
 
 /**

@@ -42,9 +42,10 @@ export const FEATURE_COSTS: Record<string, FeatureCost> = {
   anim_4: { runwareUsd: 0.0692, runwareMaxUsd: 2 * P1024, n: 3, status: "measured", claudeUsd: 0.035, claudeMaxUsd: 0.05 },
   anim_6: { runwareUsd: 0.1186, runwareMaxUsd: 2 * P2048, n: 13, status: "measured", claudeUsd: 0.035, claudeMaxUsd: 0.05 },
   anim_9: { runwareUsd: P2048, runwareMaxUsd: 2 * P2048, n: 0, status: "derived", claudeUsd: 0.035, claudeMaxUsd: 0.05 },
-  anim_smooth_4: { runwareUsd: 0.1419, runwareMaxUsd: 3 * P1024, n: 20, status: "measured", claudeUsd: 0.035, claudeMaxUsd: 0.05 },
-  anim_smooth_6: { runwareUsd: 0.2057, runwareMaxUsd: 3 * P2048, n: 7, status: "measured", claudeUsd: 0.035, claudeMaxUsd: 0.05 },
-  anim_smooth_9: { runwareUsd: 0.2057, runwareMaxUsd: 3 * P2048, n: 5, status: "measured", claudeUsd: 0.035, claudeMaxUsd: 0.05 },
+  // Max: 2 key sheets + 2 in-between sheets (the in-between redraw, Oct 2026)
+  anim_smooth_4: { runwareUsd: 0.1419, runwareMaxUsd: 4 * P1024, n: 20, status: "measured", claudeUsd: 0.035, claudeMaxUsd: 0.05 },
+  anim_smooth_6: { runwareUsd: 0.2057, runwareMaxUsd: 4 * P2048, n: 7, status: "measured", claudeUsd: 0.035, claudeMaxUsd: 0.05 },
+  anim_smooth_9: { runwareUsd: 0.2057, runwareMaxUsd: 4 * P2048, n: 5, status: "measured", claudeUsd: 0.035, claudeMaxUsd: 0.05 },
   rotate4: { runwareUsd: 0.0692, runwareMaxUsd: 2 * P1024, n: 1, status: "measured", claudeUsd: 0, claudeMaxUsd: 0 },
   rotate8: { runwareUsd: P2048, runwareMaxUsd: 2 * P2048, n: 0, status: "derived", claudeUsd: 0, claudeMaxUsd: 0 },
   walk4dir: { runwareUsd: P2048 + P1024 * 0.5, runwareMaxUsd: 2 * P2048 + 2 * P1024, n: 2, status: "derived", claudeUsd: 0, claudeMaxUsd: 0 },

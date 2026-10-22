@@ -16,10 +16,13 @@ vi.mock("@/lib/runware", () => ({
   }),
 }));
 vi.mock("@/lib/billing/ledger", () => ({ canSpend: () => true }));
+// Per call: how many sprites the fake sheet yields (default: the full layout)
+const extractCounts: number[] = [];
+
 vi.mock("@/lib/image/animation", () => {
   const frame = () => ({ data: Buffer.alloc(4), width: 10, height: 20 });
   return {
-    extractFrames: vi.fn(async (_img: Buffer, cols: number, rows: number) => Array.from({ length: cols * rows }, frame)),
+    extractFrames: vi.fn(async (_img: Buffer, cols: number, rows: number) => Array.from({ length: extractCounts.shift() ?? cols * rows }, frame)),
     extractTileFrames: vi.fn(),
     isSlicedFrame: () => false,
     interleave: vi.fn(async (a: unknown[], b: unknown[]) => [...a, ...b]),
@@ -52,8 +55,38 @@ describe("makeAnimation time budget (smooth, 6 frames)", () => {
     vi.setSystemTime(T0);
     latencies.length = 0;
     gridCalls.length = 0;
+    extractCounts.length = 0;
   });
   afterEach(() => vi.useRealTimers());
+
+  it("redraws the in-between sheet once when the first one doesn't line up", async () => {
+    const deadline = workDeadline(T0);
+    latencies.push(17_000, 17_000, 17_000);
+    extractCounts.push(6, 4, 6); // keys fine, first in-between sheet short, redraw fine
+    const out = await makeAnimation(input(deadline));
+    expect(out.smoothed).toBe(true);
+    expect(gridCalls).toHaveLength(3);
+  });
+
+  it("falls back to key frames when the redrawn in-between sheet is wrong too", async () => {
+    const deadline = workDeadline(T0);
+    latencies.push(17_000, 17_000, 17_000);
+    extractCounts.push(6, 4, 4); // too few twice (too many would be trimmed and accepted)
+    const out = await makeAnimation(input(deadline));
+    expect(out.smoothed).toBe(false);
+    expect(gridCalls).toHaveLength(3);
+    expect(out.anim.frameCount).toBe(6);
+  });
+
+  it("does not redraw the in-between sheet when that would overrun the deadline", async () => {
+    // 165 s in: 68 s left after the keys (a 2048 pass needs 60), 51 s after the first in-between try
+    const deadline = workDeadline(T0 - 165_000);
+    latencies.push(17_000, 17_000, 17_000);
+    extractCounts.push(6, 4, 6);
+    const out = await makeAnimation(input(deadline));
+    expect(out.smoothed).toBe(false);
+    expect(gridCalls).toHaveLength(2);
+  });
 
   it("draws keys + in-betweens on a typical run, each pass bounded by the request deadline", async () => {
     const deadline = workDeadline(T0);

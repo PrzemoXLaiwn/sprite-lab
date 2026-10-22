@@ -59,9 +59,10 @@ export const FEATURES = {
   anim_4: spec(PRICE.grid1024 * 2 + PRICE.claudePlan, PRICE.grid1024 * 2 + PRICE.claudePlan),
   anim_6: spec(PRICE.grid2048 * 2 + PRICE.claudePlan, PRICE.grid2048 * 2 + PRICE.claudePlan),
   anim_9: spec(PRICE.grid2048 * 2 + PRICE.claudePlan, PRICE.grid2048 * 2 + PRICE.claudePlan),
-  anim_smooth_4: spec(PRICE.grid1024 * 3 + PRICE.claudePlan, PRICE.grid1024 * 3 + PRICE.claudePlan),
-  anim_smooth_6: spec(PRICE.grid2048 * 3 + PRICE.claudePlan, PRICE.grid2048 * 3 + PRICE.claudePlan),
-  anim_smooth_9: spec(PRICE.grid2048 * 3 + PRICE.claudePlan, PRICE.grid2048 * 3 + PRICE.claudePlan),
+  // Smooth: keys (up to 2 sheets) + in-betweens (up to 2 sheets, redraw since Oct 2026)
+  anim_smooth_4: spec(PRICE.grid1024 * 3 + PRICE.claudePlan, PRICE.grid1024 * 4 + PRICE.claudePlan),
+  anim_smooth_6: spec(PRICE.grid2048 * 3 + PRICE.claudePlan, PRICE.grid2048 * 4 + PRICE.claudePlan),
+  anim_smooth_9: spec(PRICE.grid2048 * 3 + PRICE.claudePlan, PRICE.grid2048 * 4 + PRICE.claudePlan),
   tile_anim: spec(PRICE.grid2048, PRICE.grid2048),
   rotate4: spec(PRICE.grid1024 * 2, PRICE.grid1024 * 2),
   rotate8: spec(PRICE.grid2048 * 2, PRICE.grid2048 * 2),
