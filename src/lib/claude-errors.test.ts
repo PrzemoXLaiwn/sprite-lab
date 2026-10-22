@@ -63,8 +63,8 @@ describe("every Claude call site logs a thrown call and still falls back", () =>
     ["planner", "claude-opus-5-5", () => planAnimation({ image: png, prompt: "knight", categoryId: null, motion: "walk", frameCount: 4 })],
     ["suggest", "claude-opus-5-5", () => suggestMotions({ cacheKey: `k${Math.random()}`, image: png, prompt: "knight", categoryId: null })],
     ["rig", "claude-opus-5-5", () => findRigPoints(png, 64, 64)],
-    ["translate", "claude-haiku-4-5-20251001", () => translatePromptIfNeeded("rycerz z mieczem")],
-    ["enhance", "claude-haiku-4-5-20251001", () => enhanceUserPrompt("red dragon", "CREATURES", "DRAGONS")],
+    ["translate", "claude-haiku-5-5", () => translatePromptIfNeeded("rycerz z mieczem")],
+    ["enhance", "claude-haiku-5-5", () => enhanceUserPrompt("red dragon", "CREATURES", "DRAGONS")],
   ])("%s", async (task, model, run) => {
     await run(); // resolves with the caller's fallback, never rejects
     expect(rows).toEqual([expect.objectContaining({ provider: "anthropic", task, model, outcome: "error", estCostUsd: 0, error: "500 api_error: Internal server error" })]);

@@ -112,7 +112,8 @@ export async function planAnimation(opts: {
   const params = {
     model: PLANNER_MODEL,
     max_tokens: 6000,
-    system: SYSTEM,
+    // Same instructions every call: cached, later calls in a session pay ~5% for them
+    system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } }],
     // Structured JSON output; low effort keeps the call to a few seconds.
     // (Not in this SDK version's types yet — the API accepts it.)
     output_config: { effort: "low", format: { type: "json_schema", schema: PLAN_SCHEMA } },

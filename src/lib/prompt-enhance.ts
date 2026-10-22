@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { claudeCall, trackClaude } from "@/lib/claude-usage";
 import { translateWithCloudflare } from "@/lib/cloudflare-ai";
 
-const HAIKU = "claude-haiku-4-5-20251001";
+const HAIKU = "claude-haiku-5-5";
 
 /**
  * AI Prompt Enhancer — Pro/Studio feature
@@ -132,13 +132,14 @@ export async function translatePromptIfNeeded(
     const response = await claudeCall("translate", HAIKU, () => anthropic.messages.create({
       model: HAIKU,
       max_tokens: 200,
+      thinking: { type: "disabled" },
       system: TRANSLATE_SYSTEM_PROMPT,
       messages: [{ role: "user", content: original }],
     }));
     trackClaude("translate", response);
 
-    const text = response.content[0];
-    if (text.type !== "text" || !text.text.trim()) {
+    const text = response.content.find((b) => b.type === "text");
+    if (!text || text.type !== "text" || !text.text.trim()) {
       return { translated: original, original, wasTranslated: false, translationFailed: true };
     }
 
@@ -188,6 +189,7 @@ export async function enhanceUserPrompt(
     const response = await claudeCall("enhance", HAIKU, () => anthropic.messages.create({
       model: HAIKU,
       max_tokens: 100,
+      thinking: { type: "disabled" },
       system: SYSTEM_PROMPT,
       messages: [
         {

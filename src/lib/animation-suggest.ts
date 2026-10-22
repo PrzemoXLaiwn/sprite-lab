@@ -99,7 +99,8 @@ export async function suggestMotions(opts: {
     const params = {
       model: MODEL,
       max_tokens: 4000,
-      system: SYSTEM,
+      // Same instructions every call: cached, later calls in a session pay ~5% for them
+      system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } }],
       // Structured output (not in this SDK version's types yet — the API accepts it)
       output_config: { effort: "low", format: { type: "json_schema", schema: SCHEMA } },
       messages: [{

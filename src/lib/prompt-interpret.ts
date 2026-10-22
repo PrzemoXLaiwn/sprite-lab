@@ -13,7 +13,7 @@ import { looksLikeChatReply } from "@/lib/prompt-enhance";
 // asked for. It never blocks a generation: any failure returns the original.
 // =============================================================================
 
-const HAIKU = "claude-haiku-4-5-20251001";
+const HAIKU = "claude-haiku-5-5";
 
 const SYSTEM = `You turn a request for a 2D game sprite into one concrete visual description for an image model. The image model takes words literally and, when unsure, draws a generic human — your job is to remove that ambiguity.
 
@@ -82,13 +82,16 @@ export async function interpretSubject(prompt: string, categoryId?: string): Pro
     const anthropic = new Anthropic({ apiKey, timeout: 8_000, maxRetries: 0 });
     const response = await claudeCall("interpret", HAIKU, () => anthropic.messages.create({
       model: HAIKU,
-      max_tokens: 160,
-      system: SYSTEM,
+      max_tokens: 300,
+      // A plain rewrite: no thinking (Haiku 5.5 thinks by default, and that would spend max_tokens)
+      thinking: { type: "disabled" },
+      // The 1.3k-token instructions are identical on every call: cached, later calls pay ~10% for them
+      system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } }],
       messages: [{ role: "user", content: `Asset type: ${assetTypeLabel(categoryId)}
 Request: ${original.slice(0, 500)}` }],
     }));
     trackClaude("interpret", response);
-    const block = response.content[0];
+    const block = response.content.find((b) => b.type === "text");
     if (block?.type !== "text") return keep;
     const out = block.text.trim().replace(/^output:\s*/i, "").replace(/^["']|["']$/g, "").replace(/\.$/, "").trim();
     // Descriptions here are meant to be long (up to 80 words), so only the

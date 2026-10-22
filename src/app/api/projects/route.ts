@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import Anthropic from "@anthropic-ai/sdk";
+import { claudeCall, trackClaude } from "@/lib/claude-usage";
 import { rateLimitFeedback } from "@/lib/rate-limit";
 import { parseProjectFields } from "./validation";
 
@@ -168,9 +169,10 @@ async function generateFolderPlan(brief: {
       brief.notes && `Notes: ${brief.notes}`,
     ].filter(Boolean).join("\n");
 
-    const response = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
+    const response = await claudeCall("folders", "claude-haiku-5-5", () => anthropic.messages.create({
+      model: "claude-haiku-5-5",
       max_tokens: 800,
+      thinking: { type: "disabled" },
       system: `You create asset folder plans for 2D game projects. Output ONLY a JSON array.
 
 Each folder object has:
@@ -186,10 +188,11 @@ Output raw JSON array only, no markdown, no explanation.`,
         role: "user",
         content: `Create an asset folder plan for this game:\n${briefText}`,
       }],
-    });
+    }));
+    trackClaude("folders", response);
 
-    const text = response.content[0];
-    if (text.type !== "text") return getDefaultFolders(brief.systems || "");
+    const text = response.content.find((b) => b.type === "text");
+    if (!text || text.type !== "text") return getDefaultFolders(brief.systems || "");
 
     // The model sometimes wraps the JSON in a ```json fence
     const json = text.text.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
