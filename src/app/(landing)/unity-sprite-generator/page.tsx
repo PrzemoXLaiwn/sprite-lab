@@ -35,10 +35,10 @@ export default function UnitySpritesPage() {
       heroLine="ai sprites for unity 2d"
       h1={
         <>
-          AI sprites for Unity
+          Unity sprite generator
           <span className="sr-only">: </span>
           <br />
-          prompt → PNG → scene
+          prompt, PNG, then the scene
         </>
       }
       subtitle="Generate characters, items and tiles, animate them into sprite sheets, and import them into Unity 2D with the usual Sprite Editor workflow — no plugins needed."
@@ -101,6 +101,19 @@ export default function UnitySpritesPage() {
             { label: "How to import sprite sheets into Unity", href: "/guides/how-to-import-sprite-sheets-into-unity" },
             { label: "Hitboxes and hurtboxes from sprite sheets", href: "/guides/hitboxes-and-hurtboxes-from-sprite-sheets" },
             { label: "Make sprite animations", href: "/ai-sprite-animation-generator" },
+          ],
+        },
+        {
+          kind: "cards",
+          id: "mistakes",
+          eyebrow: "import",
+          title: <>Three settings that make a good PNG look broken</>,
+          intro: "When a SpriteLab sheet looks blurry, sliced short or sliding, the texture importer is almost always the cause.",
+          cols: 3,
+          cards: [
+            { title: "Blurry pixels", body: "Filter Mode is still Bilinear. For pixel art set Point (no filter) and Compression to None, and use one Pixels Per Unit for every sprite in the project." },
+            { title: "The last frame is cut off", body: "Slice by cell size, not by a guessed column count. Divide the sheet width by the frame count. If that isn't a whole number of pixels, the grid is wrong." },
+            { title: "Feet jump between clips", body: "Idle and walk need the same pivot. Bottom center works because every frame stands on one baseline. A center pivot makes the character bob when the clip changes." },
           ],
         },
         { kind: "gallery", items: SHOWCASE },

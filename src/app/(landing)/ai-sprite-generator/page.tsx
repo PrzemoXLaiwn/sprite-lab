@@ -138,7 +138,7 @@ export default function AiSpriteGeneratorPage() {
         LANDING_SPECS["ai-sprite-generator"],
       ]}
       faq={[
-        { q: "What is an AI sprite generator?", a: "It is a tool that creates game sprites — characters, items, weapons and props — from a text description. SpriteLab is built for game developers: results come out as transparent PNGs, and pixel art is snapped to a real pixel grid." },
+        { q: "What is an AI sprite generator?", a: "It is a tool that creates game sprites — characters, items, weapons and props — from a text description. SpriteLab is built for game developers: results come out as transparent PNGs, and pixel art is snapped to a real pixel grid.", link: { label: "How to write the prompt", href: "/guides/how-to-prompt-an-ai-sprite-generator" } },
         { q: "Are the sprites transparent?", a: "Yes. The background is removed automatically on every sprite, including enclosed gaps, so you get a clean PNG with an alpha channel." },
         { q: "Is this sprite maker free?", a: `Sign up free for ${SIGNUP_CREDITS} credits. No card needed. After that there are monthly plans and one-off credit packs.` },
         { q: "Is it a sprite editor like Aseprite or Piskel?", a: "No. In a sprite editor you draw every pixel yourself; SpriteLab generates the whole sprite from a description. The results are ordinary PNGs, so you can open them in Aseprite, Piskel or any editor to touch up details." },

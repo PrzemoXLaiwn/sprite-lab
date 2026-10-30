@@ -35,10 +35,10 @@ export default function GodotSpritesPage() {
       heroLine="ai sprites for godot 4"
       h1={
         <>
-          AI sprites for Godot
-          <span className="sr-only">: </span>
+          Godot sprite generator
+          <span className="sr-only"> for </span>
           <br />
-          straight into SpriteFrames
+          Sprite2D and SpriteFrames
         </>
       }
       subtitle="Generate characters, creatures, items and tiles, animate them into sprite sheets, and load them into Sprite2D or AnimatedSprite2D in a minute."

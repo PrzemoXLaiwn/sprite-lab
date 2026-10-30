@@ -40,6 +40,7 @@ function groups(): { title: string; intro: string; items: Item[] }[] {
       intro: "SpriteLab next to other AI sprite tools, from their own published information.",
       items: [
         { label: "Compare AI sprite tools", href: "/compare" },
+        { label: "Best AI sprite generators in 2026", href: "/compare/best-ai-sprite-generators-2026" },
         ...COMPARISONS.map((c) => ({ label: `SpriteLab vs ${c.competitor}`, href: `/compare/${c.slug}` })),
       ],
     },

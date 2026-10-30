@@ -1,7 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
 import { SEO_PAGES } from "@/data/seo-pages";
-import { GUIDES } from "@/data/guides";
 import { TIKTOK_HANDLE, TIKTOK_PROFILE_URL } from "@/data/tiktok";
 import { TikTokIcon } from "@/components/icons/TikTokIcon";
 
@@ -15,7 +14,10 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
     links: [
       { label: "How SpriteLab works", href: "/how-it-works" },
       { label: "All guides", href: "/guides" },
-      ...GUIDES.slice(0, 4).map((g) => ({ label: g.title, href: `/guides/${g.slug}` })),
+      { label: "Frames per sprite animation", href: "/guides/how-many-frames-per-sprite-animation" },
+      { label: "How to prompt a sprite", href: "/guides/how-to-prompt-an-ai-sprite-generator" },
+      { label: "Free sprites, no artist", href: "/guides/free-game-sprites-without-an-artist" },
+      { label: "Commercial use of AI sprites", href: "/guides/can-you-use-ai-sprites-in-a-commercial-game" },
       { label: "Compare AI sprite tools", href: "/compare" },
     ],
   },

@@ -3,7 +3,6 @@ import { Atkinson_Hyperlegible_Next, JetBrains_Mono, Tektur } from "next/font/go
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
-import Script from "next/script";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 import { SIGNUP_OFFER } from "@/config/signup";
@@ -17,11 +16,14 @@ const body = Atkinson_Hyperlegible_Next({
   variable: "--font-body",
 });
 
+// Code face only. Not preloaded: it is not the LCP text, and loading three
+// weights on every marketing page competed with the hero image on mobile.
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-jetbrains",
-  weight: ["400", "500", "600"],
+  weight: "400",
+  preload: false,
 });
 
 // Display face: angular, game-UI flavoured, but not a pixel font (pixel
@@ -211,11 +213,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`dark ${body.variable} ${jetbrainsMono.variable} ${display.variable}`}>
       <head>
-        {/* Resource Hints - Performance Optimization */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link rel="dns-prefetch" href="https://js.stripe.com" />
-        <link rel="dns-prefetch" href="https://replicate.delivery" />
+        {/* next/font self-hosts the faces, and CSP font-src is 'self', so a
+            preconnect to Google Fonts only spends a mobile connection slot.
+            Stripe and image hosts are not on the critical path of public pages. */}
         <link rel="preconnect" href="https://va.vercel-scripts.com" />
         
         {/* Favicon - wszystkie rozmiary dla różnych przeglądarek i Google */}

@@ -13,7 +13,7 @@ export function SiteNav({ registerUrl = "/register", anchorsOnHome = false, sign
   const prefix = anchorsOnHome ? "" : "/";
   const links = [
     { href: `${prefix}#explore`, label: "Gallery" },
-    { href: `${prefix}#features`, label: "Features" },
+    { href: `${prefix}#tools`, label: "Tools" },
     { href: "/sprite-sheet-generator", label: "Sprite sheets" },
     { href: "/how-it-works", label: "How it works" },
     { href: `${prefix}#pricing`, label: "Pricing" },
@@ -25,7 +25,7 @@ export function SiteNav({ registerUrl = "/register", anchorsOnHome = false, sign
     <nav aria-label="Main" className="fixed left-0 right-0 top-0 z-50 border-b border-white/[0.06] bg-[#131A31]/85 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-[1400px] items-center justify-between gap-4 px-5 lg:px-8">
         <Link href="/" aria-label="SpriteLab home" className="flex h-10 shrink-0 items-center gap-2.5">
-          <Image src="/logo.png" alt="" width={28} height={28} priority />
+          <Image src="/logo.png" alt="" width={28} height={28} />
           <span className="font-display text-[19px] font-semibold text-white">
             Sprite<span className="text-[#FFA300]">Lab</span>
           </span>

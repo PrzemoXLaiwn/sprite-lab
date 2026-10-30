@@ -6,19 +6,19 @@ import { LANDING_SPECS } from "@/data/landing-specs";
 const URL = "https://www.sprite-lab.com/ai-sprite-animation-generator";
 
 export const metadata: Metadata = {
-  title: { absolute: "AI Sprite Animation Generator — Idle, Walk, Attack | SpriteLab" },
+  title: { absolute: "Sprite Animation Generator — Idle and Walk | SpriteLab" },
   description:
     "Animate any game sprite with AI: idle, walk, run, attack, jump, fly or a custom move. Get a sprite sheet, frames and a GIF — 4 to 18 frames.",
   keywords: ["AI sprite animation", "AI sprite animation generator", "sprite animator", "walk cycle generator", "pixel art animation AI", "animate sprite", "idle animation generator", "attack animation"],
   openGraph: {
-    title: "AI Sprite Animation Generator — Idle, Walk, Attack | SpriteLab",
+    title: "Sprite Animation Generator — Idle and Walk | SpriteLab",
     description: "Idle, walk, attack, jump, fly or your own move. Sprite sheet + GIF, ready for your engine.",
     url: URL,
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "AI Sprite Animation Generator — Idle, Walk, Attack | SpriteLab",
+    title: "Sprite Animation Generator — Idle and Walk | SpriteLab",
     description: "Animate any game sprite with AI: idle, walk, run, attack, jump, fly or a custom move. Get a sprite sheet, frames and a GIF — 4 to 18 frames.",
   },
   alternates: { canonical: URL },

@@ -9,6 +9,7 @@ import { COMMERCIAL_LICENCE_ANSWER } from "@/config/licence";
 import { ENGINE_GUIDES } from "@/data/geo-content";
 import { ENGINE_CRAFT_GUIDES } from "@/data/guides-engine";
 import { BASICS_GUIDES } from "@/data/guides-basics";
+import { SEARCH_GUIDES } from "@/data/guides-search";
 
 export interface GuideImage {
   src: string;
@@ -781,7 +782,7 @@ func attack() -> void:
 /** First batch of guides went live on this date. */
 export const FIRST_PUBLISHED = "2026-10-08";
 
-export const GUIDES: Guide[] = [...BASE_GUIDES, ...ENGINE_CRAFT_GUIDES, ...BASICS_GUIDES];
+export const GUIDES: Guide[] = [...BASE_GUIDES, ...ENGINE_CRAFT_GUIDES, ...BASICS_GUIDES, ...SEARCH_GUIDES];
 
 export function getGuide(slug: string): Guide | undefined {
   return GUIDES.find((g) => g.slug === slug);
