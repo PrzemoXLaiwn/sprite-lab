@@ -35,6 +35,7 @@ import {
 import { fetchUserProfile, updateProfile, fetchCreditHistory, checkUsername, uploadAvatar, fetchEmailPreferences, updateEmailPreferences, EmailPreferences } from "./page.actions";
 import Link from "next/link";
 import { ReferralCard } from "@/components/dashboard/ReferralCard";
+import { ManageSubscription } from "@/components/billing/ManageSubscription";
 
 interface UserData {
   id: string;
@@ -757,6 +758,8 @@ export default function SettingsPage() {
                 <p className="mt-1 font-sans tracking-tight text-[24px] font-semibold tabular-nums text-white">{generations}</p>
               </div>
             </div>
+
+            <ManageSubscription />
 
             <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-[12px] text-[#9AA1CC]">

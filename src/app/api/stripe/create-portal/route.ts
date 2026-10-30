@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createPortalSession } from "@/lib/stripe";
 import prisma from "@/lib/prisma";
+import { getManageOnlyPortalConfigurationId } from "@/lib/billing/portal-config";
 
 export async function POST() {
   try {
@@ -33,10 +34,12 @@ export async function POST() {
     // header, which the caller controls (open redirect from the portal).
     const origin = process.env.NEXT_PUBLIC_APP_URL || "https://www.sprite-lab.com";
 
-    // Create portal session
+    // Payment method and invoices only. Cancellation stays in our flow.
+    const configurationId = await getManageOnlyPortalConfigurationId();
     const session = await createPortalSession(
       dbUser.stripeCustomerId,
-      `${origin}/settings`
+      `${origin}/settings#billing`,
+      configurationId
     );
 
     console.log("Portal session created:", session.id);
