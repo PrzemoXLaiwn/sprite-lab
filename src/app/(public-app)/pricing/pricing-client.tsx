@@ -10,7 +10,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Check, Image as ImageIcon, Infinity as InfinityIcon, Loader2, Users, Zap } from "lucide-react";
+import { Check, Image as ImageIcon, Infinity as InfinityIcon, Loader2, Zap } from "lucide-react";
 import { fetchUserPlan } from "./page.actions";
 import { PLAN_CHECKOUT_SLUG, TOTAL_LIFETIME_SLOTS, type LifetimeCard, type LifetimeSlotInfo } from "./pricing-data";
 import { track, FUNNEL } from "@/lib/analytics";
@@ -126,36 +126,23 @@ export function PackBuyButton({ packKey, slug, name, featured }: { packKey: stri
   );
 }
 
-/** Real user and asset counts; renders nothing until (and unless) they load. */
 export function PricingStats() {
-  const [stats, setStats] = useState({ assets: 0, users: 0 });
+  const [assets, setAssets] = useState(0);
   useEffect(() => {
     fetch("/api/stats")
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (!data) return;
-        setStats({
-          assets: data.totalGenerations || 0,
-          users: data.totalUsers || data.activeUsersWeek || 0,
-        });
+        if (!data || data.error) return;
+        setAssets(data.totalGenerations || 0);
       })
       .catch(() => {});
   }, []);
+  if (assets <= 0) return null;
   return (
-    <>
-      {stats.users > 0 && (
-        <span className="flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] text-[#C8CCE8]">
-          <Users className="h-3 w-3 text-[#9AA1CC]" aria-hidden="true" />
-          {stats.users.toLocaleString()}+ users
-        </span>
-      )}
-      {stats.assets > 0 && (
-        <span className="flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] text-[#C8CCE8]">
-          <ImageIcon className="h-3 w-3 text-[#9AA1CC]" aria-hidden="true" />
-          {stats.assets.toLocaleString()} assets created
-        </span>
-      )}
-    </>
+    <span className="flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] text-[#C8CCE8]">
+      <ImageIcon className="h-3 w-3 text-[#9AA1CC]" aria-hidden="true" />
+      {assets.toLocaleString()} assets created
+    </span>
   );
 }
 

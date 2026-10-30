@@ -1,40 +1,18 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { readPublicGenerationStats } from "@/lib/public-stats";
 
-// Cache the result for 5 minutes
-let cachedTotal: number | null = null;
-let cacheTime: number = 0;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+// Same public generation count as /api/stats, under the older path.
+// Never invent a number when the database is down.
 
 export async function GET() {
   try {
-    const now = Date.now();
-
-    // Return cached value if still valid
-    if (cachedTotal !== null && now - cacheTime < CACHE_DURATION) {
-      return NextResponse.json({
-        total: cachedTotal,
-        cached: true
-      });
-    }
-
-    // Count total generations
-    const total = await prisma.generation.count();
-
-    // Update cache
-    cachedTotal = total;
-    cacheTime = now;
-
+    const stats = await readPublicGenerationStats();
     return NextResponse.json({
-      total,
-      cached: false
+      total: stats.totalGenerations,
+      cached: stats.cached,
     });
   } catch (error) {
     console.error("Failed to get total generations:", error);
-    // Return a reasonable default on error
-    return NextResponse.json({
-      total: 1000,
-      error: true
-    });
+    return NextResponse.json({ total: 0, error: true }, { status: 503 });
   }
 }

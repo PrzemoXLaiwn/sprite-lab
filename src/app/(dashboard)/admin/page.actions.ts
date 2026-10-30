@@ -15,6 +15,7 @@ import {
   isModerator,
   getUserRole,
   getAdminStats,
+  getCancellationReport,
   getReports,
   updateReportStatus,
   getModeratorStats,
@@ -55,6 +56,19 @@ export async function fetchAdminStats() {
   }
 
   return getAdminStats(user.id);
+}
+
+export async function fetchCancellationReport() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: "Unauthorized", report: null };
+  }
+
+  return getCancellationReport(user.id);
 }
 
 // -----------------------------------------------------------------------------

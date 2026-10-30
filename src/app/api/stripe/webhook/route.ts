@@ -15,6 +15,7 @@ import {
   reversePaymentCredits,
   stripeId,
 } from "../_lib/fulfillment";
+import { activeSubscriptionPatch, endedSubscriptionPatch } from "@/lib/billing/subscription-state";
 
 // ─── Metadata validators ──────────────────────────────────────────────────────
 // IMPORTANT: Zod runs AFTER stripe.webhooks.constructEvent() succeeds.
@@ -320,19 +321,15 @@ async function handleSubscriptionPurchase(session: Stripe.Checkout.Session, user
     return;
   }
 
-  const periodEnd = getSubscriptionPeriodEnd(subscription);
-
   // Link the subscription only. Credits are granted per paid invoice by
   // handleInvoicePaymentSucceeded (see _lib/fulfillment.ts) — granting here
-  // too would double-credit the first month.
+  // too would double-credit the first month. A new subscription clears any
+  // leftover cancel-at-period-end or pause flags.
   await prisma.user.update({
     where: { id: userId },
     data: {
-      plan: planName,
+      ...activeSubscriptionPatch(subscription, planName),
       stripeCustomerId: stripeId(subscription.customer),
-      stripeSubscriptionId: subscriptionId,
-      stripePriceId: priceId,
-      ...(periodEnd ? { stripeCurrentPeriodEnd: periodEnd } : {}),
     },
   });
 
@@ -359,22 +356,32 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
 
   if (!planName) {
     console.error("Unknown price ID:", priceId);
+    const pause = subscription.pause_collection;
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        cancelAtPeriodEnd: subscription.cancel_at_period_end === true,
+        billingPaused: pause != null,
+        subscriptionPauseResumesAt: pause?.resumes_at ? new Date(pause.resumes_at * 1000) : null,
+      },
+    });
     return;
   }
 
-  console.log("Subscription updated for user:", userId, "to plan:", planName);
+  console.log(
+    "Subscription updated for user:",
+    userId,
+    "to plan:",
+    planName,
+    "cancel_at_period_end:",
+    subscription.cancel_at_period_end
+  );
 
-  const periodEnd = getSubscriptionPeriodEnd(subscription);
-
-  // Update user subscription details
+  // Plan stays in place when the customer schedules cancellation or accepts
+  // a coupon. Downgrade happens on customer.subscription.deleted only.
   await prisma.user.update({
     where: { id: userId },
-    data: {
-      plan: planName,
-      stripeSubscriptionId: subscription.id,
-      stripePriceId: priceId,
-      ...(periodEnd ? { stripeCurrentPeriodEnd: periodEnd } : {}),
-    },
+    data: activeSubscriptionPatch(subscription, planName),
   });
 
   console.log(`User ${userId} subscription updated to ${planName}`);
@@ -415,12 +422,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
     : null;
   await prisma.user.update({
     where: { id: userId },
-    data: {
-      plan: lifetimePlan ?? "FREE",
-      stripeSubscriptionId: null,
-      stripePriceId: null,
-      stripeCurrentPeriodEnd: null,
-    },
+    data: endedSubscriptionPatch(lifetimePlan ?? "FREE"),
   });
 
   // Audit-only transaction. Use 0 amount so this is purely a status marker

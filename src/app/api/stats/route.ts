@@ -1,104 +1,25 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { readPublicGenerationStats } from "@/lib/public-stats";
 
 // ===========================================
 // PUBLIC STATS ENDPOINT
 // ===========================================
-// Returns real-time stats for marketing pages
-// No authentication required
-
-// Cache for performance
-let cachedStats: {
-  totalGenerations: number;
-  totalUsers: number;
-  activeUsersToday: number;
-  activeUsersWeek: number;
-  paidSubscribers: number;
-} | null = null;
-let cacheTime: number = 0;
-const CACHE_DURATION = 60 * 1000; // 1 minute cache
+// Marketing pages may show how many assets have been generated.
+// Paid subscriber counts and user-activity numbers are not public.
+// The admin dashboard loads those from getAdminStats, not from here.
 
 export async function GET() {
   try {
-    const now = Date.now();
-
-    // Return cached value if still valid
-    if (cachedStats !== null && now - cacheTime < CACHE_DURATION) {
-      return NextResponse.json({
-        ...cachedStats,
-        cached: true,
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-    // Calculate real stats from database
-    const [
-      totalGenerations,
-      totalUsers,
-      activeUsersToday,
-      activeUsersWeek,
-      paidSubscribers,
-    ] = await Promise.all([
-      // Total generations ever made
-      prisma.generation.count(),
-
-      // Total registered users
-      prisma.user.count(),
-
-      // Users active in last 24 hours
-      prisma.user.count({
-        where: {
-          lastActiveAt: {
-            gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
-          },
-        },
-      }),
-
-      // Users active in last 7 days
-      prisma.user.count({
-        where: {
-          lastActiveAt: {
-            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-          },
-        },
-      }),
-
-      // Paid subscribers (non-FREE plans)
-      prisma.user.count({
-        where: {
-          plan: {
-            not: "FREE",
-          },
-        },
-      }),
-    ]);
-
-    // Update cache
-    cachedStats = {
-      totalGenerations,
-      totalUsers,
-      activeUsersToday,
-      activeUsersWeek,
-      paidSubscribers,
-    };
-    cacheTime = now;
-
+    const stats = await readPublicGenerationStats();
     return NextResponse.json({
-      ...cachedStats,
-      cached: false,
+      ...stats,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
     console.error("Failed to get stats:", error);
-
-    // Never invent numbers: callers hide the stats when they are zero.
     return NextResponse.json(
       {
         totalGenerations: 0,
-        totalUsers: 0,
-        activeUsersToday: 0,
-        activeUsersWeek: 0,
-        paidSubscribers: 0,
         error: true,
         timestamp: new Date().toISOString(),
       },

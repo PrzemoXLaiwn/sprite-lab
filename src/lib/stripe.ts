@@ -380,46 +380,22 @@ export async function createCreditPackCheckoutSession(
 /**
  * Create customer portal session
  */
+/**
+ * Customer portal for payment method and invoices only.
+ * `configurationId` must be a portal configuration with subscription
+ * cancellation and plan changes disabled. The retention flow is the only
+ * cancel path — do not open the portal without that configuration.
+ */
 export async function createPortalSession(
   customerId: string,
-  returnUrl: string
+  returnUrl: string,
+  configurationId: string
 ): Promise<Stripe.BillingPortal.Session> {
   const session = await stripe.billingPortal.sessions.create({
     customer: customerId,
     return_url: returnUrl,
+    configuration: configurationId,
   });
 
   return session;
-}
-
-/**
- * Cancel subscription
- */
-export async function cancelSubscription(
-  subscriptionId: string
-): Promise<Stripe.Subscription> {
-  const subscription = await stripe.subscriptions.cancel(subscriptionId);
-  return subscription;
-}
-
-/**
- * Update subscription
- */
-export async function updateSubscription(
-  subscriptionId: string,
-  newPriceId: string
-): Promise<Stripe.Subscription> {
-  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-
-  const updatedSubscription = await stripe.subscriptions.update(subscriptionId, {
-    items: [
-      {
-        id: subscription.items.data[0].id,
-        price: newPriceId,
-      },
-    ],
-    proration_behavior: "create_prorations",
-  });
-
-  return updatedSubscription;
 }

@@ -30,8 +30,10 @@ import {
   Loader2,
   Mail,
 } from "lucide-react";
-import { checkAdminAccess, fetchAdminStats } from "./page.actions";
+import { checkAdminAccess, fetchAdminStats, fetchCancellationReport } from "./page.actions";
 import { UsagePanel } from "@/components/admin/UsagePanel";
+import { CancellationPanel } from "@/components/admin/CancellationPanel";
+import type { CancellationReport } from "@/lib/admin";
 
 interface AdminStats {
   totalUsers: number;
@@ -131,6 +133,8 @@ function StatCard({
 export default function AdminPage() {
   const router = useRouter();
   const [stats, setStats] = useState<AdminStats | null>(null);
+  const [cancellations, setCancellations] = useState<CancellationReport | null>(null);
+  const [cancellationError, setCancellationError] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -140,13 +144,26 @@ export default function AdminPage() {
 
   const loadStats = useCallback(async () => {
     try {
-      const result = await fetchAdminStats();
+      const [result, cancellationsResult] = await Promise.all([
+        fetchAdminStats(),
+        fetchCancellationReport(),
+      ]);
       if (!isMounted.current) return;
       if (result.success && result.stats) {
         setStats(result.stats as AdminStats);
         setError(null);
       } else {
         setError(typeof result.error === "string" ? result.error : "Failed to load stats");
+      }
+      if (cancellationsResult.success && cancellationsResult.report) {
+        setCancellations(cancellationsResult.report);
+        setCancellationError(null);
+      } else {
+        setCancellationError(
+          typeof cancellationsResult.error === "string"
+            ? cancellationsResult.error
+            : "Couldn't load cancellation records."
+        );
       }
     } catch (err) {
       if (!isMounted.current) return;
@@ -328,6 +345,8 @@ export default function AdminPage() {
           />
         </div>
       </section>
+
+      <CancellationPanel report={cancellations} error={cancellationError} />
 
       {/* Recent purchases — small, optional, just for "did anyone pay today?" */}
       <section className="rounded-2xl border border-white/[0.06] bg-[#19223F] p-4 sm:p-6">
