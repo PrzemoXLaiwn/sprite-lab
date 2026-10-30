@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { preload } from "react-dom";
 import { Plus } from "lucide-react";
 import { SectionHeader } from "@/components/landing/SectionHeader";
 import { PricingSection } from "@/components/landing/PricingSection";
@@ -13,6 +14,7 @@ import { Footer } from "@/components/layout/Footer";
 import { GUIDE, PRICE_LIST, signupOffer } from "@/data/product-guide";
 import { SHOWCASE, getFeaturedGenerationsSafe } from "@/lib/featured-generations";
 import { HOME_FAQ } from "@/data/geo-content";
+import { SEO_PAGES } from "@/data/seo-pages";
 import { RefCapture } from "@/components/landing/RefCapture";
 
 /**
@@ -29,6 +31,10 @@ export async function HomePage({ signedIn }: { signedIn: boolean }) {
   // Explore wall: curated pipeline showcase first, then the most-liked public
   // community sprites (cached 5 min; never fails the render — falls back to
   // the showcase alone if the DB is unavailable).
+  // Discover the hero frame before the body parses. The file is already a
+  // small WebP; preloading it is the LCP request on mobile.
+  preload("/showcase/anim-knight-idle.webp", { as: "image", fetchPriority: "high" });
+
   const community = await getFeaturedGenerationsSafe(36);
   const wall = curateWall([...SHOWCASE, ...community]);
   const offer = signupOffer();
@@ -61,7 +67,6 @@ export async function HomePage({ signedIn }: { signedIn: boolean }) {
 
             <p className="mt-5 text-[13.5px] leading-relaxed text-[#A7ADD4]">
               Sign up for {offer.credits} free credits. No card.
-              <span className="hidden sm:inline"> Over 1,000 people have made an account so far.</span>
             </p>
           </div>
 
@@ -74,6 +79,30 @@ export async function HomePage({ signedIn }: { signedIn: boolean }) {
 
       {/* ═══ WHAT YOU GET — real output ═════════════════════ */}
       <ShowcaseRows />
+
+      {/* ═══ TOOLS — one link per public landing page ════════ */}
+      <section id="tools" className="relative scroll-mt-16 border-y border-white/[0.06] bg-[#19223F] py-16 sm:py-20">
+        <div className="mx-auto max-w-6xl px-4 sm:px-5">
+          <SectionHeader
+            title="The asset you actually need"
+            intro="Each tool page is about one job: the file you get, the limits, and how it lands in an engine."
+            className="mb-10"
+          />
+          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {SEO_PAGES.map((page) => (
+              <li key={page.slug}>
+                <Link
+                  href={`/${page.slug}`}
+                  className="flex min-h-11 flex-col justify-center rounded-[8px] border border-white/[0.06] bg-[#212B4E] px-4 py-3 transition-colors hover:border-[#FFA300]/40"
+                >
+                  <span className="text-[15px] font-semibold text-[#FFF1E8]">{page.label}</span>
+                  <span className="mt-1 text-[13px] leading-snug text-[#A7ADD4]">{page.summary}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
 
       {/* ═══ HOW IT WORKS — guide tabs ════════════════════════ */}
       <GuideTabs sections={GUIDE} prices={PRICE_LIST} />

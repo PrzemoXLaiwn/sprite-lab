@@ -60,6 +60,13 @@ export default function CompareIndexPage() {
             All six tools in one table: the best AI sprite generators in 2026
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
           </Link>
+          <p className="mx-auto mt-3 max-w-2xl text-[14.5px] leading-relaxed text-[#A7ADD4]">
+            If the budget is the constraint, start with{" "}
+            <Link href="/guides/free-game-sprites-without-an-artist" className="text-[#FFC857] underline decoration-[#FFC857]/40 underline-offset-4 hover:text-white">
+              free ways to get game sprites without hiring an artist
+            </Link>
+            . It covers editors, CC0 packs and what a free AI grant actually lets you ship.
+          </p>
         </div>
       </section>
 

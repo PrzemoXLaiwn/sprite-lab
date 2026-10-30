@@ -19,7 +19,7 @@ export const ENGINE_CRAFT_GUIDES: Guide[] = [
     updated: UPDATED,
     published: UPDATED,
     related: ["how-many-frames-per-sprite-animation", "hitboxes-and-hurtboxes-from-sprite-sheets", "pixel-art-sprite-sizes-for-games"],
-    tools: ["/ai-sprite-animation-generator", "/pixel-art-generator"],
+    tools: ["/gamemaker-sprite-generator", "/ai-sprite-animation-generator", "/pixel-art-generator"],
     sections: [
       {
         heading: "The short answer",
@@ -427,7 +427,7 @@ func _physics_process(_delta: float) -> void:
     updated: UPDATED,
     published: UPDATED,
     related: ["how-many-frames-per-sprite-animation", "how-to-use-sprite-sheets-in-godot-4", "sprite-sheet-layout-and-texture-atlases"],
-    tools: ["/rpg-character-creator", "/ai-sprite-animation-generator"],
+    tools: ["/top-down-sprite-generator", "/rpg-character-creator", "/ai-sprite-animation-generator"],
     sections: [
       {
         heading: "The short answer",

@@ -58,6 +58,8 @@ const PRIVATE = [
   "/variations",
   "/animate",
   "/projects",
+  "/play",
+  "/quests",
   // Signed-in copies of /, /pricing and /community (served by a proxy rewrite)
   "/member/",
   // Admin / internal

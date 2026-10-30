@@ -213,7 +213,7 @@ export function ShowcaseRows() {
           "Pixel art snapped to a real pixel grid",
           "12 styles, from 16-bit pixel art to hand-painted",
         ]}
-        link={{ href: "/how-it-works#generate", label: "How creating works" }}
+        link={{ href: "/ai-sprite-generator", label: "AI sprite generator" }}
         visual={<CreateVisual />}
       />
 
@@ -226,7 +226,7 @@ export function ShowcaseRows() {
           "4, 6 or 9 frames — or smooth motion with in-betweens",
           "Sprite sheet PNG, single frames and a GIF",
         ]}
-        link={{ href: "/how-it-works#animate", label: "How animation works" }}
+        link={{ href: "/sprite-sheet-generator", label: "Sprite sheet generator" }}
         visual={<AnimateVisual />}
       />
 
@@ -234,7 +234,7 @@ export function ShowcaseRows() {
         title={<>Every side of your<br />character, in one click.</>}
         body="Top-down or isometric game? Turn any character or creature into a 4- or 8-direction sheet — same size, same ground line, ready to slice."
         points={["4 directions (front, right, back, left) or all 8", "The same sprite from every angle — nothing redrawn off-model", "One view per frame, named S · E · N · W"]}
-        link={{ href: "/how-it-works#animate", label: "How directions work" }}
+        link={{ href: "/top-down-sprite-generator", label: "Top-down sprite generator" }}
         visual={<DirectionsVisual />}
       />
 
