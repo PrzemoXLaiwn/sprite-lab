@@ -157,7 +157,7 @@ export function computeQa(frames: Frame[], info: QaInfo, thresholds: QaThreshold
     flags.push(`seam ${fmt(metrics.seam)} > ${thresholds.seamRatio}× ${fmt(metrics.cons_med)}`);
   }
   if (metrics.seam > thresholds.seamAbs) flags.push(`seam ${fmt(metrics.seam)} > ${thresholds.seamAbs} abs`);
-  if (metrics.cons_med > 0 && metrics.cons_max > thresholds.consSpikeRatio * metrics.cons_med) {
+  if (metrics.cons_med > 0 && metrics.cons_max > thresholds.consSpikeRatio * metrics.cons_med && metrics.cons_max > thresholds.consSpikeAbs) {
     flags.push(`pop ${fmt(metrics.cons_max)} > ${thresholds.consSpikeRatio}× ${fmt(metrics.cons_med)}`);
   }
   if (metrics.alpha_coverage < thresholds.alphaCoverageMin || metrics.alpha_coverage > thresholds.alphaCoverageMax) {

@@ -129,6 +129,8 @@ export const ST_QA = {
   seamRatio: 2,
   seamAbs: 6,
   consSpikeRatio: 4,
+  /** A blink on an otherwise still loop is a 4× spike too; a pop must also exceed this absolute step (×1000). */
+  consSpikeAbs: 10,
   alphaCoverageMin: 0.08,
   alphaCoverageMax: 0.75,
   cornerOpaqueMax: 0.02,

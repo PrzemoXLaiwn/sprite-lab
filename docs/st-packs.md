@@ -122,7 +122,7 @@ in the raw provider totals. Costs also accumulate on the expression and job rows
 | `drift_px` lower-band centroid x range | > 0.5 px |
 | `head_x_range` | informative only |
 | `seam` vs `cons_med` | seam > 2 × median consecutive diff, or > 6 absolute |
-| `cons_max` | > 4 × median (pop / cut) |
+| `cons_max` | > 4 × median and > 10 absolute (pop / cut; a blink on a still loop is not one) |
 | `alpha_coverage` | outside 8–75 % |
 | `edge_touch` | subject touches the left/right edge |
 | `corner_opaque` | > 2 % opaque pixels in the corner patches |
