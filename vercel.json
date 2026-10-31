@@ -1,4 +1,9 @@
 {
+  "functions": {
+    "src/app/api/st-packs/**": {
+      "memory": 3009
+    }
+  },
   "crons": [
     {
       "path": "/api/cron/analyze",
