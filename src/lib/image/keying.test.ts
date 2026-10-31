@@ -117,6 +117,19 @@ describe("keySpriteBackground", () => {
     expect(c.alpha(5, 5)).toBe(0);
   });
 
+  it("magenta key: removes a contact shadow drawn in a darker key tint, keeps a pink scarf higher up", () => {
+    const KEY: RGB = [255, 0, 255];
+    const c = canvas(300, 400, KEY);
+    c.rect(100, 40, 200, 340, [190, 192, 198]); // silver body down to the feet
+    c.rect(130, 120, 170, 150, [200, 60, 170]); // pink scarf: key-tinted but far above the feet
+    c.rect(60, 345, 240, 372, [176, 32, 160]); // flat dark-magenta shadow under and around the feet
+    keySpriteBackground(c.raw);
+    expect(c.alpha(80, 360)).toBe(0); // shadow beside the feet
+    expect(c.alpha(150, 365)).toBe(0); // shadow under the feet
+    expect(c.alpha(150, 135)).toBe(255); // scarf stays
+    expect(c.alpha(150, 250)).toBe(255); // body stays
+  });
+
   it("removes a white gap behind a grey anti-aliased rim inside a dark cloak (Pixel HD lantern case)", () => {
     const c = canvas(300, 300);
     const CLOAK: RGB = [40, 42, 48], RIM: RGB = [200, 202, 205];

@@ -469,9 +469,12 @@ function keyOutBackground(raw: Raw, tolerance: number, fringePasses = 1, areaSca
 }
 
 /** The passes after the enclosed patches are settled: chroma-key despill, then the ground shadow. */
-function finishKeying(raw: Raw, [br, bg, bb]: [number, number, number]): void {
+function finishKeying(raw: Raw, key: [number, number, number]): void {
+  const [br, bg, bb] = key;
+  // Shadow first: the despill strips the key tint from exactly the edge pixels
+  // a key-tinted shadow is recognised by
+  removeGroundShadow(raw, key);
   if (Math.max(br, bg, bb) - Math.min(br, bg, bb) > 110) despillEdges(raw, br, bg, bb);
-  removeGroundShadow(raw);
 }
 
 /**
@@ -517,11 +520,24 @@ function despillEdges(raw: Raw, br: number, bg: number, bb: number, range = 4): 
  * such pixels — only in the lower 30% of the subject, so light-coloured parts
  * higher up (silver armour, white cloth) are never touched.
  */
-function removeGroundShadow(raw: Raw): void {
+function removeGroundShadow(raw: Raw, key?: [number, number, number]): void {
   const { width, height, data } = raw;
   const b = opaqueBounds(raw);
   if (!b) return;
   const yMin = Math.floor(b.y1 - (b.y1 - b.y0) * 0.3);
+  // On a chroma key (magenta, for pale subjects) the model shades its contact
+  // shadow in a darker key tint instead of grey (measured: a silver knight on
+  // magenta stood on a #b020a0 ellipse that no key-distance rule reached).
+  // Such pixels count as shadow too: the key's strong channels well above its
+  // weak one. The band, smoothness and shape checks below still apply.
+  const chroma = key !== undefined && Math.max(...key) - Math.min(...key) > 110;
+  const strong = key ? key.map((v) => v > 180) : [false, false, false];
+  const weak = key ? key.map((v) => v < 90) : [false, false, false];
+  const keyTinted = (i: number) => {
+    if (!chroma) return false;
+    const weakMax = Math.max(...[0, 1, 2].filter((c) => weak[c]).map((c) => data[i + c]));
+    return [0, 1, 2].every((c) => !strong[c] || data[i + c] > weakMax + 60);
+  };
   const isShadow = (p: number) => {
     const i = p * 4;
     if (data[i + 3] === 0) return false;
@@ -533,7 +549,7 @@ function removeGroundShadow(raw: Raw): void {
     // Grey only, from the pale outer ring of a soft shadow (it fades into the
     // white key) down to its mid-grey core. White cloth or a ghost reached
     // here is part of a tall region and is kept by the flat/small check below.
-    if (luma < 95 || max - min > 28) return false;
+    if ((luma < 95 || max - min > 28) && !keyTinted(i)) return false;
     // Soft: a shadow is a smooth gradient. Textured grey (scaly legs, chain
     // mail, stone) next to it must not join the region and make it "tall".
     const x = p % width;
