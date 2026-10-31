@@ -7,7 +7,7 @@ import { SHOWCASE } from "@/data/showcase";
 import { CREDIT_COSTS } from "@/lib/services/generation";
 
 const URL = "https://www.sprite-lab.com/2d-game-asset-generator";
-const TITLE = "2D Game Asset Generator for Indie Devs | SpriteLab";
+const TITLE = "Game Asset Generator for 2D Indie Games | SpriteLab";
 const DESCRIPTION =
   "A budget 2D game asset generator: characters, tiles, items, icons and sprite sheets as transparent PNGs for Unity, Godot and GameMaker.";
 
@@ -31,15 +31,15 @@ export default function TwoDGameAssetGeneratorPage() {
   return (
     <SeoLanding
       slug="2d-game-asset-generator"
-      appName="SpriteLab 2D Game Asset Generator"
-      breadcrumb="2D Game Asset Generator"
-      appDescription="Generate the 2D assets a small game needs — characters, creatures, weapons, items, icons, seamless tiles and sprite-sheet animations — as transparent PNGs for Unity, Godot and GameMaker."
+      appName="SpriteLab Game Asset Generator"
+      breadcrumb="Game asset generator"
+      appDescription="A game asset generator for the 2D files a small game needs — characters, creatures, weapons, items, icons, seamless tiles and sprite-sheet animations — as transparent PNGs in pixel, painted and realistic styles, for Unity, Godot and GameMaker."
       h1={
         <>
-          2D game asset generator
+          Game asset generator
           <span className="sr-only"> for </span>
           <br />
-          indie games on a budget
+          2D indie games on a budget
         </>
       }
       subtitle="You do not need a full art department to put a 2D game on screen. You need a player, a floor, a few enemies, items and the animations those things play. SpriteLab makes those files. It does not make the game."

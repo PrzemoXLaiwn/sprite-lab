@@ -43,7 +43,11 @@ export const HOME_FAQ: Faq[] = [
   },
   {
     q: "What is SpriteLab?",
-    a: "SpriteLab is an AI game asset generator for indie game developers. You describe an asset in a sentence and get a game-ready 2D sprite — a transparent PNG, with pixel art snapped to a real pixel grid — that you can animate into a sprite sheet and drop into Unity, Godot or GameMaker.",
+    a: "SpriteLab is an AI asset platform for game developers. You describe a 2D asset — a character, creature, weapon, item, icon or tile — and get a transparent PNG in the style you pick, from 16-bit pixel art to hand-painted, anime and realistic. You can animate that sprite into a sprite sheet, including a walk cycle, edit it, and import the files into Unity, Godot or GameMaker.",
+  },
+  {
+    q: "Is SpriteLab only a pixel art generator?",
+    a: "No. Three of the twelve styles are pixel art, and those are snapped to a real pixel grid with a limited palette. The same pipeline also makes hand-painted, anime, cartoon, vector, dark fantasy and realistic sprites, then animates them into sprite sheets. Use it when you need game files, not when you only want a picture.",
   },
   {
     q: "Is SpriteLab related to Code.org's Sprite Lab?",
@@ -59,7 +63,7 @@ export const HOME_FAQ: Faq[] = [
   },
   {
     q: "Can SpriteLab animate sprites?",
-    a: "Yes. Pick a sprite and choose idle, walk, run, attack, jump, cast, hurt, flying, a turnaround or describe your own motion. SpriteLab suggests motions that suit the specific sprite and returns a horizontal sprite sheet PNG, the individual frames and a GIF — 4, 6 or 9 key poses, or up to 18 frames with smooth in-betweens.",
+    a: "Yes. Pick a sprite and choose idle, walk, run, attack, jump, cast, hurt, flying, a turnaround or describe your own motion. SpriteLab suggests motions that suit the specific sprite and returns a horizontal sprite sheet PNG, the individual frames and a GIF — 4, 6 or 9 key poses, or up to 18 frames with smooth in-betweens. A side-view walk loops in place. A top-down character can be a 4-direction walk (down, right, up, left, left mirrored from right). An animated 8-direction walk is not generated.",
   },
   {
     q: "Does it work with Unity and Godot?",

@@ -33,6 +33,7 @@ describe("seo landing pages", () => {
     for (const page of INDEXED_SEO_PAGES) {
       const file = join(process.cwd(), "src/app/(landing)", page.slug, "page.tsx");
       expect(existsSync(file), page.slug).toBe(true);
+      expect(existsSync(join(process.cwd(), "src/app/(landing)", page.slug, "opengraph-image.tsx")), page.slug).toBe(true);
       expect(page.updated, page.slug).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(page.summary.length, page.slug).toBeGreaterThan(40);
       expect(relatedSeoPages(page.slug).some((p) => p.slug === page.slug), page.slug).toBe(false);

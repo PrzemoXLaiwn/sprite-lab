@@ -296,7 +296,7 @@ if (is_struct(_box)) {
     updated: UPDATED,
     published: UPDATED,
     related: ["how-to-make-a-sprite-sheet-with-ai", "hitboxes-and-hurtboxes-from-sprite-sheets", "how-to-make-a-4-direction-top-down-rpg-character"],
-    tools: ["/ai-sprite-animation-generator"],
+    tools: ["/walk-cycle-generator", "/ai-sprite-animation-generator"],
     sections: [
       {
         heading: "The short answer",
@@ -427,7 +427,7 @@ func _physics_process(_delta: float) -> void:
     updated: UPDATED,
     published: UPDATED,
     related: ["how-many-frames-per-sprite-animation", "how-to-use-sprite-sheets-in-godot-4", "sprite-sheet-layout-and-texture-atlases"],
-    tools: ["/top-down-sprite-generator", "/rpg-character-creator", "/ai-sprite-animation-generator"],
+    tools: ["/walk-cycle-generator", "/top-down-sprite-generator", "/rpg-character-creator"],
     sections: [
       {
         heading: "The short answer",

@@ -141,12 +141,12 @@ export const GUIDE_INTROS: Record<string, GuideIntro> = {
   },
   "can-you-use-ai-sprites-in-a-commercial-game": {
     learn: [
-      "When SpriteLab sprites can go in a game you sell",
-      "Why a free-plan file stays non-commercial after you subscribe",
+      "Which plan has to be active at the moment a sprite is generated",
+      "Why a later subscription, or a credit pack, does not re-licence old files",
       "The difference between selling a game and selling a sprite pack",
-      "What changed on 17 October 2026",
+      "What the terms say changed on 17 October 2026",
     ],
-    needs: ["The terms, if you need the clauses rather than this summary"],
+    needs: ["The terms, which control if this summary and the contract disagree"],
   },
   "free-game-sprites-without-an-artist": {
     learn: [

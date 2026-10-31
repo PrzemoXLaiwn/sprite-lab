@@ -4,11 +4,12 @@ import { ArrowRight } from "lucide-react";
 import { SiteNav } from "@/components/layout/SiteNav";
 import { Footer } from "@/components/layout/Footer";
 import { SUPPORT_EMAIL } from "@/config/contact";
+import { jsonLdHtml } from "@/lib/seo/json-ld";
 
 const SITE = "https://www.sprite-lab.com";
 const URL = `${SITE}/about`;
 const DESCRIPTION =
-  "Who makes SpriteLab, what it is for, how its sprites and animations are produced, what it does not do, and how to reach us.";
+  "SpriteLab is an AI game asset platform for indie developers: sprites in pixel, painted and realistic styles, 2D animation, sprite sheets and tiles. What it does not do, and how to reach us.";
 
 export const metadata: Metadata = {
   title: { absolute: "About SpriteLab — Who We Are and How It Works | SpriteLab" },
@@ -50,7 +51,8 @@ const NOT_DOING = [
   "No 3D models, no public API and no MCP server at the moment.",
   "No full autotile sets (edges and corners); single seamless tiles and animated tiles only.",
   "No Unity, Godot or GameMaker plugins — the exports are standard files those engines import with their own tools.",
-  "No guarantee that a generated asset is perfect. For a hero character or a key boss, plan on a manual polish pass in a pixel editor.",
+  "No animated 8-direction walk. Side-view walk cycles and a 4-direction walk (the left row is mirrored from the right) are generated. Diagonal walk frames are not.",
+  "No guarantee that a generated asset is perfect. For a hero character or a key boss, plan on a manual polish pass in your art tool.",
 ];
 
 export default function AboutPage() {
@@ -82,19 +84,28 @@ export default function AboutPage() {
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#131A31] text-[#FFF1E8]">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdHtml(jsonLd) }} />
       <SiteNav />
 
       <article className="relative pb-24 pt-28 sm:pt-36">
         <div className="relative mx-auto max-w-3xl px-5">
+          <nav aria-label="Breadcrumb" className="text-[13px] text-[#A7ADD4]">
+            <ol className="flex flex-wrap items-center gap-x-1.5">
+              <li>
+                <Link href="/" className="inline-flex min-h-10 items-center hover:text-white">SpriteLab</Link>
+              </li>
+              <li aria-hidden="true">/</li>
+              <li className="inline-flex min-h-10 items-center text-[#FFC857]">About</li>
+            </ol>
+          </nav>
           <h1 className="mt-4 font-display text-[38px] font-semibold leading-[1.06] text-white sm:text-[52px]">
             About SpriteLab
           </h1>
           <p className="mt-5 text-[17px] leading-relaxed text-[#A7ADD4]">
-            SpriteLab is a web app that makes 2D game assets for indie developers: sprites, animations, direction
-            sheets, seamless tiles and icons, exported as files that Godot, Unity and GameMaker import directly. It is
-            an independent product, built and run by the SpriteLab team — not a feature of an engine or of an AI
-            company.
+            SpriteLab is a web app for people making games. It produces 2D assets — characters, creatures, weapons,
+            items, icons, seamless tiles, animations and sprite sheets — in pixel, painted, anime and realistic styles,
+            as files Godot, Unity and GameMaker import. It is an independent product, built and run by the SpriteLab
+            team, not a feature of an engine or of an AI company. Pixel art is one of twelve styles.
           </p>
 
           <section className="mt-14">
@@ -106,11 +117,24 @@ export default function AboutPage() {
               changes between frames, is not something you can drop into a game.
             </p>
             <p className="mt-4 text-[16px] leading-[1.75] text-[#A7ADD4]">
-              SpriteLab is built around the parts that make an image usable as a game asset: transparency, a real
-              pixel grid, a consistent outline, frames of equal size on one ground line, and files named and laid out
-              the way each engine expects. The guides on this site cover the other half of that work: what you set
-              up in your engine once the files are on disk.
+              SpriteLab is built around the parts that make an image usable as a game asset: a transparent background,
+              frames of equal size on one ground line, and files an engine can slice. Pixel styles are also snapped to
+              one pixel grid with a limited palette and a consistent outline. Painted, anime and realistic styles stay
+              smooth. You can then animate the sprite, edit it (effects, colours, materials) and pack a project. The
+              guides cover the other half: what you set up in the engine once the files are on disk.
             </p>
+          </section>
+
+          <section className="mt-14">
+            <h2 className="font-display text-[26px] font-semibold leading-tight text-white">What you can make</h2>
+            <ul className="mt-4 list-disc space-y-2 pl-5 text-[15.5px] leading-relaxed text-[#C8CCE8] marker:text-[#FFA300]">
+              <li>Characters, creatures, weapons, items, icons and props, as transparent PNGs. <Link href="/ai-sprite-generator" className="text-[#FFC857] underline underline-offset-2">AI sprite generator</Link>.</li>
+              <li>A matching cast, not one illustration at a time. <Link href="/game-character-generator" className="text-[#FFC857] underline underline-offset-2">AI character sprites</Link>.</li>
+              <li>Side-view and 4-direction walk cycles. An 8-direction walk is not generated. <Link href="/walk-cycle-generator" className="text-[#FFC857] underline underline-offset-2">Walk cycle generator</Link>.</li>
+              <li>Sprite sheets, frame ZIPs, GIFs and an engine pack. <Link href="/sprite-sheet-generator" className="text-[#FFC857] underline underline-offset-2">Sprite sheet generator</Link>.</li>
+              <li>Seamless floor and wall tiles. Not a full autotile set. <Link href="/ai-tileset-generator" className="text-[#FFC857] underline underline-offset-2">Tileset generator</Link>.</li>
+              <li>The practical set a small 2D game needs, in one place. <Link href="/2d-game-asset-generator" className="text-[#FFC857] underline underline-offset-2">Game asset generator</Link>.</li>
+            </ul>
           </section>
 
           <section className="mt-14">

@@ -9,11 +9,11 @@ export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: { absolute: "Free AI Sprite Generator & Sprite Sheet Maker | SpriteLab" },
-  description: `Generate game-ready sprites, pixel art, sprite sheets and seamless tiles with AI. Transparent PNGs for Unity, Godot and GameMaker. ${SIGNUP_CREDITS} free credits.`,
-  keywords: ["AI game asset generator", "AI sprite generator", "AI pixel art generator", "sprite sheet generator", "sprite animation", "indie game development", "Unity sprites", "Godot sprites", "RPG sprites"],
+  description: `AI game asset platform for indie developers: sprites, realistic and pixel art, sprite sheets, walk cycles and tilesets. Transparent PNGs for Unity, Godot and GameMaker. ${SIGNUP_CREDITS} free credits.`,
+  keywords: ["AI game asset generator", "game asset generator", "AI sprite generator", "AI pixel art generator", "sprite sheet generator", "walk cycle generator", "AI character sprite", "AI tileset generator", "indie game development", "Unity sprites", "Godot sprites"],
   openGraph: {
     title: "SpriteLab — AI Game Asset Generator",
-    description: "Game-ready sprites, pixel art and sprite-sheet animations from a text prompt. 12 art styles, transparent PNG. Commercial licence on paid plans.",
+    description: "Game-ready 2D assets from a text prompt: pixel, painted and realistic sprites, sprite sheets and tiles. Transparent PNG. Commercial licence on paid plans.",
     url: "https://www.sprite-lab.com",
     type: "website",
   },

@@ -6,16 +6,17 @@ import { SIGNUP_CREDITS, SIGNUP_CTA, SIGNUP_ON_SIGNUP } from "@/config/signup";
 import { SHOWCASE } from "@/data/showcase";
 
 const URL = "https://www.sprite-lab.com/game-character-generator";
-const TITLE = "Game Character Generator for 2D Games | SpriteLab";
+const TITLE = "AI Character Sprite Generator for 2D Games | SpriteLab";
 const DESCRIPTION =
-  "Generate a 2D game cast with AI: one hero, enemies and NPCs that share a style, size and outline. Transparent PNG, ready to animate.";
+  "Generate AI character sprites for a 2D cast: one hero, enemies and NPCs that share a style, size and outline. Transparent PNG, ready to animate.";
 
 export const metadata: Metadata = {
   title: { absolute: TITLE },
   description: DESCRIPTION,
   keywords: [
+    "AI character sprite",
+    "AI character sprite generator",
     "game character generator",
-    "AI character generator for games",
     "2D character sprite generator",
     "enemy sprite generator",
     "NPC generator",
@@ -30,12 +31,12 @@ export default function GameCharacterGeneratorPage() {
   return (
     <SeoLanding
       slug="game-character-generator"
-      appName="SpriteLab Game Character Generator"
-      breadcrumb="Game Character Generator"
-      appDescription="Generate a consistent cast of 2D game characters — the player, enemies and NPCs — as transparent PNG sprites that share a style, pixel density and outline, then animate them."
+      appName="SpriteLab AI Character Sprite Generator"
+      breadcrumb="AI character sprite"
+      appDescription="Generate AI character sprites for a consistent 2D cast — the player, enemies and NPCs — as transparent PNGs that share a style, pixel density and outline, then animate them."
       h1={
         <>
-          Game character generator
+          AI character sprite generator
           <span className="sr-only"> for </span>
           <br />
           a cast that matches
@@ -95,7 +96,7 @@ export default function GameCharacterGeneratorPage() {
       ]}
       faq={[
         { q: "Is this the same as an RPG character creator?", a: "The RPG page is about fantasy roles: heroes, bosses, dungeon monsters. This page is about keeping any cast consistent — a platformer, a shooter, a village — so the second character does not become a different art style.", link: { label: "RPG character creator", href: "/rpg-character-creator" } },
-        { q: "Can I get the same character in another pose by describing it again?", a: "You will get a relative, not the same character. Generate the design once, then animate that sprite for idle, walk and attack." },
+        { q: "Can I get the same character in another pose by describing it again?", a: "You will get a relative, not the same character. Generate the design once, then animate that sprite for idle, walk and attack.", link: { label: "Walk cycle generator", href: "/walk-cycle-generator" } },
         { q: "What prompt actually matters?", a: "Species or role, clothes, materials, two or three colours, and the view that matches your camera. Skip 'masterpiece', 'trending' and a background. The background is removed.", link: { label: "How to prompt a sprite", href: "/guides/how-to-prompt-an-ai-sprite-generator" } },
         { q: "Do the characters have transparent backgrounds?", a: "Yes. You get a PNG with alpha, including the gaps between an arm and a weapon." },
         { q: "Can I use them in a commercial game?", a: COMMERCIAL_LICENCE_ANSWER },

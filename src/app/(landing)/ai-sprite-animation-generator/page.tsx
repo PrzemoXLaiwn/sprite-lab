@@ -120,6 +120,7 @@ export default function SpriteAnimationPage() {
       ]}
       faq={[
         { q: "What does the animation export look like?", a: "A horizontal sprite sheet: one row of equal-size frames with a transparent background, plus the frames as separate PNGs in a ZIP, an animated GIF preview and an engine pack for Godot, Unity and GameMaker.", link: { label: "See the sprite sheet format and real examples", href: "/sprite-sheet-generator" } },
+        { q: "Can it make a walk cycle?", a: "Yes. A side-view walk loops in place, and the game moves the character. A top-down character can use the 4-direction walk: four steps facing down, right, up and left, with the left row mirrored from the right. An animated 8-direction walk is not generated.", link: { label: "Walk cycle generator: frames, timing and directions", href: "/walk-cycle-generator" } },
         { q: "How many frames do I get?", a: "4, 6 or 9 key poses. Smooth mode adds an AI-drawn in-between for every pair, giving 8, 12 or 18 frames." },
         { q: "How much does an animation cost?", a: "An idle loop costs 3 credits. Other motions cost 7 credits for 4 frames, 11 for 6 and 12 for 9; smooth mode (twice the frames) adds 5–7 credits." },
         { q: "Can it animate things that aren't characters?", a: "Yes — creatures, weapons, items, vehicles, effects, icons and seamless tiles. The motions are suggested for the specific sprite." },

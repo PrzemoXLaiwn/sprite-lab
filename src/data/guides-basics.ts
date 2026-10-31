@@ -116,7 +116,7 @@ export const BASICS_GUIDES: Guide[] = [
     updated: UPDATED,
     published: UPDATED,
     related: ["how-to-make-a-4-direction-top-down-rpg-character", "how-many-frames-per-sprite-animation", "sprite-sheet-layout-and-texture-atlases"],
-    tools: ["/sprite-sheet-generator", "/rpg-character-creator"],
+    tools: ["/walk-cycle-generator", "/sprite-sheet-generator", "/rpg-character-creator"],
     sections: [
       {
         heading: "The short answer",

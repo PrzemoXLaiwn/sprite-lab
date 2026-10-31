@@ -10,6 +10,7 @@ import { SectionHeader } from "@/components/landing/SectionHeader";
 import type { FeaturedGeneration } from "@/lib/featured-generations";
 import { SIGNUP_OFFER } from "@/config/signup";
 import { relatedSeoPages } from "@/data/seo-pages";
+import { jsonLdHtml } from "@/lib/seo/json-ld";
 
 /* ─────────────────────────────────────────────────────────────
    Shared layout for the public SEO landing pages
@@ -372,13 +373,26 @@ export function SeoLanding(props: SeoLandingProps) {
 
   return (
     <main className="min-h-screen overflow-x-clip bg-[#131A31] text-white">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdHtml(jsonLd) }} />
       <SiteNav />
 
       {/* ═══ HERO ═══════════════════════════════════════════ */}
       <section id="top" className="relative scroll-mt-16 overflow-hidden border-b border-white/[0.06] pb-14 pt-24 sm:pt-32">
         <div className="relative z-10 mx-auto max-w-6xl px-4 sm:px-5">
           <div className="max-w-3xl">
+            <nav aria-label="Breadcrumb" className="mb-4 text-[13px] text-[#A7ADD4]">
+              <ol className="flex flex-wrap items-center gap-x-1.5">
+                <li>
+                  <Link href="/" className="inline-flex min-h-10 items-center hover:text-white">
+                    SpriteLab
+                  </Link>
+                </li>
+                <li aria-hidden="true">/</li>
+                <li className="inline-flex min-h-10 items-center text-[#FFC857]">
+                  {props.breadcrumb ?? props.appName.replace(/^SpriteLab\s+(—\s+)?/, "")}
+                </li>
+              </ol>
+            </nav>
             <h1 className="text-balance font-display text-[36px] font-semibold leading-[1.04] tracking-[-0.02em] text-[#FFF1E8] min-[400px]:text-[40px] sm:text-[56px] md:text-[64px]">
               {props.h1}
             </h1>
