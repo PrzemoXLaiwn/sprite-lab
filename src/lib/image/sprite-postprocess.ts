@@ -21,6 +21,7 @@
 // =============================================================================
 
 import sharp from "sharp";
+import { cleanupAlpha, finishNormalizedPngs, frameNormalizeEnabled } from "./frame-normalize";
 
 export interface SpritePostprocessOptions {
   /** Painted styles: treat enclosed, perfectly flat key-colour patches as background. */
@@ -93,18 +94,22 @@ export async function postprocessSprite(
     backgroundRemoved = keyOutBackground(raw, options.bgTolerance ?? 32, 1, 1, options.flatGaps ?? false);
   }
 
+  // Flag off: no pixel changes. Flag on: drop halos and specks before the
+  // crop, so they are not baked into the pixel grid or the lanczos resize.
+  if (frameNormalizeEnabled()) cleanupAlpha(raw);
+
   // 2. Crop to subject
   const bbox = opaqueBounds(raw);
   if (!bbox) {
     // Nothing left after keying — the subject probably matched the background.
     // Fall back to the untouched image rather than returning an empty sprite.
     const fallback = await toRaw(input, 1024);
-    return finalizeNonPixel(fallback, outputSize, padding, false);
+    return withFrameNormalize(await finalizeNonPixel(fallback, outputSize, padding, false), false);
   }
   const cropped = crop(raw, bbox);
 
   if (!options.pixelGrid) {
-    return finalizeNonPixel(cropped, outputSize, padding, backgroundRemoved);
+    return withFrameNormalize(await finalizeNonPixel(cropped, outputSize, padding, backgroundRemoved), false);
   }
 
   // 3. Pixel grid + palette
@@ -170,14 +175,22 @@ export async function postprocessSprite(
     .png({ compressionLevel: 9 })
     .toBuffer();
 
-  return {
+  return withFrameNormalize({
     png,
     nativePng,
     width: canvasSize * factor,
     height: canvasSize * factor,
     backgroundRemoved,
     colors: countColors(canvas),
-  };
+  }, true);
+}
+
+/** Second pass only when SPRITELAB_FRAME_NORMALIZE is on. */
+async function withFrameNormalize(result: SpritePostprocessResult, pixel: boolean): Promise<SpritePostprocessResult> {
+  if (!frameNormalizeEnabled()) return result;
+  const [png] = await finishNormalizedPngs([result.png], { pixel });
+  const nativePng = result.nativePng ? (await finishNormalizedPngs([result.nativePng], { pixel: true }))[0] : undefined;
+  return { ...result, png, nativePng };
 }
 
 /**

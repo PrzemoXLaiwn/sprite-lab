@@ -13,7 +13,19 @@ import { claudeCall, trackClaude } from "@/lib/claude-usage";
 import { animationPresetsFor, MOTION_ANCHORS, type AnimationPreset, type MotionAnchor } from "@/config/animations";
 
 const MODEL = "claude-opus-5-5";
+const HAIKU_MODEL = "claude-haiku-4-5-20251001";
 const TIMEOUT_MS = 30_000;
+
+/** Durable cache row. Same table as claude_usage; no schema change. */
+export const SUGGEST_CACHE_EVENT = "suggest_cache";
+
+/** Off in production. Set to 1 to use Haiku and the database cache. */
+export const SUGGEST_HAIKU_FLAG = "SPRITELAB_SUGGEST_HAIKU";
+
+export function suggestHaikuEnabled(env: Record<string, string | undefined> = process.env): boolean {
+  const v = (env[SUGGEST_HAIKU_FLAG] ?? "").trim().toLowerCase();
+  return v === "1" || v === "true" || v === "on";
+}
 
 export interface SuggestedMotion extends AnimationPreset {
   /** Cycles (idle, walk…) vs one-shot (attack, hurt…). */
@@ -88,7 +100,10 @@ export async function suggestMotions(opts: {
   image: Buffer;
   prompt: string;
   categoryId: string | null;
-}): Promise<MotionSuggestions> {
+  /** Logged on the usage row when the caller has one. The route does not pass it yet. */
+  userId?: string;
+}, hooks?: SuggestHooks): Promise<MotionSuggestions> {
+  if (suggestHaikuEnabled()) return suggestWithHaiku(opts, hooks);
   const hit = cache.get(opts.cacheKey);
   if (hit) return hit;
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -143,3 +158,135 @@ export async function suggestMotions(opts: {
     return fallbackSuggestions(opts.categoryId);
   }
 }
+
+export interface SuggestCache {
+  get(key: string): Promise<MotionSuggestions | null>;
+  set(key: string, value: MotionSuggestions, userId: string): Promise<void>;
+}
+
+export interface SuggestHooks {
+  complete?(model: string): Promise<{ model?: string; content: { type: string; text?: string }[]; usage?: { input_tokens?: number; output_tokens?: number } }>;
+  cache?: SuggestCache;
+}
+
+/** Turn the model's JSON into the list the UI stores. Shared by both models. */
+export function parseSuggestionPayload(data: { subject?: unknown; motions?: unknown }): MotionSuggestions | null {
+  const seen = new Set<string>();
+  const motions: SuggestedMotion[] = [];
+  for (const m of Array.isArray(data.motions) ? data.motions : []) {
+    const label = typeof m?.label === "string" ? m.label.trim().slice(0, 24) : "";
+    const motion = typeof m?.motion === "string" ? m.motion.trim().slice(0, 300) : "";
+    if (!label || motion.length < 8) continue;
+    const id = `ai-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const anchor = MOTION_ANCHORS.includes(m.anchor) ? (m.anchor as MotionAnchor) : undefined;
+    const frames = m.frames === 4 || m.frames === 6 || m.frames === 9 ? (m.frames as 4 | 6 | 9) : undefined;
+    motions.push({ id, label, motion, loop: m.loop === true, anchor, frames });
+    if (motions.length === 8) break;
+  }
+  if (motions.length < 3) return null;
+  return {
+    subject: typeof data.subject === "string" ? data.subject.slice(0, 120) : "",
+    motions,
+    ai: true,
+  };
+}
+
+async function suggestWithHaiku(opts: {
+  cacheKey: string;
+  image: Buffer;
+  prompt: string;
+  categoryId: string | null;
+  userId?: string;
+}, hooks?: SuggestHooks): Promise<MotionSuggestions> {
+  const mem = cache.get(opts.cacheKey);
+  if (mem?.ai) return mem;
+  const store = hooks?.cache ?? prismaSuggestCache;
+  try {
+    const stored = await store.get(opts.cacheKey);
+    if (stored?.ai && stored.motions.length >= 3) {
+      remember(opts.cacheKey, stored);
+      return stored;
+    }
+  } catch (err) {
+    console.warn("[MotionSuggest] Cache read failed:", err instanceof Error ? err.message : err);
+  }
+
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey && !hooks?.complete) return fallbackSuggestions(opts.categoryId);
+
+  try {
+    const response = hooks?.complete
+      ? await hooks.complete(HAIKU_MODEL)
+      : await callSuggestModel(HAIKU_MODEL, opts, 1200, 0);
+    trackClaude("suggest", response, opts.userId ?? "system");
+    const text = response.content.find((b) => b.type === "text");
+    if (!text || text.type !== "text" || !text.text) return fallbackSuggestions(opts.categoryId);
+    const parsed = parseSuggestionPayload(JSON.parse(text.text) as { subject?: unknown; motions?: unknown });
+    if (!parsed) return fallbackSuggestions(opts.categoryId);
+    remember(opts.cacheKey, parsed);
+    try { await store.set(opts.cacheKey, parsed, opts.userId ?? "system"); } catch (err) {
+      console.warn("[MotionSuggest] Cache write failed:", err instanceof Error ? err.message : err);
+    }
+    return parsed;
+  } catch (err) {
+    console.warn("[MotionSuggest] Haiku falling back:", err instanceof Error ? err.message : err);
+    return fallbackSuggestions(opts.categoryId);
+  }
+}
+
+function remember(key: string, result: MotionSuggestions) {
+  if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value as string);
+  cache.set(key, result);
+}
+
+async function callSuggestModel(model: string, opts: { image: Buffer; prompt: string; categoryId: string | null }, maxTokens: number, retries: number) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not set");
+  const anthropic = new Anthropic({ apiKey, timeout: TIMEOUT_MS, maxRetries: retries });
+  const params = {
+    model,
+    max_tokens: maxTokens,
+    system: SYSTEM,
+    output_config: { effort: "low", format: { type: "json_schema", schema: SCHEMA } },
+    messages: [{
+      role: "user" as const,
+      content: [
+        { type: "image" as const, source: { type: "base64" as const, media_type: "image/png" as const, data: opts.image.toString("base64") } },
+        { type: "text" as const, text: `Sprite prompt: "${opts.prompt.slice(0, 300)}"\nAsset category: ${opts.categoryId ?? "unknown"}` },
+      ],
+    }],
+  };
+  return claudeCall("suggest", model, () => anthropic.messages.create(params as unknown as Anthropic.MessageCreateParamsNonStreaming));
+}
+
+const prismaSuggestCache: SuggestCache = {
+  async get(key) {
+    const { prisma } = await import("@/lib/prisma");
+    const row = await prisma.generationEvent.findFirst({
+      where: { generationId: key.slice(0, 64), eventType: SUGGEST_CACHE_EVENT },
+      orderBy: { createdAt: "desc" },
+      select: { metadata: true },
+    });
+    if (!row?.metadata) return null;
+    try {
+      const data = JSON.parse(row.metadata) as MotionSuggestions;
+      if (!data?.ai || !Array.isArray(data.motions) || data.motions.length < 3) return null;
+      return data;
+    } catch {
+      return null;
+    }
+  },
+  async set(key, value, userId) {
+    const { prisma } = await import("@/lib/prisma");
+    await prisma.generationEvent.create({
+      data: {
+        generationId: key.slice(0, 64),
+        userId: userId.slice(0, 64) || "system",
+        eventType: SUGGEST_CACHE_EVENT,
+        metadata: JSON.stringify(value),
+      },
+    });
+  },
+};

@@ -15,6 +15,7 @@
 // =============================================================================
 
 import sharp from "sharp";
+import { applyPreAlignNormalize, finishNormalizedPngs, frameNormalizeEnabled } from "./frame-normalize";
 import { keySpriteBackground } from "./sprite-postprocess";
 
 export interface AnimationResult {
@@ -247,13 +248,20 @@ export async function assembleAnimation(sprites: Frame[], opts: AssembleOptions)
     return out;
   });
 
+  // Off by default. Set SPRITELAB_FRAME_NORMALIZE=1 to lock content height,
+  // clear light halos and (pixel) merge near-duplicate colours. Unset, this
+  // is a no-op and the buffers below are unchanged.
+  if (frameNormalizeEnabled()) {
+    await applyPreAlignNormalize(aligned, { pixel, anchor });
+  }
+
   // Every frame is a fresh drawing, so brightness and tint drift a little
   // between frames ("boiling"). Pull each frame's colour statistics to the
   // animation's median so the whole loop shares one look.
   matchColours(aligned);
 
   // 4. Scale: frame height = frameSize, width follows the canvas
-  const frames: Buffer[] = [];
+  let frames: Buffer[] = [];
   let frameW: number;
   let frameH: number;
   if (pixel) {
@@ -284,6 +292,10 @@ export async function assembleAnimation(sprites: Frame[], opts: AssembleOptions)
       hardenAlpha(f);
       frames.push(await fromRaw(f).resize(frameW, frameH, { kernel: "lanczos3", fit: "fill" }).png().toBuffer());
     }
+  }
+
+  if (frameNormalizeEnabled()) {
+    frames = await finishNormalizedPngs(frames, { pixel });
   }
 
   // 5. Sheet + GIF

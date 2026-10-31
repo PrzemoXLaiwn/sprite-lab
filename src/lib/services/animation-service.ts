@@ -19,7 +19,6 @@ import {
   assembleTileAnimation,
   extractFrames,
   extractTileFrames,
-  isSlicedFrame,
   interleave,
   referenceGrid,
   type AnimationResult,
@@ -37,6 +36,7 @@ import {
   gridFor,
   type MotionAnchor,
 } from "@/config/animations";
+import { chooseDirectionViews, directionViewsLookRight, productionFramesLookRight, rotationQaEnabled } from "@/lib/image/rotation-qa";
 import { walkRowFrozen, walkRowScore } from "@/lib/image/walk-check";
 import { canSpend } from "@/lib/billing/ledger";
 import { PRICE } from "@/lib/billing/features";
@@ -196,7 +196,11 @@ export async function makeRotation(input: { reference: Buffer; prompt: string; p
       const grid = await generateAnimationGrid({ prompt, reference: input.reference, size: r.size });
       cost += grid.cost;
       input.onGrid?.("keys", grid.image);
-      found = (await extractFrames(grid.image, r.cols, r.rows)).slice(0, expected);
+      const extracted = await extractFrames(grid.image, r.cols, r.rows);
+      // Flag off: drop anything past the count, in reading order. Flag on:
+      // an 8-view sheet is a 3×3 with one empty cell — if that cell comes
+      // back as a speck, drop the speck instead of the last real view.
+      found = rotationQaEnabled() ? chooseDirectionViews(extracted, expected) : extracted.slice(0, expected);
     } catch (err) {
       // Keep a complete first attempt rather than failing the whole request
       if (attempt === 0 || views.length < expected) throw err;
@@ -204,12 +208,12 @@ export async function makeRotation(input: { reference: Buffer; prompt: string; p
       break;
     }
     if (frameScore(found, expected) > frameScore(views, expected)) views = found;
-    if (framesLookRight(views, expected)) break;
+    if (viewsOk(views, expected)) break;
     console.warn(`[Rotate] Views look wrong (${found.length}/${expected}) — attempt ${attempt + 1}`);
   }
   if (views.length < expected) throw new Error(`only ${views.length} of ${expected} views found`);
   // Never ship a direction sheet with a sliced or missing figure — fail and refund instead
-  if (!framesLookRight(views, expected)) throw new Error("direction views came back broken (sliced or merged figures)");
+  if (!viewsOk(views, expected)) throw new Error("direction views came back broken (sliced or merged figures)");
   if (r.kind === "walk") {
     // Row redraws only while there's time left before the route's 300 s limit
     const fixed = Date.now() - startedAt < WALK_FIX_BUDGET_MS
@@ -334,17 +338,19 @@ async function makeTileAnimation(input: MakeAnimationInput): Promise<MakeAnimati
   return { anim, plan, prompt, cost: grid.cost, smoothed: false };
 }
 
+function viewsOk(frames: Frame[], expected: number): boolean {
+  return rotationQaEnabled() ? directionViewsLookRight(frames, expected) : framesLookRight(frames, expected);
+}
+
 /**
  * A usable set of poses: the expected number, and no broken piece among them
  * (a half body or a sliver from a bad cut is much narrower or shorter than
  * the rest). Crouches and wing-folds stay well above these limits.
+ * Direction sheets use a looser width ratio only when SPRITELAB_ROTATION_QA=1,
+ * because a side profile is supposed to be narrower than the front view.
  */
 function framesLookRight(frames: Frame[], expected: number): boolean {
-  if (frames.length !== expected) return false;
-  const med = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
-  const mh = med(frames.map((f) => f.height)), mw = med(frames.map((f) => f.width));
-  // …and no figure sliced in half by one of our cuts (a crate's straight edge is fine)
-  return frames.every((f) => f.height >= mh * 0.5 && f.width >= mw * 0.35 && !isSlicedFrame(f));
+  return productionFramesLookRight(frames, expected);
 }
 
 /** For picking the better of two attempts. */

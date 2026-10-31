@@ -1,0 +1,86 @@
+{
+  "measuredAt": "2026-10-31T02:13:21.695Z",
+  "liveProviderCalls": 0,
+  "spendUsd": 0,
+  "note": "Synthetic fixtures through postprocessSprite and buildAnimation. No Runware, Cloudflare, Replicate or Claude calls.",
+  "prompts": [
+    {
+      "id": "production",
+      "chars": 1210,
+      "words": 206,
+      "addsPaletteLine": false,
+      "addsScaleLine": false
+    },
+    {
+      "id": "palette-and-scale",
+      "chars": 1461,
+      "words": 252,
+      "addsPaletteLine": true,
+      "addsScaleLine": true
+    }
+  ],
+  "rows": [
+    {
+      "variant": "production",
+      "pipeline": "sprite",
+      "width": 256,
+      "height": 256,
+      "frames": 1,
+      "haloPixels": 580,
+      "isolatedPixels": 0,
+      "uniqueColors": 40,
+      "heightStd": 0,
+      "baselineSpread": 0,
+      "greenPixels": 4,
+      "sameCanvas": true
+    },
+    {
+      "variant": "frame-normalize",
+      "pipeline": "sprite",
+      "width": 256,
+      "height": 256,
+      "frames": 1,
+      "haloPixels": 0,
+      "isolatedPixels": 0,
+      "uniqueColors": 1,
+      "heightStd": 0,
+      "baselineSpread": 0,
+      "greenPixels": 0,
+      "sameCanvas": true
+    },
+    {
+      "variant": "production",
+      "pipeline": "animation",
+      "width": 128,
+      "height": 128,
+      "frames": 4,
+      "haloPixels": 974,
+      "isolatedPixels": 0,
+      "uniqueColors": 14,
+      "heightStd": 23.44541533008106,
+      "baselineSpread": 0,
+      "greenPixels": 0,
+      "sameCanvas": true
+    },
+    {
+      "variant": "frame-normalize",
+      "pipeline": "animation",
+      "width": 128,
+      "height": 128,
+      "frames": 4,
+      "haloPixels": 0,
+      "isolatedPixels": 0,
+      "uniqueColors": 1,
+      "heightStd": 16.452583383772897,
+      "baselineSpread": 0,
+      "greenPixels": 0,
+      "sameCanvas": true
+    }
+  ],
+  "live": {
+    "ran": false,
+    "calls": 0,
+    "spendUsd": 0,
+    "reason": "Offline only. Pass --live to attempt one capped Runware call."
+  }
+}
