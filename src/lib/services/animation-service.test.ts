@@ -32,8 +32,9 @@ vi.mock("@/lib/image/animation", () => {
   };
 });
 
-import { makeAnimation } from "./animation-service";
+import { makeAnimation, makeRotation } from "./animation-service";
 import { AnimationTimeBudgetError, workDeadline } from "./animation-budget";
+import { ROTATIONS } from "@/config/animations";
 
 const T0 = new Date("2026-10-21T12:00:00Z").getTime();
 const input = (deadline: number) => ({
@@ -76,6 +77,23 @@ describe("makeAnimation time budget (smooth, 6 frames)", () => {
     expect(out.smoothed).toBe(false);
     expect(gridCalls).toHaveLength(3);
     expect(out.anim.frameCount).toBe(6);
+  });
+
+  it("direction sheet: a page with more figures than directions is redrawn, not trimmed to the first four", async () => {
+    const rotate4 = ROTATIONS.find((r) => r.id === "rotate4")!;
+    latencies.push(15_000, 15_000);
+    extractCounts.push(8, 4); // a turnaround of 8 figures, then a proper row of 4
+    const out = await makeRotation({ reference: Buffer.from("ref"), prompt: "knight", pixel: true, rotation: rotate4, deadline: workDeadline(T0) });
+    expect(out.anim.frameCount).toBe(4);
+    expect(gridCalls).toHaveLength(2);
+  });
+
+  it("direction sheet: still wrong after the redraw → fails (the route refunds) instead of shipping wrong directions", async () => {
+    const rotate4 = ROTATIONS.find((r) => r.id === "rotate4")!;
+    latencies.push(15_000, 15_000);
+    extractCounts.push(8, 8);
+    await expect(makeRotation({ reference: Buffer.from("ref"), prompt: "knight", pixel: true, rotation: rotate4, deadline: workDeadline(T0) })).rejects.toThrow(/broken|views/);
+    expect(gridCalls).toHaveLength(2);
   });
 
   it("does not redraw the in-between sheet when that would overrun the deadline", async () => {

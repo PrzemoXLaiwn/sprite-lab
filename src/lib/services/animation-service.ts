@@ -246,7 +246,13 @@ export async function makeRotation(input: { reference: Buffer; prompt: string; p
       const grid = await generateAnimationGrid({ prompt, reference: input.reference, size: r.size, deadline });
       cost += grid.cost;
       input.onGrid?.("keys", grid.image);
-      found = fitFrames(await extractFrames(grid.image, r.cols, r.rows), expected);
+      const extracted = await extractFrames(grid.image, r.cols, r.rows);
+      found = fitFrames(extracted, expected);
+      // More figures than directions (a direction drawn twice, mirrored copies,
+      // extra angles) must not be trimmed to the first few: that shipped sheets
+      // with three right sides and no back. Such a page counts as wrong — redraw,
+      // and after the second try fail and refund rather than deliver it.
+      if (figureCount(extracted) > expected) found = extracted;
     } catch (err) {
       // Keep a complete first attempt rather than failing the whole request
       if (attempt === 0 || views.length < expected) throw err;
@@ -394,6 +400,14 @@ function framesLookRight(frames: Frame[], expected: number): boolean {
   const mh = med(frames.map((f) => f.height)), mw = med(frames.map((f) => f.width));
   // …and no figure sliced in half by one of our cuts (a crate's straight edge is fine)
   return frames.every((f) => f.height >= mh * 0.5 && f.width >= mw * 0.35 && !isSlicedFrame(f));
+}
+
+/** Pieces heavy enough to be figures rather than detached effects (sparks, a breath of fire). */
+function figureCount(frames: Frame[]): number {
+  const mass = (f: Frame) => { let n = 0; for (let i = 3; i < f.data.length; i += 4) if (f.data[i] >= 128) n++; return n; };
+  const masses = frames.map(mass);
+  const typical = median(masses);
+  return masses.filter((m) => m >= typical * 0.45).length;
 }
 
 /** For picking the better of two attempts. */

@@ -439,15 +439,20 @@ function detectFrames(full: Raw, cols: number, rows: number): Piece[] {
       i = 0;
     }
     // Split pieces holding two sprites that touch (a tail or sword crossing
-    // into the next cell). The reference width is the narrower of the typical
-    // piece and one nominal cell — with two pieces in a row, the "median" is
-    // the merged one itself. Both halves must look like whole sprites.
-    const sorted = segs.map(([a, b]) => b - a).sort((p, q) => p - q);
-    const ref = Math.min(sorted[Math.floor((sorted.length - 1) / 2)], width / cols);
+    // into the next cell) — only while the row is short of pieces: a row that
+    // already has one piece per cell just has poses of different widths (a
+    // direction sheet's front and back views are twice as wide as its side
+    // views; judged against the narrow ones they used to be cut in half).
+    // The reference is the nominal cell, each cut must fall on a thin column
+    // of ink (two sprites meet at a hand or a tail, a body doesn't), and both
+    // halves must look like whole sprites.
+    const ref = width / cols;
     const out: [number, number][] = [];
     for (const [a, b] of segs) {
       const parts = Math.min(cols, Math.round((b - a) / ref));
-      if (parts < 2 || (b - a) < ref * 1.6) { out.push([a, b]); continue; }
+      if (segs.length >= cols || parts < 2 || (b - a) < ref * 1.6) { out.push([a, b]); continue; }
+      let peak = 0;
+      for (let x = a; x < b; x++) peak = Math.max(peak, ink[x]);
       const cuts: number[] = [];
       for (let k = 1; k < parts; k++) {
         const nominal = Math.round(a + ((b - a) * k) / parts);
@@ -460,7 +465,8 @@ function detectFrames(full: Raw, cols: number, rows: number): Piece[] {
       const stats = edges.slice(0, -1).map((x, k) => pieceStats(full, x, edges[k + 1], y0, y1));
       const maxH = Math.max(...stats.map((s) => s.h)), maxM = Math.max(...stats.map((s) => s.mass));
       const whole = stats.every((s) => s.h >= maxH * 0.6 && s.mass >= maxM * 0.45);
-      if (!whole) { out.push([a, b]); continue; }
+      const thin = cuts.every((c) => ink[c] <= peak * 0.25);
+      if (!whole || !thin) { out.push([a, b]); continue; }
       for (let k = 0; k < edges.length - 1; k++) out.push([edges[k], edges[k + 1]]);
     }
     const bandCut = !naturalRows.has(y0) || !naturalRows.has(y1);

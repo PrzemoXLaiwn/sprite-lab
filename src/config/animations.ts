@@ -66,8 +66,11 @@ export function rigMotionFor(id: string, label?: string, categoryId?: string | n
  * 2048 (8) grid — priced like the matching animation.
  */
 export const ROTATIONS = [
-  { id: "rotate4", kind: "views" as const, label: "4 directions", directions: 4 as const, frames: 4, cols: 2, rows: 2, size: 1024 as const, credits: 6, hint: "front · right · back · left" },
-  { id: "rotate8", kind: "views" as const, label: "8 directions", directions: 8 as const, frames: 8, cols: 3, rows: 3, size: 2048 as const, credits: 10, hint: "every 45° — isometric & top-down" },
+  // One row of views: asked for a 2×2 page, the model drew turnaround sheets of
+  // 8 figures (two per direction, mirrored copies) and the first four were
+  // shipped as "front, right, back, left" (measured Oct 2026: 3 of 5 pages)
+  { id: "rotate4", kind: "views" as const, label: "4 directions", directions: 4 as const, frames: 4, cols: 4, rows: 1, size: 1024 as const, credits: 6, hint: "front · right · back · left" },
+  { id: "rotate8", kind: "views" as const, label: "8 directions", directions: 8 as const, frames: 8, cols: 4, rows: 2, size: 2048 as const, credits: 10, hint: "every 45° — isometric & top-down" },
   { id: "walk4dir", kind: "walk" as const, label: "4-direction walk", directions: 4 as const, frames: 16, cols: 4, rows: 3, size: 2048 as const, credits: 12, hint: "RPG sheet: 4 rows × 4 steps" },
 ];
 export type RotationOption = (typeof ROTATIONS)[number];
@@ -145,8 +148,11 @@ export function buildRotationPrompt(opts: { directions: 4 | 8; cols: number; row
   return [
     `Using the reference image, draw a ${opts.directions}-direction rotation sheet of EXACTLY this same ${style} sprite (${opts.subject.slice(0, 200)}) for a top-down / isometric game.`,
     "Identical design, colors, proportions, outline, size and art style in every view. Standing in the same neutral pose — only the viewing direction changes. Held items stay in the same hand.",
-    `Layout: ${opts.rows} rows of ${opts.cols} views on one blank white page, in reading order (left to right, then top to bottom), evenly spaced with wide empty white space so no two views touch. Every view is the same height and stands on the same invisible ground level.`,
+    opts.rows === 1
+      ? `Layout: ONE row of exactly ${names.length} views on one blank white page, side by side from left to right. Each figure is small and narrow — no wider than one sixth of the page — with a clear white gap wider than a figure between neighbours, so no two views ever touch or overlap. Every view is the same height and stands on the same invisible ground level.`
+      : `Layout: ${opts.rows} rows of ${opts.cols} views on one blank white page, in reading order (left to right, then top to bottom), evenly spaced with wide empty white space so no two views touch. Every view is the same height and stands on the same invisible ground level.`,
     ...names.map((n, i) => `View ${i + 1}: ${n}.`),
+    `Exactly ${names.length} figures on the page, each direction drawn once. Never draw a direction twice, never add mirrored copies, and no angles other than the ${names.length} listed.`,
     empty > 0 ? `Leave the last ${empty === 1 ? "place" : empty + " places"} empty.` : "",
     "Plain flat solid pure white background, like a blank sheet of paper. Do not draw any lines on the background: no grid, no guide lines, no boxes, no arrows, no labels or text of any kind, no ground, no shadows.",
   ].filter(Boolean).join("\n");
