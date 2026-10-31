@@ -24,7 +24,7 @@ async function ffmpegPath(): Promise<string> {
 /** A region of the clip as fractions of its size (0–1). */
 export interface CropFraction { x: number; y: number; w: number; h: number }
 
-export async function decodeVideo(mp4: Buffer, opts: { width: number; height: number; maxFrames?: number; crop?: CropFraction }): Promise<{ frames: Frame[]; fps: number }> {
+export async function decodeVideo(mp4: Buffer, opts: { width: number; height: number; maxFrames?: number; crop?: CropFraction; fps?: number }): Promise<{ frames: Frame[]; fps: number }> {
   const bin = await ffmpegPath();
   const dir = await mkdtemp(join(tmpdir(), "stpack-"));
   const file = join(dir, "clip.mp4");
@@ -32,47 +32,66 @@ export async function decodeVideo(mp4: Buffer, opts: { width: number; height: nu
   const { width, height } = opts;
   const frameBytes = width * height * 4;
   const maxFrames = opts.maxFrames ?? 400;
+  // Resample in ffmpeg when a target fps is given: fewer raw frames in memory
+  const filters = [
+    opts.fps ? `fps=${opts.fps}` : "",
+    opts.crop ? `crop=iw*${opts.crop.w.toFixed(4)}:ih*${opts.crop.h.toFixed(4)}:iw*${opts.crop.x.toFixed(4)}:ih*${opts.crop.y.toFixed(4)}` : "",
+    `scale=${width}:${height}:flags=lanczos`,
+  ].filter(Boolean).join(",");
   try {
     const args = [
       "-hide_banner", "-loglevel", "info", "-nostdin",
       "-i", file,
+      "-vf", filters,
       "-frames:v", String(maxFrames),
-      "-vf", `${opts.crop ? `crop=iw*${opts.crop.w.toFixed(4)}:ih*${opts.crop.h.toFixed(4)}:iw*${opts.crop.x.toFixed(4)}:ih*${opts.crop.y.toFixed(4)},` : ""}scale=${width}:${height}:flags=lanczos`,
       "-f", "rawvideo", "-pix_fmt", "rgba", "pipe:1",
     ];
-    const { stdout, stderr } = await run(bin, args, frameBytes * maxFrames + 1024);
+    const { frames, stderr } = await runFrames(bin, args, frameBytes, maxFrames);
     const m = /(\d+(?:\.\d+)?) fps/.exec(stderr);
-    const fps = m ? Math.max(1, Math.min(60, Math.round(Number(m[1])))) : 24;
-    const count = Math.floor(stdout.length / frameBytes);
-    if (count === 0) throw new Error(`ffmpeg produced no frames: ${stderr.split("\n").filter(Boolean).slice(-3).join(" | ").slice(0, 300)}`);
-    const frames: Frame[] = [];
-    for (let i = 0; i < count; i++) {
-      frames.push({ data: Buffer.from(stdout.subarray(i * frameBytes, (i + 1) * frameBytes)), width, height });
-    }
-    return { frames, fps };
+    const fps = opts.fps ?? (m ? Math.max(1, Math.min(60, Math.round(Number(m[1])))) : 24);
+    if (frames.length === 0) throw new Error(`ffmpeg produced no frames: ${stderr.split("\n").filter(Boolean).slice(-3).join(" | ").slice(0, 300)}`);
+    return { frames: frames.map((data) => ({ data, width, height })), fps };
   } finally {
     await rm(dir, { recursive: true, force: true }).catch(() => {});
   }
 }
 
-function run(bin: string, args: string[], maxOut: number): Promise<{ stdout: Buffer; stderr: string }> {
+/**
+ * Run ffmpeg and cut stdout into whole frames as it streams, so the raw video
+ * is held once (no chunk list + concat + per-frame copies).
+ */
+function runFrames(bin: string, args: string[], frameBytes: number, maxFrames: number): Promise<{ frames: Buffer[]; stderr: string }> {
   return new Promise((resolve, reject) => {
     const child = spawn(bin, args, { stdio: ["ignore", "pipe", "pipe"] });
-    const out: Buffer[] = [];
-    let outLen = 0;
+    const frames: Buffer[] = [];
+    let cur = Buffer.allocUnsafe(frameBytes);
+    let fill = 0;
     let err = "";
-    const timer = setTimeout(() => { child.kill("SIGKILL"); reject(new Error("ffmpeg timed out")); }, 120_000);
+    let settled = false;
+    const fail = (e: Error) => { if (settled) return; settled = true; clearTimeout(timer); child.kill("SIGKILL"); reject(e); };
+    const timer = setTimeout(() => fail(new Error("ffmpeg timed out")), 120_000);
     child.stdout.on("data", (b: Buffer) => {
-      outLen += b.length;
-      if (outLen > maxOut) { child.kill("SIGKILL"); reject(new Error("ffmpeg output too large")); return; }
-      out.push(b);
+      let off = 0;
+      while (off < b.length) {
+        const n = Math.min(frameBytes - fill, b.length - off);
+        b.copy(cur, fill, off, off + n);
+        fill += n; off += n;
+        if (fill === frameBytes) {
+          frames.push(cur);
+          if (frames.length > maxFrames) { fail(new Error("ffmpeg output too large")); return; }
+          cur = Buffer.allocUnsafe(frameBytes);
+          fill = 0;
+        }
+      }
     });
     child.stderr.on("data", (b: Buffer) => { if (err.length < 20_000) err += b.toString("utf8"); });
-    child.on("error", (e) => { clearTimeout(timer); reject(e); });
+    child.on("error", (e) => fail(e));
     child.on("close", (code) => {
+      if (settled) return;
+      settled = true;
       clearTimeout(timer);
-      if (code !== 0 && outLen === 0) reject(new Error(`ffmpeg exited with ${code}: ${err.slice(-300)}`));
-      else resolve({ stdout: Buffer.concat(out), stderr: err });
+      if (code !== 0 && frames.length === 0) reject(new Error(`ffmpeg exited with ${code}: ${err.slice(-300)}`));
+      else resolve({ frames, stderr: err });
     });
   });
 }
