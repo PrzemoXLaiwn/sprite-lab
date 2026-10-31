@@ -939,3 +939,65 @@ model DungeonSkillScore {
 
   @@map("dungeon_skill_scores")
 }
+
+// ── ST Packs (admin-only beta): SillyTavern expression packs ─────────────────
+model StPackJob {
+  id            String    @id @default(cuid())
+  userId        String    @map("user_id")
+  status        String    @default("draft") // draft | base_ready | running | done | partial | failed | cancelled
+  source        String // upload | prompt
+  prompt        String?
+  styleNotes    String?   @map("style_notes")
+  framing       String    @default("waist") // waist | bust
+  expressionSet String    @map("expression_set") // default8 | all28 | custom
+  labels        String[]
+  width         Int
+  height        Int
+  options       Json      @default("{}")
+  baseKey       String?   @map("base_key")
+  zipKey        String?   @map("zip_key")
+  gridKey       String?   @map("grid_key")
+  estCostUsd    Float     @default(0) @map("est_cost_usd")
+  costUsd       Float     @default(0) @map("cost_usd")
+  error         String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  startedAt     DateTime? @map("started_at")
+  finishedAt    DateTime? @map("finished_at")
+
+  expressions StPackExpression[]
+
+  @@index([userId, createdAt])
+  @@index([status])
+  @@map("st_pack_jobs")
+}
+
+model StPackExpression {
+  id            String    @id @default(cuid())
+  jobId         String    @map("job_id")
+  label         String
+  status        String    @default("queued") // queued | editing | edited | video_submitted | video_ready | processing | done | failed
+  attempt       Int       @default(0)
+  lockedUntil   DateTime? @map("locked_until")
+  editKey       String?   @map("edit_key")
+  videoTaskUuid String?   @map("video_task_uuid")
+  videoUrl      String?   @map("video_url")
+  videoKey      String?   @map("video_key")
+  webpKey       String?   @map("webp_key")
+  gifKey        String?   @map("gif_key")
+  pngKey        String?   @map("png_key")
+  frames        Int?
+  bytes         Int?
+  qa            Json?
+  flagged       Boolean   @default(false)
+  costUsd       Float     @default(0) @map("cost_usd")
+  timings       Json      @default("{}") // ms per step: edit / video / post
+  error         String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  job StPackJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, label])
+  @@index([status, lockedUntil])
+  @@map("st_pack_expressions")
+}
