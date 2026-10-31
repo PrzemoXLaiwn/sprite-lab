@@ -13,6 +13,7 @@ import { DungeonReturn } from "@/components/play/DungeonReturn";
 import { prisma } from "@/lib/prisma";
 import { NOT_UPLOADED } from "@/lib/upload-marker";
 import { relaunchActive, relaunchBonusFor } from "@/config/relaunch";
+import { isStPacksEnabled } from "@/config/st-packs";
 
 /**
  * The signed-in app chrome: icon rail, mobile header + bottom nav, global
@@ -60,6 +61,7 @@ export async function AppShell({ user, children }: { user: User; children: React
             userEmail={user.email!}
             userPlan={dbUser?.plan || "FREE"}
             userRole={dbUser?.role || "USER"}
+            stPacks={isStPacksEnabled() && (dbUser?.role === "ADMIN" || dbUser?.role === "OWNER")}
           />
         </div>
       </header>

@@ -20,6 +20,7 @@ import {
   getModeratorStats,
   getBannedUsers,
 } from "@/lib/admin";
+import { isStPacksEnabled } from "@/config/st-packs";
 
 export async function checkAdminAccess() {
   const supabase = await createClient();
@@ -28,7 +29,7 @@ export async function checkAdminAccess() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return { success: false, isAdmin: false, isModerator: false, role: null };
+    return { success: false, isAdmin: false, isModerator: false, role: null, stPacks: false };
   }
 
   const [adminStatus, moderatorStatus, role] = await Promise.all([
@@ -42,6 +43,8 @@ export async function checkAdminAccess() {
     isAdmin: adminStatus,
     isModerator: moderatorStatus,
     role,
+    // ST Packs (admin-only beta) shows in the nav only while its server flag is on
+    stPacks: adminStatus && isStPacksEnabled(),
   };
 }
 

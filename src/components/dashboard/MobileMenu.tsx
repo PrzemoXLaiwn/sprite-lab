@@ -14,6 +14,7 @@ import {
   Users,
   BarChart3,
   Settings,
+  Drama,
   Shield,
   ShieldCheck,
   Zap,
@@ -45,6 +46,8 @@ interface MobileMenuProps {
   userEmail: string;
   userPlan?: string;
   userRole?: string;
+  /** ST Packs (admin beta) — computed on the server, never from env here. */
+  stPacks?: boolean;
 }
 
 function planLabel(plan: string) {
@@ -55,7 +58,7 @@ function planLabel(plan: string) {
   return "Free";
 }
 
-export function MobileMenu({ userEmail, userPlan = "FREE", userRole = "USER" }: MobileMenuProps) {
+export function MobileMenu({ userEmail, userPlan = "FREE", userRole = "USER", stPacks = false }: MobileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [credits, setCredits] = useState<number | null>(null);
   const [planName, setPlanName] = useState<string>("");
@@ -112,6 +115,7 @@ export function MobileMenu({ userEmail, userPlan = "FREE", userRole = "USER" }: 
     ...NAV,
     ...(isModerator ? [{ href: "/moderator", label: "Moderator", icon: ShieldCheck }] : []),
     ...(isAdmin ? [{ href: "/admin", label: "Admin", icon: Shield }] : []),
+    ...(isAdmin && stPacks ? [{ href: "/st-packs", label: "ST Packs", icon: Drama }] : []),
   ];
   const low = credits !== null && credits <= 2;
   const displayPlan = planName || planLabel(userPlan);
@@ -221,6 +225,7 @@ export function MobileMenu({ userEmail, userPlan = "FREE", userRole = "USER" }: 
                 />
                 {item.label}
                 {isNewFeature(item.href) && <NewBadge className="ml-auto" />}
+                {item.href === "/st-packs" && <NewBadge label="BETA" className="ml-auto" />}
               </Link>
             );
           })}

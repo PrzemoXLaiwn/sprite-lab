@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   // Pin the project root: git worktrees next to the repo (with their own
   // lockfiles) otherwise make Turbopack pick the parent folder as the root.
   turbopack: { root: __dirname },
+  // ST Packs decodes clips with ffmpeg-static: keep the binary out of the bundle and trace it into those functions
+  serverExternalPackages: ["ffmpeg-static"],
+  outputFileTracingIncludes: { "/api/st-packs/**": ["./node_modules/ffmpeg-static/ffmpeg*"] },
   // ===========================================
   // IMAGE OPTIMIZATION
   // ===========================================

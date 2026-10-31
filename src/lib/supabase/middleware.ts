@@ -86,7 +86,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Protected routes
-  const protectedPaths = ["/generate", "/gallery", "/assets", "/presets", "/projects", "/settings", "/dashboard", "/usage", "/referrals", "/admin", "/moderator", "/animate", "/upscale", "/remove-bg", "/variations", "/edit", "/quests", "/play"];
+  const protectedPaths = ["/generate", "/gallery", "/assets", "/presets", "/projects", "/settings", "/dashboard", "/usage", "/referrals", "/admin", "/moderator", "/animate", "/upscale", "/remove-bg", "/variations", "/edit", "/quests", "/play", "/st-packs"];
   const isProtectedPath = protectedPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path)
   );

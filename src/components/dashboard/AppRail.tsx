@@ -12,6 +12,7 @@ import {
   Users,
   BarChart3,
   Settings,
+  Drama,
   Shield,
   ShieldCheck,
   Zap,
@@ -49,7 +50,7 @@ export function AppRail({ email }: { email: string }) {
   const claimable = useQuestClaimable();
   const [credits, setCredits] = useState<number | null>(null);
   const [planName, setPlanName] = useState<string>("");
-  const [roles, setRoles] = useState({ admin: false, moderator: false });
+  const [roles, setRoles] = useState({ admin: false, moderator: false, stPacks: false });
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -67,7 +68,7 @@ export function AppRail({ email }: { email: string }) {
     const interval = setInterval(() => { if (!document.hidden) load(); }, 30_000);
     const onRefresh = () => load();
     window.addEventListener("credits-updated", onRefresh);
-    checkAdminAccess().then((r) => setRoles({ admin: r.isAdmin, moderator: r.isModerator })).catch(() => {});
+    checkAdminAccess().then((r) => setRoles({ admin: r.isAdmin, moderator: r.isModerator, stPacks: r.stPacks === true })).catch(() => {});
     return () => {
       clearTimeout(initial);
       clearInterval(interval);
@@ -93,6 +94,7 @@ export function AppRail({ email }: { email: string }) {
     ...NAV,
     ...(roles.moderator ? [{ href: "/moderator", label: "Mod", icon: ShieldCheck }] : []),
     ...(roles.admin ? [{ href: "/admin", label: "Admin", icon: Shield }] : []),
+    ...(roles.stPacks ? [{ href: "/st-packs", label: "ST Packs", icon: Drama }] : []),
   ];
   const low = credits !== null && credits <= 2;
 
@@ -120,6 +122,7 @@ export function AppRail({ email }: { email: string }) {
                   <span className="absolute -right-1.5 -top-1 h-2.5 w-2.5 rounded-full bg-[#00E436] ring-2 ring-[#131A31]" aria-label={`${claimable} rewards to claim`} />
                 )}
                 {isNewFeature(item.href) && <NewBadge className="absolute -right-6 -top-2" />}
+                {item.href === "/st-packs" && <NewBadge label="BETA" className="absolute -right-7 -top-2" />}
               </span>
               <span className="text-[10px] font-medium leading-none">{item.label}</span>
             </Link>
