@@ -252,7 +252,7 @@ export function StPacksStudio() {
     }
   };
 
-  const handleExpressionAction = async (label: string, from: "edit" | "video") => {
+  const handleExpressionAction = async (label: string, from: "edit" | "video" | "post") => {
     if (!job || pending[label]) return;
     const id = job.id;
     setPending((p) => ({ ...p, [label]: true }));

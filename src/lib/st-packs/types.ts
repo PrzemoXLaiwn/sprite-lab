@@ -61,7 +61,7 @@ export interface ExpressionSnapshot {
   error: string | null;
   frames: number | null;
   bytes: number | null;
-  has: { edit: boolean; webp: boolean; gif: boolean; png: boolean };
+  has: { edit: boolean; video: boolean; webp: boolean; gif: boolean; png: boolean };
   updatedAt: string;
 }
 

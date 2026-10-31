@@ -108,7 +108,7 @@ export function ExpressionTile({ jobId, expression: e, previewMode, pending, onR
           </button>
         )}
         {e.status === "failed" && (
-          <button type="button" className="btn btn-secondary btn-icon" aria-label={`Retry ${title}`} title="Retry (new edit + video)"
+          <button type="button" className="btn btn-secondary btn-icon" aria-label={`Retry ${title}`} title={e.has.video ? "Retry (post-processing only, free)" : e.has.edit ? "Retry (new video)" : "Retry (new edit + video)"}
             disabled={pending} onClick={onRetry}>
             {pending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <RotateCcw className="h-4 w-4" aria-hidden />}
           </button>

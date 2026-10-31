@@ -129,7 +129,7 @@ function exprSnapshot(e: ExprRow): ExpressionSnapshot {
     error: e.error,
     frames: e.frames,
     bytes: e.bytes,
-    has: { edit: !!e.editKey, webp: !!e.webpKey, gif: !!e.gifKey, png: !!e.pngKey },
+    has: { edit: !!e.editKey, video: !!e.videoUrl, webp: !!e.webpKey, gif: !!e.gifKey, png: !!e.pngKey },
     updatedAt: e.updatedAt.toISOString(),
   };
 }
@@ -348,10 +348,12 @@ async function runEdit(exprId: string): Promise<void> {
       editKey = await put(out, exprKey(job.id, e.label, "edit.png"), "image/png");
     }
     t.edit = Date.now() - started;
-    await prisma.stPackExpression.updateMany({
+    const r = await prisma.stPackExpression.updateMany({
       where: { id: e.id, status: "editing" },
       data: { status: "edited", lockedUntil: null, editKey, error: null, timings: t as unknown as Prisma.InputJsonValue },
     });
+    // Straight on to the clip: no need to wait for the next tick
+    if (r.count === 1 && await claim(e.id, "edited", "video_submitted", LOCK_MS.submit)) await runSubmit(e.id);
   } catch (err) {
     await stepFailed(e, "edit", err, "queued");
   }
@@ -418,7 +420,11 @@ async function pollVideo(exprId: string): Promise<void> {
       where: { id: e.id, status: "video_submitted" },
       data: { status: "video_ready", lockedUntil: null, videoUrl: result.videoURL, error: null, timings: t as unknown as Prisma.InputJsonValue },
     });
-    if (r.count === 1) await addCost(e, result.cost ?? listPrice);
+    if (r.count === 1) {
+      await addCost(e, result.cost ?? listPrice);
+      const posting = await prisma.stPackExpression.count({ where: { jobId: e.jobId, status: "processing" } });
+      if (posting < settings.postConcurrency && await claim(e.id, "video_ready", "processing", LOCK_MS.post)) await runPost(e.id);
+    }
   } catch (err) {
     await stepFailed(e, "video", err, "edited");
   }
@@ -542,20 +548,27 @@ export function jobSlug(job: { prompt: string | null; id: string }): string {
 }
 
 // ── Admin actions ────────────────────────────────────────────────────────────
-export async function regenerateExpression(jobId: string, label: string, from: "edit" | "video"): Promise<boolean> {
+/** "post" re-runs only the post-processing of the clip already rendered (no provider cost). */
+export async function regenerateExpression(jobId: string, label: string, from: "edit" | "video" | "post"): Promise<boolean> {
   const e = await prisma.stPackExpression.findUnique({ where: { jobId_label: { jobId, label } } });
   if (!e) return false;
   if (from === "video" && !e.editKey) return false;
+  if (from === "post" && !(e.editKey && e.videoUrl)) return false;
   const t = timingsOf(e);
   await prisma.$transaction([
     prisma.stPackExpression.update({
       where: { id: e.id },
       data: {
-        status: from === "edit" ? "queued" : "edited",
+        status: from === "edit" ? "queued" : from === "video" ? "edited" : "video_ready",
         lockedUntil: null, error: null, qa: Prisma.DbNull, flagged: false,
-        videoTaskUuid: null, videoUrl: null, videoKey: null, webpKey: null, gifKey: null, pngKey: null, frames: null, bytes: null,
+        webpKey: null, gifKey: null, pngKey: null, frames: null, bytes: null,
         ...(from === "edit" ? { editKey: null } : {}),
-        timings: { attempts: {}, ...(from === "video" ? { edit: t.edit, align: t.align } : {}) } as unknown as Prisma.InputJsonValue,
+        ...(from !== "post" ? { videoTaskUuid: null, videoUrl: null, videoKey: null } : {}),
+        timings: {
+          attempts: {},
+          ...(from !== "edit" ? { edit: t.edit, align: t.align } : {}),
+          ...(from === "post" ? { video: t.video, videoStartedAt: t.videoStartedAt, crop: t.crop, videoModel: t.videoModel } : {}),
+        } as unknown as Prisma.InputJsonValue,
       },
     }),
     prisma.stPackJob.update({ where: { id: jobId }, data: { status: "running", finishedAt: null, zipKey: null, gridKey: null, error: null } }),
