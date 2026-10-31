@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "@/components/ui/use-toast";
 import { track, FUNNEL } from "@/lib/analytics";
 import { clearGuestTokens, readGuestTokens } from "@/lib/guest-claim/local-tokens";
@@ -12,6 +13,7 @@ interface ClaimResponse {
   success?: boolean;
   claimed?: number;
   retryable?: boolean;
+  results?: { status: string; generationId?: string }[];
 }
 
 /**
@@ -21,6 +23,7 @@ interface ClaimResponse {
  * failures are silent and never block the app.
  */
 export function GuestSpriteClaim() {
+  const router = useRouter();
   useEffect(() => {
     if (claimStarted) return;
     const tokens = readGuestTokens();
@@ -42,6 +45,15 @@ export function GuestSpriteClaim() {
         const claimed = data.claimed ?? 0;
         if (claimed > 0) {
           track(FUNNEL.guestSpriteClaimed, { count: claimed });
+          // In the creator (where new accounts land): put the newest one on the
+          // stage with its prompt, so the visitor carries on with the sprite they came for
+          const newest = data.results?.find((x) => x.status === "claimed" && x.generationId)?.generationId;
+          if (newest && window.location.pathname === "/generate") {
+            // Keep the creator's other settings in the address (type, style…)
+            const q = new URLSearchParams(window.location.search);
+            q.set("result", newest);
+            router.replace(`/generate?${q.toString()}`);
+          }
           toast({
             variant: "success",
             title: claimed === 1
@@ -54,7 +66,7 @@ export function GuestSpriteClaim() {
         claimStarted = false;
       }
     })();
-  }, []);
+  }, [router]);
 
   return null;
 }

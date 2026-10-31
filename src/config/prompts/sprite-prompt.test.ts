@@ -38,7 +38,7 @@ describe("framing and armed stance", () => {
   it("asks for a margin so feet, blades and glow are never cut off", () => {
     const p = buildSpritePrompt({ subject: "a four-armed samurai boss", styleId: "REALISTIC_PAINTED", categoryId: "CHARACTERS", pose: "auto" });
     expect(p).toMatch(/wide empty margin on every side/);
-    expect(p).toMatch(/nothing touches or crosses the edges/);
+    expect(p).toMatch(/no part of it touches or crosses the edges/);
   });
   it("figures holding weapons get the armed stance instead of open hands, creatures too", () => {
     for (const categoryId of ["CHARACTERS", "CREATURES"]) {
@@ -46,6 +46,58 @@ describe("framing and armed stance", () => {
       expect(p, categoryId).toMatch(/held out and away from the body/);
       expect(p, categoryId).not.toMatch(/A-pose|open hands|standing calmly/);
     }
+  });
+  it("an A-pose picked explicitly wins over the armed stance, for creatures too", () => {
+    for (const categoryId of ["CHARACTERS", "CREATURES"]) {
+      const p = buildSpritePrompt({ subject: "a living toaster with a sword", original: "angry toaster with a sword", styleId: "REALISTIC_PAINTED", categoryId, pose: "a-pose" });
+      expect(p, categoryId).toMatch(/A-pose/);
+      expect(p, categoryId).toMatch(/pointing down along the side/);
+      expect(p, categoryId).not.toMatch(/held out and away|standing calmly/);
+    }
+  });
+  it("a picked view comes right after the subject, before the pose", () => {
+    const p = buildSpritePrompt({ subject: "a knight", original: "knight", styleId: "REALISTIC_PAINTED", categoryId: "CHARACTERS", pose: "a-pose", view: "FRONT" });
+    expect(p.indexOf("Camera: perfectly straight-on front view")).toBeGreaterThan(0);
+    expect(p.indexOf("Camera:")).toBeLessThan(p.indexOf("A-pose"));
+    expect(p).toMatch(/its sides are hidden/);
+    expect(p.match(/straight-on front view/g)).toHaveLength(1);
+  });
+  it("tells every sprite there is no floor or contact shadow", () => {
+    expect(buildSpritePrompt({ subject: "a knight", styleId: "REALISTIC_PAINTED", categoryId: "CHARACTERS", pose: "auto" })).toMatch(/no floor plane, no cast or contact shadow/);
+  });
+  it("a posture the user wrote wins over the pose setting (no stance line)", () => {
+    const p = buildSpritePrompt({ subject: "a french bulldog sitting upright", original: "French Bulldog sprite, sitting upright and facing the viewer", styleId: "PIXEL_ART_16", categoryId: "CREATURES", pose: "auto" });
+    expect(p).not.toMatch(/standing calmly|A-pose|T-pose/);
+  });
+  it("animals never get a human A-pose or T-pose", () => {
+    for (const pose of ["a-pose", "t-pose"]) {
+      const p = buildSpritePrompt({ subject: "a french bulldog", original: "french bulldog", styleId: "PIXEL_ART_16", categoryId: "CREATURES", pose });
+      expect(p, pose).toMatch(/the way this animal really stands/);
+      expect(p, pose).not.toMatch(/A-pose|T-pose|arms stretched/);
+    }
+    // A non-animal creature (a living toaster) still honours a picked A-pose
+    expect(buildSpritePrompt({ subject: "a living toaster", original: "angry toaster", styleId: "PIXEL_ART_16", categoryId: "CREATURES", pose: "a-pose" })).toMatch(/A-pose/);
+  });
+  it("doesn't misread what a figure holds or wears as its posture, kind or float (review cases)", () => {
+    const build = (original: string, pose: string, categoryId = "CHARACTERS") =>
+      buildSpritePrompt({ subject: original, original, styleId: "PIXEL_ART_16", categoryId, pose });
+    expect(build("mechanic in an orange jumpsuit", "a-pose")).toMatch(/A-pose/);
+    expect(build("knight with a flying cape", "t-pose")).toMatch(/T-pose/);
+    expect(build("knight with a flying cape", "auto")).toMatch(/A-pose/);
+    expect(build("shaman with a bear spirit totem", "auto")).not.toMatch(/floating calmly/);
+    expect(build("orc brute with a baseball bat", "a-pose", "CREATURES")).toMatch(/A-pose/);
+    expect(build("lizard warrior", "a-pose", "CREATURES")).toMatch(/A-pose/);
+    // …while the real cases still work
+    expect(build("French Bulldog sprite, sitting upright", "auto", "CREATURES")).not.toMatch(/standing calmly|A-pose/);
+    expect(build("a wizard with a staff, flying on a broom", "auto")).not.toMatch(/A-pose/);
+    expect(build("spirit of the forest", "auto")).toMatch(/floating calmly/);
+    // An explicit pick beats a posture word
+    expect(build("goblin sitting on a rock", "a-pose")).toMatch(/A-pose/);
+  });
+  it("ghosts float instead of standing with their feet apart", () => {
+    const p = buildSpritePrompt({ subject: "a translucent white ghost", original: "kind ghost", styleId: "HAND_PAINTED", categoryId: "CHARACTERS", pose: "auto" });
+    expect(p).toMatch(/floating calmly in the air/);
+    expect(p).not.toMatch(/feet shoulder-width apart/);
   });
   it("unarmed creatures keep the calm pose", () => {
     const p = buildSpritePrompt({ subject: "a green slime", original: "green slime", styleId: "PIXEL_ART_16", categoryId: "CREATURES", pose: "auto" });
@@ -60,5 +112,21 @@ describe("long subjects", () => {
     const s = p.slice("A 2D video game sprite of ".length, p.indexOf(". "));
     expect(s.length).toBeLessThanOrEqual(400);
     expect(subject.split(" ")).toContain(s.split(" ").at(-1));
+  });
+});
+
+describe("no invented props", () => {
+  // Regression: a margin line naming "weapon tips, flames and any glow" made the
+  // model add torches and flaming swords to doctors, ogres and textures.
+  it("never names weapons, flames or glow for subjects that don't have them", () => {
+    const cases = [
+      { subject: "a young male doctor in a white lab coat", original: "young male doctor", categoryId: "CHARACTERS", pose: "auto" },
+      { subject: "a stocky green ogre in tattered rags", original: "green ogre", categoryId: "CREATURES", pose: "auto" },
+      { subject: "a leather money pouch", original: "money pouch", categoryId: "QUEST_ITEMS" },
+    ];
+    for (const c of cases) {
+      const p = buildSpritePrompt({ ...c, styleId: "PIXEL_ART_16" });
+      expect(p, c.subject).not.toMatch(/weapon tips|flames|glow|torch/i);
+    }
   });
 });

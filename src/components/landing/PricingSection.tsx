@@ -52,7 +52,8 @@ function FeatureItem({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function PricingSection() {
+/** `signedIn`: the free plan's button opens the creator instead of sign-up. */
+export function PricingSection({ signedIn = false }: { signedIn?: boolean } = {}) {
   const [tab, setTab] = useState<Tab>("subscriptions");
   const [promoActive, setPromoActive] = useState(false);
   const [lifetimeSlots, setLifetimeSlots] = useState<Record<string, LifetimeSlotInfo>>({});
@@ -140,8 +141,8 @@ export function PricingSection() {
                     ))}
                   </ul>
                   {plan.id === "FREE" ? (
-                    <Link href="/register" className={`mt-6 flex h-11 w-full items-center justify-center text-[14px] ${BTN_SECONDARY}`}>
-                      Start free
+                    <Link href={signedIn ? "/generate" : "/register"} className={`mt-6 flex h-11 w-full items-center justify-center text-[14px] ${BTN_SECONDARY}`}>
+                      {signedIn ? "Open the creator" : "Start free"}
                     </Link>
                   ) : (
                     <Link

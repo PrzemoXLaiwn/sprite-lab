@@ -6,6 +6,7 @@ import { MOVESETS, moveCredits, movesetCredits, type Moveset } from "@/config/mo
 import { buildEnginePack, saveBlob, type PackAnimation } from "@/lib/export/engine-pack";
 import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
 import { triggerUpgradeModal } from "@/components/dashboard/UpgradeModal";
+import { userErrorMessage } from "@/lib/user-error";
 
 type Status = "waiting" | "running" | "done" | "failed";
 interface MoveResult { status: Status; anim?: PackAnimation; error?: string }
@@ -55,7 +56,7 @@ export function MovesetBuilder({ generationId, characterName, disabled }: { gene
         };
         setResults((r) => ({ ...r, [m.name]: { status: "done", anim } }));
       } catch (e) {
-        setResults((r) => ({ ...r, [m.name]: { status: "failed", error: e instanceof Error ? e.message : "failed" } }));
+        setResults((r) => ({ ...r, [m.name]: { status: "failed", error: userErrorMessage(e, "failed") } }));
       }
       triggerCreditsRefresh();
     }

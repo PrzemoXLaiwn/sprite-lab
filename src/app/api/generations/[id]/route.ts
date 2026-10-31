@@ -1,6 +1,8 @@
+import { isUploadedPrompt } from "@/lib/image/import-sprite";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { BLOCKED_MESSAGE, isBlockedText } from "@/lib/moderation/content-filter";
 import { deleteImageFromStorage } from "@/lib/storage";
 import { deleteFromR2, isR2Configured, isR2Url } from "@/lib/r2";
 import { findAnimationSourceId } from "@/lib/db/generations";
@@ -120,6 +122,31 @@ export async function PATCH(
         { error: "You don't have permission to update this generation." },
         { status: 403 }
       );
+    }
+
+    // Nothing the content filter catches goes public, and banned accounts can't share
+    if (isPublic === true) {
+      if (isBlockedText(generation.prompt)) {
+        return NextResponse.json({ error: BLOCKED_MESSAGE }, { status: 403 });
+      }
+      const owner = await prisma.user.findUnique({ where: { id: user.id }, select: { isActive: true } });
+      if (!owner?.isActive) {
+        return NextResponse.json({ error: "Your account can't share to the community right now." }, { status: 403 });
+      }
+    }
+
+    // Uploaded images (and animations or edits made from them) stay private:
+    // we can't vouch for who owns the original art
+    if (isPublic === true) {
+      const source = generation.sourceGenerationId
+        ? await prisma.generation.findUnique({ where: { id: generation.sourceGenerationId }, select: { fullPrompt: true } })
+        : null;
+      if (isUploadedPrompt(generation.fullPrompt) || isUploadedPrompt(source?.fullPrompt)) {
+        return NextResponse.json(
+          { error: "Sprites made from an uploaded image can't be shared to the community gallery." },
+          { status: 403 }
+        );
+      }
     }
 
     // Update the generation - isPublic field will work after migration

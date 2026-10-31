@@ -50,6 +50,8 @@ import { interpretSubject } from "@/lib/prompt-interpret";
 
 /** Shaded styles where a perfectly flat key-coloured patch can only be background. */
 const PAINTERLY_STYLES = new Set(["REALISTIC_PAINTED", "HAND_PAINTED", "DARK_SOULS"]);
+/** Painted styles: time allowed for the matte that settles ambiguous gaps (typically ~3 s). */
+const GAP_MATTE_TIMEOUT_MS = 12_000;
 import { storeGuestSprite } from "@/lib/guest-claim/server";
 
 // =============================================================================
@@ -74,14 +76,10 @@ export type QualityPreset = "draft" | "normal" | "hd";
 // HD runs on GPT Image Mini (~$0.036/image ≈ the price of 1 credit in the
 // cheapest pack), so it costs 3 credits to keep a margin. Surfacing the cost
 // in the UI is the caller's job (see CREDIT_COSTS export below).
-export const CREDIT_COSTS: Record<QualityPreset, number> = {
-  draft: 1,
-  normal: 1,
-  hd: 3,
-};
+export const CREDIT_COSTS: Record<QualityPreset, number> = SPRITE_CREDIT_COSTS;
 
 /** Matching a reference sprite's style runs on the image-edit model (~$0.07). */
-import { STYLE_MATCH_CREDITS } from "@/config/tool-prices";
+import { SPRITE_CREDIT_COSTS, STYLE_MATCH_CREDITS } from "@/config/tool-prices";
 export { STYLE_MATCH_CREDITS };
 
 export function creditsForPreset(preset?: QualityPreset): number {
@@ -605,7 +603,16 @@ async function generateSingle2D(request: GenerationRequest): Promise<{ asset: Ge
       png = generated.image;
     }
   } else try {
-    const processed = await postprocessSprite(generated.image, { pixelGrid, paletteSize, flatGaps: PAINTERLY_STYLES.has(styleId) });
+    const painted = PAINTERLY_STYLES.has(styleId);
+    const image = generated.image;
+    const processed = await postprocessSprite(image, {
+      pixelGrid,
+      paletteSize,
+      flatGaps: painted,
+      // Painted styles: a white glint on armour and a gap between arm and body
+      // key the same; an AI matte settles each such patch (see arbitrateGaps)
+      gapMatte: painted ? () => removeBackgroundFromBuffer(image, GAP_MATTE_TIMEOUT_MS) : undefined,
+    });
     png = processed.png;
     if (!processed.backgroundRemoved) {
       // Model drew a scene despite the instruction — fall back to the AI
@@ -653,13 +660,13 @@ async function generateSingle2D(request: GenerationRequest): Promise<{ asset: Ge
   };
 }
 
-/** AI background removal for a buffer (fallback path). Returns PNG or null. */
-async function removeBackgroundFromBuffer(image: Buffer): Promise<Buffer | null> {
+/** AI background removal for a buffer (fallback path, gap matte). Returns PNG or null. */
+async function removeBackgroundFromBuffer(image: Buffer, timeoutMs = 20_000): Promise<Buffer | null> {
   try {
     const dataUri = `data:image/png;base64,${image.toString("base64")}`;
-    const result = await removeBackground(dataUri);
+    const result = await removeBackground(dataUri, { timeoutMs });
     if (!result.success || !result.imageUrl) return null;
-    const res = await fetch(result.imageUrl, { signal: AbortSignal.timeout(30_000) });
+    const res = await fetch(result.imageUrl, { signal: AbortSignal.timeout(Math.min(30_000, timeoutMs)) });
     return res.ok ? Buffer.from(await res.arrayBuffer()) : null;
   } catch {
     return null;

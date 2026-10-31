@@ -31,11 +31,17 @@ import {
   Star,
   Trophy,
   Plus,
+  Flag,
+  EyeOff,
+  Ban,
+  Trash2,
 } from "lucide-react";
+import { checkAdminAccess } from "@/app/(dashboard)/admin/page.actions";
 import { CHECKERBOARD, CommunityAvatar, isPixelStyleId } from "@/components/community/shared";
 import { PixelThumb } from "@/components/media/PixelThumb";
 import { GENERATE_STYLES } from "@/data/generate-styles";
 import { COMMUNITY_PAGE_SIZE, type CommunityItem, type CommunityPage } from "@/lib/community-gallery-types";
+import { fetchImage } from "@/lib/cors-image";
 
 // ===========================================
 // TYPES
@@ -217,12 +223,90 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
   }, [chatOpen]);
 
   // Whether this visitor can post (the page is public; posting needs an account)
+  // and whether they are staff (moderators get remove/ban controls)
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
+  const [isStaff, setIsStaff] = useState(false);
+  const [reported, setReported] = useState<Set<string>>(new Set());
+  const [moderating, setModerating] = useState(false);
   useEffect(() => {
     createBrowserClient().auth.getUser()
-      .then(({ data }) => setSignedIn(Boolean(data.user)))
+      .then(({ data }) => {
+        setSignedIn(Boolean(data.user));
+        if (data.user) checkAdminAccess().then((r) => setIsStaff(Boolean(r.isModerator))).catch(() => {});
+      })
       .catch(() => setSignedIn(false));
   }, []);
+
+  /** Staff action via /api/moderation; true when it was applied. */
+  const moderate = async (body: Record<string, string>, done: string): Promise<boolean> => {
+    setModerating(true);
+    try {
+      const res = await fetch("/api/moderation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast({ variant: "destructive", title: "Couldn't apply that", description: data?.error || "Please try again." });
+        return false;
+      }
+      toast({ title: done });
+      return true;
+    } catch {
+      toast({ variant: "destructive", title: "Couldn't apply that", description: "Check your connection and try again." });
+      return false;
+    } finally {
+      setModerating(false);
+    }
+  };
+
+  const removeFromGallery = async (gen: Generation) => {
+    if (!(await moderate({ action: "unpublish", generationId: gen.id }, "Removed from the gallery"))) return;
+    setGenerations((prev) => prev.filter((g) => g.id !== gen.id));
+    setTotal((t) => Math.max(0, t - 1));
+    setSelectedGen(null);
+  };
+
+  const banAuthor = async (gen: Generation) => {
+    if (!window.confirm("Ban this player? Their shared sprites leave the gallery and they can't post, comment or chat.")) return;
+    if (!(await moderate({ action: "ban", generationId: gen.id }, "Player banned"))) return;
+    setSelectedGen(null);
+    loadCommunityGallery();
+    loadChatMessages();
+  };
+
+  const deleteComment = async (id: string) => {
+    if (await moderate({ action: "delete_comment", commentId: id }, "Comment deleted")) {
+      setComments((prev) => prev.filter((c) => c.id !== id));
+    }
+  };
+
+  const deleteChatMessage = async (id: string) => {
+    if (await moderate({ action: "delete_chat", messageId: id }, "Message deleted")) {
+      setChatMessages((prev) => prev.filter((m) => m.id !== id));
+    }
+  };
+
+  const reportGeneration = async (gen: Generation) => {
+    try {
+      const res = await fetch("/api/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ generationId: gen.id, reason: "INAPPROPRIATE" }),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok || res.status === 400) {
+        // 400 here is "already reported": same outcome for the visitor
+        setReported((prev) => new Set(prev).add(gen.id));
+        toast({ title: "Reported", description: "Thanks. A moderator will look at it." });
+      } else {
+        toast({ variant: "destructive", title: "Couldn't send the report", description: data?.error || "Please try again." });
+      }
+    } catch {
+      toast({ variant: "destructive", title: "Couldn't send the report", description: "Check your connection and try again." });
+    }
+  };
 
   // Open the chat panel by default only when there is room for it.
   useEffect(() => {
@@ -461,7 +545,7 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
 
   const handleDownload = async (gen: Generation) => {
     try {
-      const response = await fetch(gen.imageUrl);
+      const response = await fetchImage(gen.imageUrl);
       const blob = await response.blob();
       const blobUrl = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -945,8 +1029,22 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                         {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </span>
                     </div>
-                    <div className="rounded-xl rounded-tl-sm bg-white/[0.04] px-3 py-2">
-                      <p className="break-words text-[13px] leading-snug text-[#FFF1E8]">{msg.message}</p>
+                    <div className="flex items-start gap-1.5">
+                      <div className="min-w-0 flex-1 rounded-xl rounded-tl-sm bg-white/[0.04] px-3 py-2">
+                        <p className="break-words text-[13px] leading-snug text-[#FFF1E8]">{msg.message}</p>
+                      </div>
+                      {isStaff && (
+                        <button
+                          type="button"
+                          onClick={() => deleteChatMessage(msg.id)}
+                          disabled={moderating}
+                          aria-label="Delete message"
+                          title="Delete message"
+                          className="btn btn-secondary btn-icon h-10 w-10 shrink-0"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1094,6 +1192,37 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                     <ExternalLink className="h-4 w-4" />
                   </button>
                 </div>
+
+                {isStaff ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => removeFromGallery(selectedGen)}
+                      disabled={moderating}
+                      className="btn btn-secondary h-10 px-3 text-[13px]"
+                    >
+                      <EyeOff className="h-4 w-4" /> Remove from gallery
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => banAuthor(selectedGen)}
+                      disabled={moderating}
+                      className="btn btn-danger h-10 px-3 text-[13px]"
+                    >
+                      <Ban className="h-4 w-4" /> Ban author
+                    </button>
+                  </div>
+                ) : signedIn ? (
+                  <button
+                    type="button"
+                    onClick={() => reportGeneration(selectedGen)}
+                    disabled={reported.has(selectedGen.id)}
+                    className="btn btn-ghost mt-2 h-10 px-2 text-[12.5px]"
+                  >
+                    <Flag className="h-3.5 w-3.5" />
+                    {reported.has(selectedGen.id) ? "Reported" : "Report"}
+                  </button>
+                ) : null}
               </div>
 
               {/* Comments */}
@@ -1124,6 +1253,18 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                           </div>
                           <p className="break-words text-[13px] leading-snug text-[#C8CCE8]">{comment.message}</p>
                         </div>
+                        {isStaff && (
+                          <button
+                            type="button"
+                            onClick={() => deleteComment(comment.id)}
+                            disabled={moderating}
+                            aria-label="Delete comment"
+                            title="Delete comment"
+                            className="btn btn-secondary btn-icon h-10 w-10 shrink-0"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>

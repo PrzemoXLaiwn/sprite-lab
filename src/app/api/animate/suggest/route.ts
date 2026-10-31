@@ -4,7 +4,24 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { rateLimitAiHelper } from "@/lib/rate-limit";
 import { safeFetchImage } from "@/lib/safe-fetch";
-import { fallbackSuggestions, suggestMotions } from "@/lib/animation-suggest";
+import { fallbackSuggestions, suggestMotions, type MotionSuggestions } from "@/lib/animation-suggest";
+
+// Suggestions are kept per sprite: one Opus call per sprite, not one per server
+// instance (the module cache only lives as long as the instance). Bump the
+// version when the prompt changes so old answers are redone.
+const SUGGESTIONS_EVENT = "motion_suggestions";
+const SUGGESTIONS_VERSION = 1;
+
+function parseStored(metadata: string | null | undefined): MotionSuggestions | null {
+  if (!metadata) return null;
+  try {
+    const data = JSON.parse(metadata) as { v?: unknown; subject?: unknown; motions?: unknown };
+    if (data.v !== SUGGESTIONS_VERSION || !Array.isArray(data.motions) || data.motions.length < 3) return null;
+    return { subject: typeof data.subject === "string" ? data.subject : "", motions: data.motions, ai: true };
+  } catch {
+    return null;
+  }
+}
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -27,6 +44,14 @@ export async function GET(req: NextRequest) {
   });
   if (!source) return NextResponse.json({ error: "Sprite not found." }, { status: 404 });
 
+  const stored = await prisma.generationEvent.findFirst({
+    where: { generationId: source.id, eventType: SUGGESTIONS_EVENT },
+    orderBy: { createdAt: "desc" },
+    select: { metadata: true },
+  });
+  const saved = parseStored(stored?.metadata);
+  if (saved) return NextResponse.json(saved, { headers: { "Cache-Control": "private, max-age=3600" } });
+
   const { blocked } = await rateLimitAiHelper(user.id);
   if (blocked) return NextResponse.json(fallbackSuggestions(source.categoryId));
 
@@ -39,6 +64,11 @@ export async function GET(req: NextRequest) {
       .png()
       .toBuffer();
     const result = await suggestMotions({ cacheKey: source.id, image, prompt: source.prompt, categoryId: source.categoryId });
+    if (result.ai) {
+      prisma.generationEvent
+        .create({ data: { generationId: source.id, userId: user.id, eventType: SUGGESTIONS_EVENT, metadata: JSON.stringify({ v: SUGGESTIONS_VERSION, subject: result.subject, motions: result.motions }) } })
+        .catch(() => {});
+    }
     return NextResponse.json(result, { headers: { "Cache-Control": "private, max-age=3600" } });
   } catch {
     return NextResponse.json(fallbackSuggestions(source.categoryId));

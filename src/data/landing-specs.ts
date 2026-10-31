@@ -30,7 +30,6 @@ export const LANDING_SPECS: Record<string, Specs> = {
       "SpriteLab removes the background and, for pixel styles, snaps the result to a real grid, so the remaining work is mostly these design choices — view, size and origin — which only you can make for your game.",
     ],
     links: [
-      { label: "How to prompt an AI sprite generator", href: "/guides/how-to-prompt-an-ai-sprite-generator" },
       { label: "Pixel art sprite sizes for games", href: "/guides/pixel-art-sprite-sizes-for-games" },
       { label: "How to keep AI game art consistent", href: "/guides/how-to-keep-ai-game-art-consistent" },
     ],
@@ -58,7 +57,6 @@ export const LANDING_SPECS: Record<string, Specs> = {
     links: [
       { label: "Pixel art sprite sizes: 16, 32 or 64?", href: "/guides/pixel-art-sprite-sizes-for-games" },
       { label: "How to make pixel art sprites for games", href: "/guides/how-to-make-pixel-art-sprites-for-games" },
-      { label: "Free game sprites without hiring an artist", href: "/guides/free-game-sprites-without-an-artist" },
     ],
   },
 
@@ -107,7 +105,6 @@ export const LANDING_SPECS: Record<string, Specs> = {
       "Mirroring is a real trade-off: a character with a sword in the right hand holds it in the left when facing left. If your hero has a strong asymmetric feature, plan to fix the left row by hand or draw it separately.",
     ],
     links: [
-      { label: "Top-down sprite generator", href: "/top-down-sprite-generator" },
       { label: "How to make a 4-direction top-down RPG character", href: "/guides/how-to-make-a-4-direction-top-down-rpg-character" },
       { label: "How many frames should a sprite animation have?", href: "/guides/how-many-frames-per-sprite-animation" },
     ],
@@ -157,7 +154,6 @@ export const LANDING_SPECS: Record<string, Specs> = {
     links: [
       { label: "How to make seamless tiles for 2D games", href: "/guides/how-to-make-seamless-tiles-for-2d-games" },
       { label: "Sprite sheet layout: strips, grids and atlases", href: "/guides/sprite-sheet-layout-and-texture-atlases" },
-      { label: "2D game asset generator", href: "/2d-game-asset-generator" },
     ],
   },
 

@@ -1,5 +1,6 @@
 import { canSpend, recordProviderCall } from "@/lib/billing/ledger";
 import { PRICE } from "@/lib/billing/features";
+import { canStartOptionalPass, MAX_PASS_MS, passTimeoutMs } from "@/lib/services/animation-budget";
 import { Runware } from "@runware/sdk-js";
 import { cloudflareAiConfigured, generateWithCloudflare } from "./cloudflare-ai";
 
@@ -502,6 +503,11 @@ type AnimationGridOpts = {
   reference: Buffer;
   /** Square canvas side - the model only accepts 1024 or 2048 for square output. */
   size?: 1024 | 2048;
+  /**
+   * Epoch ms by which the call (and a moderation retry) must be done — see
+   * animation-budget.ts. Without it a call may take up to MAX_PASS_MS.
+   */
+  deadline?: number;
 };
 
 /**
@@ -515,6 +521,8 @@ export async function generateAnimationGrid(opts: AnimationGridOpts): Promise<{ 
     const msg = err instanceof Error ? err.message : String(err);
     if (!/invalidProviderContent|moderation|flagged/i.test(msg)) throw err;
     if (!canSpend(gridPrice(opts.size))) throw err;
+    // A retry that can't finish before the route limit would only get the function killed
+    if (opts.deadline !== undefined && !canStartOptionalPass(opts.deadline, opts.size ?? 1024)) throw err;
     console.warn("[Runware] Animation grid flagged by provider moderation - retrying as cartoon game art");
     return generateAnimationGridOnce({
       ...opts,
@@ -527,8 +535,9 @@ async function generateAnimationGridOnce(opts: AnimationGridOpts): Promise<{ ima
   const apiKey = process.env.RUNWARE_API_KEY;
   if (!apiKey) throw new Error("RUNWARE_API_KEY is not set");
   const controller = new AbortController();
-  // 2K sheets take noticeably longer than single sprites
-  const timer = setTimeout(() => controller.abort(), 150_000);
+  // 2K sheets take noticeably longer than single sprites; never past the request's deadline
+  const timeoutMs = opts.deadline !== undefined ? passTimeoutMs(opts.deadline) : MAX_PASS_MS;
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   const taskUUID = crypto.randomUUID();
   const started = Date.now();
   let reported: number | null = null;
@@ -636,7 +645,8 @@ export async function upscaleImage(
 const BG_REMOVAL_TIMEOUT = 20000;
 
 export async function removeBackground(
-  imageUrl: string
+  imageUrl: string,
+  opts: { timeoutMs?: number } = {}
 ): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
   try {
     const runware = await getRunwareClient();
@@ -658,7 +668,7 @@ export async function removeBackground(
           includeCost: true,
           customTaskUUID: taskUUID,
         }) as Promise<unknown>,
-        BG_REMOVAL_TIMEOUT,
+        opts.timeoutMs ?? BG_REMOVAL_TIMEOUT,
         "Runware background removal"
       );
       logRunware({ ...log, reported: reportedCost(result) });

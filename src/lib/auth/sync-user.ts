@@ -1,13 +1,13 @@
 // =============================================================================
-// Profile fields and the welcome email shared by the OAuth callback and One Tap
+// Auth → database user sync (shared by the OAuth/email callback and One Tap)
 // =============================================================================
-// The users-row insert and the referral live in src/lib/auth/first-login.ts.
-// Callers send this email only when that insert reports a new row.
+// Creates the users row on first sign-in, applies a referral code for new
+// accounts, and sends the (transactional) welcome email once for new accounts.
 // =============================================================================
 
 import type { User } from "@supabase/supabase-js";
 import { sendWelcomeEmail } from "@/lib/email/send";
-import { SIGNUP_CREDITS } from "@/config/signup";
+import { RELAUNCH, newSignupBonus } from "@/config/relaunch";
 
 // user_metadata is user-writable via the anon key (supabase.auth.updateUser),
 // so it is only trusted for the initial profile on account creation, and only
@@ -43,22 +43,15 @@ export function sanitizeAvatarUrl(metadata: Record<string, unknown> | undefined)
   }
 }
 
-/**
- * Welcome email for an account row that was just created.
- * Returns the send promise so route handlers can pass it to `after()`.
- * The amount is SIGNUP_CREDITS, the same grant the users row is inserted with.
- */
-export async function sendWelcomeFor(user: User): Promise<void> {
+
+/** Fire-and-forget welcome email for a new account. */
+export function sendWelcomeFor(user: User): void {
   if (!user.email) return;
-  try {
-    await sendWelcomeEmail(
-      user.email,
-      sanitizeName(user.user_metadata) ?? undefined,
-      SIGNUP_CREDITS,
-      user.id
-    );
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "welcome email failed";
-    console.error("[Auth] welcome email failed:", message);
-  }
+  sendWelcomeEmail(
+    user.email,
+    sanitizeName(user.user_metadata) ?? undefined,
+    // The relaunch bonus is added on their first app visit
+    RELAUNCH.SIGNUP_CREDITS + newSignupBonus(),
+    user.id
+  ).catch((err) => console.error("[Auth Sync] Welcome email failed:", err));
 }

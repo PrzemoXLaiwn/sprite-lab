@@ -29,18 +29,23 @@ const P1024 = 0.0692, P2048 = 0.1029; // measured per-pass prices (Nano Banana)
 // Haiku prompt interpreter on every sprite (≈900 in / 90 out tokens; max = 2× in, 160 out)
 const INTERPRET = 0.0014, INTERPRET_MAX = 0.0026;
 
+// Painted styles (13% of sprites in the week to 2026-10-21) also run the background
+// remover once, to tell a gap from a white glint (sprite-postprocess arbitrateGaps)
+const PAINTED_SHARE = 0.13;
+
 export const FEATURE_COSTS: Record<string, FeatureCost> = {
-  sprite: { runwareUsd: 0.0008, runwareMaxUsd: 0.0008, n: 94, status: "measured", claudeUsd: INTERPRET, claudeMaxUsd: INTERPRET_MAX },
-  sprite_hd: { runwareUsd: 0.036, runwareMaxUsd: 0.036, n: 31, status: "measured", claudeUsd: INTERPRET, claudeMaxUsd: INTERPRET_MAX },
+  sprite: { runwareUsd: 0.0008 + PAINTED_SHARE * PRICE.removeBg, runwareMaxUsd: 0.0008 + PRICE.removeBg, n: 94, status: "measured", claudeUsd: INTERPRET, claudeMaxUsd: INTERPRET_MAX },
+  sprite_hd: { runwareUsd: 0.036 + PAINTED_SHARE * PRICE.removeBg, runwareMaxUsd: 0.036 + PRICE.removeBg, n: 31, status: "measured", claudeUsd: INTERPRET, claudeMaxUsd: INTERPRET_MAX },
   style_match: { runwareUsd: P1024, runwareMaxUsd: 2 * P1024, n: 0, status: "derived", claudeUsd: 0, claudeMaxUsd: 0 }, // no interpreter: the reference sets the look
   edit: { runwareUsd: P1024, runwareMaxUsd: 2 * P1024, n: 0, status: "derived", claudeUsd: 0, claudeMaxUsd: 0 },
   rig: { runwareUsd: 0, runwareMaxUsd: 0, n: 9, status: "estimate", claudeUsd: 0.04, claudeMaxUsd: 0.07 },
   anim_4: { runwareUsd: 0.0692, runwareMaxUsd: 2 * P1024, n: 3, status: "measured", claudeUsd: 0.035, claudeMaxUsd: 0.05 },
   anim_6: { runwareUsd: 0.1186, runwareMaxUsd: 2 * P2048, n: 13, status: "measured", claudeUsd: 0.035, claudeMaxUsd: 0.05 },
   anim_9: { runwareUsd: P2048, runwareMaxUsd: 2 * P2048, n: 0, status: "derived", claudeUsd: 0.035, claudeMaxUsd: 0.05 },
-  anim_smooth_4: { runwareUsd: 0.1419, runwareMaxUsd: 3 * P1024, n: 20, status: "measured", claudeUsd: 0.035, claudeMaxUsd: 0.05 },
-  anim_smooth_6: { runwareUsd: 0.2057, runwareMaxUsd: 3 * P2048, n: 7, status: "measured", claudeUsd: 0.035, claudeMaxUsd: 0.05 },
-  anim_smooth_9: { runwareUsd: 0.2057, runwareMaxUsd: 3 * P2048, n: 5, status: "measured", claudeUsd: 0.035, claudeMaxUsd: 0.05 },
+  // Max: 2 key sheets + 2 in-between sheets (the in-between redraw, Oct 2026)
+  anim_smooth_4: { runwareUsd: 0.1419, runwareMaxUsd: 4 * P1024, n: 20, status: "measured", claudeUsd: 0.035, claudeMaxUsd: 0.05 },
+  anim_smooth_6: { runwareUsd: 0.2057, runwareMaxUsd: 4 * P2048, n: 7, status: "measured", claudeUsd: 0.035, claudeMaxUsd: 0.05 },
+  anim_smooth_9: { runwareUsd: 0.2057, runwareMaxUsd: 4 * P2048, n: 5, status: "measured", claudeUsd: 0.035, claudeMaxUsd: 0.05 },
   rotate4: { runwareUsd: 0.0692, runwareMaxUsd: 2 * P1024, n: 1, status: "measured", claudeUsd: 0, claudeMaxUsd: 0 },
   rotate8: { runwareUsd: P2048, runwareMaxUsd: 2 * P2048, n: 0, status: "derived", claudeUsd: 0, claudeMaxUsd: 0 },
   walk4dir: { runwareUsd: P2048 + P1024 * 0.5, runwareMaxUsd: 2 * P2048 + 2 * P1024, n: 2, status: "derived", claudeUsd: 0, claudeMaxUsd: 0 },

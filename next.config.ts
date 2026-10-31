@@ -197,9 +197,7 @@ const nextConfig: NextConfig = {
   // ===========================================
   async redirects() {
     return [
-      // Permanent so Google consolidates /home onto /. A 307 stays in
-      // "Page with redirect" and keeps the duplicate URL in the index.
-      { source: "/home", destination: "/", permanent: true },
+      { source: "/home", destination: "/", permanent: false },
       // /.well-known/security.txt is served directly from public/ (RFC 9116).
       {
         source: "/gallery",

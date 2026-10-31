@@ -180,9 +180,6 @@ export async function POST(request: Request) {
             stripeSubscriptionId: subscription.id,
             stripePriceId: selectedPlan.priceId,
             ...(periodEnd ? { stripeCurrentPeriodEnd: periodEnd } : {}),
-            cancelAtPeriodEnd: false,
-            billingPaused: false,
-            subscriptionPauseResumesAt: null,
           },
         }),
       ]);

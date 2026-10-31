@@ -34,6 +34,7 @@ import {
   type Generation,
   type PendingJob,
 } from "@/components/assets/asset-utils";
+import { fetchImage } from "@/lib/cors-image";
 
 // ===========================================
 // TOAST
@@ -275,7 +276,7 @@ export default function GalleryPage() {
 
   const handleDownload = async (gen: Generation) => {
     try {
-      const response = await fetch(gen.imageUrl);
+      const response = await fetchImage(gen.imageUrl);
       const blob = await response.blob();
       const blobUrl = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -381,7 +382,7 @@ export default function GalleryPage() {
       // Download all files in parallel
       const downloadPromises = selectedGens.map(async (gen, index) => {
         try {
-          const response = await fetch(gen.imageUrl);
+          const response = await fetchImage(gen.imageUrl);
           if (!response.ok) throw new Error("Failed to fetch");
 
           const blob = await response.blob();

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { mergeEmailPreferences } from "@/app/api/_lib/email-prefs";
 import { isAuthorizedCronRequest } from "@/lib/cron-auth";
-import { stripe, PLANS, CREDIT_PACKS } from "@/lib/stripe";
+import { stripe, PLANS, CREDIT_PACKS, getPlanByPriceId } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { sendAbandonedCartEmail } from "@/lib/email/send";
 import { MARKETING_OFF_RESPONSE, legacyMarketingEnabled } from "@/lib/email/flags";
@@ -15,14 +15,11 @@ export const dynamic = "force-dynamic";
 
 // Map Stripe price IDs to plan info
 function getPlanFromPriceId(priceId: string): { name: string; credits: string; price: string } | null {
-  if (priceId === process.env.STRIPE_STARTER_PRICE_ID) {
-    return { name: PLANS.STARTER.name, credits: `${PLANS.STARTER.credits} credits/month`, price: `£${PLANS.STARTER.price}` };
-  }
-  if (priceId === process.env.STRIPE_PRO_PRICE_ID) {
-    return { name: PLANS.PRO.name, credits: `${PLANS.PRO.credits} credits/month`, price: `£${PLANS.PRO.price}` };
-  }
-  if (PLANS.UNLIMITED.priceId && priceId === PLANS.UNLIMITED.priceId) {
-    return { name: PLANS.UNLIMITED.name, credits: `${PLANS.UNLIMITED.credits} credits/month`, price: `£${PLANS.UNLIMITED.price}` };
+  // Current and legacy (USD) price IDs alike — see getPlanByPriceId
+  const planName = getPlanByPriceId(priceId);
+  if (planName && planName !== "FREE") {
+    const plan = PLANS[planName];
+    return { name: plan.name, credits: `${plan.credits} credits/month`, price: `£${plan.price}` };
   }
   // One-time credit packs — derived from CREDIT_PACKS so names/prices match checkout
   for (const pack of Object.values(CREDIT_PACKS)) {

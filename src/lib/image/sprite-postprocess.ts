@@ -40,6 +40,15 @@ export interface SpritePostprocessOptions {
    * background remover), skip flood-fill keying and threshold that alpha.
    */
   trustInputAlpha?: boolean;
+  /**
+   * Painted styles: an enclosed flat patch of key colour is ambiguous — a gap
+   * between arm and body, or a white highlight on armour / a white coat (see
+   * removeEnclosedBackground). When given, returns an AI background-removal
+   * matte (PNG with alpha) of the SAME input, and each such patch is cleared
+   * only when the matte calls most of it background. Null (failed, timed
+   * out) → the patches are cleared as without a matte.
+   */
+  gapMatte?: () => Promise<Buffer | null>;
 }
 
 export interface SpritePostprocessResult {
@@ -60,6 +69,9 @@ interface Raw {
   width: number;
   height: number;
 }
+
+/** Outcome of the flood-fill keying; `key` is the border colour the later passes need (null: nothing to do). */
+type KeyResult = { removed: boolean; key: [number, number, number] | null };
 
 // -----------------------------------------------------------------------------
 // Public API
@@ -90,7 +102,12 @@ export async function postprocessSprite(
     // background even without a dark outline around it. Flat-colour styles
     // (pixel, cartoon, vector) draw white cloth exactly as flat as the key,
     // so they keep the outline rule (pale subjects get a magenta key instead).
-    backgroundRemoved = keyOutBackground(raw, options.bgTolerance ?? 32, 1, 1, options.flatGaps ?? false);
+    const gapMatte = options.gapMatte;
+    const uncertain: number[][] = [];
+    const keyed = keyOutBackground(raw, options.bgTolerance ?? 32, 1, 1, options.flatGaps ?? false, gapMatte ? uncertain : undefined);
+    if (keyed.key && gapMatte && uncertain.length) await arbitrateGaps(raw, uncertain, gapMatte);
+    if (keyed.key) finishKeying(raw, keyed.key);
+    backgroundRemoved = keyed.removed;
   }
 
   // 2. Crop to subject
@@ -360,16 +377,19 @@ export function keySpriteBackground(
     flatGaps?: boolean;
   } = {}
 ): boolean {
-  return keyOutBackground(raw, opts.tolerance ?? 32, opts.fringePasses ?? 1, opts.areaScale ?? 1, opts.flatGaps ?? false);
+  const keyed = keyOutBackground(raw, opts.tolerance ?? 32, opts.fringePasses ?? 1, opts.areaScale ?? 1, opts.flatGaps ?? false);
+  if (keyed.key) finishKeying(raw, keyed.key);
+  return keyed.removed;
 }
 
 /**
  * Flood-fills from every border pixel over pixels within `tolerance` of the
- * dominant border colour and makes them transparent. Returns false (and leaves
+ * dominant border colour and makes them transparent. `removed` is false (and
  * the image untouched) when the border is not a flat colour — e.g. the model
- * ignored the instruction and drew a scene.
+ * ignored the instruction and drew a scene. The caller runs finishKeying with
+ * the returned key once the enclosed patches are settled.
  */
-function keyOutBackground(raw: Raw, tolerance: number, fringePasses = 1, areaScale = 1, flatGaps = false): boolean {
+function keyOutBackground(raw: Raw, tolerance: number, fringePasses = 1, areaScale = 1, flatGaps = false, uncertain?: number[][]): KeyResult {
   const { width, height, data } = raw;
   const border: number[] = [];
   for (let x = 0; x < width; x++) border.push(x, (height - 1) * width + x);
@@ -387,7 +407,7 @@ function keyOutBackground(raw: Raw, tolerance: number, fringePasses = 1, areaSca
   }
   let best: { n: number; r: number; g: number; b: number } | undefined;
   for (const e of buckets.values()) if (!best || e.n > best.n) best = e;
-  if (!best) return true; // border already transparent
+  if (!best) return { removed: true, key: null }; // border already transparent
   // The mode bucket can split a soft gradient (a chroma key often shades a
   // little); gather every border pixel close to it before deciding.
   let mr = best.r / best.n, mg = best.g / best.n, mb = best.b / best.n;
@@ -398,7 +418,7 @@ function keyOutBackground(raw: Raw, tolerance: number, fringePasses = 1, areaSca
     const dr = data[i] - mr, dg = data[i + 1] - mg, db = data[i + 2] - mb;
     if (dr * dr + dg * dg + db * db <= 40 * 40) { near++; sr += data[i]; sg += data[i + 1]; sb += data[i + 2]; }
   }
-  if (near < border.length * 0.5) return false; // no flat background
+  if (near < border.length * 0.5) return { removed: false, key: null }; // no flat background
   mr = sr / near; mg = sg / near; mb = sb / near;
   const br = mr, bg = mg, bb = mb;
 
@@ -444,10 +464,17 @@ function keyOutBackground(raw: Raw, tolerance: number, fringePasses = 1, areaSca
     for (const p of clear) data[p * 4 + 3] = 0;
   }
 
-  removeEnclosedBackground(raw, br, bg, bb, areaScale, flatGaps);
+  removeEnclosedBackground(raw, br, bg, bb, areaScale, flatGaps, uncertain);
+  return { removed: true, key: [br, bg, bb] };
+}
+
+/** The passes after the enclosed patches are settled: chroma-key despill, then the ground shadow. */
+function finishKeying(raw: Raw, key: [number, number, number]): void {
+  const [br, bg, bb] = key;
+  // Shadow first: the despill strips the key tint from exactly the edge pixels
+  // a key-tinted shadow is recognised by
+  removeGroundShadow(raw, key);
   if (Math.max(br, bg, bb) - Math.min(br, bg, bb) > 110) despillEdges(raw, br, bg, bb);
-  removeGroundShadow(raw);
-  return true;
 }
 
 /**
@@ -493,11 +520,24 @@ function despillEdges(raw: Raw, br: number, bg: number, bb: number, range = 4): 
  * such pixels — only in the lower 30% of the subject, so light-coloured parts
  * higher up (silver armour, white cloth) are never touched.
  */
-function removeGroundShadow(raw: Raw): void {
+function removeGroundShadow(raw: Raw, key?: [number, number, number]): void {
   const { width, height, data } = raw;
   const b = opaqueBounds(raw);
   if (!b) return;
   const yMin = Math.floor(b.y1 - (b.y1 - b.y0) * 0.3);
+  // On a chroma key (magenta, for pale subjects) the model shades its contact
+  // shadow in a darker key tint instead of grey (measured: a silver knight on
+  // magenta stood on a #b020a0 ellipse that no key-distance rule reached).
+  // Such pixels count as shadow too: the key's strong channels well above its
+  // weak one. The band, smoothness and shape checks below still apply.
+  const chroma = key !== undefined && Math.max(...key) - Math.min(...key) > 110;
+  const strong = key ? key.map((v) => v > 180) : [false, false, false];
+  const weak = key ? key.map((v) => v < 90) : [false, false, false];
+  const keyTinted = (i: number) => {
+    if (!chroma) return false;
+    const weakMax = Math.max(...[0, 1, 2].filter((c) => weak[c]).map((c) => data[i + c]));
+    return [0, 1, 2].every((c) => !strong[c] || data[i + c] > weakMax + 60);
+  };
   const isShadow = (p: number) => {
     const i = p * 4;
     if (data[i + 3] === 0) return false;
@@ -509,7 +549,7 @@ function removeGroundShadow(raw: Raw): void {
     // Grey only, from the pale outer ring of a soft shadow (it fades into the
     // white key) down to its mid-grey core. White cloth or a ghost reached
     // here is part of a tall region and is kept by the flat/small check below.
-    if (luma < 95 || max - min > 28) return false;
+    if ((luma < 95 || max - min > 28) && !keyTinted(i)) return false;
     // Soft: a shadow is a smooth gradient. Textured grey (scaly legs, chain
     // mail, stone) next to it must not join the region and make it "tall".
     const x = p % width;
@@ -558,12 +598,62 @@ function removeGroundShadow(raw: Raw): void {
     }
     regions.push(region);
   }
+  // Box around removed shadows and floors, for the rim clean-up below
+  let fx0 = width, fy0 = height, fx1 = -1, fy1 = -1;
   for (const region of regions) {
-    let top = height, bottom = -1;
-    for (const p of region) { const y = Math.floor(p / width); if (y < top) top = y; if (y > bottom) bottom = y; }
+    let top = height, bottom = -1, left = width, right = -1;
+    for (const p of region) {
+      const y = Math.floor(p / width), x = p % width;
+      if (y < top) top = y; if (y > bottom) bottom = y;
+      if (x < left) left = x; if (x > right) right = x;
+    }
     const flat = bottom - top + 1 <= subjectH * 0.14;
     const small = region.length <= subjectArea * 0.08;
-    if (flat && small) for (const p of region) data[p * 4 + 3] = 0;
+    // A studio floor (realistic renders): a larger pale plane under the feet,
+    // also showing between the legs. It ends inside the bottom band (clothing
+    // reached from here runs on up past the band's top) and runs down to the
+    // lowest point of the sprite, where the floor is.
+    const insideBand = top > yMin + subjectH * 0.02;
+    const reachesBottom = bottom >= b.y1 - subjectH * 0.03;
+    // A floor spreads under and around the feet standing on it, across most of
+    // what is drawn in its rows; one pale boot or leg covers only part of them
+    let rowL = width, rowR = -1;
+    for (let y = top; y <= bottom; y++) {
+      for (let x = 0; x < width; x++) if (data[(y * width + x) * 4 + 3] > 0) { if (x < rowL) rowL = x; break; }
+      for (let x = width - 1; x >= 0; x--) if (data[(y * width + x) * 4 + 3] > 0) { if (x > rowR) rowR = x; break; }
+    }
+    // …or it lies flat: a floor is much wider than tall (toaster: 340×152 px,
+    // a boot 35×82). A hand or sword in the same rows widens the row span.
+    const lying = right - left + 1 >= (bottom - top + 1) * 1.5;
+    const wide = lying || (rowR >= rowL && right - left + 1 >= (rowR - rowL + 1) * 0.6);
+    const floor = insideBand && reachesBottom && wide && region.length <= subjectArea * 0.2;
+    if (!((flat && small) || floor)) continue;
+    for (const p of region) data[p * 4 + 3] = 0;
+    if (floor) {
+      fx0 = Math.min(fx0, left); fy0 = Math.min(fy0, top); fx1 = Math.max(fx1, right); fy1 = Math.max(fy1, bottom);
+    }
+  }
+  if (fx1 < 0) return;
+  // The rough rim of a removed floor fails the smoothness test and stays as a
+  // dotted outline or a thin pale line under the soles: pale grey pixels
+  // around the floor mostly surrounded by cleared ones, or with nothing below
+  // them, go too (3 px at most; a dark sole stops it)
+  for (let pass = 0; pass < 3; pass++) {
+    const drop: number[] = [];
+    for (let y = Math.max(1, fy0 - 3); y < Math.min(height - 1, fy1 + 4); y++) {
+      for (let x = Math.max(1, fx0 - 3); x < Math.min(width - 1, fx1 + 4); x++) {
+        const p = y * width + x, i = p * 4;
+        if (data[i + 3] === 0) continue;
+        const r = data[i], g = data[i + 1], bl = data[i + 2];
+        if (0.299 * r + 0.587 * g + 0.114 * bl < 150 || Math.max(r, g, bl) - Math.min(r, g, bl) > 40) continue;
+        let clear = 0;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && data[(p + dy * width + dx) * 4 + 3] === 0) clear++;
+        const below = data[(p + width - 1) * 4 + 3] === 0 && data[(p + width) * 4 + 3] === 0 && data[(p + width + 1) * 4 + 3] === 0;
+        if (clear >= 4 || below) drop.push(p);
+      }
+    }
+    if (!drop.length) break;
+    for (const p of drop) data[p * 4 + 3] = 0;
   }
 }
 
@@ -571,9 +661,10 @@ function removeGroundShadow(raw: Raw): void {
  * Background visible through gaps inside the subject (between an arm and a
  * staff, inside a ring) is not reachable from the border. Clear connected
  * regions that are almost exactly the key colour and large enough not to be
- * a highlight or an eye.
+ * a highlight or an eye. With `uncertain`, the patches only the painted-style
+ * flat rule would clear are collected there instead (see arbitrateGaps).
  */
-function removeEnclosedBackground(raw: Raw, br: number, bg: number, bb: number, areaScale = 1, flatGaps = false): void {
+function removeEnclosedBackground(raw: Raw, br: number, bg: number, bb: number, areaScale = 1, flatGaps = false, uncertain?: number[][]): void {
   const { width, height, data } = raw;
   // Painted styles also catch gaps the model shaded a little (GPT Image paints
   // the key seen between a bow and its string ~12 levels darker)
@@ -615,19 +706,56 @@ function removeEnclosedBackground(raw: Raw, br: number, bg: number, bb: number, 
     // With an off-white key (GPT Image paints ~238), a patch that matches the
     // key almost exactly can't be white cloth, even inside a whiter halo.
     const offWhiteKey = 0.299 * br + 0.587 * bg + 0.114 * bb < 246;
-    const exactKey = offWhiteKey && meanDistance(raw, region, br, bg, bb) <= 8;
-    const flat = flatGaps && region.length >= minFlatArea && (border.pale < 0.6 || exactKey) && flatShare(raw, region) >= 0.8;
+    const dist = meanDistance(raw, region, br, bg, bb);
+    const exactKey = offWhiteKey && dist <= 8;
+    // A smooth tinted-white surface wholly inside the subject's own light shades,
+    // with no outline anywhere around it, is the subject (a ghost's body, snow, a
+    // white robe): measured on a painted ghost, 25 levels off the key, 100% light
+    // border, 0% dark. Real gaps match the key closely or show an outline.
+    const ownSurface = dist >= 16 && border.dark < 0.05 && border.light >= 0.9;
+    const flat = flatGaps && !ownSurface && region.length >= minFlatArea && (border.pale < 0.6 || exactKey) && flatShare(raw, region) >= 0.8;
     // Outside the flat rule, keep the original, tighter colour match
-    const keyLike = !flatGaps || meanDistance(raw, region, br, bg, bb) <= 18;
+    const keyLike = !flatGaps || dist <= 18;
     // A chroma key (magenta, used for pale subjects) never occurs in the
     // subject itself, so every enclosed patch of it is background.
     const chroma = Math.max(br, bg, bb) - Math.min(br, bg, bb) > 110;
-    const isGap =
+    const sure =
       (chroma && region.length >= 4) ||
-      flat ||
       (keyLike && region.length >= minArea && border.light < 0.5) ||
       (keyLike && region.length >= minOutlinedArea && border.dark >= 0.6);
-    if (isGap) for (const p of region) data[p * 4 + 3] = 0;
+    // The flat rule alone can't tell a gap from a white glint on silver armour
+    // or a white coat: both flat, both key-coloured, both fenced by light
+    // shades (measured on a painted fox knight: the arm gap and the breastplate
+    // glint scored alike). With a matte on offer, leave those for it to decide.
+    if (sure || (flat && !uncertain)) for (const p of region) data[p * 4 + 3] = 0;
+    else if (flat && uncertain) uncertain.push(region);
+  }
+}
+
+/**
+ * Settle the ambiguous enclosed patches with an AI background-removal matte
+ * of the same image: a patch is background when the matte clears most of it.
+ * Judged per patch, not per pixel — the matte's edge is soft and a pixel or
+ * two off ours, so pixel voting left a key-coloured rim in every gap.
+ * Measured on 4 painted fox knights: 3 glints kept, 4 arm gaps cleared, one
+ * 12×20 px gap between the knees kept (the matte had filled it). Without a
+ * matte the flat rule's call stands, as before.
+ */
+async function arbitrateGaps(raw: Raw, regions: number[][], gapMatte: () => Promise<Buffer | null>): Promise<void> {
+  let matte: Raw | null = null;
+  try {
+    const png = await gapMatte();
+    if (png) {
+      const m = await toRaw(png, 1024);
+      if (m.width === raw.width && m.height === raw.height) matte = m;
+    }
+  } catch {
+    matte = null;
+  }
+  for (const region of regions) {
+    let cleared = 0;
+    if (matte) for (const p of region) if (matte.data[p * 4 + 3] < 128) cleared++;
+    if (!matte || cleared * 2 >= region.length) for (const p of region) raw.data[p * 4 + 3] = 0;
   }
 }
 
@@ -661,11 +789,32 @@ function borderStats(raw: Raw, region: number[], key?: [number, number, number])
   const { width, height, data } = raw;
   const member = new Set(region);
   let dark = 0, light = 0, pale = 0, total = 0;
+  const lumaAt = (q: number) => 0.299 * data[q * 4] + 0.587 * data[q * 4 + 1] + 0.114 * data[q * 4 + 2];
+  // The grey anti-aliased rim between a key-colour gap and a dark cloak (1-3 px)
+  // isn't the subject: step past it and judge what lies behind. Near-white
+  // (>= 225) and coloured shades are the subject's own and are judged as is.
+  const rim = (q: number) => {
+    const i = q * 4;
+    const chroma = Math.max(data[i], data[i + 1], data[i + 2]) - Math.min(data[i], data[i + 1], data[i + 2]);
+    const l = lumaAt(q);
+    return data[i + 3] > 0 && chroma < 20 && l >= 150 && l < 225;
+  };
   for (const p of region) {
     const x = p % width, y = (p - x) / width;
-    const next = [x > 0 ? p - 1 : -1, x < width - 1 ? p + 1 : -1, y > 0 ? p - width : -1, y < height - 1 ? p + width : -1];
-    for (const q of next) {
-      if (q < 0 || member.has(q)) continue;
+    const steps: [number, number][] = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+    for (const [dx, dy] of steps) {
+      let qx = x + dx, qy = y + dy;
+      if (qx < 0 || qy < 0 || qx >= width || qy >= height) continue;
+      let q = qy * width + qx;
+      if (member.has(q)) continue;
+      for (let k = 0; k < 3 && rim(q); k++) {
+        const nx = qx + dx, ny = qy + dy;
+        if (nx < 0 || ny < 0 || nx >= width || ny >= height) break;
+        const n = ny * width + nx;
+        if (rim(n) && k === 2) break; // a wide grey band is shading, not a rim
+        qx = nx; qy = ny; q = n;
+        if (!rim(q)) break;
+      }
       const i = q * 4;
       if (data[i + 3] === 0) continue; // touches already-cleared background
       total++;

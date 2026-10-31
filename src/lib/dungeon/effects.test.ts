@@ -179,6 +179,92 @@ describe("blessings change the outcome", () => {
   });
 });
 
+describe("new run upgrades (Oct 2026) change the outcome and are logged", () => {
+  // Same floor, same seed: the dice match until the effect, so the first hit it touches differs
+  it("Executioner: hits on enemies below 30% HP deal more and are flagged", () => {
+    // A boss has HP to spare below 30%, so the extra damage isn't hidden by a killing blow
+    const tanks = basic.map((u) => ({ ...u, hp: 100_000 }));
+    const off = partyHits(fight(tanks, { floor: 25 }).log);
+    const on = partyHits(fight(tanks, { floor: 25, blessings: ["executioner"] }).log);
+    expect(off.some((a) => a.execute)).toBe(false);
+    const k = on.findIndex((a) => a.execute && !a.ko);
+    expect(k).toBeGreaterThan(0);
+    expect(on[k].amount / off[k].amount).toBeCloseTo(1.5, 1);
+    expect(on.slice(0, on.findIndex((a) => a.execute)).map((a) => a.amount)).toEqual(off.slice(0, on.findIndex((a) => a.execute)).map((a) => a.amount));
+  });
+
+  it("Kingslayer: +35% damage on a boss floor, nothing on a normal one", () => {
+    const boss = first(partyHits(fight(basic, { floor: 25 }).log)).amount;
+    const bossOn = first(partyHits(fight(basic, { floor: 25, blessings: ["kingslayer"] }).log)).amount;
+    expect(bossOn / boss).toBeCloseTo(1.35, 1);
+    expect(first(partyHits(fight(basic, { floor: DEEP, blessings: ["kingslayer"] }).log)).amount)
+      .toBe(first(partyHits(fight(basic, { floor: DEEP }).log)).amount);
+  });
+
+  it("Battle rhythm: round 1 is unchanged, later rounds hit harder", () => {
+    const off = partyHits(fight(basic, { floor: DEEP }).log);
+    const on = partyHits(fight(basic, { floor: DEEP, blessings: ["battle-rhythm"] }).log);
+    expect(on.filter((a) => a.round === 1).map((a) => a.amount)).toEqual(off.filter((a) => a.round === 1).map((a) => a.amount));
+    const k = on.findIndex((a) => a.round === 2);
+    expect(on[k].amount).toBeGreaterThan(off[k].amount);
+  });
+
+  it("Last stand: a hero below 35% HP deals +60%, flagged", () => {
+    const off = first(partyHits(fight(basic, { floor: DEEP, hpRatio: 0.2 }).log));
+    const on = first(partyHits(fight(basic, { floor: DEEP, hpRatio: 0.2, blessings: ["last-stand"] }).log));
+    expect(on.lastStand).toBe(true);
+    expect(on.amount / off.amount).toBeCloseTo(1.6, 1);
+    expect(first(partyHits(fight(basic, { floor: DEEP, blessings: ["last-stand"] }).log)).lastStand).toBeUndefined();
+  });
+
+  it("Twin strike: some attacks strike again for less, logged as a separate hit", () => {
+    let doubles = 0;
+    for (let seed = 1; seed <= 10; seed++) {
+      const hits = partyHits(fight(basic, { floor: DEEP, seed, blessings: ["twin-strike"] }).log);
+      doubles += hits.filter((a) => a.double).length;
+      expect(partyHits(fight(basic, { floor: DEEP, seed }).log).some((a) => a.double)).toBe(false);
+    }
+    expect(doubles).toBeGreaterThan(0);
+  });
+
+  it("Vengeance: a fallen hero fires up the others for the rest of the floor", () => {
+    const weak = deriveParty([hero("rogue"), hero("elf ranger"), hero("mage")]);
+    let checked = 0;
+    for (let seed = 1; seed <= 20 && !checked; seed++) {
+      const off = fight(weak, { floor: DEEP + 5, seed }).log.actions;
+      const on = fight(weak, { floor: DEEP + 5, seed, blessings: ["vengeance"] }).log.actions;
+      const ko = on.findIndex((a) => a.rally);
+      if (ko < 0) continue;
+      const after = on.findIndex((a, k) => k > ko && a.side === "party" && a.kind === "hit" && !a.ko);
+      if (after < 0 || !off[after]) continue;
+      expect(on[after].amount).toBeGreaterThan(off[after].amount);
+      checked++;
+    }
+    expect(checked).toBe(1);
+  });
+
+  it("Blessed hands: heals are 50% stronger; only offered when the party heals", () => {
+    const party = deriveParty([hero("knight"), hero("dwarf cleric")]);
+    const off = fight(party, { floor: DEEP, hpRatio: 0.3 }).log.actions.filter((a) => a.kind === "heal");
+    const on = fight(party, { floor: DEEP, hpRatio: 0.3, blessings: ["blessed-hands"] }).log.actions.filter((a) => a.kind === "heal");
+    expect(on[0].amount).toBe(Math.round(off[0].amount * 1.5));
+    for (let s = 0; s < 100; s++) expect(offerFor(s, 3, [], ["neutral"], true, false)).not.toContain("blessed-hands");
+  });
+
+  it("Offers are weighted by tier: Epic shows up, but less often than Common", () => {
+    const seen: Record<string, number> = { common: 0, rare: 0, epic: 0 };
+    for (let s = 0; s < 600; s++) for (const id of offerFor(s, 3, [], ["fire"])) seen[blessingById(id)!.tier]++;
+    expect(seen.epic).toBeGreaterThan(0);
+    expect(seen.common).toBeGreaterThan(seen.rare);
+    expect(seen.rare).toBeGreaterThan(seen.epic);
+  });
+
+  it("every blessing and chest buff has a tier", () => {
+    for (let s = 0; s < 50; s++) for (const id of offerFor(s, 3, [], ["fire", "ice"])) expect(blessingById(id)?.tier).toMatch(/common|rare|epic/);
+    for (const c of CHEST_BUFFS) expect(c.tier).toBe("common");
+  });
+});
+
 describe("boss chests are awarded and work", () => {
   it("clearing a boss floor drops a chest whose buff applies from the next floor", () => {
     const strong = deriveParty(["knight", "orc", "elf ranger", "cleric"].map((p) => hero(p, { w: "sword", a: "plate", t: "potion" })).map((m) => ({

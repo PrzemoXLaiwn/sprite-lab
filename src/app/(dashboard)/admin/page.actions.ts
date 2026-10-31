@@ -15,10 +15,10 @@ import {
   isModerator,
   getUserRole,
   getAdminStats,
-  getCancellationReport,
   getReports,
   updateReportStatus,
   getModeratorStats,
+  getBannedUsers,
 } from "@/lib/admin";
 
 export async function checkAdminAccess() {
@@ -58,19 +58,6 @@ export async function fetchAdminStats() {
   return getAdminStats(user.id);
 }
 
-export async function fetchCancellationReport() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { success: false, error: "Unauthorized", report: null };
-  }
-
-  return getCancellationReport(user.id);
-}
-
 // -----------------------------------------------------------------------------
 // Moderator actions — used by /moderator
 // -----------------------------------------------------------------------------
@@ -86,6 +73,19 @@ export async function fetchReports(status?: string) {
   }
 
   return getReports(user.id, status);
+}
+
+export async function fetchBannedUsers() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, users: [] };
+  }
+
+  return getBannedUsers(user.id);
 }
 
 export async function handleReport(

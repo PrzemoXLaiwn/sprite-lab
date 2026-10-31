@@ -45,18 +45,22 @@ export default function RegisterPage() {
 
   // Check for referral code in URL
   useEffect(() => {
-    const ref = searchParams.get("ref");
-    if (ref) {
-      setReferralCode(ref.toUpperCase());
-      // Store in sessionStorage for OAuth flows
-      sessionStorage.setItem("referralCode", ref.toUpperCase());
-    } else {
-      // Check sessionStorage (in case of OAuth redirect)
-      const storedRef = sessionStorage.getItem("referralCode");
-      if (storedRef) {
-        setReferralCode(storedRef);
+    // After paint: sessionStorage is client-only and a sync setState here cascades renders
+    const t = setTimeout(() => {
+      const ref = searchParams.get("ref");
+      if (ref) {
+        setReferralCode(ref.toUpperCase());
+        // Store in sessionStorage for OAuth flows
+        sessionStorage.setItem("referralCode", ref.toUpperCase());
+      } else {
+        // Check sessionStorage (in case of OAuth redirect)
+        const storedRef = sessionStorage.getItem("referralCode");
+        if (storedRef) {
+          setReferralCode(storedRef);
+        }
       }
-    }
+    }, 0);
+    return () => clearTimeout(t);
   }, [searchParams]);
 
   // Enhanced password validation

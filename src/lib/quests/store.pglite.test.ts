@@ -12,7 +12,7 @@ beforeEach(async () => {
   db = new PGlite();
   await db.exec(`
     CREATE TABLE users (id TEXT PRIMARY KEY, credits INT NOT NULL DEFAULT 10, total_bonus_credits INT NOT NULL DEFAULT 0, email_preferences JSONB, updated_at TIMESTAMP(3));
-    CREATE TABLE generations (id TEXT PRIMARY KEY, user_id TEXT, prompt TEXT, subcategory_id TEXT, is_public BOOLEAN DEFAULT false, project_id TEXT);
+    CREATE TABLE generations (id TEXT PRIMARY KEY, user_id TEXT, prompt TEXT, subcategory_id TEXT, is_public BOOLEAN DEFAULT false, project_id TEXT, full_prompt TEXT);
     CREATE TABLE operations (id TEXT PRIMARY KEY, user_id TEXT, feature TEXT, status TEXT, created_at TIMESTAMP(3));
     INSERT INTO users (id, email_preferences) VALUES ('u1', '{"marketing": true}');
   `);
@@ -38,17 +38,20 @@ describe("CLAIM_SQL", () => {
 });
 
 describe("stats SQL", () => {
-  it("counts sprites, animations, shares and projects; ignores tool outputs", async () => {
+  it("counts sprites, animations, shares and projects; ignores tool outputs and uploads", async () => {
     await db.exec(`
       INSERT INTO generations VALUES
-        ('g1','u1','a knight','HEROES',true,'p1'),
-        ('g2','u1','[No BG] a sword','SWORDS',false,null),
-        ('g3','u1','[Upscaled 2x] a knight','HEROES',false,null),
-        ('g4','u1','[Animation: walk] a knight','ANIMATION',false,null),
-        ('g5','u2','someone else','HEROES',true,null);
+        ('g1','u1','a knight','HEROES',true,'p1',null),
+        ('g2','u1','[No BG] a sword','SWORDS',false,null,null),
+        ('g3','u1','[Upscaled 2x] a knight','HEROES',false,null,null),
+        ('g4','u1','[Animation: walk] a knight','ANIMATION',false,null,null),
+        ('g5','u2','someone else','HEROES',true,null,null),
+        ('g6','u1','goblin archer','HEROES',false,'p1','[upload] goblin archer'),
+        ('g7','u1','a mage','HEROES',false,null,'A 2D video game sprite of a mage');
     `);
     const r = (await db.query(STATS_ALL_SQL, ["u1"])).rows[0];
-    expect(r).toEqual({ sprites: 2, animations: 1, shared: 1, in_projects: 1 });
+    // g6 is a free upload (farming it must not pay quest credits); g7 is a paid sprite with a full prompt
+    expect(r).toEqual({ sprites: 3, animations: 1, shared: 1, in_projects: 1 });
   });
 
   it("this week counts only delivered paid work since Monday", async () => {

@@ -347,11 +347,11 @@ export default function PricingPage() {
               <Shield className="h-5 w-5 text-[#FFA300]" aria-hidden="true" />
             </div>
             <div>
-              <h2 className="text-[15px] font-semibold text-white">7-day refund</h2>
+              <h2 className="text-[15px] font-semibold text-white">14-day right to cancel</h2>
               <p className="mt-0.5 text-[13px] leading-relaxed text-[#9AA1CC]">
-                Not happy? Ask for a refund within 7 days of purchase if you&apos;ve used less than 10% of your credits.{" "}
-                <Link href="/terms" className="text-[#FFC857] underline-offset-4 hover:underline">
-                  See the terms
+                Changed your mind? Cancel within 14 days of a new subscription or credit pack: a full refund if you haven&apos;t used any of its credits, otherwise the price minus the credits used.{" "}
+                <Link href="/refunds" className="text-[#FFC857] underline-offset-4 hover:underline">
+                  Refund and cancellation policy
                 </Link>
                 .
               </p>

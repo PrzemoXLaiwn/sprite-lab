@@ -130,33 +130,6 @@ export const GUIDE_INTROS: Record<string, GuideIntro> = {
     ],
     needs: ["No experience needed"],
   },
-  "how-to-prompt-an-ai-sprite-generator": {
-    learn: [
-      "Which words belong in a sprite prompt and which the tool already decides",
-      "How to set the camera without contradicting it in the sentence",
-      "A reusable prompt skeleton for a whole cast",
-      "Why a second pose should be an animation, not a new prompt",
-    ],
-    needs: ["A target camera: side view, front view or top-down", "One art style for the game"],
-  },
-  "can-you-use-ai-sprites-in-a-commercial-game": {
-    learn: [
-      "When SpriteLab sprites can go in a game you sell",
-      "Why a free-plan file stays non-commercial after you subscribe",
-      "The difference between selling a game and selling a sprite pack",
-      "What changed on 17 October 2026",
-    ],
-    needs: ["The terms, if you need the clauses rather than this summary"],
-  },
-  "free-game-sprites-without-an-artist": {
-    learn: [
-      "When to draw, when to use a CC0 pack, and when to generate",
-      "How to check a 'free' pack's licence before you ship",
-      "What SpriteLab's free credit grant does and does not allow",
-      "A weekend order that gets a loop on screen",
-    ],
-    needs: ["No art budget required", "A licence check on anything you did not draw"],
-  },
   "how-to-make-an-8-direction-walk-cycle": {
     learn: [
       "Which five directions to draw and which three to mirror",

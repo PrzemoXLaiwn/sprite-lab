@@ -6,19 +6,19 @@ import { LANDING_SPECS } from "@/data/landing-specs";
 const URL = "https://www.sprite-lab.com/ai-sprite-animation-generator";
 
 export const metadata: Metadata = {
-  title: { absolute: "Sprite Animation Generator — Idle and Walk | SpriteLab" },
+  title: { absolute: "AI Sprite Animation Generator — Idle, Walk, Attack | SpriteLab" },
   description:
     "Animate any game sprite with AI: idle, walk, run, attack, jump, fly or a custom move. Get a sprite sheet, frames and a GIF — 4 to 18 frames.",
   keywords: ["AI sprite animation", "AI sprite animation generator", "sprite animator", "walk cycle generator", "pixel art animation AI", "animate sprite", "idle animation generator", "attack animation"],
   openGraph: {
-    title: "Sprite Animation Generator — Idle and Walk | SpriteLab",
+    title: "AI Sprite Animation Generator — Idle, Walk, Attack | SpriteLab",
     description: "Idle, walk, attack, jump, fly or your own move. Sprite sheet + GIF, ready for your engine.",
     url: URL,
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Sprite Animation Generator — Idle and Walk | SpriteLab",
+    title: "AI Sprite Animation Generator — Idle, Walk, Attack | SpriteLab",
     description: "Animate any game sprite with AI: idle, walk, run, attack, jump, fly or a custom move. Get a sprite sheet, frames and a GIF — 4 to 18 frames.",
   },
   alternates: { canonical: URL },
@@ -42,7 +42,7 @@ export default function SpriteAnimationPage() {
       subtitle="Pick a sprite, choose how it moves and get a frame-aligned sprite sheet and GIF. A dragon breathes fire, a dog wags its tail, a car drifts — the motions are planned for each sprite."
       trust={["4, 6 or 9 key poses", "smooth mode up to 18 frames", "sprite sheet + gif + frames", "commercial licence on paid plans"]}
       floating={[
-        { src: "/showcase/anim-knight-idle.webp", alt: "", pixel: true, cls: "left-[5%] top-[28%] w-28 animate-float" },
+        { src: "/showcase/anim-water.gif", alt: "", pixel: true, cls: "left-[5%] top-[28%] w-28 animate-float" },
         { src: "/showcase/anim-witch-walk.webp", alt: "", pixel: true, cls: "left-[13%] top-[58%] w-24 animate-float [animation-delay:1.2s]" },
         { src: "/showcase/anim-dog-jump.gif", alt: "", pixel: true, cls: "right-[6%] top-[24%] w-28 animate-float [animation-delay:0.6s]" },
         { src: "/showcase/anim-car-drive.gif", alt: "", pixel: true, cls: "right-[12%] top-[60%] w-32 animate-float [animation-delay:1.8s]" },
@@ -61,7 +61,6 @@ export default function SpriteAnimationPage() {
           cols: 3,
           cards: [
             { title: "Dragon — fire breath", tag: "attack", body: "Rears back, inhales, a stream of fire shoots forward. The dragon stays planted while the flames reach out.", image: { src: "/showcase/anim-dragon-breath.webp", alt: "Animated pixel art dragon breathing fire, made with SpriteLab", pixel: true } },
-            { title: "Knight — idle", tag: "idle · smooth", body: "Breathing, weight shift and a swinging cape with feet planted — 8 frames with AI in-betweens.", image: { src: "/showcase/anim-knight-idle.webp", alt: "Animated pixel art knight idle loop, made with SpriteLab", pixel: true } },
             { title: "Witch — walk", tag: "walk", body: "A long dress: no legs are invented — the hem sways with each step.", image: { src: "/showcase/anim-witch-walk.webp", alt: "Animated pixel art witch walking, made with SpriteLab", pixel: true } },
             { title: "Dog — jump", tag: "jump", body: "Crouch, take-off, peak and landing — the height of the jump is kept in the sheet.", image: { src: "/showcase/anim-dog-jump.gif", alt: "Animated pixel art dog jumping, made with SpriteLab", pixel: true } },
             { title: "Car — drive", tag: "vehicle", body: "Wheels turn, the body bounces on its suspension, exhaust puffs out the back.", image: { src: "/showcase/anim-car-drive.gif", alt: "Animated pixel art red car driving, made with SpriteLab", pixel: true } },

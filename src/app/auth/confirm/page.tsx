@@ -6,22 +6,16 @@ import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { primaryBtnCls } from "@/app/(auth)/_components/auth-ui";
-import { track, FUNNEL } from "@/lib/analytics";
 import { SIGNUP_CREDITS } from "@/config/signup";
 import { isCheckoutReturn, safeRedirectPath } from "@/lib/safe-redirect";
 
 export default function EmailConfirmedPage() {
   const searchParams = useSearchParams();
   const next = safeRedirectPath(searchParams.get("next"));
-  const destination = isCheckoutReturn(next) ? next : "/generate?welcome=1";
+  const destination = isCheckoutReturn(next) ? next : "/generate?welcome=1&categoryId=CHARACTERS";
   const [countdown, setCountdown] = useState(5);
 
-  // Only brand-new accounts land here (email confirmation, or first OAuth
-  // sign-in via /auth/callback), so this is the completed-signup conversion.
-  useEffect(() => {
-    track(FUNNEL.signupComplete);
-  }, []);
-
+  // Old confirmation links still land here; sign-up is counted in the creator (?welcome=1)
   useEffect(() => {
     const timer = setInterval(() => {
       setCountdown((prev) => {
@@ -55,7 +49,7 @@ export default function EmailConfirmedPage() {
           </div>
 
           <h1 className="font-display text-[24px] font-semibold text-white">You&apos;re in</h1>
-          <p className="mt-2 text-[14px] text-[#9AA1CC]">Your email is confirmed and your account is active.</p>
+          <p className="mt-2 text-[14px] text-[#9AA1CC]">Your account is ready.</p>
 
           <div className="mt-5 inline-flex items-center gap-2 rounded-lg border border-[#FFA300]/20 bg-[#FFA300]/[0.06] px-3 py-1.5 text-[13px] text-[#FFC857]">
             <Zap className="h-3.5 w-3.5" />

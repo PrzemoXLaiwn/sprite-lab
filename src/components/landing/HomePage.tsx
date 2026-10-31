@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { preload } from "react-dom";
 import { Plus } from "lucide-react";
 import { SectionHeader } from "@/components/landing/SectionHeader";
 import { PricingSection } from "@/components/landing/PricingSection";
@@ -14,7 +13,6 @@ import { Footer } from "@/components/layout/Footer";
 import { GUIDE, PRICE_LIST, signupOffer } from "@/data/product-guide";
 import { SHOWCASE, getFeaturedGenerationsSafe } from "@/lib/featured-generations";
 import { HOME_FAQ } from "@/data/geo-content";
-import { SEO_PAGES } from "@/data/seo-pages";
 import { RefCapture } from "@/components/landing/RefCapture";
 
 /**
@@ -31,10 +29,6 @@ export async function HomePage({ signedIn }: { signedIn: boolean }) {
   // Explore wall: curated pipeline showcase first, then the most-liked public
   // community sprites (cached 5 min; never fails the render — falls back to
   // the showcase alone if the DB is unavailable).
-  // Discover the hero frame before the body parses. The file is already a
-  // small WebP; preloading it is the LCP request on mobile.
-  preload("/showcase/anim-knight-idle.webp", { as: "image", fetchPriority: "high" });
-
   const community = await getFeaturedGenerationsSafe(36);
   const wall = curateWall([...SHOWCASE, ...community]);
   const offer = signupOffer();
@@ -58,7 +52,7 @@ export async function HomePage({ signedIn }: { signedIn: boolean }) {
               Get a sprite sheet.
             </h1>
             <p className="mt-5 max-w-[34rem] text-pretty text-[16px] leading-relaxed text-[#C8CCE8] sm:text-[17px]">
-              SpriteLab draws game sprites from a sentence, animates them, turns them to face 4 or 8 directions and packs them for Unity, Godot or GameMaker. Transparent PNG, whole pixels, yours to sell.
+              SpriteLab draws game sprites from a sentence, animates them, turns them to face 4 or 8 directions and packs them for Unity, Godot or GameMaker. Transparent PNG, whole pixels; commercial licence on paid plans.
             </p>
 
             <div className="mt-8">
@@ -66,7 +60,14 @@ export async function HomePage({ signedIn }: { signedIn: boolean }) {
             </div>
 
             <p className="mt-5 text-[13.5px] leading-relaxed text-[#A7ADD4]">
-              Sign up for {offer.credits} free credits. No card.
+              {signedIn ? (
+                <>You&apos;re signed in: what you describe opens in the creator and goes straight into your assets. <Link href="/generate" className="font-semibold text-[#FFC857] underline-offset-2 hover:underline">Open the creator</Link></>
+              ) : (
+                <>
+                  Sign up for {offer.credits} free credits. No card.
+                  <span className="hidden sm:inline"> Over 1,000 people have made an account so far.</span>
+                </>
+              )}
             </p>
           </div>
 
@@ -80,30 +81,6 @@ export async function HomePage({ signedIn }: { signedIn: boolean }) {
       {/* ═══ WHAT YOU GET — real output ═════════════════════ */}
       <ShowcaseRows />
 
-      {/* ═══ TOOLS — one link per public landing page ════════ */}
-      <section id="tools" className="relative scroll-mt-16 border-y border-white/[0.06] bg-[#19223F] py-16 sm:py-20">
-        <div className="mx-auto max-w-6xl px-4 sm:px-5">
-          <SectionHeader
-            title="The asset you actually need"
-            intro="Each tool page is about one job: the file you get, the limits, and how it lands in an engine."
-            className="mb-10"
-          />
-          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {SEO_PAGES.map((page) => (
-              <li key={page.slug}>
-                <Link
-                  href={`/${page.slug}`}
-                  className="flex min-h-11 flex-col justify-center rounded-[8px] border border-white/[0.06] bg-[#212B4E] px-4 py-3 transition-colors hover:border-[#FFA300]/40"
-                >
-                  <span className="text-[15px] font-semibold text-[#FFF1E8]">{page.label}</span>
-                  <span className="mt-1 text-[13px] leading-snug text-[#A7ADD4]">{page.summary}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
       {/* ═══ HOW IT WORKS — guide tabs ════════════════════════ */}
       <GuideTabs sections={GUIDE} prices={PRICE_LIST} />
 
@@ -111,7 +88,7 @@ export async function HomePage({ signedIn }: { signedIn: boolean }) {
       <TikTokCommunity />
 
       {/* ═══ PRICING ═════════════════════════════════════════ */}
-      <PricingSection />
+      <PricingSection signedIn={signedIn} />
 
       {/* ═══ FAQ ══════════════════════════════════════════════ */}
       <section id="faq" className="relative scroll-mt-16 py-16 sm:py-20">
@@ -151,12 +128,12 @@ export async function HomePage({ signedIn }: { signedIn: boolean }) {
               Make the first sprite for your game now.
             </h2>
             <p className="mt-4 text-[15.5px] leading-relaxed text-[#C8CCE8]">
-              Sign up and get {offer.credits} free credits. No card needed.
+              {signedIn ? "Describe a character, a weapon or a tile, then animate it into a sprite sheet." : <>Sign up and get {offer.credits} free credits. No card needed.</>}
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link href={registerUrl}
+              <Link href={signedIn ? "/generate" : registerUrl}
                 className="px-corners inline-flex h-12 w-full items-center justify-center bg-[#FFA300] px-7 text-[15px] font-semibold text-[#131A31] transition hover:bg-[#FFB733] sm:w-auto">
-                Create a free account
+                {signedIn ? "Open the creator" : "Create a free account"}
               </Link>
               <Link href="/how-it-works"
                 className="inline-flex h-12 w-full items-center justify-center rounded-[8px] border border-white/[0.14] px-6 text-[15px] font-medium text-[#FFF1E8] transition hover:bg-white/[0.06] sm:w-auto">
@@ -213,16 +190,17 @@ const DIRECTIONS = ["Down", "Left", "Up", "Right"] as const;
 
 function HeroWorkbench() {
   return (
-    <figure className="relative min-w-0" aria-label="A knight sprite generated with SpriteLab: idle animation, four directions and engine export formats">
+    <figure className="relative min-w-0" aria-label="A knight sprite generated with SpriteLab: turning through four directions, and the engine formats it exports to">
       <div className="overflow-hidden rounded-[10px] border border-white/[0.09] bg-[#19223F] shadow-[0_24px_60px_-20px_rgba(0,0,0,0.6)]">
         <div className="flex items-center justify-between gap-3 border-b border-white/[0.07] px-4 py-2.5">
-          <span className="text-[13px] font-medium text-[#FFF1E8]">Dark knight, idle loop</span>
+          <span className="text-[13px] font-medium text-[#FFF1E8]">Armored knight, 4 directions</span>
           <span className="font-mono text-[12px] text-[#A7ADD4]">256 × 256 px</span>
         </div>
         <div className="checker relative flex aspect-[4/3] items-center justify-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/showcase/anim-knight-idle.webp" alt="" aria-hidden="true" width={256} height={256}
-            fetchPriority="high" className="pixel-perfect h-[78%] w-auto" />
+          {/* The real 4-direction output, turning slowly (front only with reduced motion) */}
+          <span role="img" aria-label="Pixel-art armored knight turning to face front, right, back and left"
+            className="turnaround pixel-perfect block aspect-square h-[78%]"
+            style={{ backgroundImage: "url(/showcase/rotate-knight.png)", backgroundSize: "400% 100%", backgroundRepeat: "no-repeat" }} />
         </div>
         <div className="grid grid-cols-4 border-t border-white/[0.07]">
           {DIRECTIONS.map((d, i) => (

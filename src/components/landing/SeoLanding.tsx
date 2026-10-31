@@ -9,7 +9,6 @@ import { PromptExamples } from "@/components/landing/PromptExamples";
 import { SectionHeader } from "@/components/landing/SectionHeader";
 import type { FeaturedGeneration } from "@/lib/featured-generations";
 import { SIGNUP_OFFER } from "@/config/signup";
-import { relatedSeoPages } from "@/data/seo-pages";
 
 /* ─────────────────────────────────────────────────────────────
    Shared layout for the public SEO landing pages
@@ -233,9 +232,9 @@ function Section({ section }: { section: SeoSection }) {
           {section.items.map((it) => (
             <li
               key={it}
-              className="flex items-start gap-3 rounded-xl border border-white/[0.06] bg-[#212B4E] px-4 py-3.5 text-[14px] leading-relaxed text-[#C8CCE8]"
+              className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-[#212B4E] px-4 py-3.5 text-[14px] text-[#C8CCE8]"
             >
-              <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#FFA300]" aria-hidden="true" />
+              <Check className="h-4 w-4 shrink-0 text-[#FFA300]" aria-hidden="true" />
               {it}
             </li>
           ))}
@@ -308,40 +307,22 @@ function Section({ section }: { section: SeoSection }) {
   }
 }
 
-function RelatedTools({ slug }: { slug: string }) {
-  const pages = relatedSeoPages(slug);
-  if (pages.length === 0) return null;
-  return (
-    <section className="relative scroll-mt-16 border-t border-white/[0.06] py-16 sm:py-20">
-      <div className={CONTAINER}>
-        <Head eyebrow="next" title="Related tools" intro="The same pipeline, a different file." />
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {pages.map((page) => (
-            <li key={page.slug}>
-              <Link
-                href={`/${page.slug}`}
-                className="flex min-h-11 flex-col justify-center rounded-[8px] border border-white/[0.06] bg-[#212B4E] px-4 py-3 transition-colors hover:border-[#FFA300]/40"
-              >
-                <span className="text-[15px] font-semibold text-white">{page.label}</span>
-                <span className="mt-1 text-[13.5px] leading-snug text-[#9AA1CC]">{page.summary}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </section>
-  );
-}
-
 export function SeoLanding(props: SeoLandingProps) {
   const url = `${SITE}/${props.slug}`;
   const jsonLd = [
+    // A page about one feature of the single SpriteLab app (defined once, in the
+    // root layout) — not a second app with its own name and offers
     {
       "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      name: props.appName,
-      description: props.appDescription,
+      "@type": "WebPage",
+      "@id": `${url}#webpage`,
       url,
+      name: props.appName.replace(/^SpriteLab\s+(—\s+)?/, ""),
+      description: props.appDescription,
+      inLanguage: "en",
+      isPartOf: { "@id": `${SITE}/#website` },
+      about: { "@id": `${SITE}/#software` },
+      publisher: { "@id": `${SITE}/#organization` },
       applicationCategory: "DesignApplication",
       operatingSystem: "Web",
       offers: { "@type": "Offer", price: "0", priceCurrency: "GBP", description: SIGNUP_OFFER },
@@ -413,8 +394,6 @@ export function SeoLanding(props: SeoLandingProps) {
       {props.sections.map((s, i) => (
         <Section key={i} section={s} />
       ))}
-
-      <RelatedTools slug={props.slug} />
 
       {/* ═══ FAQ ════════════════════════════════════════════ */}
       <section id="faq" className="relative scroll-mt-16 py-16 sm:py-20">

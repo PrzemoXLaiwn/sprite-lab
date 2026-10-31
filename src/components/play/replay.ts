@@ -38,6 +38,9 @@ export const HIT_STOP_MS = 150;
 /** Extra time for skills (so their real animation plays out) and the slow-motion boss knock-out. */
 export const SKILL_MS = { rare: 380, epic: 480, legendary: 760 } as const;
 export const BOSS_KO_MS = 520;
+/** Bosses get a longer entrance: the hall dims, the name lands, then the boss does. */
+export const BOSS_GATE_MS = 1400;
+export const BOSS_INTRO_MS = 750;
 
 export function actionMs(a: BattleAction, bossKo = false): number {
   if (a.kind === "revive") return 800;
@@ -84,8 +87,8 @@ export function buildTimeline(floors: FloorLog[], opts: { bestBefore?: number | 
       recordShown = true;
       push({ ...base, kind: "record", action: null, ...snap() });
     }
-    if (f.boss) push({ ...base, kind: "gate", action: null, ...snap() });
-    push({ ...base, kind: "intro", action: null, ...snap() });
+    if (f.boss) push({ ...base, kind: "gate", action: null, ...snap() }, BOSS_GATE_MS);
+    push({ ...base, kind: "intro", action: null, ...snap() }, f.boss ? BOSS_INTRO_MS : STEP_MS.intro);
     for (const a of f.actions) {
       if (a.side === "enemy" && a.kind === "hit") combo = 0;
       const bossKo = a.side === "party" && a.kind === "hit" && (((a.ko && f.enemies[a.target]?.boss) || a.extra?.some((x) => x.ko && f.enemies[x.target]?.boss)) ?? false);

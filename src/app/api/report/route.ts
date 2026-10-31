@@ -56,9 +56,16 @@ export async function POST(request: Request) {
     // Only accept non-empty string IDs; anything else is treated as absent
     const asId = (v: unknown) =>
       typeof v === "string" && v.length > 0 && v.length <= MAX_ID_LENGTH ? v : undefined;
-    const reportedUserId = asId(body.reportedUserId);
     const postId = asId(body.postId);
     const generationId = asId(body.generationId);
+    let reportedUserId = asId(body.reportedUserId);
+    if (generationId && !reportedUserId) {
+      const owner = await prisma.generation.findUnique({ where: { id: generationId }, select: { userId: true } });
+      if (!owner) {
+        return NextResponse.json({ error: "The reported content could not be found." }, { status: 404 });
+      }
+      if (owner.userId !== user.id) reportedUserId = owner.userId;
+    }
 
     // Validation
     if (!reason || !VALID_REASONS.includes(reason)) {

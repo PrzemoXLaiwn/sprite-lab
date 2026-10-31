@@ -10,7 +10,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Check, Image as ImageIcon, Infinity as InfinityIcon, Loader2, Zap } from "lucide-react";
+import { Check, Image as ImageIcon, Infinity as InfinityIcon, Loader2, Users, Zap } from "lucide-react";
 import { fetchUserPlan } from "./page.actions";
 import { PLAN_CHECKOUT_SLUG, TOTAL_LIFETIME_SLOTS, type LifetimeCard, type LifetimeSlotInfo } from "./pricing-data";
 import { track, FUNNEL } from "@/lib/analytics";
@@ -126,23 +126,36 @@ export function PackBuyButton({ packKey, slug, name, featured }: { packKey: stri
   );
 }
 
+/** Real user and asset counts; renders nothing until (and unless) they load. */
 export function PricingStats() {
-  const [assets, setAssets] = useState(0);
+  const [stats, setStats] = useState({ assets: 0, users: 0 });
   useEffect(() => {
     fetch("/api/stats")
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (!data || data.error) return;
-        setAssets(data.totalGenerations || 0);
+        if (!data) return;
+        setStats({
+          assets: data.totalGenerations || 0,
+          users: data.totalUsers || data.activeUsersWeek || 0,
+        });
       })
       .catch(() => {});
   }, []);
-  if (assets <= 0) return null;
   return (
-    <span className="flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] text-[#C8CCE8]">
-      <ImageIcon className="h-3 w-3 text-[#9AA1CC]" aria-hidden="true" />
-      {assets.toLocaleString()} assets created
-    </span>
+    <>
+      {stats.users > 0 && (
+        <span className="flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] text-[#C8CCE8]">
+          <Users className="h-3 w-3 text-[#9AA1CC]" aria-hidden="true" />
+          {stats.users.toLocaleString()}+ users
+        </span>
+      )}
+      {stats.assets > 0 && (
+        <span className="flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] text-[#C8CCE8]">
+          <ImageIcon className="h-3 w-3 text-[#9AA1CC]" aria-hidden="true" />
+          {stats.assets.toLocaleString()} assets created
+        </span>
+      )}
+    </>
   );
 }
 
@@ -253,7 +266,6 @@ export function MobileProCta({ price }: { price: number }) {
   const [aboveTabBar, setAboveTabBar] = useState(false);
 
   useEffect(() => {
-    setAboveTabBar(document.querySelector(".app-main") !== null);
     const plans = document.getElementById("subscriptions");
     const update = () => {
       if (!plans) return;
@@ -261,11 +273,16 @@ export function MobileProCta({ price }: { price: number }) {
       // The whole plan block, including the Pro card and its button, is above the screen.
       setVisible(rect.bottom <= 0);
     };
-    update();
+    // First measurement after paint (a sync setState in an effect cascades renders)
+    const first = setTimeout(() => {
+      setAboveTabBar(document.querySelector(".app-main") !== null);
+      update();
+    }, 0);
     document.addEventListener("scroll", update, { passive: true, capture: true });
     window.addEventListener("scroll", update, { passive: true });
     window.addEventListener("resize", update);
     return () => {
+      clearTimeout(first);
       document.removeEventListener("scroll", update, true);
       window.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);

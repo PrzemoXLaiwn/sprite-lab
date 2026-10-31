@@ -22,7 +22,11 @@ import {
   isPixelStyleId, useSourceGeneration, toolErrorMessage, downloadImage, saveBlobAs, type ToolBgModeId,
 } from "@/components/tools/ToolWorkspace";
 import { ANIMATION_FRAME_OPTIONS, DEFAULT_ANIMATION_FRAMES, RIG_CREDITS, RIG_FRAMES, ROTATIONS, rotationFor, supportsRotation, animationCredits, animationFrameOption, animationPresetsFor, rigMotionFor } from "@/config/animations";
+import { UploadSpriteButton } from "@/components/generate/UploadSprite";
 import type { SuggestedMotion } from "@/lib/animation-suggest";
+import { fetchImage } from "@/lib/cors-image";
+import { track, FUNNEL } from "@/lib/analytics";
+import { userErrorMessage } from "@/lib/user-error";
 
 const CUSTOM_EXAMPLES = [
   "breathes a stream of fire forward",
@@ -46,7 +50,7 @@ const TRAVELS = /\b(walk|run|jog|sprint|trot|gallop|march|crawl|slither|fly|flig
 
 /** Splits the sheet into individual frame PNGs and zips them. */
 async function downloadFramesZip(result: AnimationResult, baseName: string) {
-  const blob = await (await fetch(result.sheetUrl)).blob();
+  const blob = await (await fetchImage(result.sheetUrl)).blob();
   const bitmap = await createImageBitmap(blob);
   const JSZip = (await import("jszip")).default;
   const zip = new JSZip();
@@ -75,10 +79,17 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
   const router = useRouter();
   const { source, loading: loadingSource, error: sourceError } = useSourceGeneration(generationId);
   const [action, setAction] = useState<string>("");
+  // Deep links from the Create page ("Directions" → ?do=rotate4) pick the option up front
+  useEffect(() => {
+    const wanted = new URLSearchParams(window.location.search).get("do");
+    if (wanted && rotationFor(wanted)) setAction(wanted);
+  }, []);
   const [customMotion, setCustomMotion] = useState("");
   const [loading, setLoading] = useState(false);
   const [zipping, setZipping] = useState(false);
   const [error, setError] = useState("");
+  /** Server note about a finished run (e.g. a stiff walk that was refunded). */
+  const [notice, setNotice] = useState("");
   const [result, setResult] = useState<AnimationResult | null>(null);
   const [view, setView] = useState<"play" | "game" | "sheet">("play");
   // What the last result shows (file names + the game view: does it travel?)
@@ -162,7 +173,7 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
   const pixel = isPixelStyleId(source?.styleId ?? resultStyleId);
   const option = animationFrameOption(frames);
   // Idle / breathing / hover are rigged from the original sprite (no redraw, no flicker)
-  const rigKind = !isTile && selected !== "custom" ? rigMotionFor(selected, selectedPreset?.label, source?.categoryId)
+  const rigKind = !isTile && selected !== "custom" ? rigMotionFor(selected, selectedPreset?.label, source?.categoryId, source?.prompt)
     // Pixel-art walks are rigged too (whole-pixel steps); AI frames only as a fallback
     ?? (pixel && /walk/i.test(`${selected} ${selectedPreset?.label ?? ""}`) ? "walk" : null) : null;
   const rotation = rotationFor(selected);
@@ -277,6 +288,7 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
     }
     setLoading(true);
     setError("");
+    setNotice("");
     setResult(null);
     try {
       const res = await fetch("/api/animate", {
@@ -293,6 +305,7 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
       if (!res.ok) throw new Error(toolErrorMessage(res, data, "Animation failed."));
       if (!data?.sheetUrl) throw new Error("The animation finished but returned no sprite sheet. Please try again.");
       setResult(data);
+      if (typeof data.notice === "string") setNotice(data.notice);
       // Address bar → this animation, so a reload or a later visit reopens it
       const newId = typeof data.generationId === "string" ? data.generationId : null;
       if (newId) rememberSourceLink(newId, generationId);
@@ -303,7 +316,7 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
       setView("play");
       triggerCreditsRefresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Animation failed. Please try again.");
+      setError(userErrorMessage(e, "Animation failed. Please try again."));
     } finally {
       setLoading(false);
     }
@@ -314,6 +327,7 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
   const [packing, setPacking] = useState(false);
   const downloadEngine = async () => {
     if (!result || packing) return;
+    track(FUNNEL.assetDownload, { kind: "animation", format: "engine_pack" });
     setPacking(true);
     try {
       const name = (resultMotion.id || "animation").replace(/^ai-/, "");
@@ -333,6 +347,7 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
     if (!result || zipping) return;
     setZipping(true);
     try {
+      track(FUNNEL.assetDownload, { kind: "animation", format: "frames_zip" });
       await downloadFramesZip(result, baseName());
     } catch {
       setError("Couldn't build the frames .zip. Download the sprite sheet instead, or try again.");
@@ -360,6 +375,9 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
               {outFrames} frames · sprite sheet + GIF
             </FooterHint>
             {shownError && <ErrorNote>{shownError}</ErrorNote>}
+            {notice && !shownError && (
+              <p role="status" className="rounded-[8px] border border-[#FFA300]/35 bg-[#FFA300]/[0.08] px-3 py-2 text-[13px] leading-snug text-[#FFF1E8]">{notice}</p>
+            )}
           </>
         }
       >
@@ -367,6 +385,7 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
 
         <Field label="Sprite">
           <SourceCard imageUrl={source?.imageUrl ?? null} loading={loadingSource} prompt={source?.prompt} pixel={pixel} />
+          <UploadSpriteButton then="animate" label="Animate your own sprite" className="mt-2 w-full justify-center" />
           {!generationId && result && (
             <p className="mt-2 text-[11.5px] leading-snug text-[#9AA1CC]">
               We couldn&apos;t find the sprite this animation was made from. Pick it from your history to animate it again.
@@ -543,9 +562,9 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
         actions={
           result ? (
             <>
-              <DownloadButton label="Sprite sheet" onClick={() => downloadImage(result.sheetUrl, `${baseName()}_sheet.png`)} />
+              <DownloadButton label="Sprite sheet" onClick={() => { track(FUNNEL.assetDownload, { kind: "animation", format: "sheet" }); downloadImage(result.sheetUrl, `${baseName()}_sheet.png`); }} />
               {result.gifUrl && (
-                <SecondaryButton onClick={() => downloadImage(result.gifUrl!, `${baseName()}.gif`)}>GIF</SecondaryButton>
+                <SecondaryButton onClick={() => { track(FUNNEL.assetDownload, { kind: "animation", format: "gif" }); downloadImage(result.gifUrl!, `${baseName()}.gif`); }}>GIF</SecondaryButton>
               )}
               <SecondaryButton onClick={downloadEngine} disabled={packing} title="Godot SpriteFrames, Unity frames, GameMaker strip and hitboxes">
                 {packing && <Loader2 className="h-4 w-4 animate-spin" />} Engine pack

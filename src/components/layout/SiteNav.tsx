@@ -13,7 +13,7 @@ export function SiteNav({ registerUrl = "/register", anchorsOnHome = false, sign
   const prefix = anchorsOnHome ? "" : "/";
   const links = [
     { href: `${prefix}#explore`, label: "Gallery" },
-    { href: `${prefix}#tools`, label: "Tools" },
+    { href: `${prefix}#features`, label: "Features" },
     { href: "/sprite-sheet-generator", label: "Sprite sheets" },
     { href: "/how-it-works", label: "How it works" },
     { href: `${prefix}#pricing`, label: "Pricing" },
@@ -25,7 +25,7 @@ export function SiteNav({ registerUrl = "/register", anchorsOnHome = false, sign
     <nav aria-label="Main" className="fixed left-0 right-0 top-0 z-50 border-b border-white/[0.06] bg-[#131A31]/85 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-[1400px] items-center justify-between gap-4 px-5 lg:px-8">
         <Link href="/" aria-label="SpriteLab home" className="flex h-10 shrink-0 items-center gap-2.5">
-          <Image src="/logo.png" alt="" width={28} height={28} />
+          <Image src="/logo.png" alt="" width={28} height={28} priority />
           <span className="font-display text-[19px] font-semibold text-white">
             Sprite<span className="text-[#FFA300]">Lab</span>
           </span>
@@ -40,8 +40,9 @@ export function SiteNav({ registerUrl = "/register", anchorsOnHome = false, sign
         <div className="flex items-center gap-1 sm:gap-2">
           {signedIn ? (
             <>
-              {/* Signed-in only (search engines never see it) */}
-              <Link href="/play" className={`${QUIET} gap-1.5 whitespace-nowrap`}>
+              {/* Signed-in only (search engines never see it). Below sm the row
+                  has no room for Dungeon / My assets: they move into the menu. */}
+              <Link href="/play" className={`${QUIET.replace("inline-flex", "hidden sm:inline-flex")} gap-1.5 whitespace-nowrap`}>
                 Dungeon
                 {isNewFeature("/play") && <NewBadge />}
               </Link>
@@ -54,7 +55,7 @@ export function SiteNav({ registerUrl = "/register", anchorsOnHome = false, sign
               <Link href={registerUrl} className={PRIMARY}>Start free</Link>
             </>
           )}
-          <MobileMenu links={links} />
+          <MobileMenu links={signedIn ? [{ href: "/play", label: "Dungeon" }, { href: "/assets", label: "My assets" }, ...links] : links} />
         </div>
       </div>
     </nav>

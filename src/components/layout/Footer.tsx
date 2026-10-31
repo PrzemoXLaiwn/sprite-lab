@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { SEO_PAGES } from "@/data/seo-pages";
+import { GUIDES } from "@/data/guides";
 import { TIKTOK_HANDLE, TIKTOK_PROFILE_URL } from "@/data/tiktok";
 import { TikTokIcon } from "@/components/icons/TikTokIcon";
 
@@ -14,10 +15,7 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
     links: [
       { label: "How SpriteLab works", href: "/how-it-works" },
       { label: "All guides", href: "/guides" },
-      { label: "Frames per sprite animation", href: "/guides/how-many-frames-per-sprite-animation" },
-      { label: "How to prompt a sprite", href: "/guides/how-to-prompt-an-ai-sprite-generator" },
-      { label: "Free sprites, no artist", href: "/guides/free-game-sprites-without-an-artist" },
-      { label: "Commercial use of AI sprites", href: "/guides/can-you-use-ai-sprites-in-a-commercial-game" },
+      ...GUIDES.slice(0, 4).map((g) => ({ label: g.title, href: `/guides/${g.slug}` })),
       { label: "Compare AI sprite tools", href: "/compare" },
     ],
   },
@@ -94,7 +92,7 @@ export function Footer() {
 
         <div className="mt-10 space-y-3 border-t border-white/[0.06] pt-6 text-[12.5px] leading-relaxed text-[#A7ADD4]">
           <p>
-            &copy; {new Date().getFullYear()} SpriteLab is a trading name of Przemek Lawin, 69 Haybridge Avenue, Telford, TF1 5JT, United Kingdom
+            &copy; {new Date().getFullYear()} SpriteLab is a trading name of Przemek Lawin, Telford, United Kingdom
             {" · "}
             <a href="mailto:support@sprite-lab.com" className="underline decoration-white/20 underline-offset-2 hover:text-white">
               support@sprite-lab.com

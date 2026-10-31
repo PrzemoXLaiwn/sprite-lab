@@ -33,7 +33,7 @@ export default function SpriteSheetGeneratorPage() {
       subtitle="Describe a character, pick how it moves and download a sprite sheet: one row of equal-size frames on a transparent PNG, plus the single frames, a GIF and a pack your engine opens as it is."
       trust={["equal-size frames", "transparent png", "4 and 8 directions", "godot, unity, gamemaker"]}
       floating={[
-        { src: "/showcase/anim-knight-idle.webp", alt: "", pixel: true, cls: "" },
+        { src: "/showcase/anim-car-drive.gif", alt: "", pixel: true, cls: "" },
         { src: "/showcase/anim-witch-walk.webp", alt: "", pixel: true, cls: "" },
         { src: "/showcase/anim-dragon-breath.webp", alt: "", pixel: true, cls: "" },
         { src: "/showcase/anim-dog-jump.gif", alt: "", pixel: true, cls: "" },
@@ -46,13 +46,6 @@ export default function SpriteSheetGeneratorPage() {
           title: <>Sprite sheets made with SpriteLab</>,
           intro: "Each sheet below is a real SpriteLab export, shown at a whole-pixel scale. The orange lines mark the frame cells.",
           sheets: [
-            {
-              src: "/showcase/sheet-knight-idle.png",
-              alt: "Pixel art dark knight idle animation sprite sheet, 8 frames in one row, 2048×256 px, made with SpriteLab",
-              title: "Knight idle, smooth mode",
-              body: "4 key poses with an AI-drawn in-between after each one, so the breathing loop has 8 frames. Sheet: 2048×256 px.",
-              frames: 8, frameWidth: 256, frameHeight: 256, fps: 12,
-            },
             {
               src: "/showcase/sheet-witch-walk.png",
               alt: "Pixel art witch walk cycle sprite sheet, 6 frames in one row, 1536×256 px, made with SpriteLab",

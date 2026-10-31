@@ -43,7 +43,7 @@ export function WelcomeEmail({ userName, credits = SIGNUP_CREDITS }: WelcomeEmai
             </Heading>
 
             <Text style={paragraph}>
-              {userName ? `Hey ${userName}!` : "Hey there!"} You've just unlocked the power of AI-generated game assets.
+              {userName ? `Hey ${userName}!` : "Hey there!"} Your account is ready.
             </Text>
 
             <Section style={creditsBox}>
@@ -71,7 +71,7 @@ export function WelcomeEmail({ userName, credits = SIGNUP_CREDITS }: WelcomeEmai
             <Section style={tipBox}>
               <Text style={tipTitle}>1. Choose a Category</Text>
               <Text style={tipText}>
-                Start with Weapons or Items - they're the easiest to generate!
+                Start with Weapons or Items &ndash; they&apos;re the easiest to generate.
               </Text>
             </Section>
 
@@ -85,7 +85,7 @@ export function WelcomeEmail({ userName, credits = SIGNUP_CREDITS }: WelcomeEmai
             <Section style={tipBox}>
               <Text style={tipTitle}>3. Describe Your Asset</Text>
               <Text style={tipText}>
-                Be specific! "golden sword with glowing runes" works better than just "sword".
+                Be specific: &quot;golden sword with glowing runes&quot; works better than just &quot;sword&quot;.
               </Text>
             </Section>
 
@@ -97,13 +97,13 @@ export function WelcomeEmail({ userName, credits = SIGNUP_CREDITS }: WelcomeEmai
             </Text>
 
             <Text style={examplePrompt}>
-              "ancient elven sword with emerald gems and silver engravings"
+              &quot;ancient elven sword with emerald gems and silver engravings&quot;
             </Text>
             <Text style={examplePrompt}>
-              "magical healing potion with swirling pink liquid"
+              &quot;magical healing potion with swirling pink liquid&quot;
             </Text>
             <Text style={examplePrompt}>
-              "cute slime creature with big eyes, green and bouncy"
+              &quot;cute slime creature with big eyes, green and bouncy&quot;
             </Text>
 
             <Section style={buttonContainer}>

@@ -278,6 +278,9 @@ export async function uploadGenerationBufferToR2(
   return { success: true, url: getPublicUrl(filePath) };
 }
 
+/** Uploads are a few MB at most and normally take well under a second. */
+export const R2_UPLOAD_TIMEOUT_MS = 20_000;
+
 export async function uploadBufferToR2(
   buffer: Buffer,
   key: string,
@@ -299,7 +302,9 @@ export async function uploadBufferToR2(
       CacheControl: "public, max-age=31536000",
     });
 
-    await client.send(command);
+    // A hung PUT must not hold a paid request until the platform kills it
+    // (the operation would then never be refunded in time)
+    await client.send(command, { abortSignal: AbortSignal.timeout(R2_UPLOAD_TIMEOUT_MS) });
 
     return { success: true };
   } catch (error) {

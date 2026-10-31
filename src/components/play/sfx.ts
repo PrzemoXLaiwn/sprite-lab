@@ -6,7 +6,8 @@
 // remember). Rapid hits are throttled so long fights don't turn into noise.
 // =============================================================================
 
-export type Sfx = "hit" | "crit" | "weak" | "ko" | "climb" | "chest" | "record" | "boss" | "fall" | "pick" | "revive";
+export type Sfx = "hit" | "crit" | "weak" | "ko" | "climb" | "chest" | "record" | "boss" | "fall" | "pick" | "revive"
+  | "heal" | "stun" | "bossHit" | "bossDown" | "execute" | "double" | "rally" | "pickEpic";
 
 const KEY = "sl-tower-muted";
 let ctx: AudioContext | null = null;
@@ -72,16 +73,31 @@ function noise(start: number, dur: number, vol = 0.6) {
   src.start(start);
 }
 
-export function play(s: Sfx): void {
+/** Small pitch steps so a long fight doesn't repeat one sound (variant = step index). */
+const PITCH = [1, 1.12, 0.9, 1.06];
+
+export function play(s: Sfx, variant = 0): void {
   if (!ctx || muted) return;
   const t = ctx.currentTime;
-  if (s === "hit" || s === "weak") {
+  if (s === "hit" || s === "weak" || s === "heal" || s === "double") {
     if (t - lastHit < 0.06) return;
     lastHit = t;
   }
+  const k = PITCH[Math.abs(variant) % PITCH.length];
   switch (s) {
-    case "hit": tone(220, t, 0.07, "square", 0.5, 110); noise(t, 0.04, 0.25); break;
-    case "weak": tone(330, t, 0.06, "square", 0.5, 160); tone(495, t + 0.05, 0.06, "square", 0.4); break;
+    case "hit": tone(220 * k, t, 0.07, "square", 0.5, 110 * k); noise(t, 0.04, 0.25); break;
+    case "weak": tone(330 * k, t, 0.06, "square", 0.5, 160 * k); tone(495 * k, t + 0.05, 0.06, "square", 0.4); break;
+    case "double": tone(260 * k, t, 0.05, "square", 0.45, 130); tone(300 * k, t + 0.07, 0.05, "square", 0.45, 150); noise(t + 0.07, 0.03, 0.2); break;
+    case "execute": tone(880, t, 0.05, "square", 0.5); tone(220, t + 0.04, 0.22, "sawtooth", 0.5, 55); noise(t + 0.04, 0.1, 0.35); break;
+    case "heal": tone(523 * k, t, 0.09, "triangle", 0.35, 784 * k); break;
+    case "stun": [880, 740, 880, 740].forEach((f, i) => tone(f, t + i * 0.05, 0.05, "triangle", 0.3)); break;
+    case "bossHit": tone(110, t, 0.22, "sawtooth", 0.55, 55); noise(t, 0.18, 0.45); break;
+    case "bossDown":
+      noise(t, 0.45, 0.5); tone(98, t, 0.5, "sawtooth", 0.5, 40);
+      [392, 523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, t + 0.35 + i * 0.09, i === 5 ? 0.5 : 0.12, "square", 0.42));
+      break;
+    case "rally": [330, 440, 587].forEach((f, i) => tone(f, t + i * 0.06, 0.1, "sawtooth", 0.3)); break;
+    case "pickEpic": [784, 988, 1175, 1568, 1976].forEach((f, i) => tone(f, t + i * 0.05, 0.12, "triangle", 0.4)); break;
     case "crit": tone(660, t, 0.06, "square", 0.6); tone(990, t + 0.06, 0.1, "square", 0.6, 1320); noise(t, 0.08, 0.35); break;
     case "ko": tone(400, t, 0.18, "triangle", 0.7, 80); noise(t + 0.02, 0.12, 0.3); break;
     case "climb": [262, 330, 392].forEach((f, i) => tone(f, t + i * 0.07, 0.08, "triangle", 0.5)); break;

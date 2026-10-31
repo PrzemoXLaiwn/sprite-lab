@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { fetchImage } from "@/lib/cors-image";
 
 export const STAGE_SCENES = [
   { id: "checker", label: "Transparent" },
@@ -40,7 +41,8 @@ function useSpriteMetrics(url: string | null, pixel: boolean): Metrics | null {
     let cancelled = false;
     (async () => {
       try {
-        const blob = await (await fetch(url)).blob();
+        // Thumbnails cache this file without CORS headers: read it via fetchImage
+        const blob = await (await fetchImage(url)).blob();
         const bmp = await createImageBitmap(blob);
         const c = document.createElement("canvas");
         c.width = bmp.width; c.height = bmp.height;
@@ -64,7 +66,8 @@ function useSpriteMetrics(url: string | null, pixel: boolean): Metrics | null {
               const a = (y * width + x) * 4;
               for (const [dx, dy] of [[f - 1, 0], [0, f - 1], [f - 1, f - 1]]) {
                 const b = ((y + dy) * width + x + dx) * 4;
-                if (data[a] !== data[b] || data[a + 1] !== data[b + 1] || data[a + 2] !== data[b + 2] || data[a + 3] !== data[b + 3]) return false;
+                // A few levels of tolerance: PNG palette compression shifts colours slightly (same rule as pixelCanvasOf)
+                if (Math.abs(data[a] - data[b]) + Math.abs(data[a + 1] - data[b + 1]) + Math.abs(data[a + 2] - data[b + 2]) + Math.abs(data[a + 3] - data[b + 3]) >= 8) return false;
               }
               checked++;
             }
@@ -120,17 +123,19 @@ function SceneBackdrop({ scene }: { scene: StageSceneId }) {
   );
 }
 
-function StandingSprite({ url, pixel, metrics, stage, k, height, x, dim, alt }: {
+function StandingSprite({ url, pixel, metrics, stage, k, height, x, dim, alt, boost = 1 }: {
   url: string; pixel: boolean; metrics: Metrics; stage: { w: number; h: number };
   /** Whole-number zoom per art pixel (pixel art). */ k: number;
   /** Content height in CSS px (non-pixel). */ height: number;
   /** Horizontal centre as a share of the stage width. */ x: number;
   dim?: boolean; alt: string;
+  /** Zoom factor: lets a zoomed-in painted sprite grow past the stage width. */
+  boost?: number;
 }) {
   const contentH = metrics.bottom - metrics.top;
   // No art-pixel grid found (or a huge one): fit it like a painted sprite
   const onGrid = pixel && metrics.nativeW <= 400;
-  const fitW = (stage.w * 0.85) / Math.max(metrics.right - metrics.left, 0.05);
+  const fitW = ((stage.w * 0.85) / Math.max(metrics.right - metrics.left, 0.05)) * boost;
   const imgW = onGrid ? metrics.nativeW * k : Math.min(height / Math.max(contentH, 0.05), fitW);
   const imgH = imgW; // sprites are square canvases
   const groundY = stage.h * GROUND;
@@ -148,7 +153,13 @@ function StandingSprite({ url, pixel, metrics, stage, k, height, x, dim, alt }: 
   );
 }
 
-export function SpriteStage({ imageUrl, pixel, compareUrl, comparePixel, scene, dim, alt, children }: {
+/** What the zoom control shows for a step: whole-number scale for pixel art, a percentage otherwise. */
+export function zoomLabel(steps: number, pixel: boolean, fitK: number | null): string {
+  if (pixel && fitK) return `${Math.max(1, fitK + steps)}×`;
+  return `${Math.round(100 * Math.pow(1.25, steps))}%`;
+}
+
+export function SpriteStage({ imageUrl, pixel, compareUrl, comparePixel, scene, dim, alt, children, zoom = 0, onFit }: {
   imageUrl: string | null;
   pixel: boolean;
   /** Previous sprite shown beside it at the same scale. */
@@ -159,6 +170,10 @@ export function SpriteStage({ imageUrl, pixel, compareUrl, comparePixel, scene, 
   alt: string;
   /** Overlays: progress, empty state. */
   children?: React.ReactNode;
+  /** Zoom steps away from "fit": whole pixels per step for pixel art, ×1.25 per step otherwise. */
+  zoom?: number;
+  /** Reports the fitted whole-number scale (pixel art) so the zoom label can show it. */
+  onFit?: (k: number | null) => void;
 }) {
   const [ref, stage] = useSize<HTMLDivElement>();
   const main = useSpriteMetrics(imageUrl, pixel);
@@ -172,15 +187,20 @@ export function SpriteStage({ imageUrl, pixel, compareUrl, comparePixel, scene, 
   const k = Math.max(1, Math.floor(room / tallest));
   const widthCap = (m: Metrics | null) => (m ? stage.w * (comparing ? 0.42 : 0.8) / Math.max((m.right - m.left) * m.nativeW, 1) : k);
   const kFit = Math.max(1, Math.min(k, Math.floor(widthCap(main)), comparing ? Math.floor(widthCap(other)) : k));
+  // Zoom stays on whole pixels for pixel art; painted art scales smoothly
+  const kZoom = Math.max(1, kFit + zoom);
+  const hZoom = Math.pow(1.25, zoom);
+  const onGridMain = !!main && pixel && main.nativeW <= 400;
+  useEffect(() => { onFit?.(onGridMain && stage.w > 0 ? kFit : null); }, [onFit, onGridMain, kFit, stage.w]);
 
   return (
-    <div ref={ref} className="relative h-full w-full overflow-hidden rounded-[12px] border border-white/[0.09]">
+    <div ref={ref} className="relative h-full w-full overflow-hidden rounded-[14px] border border-[rgba(124,140,214,0.22)] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_0_0_1px_rgba(4,7,20,0.45),0_28px_60px_-34px_rgba(4,7,20,1)]">
       <SceneBackdrop scene={scene} />
       {imageUrl && main && stage.w > 0 && (
-        <StandingSprite url={imageUrl} pixel={pixel} metrics={main} stage={stage} k={kFit} height={room * (artH(main) / tallest)} x={comparing ? 0.66 : 0.5} dim={dim} alt={alt} />
+        <StandingSprite url={imageUrl} pixel={pixel} metrics={main} stage={stage} k={kZoom} height={room * (artH(main) / tallest) * hZoom} x={comparing ? 0.66 : 0.5} dim={dim} alt={alt} boost={hZoom} />
       )}
       {comparing && compareUrl && other && (
-        <StandingSprite url={compareUrl} pixel={!!comparePixel} metrics={other} stage={stage} k={kFit} height={room * (artH(other) / tallest)} x={0.3} dim={dim} alt="Previous sprite, for scale" />
+        <StandingSprite url={compareUrl} pixel={!!comparePixel} metrics={other} stage={stage} k={kZoom} height={room * (artH(other) / tallest) * hZoom} x={0.3} dim={dim} alt="Previous sprite, for scale" boost={hZoom} />
       )}
       {children}
     </div>

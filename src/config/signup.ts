@@ -4,13 +4,13 @@
 // Permanent. Not tied to the relaunch dates in src/config/relaunch.ts.
 // Every registration path, welcome email, and public mention of the free
 // grant reads this constant. Do not add a second "bonus on top" for new
-// accounts: src/lib/signup-grant.ts stamps the relaunch marker at insert
+// accounts: src/lib/signup-grant.ts stamps the relaunch marker at insert (10, owner decision 2026-10-19)
 // so the campaign +10 cannot stack.
 // =============================================================================
 
-export const SIGNUP_CREDITS = 20;
+export const SIGNUP_CREDITS = 10;
 
-/** "20 free credits" */
+/** "10 free credits" */
 export const SIGNUP_FREE_CREDITS = `${SIGNUP_CREDITS} free credits`;
 
 /** CTA button on tool, guide and compare pages. */

@@ -9,20 +9,29 @@
 import { prisma } from "@/lib/prisma";
 import { recordProviderCall } from "@/lib/billing/ledger";
 
-/** USD per million tokens [input, output]. Cache reads bill at 10% of input. */
-const PRICES: Record<string, [number, number]> = {
-  opus: [5, 25],
-  sonnet: [3, 15],
-  haiku: [1, 5],
-};
+/**
+ * USD per million tokens [match, input, output]; the first row whose match is
+ * in the model id wins, so the current models come before the tier fallbacks.
+ * Cache reads bill at 10% of input (5% on Opus 5.5), cache writes at 125%.
+ */
+const PRICES: [string, number, number][] = [
+  ["opus-5-5", 4, 20],
+  ["sonnet-5-5", 2, 10],
+  ["haiku-5-5", 0.1, 0.5],
+  ["opus", 5, 25],
+  ["sonnet", 3, 15],
+  ["haiku", 1, 5],
+];
 
 export const CLAUDE_USAGE_EVENT = "claude_usage";
 export const CLAUDE_BALANCE_EVENT = "claude_balance";
 
 function priceFor(model: string): [number, number] {
-  const tier = Object.keys(PRICES).find((k) => model.includes(k));
-  return PRICES[tier ?? "opus"];
+  const row = PRICES.find(([match]) => model.includes(match)) ?? PRICES[3];
+  return [row[1], row[2]];
 }
+
+const cacheReadShare = (model: string) => (model.includes("opus-5-5") ? 0.05 : 0.1);
 
 interface UsageLike {
   input_tokens?: number | null;
@@ -33,7 +42,7 @@ interface UsageLike {
 
 export function claudeCostUsd(model: string, u: UsageLike): number {
   const [pin, pout] = priceFor(model);
-  const input = (u.input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0) * 1.25 + (u.cache_read_input_tokens ?? 0) * 0.1;
+  const input = (u.input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0) * 1.25 + (u.cache_read_input_tokens ?? 0) * cacheReadShare(model);
   return (input * pin + (u.output_tokens ?? 0) * pout) / 1_000_000;
 }
 

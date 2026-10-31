@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { BLOCKED_MESSAGE, isBlockedText } from "@/lib/moderation/content-filter";
 import { randomUUID } from "crypto";
 import { rateLimitUserAction } from "@/lib/rate-limit";
 
@@ -43,13 +44,15 @@ export async function GET(
       FROM comments c
       LEFT JOIN users u ON c.user_id = u.id
       WHERE c.generation_id = ${generationId}
+        AND COALESCE(u.is_active, true) = true
       ORDER BY c.created_at DESC
       LIMIT 100
     `;
 
     return NextResponse.json({
       success: true,
-      comments,
+      // Banned authors are left out above; anything the filter catches never shows
+      comments: (comments as { message: string }[]).filter((c) => !isBlockedText(c.message)),
     });
   } catch (error) {
     console.error("[Comments GET] Error:", error);
@@ -105,6 +108,10 @@ export async function POST(
       );
     }
 
+    if (isBlockedText(message)) {
+      return NextResponse.json({ error: BLOCKED_MESSAGE }, { status: 400 });
+    }
+
     // Verify generation exists and is public
     const generation = await prisma.generation.findUnique({
       where: { id: generationId },
@@ -116,6 +123,12 @@ export async function POST(
         { error: "Generation not found." },
         { status: 404 }
       );
+    }
+
+    // Banned accounts can't comment
+    const author = await prisma.user.findUnique({ where: { id: user.id }, select: { isActive: true } });
+    if (!author || !author.isActive) {
+      return NextResponse.json({ error: "Your account can't post right now." }, { status: 403 });
     }
 
     // Create comment using raw query for now

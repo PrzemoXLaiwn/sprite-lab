@@ -13,7 +13,7 @@
 // attacks (a living Guardian draws its taunt share, otherwise a random hero).
 // =============================================================================
 
-import { CHEST_BUFFS, chestFor, modsFor, offerFor, type RunMods } from "./blessings";
+import { CHEST_BUFFS, DOUBLE_SHARE, EXECUTE_BELOW, LAST_STAND_BELOW, RAMP_CAP, chestFor, modsFor, offerFor, type RunMods } from "./blessings";
 import {
   BLESSING_EVERY, BOSS_EVERY, ENEMY_CRIT, HEAL_THRESHOLD, MAX_FLOOR, MAX_ROUNDS_PER_FLOOR, REST_HEAL, WARD_MULTIPLIER, zoneFor, type Element,
 } from "./config";
@@ -58,6 +58,14 @@ export interface BattleAction {
   skill?: { slot: SkillSlot; tier: Tier; name: string; animId: string; rule: SkillStat["rule"] };
   /** Enemies stunned by this hit (Legendary skill). */
   stun?: number[];
+  /** Executioner: the main target was below 30% HP and took extra damage. */
+  execute?: boolean;
+  /** Twin strike: this is the free second hit. */
+  double?: boolean;
+  /** Last stand: the attacker was below 35% HP. */
+  lastStand?: boolean;
+  /** Vengeance: this knock-out fired up the rest of the party. */
+  rally?: boolean;
 }
 
 /** Something that happens as a floor starts (shown before the fight). */
@@ -135,6 +143,8 @@ function fightFloor(party: UnitStats[], st: RunState, floor: number, mods: RunMo
   const partyAlive = () => hp.some((h) => h > 0);
   const enemiesAlive = () => ehp.some((h) => h > 0);
   const living = () => hp.map((h, i) => (h > 0 ? i : -1)).filter((i) => i >= 0);
+  // Vengeance: attack gained this floor from fallen heroes
+  let rally = 0;
 
   while (partyAlive() && enemiesAlive() && log.rounds < MAX_ROUNDS_PER_FLOOR) {
     const round = ++log.rounds;
@@ -149,7 +159,7 @@ function fightFloor(party: UnitStats[], st: RunState, floor: number, mods: RunMo
           if (hp[j] > 0 && ratio < bestRatio) { best = j; bestRatio = ratio; }
         }
         if (best >= 0) {
-          const amount = Math.min(u.heal, party[best].hp - hp[best]);
+          const amount = Math.min(Math.round(u.heal * mods.healMul), party[best].hp - hp[best]);
           hp[best] += amount;
           log.healed[i] += amount;
           log.actions.push({ round, side: "party", actor: i, kind: "heal", target: best, amount, crit: false, ko: false, element: "holy", matchup: "normal" });
@@ -158,12 +168,18 @@ function fightFloor(party: UnitStats[], st: RunState, floor: number, mods: RunMo
       const front = ehp.findIndex((h) => h > 0);
       const crit = rng.next() < u.crit + mods.critAdd;
       const ambush = round === 1 && mods.firstRoundMul > 1;
-      const modifier = mods.atkMul * (mods.elementMul[u.attackElement] ?? 1) * (ambush ? mods.firstRoundMul : 1);
-      const hitOne = (t: number, share: number): HitTarget => {
+      const lastStand = mods.lastStandMul > 1 && hp[i] < u.hp * LAST_STAND_BELOW;
+      const modifier = mods.atkMul * (mods.elementMul[u.attackElement] ?? 1) * (ambush ? mods.firstRoundMul : 1)
+        * (1 + Math.min(RAMP_CAP, mods.rampPerRound * (round - 1))) * (1 + rally) * (lastStand ? mods.lastStandMul : 1);
+      let executed = false;
+      const hitOne = (t: number, share: number, isCrit = crit): HitTarget => {
         const e = enemies[t];
+        const execute = mods.executeMul > 1 && ehp[t] < e.hp * EXECUTE_BELOW;
+        if (execute && t === front) executed = true;
         const r = computeDamage({
-          atk: u.atk * share, def: e.def, attackElement: u.attackElement, defenderElement: e.element, crit,
-          modifier, roll: rng.next(), weakMul: mods.weakMul, critMul: e.boss ? mods.bossCritMul : undefined,
+          atk: u.atk * share, def: e.def, attackElement: u.attackElement, defenderElement: e.element, crit: isCrit,
+          modifier: modifier * (execute ? mods.executeMul : 1) * (e.boss ? mods.bossMul : 1),
+          roll: rng.next(), weakMul: mods.weakMul, critMul: e.boss ? mods.bossCritMul : undefined,
         });
         const amount = Math.min(r.amount, ehp[t]);
         ehp[t] -= amount;
@@ -202,8 +218,22 @@ function fightFloor(party: UnitStats[], st: RunState, floor: number, mods: RunMo
         element: u.attackElement, matchup: main.matchup, ...(extra.length ? { extra } : {}),
         ...(leech > 0 ? { leech } : {}), ...(ambush ? { ambush: true } : {}),
         ...(skill ? { skill: { slot: skill.slot, tier: skill.tier, name: skill.name, animId: skill.animId, rule } } : {}),
-        ...(stun.length ? { stun } : {}),
+        ...(stun.length ? { stun } : {}), ...(executed ? { execute: true } : {}), ...(lastStand ? { lastStand: true } : {}),
       });
+      // Twin strike: a free second hit on whoever stands in front now (one extra roll, only with the blessing)
+      if (mods.doubleChance > 0 && enemiesAlive() && rng.next() < mods.doubleChance) {
+        const t2 = ehp.findIndex((h) => h > 0);
+        // Executioner on the second hit: judged on its own target (the first may have fallen)
+        executed = mods.executeMul > 1 && ehp[t2] < enemies[t2].hp * EXECUTE_BELOW;
+        const second = hitOne(t2, DOUBLE_SHARE, false);
+        const leech2 = mods.lifesteal > 0 ? Math.min(u.hp - hp[i], Math.round(second.amount * mods.lifesteal)) : 0;
+        if (leech2 > 0) { hp[i] += leech2; log.healed[i] += leech2; }
+        log.actions.push({
+          round, side: "party", actor: i, kind: "hit", target: t2, amount: second.amount, crit: false, ko: second.ko,
+          element: u.attackElement, matchup: second.matchup, double: true,
+          ...(leech2 > 0 ? { leech: leech2 } : {}), ...(executed ? { execute: true } : {}),
+        });
+      }
     }
 
     for (let e = 0; e < enemies.length && partyAlive(); e++) {
@@ -229,9 +259,10 @@ function fightFloor(party: UnitStats[], st: RunState, floor: number, mods: RunMo
       hp[t] -= amount;
       log.taken[t] += amount;
       const ko = hp[t] <= 0;
+      if (ko && mods.rallyAdd > 0) rally += mods.rallyAdd;
       log.actions.push({
         round, side: "enemy", actor: e, kind: "hit", target: t, amount, crit: ecrit, ko, element: enemies[e].element, matchup: r.matchup,
-        ...(taunted ? { taunt: true } : {}), ...(warded ? { ward: true } : {}),
+        ...(taunted ? { taunt: true } : {}), ...(warded ? { ward: true } : {}), ...(ko && mods.rallyAdd > 0 ? { rally: true } : {}),
       });
       if (ko) {
         log.partyKos.push(t);
@@ -294,7 +325,7 @@ export function runSegment(party: UnitStats[], state: RunState): { floors: Floor
     }
     if (floor >= MAX_FLOOR) { st.done = true; break; }
     if (floor % BLESSING_EVERY === 0) {
-      st.offer = offerFor(st.seed, floor, st.blessings, party.map((u) => u.attackElement), party.some((u) => u.taunt > 0));
+      st.offer = offerFor(st.seed, floor, st.blessings, party.map((u) => u.attackElement), party.some((u) => u.taunt > 0), party.some((u) => u.heal > 0));
       if (st.offer.length) break;
       st.offer = null;
     }

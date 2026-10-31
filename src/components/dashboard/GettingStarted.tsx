@@ -10,9 +10,10 @@ const HIDE_KEY = "sl:getting-started:hidden";
 const COSTS_KEY = "sl:getting-started:costs";
 const OPEN_KEY = "sl:getting-started:open";
 
-// Tool pages have a sticky action button above the tab bar on phones; the
-// card would cover it, so on those pages it only shows from md up.
-const TOOL_PATHS = ["/generate", "/animate", "/edit", "/remove-bg", "/upscale", "/variations"];
+// Tool pages keep their main button and settings where the card would sit
+// (bottom-left on desktop, above the tab bar on phones), so it isn't shown
+// there at all. /quests already is the full checklist.
+const HIDDEN_PATHS = ["/generate", "/animate", "/edit", "/remove-bg", "/upscale", "/variations", "/quests", "/admin", "/moderator", "/checkout"];
 
 function read(key: string): string | null {
   try { return localStorage.getItem(key); } catch { return null; }
@@ -31,7 +32,7 @@ export function GettingStarted({ done }: { done: { generate: boolean; animate: b
   const [ready, setReady] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [costsSeen, setCostsSeen] = useState(false);
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   // Server-rendered "done" is from page load; refresh after each generation
   // (credits change) so a finished step ticks off right away
   const [live, setLive] = useState<{ generate: boolean; animate: boolean; project: boolean } | null>(null);
@@ -56,9 +57,8 @@ export function GettingStarted({ done }: { done: { generate: boolean; animate: b
     const id = requestAnimationFrame(() => {
       setHidden(read(HIDE_KEY) === "1");
       setCostsSeen(read(COSTS_KEY) === "1");
-      const o = read(OPEN_KEY);
-      // Collapsed by default on phones so it never covers the workspace
-      setOpen(o ? o === "1" : window.innerWidth >= 768);
+      // A small collapsed pill unless this viewer opened it before; it never opens by itself
+      setOpen(read(OPEN_KEY) === "1");
       setReady(true);
     });
     return () => cancelAnimationFrame(id);
@@ -71,17 +71,17 @@ export function GettingStarted({ done }: { done: { generate: boolean; animate: b
     { id: "costs", label: "See what things cost", hint: "Credits explained in 1 minute", href: "/how-it-works#credits", icon: Coins, ok: costsSeen, reward: 0 },
   ];
   const count = steps.filter((s) => s.ok).length;
-  const onTool = TOOL_PATHS.some((p) => pathname === p || pathname?.startsWith(`${p}/`));
-  const visible = ready && !hidden && count < steps.length && !pathname?.startsWith("/admin") && !pathname?.startsWith("/moderator");
+  const hiddenHere = HIDDEN_PATHS.some((p) => pathname === p || pathname?.startsWith(`${p}/`));
+  const visible = ready && !hidden && count < steps.length && !hiddenHere;
 
   // On phones the card sits above the tab bar: reserve room for it so it
   // never covers the last button of a page (see .app-main in globals.css).
   useEffect(() => {
     const root = document.documentElement;
-    if (visible && !onTool) root.setAttribute("data-getting-started", "");
+    if (visible) root.setAttribute("data-getting-started", "");
     else root.removeAttribute("data-getting-started");
     return () => root.removeAttribute("data-getting-started");
-  }, [visible, onTool]);
+  }, [visible]);
 
   if (!visible) return null;
 
@@ -90,7 +90,7 @@ export function GettingStarted({ done }: { done: { generate: boolean; animate: b
 
   return (
     <aside aria-label="Getting started"
-      className={`fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-3 right-3 z-30 md:bottom-5 md:left-[92px] md:right-auto md:w-[300px] ${onTool ? "max-md:hidden" : ""}`}>
+      className={`fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-3 z-30 md:bottom-5 md:left-[92px] md:right-auto ${open ? "right-3 md:w-[300px]" : "right-auto"}`}>
       <div className="overflow-hidden rounded-2xl border border-white/[0.09] bg-[#161E39]/95 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.7)] backdrop-blur">
         <div className="flex items-center gap-2 py-1.5 pl-3.5 pr-2.5">
           <button type="button" onClick={toggle} aria-expanded={open} aria-controls="getting-started-steps" className="flex min-h-10 flex-1 items-center gap-2.5 rounded-lg text-left">

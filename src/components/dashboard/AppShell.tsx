@@ -9,8 +9,10 @@ import { AppRail } from "@/components/dashboard/AppRail";
 import { RelaunchBonus } from "@/components/dashboard/RelaunchBonus";
 import { GettingStarted } from "@/components/dashboard/GettingStarted";
 import { GuestSpriteClaim } from "@/components/dashboard/GuestSpriteClaim";
+import { DungeonReturn } from "@/components/play/DungeonReturn";
 import { prisma } from "@/lib/prisma";
-import { needsReturningTopUp, relaunchActive } from "@/config/relaunch";
+import { NOT_UPLOADED } from "@/lib/upload-marker";
+import { relaunchActive, relaunchBonusFor } from "@/config/relaunch";
 
 /**
  * The signed-in app chrome: icon rail, mobile header + bottom nav, global
@@ -22,19 +24,14 @@ export async function AppShell({ user, children }: { user: User; children: React
     where: { id: user.id },
     select: { plan: true, role: true, emailPreferences: true, createdAt: true },
   }).catch(() => null); // database down: the frame still renders
-  const prefs = dbUser?.emailPreferences as {
-    relaunchBonusAt?: string;
-    relaunchBonusAmount?: number | string;
-    returningTopUpAt?: string;
-  } | null;
-  const showRelaunchBonus = Boolean(
-    dbUser && relaunchActive() && (!prefs?.relaunchBonusAt || needsReturningTopUp(dbUser.createdAt, prefs))
-  );
+  const prefs = dbUser?.emailPreferences as { relaunchBonusAt?: string } | null;
+  // Only accounts that still have a bonus to claim (none for signups after NEW_USER_BONUS_UNTIL)
+  const showRelaunchBonus = Boolean(dbUser) && relaunchActive() && !prefs?.relaunchBonusAt && relaunchBonusFor(dbUser!.createdAt).amount > 0;
 
   // Getting-started checklist: ticks from real activity (3 indexed lookups,
   // once per layout render — layouts don't re-render on client navigation).
   const [firstSprite, firstAnimation, firstProject] = await Promise.all([
-    prisma.generation.findFirst({ where: { userId: user.id, NOT: { subcategoryId: "ANIMATION" } }, select: { id: true } }),
+    prisma.generation.findFirst({ where: { userId: user.id, NOT: { subcategoryId: "ANIMATION" }, ...NOT_UPLOADED }, select: { id: true } }),
     prisma.generation.findFirst({ where: { userId: user.id, subcategoryId: "ANIMATION" }, select: { id: true } }),
     prisma.project.findFirst({ where: { userId: user.id }, select: { id: true } }),
   ]).catch(() => [null, null, null] as const);
@@ -79,6 +76,7 @@ export async function AppShell({ user, children }: { user: User; children: React
 
       <NotificationPopup />
       <GuestSpriteClaim />
+      <DungeonReturn />
       <UpgradeModal />
       {showRelaunchBonus && <RelaunchBonus />}
       <GettingStarted done={{ generate: Boolean(firstSprite), animate: Boolean(firstAnimation), project: Boolean(firstProject) }} />

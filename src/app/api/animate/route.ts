@@ -9,6 +9,7 @@ import { rateLimitUserGeneration } from "@/lib/rate-limit";
 import { safeFetchImage } from "@/lib/safe-fetch";
 import { uploadGenerationBufferToR2 } from "@/lib/r2";
 import { makeAnimation, makeRotation } from "@/lib/services/animation-service";
+import { isOutOfTime, workDeadline } from "@/lib/services/animation-budget";
 import { makeRigAnimation } from "@/lib/image/rig-animation";
 import { makeItemMotion } from "@/lib/image/item-motion";
 import { makeSkeletonAnimation, makeSkeletonIdle } from "@/lib/image/skeleton-rig";
@@ -49,6 +50,8 @@ export const maxDuration = 300;
  * frames = 4 | 6 | 9 (credits scale with it); smooth = true adds AI in-betweens (2× frames, 2× credits).
  */
 export async function POST(request: Request) {
+  // Every image pass is planned against this (see animation-budget.ts)
+  const deadline = workDeadline(Date.now());
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Please log in." }, { status: 401 });
@@ -97,7 +100,7 @@ export async function POST(request: Request) {
     if (!started.ok) return NextResponse.json(started.body, { status: started.status });
     const op = started.op;
     try {
-      const { anim, prompt: rPrompt, cost } = await op.run(() => makeRotation({ reference: referenceR, prompt: source.prompt, pixel: pixelR, rotation }));
+      const { anim, prompt: rPrompt, cost } = await op.run(() => makeRotation({ reference: referenceR, prompt: source.prompt, pixel: pixelR, rotation, deadline }));
       const [sheet, gif] = await Promise.all([
         uploadGenerationBufferToR2(anim.sheetPng, user.id, "png"),
         uploadGenerationBufferToR2(anim.gif, user.id, "gif"),
@@ -138,9 +141,14 @@ export async function POST(request: Request) {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("[Rotate] Failed:", msg);
-      await op.fail(/insufficientCredits|insufficient credits|top-up/i.test(msg) ? "PROVIDER_BALANCE" : "ROTATION_FAILED");
-      if (/insufficientCredits|insufficient credits|top-up/i.test(msg)) {
+      const balance = /insufficientCredits|insufficient credits|top-up/i.test(msg);
+      const slow = !balance && isOutOfTime(err);
+      await op.fail(balance ? "PROVIDER_BALANCE" : slow ? "ROTATION_TIMEOUT" : "ROTATION_FAILED");
+      if (balance) {
         return NextResponse.json({ error: "Directions are paused for a short while — your credits were refunded." }, { status: 503 });
+      }
+      if (slow) {
+        return NextResponse.json({ error: "This took too long, so we stopped — your credits were refunded. Please try again in a minute." }, { status: 503 });
       }
       return NextResponse.json({ error: "Couldn't draw the directions — your credits were refunded. Please try again." }, { status: 502 });
     }
@@ -177,7 +185,7 @@ export async function POST(request: Request) {
 
   // Idle / breathing / hover: deform the original sprite instead of redrawing
   // every frame — no flicker in colour, size or detail
-  const rig = !isTile && action !== "custom" ? rigMotionFor(action, typeof body?.label === "string" ? body.label : undefined, source.categoryId) : null;
+  const rig = !isTile && action !== "custom" ? rigMotionFor(action, typeof body?.label === "string" ? body.label : undefined, source.categoryId, source.prompt) : null;
   // Pixel-art bipeds also walk as a whole-pixel cut-out from the original
   // sprite (no per-frame redraw); anything that can't be rigged uses the AI
   // (Claude marks the joints — that call runs inside the paid operation, so it
@@ -264,7 +272,7 @@ export async function POST(request: Request) {
   const op = started.op;
 
   try {
-    const { anim, plan: motionPlan, prompt, cost, smoothed } = await op.run(() => makeAnimation({
+    const { anim, plan: motionPlan, prompt, cost, smoothed, stiffWalk } = await op.run(() => makeAnimation({
       reference,
       prompt: source.prompt,
       categoryId: source.categoryId,
@@ -275,10 +283,14 @@ export async function POST(request: Request) {
       anchor,
       loop,
       tile: isTile,
+      deadline,
     }));
     // The in-between pass didn't line up — the user got key frames only
     // (idempotent: an operation never refunds more than it charged)
     if (smooth && !smoothed) await op.refund(credits - option.credits, "smooth_pass_unavailable");
+    // The legs still barely move after a redraw: the user keeps the result but
+    // doesn't pay for a walk they didn't get
+    if (stiffWalk) await op.refund(credits, "walk_stiff");
 
     const [sheet, gif] = await Promise.all([
       uploadGenerationBufferToR2(anim.sheetPng, user.id, "png"),
@@ -300,7 +312,8 @@ export async function POST(request: Request) {
       sourceGenerationId: source.id,
     });
     const savedId = saved.success && "generation" in saved && saved.generation ? saved.generation.id : undefined;
-    if (smooth && !smoothed) await op.partial(savedId ?? null, "smooth_pass_unavailable");
+    if (stiffWalk) await op.partial(savedId ?? null, "walk_stiff");
+    else if (smooth && !smoothed) await op.partial(savedId ?? null, "smooth_pass_unavailable");
     else await op.succeed(savedId);
 
     return NextResponse.json({
@@ -314,15 +327,21 @@ export async function POST(request: Request) {
       generationId: savedId,
         sourceGenerationId: source.id,
       smoothed,
-      creditsUsed: smooth && !smoothed ? option.credits : credits,
+      creditsUsed: stiffWalk ? 0 : smooth && !smoothed ? option.credits : credits,
+      ...(stiffWalk ? { notice: "The legs barely move in this walk, so it's free — your credits were refunded. Try 6 frames, or make the sprite in side view first." } : {}),
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[Animate] Failed:", msg);
-    await op.fail(/insufficientCredits|insufficient credits|top-up/i.test(msg) ? "PROVIDER_BALANCE" : "ANIMATION_FAILED");
+    const balance = /insufficientCredits|insufficient credits|top-up/i.test(msg);
+    const slow = !balance && isOutOfTime(err);
+    await op.fail(balance ? "PROVIDER_BALANCE" : slow ? "ANIMATION_TIMEOUT" : "ANIMATION_FAILED");
     // Provider balance ran out: say so plainly instead of "try again"
-    if (/insufficientCredits|insufficient credits|top-up/i.test(msg)) {
+    if (balance) {
       return NextResponse.json({ error: "Animations are paused for a short while — your credits were refunded. Sprites still work." }, { status: 503 });
+    }
+    if (slow) {
+      return NextResponse.json({ error: "This took too long, so we stopped — your credits were refunded. Please try again in a minute." }, { status: 503 });
     }
     return NextResponse.json({ error: "Animation failed — your credits were refunded. Please try again." }, { status: 502 });
   }

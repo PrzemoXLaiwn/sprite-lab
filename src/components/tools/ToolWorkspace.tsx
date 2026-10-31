@@ -14,6 +14,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertCircle, ArrowLeft, Download, ImageIcon, Loader2, MoveHorizontal } from "lucide-react";
 import { triggerUpgradeModal } from "@/components/dashboard/UpgradeModal";
+import { fetchImage } from "@/lib/cors-image";
 
 // =============================================================================
 // HELPERS
@@ -114,7 +115,7 @@ export function toolErrorMessage(res: Response, data: { error?: unknown; noCredi
  */
 export async function downloadImage(url: string, filename: string): Promise<void> {
   try {
-    const res = await fetch(url);
+    const res = await fetchImage(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     saveBlobAs(await res.blob(), filename);
   } catch {
@@ -176,6 +177,12 @@ export const bgStyle = (id: ToolBgModeId) =>
 // =============================================================================
 
 export function ToolShell({ children }: { children: React.ReactNode }) {
+  // Stacked (phone / tablet) layouts: a client navigation from a scrolled page
+  // (e.g. Create's next steps → Animate) keeps the old scroll position and
+  // opens mid-page. Start a tool at its top.
+  useEffect(() => {
+    if (window.innerWidth < 1024 && window.scrollY > 0) window.scrollTo(0, 0);
+  }, []);
   return (
     <div className="flex min-h-screen flex-col bg-[#131A31] text-[#FFF1E8] lg:h-screen lg:flex-row lg:overflow-hidden">
       {children}
@@ -186,6 +193,7 @@ export function ToolShell({ children }: { children: React.ReactNode }) {
 const TABS = [
   { id: "generate",  label: "Create",    href: "/generate" },
   { id: "animate",   label: "Animate",   href: "/animate" },
+  { id: "edit",      label: "Edit",      href: "/edit" },
   { id: "remove-bg", label: "Remove BG", href: "/remove-bg" },
   { id: "upscale",   label: "Upscale",   href: "/upscale" },
 ] as const;
@@ -195,17 +203,17 @@ export type ToolTabId = (typeof TABS)[number]["id"];
 /** Segmented tab row shared by every tool. Carries the current sprite along. */
 export function ToolTabs({ active, generationId }: { active: ToolTabId; generationId?: string | null }) {
   return (
-    <nav aria-label="Tools" className="mt-4 grid grid-cols-4 gap-1 rounded-xl bg-white/[0.04] p-1 text-[12px] font-medium">
+    <nav aria-label="Tools" className="sl-track mt-4 overflow-x-auto [scrollbar-width:none]">
       {TABS.map((t) =>
         t.id === active ? (
           <span key={t.id} aria-current="page"
-            className="flex min-h-9 items-center justify-center rounded-lg bg-white/[0.1] px-1.5 text-center text-white shadow-sm lg:min-h-8">
+            className="sl-seg flex-1 shrink-0">
             {t.label}
           </span>
         ) : (
           <Link key={t.id}
             href={generationId && t.id !== "generate" ? `${t.href}?id=${encodeURIComponent(generationId)}` : t.href}
-            className="flex min-h-9 items-center justify-center rounded-lg px-1.5 text-center text-[#9AA1CC] transition-colors hover:bg-white/[0.04] hover:text-white lg:min-h-8">
+            className="sl-seg flex-1 shrink-0">
             {t.label}
           </Link>
         )
@@ -355,7 +363,7 @@ export function PrimaryButton({ onClick, disabled, loading, loadingLabel, icon, 
 }) {
   return (
     <button type="button" onClick={onClick} disabled={disabled} aria-busy={loading || undefined}
-      className="px-corners flex h-12 w-full items-center justify-center gap-2 bg-[#FFA300] px-4 text-[15px] font-semibold text-[#131A31] transition-[filter,opacity] hover:bg-[#FFB733] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[#FFB733]">
+      className="btn btn-primary h-12 w-full text-[15px]">
       {loading ? (
         <><Loader2 className="h-4 w-4 shrink-0 animate-spin" /> {loadingLabel}</>
       ) : (
@@ -374,8 +382,8 @@ export function DownloadButton({ onClick, label = "Download PNG", busy }: { onCl
   );
 }
 
-export const SECONDARY_BTN =
-  "flex h-10 items-center gap-1.5 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 text-[13px] font-medium text-[#C8CCE8] transition hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white/[0.04]";
+/** Secondary action: layered navy surface, orange edge on hover (see .btn-secondary in globals.css). */
+export const SECONDARY_BTN = "btn btn-secondary";
 
 export function SecondaryButton({ onClick, href, children, title, disabled, ariaLabel }: {
   onClick?: () => void; href?: string; children: React.ReactNode; title?: string; disabled?: boolean; ariaLabel?: string;
@@ -388,7 +396,7 @@ export function SecondaryButton({ onClick, href, children, title, disabled, aria
 export function IconButton({ label, onClick, disabled, children }: { label: string; onClick: () => void; disabled?: boolean; children: React.ReactNode }) {
   return (
     <button type="button" title={label} aria-label={label} onClick={onClick} disabled={disabled}
-      className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.1] bg-white/[0.04] text-[#C8CCE8] transition hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-40">
+      className="btn btn-secondary btn-icon">
       {children}
     </button>
   );

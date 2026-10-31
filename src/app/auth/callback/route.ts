@@ -35,11 +35,12 @@ export async function GET(request: Request) {
       if (user && isNewUser) after(() => sendWelcomeFor(user));
       if (type === "signup" || isNewUser) {
         // A plan or credit pack chosen before sign-up has to survive email
-        // confirmation and OAuth. Other first-time users still see /auth/confirm.
+        // confirmation and OAuth; everyone else lands straight in the creator
+        // (no interstitial), set up for a character: what most people make first
         if (isCheckoutReturn(next)) {
           return NextResponse.redirect(`${origin}${next}`);
         }
-        return NextResponse.redirect(`${origin}/auth/confirm`);
+        return NextResponse.redirect(`${origin}/generate?welcome=1&categoryId=CHARACTERS`);
       }
       // Otherwise redirect to the next page
       return NextResponse.redirect(`${origin}${next}`);

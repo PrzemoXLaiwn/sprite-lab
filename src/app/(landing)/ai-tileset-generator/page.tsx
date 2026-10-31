@@ -33,10 +33,10 @@ export default function TileGeneratorPage() {
       heroLine="ai seamless tile generator"
       h1={
         <>
-          AI tileset generator
-          <span className="sr-only"> for </span>
+          Seamless game tiles
+          <span className="sr-only">: </span>
           <br />
-          seamless floors and walls
+          from a sentence
         </>
       }
       subtitle="Floors, walls, water and lava as square tiles that repeat without visible seams — on a pixel grid for pixel-art games. Animate surfaces into looping frames."

@@ -8,6 +8,9 @@
 // TODO: Checkout does not yet collect the express "start immediately" request and
 //       acknowledgement, and the order email does not yet repeat it. This change
 //       does not touch checkout. Section 6 does not claim that checkbox is shown.
+// TODO: Settings → Plan & billing has no "Manage subscription" button. The Stripe
+//       portal route exists (/api/stripe/create-portal) but nothing in the UI calls it.
+//       Cancellation on the page is by email.
 // TODO: Whether stopping the Service includes a refund of unused credit-pack credits.
 //       The page refunds subscription fees for a period after the Service ends only.
 // TODO: Business liability cap (£100 or fees paid) should be checked with an adviser.
@@ -29,7 +32,7 @@ import { SIGNUP_CREDITS } from "@/config/signup";
 export const TERMS_MARKDOWN = `
 # Terms of Service
 
-Last updated: 30 October 2026
+Last updated: ${LICENCE_CHANGE_DATE}
 
 ## 1. Who we are and how to contact us
 
@@ -90,8 +93,8 @@ If you are a consumer, you have a legal right to cancel within **14 days** of bu
 ## 7. Renewal and cancelling your subscription
 
 - Subscriptions **renew automatically every month** on the same date until you cancel.
-- You can cancel **at any time** online, under Settings → Plan & billing → Cancel subscription. You do not have to contact us first, and you do not have to explain why. The form asks you to pick a category (Other is enough) and the note is optional. You can also cancel by emailing [support@sprite-lab.com](mailto:support@sprite-lab.com) from your account email address, or by any other clear statement that you want to cancel. If you cancel by email, we will confirm by email.
-- When you cancel, you keep your plan and remaining subscription credits until the end of the current billing period, and you will not be charged again. The billing page shows the date access ends. You can resume from that page until then.
+- You can cancel **at any time** by emailing [support@sprite-lab.com](mailto:support@sprite-lab.com) from your account email address, or by any other clear statement that you want to cancel. We will confirm the cancellation by email.
+- When you cancel, you keep your plan and remaining subscription credits until the end of the current billing period, and you will not be charged again.
 - We will send you a reminder before renewal where the law requires one.
 
 ## 8. Acceptable use

@@ -1,33 +1,52 @@
 "use client";
 
 import Link from "next/link";
-import { Castle, Crown, Droplet, Eye, Feather, Flame, Heart, Loader2, RotateCcw, Share2, Shield, Sword, Target, Zap } from "lucide-react";
-import { ELEMENT_DEFS, type GearSlot } from "@/lib/dungeon/config";
+import { useEffect } from "react";
+import { Castle, Crown, Droplet, Drum, Eye, Feather, Flag, Flame, Heart, Loader2, RotateCcw, Share2, Shield, Skull, Sparkles, Sword, Swords, Target, Zap } from "lucide-react";
+import { BLESSING_TIER_COLOR, BLESSING_TIER_LABEL } from "@/lib/dungeon/blessings";
+import { BLESSING_EVERY, BOSS_EVERY, ELEMENT_DEFS, type GearSlot } from "@/lib/dungeon/config";
+import { FUNNEL, track } from "@/lib/analytics";
+import { markDungeonReturn } from "./dungeon-return";
 import type { BlessingCard, PartyMember } from "@/lib/dungeon/store";
 import type { RunReport, RunTip } from "@/lib/dungeon/summary";
 import { SpriteImg } from "./Sheet";
 
 export const BLESSING_ICONS: Record<string, typeof Sword> = {
   sword: Sword, shield: Shield, heart: Heart, crown: Crown, castle: Castle, eye: Eye, target: Target, droplet: Droplet, feather: Feather, zap: Zap, flame: Flame,
+  skull: Skull, drum: Drum, flag: Flag, swords: Swords, sparkles: Sparkles,
 };
 
 export function BlessingChoice({ floor, offer, chosen, busy, onChoose }: {
   floor: number; offer: BlessingCard[]; chosen: BlessingCard[]; busy: string | null; onChoose: (id: string) => void;
 }) {
+  // Keys 1–3 pick a card (the cards are buttons too: Tab + Enter works)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (busy !== null || e.altKey || e.ctrlKey || e.metaKey) return;
+      const k = Number(e.key);
+      if (k >= 1 && k <= offer.length) onChoose(offer[k - 1].id);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [offer, busy, onChoose]);
   return (
     <div className="absolute inset-0 z-10 flex flex-col items-center justify-center overflow-y-auto bg-[#0B1022]/75 px-3 py-4" role="dialog" aria-modal="true" aria-labelledby="bless-h">
       <p className="text-[13px] text-[#C8CCE8]">Floor {floor} cleared</p>
       <h2 id="bless-h" className="mt-0.5 font-display text-[22px] font-semibold text-[#FFF1E8] sm:text-[26px]">Choose a blessing</h2>
       <ul className="mt-3 grid w-full max-w-[640px] grid-cols-3 gap-2 sm:gap-3">
-        {offer.map((b) => {
+        {offer.map((b, k) => {
           const Icon = BLESSING_ICONS[b.icon] ?? Sword;
-          const color = b.element ? ELEMENT_DEFS[b.element].color : "#FFA300";
+          const tier = b.tier ?? "common";
+          const tierColor = BLESSING_TIER_COLOR[tier];
+          const color = b.element ? ELEMENT_DEFS[b.element].color : tier === "common" ? "#FFA300" : tierColor;
           return (
             <li key={b.id}>
-              <button type="button" onClick={() => onChoose(b.id)} disabled={busy !== null}
+              <button type="button" onClick={() => onChoose(b.id)} disabled={busy !== null} aria-keyshortcuts={String(k + 1)}
+                style={tier === "common" ? undefined : { borderColor: `${tierColor}99` }}
                 className="group flex h-full min-h-[170px] w-full flex-col items-center rounded-[8px] border border-white/[0.12] bg-[#19223F] px-2 pb-3 pt-0 text-center shadow-[0_4px_0_0_rgba(0,0,0,0.35)] transition hover:-translate-y-1 hover:border-[#FFA300]/80 focus-visible:-translate-y-1 disabled:opacity-60 disabled:hover:translate-y-0">
                 <span className="h-[3px] w-full rounded-b-[2px]" style={{ background: color }} aria-hidden />
-                <span className="mt-3 flex h-11 w-11 items-center justify-center rounded-[8px] bg-[#212B4E]" style={{ color }}>
+                <span className="mt-2 text-[11px] font-semibold" style={{ color: tierColor }}>{BLESSING_TIER_LABEL[tier]}</span>
+                <span className="mt-1.5 flex h-11 w-11 items-center justify-center rounded-[8px] bg-[#212B4E]" style={{ color }}>
                   {busy === b.id ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : <Icon className="h-5 w-5" aria-hidden />}
                 </span>
                 <span className="mt-2 font-display text-[14px] font-semibold leading-tight text-[#FFF1E8] sm:text-[16px]">{b.name}</span>
@@ -54,8 +73,8 @@ export function ResultReport({ report, members, runsLeft, starting, onTryAgain, 
     ? report.rankBefore && report.rankBefore !== report.rankAfter ? `#${report.rankBefore} → #${report.rankAfter}` : `#${report.rankAfter} of ${report.players}`
     : "Not ranked yet";
   const tipButton = (t: RunTip) => t.href
-    ? <Link href={t.href} className="inline-flex h-10 shrink-0 items-center rounded-[7px] bg-[#212B4E] px-3 text-[13px] font-semibold text-[#FFC857] hover:bg-[#2A3560]">{t.action}</Link>
-    : <button type="button" onClick={() => t.picker && onTip(t.picker)} className="inline-flex h-10 shrink-0 items-center rounded-[7px] bg-[#212B4E] px-3 text-[13px] font-semibold text-[#FFC857] hover:bg-[#2A3560]">{t.action}</button>;
+    ? <Link href={t.href} onClick={() => { track(FUNNEL.dungeonUpgradeClicked, { kind: "report_tip", action: t.action }); markDungeonReturn("report_tip"); }} className="inline-flex h-10 shrink-0 items-center rounded-[7px] bg-[#212B4E] px-3 text-[13px] font-semibold text-[#FFC857] hover:bg-[#2A3560]">{t.action}</Link>
+    : <button type="button" onClick={() => { track(FUNNEL.dungeonUpgradeClicked, { kind: "report_tip", action: t.action }); if (t.picker) onTip(t.picker); }} className="inline-flex h-10 shrink-0 items-center rounded-[7px] bg-[#212B4E] px-3 text-[13px] font-semibold text-[#FFC857] hover:bg-[#2A3560]">{t.action}</button>;
 
   return (
     <div className="absolute inset-0 z-10 flex items-end justify-center overflow-y-auto bg-[#0B1022]/70 p-2 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="result-h">
@@ -113,6 +132,30 @@ export function ResultReport({ report, members, runsLeft, starting, onTryAgain, 
           <button type="button" onClick={onClose} className="inline-flex h-12 items-center rounded-[8px] px-3 text-[14px] text-[#C8CCE8] hover:bg-white/[0.06]">
             Edit party
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** First visit: the three things to know, then straight into the first climb. Reopened from the "?" by the title. */
+export function DungeonIntro({ canStart, starting, runsLeft, onStart, onClose }: {
+  canStart: boolean; starting: boolean; runsLeft: number; onStart: () => void; onClose: () => void;
+}) {
+  return (
+    <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#0B1022]/70 p-3" role="dialog" aria-modal="true" aria-labelledby="intro-h">
+      <div className="sl-panel w-full max-w-[420px] p-4 sm:p-5">
+        <h2 id="intro-h" className="font-display text-[22px] font-semibold leading-tight text-[#FFF1E8]">Your sprites are your heroes</h2>
+        <ul className="mt-3 space-y-2.5 text-[14px] leading-snug text-[#C8CCE8]">
+          <li><span className="font-semibold text-[#FFF1E8]">Your party is ready.</span> Characters and creatures you made fight; weapons, armor and items you made are their gear.</li>
+          <li><span className="font-semibold text-[#FFF1E8]">Battles play themselves.</span> Watch the climb, speed it up or skip. Every {BLESSING_EVERY} floors you pick a blessing, every {BOSS_EVERY}th floor is a boss.</li>
+          <li><span className="font-semibold text-[#FFF1E8]">Make them stronger in SpriteLab.</span> Animate a hero or make it a weapon, then climb higher. {runsLeft} climbs left today.</li>
+        </ul>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button type="button" onClick={onStart} disabled={!canStart} className="btn btn-primary h-12 flex-1 px-5 text-[16px]">
+            {starting ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : <Swords className="h-5 w-5" aria-hidden />} Start climb
+          </button>
+          <button type="button" onClick={onClose} className="btn btn-ghost h-12 px-4">Look around first</button>
         </div>
       </div>
     </div>

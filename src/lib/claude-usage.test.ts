@@ -7,8 +7,11 @@ const { prisma } = await import("@/lib/prisma");
 
 describe("claudeCostUsd", () => {
   it("prices opus input and output per million tokens", () => {
-    expect(claudeCostUsd("claude-opus-5-5", { input_tokens: 1_000_000, output_tokens: 0 })).toBeCloseTo(5);
-    expect(claudeCostUsd("claude-opus-5-5", { input_tokens: 0, output_tokens: 1_000_000 })).toBeCloseTo(25);
+    expect(claudeCostUsd("claude-opus-5-5", { input_tokens: 1_000_000, output_tokens: 0 })).toBeCloseTo(4);
+    expect(claudeCostUsd("claude-opus-5-5", { input_tokens: 0, output_tokens: 1_000_000 })).toBeCloseTo(20);
+    // Older Opus ids keep the tier price
+    expect(claudeCostUsd("claude-opus-4-6", { input_tokens: 1_000_000, output_tokens: 0 })).toBeCloseTo(5);
+    expect(claudeCostUsd("claude-haiku-5-5", { input_tokens: 1_000_000, output_tokens: 1_000_000 })).toBeCloseTo(0.6);
   });
 
   it("uses the haiku tier for haiku models", () => {
@@ -16,7 +19,9 @@ describe("claudeCostUsd", () => {
   });
 
   it("bills cache reads at 10% of input", () => {
-    expect(claudeCostUsd("claude-opus-5-5", { cache_read_input_tokens: 1_000_000 })).toBeCloseTo(0.5);
+    // 5% of input on Opus 5.5, 10% elsewhere
+    expect(claudeCostUsd("claude-opus-5-5", { cache_read_input_tokens: 1_000_000 })).toBeCloseTo(0.2);
+    expect(claudeCostUsd("claude-haiku-5-5", { cache_read_input_tokens: 1_000_000 })).toBeCloseTo(0.01);
   });
 });
 

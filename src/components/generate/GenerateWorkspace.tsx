@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useMemo, useEffect, Suspense } from "react";
 import { STYLE_MATCH_CREDITS } from "@/config/tool-prices";
-import { SIGNUP_CREDITS } from "@/config/signup";
+import { supportsRotation } from "@/config/animations";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -22,15 +22,23 @@ import {
   Film,
   Paintbrush,
   PartyPopper,
+  Compass,
+  Pencil,
+  Eraser,
+  Maximize2,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
 import { triggerUpgradeModal } from "@/components/dashboard/UpgradeModal";
 import {
   Field, Chip, ToolTabs, ErrorNote, IconButton, Elapsed, SECONDARY_BTN, saveBlobAs, creditLabel,
 } from "@/components/tools/ToolWorkspace";
-import { SpriteStage, STAGE_SCENES, type StageSceneId } from "@/components/generate/SpriteStage";
+import { SpriteStage, STAGE_SCENES, zoomLabel, type StageSceneId } from "@/components/generate/SpriteStage";
 import { RecipeBar } from "@/components/generate/RecipeBar";
+import { UploadSpriteButton, UploadSpriteCard } from "@/components/generate/UploadSprite";
 import { track, FUNNEL } from "@/lib/analytics";
+import { readFirstTouch } from "@/components/analytics/FirstTouch";
 import { GENERATE_CATEGORIES, SUBTYPE_PLACEHOLDERS, type GenerateCategory, type GenerateSubcategory } from "@/data/generate-categories";
 import { GENERATE_STYLES, ALL_GENERATE_STYLE_IDS } from "@/data/generate-styles";
 import { SHOWCASE, isPixelShowcase } from "@/data/showcase";
@@ -39,6 +47,8 @@ import { AutoSettingsBar, AutoBadge, autoFlash } from "@/components/generate/Aut
 import { useCreateSession, type CreateRestore } from "@/components/generate/useCreateSession";
 import { HistoryButton, HistoryPanel } from "@/components/workspace/HistoryPanel";
 import { ContinueBanner, RestoredNote } from "@/components/workspace/ContinueBanner";
+import { fetchImage } from "@/lib/cors-image";
+import { userErrorMessage } from "@/lib/user-error";
 
 // =============================================================================
 // VIEW + DETAIL
@@ -503,7 +513,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
       const isAbort = err instanceof DOMException && err.name === "AbortError";
       const msg = isAbort
         ? "Generation timed out after 90 seconds. The service may be busy — please try again."
-        : err instanceof Error ? err.message : "Something went wrong. Please try again.";
+        : userErrorMessage(err, "Something went wrong. Please try again.");
       setErrorMessage(msg);
       track(FUNNEL.generationError, { reason: isAbort ? "timeout" : "api_error", styleId });
     } finally {
@@ -539,7 +549,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
       }
     } catch (e) {
       updateResult(result.id, { projectStatus: "pending" });
-      setErrorMessage(e instanceof Error ? e.message : "Couldn't add to project");
+      setErrorMessage(userErrorMessage(e, "Couldn't add to project"));
       setStatus("error");
     }
   };
@@ -618,8 +628,9 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
    */
   const downloadAtSize = async (size: number) => {
     if (!activeResult) return;
+    track(FUNNEL.assetDownload, { kind: "sprite", format: `png_${size}` });
     try {
-      const response = await fetch(activeResult.imageUrl);
+      const response = await fetchImage(activeResult.imageUrl);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const blob = await response.blob();
       const filename = `${buildBaseFilename(size)}.png`;
@@ -661,8 +672,9 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
    */
   const downloadNative = async () => {
     if (!activeResult) return;
+    track(FUNNEL.assetDownload, { kind: "sprite", format: "png_native" });
     try {
-      const blob = await (await fetch(activeResult.imageUrl)).blob();
+      const blob = await (await fetchImage(activeResult.imageUrl)).blob();
       const bitmap = await createImageBitmap(blob);
       const probe = document.createElement("canvas");
       probe.width = bitmap.width;
@@ -754,10 +766,38 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
   // ==========================================================================
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [sizesOpen, setSizesOpen] = useState(false);
+  // Stage zoom: steps away from "fit" (whole pixels for pixel art); back to fit for every new sprite
+  const [zoom, setZoom] = useState(0);
+  const [fitK, setFitK] = useState<number | null>(null);
+  const activeImage = activeResult?.imageUrl;
+  useEffect(() => { setZoom(0); }, [activeImage]);
   const isWelcome = searchParams.get("welcome") === "1";
   const checkoutSuccess = searchParams.get("success") === "true";
   const checkoutPlan = searchParams.get("plan");
   const [showWelcomeBanner, setShowWelcomeBanner] = useState(isWelcome || checkoutSuccess);
+  // New accounts land here straight from sign-up (Google, One Tap, email): the
+  // completed-signup conversion, once per tab
+  useEffect(() => {
+    if (!isWelcome) return;
+    try {
+      if (window.sessionStorage.getItem("sl:signup-tracked")) return;
+      window.sessionStorage.setItem("sl:signup-tracked", "1");
+    } catch { /* storage blocked: still count it */ }
+    // Where the account came from: on the event, and stored once on the account
+    const touch = readFirstTouch();
+    track(FUNNEL.signupComplete, touch
+      ? { source: touch.source, medium: touch.medium ?? "", campaign: touch.campaign ?? "", landing: touch.landing }
+      : { source: "unknown" });
+    if (touch) {
+      void fetch("/api/user/source", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(touch) }).catch(() => {});
+    }
+    // Counted: drop ?welcome=1 so a duplicated, restored or shared tab doesn't count it again
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("welcome")) {
+      url.searchParams.delete("welcome");
+      window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    }
+  }, [isWelcome]);
 
   // First-run onboarding: pre-fill an example prompt so the user can hit
   // Generate immediately. Without this nudge new signups stare at an empty
@@ -801,6 +841,15 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
       canvasRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }, [isGenerating]);
+  // …and when an upload made here opens on the stage (it arrives via ?result=)
+  const uploadedIdRef = useRef<string | null>(null);
+  const onUploaded = useCallback((id: string) => { uploadedIdRef.current = id; }, []);
+  const activeGenId = activeResult?.generationId ?? null;
+  useEffect(() => {
+    if (!activeGenId || activeGenId !== uploadedIdRef.current) return;
+    uploadedIdRef.current = null;
+    if (window.innerWidth < 1024) canvasRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [activeGenId]);
 
   const cost = styleRef ? STYLE_MATCH_CREDITS : DETAIL_CREDITS[detail];
   const isCreature = selectedCategory.id === "CHARACTERS" || selectedCategory.id === "CREATURES";
@@ -833,303 +882,372 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
         <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-white/[0.06] px-4 py-3 sm:px-5">
           <h1 className="font-display text-[20px] font-semibold text-[#FFF1E8]">Create</h1>
           <div className="min-w-0 flex-1 basis-[260px] [&>div]:mt-0"><ToolTabs active="generate" generationId={activeResult?.generationId} /></div>
-          <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto">
-            <div role="group" aria-label="Scene" className="flex max-w-full overflow-x-auto rounded-[8px] border border-white/[0.1] bg-[#19223F] p-0.5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <UploadSpriteButton onUploaded={onUploaded} />
+            <HistoryButton onClick={() => setHistoryOpen(true)} />
+          </div>
+        </header>
+
+        <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+          {/* LEFT — upload or describe, then the recipe */}
+          <aside aria-label="Make a sprite" className="space-y-3 px-4 pt-3 sm:px-5 lg:w-[368px] lg:shrink-0 lg:overflow-y-auto lg:border-r lg:border-white/[0.06] lg:px-4 lg:pb-24">
+            <UploadSpriteCard onUploaded={onUploaded} />
+          {(showWelcomeBanner || (!projectId && !showWelcomeBanner) || session.restoredNote || projectId) && (
+            <div className="space-y-2 empty:hidden">
+              {showWelcomeBanner && (
+                <div role="status" className="flex items-start gap-2.5 rounded-[10px] border border-[#FFA300]/30 bg-[#FFA300]/[0.08] py-2.5 pl-3 pr-1.5">
+                  <PartyPopper className="mt-0.5 h-4 w-4 shrink-0 text-[#FFA300]" aria-hidden />
+                  <p className="min-w-0 flex-1 text-[13px] leading-snug text-[#FFF1E8]">
+                    {checkoutSuccess
+                      ? <>Payment confirmed{planName ? ` — your ${planName} plan is active` : ""}. Your credits are ready to use.</>
+                      : history.length > 0
+                        // The sprite they made on the home page is on the stage
+                        ? <>Welcome to SpriteLab! Your sprite is saved and your free credits are ready. Bring it to life with <b className="font-semibold text-white">Animate</b>, or make another.</>
+                        : <>Welcome to SpriteLab! Your free credits are ready. We filled in an example, so just press <b className="font-semibold text-white">Create sprite</b>.</>}
+                  </p>
+                  <button type="button" aria-label="Dismiss message" onClick={() => setShowWelcomeBanner(false)}
+                    className="-my-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] text-[#C8CCE8] transition-colors hover:bg-white/[0.06] hover:text-white">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+              {!showWelcomeBanner && !projectId && <ContinueBanner current="create" />}
+              {session.restoredNote && <RestoredNote onStartFresh={session.startFresh} onDismiss={session.dismissRestoredNote} />}
+              {projectId && (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[10px] border border-[#FFA300]/30 bg-[#FFA300]/[0.06] px-3 py-2">
+                  {projectError ? (
+                    <p role="alert" className="text-[12.5px] text-red-200">
+                      {projectError} <Link href="/projects" className="font-semibold text-[#FFC857] hover:text-white">Open projects</Link>
+                    </p>
+                  ) : (
+                    <>
+                      <p className="min-w-0 text-[13px] text-[#C8CCE8]">Project <Link href={`/projects/${encodeURIComponent(projectId)}`} className="font-semibold text-[#FFF1E8] underline-offset-2 hover:underline">{project?.name ?? "Loading…"}</Link></p>
+                      <label className="flex items-center gap-2 text-[12.5px] text-[#A7ADD4]">
+                        Accept into
+                        <select value={targetFolderId} onChange={(e) => setTargetFolderId(e.target.value)} disabled={!project}
+                          className="h-9 rounded-[7px] border border-white/[0.1] bg-[#212B4E] px-2 text-[12.5px] text-white outline-none focus:border-[#FFA300] disabled:opacity-60">
+                          <option value="">Auto-sort by type</option>
+                          {project?.folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+                        </select>
+                      </label>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+  
+            {/* Recipe */}
+          <div>
+            <RecipeBar
+              layout="panel"
+              prompt={prompt} onPrompt={setPrompt} placeholder={placeholder}
+              onSubmit={handleGenerate} onSurprise={surpriseMe}
+              generating={isGenerating} canSubmit={isFormValid} cost={cost} costLabel={creditLabel(cost)}
+              loadingLabel={<>Creating… <Elapsed /></>}
+              styles={GENERATE_STYLES} styleId={styleId} onStyle={setStyleId} isPixel={isPixelStyle}
+              categories={GENERATE_CATEGORIES} categoryId={selectedCategory.id} onCategory={handleCategoryChange}
+              subcategoryId={selectedSubcategoryId}
+              onSubcategory={(id) => { const s = selectedCategory.subcategories.find((x) => x.subcategoryId === id); if (s) handleSubcategoryChange(s); }}
+              views={viewApplies ? { options: VIEW_OPTIONS, value: view, onChange: (id) => setView(id as ViewId) } : undefined}
+              poses={isCreature ? { options: POSE_OPTIONS, value: pose, onChange: (id) => setPose(id as PoseId) } : undefined}
+              quality={{ options: DETAIL_OPTIONS.map((d) => ({ id: d.id, label: d.label, desc: d.description })), value: detail, onChange: (id) => setDetail(id as DetailId), credits: DETAIL_CREDITS, disabled: !!styleRef }}
+              isAuto={(slot) => slot !== "quality" && auto.isAuto(slot)}
+              tools={
+                <button type="button" onClick={() => setShowAdvanced((v) => !v)} aria-expanded={showAdvanced} aria-controls="generate-more-options"
+                  className="btn btn-ghost gap-1 px-2.5 text-[12.5px]">
+                  More{advancedSet > 0 ? ` · ${advancedSet}` : ""} <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showAdvanced ? "rotate-180" : ""}`} aria-hidden />
+                </button>
+              }
+              extras={
+                <div className="mt-2 space-y-2 empty:hidden">
+                  {styleRef && (
+                    <div className="flex items-center gap-2.5 rounded-[10px] border border-[#FFA300]/40 bg-[#FFA300]/[0.06] p-2">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={styleRef.imageUrl} alt="" className="pixel-perfect h-10 w-10 shrink-0 rounded-[6px] bg-[#131A31] object-contain p-0.5" />
+                      <span className="min-w-0 flex-1 text-[12.5px] text-[#FFF1E8]">Matching this sprite&apos;s style <span className="text-[#A7ADD4]">· {STYLE_MATCH_CREDITS} credits per sprite</span></span>
+                      <button type="button" onClick={() => setStyleRef(null)} aria-label="Stop matching this style"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[7px] text-[#A7ADD4] hover:bg-white/[0.06] hover:text-white"><X className="h-4 w-4" /></button>
+                    </div>
+                  )}
+                  {promptQuality && promptQuality.level !== "good" && (
+                    <p className={`px-1 text-[12.5px] ${promptQuality.level === "ok" ? "text-amber-200/85" : "text-rose-200/85"}`}>{promptQuality.hint}</p>
+                  )}
+                  <AutoSettingsBar enabled={auto.enabled} onToggle={auto.setEnabled} changes={auto.changes} onUndo={auto.undo}
+                    labels={{ view: VIEW_OPTIONS, palette: PALETTE_OPTIONS, pose: POSE_OPTIONS }} />
+                  {viewConflict && detectedView && detectedViewLabel && (
+                    <button type="button" onClick={() => setView(detectedView)}
+                      className="flex w-full items-start gap-2 rounded-[8px] border border-amber-400/20 bg-amber-400/[0.06] px-3 py-2 text-left text-[12.5px] text-amber-100/90 hover:bg-amber-400/[0.1]">
+                      <Eye className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" aria-hidden />
+                      <span>Your description mentions a <b>{detectedViewLabel}</b> view. Tap to set the view to match.</span>
+                    </button>
+                  )}
+                  {showAdvanced && (
+                    <div id="generate-more-options" className="grid gap-4 rounded-[10px] border border-white/[0.08] p-3 sm:grid-cols-2">
+                      <Field label={<>Color palette<AutoBadge show={auto.isAuto("palette")} /></>} hint={palette === "auto" ? "Auto lets the style choose the colours." : PALETTE_OPTIONS.find((p) => p.id === palette)?.label}>
+                        <div className={`flex flex-wrap gap-1${autoFlash(auto.isFlashing("palette"))}`}>
+                          {PALETTE_OPTIONS.map((p) => {
+                            const active = p.id === palette;
+                            return p.id === "auto" ? (
+                              <button key={p.id} type="button" onClick={() => setPalette(p.id)} aria-pressed={active}
+                                className={`flex h-10 items-center rounded-[7px] border-2 px-3 text-[12px] font-medium text-[#C8CCE8] ${active ? "border-white bg-white/[0.08]" : "border-transparent bg-white/[0.06] hover:border-white/40"}`}>Auto</button>
+                            ) : (
+                              <button key={p.id} type="button" onClick={() => setPalette(p.id)} title={p.label} aria-label={`${p.label} palette`} aria-pressed={active}
+                                className="group flex h-10 w-10 items-center justify-center rounded-[7px]">
+                                <span aria-hidden className={`block h-7 w-7 rounded-[5px] border-2 ${active ? "border-white" : "border-transparent group-hover:border-white/40"}`} style={{ background: PALETTE_SWATCH[p.id] }} />
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </Field>
+                      <Field label="Seed" labelFor="generate-seed"
+                        hint={seedDriftWarning
+                          ? <span className="text-amber-200/90">Seed is locked but you changed <b>{seedDriftWarning.join(", ")}</b>, so the result will differ.</span>
+                          : "Same seed + same settings = the same sprite. Leave empty for a new one each time."}>
+                        <div className="flex gap-2">
+                          <input id="generate-seed" type="number" inputMode="numeric" min={0} max={2147483647} placeholder="Random" value={seed}
+                            onChange={(e) => { setSeed(e.target.value); seedRef.current = e.target.value; setSeedLocked(false); }}
+                            className="h-10 min-w-0 flex-1 rounded-[8px] border border-white/[0.1] bg-[#131A31] px-3 text-[13px] text-white outline-none placeholder:text-[#8A92BF] focus:border-[#FFA300]" />
+                          {activeResult && (
+                            <button type="button" onClick={handleLockSeed} aria-pressed={seedLocked} aria-label={seedLocked ? "Unlock the seed" : "Reuse the seed of the current sprite"}
+                              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] border ${seedLocked ? "border-[#FFA300]/50 bg-[#FFA300]/10 text-[#FFC857]" : "border-white/[0.1] text-[#A7ADD4] hover:text-white"}`}>
+                              {seedLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+                            </button>
+                          )}
+                        </div>
+                      </Field>
+                    </div>
+                  )}
+                  {status === "error" && errorMessage && <ErrorNote>{errorMessage}</ErrorNote>}
+                </div>
+              }
+            />
+          </div>
+            </aside>
+
+          {/* CENTER — the stage, then what to do next */}
+          <div className="flex min-w-0 flex-1 flex-col lg:min-h-0 lg:overflow-y-auto">
+          {/* Canvas toolbar: scene, compare, zoom */}
+          <div className="flex flex-wrap items-center gap-1.5 px-4 pt-3 sm:px-5">
+            <div role="group" aria-label="Scene" className="sl-track max-w-full overflow-x-auto">
               {STAGE_SCENES.map((s) => (
                 <button key={s.id} type="button" onClick={() => chooseScene(s.id)} aria-pressed={scene === s.id} title={`${s.label} scene`}
-                  className={`h-9 shrink-0 rounded-[6px] px-2.5 text-[12.5px] font-medium transition-colors ${scene === s.id ? "bg-[#FFA300] text-[#131A31]" : "text-[#C8CCE8] hover:text-white"}`}>
+                  className="sl-seg sl-seg-solid shrink-0">
                   {s.label}
                 </button>
               ))}
             </div>
             {history.length > 1 && (
               <button type="button" onClick={() => setCompare((v) => !v)} aria-pressed={compare} title="Stand the previous sprite next to this one, at the same scale"
-                className={`h-10 rounded-[8px] border px-3 text-[12.5px] font-medium transition-colors ${compare ? "border-[#29ADFF] bg-[#29ADFF]/15 text-[#FFF1E8]" : "border-white/[0.1] text-[#C8CCE8] hover:text-white"}`}>
+                className="btn btn-secondary">
                 Compare
               </button>
             )}
-            <HistoryButton onClick={() => setHistoryOpen(true)} />
-          </div>
-        </header>
-
-        {(showWelcomeBanner || (!projectId && !showWelcomeBanner) || session.restoredNote || projectId) && (
-          <div className="space-y-2 px-4 pt-3 sm:px-5 empty:hidden">
-            {showWelcomeBanner && (
-              <div role="status" className="flex items-start gap-2.5 rounded-[10px] border border-[#FFA300]/30 bg-[#FFA300]/[0.08] py-2.5 pl-3 pr-1.5">
-                <PartyPopper className="mt-0.5 h-4 w-4 shrink-0 text-[#FFA300]" aria-hidden />
-                <p className="min-w-0 flex-1 text-[13px] leading-snug text-[#FFF1E8]">
-                  {checkoutSuccess
-                    ? <>Payment confirmed{planName ? ` — your ${planName} plan is active` : ""}. Your credits are ready to use.</>
-                    : <>Welcome to SpriteLab! {SIGNUP_CREDITS} free credits are ready. We filled in an example, so just press <b className="font-semibold text-white">Create sprite</b>.</>}
-                </p>
-                <button type="button" aria-label="Dismiss message" onClick={() => setShowWelcomeBanner(false)}
-                  className="-my-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] text-[#C8CCE8] transition-colors hover:bg-white/[0.06] hover:text-white">
-                  <X className="h-4 w-4" />
-                </button>
+            {activeResult && (
+              <div role="group" aria-label="Zoom" className="sl-track ml-auto items-center">
+                <button type="button" onClick={() => setZoom((z) => Math.max(-3, z - 1))} disabled={zoom <= -3 || (fitK !== null && fitK + zoom <= 1)} aria-label="Zoom out"
+                  className="sl-seg w-9 px-0 pointer-coarse:w-10 disabled:pointer-events-none disabled:opacity-40"><ZoomOut className="h-4 w-4" /></button>
+                <span className="min-w-[3.25rem] text-center font-mono text-[12px] text-[#FFF1E8]" aria-live="polite">{zoomLabel(zoom, activeResult ? isPixelStyle(activeResult.styleId) : false, fitK)}</span>
+                <button type="button" onClick={() => setZoom((z) => Math.min(8, z + 1))} disabled={zoom >= 8} aria-label="Zoom in"
+                  className="sl-seg w-9 px-0 pointer-coarse:w-10 disabled:pointer-events-none disabled:opacity-40"><ZoomIn className="h-4 w-4" /></button>
+                <button type="button" onClick={() => setZoom(0)} disabled={zoom === 0} title="Fit the sprite to the stage"
+                  className="sl-seg disabled:pointer-events-none disabled:opacity-40">Fit</button>
               </div>
             )}
-            {!showWelcomeBanner && !projectId && <ContinueBanner current="create" />}
-            {session.restoredNote && <RestoredNote onStartFresh={session.startFresh} onDismiss={session.dismissRestoredNote} />}
-            {projectId && (
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[10px] border border-[#FFA300]/30 bg-[#FFA300]/[0.06] px-3 py-2">
-                {projectError ? (
-                  <p role="alert" className="text-[12.5px] text-red-200">
-                    {projectError} <Link href="/projects" className="font-semibold text-[#FFC857] hover:text-white">Open projects</Link>
-                  </p>
+          </div>
+            {/* Stage */}
+          <div ref={canvasRef as React.RefObject<HTMLDivElement>} className="relative mx-4 mt-2 aspect-[4/3] sm:mx-5 lg:aspect-auto lg:min-h-[360px] lg:flex-1">
+            <SpriteStage imageUrl={activeResult?.imageUrl ?? null} pixel={activeResult ? isPixelStyle(activeResult.styleId) : false}
+              compareUrl={compare ? history[selectedIndex + 1]?.imageUrl ?? history[0]?.imageUrl : null}
+              comparePixel={compare ? isPixelStyle((history[selectedIndex + 1] ?? history[0])?.styleId ?? "") : false}
+              scene={scene} dim={isGenerating} alt={activeResult?.prompt ?? ""} zoom={zoom} onFit={setFitK}>
+              {activeResult && (
+                <div className="pointer-events-none absolute left-2.5 top-2.5 flex flex-wrap gap-1">
+                  <Chip>{styleName(activeResult.styleId)}</Chip>
+                  <Chip>{activeResult.qualityPreset === "hd" ? "HD" : "Standard"}</Chip>
+                  {activeResult.resolvedView && activeResult.resolvedView !== "DEFAULT" && <Chip>{VIEW_LABEL_BY_KEY[activeResult.resolvedView] ?? activeResult.resolvedView} view</Chip>}
+                </div>
+              )}
+              {isGenerating && <GenerateProgress expectedSeconds={DETAIL_SECONDS[detail]} />}
+              {!activeResult && !isGenerating && (
+                <div className="absolute inset-x-0 top-0 flex flex-col items-center gap-3 p-4 pt-[8%] sm:gap-4">
+                  <p className="rounded-[8px] bg-[#131A31]/80 px-3 py-1.5 text-center font-display text-[18px] font-semibold text-[#FFF1E8] sm:text-[22px]">What goes on stage first?</p>
+                  <div className="grid w-full max-w-[300px] grid-cols-3 gap-2 sm:max-w-md">
+                    {SHOWCASE.slice(0, 6).map((ex) => (
+                      <button key={ex.id} type="button" onClick={() => applyExample(ex)} title={`Use: ${ex.prompt}`} aria-label={`Use example: ${ex.prompt}`}
+                        className="checker checker-sm relative aspect-square overflow-hidden rounded-[8px] border border-white/[0.12] transition-colors hover:border-[#FFA300]">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={ex.imageUrl} alt="" decoding="async" className={`absolute inset-0 h-full w-full object-contain p-2.5 ${isPixelShowcase(ex) ? "pixel-perfect" : ""}`} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </SpriteStage>
+          </div>
+  
+            {/* Under the stage: project review, actions, notes */}
+          <div className="px-4 pb-24 pt-2 sm:px-5 lg:pb-4">
+            {activeResult?.projectStatus && (
+              <div aria-live="polite" className="mb-2 flex flex-wrap items-center gap-2">
+                {activeResult.projectStatus === "accepted" ? (
+                  <>
+                    <span className="flex min-h-10 items-center gap-2 rounded-[8px] border border-emerald-400/30 bg-emerald-500/[0.08] px-3 text-[13px] font-medium text-emerald-200">
+                      <Check className="h-4 w-4 shrink-0" aria-hidden /> Added to {activeResult.acceptedFolderName ?? "the project"}
+                    </span>
+                    <button type="button" onClick={() => declineResult(activeResult)} className="h-10 rounded-[8px] px-3 text-[13px] font-medium text-[#A7ADD4] hover:text-white">Undo</button>
+                  </>
+                ) : activeResult.projectStatus === "declined" ? (
+                  <>
+                    <span className="flex min-h-10 items-center gap-2 rounded-[8px] border border-white/[0.1] px-3 text-[13px] text-[#A7ADD4]">
+                      <X className="h-4 w-4 shrink-0" aria-hidden /> Declined, not added to the project
+                    </span>
+                    <button type="button" onClick={() => acceptResult(activeResult)} className="h-10 rounded-[8px] px-3 text-[13px] font-medium text-[#FFC857] hover:text-white">Accept instead</button>
+                  </>
                 ) : (
                   <>
-                    <p className="min-w-0 text-[13px] text-[#C8CCE8]">Project <Link href={`/projects/${encodeURIComponent(projectId)}`} className="font-semibold text-[#FFF1E8] underline-offset-2 hover:underline">{project?.name ?? "Loading…"}</Link></p>
-                    <label className="flex items-center gap-2 text-[12.5px] text-[#A7ADD4]">
-                      Accept into
-                      <select value={targetFolderId} onChange={(e) => setTargetFolderId(e.target.value)} disabled={!project}
-                        className="h-9 rounded-[7px] border border-white/[0.1] bg-[#212B4E] px-2 text-[12.5px] text-white outline-none focus:border-[#FFA300] disabled:opacity-60">
-                        <option value="">Auto-sort by type</option>
-                        {project?.folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-                      </select>
-                    </label>
+                    <button type="button" onClick={() => acceptResult(activeResult)} disabled={activeResult.projectStatus === "accepting"}
+                      className="flex h-10 min-w-[120px] items-center justify-center gap-2 rounded-[8px] bg-[#00E436] px-4 text-[13.5px] font-semibold text-[#131A31] transition hover:brightness-110 disabled:opacity-60">
+                      {activeResult.projectStatus === "accepting" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Check className="h-4 w-4" aria-hidden />} Accept
+                    </button>
+                    <button type="button" onClick={() => declineResult(activeResult)} disabled={activeResult.projectStatus === "accepting"}
+                      className="flex h-10 items-center gap-2 rounded-[8px] border border-white/[0.14] px-4 text-[13.5px] font-medium text-[#C8CCE8] hover:text-white disabled:opacity-60">
+                      <X className="h-4 w-4" aria-hidden /> Decline
+                    </button>
+                    {pendingResults.length > 1 && (
+                      <button type="button" onClick={acceptAllPending} className="h-10 rounded-[8px] px-3 text-[13px] font-medium text-[#A7ADD4] hover:text-white">Accept all ({pendingResults.length})</button>
+                    )}
                   </>
                 )}
               </div>
             )}
-          </div>
-        )}
-
-        {/* Recipe */}
-        <div className="px-4 pt-3 sm:px-5">
-          <RecipeBar
-            prompt={prompt} onPrompt={setPrompt} placeholder={placeholder}
-            onSubmit={handleGenerate} onSurprise={surpriseMe}
-            generating={isGenerating} canSubmit={isFormValid} cost={cost} costLabel={creditLabel(cost)}
-            loadingLabel={<>Creating… <Elapsed /></>}
-            styles={GENERATE_STYLES} styleId={styleId} onStyle={setStyleId} isPixel={isPixelStyle}
-            categories={GENERATE_CATEGORIES} categoryId={selectedCategory.id} onCategory={handleCategoryChange}
-            subcategoryId={selectedSubcategoryId}
-            onSubcategory={(id) => { const s = selectedCategory.subcategories.find((x) => x.subcategoryId === id); if (s) handleSubcategoryChange(s); }}
-            views={viewApplies ? { options: VIEW_OPTIONS, value: view, onChange: (id) => setView(id as ViewId) } : undefined}
-            poses={isCreature ? { options: POSE_OPTIONS, value: pose, onChange: (id) => setPose(id as PoseId) } : undefined}
-            quality={{ options: DETAIL_OPTIONS.map((d) => ({ id: d.id, label: d.label, desc: d.description })), value: detail, onChange: (id) => setDetail(id as DetailId), credits: DETAIL_CREDITS, disabled: !!styleRef }}
-            isAuto={(slot) => slot !== "quality" && auto.isAuto(slot)}
-            tools={
-              <button type="button" onClick={() => setShowAdvanced((v) => !v)} aria-expanded={showAdvanced} aria-controls="generate-more-options"
-                className="flex min-h-10 items-center gap-1 rounded-[7px] px-2.5 text-[12.5px] font-medium text-[#A7ADD4] transition-colors hover:bg-white/[0.05] hover:text-white">
-                More{advancedSet > 0 ? ` · ${advancedSet}` : ""} <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showAdvanced ? "rotate-180" : ""}`} aria-hidden />
-              </button>
-            }
-            extras={
-              <div className="mt-2 space-y-2 empty:hidden">
-                {styleRef && (
-                  <div className="flex items-center gap-2.5 rounded-[10px] border border-[#FFA300]/40 bg-[#FFA300]/[0.06] p-2">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={styleRef.imageUrl} alt="" className="pixel-perfect h-10 w-10 shrink-0 rounded-[6px] bg-[#131A31] object-contain p-0.5" />
-                    <span className="min-w-0 flex-1 text-[12.5px] text-[#FFF1E8]">Matching this sprite&apos;s style <span className="text-[#A7ADD4]">· {STYLE_MATCH_CREDITS} credits per sprite</span></span>
-                    <button type="button" onClick={() => setStyleRef(null)} aria-label="Stop matching this style"
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[7px] text-[#A7ADD4] hover:bg-white/[0.06] hover:text-white"><X className="h-4 w-4" /></button>
-                  </div>
-                )}
-                {promptQuality && promptQuality.level !== "good" && (
-                  <p className={`px-1 text-[12.5px] ${promptQuality.level === "ok" ? "text-amber-200/85" : "text-rose-200/85"}`}>{promptQuality.hint}</p>
-                )}
-                <AutoSettingsBar enabled={auto.enabled} onToggle={auto.setEnabled} changes={auto.changes} onUndo={auto.undo}
-                  labels={{ view: VIEW_OPTIONS, palette: PALETTE_OPTIONS, pose: POSE_OPTIONS }} />
-                {viewConflict && detectedView && detectedViewLabel && (
-                  <button type="button" onClick={() => setView(detectedView)}
-                    className="flex w-full items-start gap-2 rounded-[8px] border border-amber-400/20 bg-amber-400/[0.06] px-3 py-2 text-left text-[12.5px] text-amber-100/90 hover:bg-amber-400/[0.1]">
-                    <Eye className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" aria-hidden />
-                    <span>Your description mentions a <b>{detectedViewLabel}</b> view. Tap to set the view to match.</span>
+  
+            {activeResult && (() => {
+              const gid = activeResult.generationId ? encodeURIComponent(activeResult.generationId) : null;
+              const canTurn = supportsRotation(activeResult.categoryId);
+              return (
+              // Everything you can do next with this sprite, in three groups: move it, change it, take it
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(230px,1fr))] gap-2">
+                <ActionGroup title="Animate it">
+                  {gid && (
+                    <Link href={`/animate?id=${gid}`}
+                      className="btn btn-primary">
+                      <Film className="h-4 w-4" aria-hidden /> Animate · sprite sheet
+                    </Link>
+                  )}
+                  {gid && canTurn && (
+                    <Link href={`/animate?id=${gid}&do=rotate4`} title="The same sprite from the front, sides and back" className={SECONDARY_BTN}>
+                      <Compass className="h-4 w-4" aria-hidden /> Directions
+                    </Link>
+                  )}
+                </ActionGroup>
+                <ActionGroup title="Change it">
+                  {gid && (
+                    <Link href={`/edit?id=${gid}`} title="Change colours, clothes or details by describing them" className={SECONDARY_BTN}>
+                      <Pencil className="h-4 w-4" aria-hidden /> Edit
+                    </Link>
+                  )}
+                  {activeResult.generationId && styleRef?.id !== activeResult.generationId && (
+                    <button type="button" title={`Make new sprites in this exact style (${STYLE_MATCH_CREDITS} credits each)`}
+                      onClick={() => setStyleRef({ id: activeResult.generationId!, imageUrl: activeResult.imageUrl })} className={SECONDARY_BTN}>
+                      <Paintbrush className="h-4 w-4" aria-hidden /> Match style
+                    </button>
+                  )}
+                  {gid && (
+                    <Link href={`/remove-bg?id=${gid}`} title="Clean up the background" className={SECONDARY_BTN}>
+                      <Eraser className="h-4 w-4" aria-hidden /> Remove BG
+                    </Link>
+                  )}
+                  {gid && (
+                    <Link href={`/upscale?id=${gid}`} title="Bigger, sharper copy" className={SECONDARY_BTN}>
+                      <Maximize2 className="h-4 w-4" aria-hidden /> Upscale
+                    </Link>
+                  )}
+                  <IconButton label="Generate again with the same settings" onClick={handleRegenerate} disabled={isGenerating || !isFormValid}>
+                    <RefreshCw className={`h-4 w-4 ${isGenerating ? "animate-spin" : ""}`} />
+                  </IconButton>
+                </ActionGroup>
+                <ActionGroup title="Download">
+                  <button type="button" onClick={isPixelStyle(activeResult.styleId) ? downloadNative : handleDownload}
+                    title={isPixelStyle(activeResult.styleId) ? "Download at the sprite's real pixel size (engine-ready)" : "Download as a 1024px PNG"}
+                    className="btn btn-light">
+                    <Download className="h-4 w-4" aria-hidden /> PNG
                   </button>
-                )}
-                {showAdvanced && (
-                  <div id="generate-more-options" className="grid gap-4 rounded-[10px] border border-white/[0.08] p-3 sm:grid-cols-2">
-                    <Field label={<>Color palette<AutoBadge show={auto.isAuto("palette")} /></>} hint={palette === "auto" ? "Auto lets the style choose the colours." : PALETTE_OPTIONS.find((p) => p.id === palette)?.label}>
-                      <div className={`flex flex-wrap gap-1${autoFlash(auto.isFlashing("palette"))}`}>
-                        {PALETTE_OPTIONS.map((p) => {
-                          const active = p.id === palette;
-                          return p.id === "auto" ? (
-                            <button key={p.id} type="button" onClick={() => setPalette(p.id)} aria-pressed={active}
-                              className={`flex h-10 items-center rounded-[7px] border-2 px-3 text-[12px] font-medium text-[#C8CCE8] ${active ? "border-white bg-white/[0.08]" : "border-transparent bg-white/[0.06] hover:border-white/40"}`}>Auto</button>
-                          ) : (
-                            <button key={p.id} type="button" onClick={() => setPalette(p.id)} title={p.label} aria-label={`${p.label} palette`} aria-pressed={active}
-                              className="group flex h-10 w-10 items-center justify-center rounded-[7px]">
-                              <span aria-hidden className={`block h-7 w-7 rounded-[5px] border-2 ${active ? "border-white" : "border-transparent group-hover:border-white/40"}`} style={{ background: PALETTE_SWATCH[p.id] }} />
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </Field>
-                    <Field label="Seed" labelFor="generate-seed"
-                      hint={seedDriftWarning
-                        ? <span className="text-amber-200/90">Seed is locked but you changed <b>{seedDriftWarning.join(", ")}</b>, so the result will differ.</span>
-                        : "Same seed + same settings = the same sprite. Leave empty for a new one each time."}>
-                      <div className="flex gap-2">
-                        <input id="generate-seed" type="number" inputMode="numeric" min={0} max={2147483647} placeholder="Random" value={seed}
-                          onChange={(e) => { setSeed(e.target.value); seedRef.current = e.target.value; setSeedLocked(false); }}
-                          className="h-10 min-w-0 flex-1 rounded-[8px] border border-white/[0.1] bg-[#131A31] px-3 text-[13px] text-white outline-none placeholder:text-[#8A92BF] focus:border-[#FFA300]" />
-                        {activeResult && (
-                          <button type="button" onClick={handleLockSeed} aria-pressed={seedLocked} aria-label={seedLocked ? "Unlock the seed" : "Reuse the seed of the current sprite"}
-                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] border ${seedLocked ? "border-[#FFA300]/50 bg-[#FFA300]/10 text-[#FFC857]" : "border-white/[0.1] text-[#A7ADD4] hover:text-white"}`}>
-                            {seedLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+                  <div className="relative" ref={sizesRef}>
+                    <button type="button" onClick={() => setSizesOpen((v) => !v)} aria-haspopup="menu" aria-expanded={sizesOpen} className={SECONDARY_BTN}>
+                      Sizes <ChevronDown className={`h-3.5 w-3.5 transition-transform ${sizesOpen ? "rotate-180" : ""}`} aria-hidden />
+                    </button>
+                    {sizesOpen && (
+                      <div role="menu" aria-label="Download sizes" className="absolute bottom-12 right-0 z-20 w-56 rounded-[10px] border border-white/[0.1] bg-[#1B2446] p-1.5 shadow-2xl">
+                        {isPixelStyle(activeResult.styleId) && (
+                          <button type="button" role="menuitem" onClick={() => { setSizesOpen(false); downloadNative(); }}
+                            className="flex min-h-10 w-full items-center justify-between rounded-[7px] px-3 text-[13px] text-white hover:bg-white/[0.06]">
+                            Real pixel size <span className="text-[11.5px] text-[#00E436]">engine-ready</span>
                           </button>
                         )}
+                        {[32, 64, 128, 256, 512, 1024].map((size) => (
+                          <button key={size} type="button" role="menuitem" onClick={() => { setSizesOpen(false); downloadAtSize(size); }}
+                            className="flex min-h-10 w-full items-center rounded-[7px] px-3 font-mono text-[13px] text-[#C8CCE8] hover:bg-white/[0.06] hover:text-white">
+                            {size} × {size} px
+                          </button>
+                        ))}
+                        <button type="button" role="menuitem" onClick={() => { setSizesOpen(false); handleDownloadMetadata(); }}
+                          className="mt-1 flex min-h-10 w-full items-center rounded-[7px] border-t border-white/[0.06] px-3 text-[12.5px] text-[#A7ADD4] hover:bg-white/[0.06] hover:text-white">
+                          Settings file (.json)
+                        </button>
                       </div>
-                    </Field>
-                  </div>
-                )}
-                {status === "error" && errorMessage && <ErrorNote>{errorMessage}</ErrorNote>}
-              </div>
-            }
-          />
-        </div>
-        {/* Stage */}
-        <div ref={canvasRef as React.RefObject<HTMLDivElement>} className="relative mx-4 mt-3 aspect-[4/3] sm:mx-5 lg:aspect-auto lg:min-h-[280px] lg:flex-1">
-          <SpriteStage imageUrl={activeResult?.imageUrl ?? null} pixel={activeResult ? isPixelStyle(activeResult.styleId) : false}
-            compareUrl={compare ? history[selectedIndex + 1]?.imageUrl ?? history[0]?.imageUrl : null}
-            comparePixel={compare ? isPixelStyle((history[selectedIndex + 1] ?? history[0])?.styleId ?? "") : false}
-            scene={scene} dim={isGenerating} alt={activeResult?.prompt ?? ""}>
-            {activeResult && (
-              <div className="pointer-events-none absolute left-2.5 top-2.5 flex flex-wrap gap-1">
-                <Chip>{styleName(activeResult.styleId)}</Chip>
-                <Chip>{activeResult.qualityPreset === "hd" ? "HD" : "Standard"}</Chip>
-                {activeResult.resolvedView && activeResult.resolvedView !== "DEFAULT" && <Chip>{VIEW_LABEL_BY_KEY[activeResult.resolvedView] ?? activeResult.resolvedView} view</Chip>}
-              </div>
-            )}
-            {isGenerating && <GenerateProgress expectedSeconds={DETAIL_SECONDS[detail]} />}
-            {!activeResult && !isGenerating && (
-              <div className="absolute inset-x-0 top-0 flex flex-col items-center gap-3 p-4 pt-[8%] sm:gap-4">
-                <p className="rounded-[8px] bg-[#131A31]/80 px-3 py-1.5 text-center font-display text-[18px] font-semibold text-[#FFF1E8] sm:text-[22px]">What goes on stage first?</p>
-                <div className="grid w-full max-w-[300px] grid-cols-3 gap-2 sm:max-w-md">
-                  {SHOWCASE.slice(0, 6).map((ex) => (
-                    <button key={ex.id} type="button" onClick={() => applyExample(ex)} title={`Use: ${ex.prompt}`} aria-label={`Use example: ${ex.prompt}`}
-                      className="checker checker-sm relative aspect-square overflow-hidden rounded-[8px] border border-white/[0.12] transition-colors hover:border-[#FFA300]">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={ex.imageUrl} alt="" decoding="async" className={`absolute inset-0 h-full w-full object-contain p-2.5 ${isPixelShowcase(ex) ? "pixel-perfect" : ""}`} />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </SpriteStage>
-        </div>
-
-        {/* Under the stage: project review, actions, notes */}
-        <div className="px-4 pb-24 pt-2 sm:px-5 lg:pb-4">
-          {activeResult?.projectStatus && (
-            <div aria-live="polite" className="mb-2 flex flex-wrap items-center gap-2">
-              {activeResult.projectStatus === "accepted" ? (
-                <>
-                  <span className="flex min-h-10 items-center gap-2 rounded-[8px] border border-emerald-400/30 bg-emerald-500/[0.08] px-3 text-[13px] font-medium text-emerald-200">
-                    <Check className="h-4 w-4 shrink-0" aria-hidden /> Added to {activeResult.acceptedFolderName ?? "the project"}
-                  </span>
-                  <button type="button" onClick={() => declineResult(activeResult)} className="h-10 rounded-[8px] px-3 text-[13px] font-medium text-[#A7ADD4] hover:text-white">Undo</button>
-                </>
-              ) : activeResult.projectStatus === "declined" ? (
-                <>
-                  <span className="flex min-h-10 items-center gap-2 rounded-[8px] border border-white/[0.1] px-3 text-[13px] text-[#A7ADD4]">
-                    <X className="h-4 w-4 shrink-0" aria-hidden /> Declined, not added to the project
-                  </span>
-                  <button type="button" onClick={() => acceptResult(activeResult)} className="h-10 rounded-[8px] px-3 text-[13px] font-medium text-[#FFC857] hover:text-white">Accept instead</button>
-                </>
-              ) : (
-                <>
-                  <button type="button" onClick={() => acceptResult(activeResult)} disabled={activeResult.projectStatus === "accepting"}
-                    className="flex h-10 min-w-[120px] items-center justify-center gap-2 rounded-[8px] bg-[#00E436] px-4 text-[13.5px] font-semibold text-[#131A31] transition hover:brightness-110 disabled:opacity-60">
-                    {activeResult.projectStatus === "accepting" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Check className="h-4 w-4" aria-hidden />} Accept
-                  </button>
-                  <button type="button" onClick={() => declineResult(activeResult)} disabled={activeResult.projectStatus === "accepting"}
-                    className="flex h-10 items-center gap-2 rounded-[8px] border border-white/[0.14] px-4 text-[13.5px] font-medium text-[#C8CCE8] hover:text-white disabled:opacity-60">
-                    <X className="h-4 w-4" aria-hidden /> Decline
-                  </button>
-                  {pendingResults.length > 1 && (
-                    <button type="button" onClick={acceptAllPending} className="h-10 rounded-[8px] px-3 text-[13px] font-medium text-[#A7ADD4] hover:text-white">Accept all ({pendingResults.length})</button>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-
-          {activeResult && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <button type="button" onClick={isPixelStyle(activeResult.styleId) ? downloadNative : handleDownload}
-                title={isPixelStyle(activeResult.styleId) ? "Download at the sprite's real pixel size (engine-ready)" : "Download as a 1024px PNG"}
-                className="flex h-10 items-center gap-2 rounded-[8px] bg-[#FFF1E8] px-3.5 text-[13px] font-semibold text-[#131A31] transition hover:bg-white">
-                <Download className="h-4 w-4" aria-hidden /> Download PNG
-              </button>
-              <div className="relative" ref={sizesRef}>
-                <button type="button" onClick={() => setSizesOpen((v) => !v)} aria-haspopup="menu" aria-expanded={sizesOpen} className={SECONDARY_BTN}>
-                  Sizes <ChevronDown className={`h-3.5 w-3.5 transition-transform ${sizesOpen ? "rotate-180" : ""}`} aria-hidden />
-                </button>
-                {sizesOpen && (
-                  <div role="menu" aria-label="Download sizes" className="absolute bottom-12 left-0 z-20 w-56 rounded-[10px] border border-white/[0.1] bg-[#1B2446] p-1.5 shadow-2xl">
-                    {isPixelStyle(activeResult.styleId) && (
-                      <button type="button" role="menuitem" onClick={() => { setSizesOpen(false); downloadNative(); }}
-                        className="flex min-h-10 w-full items-center justify-between rounded-[7px] px-3 text-[13px] text-white hover:bg-white/[0.06]">
-                        Real pixel size <span className="text-[11.5px] text-[#00E436]">engine-ready</span>
-                      </button>
                     )}
-                    {[32, 64, 128, 256, 512, 1024].map((size) => (
-                      <button key={size} type="button" role="menuitem" onClick={() => { setSizesOpen(false); downloadAtSize(size); }}
-                        className="flex min-h-10 w-full items-center rounded-[7px] px-3 font-mono text-[13px] text-[#C8CCE8] hover:bg-white/[0.06] hover:text-white">
-                        {size} × {size} px
-                      </button>
-                    ))}
-                    <button type="button" role="menuitem" onClick={() => { setSizesOpen(false); handleDownloadMetadata(); }}
-                      className="mt-1 flex min-h-10 w-full items-center rounded-[7px] border-t border-white/[0.06] px-3 text-[12.5px] text-[#A7ADD4] hover:bg-white/[0.06] hover:text-white">
-                      Settings file (.json)
-                    </button>
                   </div>
+                  <IconButton label={seedCopied ? "Seed copied" : `Copy seed ${activeResult.seed}`} onClick={handleCopySeed}>
+                    {seedCopied ? <Check className="h-4 w-4 text-[#00E436]" /> : <Copy className="h-4 w-4" />}
+                  </IconButton>
+                </ActionGroup>
+              </div>
+              );
+            })()}
+  
+            {activeResult && ((activeResult.warnings?.length ?? 0) > 0 || activeResult.translatedPrompt) && (
+              <div className="mt-2 space-y-1.5">
+                {activeResult.warnings?.map((w, i) => /use Animate/i.test(w) && activeResult.generationId ? (
+                  // The prompt asked for a sheet: make the next step impossible to miss
+                  <div key={i} className="flex flex-col gap-2 rounded-[10px] border border-[#FFA300]/45 bg-[#FFA300]/[0.08] p-3 sm:flex-row sm:items-center">
+                    <p className="min-w-0 flex-1 text-[13.5px] leading-snug text-[#FFF1E8]">{w}</p>
+                    <Link href={`/animate?id=${encodeURIComponent(activeResult.generationId)}`}
+                      className="btn btn-primary h-11 shrink-0 text-[14px]">
+                      <Film className="h-4 w-4" aria-hidden /> Make the sprite sheet
+                    </Link>
+                  </div>
+                ) : (
+                  <p key={i} className="flex items-start gap-2 rounded-[8px] border border-amber-400/20 bg-amber-400/[0.05] px-3 py-2 text-[12.5px] text-amber-100/90">
+                    <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" aria-hidden /> <span className="flex-1">{w}</span>
+                    {/use Animate/i.test(w) && activeResult.generationId && (
+                      <Link href={`/animate?id=${encodeURIComponent(activeResult.generationId)}`} className="-my-2 inline-flex min-h-9 shrink-0 items-center font-semibold text-[#FFC857] hover:text-white">Animate it</Link>
+                    )}
+                  </p>
+                ))}
+                {activeResult.translatedPrompt && (
+                  <p className="flex items-center gap-2 rounded-[8px] bg-white/[0.04] py-1 pl-3 pr-1 text-[12.5px] text-[#A7ADD4]">
+                    <span className="font-semibold text-[#C8CCE8]" title="Translated to English">EN</span>
+                    <span className="min-w-0 flex-1 truncate" title={activeResult.translatedPrompt}>{activeResult.translatedPrompt}</span>
+                    <button type="button" onClick={() => activeResult.translatedPrompt && setPrompt(activeResult.translatedPrompt)} title="Put the English version in the prompt box"
+                      className="min-h-10 shrink-0 rounded-[7px] px-3 font-semibold text-[#FFC857] hover:bg-white/[0.04] hover:text-white">Use</button>
+                  </p>
                 )}
               </div>
-              {activeResult.generationId && (
-                <Link href={`/animate?id=${encodeURIComponent(activeResult.generationId)}`}
-                  className="flex h-10 items-center gap-1.5 rounded-[8px] border border-[#FFA300]/50 bg-[#FFA300]/10 px-3 text-[13px] font-semibold text-[#FFC857] transition hover:bg-[#FFA300]/20">
-                  <Film className="h-4 w-4" aria-hidden /> Animate
-                </Link>
-              )}
-              {activeResult.generationId && styleRef?.id !== activeResult.generationId && (
-                <button type="button" title={`Make new sprites in this exact style (${STYLE_MATCH_CREDITS} credits each)`}
-                  onClick={() => setStyleRef({ id: activeResult.generationId!, imageUrl: activeResult.imageUrl })} className={SECONDARY_BTN}>
-                  <Paintbrush className="h-4 w-4" aria-hidden /> Match style
-                </button>
-              )}
-              <IconButton label="Generate again with the same settings" onClick={handleRegenerate} disabled={isGenerating || !isFormValid}>
-                <RefreshCw className={`h-4 w-4 ${isGenerating ? "animate-spin" : ""}`} />
-              </IconButton>
-              <IconButton label={seedCopied ? "Seed copied" : `Copy seed ${activeResult.seed}`} onClick={handleCopySeed}>
-                {seedCopied ? <Check className="h-4 w-4 text-[#00E436]" /> : <Copy className="h-4 w-4" />}
-              </IconButton>
-            </div>
-          )}
-
-          {activeResult && ((activeResult.warnings?.length ?? 0) > 0 || activeResult.translatedPrompt) && (
-            <div className="mt-2 space-y-1.5">
-              {activeResult.warnings?.map((w, i) => (
-                <p key={i} className="flex items-start gap-2 rounded-[8px] border border-amber-400/20 bg-amber-400/[0.05] px-3 py-2 text-[12.5px] text-amber-100/90">
-                  <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" aria-hidden /> <span className="flex-1">{w}</span>
-                  {/use Animate/i.test(w) && activeResult.generationId && (
-                    <Link href={`/animate?id=${encodeURIComponent(activeResult.generationId)}`} className="-my-2 inline-flex min-h-9 shrink-0 items-center font-semibold text-[#FFC857] hover:text-white">Animate it</Link>
-                  )}
-                </p>
-              ))}
-              {activeResult.translatedPrompt && (
-                <p className="flex items-center gap-2 rounded-[8px] bg-white/[0.04] py-1 pl-3 pr-1 text-[12.5px] text-[#A7ADD4]">
-                  <span className="font-semibold text-[#C8CCE8]" title="Translated to English">EN</span>
-                  <span className="min-w-0 flex-1 truncate" title={activeResult.translatedPrompt}>{activeResult.translatedPrompt}</span>
-                  <button type="button" onClick={() => activeResult.translatedPrompt && setPrompt(activeResult.translatedPrompt)} title="Put the English version in the prompt box"
-                    className="min-h-10 shrink-0 rounded-[7px] px-3 font-semibold text-[#FFC857] hover:bg-white/[0.04] hover:text-white">Use</button>
-                </p>
-              )}
-            </div>
-          )}
-
-          {history.length > 0 && (
-            <div role="group" aria-label="This session" className="mt-2 flex gap-1.5 overflow-x-auto pb-1 xl:hidden">
-              {history.map((item, index) => (
-                <HistoryThumb key={item.id} item={item} active={selectedIndex === index} pixel={isPixelStyle(item.styleId)}
-                  onClick={() => setSelectedIndex(index)} className="h-14 w-14 shrink-0" />
-              ))}
-            </div>
-          )}
+            )}
+  
+            {history.length > 0 && (
+              <div role="group" aria-label="This session" className="mt-2 flex gap-1.5 overflow-x-auto pb-1 xl:hidden">
+                {history.map((item, index) => (
+                  <HistoryThumb key={item.id} item={item} active={selectedIndex === index} pixel={isPixelStyle(item.styleId)}
+                    onClick={() => setSelectedIndex(index)} className="h-14 w-14 shrink-0" />
+                ))}
+              </div>
+            )}
+          </div>
+  
+          </div>
         </div>
-
       </section>
 
       {/* ═══ RIGHT — inventory (column from xl, bottom sheet below) ═══ */}
@@ -1191,10 +1309,7 @@ function HistoryThumb({ item, active, pixel, onClick, className }: {
   const reviewState = item.projectStatus === "accepted" ? " (accepted)" : item.projectStatus === "pending" ? " (awaiting review)" : item.projectStatus === "declined" ? " (declined)" : "";
   return (
     <button type="button" onClick={onClick} title={item.prompt} aria-label={`${item.prompt}${reviewState}`} aria-pressed={active}
-      className={`relative overflow-hidden rounded-xl border bg-[#212B4E] transition-all ${
-        active ? "border-[#FFA300] ring-2 ring-[#FFA300]/25" : "border-white/[0.06] opacity-70 hover:opacity-100"
-      } ${className ?? ""}`}
-      style={{ backgroundImage: "repeating-conic-gradient(#ffffff08 0% 25%, transparent 0% 50%)", backgroundSize: "10px 10px" }}>
+      className={`checker checker-sm sl-thumb relative overflow-hidden ${active ? "" : "opacity-80 hover:opacity-100"} ${className ?? ""}`}>
       <Image src={item.imageUrl} alt="" fill unoptimized loading="lazy" sizes="120px" className={`object-contain p-1.5 ${pixel ? "pixel-perfect" : ""} ${item.projectStatus === "declined" ? "opacity-30" : ""}`} />
       {item.projectStatus === "accepted" && (
         <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-400" aria-hidden>
@@ -1233,3 +1348,13 @@ const SURPRISE_PROMPTS: Record<string, string[]> = {
   CREATURES: ["green slime with big eyes", "fire-breathing baby dragon", "skeleton warrior with a rusty sword", "giant spider with glowing eyes"],
   DEFAULT: ["treasure chest overflowing with gold", "magic crystal on a stone pedestal", "wooden signpost with two arrows", "glowing campfire with logs"],
 };
+
+/** One labelled cluster of next-step actions under the stage. */
+function ActionGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section aria-label={title} className="sl-panel min-w-0 p-2.5">
+      <h3 className="sl-label px-0.5 pb-2">{title}</h3>
+      <div className="flex flex-wrap items-center gap-1.5">{children}</div>
+    </section>
+  );
+}

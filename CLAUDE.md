@@ -24,7 +24,18 @@ Image models via Runware (FLUX.2 klein, GPT Image Mini, Nano Banana); Claude for
 
 ## UI / design
 - Dark indigo UI, surfaces `#131A31` (page) / `#19223F` (cards) / `#212B4E` (inputs, raised), accent `#FFA300` (hover `#FFB733`) with dark ink `#131A31` on orange, extras `#00E436` / `#29ADFF`; text `#FFF1E8` / `#C8CCE8` / `#A7ADD4`. Fonts: Tektur (display), Atkinson Hyperlegible Next (body + labels; `font-mono` maps to it), JetBrains Mono only for code (`.font-code`). Real sprites sit on the `.checker` transparency checkerboard. **Never a pixel font.**
-- It must not look AI-generated: no generic gradient hero blobs, no emoji bullets, no "Unlock the power of…" copy, no `// label` eyebrows, tracked all-caps labels, accent-coloured headline words or gradient buttons. Real product output (sprites, GIFs, sheets) is the decoration.
+- It must not look AI-generated: no generic gradient hero blobs, no emoji bullets, no "Unlock the power of…" copy, no `// label` eyebrows, tracked all-caps labels or accent-coloured headline words. The only gradient button is the primary one below. Real product output (sprites, GIFs, sheets) is the decoration.
+
+### Workstation design system (app + tools)
+The deployed CSS in `src/app/globals.css` (`@layer components`, "Workstation design system") is the source of truth for colours, gradients, shadows, radii and transitions. Reuse its classes and the shared components in `src/components/tools/ToolWorkspace.tsx` (`SECONDARY_BTN`, `IconButton`, `PrimaryButton`, `ToolTabs`); don't hand-roll button styles, duplicate these rules or add competing global classes (an old unlayered `.btn-primary` once overrode the system and was removed — never bring such styles back).
+- Buttons are `btn` + one variant, chosen by purpose:
+  - `btn-primary`: the main action only (Create sprite, the main Animate). Vertical orange→amber gradient, dark ink `#131A31`, soft orange glow, hover lift, pressed state. Never on secondary actions.
+  - `btn-secondary`: everything else (Edit, Match style, Remove BG, Upscale, Directions, Compare…). Layered navy, subtle border, orange edge on hover.
+  - `btn-light` (download), `btn-ghost` (low-key text actions like Surprise me / More), `btn-icon` (with `btn-secondary`, always with `aria-label`/title), `btn-danger` (destructive). No new variants without a functional reason.
+- Current state: orange edge + soft glow, one language everywhere — `aria-pressed` / `aria-current` / `.is-active` on `btn-secondary`; tabs, scenes and filters in a `sl-track` with `sl-seg` (`sl-seg-solid` for filled ones); open setting slots `sl-select[aria-expanded]`; selected assets `sl-thumb[aria-current]`. Selected artwork stays fully visible.
+- Surfaces, three levels: page `#131A31` → `sl-panel` (layered navy, blue border, top-edge highlight, soft shadow; `sl-card` for nested groups) → `sl-inset` for inputs (recessed, orange focus ring).
+- Motion: short transitions of transform/colour/shadow only; no pulsing glows, large moving gradients or heavy blur; reduced motion stays honoured (global rule); keyboard focus visible; disabled states readable.
+- Visual polish tasks don't change layout, behaviour, API, pricing or credits unless that task says so.
 - Mobile first: works at 390px, 16px side gutter, no horizontal scroll, tap targets ≥40px. The bottom nav must keep Admin/Mod for staff.
 - Check the rendered result (playwright-cli or headless Chrome, desktop 1280 + mobile 390) before saying a visual change is done. Charts follow the dataviz skill (validated palette, one axis, legend + table view).
 

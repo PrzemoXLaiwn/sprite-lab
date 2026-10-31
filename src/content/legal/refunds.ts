@@ -10,6 +10,8 @@
 //       the checkbox is on the checkout page today.
 // TODO: Optional more generous rule (full refund within 14 days if no more than
 //       10% of credits were used). Not adopted.
+// TODO: "Manage subscription" under Settings → Billing is not in the UI. Cancel
+//       by emailing support@sprite-lab.com. The portal API exists but is unwired.
 // TODO: Reply time for unrecognised charges. The draft suggested 5 working days.
 //       The page says we will look into it.
 // The model cancellation form keeps [plan], [date], [email] and [name] as blanks
@@ -20,7 +22,7 @@
 export const REFUNDS_MARKDOWN = `
 # Refund and Cancellation Policy
 
-Last updated: 30 October 2026
+Last updated: 17 October 2026
 
 This policy is part of our [Terms of Service](/terms). It is provided by **Przemek Lawin** trading as SpriteLab, 69 Haybridge Avenue, Telford, TF1 5JT, United Kingdom, [support@sprite-lab.com](mailto:support@sprite-lab.com).
 
@@ -29,9 +31,9 @@ The subscription-contract rules in the Digital Markets, Competition and Consumer
 ## 1. Cancelling your subscription at any time
 
 - You can cancel a Starter (£5/month), Pro (£12/month) or Studio (£25/month) subscription **at any time**.
-- **How:** open Settings → Plan & billing and choose **Cancel subscription**. You can do this online, on a phone or a computer. You do not have to call us or wait for a reply. You can also email **[support@sprite-lab.com](mailto:support@sprite-lab.com)** with the subject "Cancel" from your account email, or use any other clear statement that you want to cancel. You do not have to explain why. The online form asks you to pick a category (Other is enough); the note is optional.
-- The billing page shows the date your plan ends. If you cancel by email, we reply to confirm that date. After cancelling, you keep your plan and remaining monthly credits **until the end of the current billing period**. You will not be charged again. You can resume from the same page until that date. Unused subscription credits are not refunded after the 14-day cancellation period (see section 2) unless the law requires it.
-- Cancelling online stops the next renewal. It does not by itself refund the current period.
+- **How:** email **[support@sprite-lab.com](mailto:support@sprite-lab.com)** with the subject "Cancel" from your account email address, or use any other clear statement that you want to cancel. You do not have to give a reason.
+- We will send you an email confirming the cancellation and the date your plan ends.
+- After cancelling, you keep your plan and remaining monthly credits **until the end of the current billing period**. You will not be charged again. Unused subscription credits are not refunded after the 14-day cancellation period (see section 2) unless the law requires it.
 
 ## 2. Your 14-day right to cancel (cooling-off period)
 

@@ -41,10 +41,38 @@ export function isItemMotion(kind: string | null | undefined): kind is ItemMotio
   return kind === "swing" || kind === "thrust" || kind === "spin" || kind === "shine" || kind === "pulse";
 }
 
-/** Motions that are better as a rig than as redrawn frames. */
-export function rigMotionFor(id: string, label?: string, categoryId?: string | null): RigMotionKind | null {
+// Someone who draws "a knight with a zweihander" under Weapons gets a figure,
+// not a blade: swinging that as one rigid piece tips the whole knight over
+// (3 of 5 sword swings in Oct 2026 were characters). Prompts naming a person
+// or creature take the AI path instead. ASCII  misses accented letters,
+// so the words are matched between non-letters.
+const LIVING_SUBJECT = new RegExp(
+  "(?<!\\p{L})(?:" + [
+    "character", "hero", "heroine", "warrior", "knight", "assassin", "soldier", "guard", "fighter", "paladin", "rogue", "ranger", "archer",
+    "wizard", "witch", "mage", "sorcer\\p{L}*", "necromancer", "priest", "cleric", "druid", "monk", "ninja", "samurai", "pirate", "viking", "barbarian",
+    "man", "woman", "girl", "boy", "guy", "lady", "person", "people", "player", "npc", "villain", "boss", "enemy", "enemies", "adventurer",
+    "monster", "creature", "beast", "dragon", "goblin", "orc", "elf", "dwarf", "troll", "ogre", "demon", "zombie", "skeleton", "ghost", "golem", "slime",
+    "robot", "mech", "android", "cyborg", "alien", "wielding", "holding", "swinging", "riding",
+    // Polish / Portuguese / Spanish / German / French / Italian (stems, so endings vary)
+    "rycerz\\p{L}*", "wojownik\\p{L}*", "posta[cć]\\p{L}*", "bohater\\p{L}*", "kobiet\\p{L}*", "m[eę][zż]czyzn\\p{L}*", "dziewczyn\\p{L}*", "ch[lł]opak\\p{L}*", "czarodziej\\p{L}*", "czarownic\\p{L}*", "[lł]ucznik\\p{L}*", "zab[oó]jc\\p{L}*", "[zż]o[lł]nierz\\p{L}*", "potw[oó]r\\p{L}*", "stw[oó]r\\p{L}*", "smok\\p{L}*",
+    "cavaleir\\p{L}*", "caballer\\p{L}*", "guerreir\\p{L}*", "guerrer\\p{L}*", "personagem", "personaje", "her[oó][ie]\\p{L}*", "assassin\\p{L}*", "soldad\\p{L}*", "mag[oa]", "monstr\\p{L}*", "homem", "mulher", "hombre", "mujer",
+    "ritter", "krieger\\p{L}*", "charakter", "held", "heldin", "k[aä]mpfer\\p{L}*", "zauberer", "chevalier", "guerrier\\p{L}*", "personnage", "sorci[eè]re?", "cavaliere", "guerriero", "personaggio",
+  ].join("|") + ")(?!\\p{L})",
+  "iu",
+);
+
+/** True when the sprite's prompt describes a person or creature rather than an object. */
+export function describesLivingSubject(prompt: string | null | undefined): boolean {
+  return !!prompt && LIVING_SUBJECT.test(prompt);
+}
+
+/**
+ * Motions that are better as a rig than as redrawn frames. `prompt` is the
+ * sprite's own prompt: a character filed under Weapons is still a character.
+ */
+export function rigMotionFor(id: string, label?: string, categoryId?: string | null, prompt?: string | null): RigMotionKind | null {
   const text = `${id} ${label ?? ""}`.toLowerCase();
-  if (RIGID_CATEGORIES.includes((categoryId ?? "").toUpperCase())) {
+  if (RIGID_CATEGORIES.includes((categoryId ?? "").toUpperCase()) && !describesLivingSubject(prompt)) {
     // Image models redraw a "swinging" sword in place and add a white arc;
     // rotating the real drawing around its grip is what a game animator does
     if (/\b(swing|slash|strike|chop|cleave|hack|attack|smash)/.test(text)) return "swing";
@@ -66,8 +94,11 @@ export function rigMotionFor(id: string, label?: string, categoryId?: string | n
  * 2048 (8) grid — priced like the matching animation.
  */
 export const ROTATIONS = [
-  { id: "rotate4", kind: "views" as const, label: "4 directions", directions: 4 as const, frames: 4, cols: 2, rows: 2, size: 1024 as const, credits: 6, hint: "front · right · back · left" },
-  { id: "rotate8", kind: "views" as const, label: "8 directions", directions: 8 as const, frames: 8, cols: 3, rows: 3, size: 2048 as const, credits: 10, hint: "every 45° — isometric & top-down" },
+  // One row of views: asked for a 2×2 page, the model drew turnaround sheets of
+  // 8 figures (two per direction, mirrored copies) and the first four were
+  // shipped as "front, right, back, left" (measured Oct 2026: 3 of 5 pages)
+  { id: "rotate4", kind: "views" as const, label: "4 directions", directions: 4 as const, frames: 4, cols: 4, rows: 1, size: 1024 as const, credits: 6, hint: "front · right · back · left" },
+  { id: "rotate8", kind: "views" as const, label: "8 directions", directions: 8 as const, frames: 8, cols: 4, rows: 2, size: 2048 as const, credits: 10, hint: "every 45° — isometric & top-down" },
   { id: "walk4dir", kind: "walk" as const, label: "4-direction walk", directions: 4 as const, frames: 16, cols: 4, rows: 3, size: 2048 as const, credits: 12, hint: "RPG sheet: 4 rows × 4 steps" },
 ];
 export type RotationOption = (typeof ROTATIONS)[number];
@@ -131,6 +162,7 @@ export function buildWalkRowPrompt(opts: { pixel: boolean; subject: string; view
     `Using the reference image, draw 4 frames of EXACTLY this same ${style} character (${opts.subject.slice(0, 200)}) walking in place, ${facing}.`,
     "Identical design, colors, proportions, outline, size and art style in every frame. Held items stay in the same hand.",
     "The four poses must be clearly different from each other — the legs must visibly move:",
+    "If a robe, dress, coat or cloak covers the legs, each foot still clearly steps out from under the hem in turn, the hem swings to the side of the leading foot and the body bobs up and down.",
     ...poses,
     "Layout: 2 rows of 2 figures on one blank white page, in reading order, evenly spaced with wide empty white space so no two figures touch; every figure is the same height and stands on the same invisible ground level.",
     "Plain flat solid pure white background, like a blank sheet of paper. Do not draw any lines on the background: no grid, no guide lines, no boxes, no arrows, no labels or text of any kind, no ground, no shadows, no motion blur.",
@@ -144,8 +176,11 @@ export function buildRotationPrompt(opts: { directions: 4 | 8; cols: number; row
   return [
     `Using the reference image, draw a ${opts.directions}-direction rotation sheet of EXACTLY this same ${style} sprite (${opts.subject.slice(0, 200)}) for a top-down / isometric game.`,
     "Identical design, colors, proportions, outline, size and art style in every view. Standing in the same neutral pose — only the viewing direction changes. Held items stay in the same hand.",
-    `Layout: ${opts.rows} rows of ${opts.cols} views on one blank white page, in reading order (left to right, then top to bottom), evenly spaced with wide empty white space so no two views touch. Every view is the same height and stands on the same invisible ground level.`,
+    opts.rows === 1
+      ? `Layout: ONE row of exactly ${names.length} views on one blank white page, side by side from left to right. Each figure is small and narrow — no wider than one sixth of the page — with a clear white gap wider than a figure between neighbours, so no two views ever touch or overlap. Every view is the same height and stands on the same invisible ground level.`
+      : `Layout: ${opts.rows} rows of ${opts.cols} views on one blank white page, in reading order (left to right, then top to bottom), evenly spaced with wide empty white space so no two views touch. Every view is the same height and stands on the same invisible ground level.`,
     ...names.map((n, i) => `View ${i + 1}: ${n}.`),
+    `Exactly ${names.length} figures on the page, each direction drawn once. Never draw a direction twice, never add mirrored copies, and no angles other than the ${names.length} listed.`,
     empty > 0 ? `Leave the last ${empty === 1 ? "place" : empty + " places"} empty.` : "",
     "Plain flat solid pure white background, like a blank sheet of paper. Do not draw any lines on the background: no grid, no guide lines, no boxes, no arrows, no labels or text of any kind, no ground, no shadows.",
   ].filter(Boolean).join("\n");

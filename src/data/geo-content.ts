@@ -27,7 +27,7 @@ export const QUESTS_FAQ: Faq = {
 
 export const RETURNING_BONUS_FAQ: Faq = {
   q: "I got an email about 15 bonus credits. Is that different?",
-  a: `That email was the welcome-back offer for accounts created before 7 October 2026. Those accounts now get ${RELAUNCH.RETURNING_BONUS} credits the first time they open the app before 31 December 2026. If you already received ${RELAUNCH.PREVIOUS_RETURNING_BONUS}, the next visit adds ${RELAUNCH.RETURNING_TOP_UP}, so the welcome-back total is ${RELAUNCH.RETURNING_BONUS}. New accounts get ${SIGNUP_CREDITS} free credits on signup.`,
+  a: `That email was the welcome-back offer for accounts created before 7 October 2026. Those accounts now get ${RELAUNCH.RETURNING_BONUS} credits the first time they open the app before 31 December 2026. New accounts get ${SIGNUP_CREDITS} free credits on signup.`,
 };
 
 const COST_ANSWER = `Sign up and you get ${SIGNUP_CREDITS} free credits, no credit card needed. A Standard sprite costs ${STANDARD_CREDITS} credit and HD costs ${HD_CREDITS}. A rigged idle loop costs ${RIG_CREDITS} credits. AI animations cost ${animationPrices} credits, and smooth mode (on by default) brings those to ${smoothPrices}. Direction sheets cost ${directionPrices} credits. Monthly plans start at £5 for 250 credits, and one-off credit packs never expire.`;
@@ -43,7 +43,7 @@ export const HOME_FAQ: Faq[] = [
   },
   {
     q: "What is SpriteLab?",
-    a: "SpriteLab is an AI game asset generator for indie game developers. You describe an asset in a sentence and get a game-ready 2D sprite — a transparent PNG, with pixel art snapped to a real pixel grid — that you can animate into a sprite sheet and drop into Unity, Godot or GameMaker.",
+    a: "SpriteLab is an AI 2D game asset creator for game developers. You describe a character, creature, item, icon or tile and get a game-ready transparent PNG in one of 12 styles, from pixel art to hand-painted and realistic. You can then animate it into a sprite sheet, turn it to face 4 or 8 directions, edit it by describing a change, or upload your own sprite and do the same, and export it for Unity, Godot or GameMaker.",
   },
   {
     q: "Is SpriteLab related to Code.org's Sprite Lab?",

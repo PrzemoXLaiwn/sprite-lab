@@ -44,10 +44,11 @@ const WIDE_QUERY = "(min-width: 1280px)";
 const isPixel = (styleId?: string | null) => !!styleId && styleId.toUpperCase().includes("PIXEL");
 
 /** Inventory slot frames: the kind of item reads at a glance, like item rarity in an RPG. */
+/** Frame colour by kind (sprites use the default .sl-thumb frame). */
 const SLOT_FRAME: Record<string, string> = {
-  sprite: "border-[#3A4673]",
-  animation: "border-[#00E436]/70",
-  edit: "border-[#29ADFF]/70",
+  sprite: "",
+  animation: "border-[#00E436]/60",
+  edit: "border-[#29ADFF]/60",
 };
 
 const EMPTY_TEXT: Record<HistoryFilterId, string> = {
@@ -71,7 +72,7 @@ const PANEL_TITLE: Record<WorkspaceTool, string> = {
 export function HistoryButton({ onClick, className }: { onClick: () => void; className?: string }) {
   return (
     <button type="button" onClick={onClick} aria-haspopup="dialog"
-      className={`flex h-10 shrink-0 items-center gap-1.5 rounded-[8px] border border-white/[0.1] px-3 text-[13px] font-medium text-[#C8CCE8] transition hover:bg-white/[0.06] hover:text-white xl:hidden ${className ?? ""}`}>
+      className={`btn btn-secondary shrink-0 xl:hidden ${className ?? ""}`}>
       <History className="h-4 w-4" aria-hidden /> Inventory
     </button>
   );
@@ -217,9 +218,7 @@ function HistoryTile({ item, active, onSelect }: { item: HistoryItem; active: bo
       aria-label={`Open ${badge ? `${badge.toLowerCase()} ` : ""}“${title}”`} aria-current={active || undefined}
       onPointerEnter={() => setHover(true)} onPointerLeave={() => setHover(false)}
       onFocus={() => setHover(true)} onBlur={() => setHover(false)}
-      className={`checker checker-sm group relative aspect-square w-full overflow-hidden rounded-[6px] border-2 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.35)] transition-colors ${
-        active ? "border-[#FFA300]" : `${SLOT_FRAME[kind] ?? SLOT_FRAME.sprite} hover:border-[#FFA300]/70`
-      }`}>
+      className={`checker checker-sm sl-thumb group relative aspect-square w-full overflow-hidden ${active ? "" : SLOT_FRAME[kind] ?? ""}`}>
       {kind === "animation" ? (
         <AnimationThumb item={item} playing={hover} />
       ) : (
@@ -264,11 +263,11 @@ function PanelBody({ tool, filter, setFilter, query, setQuery, data, activeIds, 
     <>
       <div className="space-y-2 px-4 pb-3">
         <label htmlFor={searchId} className="sr-only">Search my generations</label>
-        <div className="flex h-10 items-center gap-2 rounded-[8px] border border-white/[0.1] bg-[#131A31] px-3 focus-within:border-[#FFA300]">
+        <div className="sl-inset flex h-10 items-center gap-2 px-3">
           <Search className="h-4 w-4 shrink-0 text-[#8A92BF]" aria-hidden />
           <input id={searchId} type="text" role="searchbox" enterKeyHint="search" value={query} onChange={(e) => setQuery(e.target.value)} maxLength={80}
             placeholder="Search your sprites" autoComplete="off"
-            className="min-w-0 flex-1 bg-transparent text-[13px] text-white outline-none placeholder:text-[#8A92BF]" />
+            className="min-w-0 flex-1 bg-transparent text-[13px] text-white outline-none placeholder:text-[#8F96C4] focus-visible:outline-none" />
           {query && (
             <button type="button" onClick={() => setQuery("")} aria-label="Clear search"
               className="-mr-2 flex h-9 w-9 items-center justify-center rounded-lg text-[#9AA1CC] hover:text-white">
@@ -277,12 +276,10 @@ function PanelBody({ tool, filter, setFilter, query, setQuery, data, activeIds, 
           )}
         </div>
         {filters.length > 1 && (
-          <div role="group" aria-label="Type" className="flex gap-1 rounded-[8px] border border-white/[0.08] p-0.5">
+          <div role="group" aria-label="Type" className="sl-track">
             {filters.map((f) => (
               <button key={f.id} type="button" onClick={() => setFilter(f.id)} aria-pressed={filter === f.id}
-                className={`min-h-9 flex-1 rounded-[6px] px-2 text-[12.5px] font-medium transition-colors ${
-                  filter === f.id ? "bg-[#FFA300] text-[#131A31]" : "text-[#C8CCE8] hover:text-white"
-                }`}>
+                className="sl-seg sl-seg-solid flex-1">
                 {f.label}
               </button>
             ))}
@@ -293,7 +290,7 @@ function PanelBody({ tool, filter, setFilter, query, setQuery, data, activeIds, 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4" aria-busy={state === "loading" || undefined}>
         {state === "loading" && items.length === 0 ? (
           <div className={`grid gap-2 ${columns === "three" ? "grid-cols-3" : "grid-cols-2"}`} aria-label="Loading your generations">
-            {Array.from({ length: 6 }, (_, i) => <div key={i} className="aspect-square animate-pulse rounded-[6px] border-2 border-[#263260] bg-white/[0.03]" />)}
+            {Array.from({ length: 6 }, (_, i) => <div key={i} className="sl-thumb aspect-square animate-pulse bg-white/[0.03]" />)}
           </div>
         ) : state === "signed-out" ? (
           <p className="py-6 text-center text-[12.5px] text-[#9AA1CC]">Sign in to see your generations.</p>
@@ -301,7 +298,7 @@ function PanelBody({ tool, filter, setFilter, query, setQuery, data, activeIds, 
           <div className="flex flex-col items-center gap-2 py-6 text-center">
             <p className="text-[12.5px] text-[#9AA1CC]">Couldn&apos;t load your history.</p>
             <button type="button" onClick={reload}
-              className="flex h-10 items-center rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 text-[13px] font-medium text-[#C8CCE8] hover:text-white">
+              className="btn btn-secondary">
               Try again
             </button>
           </div>
@@ -318,7 +315,7 @@ function PanelBody({ tool, filter, setFilter, query, setQuery, data, activeIds, 
             </div>
             {items.length < total && (
               <button type="button" onClick={loadMore} disabled={loadingMore}
-                className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] text-[13px] font-medium text-[#C8CCE8] hover:text-white disabled:opacity-60">
+                className="btn btn-secondary mt-3 w-full">
                 {loadingMore && <Loader2 className="h-4 w-4 animate-spin" />} Load more
               </button>
             )}
@@ -377,7 +374,7 @@ export function HistoryPanel({ tool, activeIds = [], open, onOpenChange, onSelec
 
   return (
     <>
-      <aside aria-label={title} className="hidden w-[288px] shrink-0 flex-col border-l border-white/[0.06] bg-[#19223F] xl:flex xl:min-h-0">
+      <aside aria-label={title} className="hidden w-[288px] shrink-0 flex-col border-l border-[rgba(124,140,214,0.16)] bg-[linear-gradient(180deg,#1A2344_0%,#161E3B_100%)] shadow-[inset_1px_0_0_rgba(255,255,255,0.03),-12px_0_30px_-24px_rgba(4,7,20,0.9)] xl:flex xl:min-h-0">
         <div className="flex items-center justify-between px-4 pb-3 pt-5">
           <p className="font-display text-[17px] font-semibold text-[#FFF1E8]">{title}</p>
           <Link href="/assets" className="inline-flex min-h-10 items-center text-[12.5px] text-[#A7ADD4] underline-offset-2 hover:text-white hover:underline">All assets</Link>

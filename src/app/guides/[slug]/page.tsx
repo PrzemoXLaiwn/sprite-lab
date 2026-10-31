@@ -12,20 +12,14 @@ const SITE = "https://www.sprite-lab.com";
 
 const ALL_TOOLS: { label: string; href: string }[] = [
   { label: "AI sprite generator", href: "/ai-sprite-generator" },
-  { label: "Sprite sheet generator", href: "/sprite-sheet-generator" },
   { label: "AI sprite animation generator", href: "/ai-sprite-animation-generator" },
   { label: "Pixel art generator", href: "/pixel-art-generator" },
   { label: "AI tileset generator", href: "/ai-tileset-generator" },
   { label: "AI game icon generator", href: "/ai-game-icon-generator" },
-  { label: "2D game asset generator", href: "/2d-game-asset-generator" },
-  { label: "Game character generator", href: "/game-character-generator" },
-  { label: "Top-down sprite generator", href: "/top-down-sprite-generator" },
   { label: "Sprites for Unity", href: "/unity-sprite-generator" },
   { label: "Sprites for Godot", href: "/godot-sprite-generator" },
-  { label: "Sprites for GameMaker", href: "/gamemaker-sprite-generator" },
   { label: "RPG character creator", href: "/rpg-character-creator" },
   { label: "Game weapon generator", href: "/game-weapon-generator" },
-  { label: "Pricing", href: "/pricing" },
 ];
 
 const AUTHOR = { name: "SpriteLab team", href: "/about" };

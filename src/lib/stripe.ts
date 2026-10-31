@@ -235,13 +235,25 @@ export function getPlanByName(planName: string): typeof PLANS[PlanName] | null {
 /**
  * Get plan name by Stripe price ID
  */
+/**
+ * Plan price IDs from before the switch to GBP prices (22 October 2026).
+ * Subscriptions taken out on them keep renewing on them, so every lookup by
+ * price ID has to recognise both sets. Not secrets: price IDs are public.
+ */
+export const LEGACY_PLAN_PRICE_IDS: Record<string, PlanName> = {
+  price_1Se4yK9iyMYBcHNbbNFTQtaJ: "STARTER", // $5
+  price_1Se4zo9iyMYBcHNboxldbwa2: "PRO", // $12
+  price_1Se4zu9iyMYBcHNbM4mr5e9v: "UNLIMITED", // $25, shown as Studio
+};
+
+/** The plan a Stripe price belongs to: the current price from the env, or a legacy one. */
 export function getPlanByPriceId(priceId: string): PlanName | null {
   for (const [planName, plan] of Object.entries(PLANS)) {
-    if (plan.priceId === priceId) {
+    if (plan.priceId && plan.priceId === priceId) {
       return planName as PlanName;
     }
   }
-  return null;
+  return LEGACY_PLAN_PRICE_IDS[priceId] ?? null;
 }
 
 /**
@@ -380,22 +392,46 @@ export async function createCreditPackCheckoutSession(
 /**
  * Create customer portal session
  */
-/**
- * Customer portal for payment method and invoices only.
- * `configurationId` must be a portal configuration with subscription
- * cancellation and plan changes disabled. The retention flow is the only
- * cancel path — do not open the portal without that configuration.
- */
 export async function createPortalSession(
   customerId: string,
-  returnUrl: string,
-  configurationId: string
+  returnUrl: string
 ): Promise<Stripe.BillingPortal.Session> {
   const session = await stripe.billingPortal.sessions.create({
     customer: customerId,
     return_url: returnUrl,
-    configuration: configurationId,
   });
 
   return session;
+}
+
+/**
+ * Cancel subscription
+ */
+export async function cancelSubscription(
+  subscriptionId: string
+): Promise<Stripe.Subscription> {
+  const subscription = await stripe.subscriptions.cancel(subscriptionId);
+  return subscription;
+}
+
+/**
+ * Update subscription
+ */
+export async function updateSubscription(
+  subscriptionId: string,
+  newPriceId: string
+): Promise<Stripe.Subscription> {
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+
+  const updatedSubscription = await stripe.subscriptions.update(subscriptionId, {
+    items: [
+      {
+        id: subscription.items.data[0].id,
+        price: newPriceId,
+      },
+    ],
+    proration_behavior: "create_prorations",
+  });
+
+  return updatedSubscription;
 }

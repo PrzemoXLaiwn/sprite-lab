@@ -16,8 +16,6 @@
 // =============================================================================
 
 import { prisma } from "@/lib/prisma";
-import { cancelReasonLabel } from "@/config/retention";
-import { planDisplayName } from "@/lib/billing/retention";
 
 export type UserRole = "USER" | "SUPPORT" | "MODERATOR" | "ADMIN" | "OWNER";
 
@@ -154,89 +152,6 @@ export async function getAdminStats(adminId: string) {
   }
 }
 
-export interface CancellationReport {
-  totals: { cancelled: number; retained: number; inProgress: number };
-  byReason: Array<{ reason: string | null; label: string; count: number }>;
-  recent: Array<{
-    id: string;
-    email: string;
-    name: string | null;
-    plan: string;
-    planLabel: string;
-    reason: string | null;
-    reasonLabel: string;
-    note: string | null;
-    offerShown: string | null;
-    offerAccepted: boolean;
-    outcome: string;
-    createdAt: string;
-  }>;
-}
-
-export async function getCancellationReport(adminId: string): Promise<
-  { success: true; report: CancellationReport } | { success: false; error: string; report: null }
-> {
-  try {
-    if (!(await isAdmin(adminId))) {
-      return { success: false, error: "Unauthorized", report: null };
-    }
-
-    const [groupedReasons, groupedOutcomes, recent] = await Promise.all([
-      prisma.subscriptionCancellation.groupBy({
-        by: ["reason"],
-        _count: { _all: true },
-      }),
-      prisma.subscriptionCancellation.groupBy({
-        by: ["outcome"],
-        _count: { _all: true },
-      }),
-      prisma.subscriptionCancellation.findMany({
-        orderBy: { createdAt: "desc" },
-        take: 40,
-        include: { user: { select: { email: true, name: true } } },
-      }),
-    ]);
-
-    const countOf = (outcome: string) =>
-      groupedOutcomes.find((row) => row.outcome === outcome)?._count._all ?? 0;
-
-    return {
-      success: true,
-      report: {
-        totals: {
-          cancelled: countOf("cancelled"),
-          retained: countOf("retained"),
-          inProgress: countOf("in_progress"),
-        },
-        byReason: groupedReasons
-          .map((row) => ({
-            reason: row.reason,
-            label: cancelReasonLabel(row.reason),
-            count: row._count._all,
-          }))
-          .sort((a, b) => b.count - a.count),
-        recent: recent.map((row) => ({
-          id: row.id,
-          email: row.user.email,
-          name: row.user.name,
-          plan: row.plan,
-          planLabel: planDisplayName(row.plan),
-          reason: row.reason,
-          reasonLabel: cancelReasonLabel(row.reason),
-          note: row.note,
-          offerShown: row.offerShown,
-          offerAccepted: row.offerAccepted,
-          outcome: row.outcome,
-          createdAt: row.createdAt.toISOString(),
-        })),
-      },
-    };
-  } catch (error) {
-    console.error("Failed to load cancellation records:", error);
-    return { success: false, error: "Couldn't load cancellation records.", report: null };
-  }
-}
-
 // -----------------------------------------------------------------------------
 // Moderator queue (used by /moderator)
 // -----------------------------------------------------------------------------
@@ -265,11 +180,36 @@ export async function getReports(userId: string, status?: string, limit = 50) {
       },
     });
 
-    return { success: true, reports };
+    // Reported sprites (no relation on Report): one lookup for the thumbnails
+    const genIds = [...new Set(reports.map((r) => r.generationId).filter((x): x is string => !!x))];
+    const gens = genIds.length
+      ? await prisma.generation.findMany({
+          where: { id: { in: genIds } },
+          select: { id: true, prompt: true, imageUrl: true, isPublic: true, userId: true },
+        })
+      : [];
+    const genById = new Map(gens.map((g) => [g.id, g]));
+
+    return {
+      success: true,
+      reports: reports.map((r) => ({ ...r, generation: r.generationId ? genById.get(r.generationId) ?? null : null })),
+    };
   } catch (error) {
     console.error("Failed to fetch reports:", error);
     return { success: false, error, reports: [] };
   }
+}
+
+/** Accounts blocked from the community (most recently updated first). */
+export async function getBannedUsers(userId: string, limit = 100) {
+  if (!(await isModerator(userId))) return { success: false, users: [] };
+  const users = await prisma.user.findMany({
+    where: { isActive: false },
+    orderBy: { updatedAt: "desc" },
+    take: limit,
+    select: { id: true, name: true, username: true, email: true, avatarUrl: true },
+  });
+  return { success: true, users };
 }
 
 export async function updateReportStatus(

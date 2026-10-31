@@ -6,7 +6,7 @@ import { Film, FolderOpen, Gift, Sparkles, X } from "lucide-react";
 import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
 import { RELAUNCH } from "@/config/relaunch";
 
-type Claim = { granted: true; amount: number; kind: "returning" | "new" | "topup"; credits: number };
+type Claim = { granted: true; amount: number; kind: "returning" | "new"; credits: number };
 
 /**
  * Claims the relaunch bonus on the first app visit during the campaign and
@@ -41,7 +41,6 @@ export function RelaunchBonus() {
   }, [claim]);
 
   if (!claim) return null;
-  const topup = claim.kind === "topup";
   const returning = claim.kind === "returning";
 
   return (
@@ -61,17 +60,15 @@ export function RelaunchBonus() {
           <Gift className="h-6 w-6 text-[#FFA300]" />
         </div>
         <p className="text-[12.5px] text-[#FFC857] font-semibold">
-          {topup ? "welcome-back top-up" : returning ? "welcome back" : "relaunch bonus"}
+          {returning ? "welcome back" : "relaunch bonus"}
         </p>
         <h2 id="relaunch-title" className="mt-1 font-display text-[22px] font-semibold leading-tight text-white">
           +{claim.amount} free credits are yours
         </h2>
         <p className="mt-2 text-[13.5px] leading-relaxed text-[#A7ADD4]">
-          {topup
-            ? `You already received ${RELAUNCH.PREVIOUS_RETURNING_BONUS} welcome-back credits. This adds ${claim.amount}, so the welcome-back total is ${RELAUNCH.RETURNING_BONUS}.`
-            : returning
+          {returning
             ? "SpriteLab is back — rebuilt from the ground up. Thanks for sticking around; here's something to try the new generator with."
-            : "SpriteLab just relaunched. On top of your 10 starter credits, here are extra credits to explore everything."}
+            : `SpriteLab just relaunched. On top of your ${RELAUNCH.SIGNUP_CREDITS} starter credits, here are extra credits to explore everything.`}
           {" "}You now have <span className="font-semibold tabular-nums text-white">{claim.credits}</span> credits.
         </p>
         <ul className="mt-4 space-y-2 text-[13px] text-[#C8CCE8]">

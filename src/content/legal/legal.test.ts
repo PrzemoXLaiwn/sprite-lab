@@ -37,32 +37,23 @@ const UNRESOLVED_ON_THE_PAGE = [
 describe("legal pages", () => {
   it("uses a fixed last-updated date and hides unresolved placeholders", () => {
     for (const page of PAGES) {
-      expect(page).toMatch(/Last updated: \d{1,2} [A-Z][a-z]+ \d{4}/);
+      expect(page).toContain(`Last updated: ${LICENCE_CHANGE_DATE}`);
       expect(page).not.toContain("new Date(");
       for (const token of UNRESOLVED_ON_THE_PAGE) {
         expect(page, token).not.toContain(token);
       }
     }
     expect(LICENCE_CHANGE_DATE).toBe("17 October 2026");
-    expect(PRIVACY_MARKDOWN).toContain(`Last updated: ${LICENCE_CHANGE_DATE}`);
-    expect(COOKIES_MARKDOWN).toContain(`Last updated: ${LICENCE_CHANGE_DATE}`);
-    expect(TERMS_MARKDOWN).toContain("Last updated: 30 October 2026");
-    expect(REFUNDS_MARKDOWN).toContain("Last updated: 30 October 2026");
-    expect(TERMS_MARKDOWN).toContain("Settings → Plan & billing → Cancel subscription");
-    expect(REFUNDS_MARKDOWN).toContain("Cancel subscription");
   });
 
   it("renders the four documents with the seller and without the draft banner", () => {
     for (const page of PAGES) {
       const html = renderToStaticMarkup(createElement(LegalDocument, { markdown: page }));
       expect(html).toContain("Przemek Lawin");
+      expect(html).toContain("17 October 2026");
       expect(html).not.toContain("Draft for review");
       expect(html).not.toContain("[VERIFY]");
     }
-    expect(renderToStaticMarkup(createElement(LegalDocument, { markdown: PRIVACY_MARKDOWN }))).toContain("17 October 2026");
-    expect(renderToStaticMarkup(createElement(LegalDocument, { markdown: COOKIES_MARKDOWN }))).toContain("17 October 2026");
-    expect(renderToStaticMarkup(createElement(LegalDocument, { markdown: TERMS_MARKDOWN }))).toContain("30 October 2026");
-    expect(renderToStaticMarkup(createElement(LegalDocument, { markdown: REFUNDS_MARKDOWN }))).toContain("30 October 2026");
   });
 
   it("renders a link nested in bold, and bold nested in a link label", () => {

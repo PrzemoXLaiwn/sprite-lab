@@ -31,7 +31,7 @@ const STYLE_LINES: Record<string, string> = {
   DARK_SOULS:
     "dark fantasy 2D game art: gritty, muted desaturated palette, dramatic shading, detailed",
   REALISTIC_PAINTED:
-    "photorealistic AAA game art like a high-end RPG character render: true-to-life proportions and anatomy, a realistic face with natural skin texture, real eyes and subtle features (not cartoon, not anime, not stylized, no big eyes), physically based materials (worn leather, cloth weave, scratched metal), soft cinematic lighting, highly detailed",
+    "photorealistic AAA game art like a high-end RPG character render: true-to-life proportions and anatomy, a realistic face with natural skin texture, real eyes and subtle features (not cartoon, not anime, not stylized, no big eyes), physically based materials (worn leather, cloth weave, scratched metal), soft even studio lighting from the front, highly detailed",
   CARTOON_WESTERN:
     "western cartoon 2D game art: bold black outlines, flat vibrant colors, simple shading",
   VECTOR_CLEAN:
@@ -66,7 +66,7 @@ const VIEW_LINES: Record<string, { figure: string; object: string }> = {
     object: "strict side view in profile, facing right",
   },
   FRONT: {
-    figure: "perfectly straight-on front view: head, chest, hips and feet all face the viewer directly, shoulders level and parallel to the image, symmetrical stance, no turn and no three-quarter angle",
+    figure: "perfectly straight-on front view: head, chest, hips and feet all face the viewer directly, shoulders level and parallel to the image, symmetrical stance, no turn and no three-quarter angle; only the front of the body is visible, its sides are hidden",
     object: "straight front view facing the viewer, no perspective turn",
   },
   TOP_DOWN: {
@@ -83,6 +83,9 @@ const A_POSE = "standing upright in a relaxed A-pose: arms hanging slightly away
 // Something in the hands (the user asked for it): an A-pose with "open hands"
 // drops the weapons, so the calm game-ready stance holds them out instead
 const ARMED_STANCE = "standing upright in a steady, symmetrical ready stance, not attacking, every hand gripping its weapon or item held out and away from the body so each blade, handle and tip is fully visible";
+// A-pose picked explicitly: the user wants the rigging stance even with
+// something in the hands, so the items hang down instead of being held out
+const A_POSE_ARMED = "standing upright in a relaxed A-pose: arms hanging down and slightly away from the body, feet shoulder-width apart, calm neutral expression, each weapon or item held loosely in a hand and pointing down along the side of the body, fully visible";
 const POSE_LINES: Record<string, string> = {
   auto: A_POSE,
   "a-pose": A_POSE,
@@ -101,6 +104,23 @@ export interface SpritePromptInput {
   pose?: string;
   /** What the user typed: decides whether held items were asked for. */
   original?: string;
+}
+
+/** The user described the posture themselves ("sitting", "flying"…): their words decide it. */
+const POSTURE = /\b(sit|sits|sitting|seated|lying|lies|laying|sleep|sleeps|sleeping|asleep|crouch|crouches|crouching|crouched|kneel|kneels|kneeling|knelt|fly|flies|flying|soaring|swim|swims|swimming|run|runs|running|jump|jumps|jumping|leap|leaps|leaping|perched|curled|resting|lounging|walk|walks|walking|riding|rides|dancing|climbing|charging|pouncing)\b/i;
+/** Things that hover: no stance with feet. */
+const FLOATING = /\b(ghosts?|spirits?|wisps?|phantoms?|spect(?:er|re)s?|poltergeists?|jellyfish|floating|hovering|levitating|will-o)\b/i;
+/** Animals: an A-pose or T-pose turns them into people with arms. */
+const ANIMAL = /\b(dog|dogs|puppy|bulldog|terrier|corgi|cat|cats|kitten|horse|pony|wolf|wolves|bear|frog|toad|pig|boar|cow|bull|deer|stag|rabbit|bunny|hare|mouse|rat|bird|owl|eagle|hawk|crow|duck|chicken|fish|shark|snake|serpent|lizard|crocodile|turtle|tortoise|spider|scorpion|beetle|ant|bee|crab|fox|lion|tiger|panther|leopard|cheetah|elephant|monkey|ape|gorilla|camel|goat|sheep|lamb|dinosaur|raptor|squirrel|hedgehog|otter|penguin|whale|dolphin|bat)\b/i;
+/** People-shaped beings: a "lizard warrior" or "wolf knight" stands like a person. */
+const HUMANOID = /\b(warrior|knight|mage|wizard|witch|man|woman|men|women|boy|girl|king|queen|prince|princess|soldier|archer|rogue|hunter|ranger|paladin|priest|cleric|monk|samurai|ninja|pirate|chief|chieftain|shaman|humanoid|person|folk|guard|merchant|villager|lord|lady)\b/i;
+
+/**
+ * The part of a prompt that names the subject, before what it has or holds:
+ * "knight with a flying cape" → "knight", "orc brute with a baseball bat" → "orc brute".
+ */
+export function subjectHead(text: string): string {
+  return text.split(/\b(?:with|holding|wearing|carrying|wielding|on|in|of)\b|[,;:(]/i)[0] ?? text;
 }
 
 /** Anything a character could hold or carry. */
@@ -162,14 +182,26 @@ export function buildSpritePrompt(input: SpritePromptInput): string {
   const emptyHands = figure && pose !== "dynamic" && !holds;
   // Creatures (animals, monsters) aren't put in an A-pose: a calm standing pose
   // instead. Anything holding weapons gets the armed stance.
-  const calm = pose === "auto" || pose === "a-pose";
-  const posed = figure && pose
-    ? calm && holds
-      ? ARMED_STANCE
-      : category === "CREATURES" && calm
-        ? "standing calmly in a neutral pose, not attacking"
-        : POSE_LINES[pose]
-    : undefined;
+  // The user's own words win: a described posture gets no stance line, hovering
+  // things float, and animals never get a human A/T-pose. Otherwise an explicitly
+  // picked A-pose is honoured for every figure, armed or not; only "auto" chooses
+  // a stance for armed figures and creatures.
+  const said = input.original ?? subject;
+  const calmPick = pose === "auto" || pose === "a-pose";
+  const stance = (): string | undefined => {
+    if (!figure || !pose) return undefined;
+    // An explicitly picked pose always wins over a posture word; only the
+    // subject itself (not what it holds or wears) makes it float or an animal
+    const head = subjectHead(said);
+    if (pose === "auto" && POSTURE.test(said.replace(/\b(?:with|holding|wearing|carrying|wielding)\b[^,.;]*/gi, ""))) return undefined;
+    if (FLOATING.test(head) && calmPick) return "floating calmly in the air, with no legs or feet unless the description gives it some";
+    if (category === "CREATURES" && ANIMAL.test(head) && !HUMANOID.test(head) && (pose === "a-pose" || pose === "t-pose")) return "standing naturally the way this animal really stands, with its own anatomy";
+    if (pose === "a-pose") return holds ? A_POSE_ARMED : A_POSE;
+    if (pose === "auto" && holds) return ARMED_STANCE;
+    if (category === "CREATURES" && pose === "auto") return "standing calmly in a neutral pose, not attacking";
+    return POSE_LINES[pose];
+  };
+  const posed = stance();
   const framing = (CATEGORY_FRAMING[category] ?? "single subject shown whole") + (posed ? `, ${posed}` : "");
   const views = view ? VIEW_LINES[view.toUpperCase()] : undefined;
   const viewLine = views ? (figure ? views.figure : views.object) : figure ? DEFAULT_FIGURE_VIEW : undefined;
@@ -177,17 +209,22 @@ export function buildSpritePrompt(input: SpritePromptInput): string {
 
   return [
     `A 2D video game sprite of ${cleanSubject}.`,
-    `${framing}${viewLine ? `, ${viewLine}` : ""}, centered with empty space around it.`,
+    // A picked view goes first: after a long pose line models drop it
+    ...(views ? [`Camera: ${viewLine}.`] : []),
+    `${framing}${viewLine && !views ? `, ${viewLine}` : ""}, centered with empty space around it.`,
     // Models fill the canvas edge to edge; anything they draw past it is lost
-    // for good (cut feet, flat-topped auras), so the margin is spelled out
-    `Leave a wide empty margin on every side: the whole ${figure ? "figure" : "subject"}, including ${figure ? "feet, " : ""}weapon tips, flames and any glow, fits well inside the image at about two thirds of its height, and nothing touches or crosses the edges.`,
+    // for good (cut feet, flat-topped auras), so the margin is spelled out.
+    // Never name example parts here ("weapon tips, flames"): models read them as
+    // things to draw and hand torches to doctors.
+    `Leave a wide empty margin on every side: the whole ${figure ? "figure from head to feet" : "subject"} fits well inside the image at about two thirds of its height, and no part of it touches or crosses the edges.`,
     `Style: ${style}.`,
     // Sprites of one game must match each other: same pixel density and the
     // same outline no matter whether it's a knight, an ore or an icon.
     ...(isPixelStyle(styleId) ? [PIXEL_CONSISTENCY] : []),
     ...(colorHint ? [`Colors: ${colorHint.slice(0, 200)}.`] : []),
     ...(emptyHands ? ["Hands empty: no weapon, shield, staff, wand, tool or any other held item."] : []),
-    `Exactly one subject floating on a ${keyBackgroundFor(cleanSubject, styleId)}. No ground, no floor, no drop shadow under it, no scenery, no text, no border, no watermark.`,
+    // Realistic renders add a studio floor and a contact shadow unless told twice
+    `Exactly one subject floating on a ${keyBackgroundFor(cleanSubject, styleId)}. No ground, no floor plane, no cast or contact shadow under or behind it, no reflection, no scenery, no text, no border, no watermark.`,
   ].join(" ");
 }
 

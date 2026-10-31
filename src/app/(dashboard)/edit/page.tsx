@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Wand2, Info, Brush, Eraser, Check, RotateCcw, Pencil } from "lucide-react";
 import { HistoryButton, HistoryPanel, type HistoryItem } from "@/components/workspace/HistoryPanel";
 import { RestoredNote } from "@/components/workspace/ContinueBanner";
+import { UploadSpriteButton } from "@/components/generate/UploadSprite";
 import { fetchOwnGeneration, useStoredRaw } from "@/components/workspace/restore";
 import { classifyGeneration, cleanGenerationPrompt } from "@/lib/workspace/history";
 import {
@@ -17,9 +18,10 @@ import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
 import {
   ToolShell, ToolPanel, Field, FooterHint, CanvasColumn, CanvasFrame, CanvasImage, BeforeAfter,
   BackdropToggle, Chip, TopBarHint, PrimaryButton, DownloadButton, SecondaryButton, ErrorNote, InfoNote, SuggestionChip,
-  SourceCard, RecentAssetPicker, ProcessingOverlay, SourceMissing, Segmented, PageFallback, Elapsed,
+  ToolTabs, SourceCard, RecentAssetPicker, ProcessingOverlay, SourceMissing, Segmented, PageFallback, Elapsed,
   isPixelStyleId, useSourceGeneration, toolErrorMessage, downloadImage, type ToolBgModeId,
 } from "@/components/tools/ToolWorkspace";
+import { userErrorMessage } from "@/lib/user-error";
 
 const COST = EDIT_CREDITS;
 
@@ -179,7 +181,7 @@ function EditPageContent({ generationId, resultId }: { generationId: string | nu
       showResultInUrl(newId);
       triggerCreditsRefresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setError(userErrorMessage(err, "Something went wrong. Please try again."));
     } finally {
       setLoading(false);
     }
@@ -201,7 +203,7 @@ function EditPageContent({ generationId, resultId }: { generationId: string | nu
       <ToolPanel
         title="Edit with AI"
         cost={COST}
-        backHref="/assets"
+        tabs={<ToolTabs active="edit" generationId={generationId} />}
         headerAction={<HistoryButton onClick={() => setHistoryOpen(true)} />}
         footer={
           <>
@@ -217,6 +219,7 @@ function EditPageContent({ generationId, resultId }: { generationId: string | nu
 
         <Field label="Sprite">
           <SourceCard imageUrl={originalImage} loading={loadingSource} prompt={source?.prompt} pixel={pixel} />
+          <UploadSpriteButton then="edit" label="Edit your own sprite" className="mt-2 w-full justify-center" />
         </Field>
 
         <Field label="What should change?" labelFor="edit-prompt">

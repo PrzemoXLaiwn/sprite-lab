@@ -13,7 +13,7 @@ model User {
   email                 String        @unique
   name                  String?
   avatarUrl             String?       @map("avatar_url")
-  credits               Int           @default(20) // SIGNUP_CREDITS in src/config/signup.ts — new rows only
+  credits               Int           @default(10) // SIGNUP_CREDITS in src/config/signup.ts — new rows only
   plan                  String        @default("FREE") // FREE, STARTER, PRO, UNLIMITED
   role                  String        @default("USER") // USER, SUPPORT, MODERATOR, ADMIN, OWNER (SEO)
   isLifetime            Boolean       @default(false) @map("is_lifetime") // Lifetime deal (no subscription renewal)
@@ -22,13 +22,6 @@ model User {
   stripeSubscriptionId  String?       @unique @map("stripe_subscription_id")
   stripePriceId         String?       @map("stripe_price_id")
   stripeCurrentPeriodEnd DateTime?    @map("stripe_current_period_end")
-  // Set from Stripe `cancel_at_period_end`. The plan stays until the subscription is deleted.
-  cancelAtPeriodEnd     Boolean       @default(false) @map("cancel_at_period_end")
-  // Stripe pause_collection. The subscription stays active; invoices in the window are voided.
-  billingPaused         Boolean       @default(false) @map("billing_paused")
-  subscriptionPauseResumesAt DateTime? @map("subscription_pause_resumes_at")
-  // Set when the customer accepts the one-time retention discount. Not set when they only see it.
-  retentionDiscountUsedAt DateTime?   @map("retention_discount_used_at")
   isActive              Boolean       @default(true) @map("is_active")
   totalSpent            Float         @default(0) @map("total_spent") // Total money spent in GBP
   createdAt             DateTime      @default(now()) @map("created_at")
@@ -72,7 +65,6 @@ model User {
   postLikes             PostLike[]
   reports               Report[]       @relation("ReportedByUser")
   receivedReports       Report[]       @relation("ReportedUser")
-  subscriptionCancellations SubscriptionCancellation[]
 
   // username / stripeCustomerId / stripeSubscriptionId are @unique, which
   // already creates an index — separate @@index entries were redundant.
@@ -253,34 +245,6 @@ model CreditTransaction {
 
 // Stripe webhook dedupe (id = Stripe event id, e.g. "evt_...") and one-shot
 // markers for client-confirmed objects (id = SetupIntent id, "seti_...").
-// One row per cancellation attempt that reached a decision, plus in-progress
-// rows once a reason was submitted. Admin-only. RLS is enabled in the
-// migration; Prisma connects as postgres and bypasses it.
-model SubscriptionCancellation {
-  id             String   @id @default(cuid())
-  userId         String   @map("user_id")
-  reason         String?
-  note           String?
-  // Comma-separated offer types shown: discount, downgrade, pause, support
-  offerShown     String?  @map("offer_shown")
-  offerAccepted  Boolean  @default(false) @map("offer_accepted")
-  // in_progress | cancelled | retained
-  outcome        String   @default("in_progress")
-  plan           String
-  // Coupon created for this attempt, so a retry does not mint a second one.
-  stripeCouponId String?  @map("stripe_coupon_id")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
-
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([createdAt])
-  @@index([reason])
-  @@index([outcome])
-  @@map("subscription_cancellations")
-}
-
 model ProcessedStripeEvent {
   id        String   @id
   type      String
