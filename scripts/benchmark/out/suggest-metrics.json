@@ -1,0 +1,20 @@
+{
+  "prompts": 20,
+  "liveCalls": 0,
+  "spendUsd": 0,
+  "illustrativeTokens": {
+    "input_tokens": 2000,
+    "output_tokens": 400,
+    "note": "Not measured. Same counts on both models, priced by src/lib/claude-usage.ts."
+  },
+  "illustrative": {
+    "opusUsd": 0.02,
+    "haikuUsd": 0.004,
+    "savedUsd": 0.016,
+    "haikuOverOpus": 0.2
+  },
+  "live": {
+    "ran": false,
+    "reason": "Offline. Pass --live with ANTHROPIC_API_KEY to call the models."
+  }
+}
