@@ -14,6 +14,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertCircle, ArrowLeft, Download, ImageIcon, Loader2, MoveHorizontal } from "lucide-react";
 import { triggerUpgradeModal } from "@/components/dashboard/UpgradeModal";
+import { creditCostFromPayload } from "@/config/credit-shortfall";
 
 // =============================================================================
 // HELPERS
@@ -98,7 +99,7 @@ export function useSourceGeneration(generationId: string | null) {
 export function toolErrorMessage(res: Response, data: { error?: unknown; noCredits?: boolean } | null, fallback: string): string {
   const serverMsg = typeof data?.error === "string" && data.error.trim() ? data.error.trim() : null;
   if (res.status === 402 || data?.noCredits) {
-    triggerUpgradeModal();
+    triggerUpgradeModal({ cost: creditCostFromPayload(data) });
     return serverMsg ?? "You don't have enough credits for this.";
   }
   if (serverMsg) return serverMsg;

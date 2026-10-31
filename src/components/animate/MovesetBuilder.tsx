@@ -6,6 +6,7 @@ import { MOVESETS, moveCredits, movesetCredits, type Moveset } from "@/config/mo
 import { buildEnginePack, saveBlob, type PackAnimation } from "@/lib/export/engine-pack";
 import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
 import { triggerUpgradeModal } from "@/components/dashboard/UpgradeModal";
+import { creditCostFromPayload } from "@/config/credit-shortfall";
 
 type Status = "waiting" | "running" | "done" | "failed";
 interface MoveResult { status: Status; anim?: PackAnimation; error?: string }
@@ -42,9 +43,11 @@ export function MovesetBuilder({ generationId, characterName, disabled }: { gene
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
           if (res.status === 402 || data.noCredits) {
-            triggerUpgradeModal();
+            triggerUpgradeModal({ cost: creditCostFromPayload(data) });
             setResults((r) => ({ ...r, [m.name]: { status: "failed", error: "Not enough credits" } }));
-            setError("Out of credits — the moves made so far are saved in your assets.");
+            setError(typeof data.error === "string" && data.error.trim()
+              ? `${data.error} The moves made so far are saved in your assets.`
+              : "Not enough credits for this move — the moves made so far are saved in your assets.");
             break;
           }
           throw new Error(data.error || "failed");

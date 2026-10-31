@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { CheckoutError, CreditChip, PageSpinner, SuccessShell } from "../_components/checkout-ui";
 import { STARTER_FIRST_MONTH_OFFER, starterFirstMonthIntroGbp } from "@/config/starter-first-month";
+import { trackCheckoutCompleteOnce } from "@/lib/analytics";
 
 // Declare gtag for TypeScript
 declare global {
@@ -47,6 +48,9 @@ function SuccessContent() {
   const [countdown, setCountdown] = useState(5);
   const [conversionTracked, setConversionTracked] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
+  const awaitingConfirm = Boolean(setupIntentId) && redirectStatus === "succeeded";
+  const redirectFailed = Boolean(setupIntentId) && Boolean(redirectStatus) && redirectStatus !== "succeeded";
+  const [subscriptionReady, setSubscriptionReady] = useState(!awaitingConfirm && !redirectFailed);
   const confirmStarted = useRef(false);
   const confirmErrorRef = useRef<string | null>(null);
   useEffect(() => {
@@ -69,6 +73,8 @@ function SuccessContent() {
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           setConfirmError(data.error || "Failed to activate subscription. Please contact support.");
+        } else {
+          setSubscriptionReady(true);
         }
       })
       .catch(() => setConfirmError("Failed to activate subscription. Please contact support."));
@@ -113,6 +119,15 @@ function SuccessContent() {
 
     return () => clearInterval(interval);
   }, [plan, sessionId, conversionTracked, introOffer]);
+
+  useEffect(() => {
+    if (!subscriptionReady || confirmError) return;
+    trackCheckoutCompleteOnce(`${plan}:${sessionId}:${setupIntentId ?? "inline"}`, {
+      plan,
+      type: "subscription",
+      offer: introOffer ? STARTER_FIRST_MONTH_OFFER : "standard",
+    });
+  }, [subscriptionReady, confirmError, plan, sessionId, setupIntentId, introOffer]);
 
   useEffect(() => {
     const timer = setInterval(() => {

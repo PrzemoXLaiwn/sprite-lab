@@ -15,6 +15,26 @@ declare global {
   }
 }
 
+const checkoutCompleteSent = new Set<string>();
+
+/** One checkout_complete per successful return, including a refresh of the receipt. */
+export function trackCheckoutCompleteOnce(dedupeKey: string, props?: Props): void {
+  if (typeof window === "undefined") return;
+  if (checkoutCompleteSent.has(dedupeKey)) return;
+  const storageKey = `spritelab.checkout-complete:${dedupeKey}`;
+  try {
+    if (window.sessionStorage.getItem(storageKey)) {
+      checkoutCompleteSent.add(dedupeKey);
+      return;
+    }
+    window.sessionStorage.setItem(storageKey, "1");
+  } catch {
+    /* storage blocked — the in-memory set still covers this page load */
+  }
+  checkoutCompleteSent.add(dedupeKey);
+  track(FUNNEL.checkoutComplete, props);
+}
+
 export function track(event: string, props?: Props): void {
   if (typeof window === "undefined") return;
   try {
@@ -49,6 +69,9 @@ export const FUNNEL = {
   checkoutStart: "checkout_start",
   checkoutComplete: "checkout_complete",
   upgradeModalShown: "upgrade_modal_shown",
+  upgradeModalClicked: "upgrade_modal_clicked",
+  creditsExhausted: "credits_exhausted",
+  firstGenerationFailed: "first_generation_failed",
   upsellShown: "upsell_shown",
   upsellClick: "upsell_click",
   offerApplied: "offer_applied",

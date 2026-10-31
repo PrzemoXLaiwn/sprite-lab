@@ -21,10 +21,12 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    // Only `plan` and the literal offer code are read. Coupon ids, `discounts`,
-    // and `promotion_code` from the client are ignored on purpose.
+    // Only `plan`, the literal offer code, and `intent: "preview"` are read.
+    // Coupon ids, `discounts`, and `promotion_code` from the client are ignored.
+    // Preview returns the summary and does not create a Stripe customer or SetupIntent.
     const plan = body?.plan;
     const requestedOffer = body?.offer;
+    const preview = body?.intent === "preview";
 
     if (!plan || !PLANS[plan as PlanName]) {
       return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
@@ -49,9 +51,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get or create Stripe customer
-    const customerId = await getOrCreateStripeCustomer(user.id, user.email!);
-
     // Intro price is decided here and stamped onto the SetupIntent. confirm-subscription
     // reads that metadata; the browser cannot attach a coupon later.
     const couponId = readStarterFirstMonthCouponId(process.env);
@@ -66,7 +65,26 @@ export async function POST(request: Request) {
       couponId,
     });
 
-    // Create a SetupIntent - this allows saving the payment method for future use
+    const planPayload = {
+      name: selectedPlan.name,
+      price: selectedPlan.price,
+      credits: selectedPlan.credits,
+      priceId: selectedPlan.priceId,
+    };
+    const firstMonthOffer = { applied: firstMonth.apply && isStarterFirstMonthOfferEnabled() };
+
+    // Page views ask for a preview. The SetupIntent is created when the buyer pays.
+    if (preview) {
+      return NextResponse.json({
+        plan: planPayload,
+        currentPlan: dbUser?.plan || "FREE",
+        firstMonthOffer,
+      });
+    }
+
+    // Create a SetupIntent - this allows saving the payment method for future use.
+    // Card only, same as before. Payment methods are not changed here.
+    const customerId = await getOrCreateStripeCustomer(user.id, user.email!);
     const setupIntent = await stripe.setupIntents.create({
       customer: customerId,
       payment_method_types: ["card"],
@@ -81,14 +99,9 @@ export async function POST(request: Request) {
     return NextResponse.json({
       clientSecret: setupIntent.client_secret,
       customerId,
-      plan: {
-        name: selectedPlan.name,
-        price: selectedPlan.price,
-        credits: selectedPlan.credits,
-        priceId: selectedPlan.priceId,
-      },
+      plan: planPayload,
       currentPlan: dbUser?.plan || "FREE",
-      firstMonthOffer: { applied: firstMonth.apply && isStarterFirstMonthOfferEnabled() },
+      firstMonthOffer,
     });
 
   } catch (error) {

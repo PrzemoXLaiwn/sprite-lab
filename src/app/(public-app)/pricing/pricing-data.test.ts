@@ -20,6 +20,13 @@ describe("pricing display data mirrors stripe.ts", () => {
     }
   });
 
+  it("puts Most popular on the £2.99 pack only", () => {
+    expect(PLAN_CARDS.filter((card) => card.featured)).toEqual([]);
+    const featuredPacks = CREDIT_PACK_CARDS.filter((pack) => pack.featured);
+    expect(featuredPacks.map((pack) => pack.key)).toEqual(["PACK_75"]);
+    expect(featuredPacks[0]?.price).toBe(299);
+  });
+
   it("lifetime deals", () => {
     for (const card of LIFETIME_CARDS) {
       const deal = LIFETIME_DEALS[card.key];
