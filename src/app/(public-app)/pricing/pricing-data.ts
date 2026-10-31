@@ -62,7 +62,7 @@ export const PLAN_CARDS: readonly PlanCard[] = [
     description: "For serious creators",
     features: PLAN_FEATURES.PRO,
     cta: "Go Pro",
-    featured: true,
+    featured: false,
   },
   {
     id: "UNLIMITED",

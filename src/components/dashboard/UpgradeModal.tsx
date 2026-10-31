@@ -12,20 +12,22 @@ import {
   starterUpsellContent,
   type UpsellReason,
 } from "@/config/starter-first-month";
+import { chooseUpgradeView, shortfallCopy, type UpgradeView } from "@/config/credit-shortfall";
 import { track, FUNNEL } from "@/lib/analytics";
 
 // =============================================================================
 // UpgradeModal
 // =============================================================================
-// Two views, one dialog:
-//   - Starter upsell for a logged-in free account that has never subscribed.
-//     Shown after a generation leaves fewer than 3 credits (once this session
-//     and at most once per 24h, remembered in localStorage), and always when
-//     a generation is refused for lack of credits. When the intro coupon env
-//     is empty the same window offers Starter at the normal monthly price.
+// Three views, one dialog:
+//   - Shortfall: a 402 while credits remain. Says what it costs and what you
+//     have, and leads with the £2.99 pack. Starter (the commercial licence)
+//     is the second link.
+//   - Starter upsell for a logged-in free account that has never subscribed,
+//     when the balance is actually empty. Shown after a generation leaves
+//     fewer than 3 credits (once this session and at most once per 24h), and
+//     when a generation is refused at 0 credits.
 //   - The three-plan list for everyone else, opened by the same
-//     "show-upgrade-modal" event (a 402). This replaces the old zero-balance
-//     popup instead of stacking a second one on top of it.
+//     "show-upgrade-modal" event.
 // =============================================================================
 
 interface UpgradeModalProps {
@@ -37,6 +39,17 @@ interface UpsellAudience {
   eligible: boolean;
   offerEnabled: boolean;
   credits: number;
+}
+
+export interface UpgradePrompt {
+  /** What the refused action costs, when the caller knows. */
+  cost?: number;
+}
+
+interface ShortfallState {
+  cost: number | null;
+  balance: number;
+  offerEnabled: boolean;
 }
 
 const PLANS = [
@@ -56,7 +69,7 @@ const PLANS = [
     price: PLAN_MONTHLY_PRICE_GBP.PRO,
     credits: PLAN_MONTHLY_CREDITS.PRO,
     features: PLAN_FEATURES.PRO.slice(1, 4),
-    popular: true,
+    popular: false,
   },
   {
     name: "Studio",
@@ -107,9 +120,10 @@ function rememberUpsellShown(now = Date.now()): void {
 
 export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
   const [isVisible, setIsVisible] = useState(Boolean(forceShow));
-  const [mode, setMode] = useState<"plans" | "starter">("plans");
+  const [mode, setMode] = useState<UpgradeView>("plans");
   const [reason, setReason] = useState<UpsellReason>("no_credits");
   const [offerEnabled, setOfferEnabled] = useState(false);
+  const [shortfall, setShortfall] = useState<ShortfallState | null>(null);
 
   // Open when `forceShow` flips to true (state adjusted during render instead
   // of in an effect — avoids a cascading re-render).
@@ -132,14 +146,37 @@ export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
     const openStarter = (nextReason: UpsellReason, nextOfferEnabled: boolean) => {
       setReason(nextReason);
       setOfferEnabled(nextOfferEnabled);
+      setShortfall(null);
       setMode("starter");
       setIsVisible(true);
       shownLowThisSession = true;
       rememberUpsellShown();
-      track(FUNNEL.upsellShown, {
-        reason: nextReason,
-        offer: nextOfferEnabled ? STARTER_FIRST_MONTH_OFFER : "standard",
+      const offer = nextOfferEnabled ? STARTER_FIRST_MONTH_OFFER : "standard";
+      track(FUNNEL.upgradeModalShown, { mode: "starter", reason: nextReason, offer });
+      track(FUNNEL.upsellShown, { reason: nextReason, offer });
+      if (nextReason === "no_credits") track(FUNNEL.creditsExhausted, { balance: 0 });
+    };
+
+    const openShortfall = (next: ShortfallState) => {
+      setShortfall(next);
+      setOfferEnabled(next.offerEnabled);
+      setMode("shortfall");
+      setIsVisible(true);
+      track(FUNNEL.upgradeModalShown, {
+        mode: "shortfall",
+        reason: "shortfall",
+        cost: next.cost,
+        balance: next.balance,
       });
+      track(FUNNEL.upsellShown, { reason: "shortfall", offer: "PACK_75" });
+    };
+
+    const openPlans = (balance: number | null) => {
+      setShortfall(null);
+      setMode("plans");
+      setIsVisible(true);
+      track(FUNNEL.upgradeModalShown, { mode: "plans", reason: "no_credits", balance });
+      if (balance === 0) track(FUNNEL.creditsExhausted, { balance: 0 });
     };
 
     // Debounced so a burst of generations is judged on the balance after the
@@ -180,19 +217,30 @@ export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
       }, 500);
     };
 
-    // 402 / noCredits. Qualifying accounts see the Starter upsell every time.
-    // Everyone else keeps the plan list — the old on-load zero-balance popup
-    // is gone so the two never stack.
-    const onNoCredits = () => {
+    // 402. Credits still on the account → cost and the £2.99 pack.
+    // Empty balance → Starter for a free account that has never subscribed,
+    // otherwise the plan list.
+    const onNoCredits = (event: Event) => {
+      const detail = (event as CustomEvent<UpgradePrompt>).detail;
+      const cost = typeof detail?.cost === "number" && Number.isInteger(detail.cost) && detail.cost > 0 ? detail.cost : null;
       void (async () => {
         const audience = await loadUpsellAudience();
         if (cancelled) return;
-        if (audience?.eligible) {
-          openStarter("no_credits", audience.offerEnabled);
+        const balance = audience && Number.isFinite(audience.credits) ? audience.credits : null;
+        const view = chooseUpgradeView({
+          balance,
+          cost,
+          starterEligible: audience?.eligible === true,
+        });
+        if (view === "shortfall" && balance != null) {
+          openShortfall({ cost, balance, offerEnabled: audience?.offerEnabled === true });
           return;
         }
-        setMode("plans");
-        setIsVisible(true);
+        if (view === "starter") {
+          openStarter("no_credits", audience?.offerEnabled === true);
+          return;
+        }
+        openPlans(balance);
       })();
     };
 
@@ -221,10 +269,26 @@ export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
       reason,
       offer: offerEnabled ? STARTER_FIRST_MONTH_OFFER : "standard",
     });
+    track(FUNNEL.upgradeModalClicked, { mode: "starter", reason });
+    track(FUNNEL.checkoutStart, { plan: "STARTER", source: "upgrade_modal" });
+    closeOnNavigate();
+  };
+
+  const onShortfallPackClick = () => {
+    track(FUNNEL.upsellClick, { reason: "shortfall", offer: "PACK_75" });
+    track(FUNNEL.upgradeModalClicked, { mode: "shortfall", target: "PACK_75" });
+    track(FUNNEL.checkoutStart, { plan: "PACK_75", type: "credits", source: "upgrade_modal" });
+    closeOnNavigate();
+  };
+
+  const onShortfallStarterClick = () => {
+    track(FUNNEL.upgradeModalClicked, { mode: "shortfall", target: "STARTER" });
+    track(FUNNEL.checkoutStart, { plan: "STARTER", source: "upgrade_modal" });
     closeOnNavigate();
   };
 
   const upsell = starterUpsellContent(offerEnabled, reason);
+  const gap = shortfall ? shortfallCopy({ cost: shortfall.cost, balance: shortfall.balance, offerEnabled: shortfall.offerEnabled }) : null;
 
   return (
     <Dialog.Root open={isVisible} onOpenChange={handleOpenChange}>
@@ -232,7 +296,7 @@ export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
         <Dialog.Overlay className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm transition-opacity duration-200 data-[state=closed]:opacity-0 data-[state=open]:opacity-100" />
         <Dialog.Content
           className={`fixed left-1/2 top-1/2 z-[101] max-h-[90vh] w-[95vw] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-white/[0.08] bg-[#19223F] text-[#FFF1E8] shadow-2xl outline-none transition-opacity duration-200 data-[state=closed]:opacity-0 data-[state=open]:opacity-100 ${
-            mode === "starter" ? "max-w-md" : "max-w-3xl"
+            mode === "plans" ? "max-w-3xl" : "max-w-md"
           }`}
           aria-describedby="upgrade-modal-description"
         >
@@ -246,7 +310,40 @@ export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
             </button>
           </Dialog.Close>
 
-          {mode === "starter" ? (
+          {mode === "shortfall" && gap ? (
+            <div className="p-5 sm:p-7">
+              <div className="pr-10">
+                <Dialog.Title asChild>
+                  <h2 className="font-display text-[24px] font-semibold tracking-tight text-white">{gap.title}</h2>
+                </Dialog.Title>
+                <Dialog.Description asChild>
+                  <div id="upgrade-modal-description" className="mt-2 space-y-2">
+                    <p className="text-[15px] font-medium text-white">{gap.detail}</p>
+                    <p className="text-[13px] leading-relaxed text-[#C8CCE8]">{gap.packNote}</p>
+                  </div>
+                </Dialog.Description>
+              </div>
+              <Link
+                href={gap.packHref}
+                onClick={onShortfallPackClick}
+                className="px-corners mt-6 flex h-11 w-full items-center justify-center gap-1.5 bg-[#FFA300] text-[14px] font-semibold text-[#131A31] transition hover:bg-[#FFB733]"
+              >
+                {gap.packCta}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href={gap.starterHref}
+                onClick={onShortfallStarterClick}
+                className="mt-3 flex min-h-11 w-full flex-col items-center justify-center py-1 text-[13px] font-medium text-[#C8CCE8] hover:text-white"
+              >
+                <span>{gap.starterCta}</span>
+                <span className="text-[12px] text-[#9AA1CC]">{gap.starterPrice}</span>
+              </Link>
+              <Link href={gap.plansHref} onClick={closeOnNavigate} className="flex h-10 w-full items-center justify-center text-[13px] text-[#9AA1CC] hover:text-white">
+                See all plans
+              </Link>
+            </div>
+          ) : mode === "starter" ? (
             <div className="p-5 sm:p-7">
               <div className="pr-10">
                 <Dialog.Title asChild>
@@ -335,7 +432,11 @@ export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
 
                     <Link
                       href={`/checkout/${plan.slug}`}
-                      onClick={closeOnNavigate}
+                      onClick={() => {
+                        track(FUNNEL.checkoutStart, { plan: plan.slug, source: "upgrade_modal" });
+                        track(FUNNEL.upgradeModalClicked, { mode: "plans", target: plan.slug });
+                        closeOnNavigate();
+                      }}
                       className={`mt-5 flex h-10 w-full items-center justify-center gap-1.5 text-[13px] font-semibold ${
                         plan.popular
                           ? "px-corners bg-[#FFA300] text-[#131A31] transition hover:bg-[#FFB733]"
@@ -349,14 +450,18 @@ export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
                 ))}
               </div>
 
-              <div className="mt-5 flex flex-col items-center justify-between gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 sm:flex-row">
-                <p className="text-[13px] text-[#9AA1CC]">Just need a few credits? One-time packs, no subscription.</p>
+              <div className="mt-5 flex flex-col items-start justify-between gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 sm:flex-row sm:items-center">
+                <p className="text-[13px] text-[#9AA1CC]">Just need a few credits? Blaze is 75 credits, one time, £2.99. A pack does not include a commercial licence.</p>
                 <Link
-                  href="/pricing#credit-packs"
-                  onClick={closeOnNavigate}
-                  className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#FFC857] hover:underline"
+                  href="/checkout/credits/blaze"
+                  onClick={() => {
+                    track(FUNNEL.checkoutStart, { plan: "PACK_75", type: "credits", source: "upgrade_modal" });
+                    track(FUNNEL.upgradeModalClicked, { mode: "plans", target: "PACK_75" });
+                    closeOnNavigate();
+                  }}
+                  className="inline-flex h-10 shrink-0 items-center gap-1.5 text-[13px] font-medium text-[#FFC857] hover:underline"
                 >
-                  View credit packs
+                  Get Blaze · £2.99
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </div>
@@ -370,8 +475,8 @@ export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
 
 // Trigger the modal from anywhere (the matching listener is in the
 // useEffect above). Used when a generation is refused for lack of credits.
-export function triggerUpgradeModal() {
+export function triggerUpgradeModal(prompt?: UpgradePrompt) {
   if (typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent("show-upgrade-modal"));
+    window.dispatchEvent(new CustomEvent("show-upgrade-modal", { detail: prompt }));
   }
 }

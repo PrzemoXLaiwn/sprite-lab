@@ -25,6 +25,8 @@ import {
 } from "lucide-react";
 import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
 import { triggerUpgradeModal } from "@/components/dashboard/UpgradeModal";
+import { FirstSessionNextStep } from "@/components/generate/FirstSessionNextStep";
+import { FIRST_SESSION_NEXT_KEY, shouldShowFirstSessionNext } from "@/components/generate/first-session-next-step";
 import {
   Field, Chip, ToolTabs, ErrorNote, IconButton, Elapsed, SECONDARY_BTN, saveBlobAs, creditLabel,
 } from "@/components/tools/ToolWorkspace";
@@ -256,6 +258,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
   const [seedLocked, setSeedLocked]       = useState(false);
 
   const [status, setStatus]               = useState<"idle" | "generating" | "error">("idle");
+  const [showNextStep, setShowNextStep]   = useState(false);
   const [errorMessage, setErrorMessage]   = useState<string | null>(null);
 
   const [history, setHistory]             = useState<GeneratedResult[]>(initialHistory);
@@ -442,7 +445,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
           setStatus("error");
           const needed = styleRef ? STYLE_MATCH_CREDITS : DETAIL_CREDITS[detail];
           setErrorMessage(`Not enough credits — this needs ${creditLabel(needed)}.${!styleRef && detail === "hd" ? " Switch to Standard (1 credit) or top up." : " Top up to keep creating."}`);
-          triggerUpgradeModal();
+          triggerUpgradeModal({ cost: needed });
           return;
         }
         const code: string | undefined = data?.code;
@@ -495,6 +498,14 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
 
       track(FUNNEL.generationSuccess, { styleId, categoryId: selectedSub.categoryId });
       if (isFirstAttempt) track(FUNNEL.firstGenerationSuccess, { styleId });
+      if (isFirstAttempt) {
+        let alreadyShown = false;
+        try { alreadyShown = window.sessionStorage.getItem(FIRST_SESSION_NEXT_KEY) === "1"; } catch { /* private mode */ }
+        if (shouldShowFirstSessionNext({ firstSuccess: true, alreadyShown })) {
+          try { window.sessionStorage.setItem(FIRST_SESSION_NEXT_KEY, "1"); } catch { /* private mode */ }
+          setShowNextStep(true);
+        }
+      }
 
       if (!styleLocked) setStyleLocked(true);
       triggerCreditsRefresh();
@@ -506,6 +517,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
         : err instanceof Error ? err.message : "Something went wrong. Please try again.";
       setErrorMessage(msg);
       track(FUNNEL.generationError, { reason: isAbort ? "timeout" : "api_error", styleId });
+      if (isFirstAttempt) track(FUNNEL.firstGenerationFailed, { reason: isAbort ? "timeout" : "api_error", styleId });
     } finally {
       clearTimeout(timeoutId);
     }
@@ -1097,6 +1109,10 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                 {seedCopied ? <Check className="h-4 w-4 text-[#00E436]" /> : <Copy className="h-4 w-4" />}
               </IconButton>
             </div>
+          )}
+
+          {showNextStep && activeResult?.generationId && (
+            <FirstSessionNextStep generationId={activeResult.generationId} onDismiss={() => setShowNextStep(false)} />
           )}
 
           {activeResult && ((activeResult.warnings?.length ?? 0) > 0 || activeResult.translatedPrompt) && (

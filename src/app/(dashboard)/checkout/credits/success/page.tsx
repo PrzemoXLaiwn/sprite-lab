@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { CreditChip, PageSpinner, SuccessShell } from "../../_components/checkout-ui";
+import { trackCheckoutCompleteOnce } from "@/lib/analytics";
 
 // Declare gtag for TypeScript
 declare global {
@@ -74,6 +75,13 @@ function SuccessContent() {
 
     return () => clearInterval(interval);
   }, [packId, sessionId, priceParam, conversionTracked]);
+
+  useEffect(() => {
+    trackCheckoutCompleteOnce(`credits:${packId}:${sessionId}:${credits}`, {
+      plan: packId || packName,
+      type: "credits",
+    });
+  }, [packId, packName, sessionId, credits]);
 
   useEffect(() => {
     const timer = setInterval(() => {

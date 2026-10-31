@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { Infinity as InfinityIcon } from "lucide-react";
 import { CreditChip, PageSpinner, SuccessShell } from "../../_components/checkout-ui";
+import { trackCheckoutCompleteOnce } from "@/lib/analytics";
 
 // Declare gtag for TypeScript
 declare global {
@@ -72,6 +73,13 @@ function LifetimeSuccessContent() {
 
     return () => clearInterval(interval);
   }, [dealId, sessionId, priceParam, conversionTracked, deal]);
+
+  useEffect(() => {
+    trackCheckoutCompleteOnce(`lifetime:${dealId}:${sessionId}:${deal}`, {
+      plan: dealId || deal,
+      type: "lifetime",
+    });
+  }, [dealId, deal, sessionId]);
 
   useEffect(() => {
     const timer = setInterval(() => {
