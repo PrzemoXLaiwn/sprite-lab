@@ -41,10 +41,38 @@ export function isItemMotion(kind: string | null | undefined): kind is ItemMotio
   return kind === "swing" || kind === "thrust" || kind === "spin" || kind === "shine" || kind === "pulse";
 }
 
-/** Motions that are better as a rig than as redrawn frames. */
-export function rigMotionFor(id: string, label?: string, categoryId?: string | null): RigMotionKind | null {
+// Someone who draws "a knight with a zweihander" under Weapons gets a figure,
+// not a blade: swinging that as one rigid piece tips the whole knight over
+// (3 of 5 sword swings in Oct 2026 were characters). Prompts naming a person
+// or creature take the AI path instead. ASCII  misses accented letters,
+// so the words are matched between non-letters.
+const LIVING_SUBJECT = new RegExp(
+  "(?<!\\p{L})(?:" + [
+    "character", "hero", "heroine", "warrior", "knight", "assassin", "soldier", "guard", "fighter", "paladin", "rogue", "ranger", "archer",
+    "wizard", "witch", "mage", "sorcer\\p{L}*", "necromancer", "priest", "cleric", "druid", "monk", "ninja", "samurai", "pirate", "viking", "barbarian",
+    "man", "woman", "girl", "boy", "guy", "lady", "person", "people", "player", "npc", "villain", "boss", "enemy", "enemies", "adventurer",
+    "monster", "creature", "beast", "dragon", "goblin", "orc", "elf", "dwarf", "troll", "ogre", "demon", "zombie", "skeleton", "ghost", "golem", "slime",
+    "robot", "mech", "android", "cyborg", "alien", "wielding", "holding", "swinging", "riding",
+    // Polish / Portuguese / Spanish / German / French / Italian (stems, so endings vary)
+    "rycerz\\p{L}*", "wojownik\\p{L}*", "posta[cć]\\p{L}*", "bohater\\p{L}*", "kobiet\\p{L}*", "m[eę][zż]czyzn\\p{L}*", "dziewczyn\\p{L}*", "ch[lł]opak\\p{L}*", "czarodziej\\p{L}*", "czarownic\\p{L}*", "[lł]ucznik\\p{L}*", "zab[oó]jc\\p{L}*", "[zż]o[lł]nierz\\p{L}*", "potw[oó]r\\p{L}*", "stw[oó]r\\p{L}*", "smok\\p{L}*",
+    "cavaleir\\p{L}*", "caballer\\p{L}*", "guerreir\\p{L}*", "guerrer\\p{L}*", "personagem", "personaje", "her[oó][ie]\\p{L}*", "assassin\\p{L}*", "soldad\\p{L}*", "mag[oa]", "monstr\\p{L}*", "homem", "mulher", "hombre", "mujer",
+    "ritter", "krieger\\p{L}*", "charakter", "held", "heldin", "k[aä]mpfer\\p{L}*", "zauberer", "chevalier", "guerrier\\p{L}*", "personnage", "sorci[eè]re?", "cavaliere", "guerriero", "personaggio",
+  ].join("|") + ")(?!\\p{L})",
+  "iu",
+);
+
+/** True when the sprite's prompt describes a person or creature rather than an object. */
+export function describesLivingSubject(prompt: string | null | undefined): boolean {
+  return !!prompt && LIVING_SUBJECT.test(prompt);
+}
+
+/**
+ * Motions that are better as a rig than as redrawn frames. `prompt` is the
+ * sprite's own prompt: a character filed under Weapons is still a character.
+ */
+export function rigMotionFor(id: string, label?: string, categoryId?: string | null, prompt?: string | null): RigMotionKind | null {
   const text = `${id} ${label ?? ""}`.toLowerCase();
-  if (RIGID_CATEGORIES.includes((categoryId ?? "").toUpperCase())) {
+  if (RIGID_CATEGORIES.includes((categoryId ?? "").toUpperCase()) && !describesLivingSubject(prompt)) {
     // Image models redraw a "swinging" sword in place and add a white arc;
     // rotating the real drawing around its grip is what a game animator does
     if (/\b(swing|slash|strike|chop|cleave|hack|attack|smash)/.test(text)) return "swing";

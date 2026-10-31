@@ -185,7 +185,7 @@ export async function POST(request: Request) {
 
   // Idle / breathing / hover: deform the original sprite instead of redrawing
   // every frame — no flicker in colour, size or detail
-  const rig = !isTile && action !== "custom" ? rigMotionFor(action, typeof body?.label === "string" ? body.label : undefined, source.categoryId) : null;
+  const rig = !isTile && action !== "custom" ? rigMotionFor(action, typeof body?.label === "string" ? body.label : undefined, source.categoryId, source.prompt) : null;
   // Pixel-art bipeds also walk as a whole-pixel cut-out from the original
   // sprite (no per-frame redraw); anything that can't be rigged uses the AI
   // (Claude marks the joints — that call runs inside the paid operation, so it

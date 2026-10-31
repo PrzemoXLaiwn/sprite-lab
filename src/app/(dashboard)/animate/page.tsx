@@ -173,7 +173,7 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
   const pixel = isPixelStyleId(source?.styleId ?? resultStyleId);
   const option = animationFrameOption(frames);
   // Idle / breathing / hover are rigged from the original sprite (no redraw, no flicker)
-  const rigKind = !isTile && selected !== "custom" ? rigMotionFor(selected, selectedPreset?.label, source?.categoryId)
+  const rigKind = !isTile && selected !== "custom" ? rigMotionFor(selected, selectedPreset?.label, source?.categoryId, source?.prompt)
     // Pixel-art walks are rigged too (whole-pixel steps); AI frames only as a fallback
     ?? (pixel && /walk/i.test(`${selected} ${selectedPreset?.label ?? ""}`) ? "walk" : null) : null;
   const rotation = rotationFor(selected);
