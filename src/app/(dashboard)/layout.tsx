@@ -13,13 +13,13 @@ export default async function DashboardLayout({
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
-    // Checkout is not in the proxy protected-path list, so this layout is what
-    // anonymous buyers hit. Send them to sign-up with the plan still attached.
-    // Any other dashboard route keeps the plain /login redirect.
+    // Normally the proxy has already sent an anonymous buyer to sign-in with
+    // the checkout URL (plan and offer) attached; this is the fallback when the
+    // request slipped through, so it keeps the same destination.
     const requested = (await headers()).get("x-pathname");
     const next = safeRedirectPath(requested);
     if (isCheckoutReturn(next)) {
-      redirect(`/register?next=${encodeURIComponent(next)}`);
+      redirect(`/login?redirectTo=${encodeURIComponent(next)}`);
     }
     redirect("/login");
   }

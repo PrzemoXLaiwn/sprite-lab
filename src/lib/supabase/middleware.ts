@@ -10,12 +10,30 @@ function stampPath(request: NextRequest) {
     request.headers.set(PATH_HEADER, request.nextUrl.pathname + request.nextUrl.search);
   } catch {
     // Some NextRequest headers are immutable. The checkout redirect below still
-    // sends anonymous buyers to /register; the layout then falls back to /login.
+    // sends anonymous buyers to /login with the checkout URL attached.
   }
+}
+
+/**
+ * A refresh that cannot complete: the refresh token was already rotated by
+ * another request or tab ("Invalid Refresh Token: Already Used"), or the
+ * chunked session cookie was read half-written ("Cannot create property
+ * 'user' on string"). Neither says the person is signed out — the browser
+ * usually holds a newer cookie — so the request goes through unchanged
+ * instead of clearing the cookies and bouncing them to /login.
+ */
+export function isSessionRefreshGlitch(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+  const code = typeof error === "object" && error !== null && "code" in error ? String((error as { code?: unknown }).code ?? "") : "";
+  return /refresh[_ ]token|already used|cannot create property|unexpected token|is not valid json/i.test(message)
+    || /refresh_token_(already_used|not_found)|bad_json/i.test(code);
 }
 
 export async function updateSession(request: NextRequest) {
   stampPath(request);
+  // The cookies as the browser sent them: a failed refresh must not forward a
+  // request whose cookies the auth client has already blanked out
+  const originalHeaders = new Headers(request.headers);
   let supabaseResponse = NextResponse.next({
     request,
   });
@@ -53,8 +71,17 @@ export async function updateSession(request: NextRequest) {
   // working and protected ones send people to the login page.
   let user = null;
   try {
-    ({ data: { user } } = await supabase.auth.getUser());
+    const { data, error } = await supabase.auth.getUser();
+    user = data.user;
+    if (!user && error && isSessionRefreshGlitch(error)) {
+      console.warn("[proxy] session refresh glitch, request passed through:", error.message);
+      return NextResponse.next({ request: { headers: originalHeaders } });
+    }
   } catch (error) {
+    if (isSessionRefreshGlitch(error)) {
+      console.warn("[proxy] session refresh glitch, request passed through:", error instanceof Error ? error.message : error);
+      return NextResponse.next({ request: { headers: originalHeaders } });
+    }
     console.error("[proxy] auth check failed:", error);
   }
 
@@ -72,18 +99,20 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Buying is a new-user path: keep the checkout URL and send them to sign-up
-  // (the form links to sign-in for people who already have an account).
+  // Checkout links go out by email to existing accounts (the Starter first
+  // month offer), so a signed-out buyer lands on sign-in with the full checkout
+  // URL — plan and `?offer=` included — carried along; the form links to
+  // sign-up for people who are new, and the offer survives that hop too.
   if (!user && isCheckoutReturn(request.nextUrl.pathname)) {
     const next = safeRedirectPath(
       request.nextUrl.pathname + request.nextUrl.search,
       request.nextUrl.origin,
     );
     const url = request.nextUrl.clone();
-    url.pathname = "/register";
+    url.pathname = "/login";
     url.search = "";
     if (isCheckoutReturn(next)) {
-      url.searchParams.set("next", next);
+      url.searchParams.set("redirectTo", next);
     }
     return NextResponse.redirect(url);
   }

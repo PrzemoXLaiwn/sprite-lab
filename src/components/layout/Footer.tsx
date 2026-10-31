@@ -92,7 +92,7 @@ export function Footer() {
 
         <div className="mt-10 space-y-3 border-t border-white/[0.06] pt-6 text-[12.5px] leading-relaxed text-[#A7ADD4]">
           <p>
-            &copy; {new Date().getFullYear()} SpriteLab is a trading name of Przemek Lawin, 69 Haybridge Avenue, Telford, TF1 5JT, United Kingdom
+            &copy; {new Date().getFullYear()} SpriteLab is a trading name of Przemek Lawin, Telford, United Kingdom
             {" · "}
             <a href="mailto:support@sprite-lab.com" className="underline decoration-white/20 underline-offset-2 hover:text-white">
               support@sprite-lab.com

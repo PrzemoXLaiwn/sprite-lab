@@ -69,7 +69,10 @@ export async function POST(request: Request) {
     // Create a SetupIntent - this allows saving the payment method for future use
     const setupIntent = await stripe.setupIntents.create({
       customer: customerId,
-      payment_method_types: ["card"],
+      // Cards plus the wallets Stripe can save for monthly billing (Apple Pay,
+      // Google Pay, Link). No redirect-based methods: the page confirms in
+      // place and then creates the subscription from the SetupIntent.
+      automatic_payment_methods: { enabled: true, allow_redirects: "never" },
       metadata: {
         userId: user.id,
         plan: plan,
