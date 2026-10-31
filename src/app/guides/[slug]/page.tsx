@@ -7,6 +7,7 @@ import { Footer } from "@/components/layout/Footer";
 import { FIRST_PUBLISHED, GUIDES, getGuide, guideReadingMinutes, guideWordCount, type Guide } from "@/data/guides";
 import { GUIDE_INTROS } from "@/data/guide-intros";
 import { SIGNUP_CREDITS, SIGNUP_CTA } from "@/config/signup";
+import { jsonLdHtml } from "@/lib/seo/json-ld";
 
 const SITE = "https://www.sprite-lab.com";
 
@@ -14,6 +15,7 @@ const ALL_TOOLS: { label: string; href: string }[] = [
   { label: "AI sprite generator", href: "/ai-sprite-generator" },
   { label: "Sprite sheet generator", href: "/sprite-sheet-generator" },
   { label: "AI sprite animation generator", href: "/ai-sprite-animation-generator" },
+  { label: "Walk cycle generator", href: "/walk-cycle-generator" },
   { label: "Pixel art generator", href: "/pixel-art-generator" },
   { label: "AI tileset generator", href: "/ai-tileset-generator" },
   { label: "AI game icon generator", href: "/ai-game-icon-generator" },
@@ -26,6 +28,7 @@ const ALL_TOOLS: { label: string; href: string }[] = [
   { label: "RPG character creator", href: "/rpg-character-creator" },
   { label: "Game weapon generator", href: "/game-weapon-generator" },
   { label: "Pricing", href: "/pricing" },
+  { label: "Terms", href: "/terms" },
 ];
 
 const AUTHOR = { name: "SpriteLab team", href: "/about" };
@@ -171,7 +174,7 @@ export default async function GuidePage({ params }: Props) {
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#131A31] text-[#FFF1E8]">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(buildJsonLd(guide)) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdHtml(buildJsonLd(guide)) }} />
       <SiteNav />
 
       <article className="relative pb-20 pt-28 sm:pt-36">

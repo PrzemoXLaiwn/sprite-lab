@@ -17,7 +17,7 @@ const SITE = "https://www.sprite-lab.com";
 export function GET() {
   const body = `# SpriteLab
 
-> SpriteLab (sprite-lab.com) is an AI game asset generator for indie game developers. It turns a text prompt into game-ready 2D sprites — transparent PNGs on a real pixel grid — and animates them into sprite sheets.
+> SpriteLab (sprite-lab.com) is an AI game asset platform for indie game developers. It turns a text prompt into game-ready 2D assets — characters, creatures, weapons, items, icons and seamless tiles — in pixel, painted, anime and realistic styles, as transparent PNGs, then animates them into sprite sheets. Pixel art is one of the styles, not the whole product.
 
 SpriteLab is built for game development rather than general image generation: every result is cleaned up for use in a game (background removed to transparency, pixel art snapped to one pixel grid and a limited palette, consistent outline), and assets can be organised into projects and exported as a pack.
 
@@ -36,6 +36,8 @@ Pixel 16-bit, Pixel HD, Isometric Pixel, Isometric, Isometric Cartoon, Hand Pain
 ## Animation
 Any sprite can be animated: idle, walk, run, attack, jump, cast, hurt, defeat, flying, a turnaround (front / side / back views) or a custom motion described in words. SpriteLab suggests motions that fit the specific sprite (a dog gets "wag tail" and "bark", a car gets "drive" and "drift"). Output: a horizontal sprite sheet PNG, individual frames and an animated GIF, with 4, 6 or 9 key poses and an optional smooth mode that adds AI-drawn in-between frames (8–18 frames).
 
+A side-view walk plays in place; the game moves the character. A top-down character can use the 4-direction walk (4 steps facing down, right, up and left; the left row is mirrored from the right). An animated 8-direction walk is not generated. Standing 4- and 8-direction views are. Editing covers effects, colours and materials on a sprite you already have. The background is removed on generation.
+
 ## Workflow features
 - Projects: generate assets for a game, accept or decline each result; accepted sprites are sorted into folders by type automatically; download the whole project as a ZIP pack.
 - Free pixel-perfect upscaling (nearest-neighbour, up to 4096 px).
@@ -49,7 +51,7 @@ Output is standard PNG / sprite-sheet PNG / GIF, which works in Unity, Godot, Ga
 Free: ${SIGNUP_CREDITS} credits on signup (no credit card). Accounts created before 7 October 2026 get a one-time welcome-back of ${RELAUNCH.RETURNING_BONUS} credits the first time they open the app before 31 December 2026. Accounts that already received ${RELAUNCH.PREVIOUS_RETURNING_BONUS} get ${RELAUNCH.RETURNING_TOP_UP} more on the next visit, so the welcome-back total is ${RELAUNCH.RETURNING_BONUS}. Paid plans from £5/month (Starter, 250 credits), Pro £12/month (500 credits), Studio £25/month (1,200 credits); one-off credit packs are also available. A standard sprite costs ${CREDIT_COSTS.normal} credit, HD quality ${CREDIT_COSTS.hd} credits, a rigged idle loop ${RIG_CREDITS} credits. AI animations cost ${ANIMATION_FRAME_OPTIONS.map((o) => `${o.credits}`).join("/")} credits for 4/6/9 key poses; smooth mode (on by default) makes those ${ANIMATION_FRAME_OPTIONS.map((o) => animationCredits(o.frames, true)).join("/")}. Direction sheets: ${ROTATIONS.map((r) => `${r.label} ${r.credits}`).join(", ")}. Commercial use is included on Starter, Pro and Studio. The Free plan is personal, non-commercial use. Assets generated on the Free plan before 17 October 2026 keep the licence that applied when they were created.
 
 ## Not offered
-SpriteLab does not currently offer a public REST API, an MCP server, 3D model generation, per-direction walk animations (it makes static 4- and 8-direction views), autotile (47-tile) tilesets or engine-specific project files. It is a web app (sprite-lab.com).
+SpriteLab does not currently offer a public REST API, an MCP server, 3D model generation, an animated 8-direction walk, autotile (47-tile) tilesets, or a full Godot, Unity or GameMaker project. It does make a side-view walk cycle, a 4-direction walk (left row mirrored), and static 4- and 8-direction views. It exports PNG sprite sheets and an engine pack (Godot SpriteFrames, Unity frame folders, GameMaker strips, hitboxes.json). It is a web app (sprite-lab.com).
 
 ## Key pages
 - [Home — AI Game Asset Generator](${SITE}/)

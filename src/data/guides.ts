@@ -77,7 +77,7 @@ const BASE_GUIDES: Guide[] = [
       "Turn one AI-generated sprite into a game-ready sprite sheet: pick a motion, choose frame count, export equal-size frames and import them into your engine.",
     updated: "2026-10-13",
     related: ["how-many-frames-per-sprite-animation","sprite-sheet-layout-and-texture-atlases","how-to-keep-ai-game-art-consistent"],
-    tools: ["/ai-sprite-animation-generator","/ai-sprite-generator"],
+    tools: ["/walk-cycle-generator","/ai-sprite-animation-generator","/ai-sprite-generator"],
     sections: [
       {
         heading: "The short answer",

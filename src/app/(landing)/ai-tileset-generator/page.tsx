@@ -9,9 +9,9 @@ export const metadata: Metadata = {
   title: { absolute: "AI Tileset Generator — Seamless Game Tiles | SpriteLab" },
   description:
     "Generate seamless floor and wall tiles for 2D games with AI: stone, grass, water, lava, wood. Pixel-art tiles that repeat without visible seams.",
-  keywords: ["AI tile generator", "seamless tile generator", "tileable texture AI", "pixel art tiles", "game floor tiles", "wall tiles generator", "animated water tile"],
+  keywords: ["tileset generator", "AI tileset generator", "AI tile generator", "seamless tile generator", "tileable texture AI", "pixel art tiles", "game floor tiles", "animated water tile"],
   openGraph: {
-    title: "AI Seamless Tile Generator for Games — SpriteLab",
+    title: "AI Tileset Generator — Seamless Game Tiles | SpriteLab",
     description: "Floor and wall tiles that repeat without seams, plus animated water and lava.",
     url: URL,
     type: "website",
@@ -28,7 +28,8 @@ export default function TileGeneratorPage() {
   return (
     <SeoLanding
       slug="ai-tileset-generator"
-      appName="SpriteLab AI Tile Generator"
+      appName="SpriteLab AI Tileset Generator"
+      breadcrumb="AI tileset generator"
       appDescription="Generate seamless square floor and wall tiles for 2D games from a text prompt, and animate water, lava and other surfaces into looping tiles."
       heroLine="ai seamless tile generator"
       h1={

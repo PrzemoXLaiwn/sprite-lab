@@ -81,6 +81,7 @@ export const LANDING_SPECS: Record<string, Specs> = {
       "What stays with you is game feel. Exported frames are evenly timed; holding a wind-up frame longer, adding a few frames of hit-stop on impact, deciding which attack frames are active, and matching walk speed to movement speed all happen in your engine. The hitboxes in hitboxes.json are detected from the pixels — a useful first draft, not a balanced combat system.",
     ],
     links: [
+      { label: "Walk cycle generator: side view, 4 directions, timing", href: "/walk-cycle-generator" },
       { label: "Sprite sheet generator: the export format in detail", href: "/sprite-sheet-generator" },
       { label: "How many frames should a sprite animation have?", href: "/guides/how-many-frames-per-sprite-animation" },
       { label: "Hitboxes and hurtboxes from sprite sheets", href: "/guides/hitboxes-and-hurtboxes-from-sprite-sheets" },

@@ -97,6 +97,7 @@ export default function TopDownSpriteGeneratorPage() {
           ],
           links: [
             { label: "How to make a 4-direction top-down character", href: "/guides/how-to-make-a-4-direction-top-down-rpg-character" },
+            { label: "Walk cycle generator: side view, 4 directions, timing", href: "/walk-cycle-generator" },
             { label: "8-direction walk cycle", href: "/guides/how-to-make-an-8-direction-walk-cycle" },
             { label: "RPG character creator", href: "/rpg-character-creator" },
           ],

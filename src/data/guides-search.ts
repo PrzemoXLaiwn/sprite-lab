@@ -135,70 +135,81 @@ export const SEARCH_GUIDES: Guide[] = [
     slug: "can-you-use-ai-sprites-in-a-commercial-game",
     title: "Can You Use AI Sprites in a Commercial Game?",
     description:
-      "Yes on a paid SpriteLab plan, no on the free plan. What you can ship in a game, what you cannot sell as a stock pack, and what changed on 17 October 2026.",
-    updated: UPDATED,
+      "What SpriteLab's terms allow: commercial games on a paid plan, personal use on the free plan, and no sprite packs. A summary, not legal advice.",
+    updated: "2026-10-31",
     published: UPDATED,
     related: ["how-to-keep-ai-game-art-consistent", "free-game-sprites-without-an-artist", "what-is-a-sprite-in-gaming"],
-    tools: ["/2d-game-asset-generator", "/ai-sprite-generator", "/pricing"],
+    tools: ["/terms", "/pricing", "/2d-game-asset-generator"],
     sections: [
       {
         heading: "The short answer",
         body: [
-          "You can ship SpriteLab sprites in a commercial game if they were generated while a Starter, Pro or Studio plan was active. You do not have to credit SpriteLab. You cannot take those sprites and sell them on their own as a stock pack or a sprite library. The free plan, and anything made without an account, is personal and non-commercial.",
-          `That split took effect on ${LICENCE_CHANGE_DATE}. Assets generated on the free plan before that date keep the licence that applied when they were created. Read the terms for the full wording. This guide is the practical version for someone deciding whether a jam build can become a paid game.`,
+          "This page is a plain-language summary of SpriteLab's terms (section 9). It is not legal advice, and it is not the contract. If a sentence here and the terms disagree, the terms win. The terms are the page linked from the footer and from the tools on this article.",
+          "You can use an output in a commercial game when it was generated while the account was on Starter, Pro or Studio, including a lifetime purchase of that plan. You do not have to credit SpriteLab. You cannot sell or give away outputs on their own as stock assets, an asset pack or a sprite library. That pack rule applies even on a paid plan. Outputs generated on the Free plan, or with no account, are personal and non-commercial only.",
+          `The licence is fixed when the file is generated. It depends on the plan that was active then, not on whether the credit came from the free allowance, a subscription or a credit pack. Buying a credit pack does not by itself change your plan or grant a commercial licence. Changing plan later does not change the licence of files already made. Cancelling a paid plan does not take away a commercial licence you already have for outputs generated while that plan was active.`,
         ],
       },
       {
-        heading: "What 'commercial' means here",
+        heading: "What the terms call commercial",
         body: [
-          "Commercial use is selling the game, or giving it away in a way that earns money: a price on Steam or itch.io, a paid mobile build, a Patreon build that buyers download, a client project you were paid to make. Putting the game in a portfolio, a jam with no prize money you keep, or a free download with no sales is the personal side. If the same files later go into a paid build, those files need to have been generated on a paid plan.",
-          "The licence follows the asset, not the account you happen to be on today. A sprite made on the free plan stays non-commercial even if you subscribe next week. Generate it again while the paid plan is active if you want to ship it. A sprite made on Starter stays usable in your commercial game if you later cancel, because it was generated while the plan was active. Cancelling does not reach back and un-license files you already made under that plan. It does stop you making new commercial files.",
+          "On a paid plan the terms allow any lawful purpose, including commercial games and products, without attribution. They do not define commercial use as 'anything with a price tag' and then list exceptions. On the Free plan, and for tries with no account, the terms say personal, non-commercial use only. You may not sell the output, monetise it, or use it in a product, game, service or promotion for a business.",
+          "A free download is not automatically personal use. If the game, service or promotion is for a business, the free-plan wording still forbids it, price or no price. A file you only meant as a placeholder is still the file if it ships. When you are not sure which side a release is on, treat the file as non-commercial and generate the shipping art again while a paid plan is active.",
+          `That paid-versus-free split took effect on ${LICENCE_CHANGE_DATE}. Assets generated on the Free plan before that date keep the licence that applied when they were created. Under the terms then in force, commercial use was allowed, without attribution, together with the restriction on selling or giving away outputs as stock packs. The terms say the same previous licence applies to other outputs created before that date.`,
         ],
       },
       {
         heading: "What you can ship",
         body: [
-          "Inside your own game, paid-plan sprites can be the player, the enemies, the tiles, the icons and the UI, with no attribution line. You can edit them. You can animate them. You can trace over them in Aseprite until none of the original pixels remain; at that point you have drawn a new sprite, and the interesting question is your own copyright in the drawing, not SpriteLab's licence. You can commission a friend to clean up a sheet you generated on a paid plan and still ship it.",
-          "You can use the same hero across a series of your games. The restriction is not 'one game'. The restriction is that you are using the art inside products you made, not reselling the art as the product.",
+          "Paid-plan outputs can be the player, the enemies, the tiles, the icons and the UI inside games and other products you are allowed to use them in, with no attribution line. The same character can appear in more than one of your games. The terms do not limit you to a single title. They limit resale of the art as the product.",
+          "You can edit, upscale, recolour and animate an output you are allowed to use. The terms do not say that redrawing over a sprite until the original pixels are gone creates a new work that leaves the contract. They also do not promise that an output is protected by copyright, or that you can stop someone else using similar material. Whether a particular output is protected, and in which country, is called out in the terms as uncertain. This guide will not add a theory the contract does not state.",
         ],
         list: [
-          "A paid Steam or itch.io game.",
-          "A free game that later gets a price, if the shipped art was generated on a paid plan.",
-          "A client game, if you generated the art on your paid plan (or the client's) and the contract says the client receives the game, not a reusable asset pack.",
-          "Edited, upscaled, recoloured and animated versions of those sprites.",
+          "A game or product that includes outputs generated on Starter, Pro, Studio or a lifetime purchase of that plan.",
+          "The same outputs after you cancel, because they were generated while the paid plan was active.",
+          "Edited, upscaled, recoloured and animated versions of those outputs, still inside a product the licence allows.",
+          "Free-plan outputs from before the date above, under the licence that applied that day, still subject to the pack rule.",
         ],
       },
       {
         heading: "What you cannot do",
         body: [
-          "You may not sell or give away the generated images on their own as stock assets, an asset pack or a sprite library. That restriction applies even on Studio, and it applies to older files too. A pack on itch.io, a marketplace listing, or a drive of PNGs for other developers is the thing the terms forbid. Selling your game, with the sprites inside it, is not.",
-          "You also cannot take free-plan sprites and drop them into a paid game because you 'only used them as placeholders and then forgot'. Placeholders that ship are the art. If a jam build used free-plan art and you want to sell the jam game, replace those files with ones generated on a paid plan, or redraw them.",
+          "You may not sell or give away outputs on their own as stock assets, asset packs or a sprite library. The terms call this a contractual restriction. It applies despite the assignment of rights in the output, whether or not you have a commercial licence, and it applies to outputs created before the date above. A pack on itch.io, a marketplace listing, or a folder of PNGs for other developers is the thing that clause describes. Selling your game, with outputs inside it that you are allowed to use commercially, is what the terms still allow.",
+          "You also cannot put free-plan outputs, or outputs made with no account, into a product, game, service or promotion for a business. Subscribing next week does not re-licence those files. A credit pack bought while you are on the Free plan does not either. Generate the shipping files again while Starter, Pro, Studio or the matching lifetime plan is active.",
         ],
         table: {
-          head: ["Situation", "Allowed?"],
+          head: ["Situation", "What the terms say"],
           rows: [
-            ["Sell a game that contains paid-plan sprites", "Yes"],
-            ["Credit line required on a paid plan", "No"],
-            ["Sell a sprite pack made of those sprites", "No"],
-            ["Ship free-plan sprites in a paid game", "No"],
-            ["Use free-plan sprites in a free, non-commercial jam", "Yes, personal use"],
-            [`Free-plan sprites made before ${LICENCE_CHANGE_DATE}`, "The licence from the day they were made"],
-            ["Tries made with no account, then sold", "No — non-commercial"],
+            ["Game contains outputs made on Starter, Pro, Studio or lifetime", "Commercial use allowed, no attribution required"],
+            ["Same outputs after you cancel that paid plan", "The commercial licence already earned stays"],
+            ["Sell or give away the outputs as a sprite pack", "Not allowed, including older files"],
+            ["Free plan, or no account, used in a business product or paid game", "Not allowed"],
+            ["Credit pack bought on the Free plan", "Does not grant a commercial licence"],
+            ["Subscribe later, then ship the old free-plan files", "Not allowed. Generate them again on a paid plan"],
+            [`Free-plan outputs made before ${LICENCE_CHANGE_DATE}`, "Keep that day's licence. Commercial use was allowed then. The pack rule still applies"],
+            ["Personal, non-commercial use of free-plan outputs", "That is what the Free plan allows"],
           ],
         },
       },
       {
-        heading: "The free plan is a trial of the tool, not a licence",
+        heading: "The free credits are a trial of the tool",
         body: [
-          `A new account gets ${SIGNUP_CREDITS} credits and no card is required. That is enough to see whether the style fits a game. It is not a grant of commercial rights. The pricing page is where the paid plans start; this guide will not invent a discount. If the only thing in the way of shipping is the licence, a month of the cheapest paid plan costs less than replacing a cast, and you generate the files you will actually ship while that plan is active.`,
-          "Other generators are different. Some free tiers allow commercial use, some forbid it, some are silent. Silence is not permission. If you mix SpriteLab art with art from another tool, each file follows the licence of the tool that made it. The comparison pages on this site quote what those tools publish about themselves, and they go stale, so re-read the other tool's terms before you rely on a sentence from a review.",
+          `A new account gets ${SIGNUP_CREDITS} credits and no card is required. That is enough to see whether a style fits a game. It is not a commercial licence. The pricing page lists the paid plans. This guide does not change those prices. If the shipping art is the thing in the way, generate it while a paid plan is active rather than hoping a later subscription covers files you already have.`,
+          "Other generators publish different free tiers. Some allow commercial use, some forbid it, some say nothing. Silence on someone else's site is not permission, and a sentence on a comparison page here is not their contract. If you mix SpriteLab outputs with art from another tool, each file follows the terms of the tool that made it. Re-read those terms before you rely on them.",
         ],
       },
       {
-        heading: "A practical way to not get this wrong",
+        heading: "Other limits the terms actually state",
         body: [
-          "Keep paid-plan exports in a folder that is obviously the shipping art, and free-plan experiments somewhere else. When a sprite is approved for the game, note the date and that a paid plan was active. You do not need a lawyer for that. You need to be able to answer 'which plan made this file?' six months later when you press the release button.",
-          "If you are about to charge money and you are not sure, assume the file is non-commercial and regenerate it on a paid plan. Regeneration is cheaper than pulling a build. And if you want the exact clauses rather than this summary, they are in the terms. The one-paragraph version used across the site is the same rule:",
+          "As between you and SpriteLab, the terms assign to you any rights SpriteLab has in outputs generated for you. That assignment does not remove the limits in section 9. Those limits apply even where you hold rights in an output.",
+          "AI models can produce similar outputs for different users. Outputs are not exclusive to you. You are responsible for how you use them, including checking that they do not infringe someone else's rights before you rely on them commercially, especially if the prompt referred to an existing character, brand, game or artist. Do not present outputs as hand-made if that would mislead people, for example where a store or a jam requires disclosure of AI use.",
+          "If you publish outputs in the community gallery, you give SpriteLab a licence to display them on SpriteLab until you remove them. That display licence is separate from whether you may sell a game.",
+        ],
+      },
+      {
+        heading: "A practical way to stay inside the rule",
+        body: [
+          "Keep paid-plan exports in a folder that is obviously the shipping art, and free-plan experiments somewhere else. When a sprite is approved for the game, note the date and which plan was active. The question you want to be able to answer at release is 'which plan made this file?', not 'which plan am I on today?'.",
+          "If you are about to charge money, or ship a business product, and you are not sure, assume the file is non-commercial and generate it again on a paid plan. The one-paragraph version used on the rest of the site is the same rule. The full clauses are in the terms:",
         ],
         after: [
           COMMERCIAL_LICENCE_ANSWER,
@@ -208,23 +219,23 @@ export const SEARCH_GUIDES: Guide[] = [
     faq: [
       {
         q: "Do I have to credit SpriteLab?",
-        a: "Not on Starter, Pro or Studio. The free plan is not a commercial licence, so the credit question does not come up: you cannot sell that art in the first place.",
+        a: "Not when the output was generated on Starter, Pro or Studio, including a lifetime purchase of that plan. The Free plan is personal and non-commercial, so attribution is not a way to make those files sellable.",
       },
       {
         q: "I made the sprites before I subscribed. Can I sell the game now?",
-        a: `Only if those sprites were generated while a paid plan was active, or they are free-plan sprites from before ${LICENCE_CHANGE_DATE} and the licence at that time allowed it. Subscribing later does not re-licence old free-plan files. Generate them again on the paid plan.`,
+        a: `Only if those files were generated while a paid plan was active, or they were generated before ${LICENCE_CHANGE_DATE} and the licence at that time allowed commercial use. Subscribing later does not re-licence old Free-plan files. A credit pack does not either. Generate them again while a paid plan is active.`,
       },
       {
         q: "Can I sell the sprites as an asset pack?",
-        a: "No. You may not sell generated assets on their own as stock packs or a sprite library. Selling your game is fine. Selling the art as the product is not.",
+        a: "No. The terms say you may not sell or give away outputs on their own as stock assets, asset packs or a sprite library. That applies even with a commercial licence, and it applies to older files. Selling a game that includes outputs you are allowed to use commercially is different, and the terms allow it.",
       },
       {
         q: "What about a game jam that becomes a paid game?",
-        a: "Jam prototypes often use the free plan. Before you add a price, replace any free-plan art with art generated on a paid plan, or with art you drew yourself.",
+        a: "If the jam files were generated on the Free plan after the licence change, they are personal and non-commercial. Before the game is a paid product, or a product for a business, replace those files with outputs generated on a paid plan, or with art you have another right to use.",
       },
       {
         q: "Is this the full legal text?",
-        a: COMMERCIAL_LICENCE_ANSWER,
+        a: "No. This is a summary of section 9 of the terms so you can see the shape of the rule. It is not legal advice. The terms are the contract, and they control if anything here is shorter or less precise.",
       },
     ],
   },

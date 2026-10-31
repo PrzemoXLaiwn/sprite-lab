@@ -42,7 +42,7 @@ export const metadata: Metadata = {
     template: "%s | SpriteLab",
   },
   description:
-    "Generate game-ready sprites, pixel art, sprite-sheet animations and seamless tiles with AI. Transparent PNG for Unity, Godot and GameMaker. Free credits to start.",
+    "AI game asset platform for indie developers: sprites in pixel, painted and realistic styles, sprite-sheet animations and seamless tiles. Transparent PNG for Unity, Godot and GameMaker. Free credits to start.",
   keywords: [
     "AI game asset generator",
     "AI sprite generator",
@@ -72,7 +72,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "SpriteLab — AI Game Asset Generator for Indie Developers",
     description:
-      "Game-ready sprites, pixel art, sprite-sheet animations and seamless tiles from a text prompt. Transparent PNG. Commercial licence on paid plans.",
+      "Game-ready 2D assets from a text prompt: pixel, painted and realistic sprites, sprite sheets and tiles. Transparent PNG. Commercial licence on paid plans.",
     url: baseUrl,
     siteName: "SpriteLab",
     // Image is generated dynamically by `src/app/opengraph-image.tsx` —
@@ -85,7 +85,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "SpriteLab — AI Game Asset Generator",
     description:
-      "Game-ready sprites, pixel art and sprite-sheet animations from a text prompt. Free to start.",
+      "Game-ready sprites, animations and sprite sheets for indie games. Pixel, painted and realistic. Free to start.",
     // Same deal — `src/app/twitter-image.tsx` (or the opengraph-image
     // fallback) renders this. Don't hardcode a static path.
     // Add `creator: "@handle"` once SpriteLab has a confirmed X account.
@@ -184,7 +184,7 @@ const jsonLd = {
         },
       ],
       description:
-        "SpriteLab is an AI game asset generator for indie game developers. It turns a text prompt into game-ready 2D sprites — characters, creatures, weapons, armor, items, icons, props and seamless tiles — as transparent PNGs, and animates them into sprite sheets and GIFs.",
+        "SpriteLab is an AI game asset platform for indie game developers. It turns a text prompt into game-ready 2D sprites — characters, creatures, weapons, armor, items, icons, props and seamless tiles — in pixel, painted and realistic styles, as transparent PNGs, and animates them into sprite sheets and GIFs.",
       url: baseUrl,
       screenshot: `${baseUrl}/opengraph-image`,
       // aggregateRating intentionally omitted until we have real verifiable
@@ -193,7 +193,7 @@ const jsonLd = {
         "Text-to-sprite generation for 2D games",
         "Transparent PNG output",
         "Pixel art on a real pixel grid with a limited palette",
-        "12 art styles including 16-bit pixel art, HD pixel art, anime, dark fantasy, cartoon and hand-painted",
+        "12 art styles including 16-bit pixel art, HD pixel art, anime, dark fantasy, cartoon, hand-painted and realistic",
         "Sprite animation: idle, walk, run, attack, jump, cast and custom motions",
         "Horizontal sprite sheet + GIF export, 4 to 18 frames",
         "Seamless floor and wall tiles",

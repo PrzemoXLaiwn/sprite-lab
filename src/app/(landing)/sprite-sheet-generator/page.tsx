@@ -100,6 +100,7 @@ export default function SpriteSheetGeneratorPage() {
             { label: "Sprite sheet layout: strips, grids and texture atlases", href: "/guides/sprite-sheet-layout-and-texture-atlases" },
             { label: "Sprites for Godot 4", href: "/godot-sprite-generator" },
             { label: "Sprites for Unity", href: "/unity-sprite-generator" },
+            { label: "Walk cycle generator: side view and 4 directions", href: "/walk-cycle-generator" },
             { label: "AI sprite animation: idle, walk, attack", href: "/ai-sprite-animation-generator" },
           ],
         },
