@@ -5,10 +5,30 @@ import { usePathname, useSearchParams } from "next/navigation";
 
 let lastTrackedPath: string | null = null;
 
+/** Ties GA to the signed-in account id. No email. No-op until gtag exists. */
+export function GoogleAnalyticsUser() {
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { createClient } = await import("@/lib/supabase/client");
+        const { data } = await createClient().auth.getUser();
+        if (cancelled || !data.user || typeof window.gtag !== "function") return;
+        window.gtag("set", { user_id: data.user.id });
+      } catch {
+        /* signed out or analytics blocked */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return null;
+}
+
 /**
  * GA4 page views for the first load and for App Router navigations.
  * `send_page_view` is false on config, so this is the only page_view.
- * Calls queue on the consent stub if gtag.js has not downloaded yet.
  */
 export function GoogleAnalyticsPageViews() {
   const pathname = usePathname();

@@ -56,6 +56,27 @@ export function track(event: string, props?: Props): void {
   } catch {
     /* swallow */
   }
+  try {
+    const payload = JSON.stringify({
+      name: event,
+      path: window.location.pathname,
+      referrer: document.referrer,
+      search: window.location.search,
+      props: props ?? {},
+    });
+    const body = new Blob([payload], { type: "application/json" });
+    if (!navigator.sendBeacon?.("/api/analytics/funnel", body)) {
+      void fetch("/api/analytics/funnel", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+        keepalive: true,
+      });
+    }
+  } catch {
+    /* telemetry must never break UX */
+  }
 }
 
 export const FUNNEL = {

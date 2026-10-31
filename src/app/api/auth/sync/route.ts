@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { sendWelcomeFor } from "@/lib/auth/sync-user";
 import { establishFirstLogin } from "@/lib/auth/first-login";
 import { rateLimitAuthSync, rateLimitAuthSyncByIp } from "@/lib/rate-limit";
+import { recordSignupFromRequest } from "@/lib/funnel/signup";
 
 export const dynamic = "force-dynamic";
 
@@ -68,6 +69,9 @@ export async function POST(request: Request) {
   if (!result.ok) {
     return NextResponse.json({ error: "Could not finish sign-in" }, { status: 500 });
   }
-  if (result.isNewUser) after(() => sendWelcomeFor(user));
+  if (result.isNewUser) {
+    after(() => sendWelcomeFor(user));
+    after(() => recordSignupFromRequest(request, user.id));
+  }
   return NextResponse.json({ isNewUser: result.isNewUser });
 }

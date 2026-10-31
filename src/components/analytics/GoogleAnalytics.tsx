@@ -1,6 +1,7 @@
 import Script from "next/script";
 import { Suspense } from "react";
-import { GoogleAnalyticsPageViews } from "./google-analytics-client";
+import { GoogleAnalyticsPageViews, GoogleAnalyticsUser } from "./google-analytics-client";
+import { FunnelBeacon } from "./FunnelBeacon";
 
 // Google Analytics 4. Consent Mode v2: in the UK, EEA and Switzerland nothing
 // is stored until the visitor accepts in Google's consent message (the same
@@ -26,18 +27,26 @@ gtag('js',new Date());gtag('config','${measurementId}',{send_page_view:false});}
 }
 
 export function GoogleAnalytics() {
-  if (!GA_ID || process.env.NODE_ENV !== "production") return null;
+  const ga = Boolean(GA_ID) && process.env.NODE_ENV === "production";
   return (
     <>
-      <script id="ga-consent" dangerouslySetInnerHTML={{ __html: consentBootstrap(GA_ID) }} />
-      <Script
-        id="ga-loader"
-        src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
-        strategy="lazyOnload"
-      />
       <Suspense fallback={null}>
-        <GoogleAnalyticsPageViews />
+        <FunnelBeacon />
       </Suspense>
+      {ga ? (
+        <>
+          <script id="ga-consent" dangerouslySetInnerHTML={{ __html: consentBootstrap(GA_ID) }} />
+          <Script
+            id="ga-loader"
+            src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
+            strategy="lazyOnload"
+          />
+          <Suspense fallback={null}>
+            <GoogleAnalyticsPageViews />
+            <GoogleAnalyticsUser />
+          </Suspense>
+        </>
+      ) : null}
     </>
   );
 }
