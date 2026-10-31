@@ -29,16 +29,17 @@ Real generation spends real money. The cheap loop:
 1. Source → *Describe character* → "Generate base" with count 2 (two Nano
    Banana stills, ≈ $0.14), or upload a picture (free).
 2. Expression set → *Custom* → tick `joy` only (`neutral` is always in).
-3. Generate. Two expressions ≈ $0.31:
+3. Generate. Two expressions ≈ $0.24:
 
 | step | model | per expression |
 |---|---|---|
 | expression edit | Nano Banana 2 (`google:4@3`, 896×1200) | $0.07 (neutral: $0, it is the base) |
-| idle clip, 4 s | LTX-2.3 Fast (`lightricks:ltx@2.3-fast`, 768×1024, 24 fps) | $0.12 |
+| idle clip, 4 s | Vidu Q2 Turbo (`vidu:3@2`, 720×1280 padded, small movement) — default | $0.0825 |
+| idle clip, 4 s | LTX-2.3 Fast (`lightricks:ltx@2.3-fast`, 768×1024, 24 fps) — `ST_PACKS_VIDEO_MODEL` | $0.12 |
 | matte | colour key (default) | $0 |
-| matte | Runware per frame (`ST_PACKS_MATTE_MODE=runware`) | ≈ $0.19 (96 frames × $0.002) |
+| matte | Runware per frame (`ST_PACKS_MATTE_MODE=runware`) | ≈ $0.20 (≈100 frames × $0.002) |
 
-Default 8 ≈ $1.45, all 28 ≈ $5.2 (key matte). The page shows the estimate
+Default 8 ≈ $1.15, all 28 ≈ $4.2 (key matte, Vidu). The page shows the estimate
 before you start and the reported cost as it runs. Caps:
 `ST_PACKS_MAX_USD_PER_JOB` (10) and `ST_PACKS_MAX_USD_PER_EXPRESSION` (1.5)
 stop retries at the limit.
@@ -53,7 +54,7 @@ base still ──┐
              │      Nano Banana, identity-locked        │
              │                                          ▼
              │                    (2) idle clip, first = last frame = the still
-             │                        LTX-2.3 Fast, async, polled
+             │                        Vidu Q2 Turbo (or LTX-2.3 Fast), async, polled
              │                                          │
              │                                          ▼
              │   (3) decode (ffmpeg-static) → matte → temporal median → defringe
@@ -66,6 +67,12 @@ base still ──┐
 
 Parameters (`src/config/st-packs.ts`, from the validated Python prototype):
 
+- video models (`ST_VIDEO_MODELS`): both take a first AND a last frame.
+  Vidu's frame mode only accepts 720×1280, so the 3:4 still is padded on its
+  own background colour and the decoded frames are cropped back; its
+  `movementAmplitude: small` is what makes the idle subtle. LTX takes a true
+  3:4 canvas but moves more (its prompt enhancer is off; it still drifted
+  3 px with a pop on the test still vs 0.006 px for Vidu)
 - working canvas 1.5× the output; output 504×672 (3:4) by default
 - duplicate closing frame dropped when mean |last − first| < 0.02
 - key: background = median of the four 24×24 corner patches; smoothstep key
@@ -119,7 +126,7 @@ in the raw provider totals. Costs also accumulate on the expression and job rows
 | `alpha_coverage` | outside 8–75 % |
 | `edge_touch` | subject touches the left/right edge |
 | `corner_opaque` | > 2 % opaque pixels in the corner patches |
-| `halo` | edge luminance − interior luminance > 40 |
+| `halo` | edge luminance − luminance of the interior within 3 px > 100 (line-art outlines sit at the edge, so only a gross fringe trips it) |
 | `bytes` | > 1.5 MB |
 
 A flagged tile still ships (with a warning on the ZIP button); the admin
@@ -146,18 +153,20 @@ for one label. Validated on ST 1.19.0.
    run `prisma db push` for this.
 2. Vercel → Production env: `ST_PACKS_ENABLED=true` (and any tunables above).
    Everything else reuses `RUNWARE_API_KEY` and the R2 variables.
-3. Owner approval for the spend: the 28-label set is ≈ $5 per character.
+3. Owner approval for the spend: the 28-label set is ≈ $4 per character.
 4. Deploy through the usual route; check `/st-packs` as an admin and that a
    normal account gets 404.
 
 ## Known limitations
 
 - Progress needs the page open (no worker/cron).
-- LTX-2.3 Fast only; other Runware video models either lack a last frame or
-  a 3:4 canvas. Nano Banana 2 draws fixed sizes, so the edit canvas is
-  896×1200 and the clip 768×1024 (both 3:4), scaled to the output.
+- Two video models (Vidu Q2 Turbo, LTX-2.3 Fast); the other Runware video
+  models lack a last frame. Nano Banana 2 draws fixed sizes, so the edit
+  canvas is 896×1200, scaled to the output.
 - Each step is bounded by the 300 s function limit; a 5 s clip at 24 fps
   (120 frames) processes in well under that, but very busy backgrounds can
   make the colour key leave fringes — switch that job to the Runware matte.
 - Busy hair against a similar background is the weak point of the key matte.
-- 28 expressions: ≈ $5 and 30–40 minutes with default concurrency.
+- 28 expressions: ≈ $4 and 20–30 minutes with default concurrency.
+- `.env.example` could not be edited from the session (the tooling protects
+  `.env*` files); the variables above are the reference.

@@ -28,7 +28,7 @@ export function stPacksSettings(env: Record<string, string | undefined> = proces
   return {
     concurrency: intEnv("ST_PACKS_CONCURRENCY", 4, env),
     videoConcurrency: intEnv("ST_PACKS_VIDEO_CONCURRENCY", 8, env),
-    videoModel: env.ST_PACKS_VIDEO_MODEL?.trim() || ST_VIDEO_MODEL.air,
+    videoModel: videoModelSpec(env.ST_PACKS_VIDEO_MODEL?.trim()).air,
     videoSeconds: Math.min(5, Math.max(3, intEnv("ST_PACKS_VIDEO_SECONDS", 4, env))),
     matteMode: matte as StMatteMode,
     maxUsdPerJob: Number(env.ST_PACKS_MAX_USD_PER_JOB) > 0 ? Number(env.ST_PACKS_MAX_USD_PER_JOB) : 10,
@@ -44,12 +44,42 @@ export function stPacksSettings(env: Record<string, string | undefined> = proces
  */
 export const ST_EDIT_MODEL = { air: "google:4@3", width: 896, height: 1200, approxCostUsd: 0.07 } as const;
 /**
- * LTX-2.3 Fast: first AND last frame conditioning, any 64-multiple size from
- * 128 to 2048, $0.03 per second at the 720p tier. The only cheap model on
- * Runware with a last frame and a true 3:4 canvas (Vidu Q2 only takes 9:16 in
- * frame mode; Seedance/PixVerse/Hailuo are first-frame only).
+ * Video models with first AND last frame conditioning (the loop closes on
+ * itself). Seedance, PixVerse and Hailuo are first-frame only, so they are out.
+ * The still is fitted into the model's canvas (padded when it is not 3:4) and
+ * the decoded frames are cropped back.
  */
-export const ST_VIDEO_MODEL = { air: "lightricks:ltx@2.3-fast", width: 768, height: 1024, fps: 24, usdPerSecond: 0.03 } as const;
+export interface StVideoModelSpec {
+  air: string;
+  label: string;
+  width: number;
+  height: number;
+  /** Requested fps, or null when the model decides (the clip's fps is read back from the file). */
+  fps: number | null;
+  usdPerSecond: number;
+  /** Extra request fields (provider settings). */
+  body: Record<string, unknown>;
+}
+
+export const ST_VIDEO_MODELS: Record<string, StVideoModelSpec> = {
+  // Any 64-multiple size, true 3:4, $0.03/s at the 720p tier. Its prompt
+  // enhancer rewrites "static camera, subtle idle" into a moving shot — off.
+  "lightricks:ltx@2.3-fast": { air: "lightricks:ltx@2.3-fast", label: "LTX-2.3 Fast", width: 768, height: 1024, fps: 24, usdPerSecond: 0.03, body: { settings: { enhancePrompt: false } } },
+  // Frame mode only takes 720×1280 (9:16) — the 3:4 still is padded — but it
+  // has a "small" movement amplitude, which is exactly an idle. $0.0825 per 4 s.
+  "vidu:3@2": { air: "vidu:3@2", label: "Vidu Q2 Turbo", width: 720, height: 1280, fps: null, usdPerSecond: 0.0825 / 4, body: { providerSettings: { vidu: { movementAmplitude: "small", bgm: false } } } },
+};
+// Measured on the same still (Oct 2026): Vidu small-amplitude idle drifted 0.006 px with a clean
+// seam; LTX (enhancer off) still drifted 3 px with a pop. Vidu is the default.
+export const ST_DEFAULT_VIDEO_MODEL = "vidu:3@2";
+export const ST_VIDEO_MODEL = ST_VIDEO_MODELS[ST_DEFAULT_VIDEO_MODEL];
+
+/** The configured model's spec; an unknown AIR falls back to the default. */
+export function videoModelSpec(air: string | null | undefined): StVideoModelSpec {
+  return (air && ST_VIDEO_MODELS[air]) || ST_VIDEO_MODEL;
+}
+/** Source fps the clip is assumed to have when the model does not take one (used for the crossfade length). */
+export const ST_ASSUMED_FPS = 24;
 /** Runware background removal, per frame (only in matteMode "runware"). */
 export const ST_MATTE_USD_PER_FRAME = 0.002;
 
@@ -102,20 +132,21 @@ export const ST_QA = {
   alphaCoverageMin: 0.08,
   alphaCoverageMax: 0.75,
   cornerOpaqueMax: 0.02,
-  haloDelta: 40,
+  /** Edge vs near-interior luminance. Line-art outlines sit right at the edge, so only a gross fringe trips this. */
+  haloDelta: 100,
   maxBytes: ST_PIPELINE.webpMaxBytes,
 } as const;
 
 // ── Cost estimate shown before a job starts ──────────────────────────────────
-export function estimateExpressionUsd(label: StExpressionLabel, opts: { videoSeconds: number; matteMode: StMatteMode; fps?: number }): number {
+export function estimateExpressionUsd(label: StExpressionLabel, opts: { videoSeconds: number; matteMode: StMatteMode; fps?: number; usdPerSecond?: number }): number {
   const edit = label === "neutral" ? 0 : ST_EDIT_MODEL.approxCostUsd;
-  const video = ST_VIDEO_MODEL.usdPerSecond * opts.videoSeconds;
-  const frames = opts.videoSeconds * (opts.fps ?? ST_VIDEO_MODEL.fps);
+  const video = (opts.usdPerSecond ?? ST_VIDEO_MODEL.usdPerSecond) * opts.videoSeconds;
+  const frames = opts.videoSeconds * (opts.fps ?? ST_VIDEO_MODEL.fps ?? ST_ASSUMED_FPS);
   const matte = opts.matteMode === "runware" ? frames * ST_MATTE_USD_PER_FRAME : 0;
   return edit + video + matte;
 }
 
-export function estimateJobUsd(labels: readonly StExpressionLabel[], opts: { videoSeconds: number; matteMode: StMatteMode }): number {
+export function estimateJobUsd(labels: readonly StExpressionLabel[], opts: { videoSeconds: number; matteMode: StMatteMode; usdPerSecond?: number }): number {
   return labels.reduce((sum, l) => sum + estimateExpressionUsd(l, opts), 0);
 }
 

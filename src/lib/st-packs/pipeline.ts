@@ -6,9 +6,9 @@
 import { PING_PONG_ALLOWED, type StExpressionLabel } from "@/config/st-expressions";
 import { ST_PIPELINE, ST_QA, type StMatteMode } from "@/config/st-packs";
 import { encodeAnimatedWebp, type WebpResult } from "./encode";
-import { decodeVideo, framePng, pngFrame, resizeFrames } from "./frames";
+import { decodeVideo, framePng, pngFrame, resizeFrames, type CropFraction } from "./frames";
 import { makeSeamlessLoop, resampleFps } from "./loop";
-import { estimateBackground, matteFrames, postMatte } from "./matte";
+import { estimateBackground, keyFrame, matteFrames, postMatte } from "./matte";
 import { computeQa } from "./qa";
 import { stabilizeFrames } from "./stabilize";
 import type { Frame, QaResult } from "./types";
@@ -21,6 +21,8 @@ export interface ProcessOptions {
   /** Per-frame background removal (matteMode "runware"); returns an RGBA PNG or null. */
   removeBackground?: (png: Buffer) => Promise<Buffer | null>;
   concurrency?: number;
+  /** Where the 3:4 still sits in the clip when the model canvas was padded. */
+  crop?: CropFraction;
 }
 
 export interface ProcessResult {
@@ -40,7 +42,7 @@ export function workingSize(width: number, height: number): { width: number; hei
 
 export async function processClip(mp4: Buffer, opts: ProcessOptions): Promise<ProcessResult> {
   const work = workingSize(opts.width, opts.height);
-  const { frames: raw, fps } = await decodeVideo(mp4, { width: work.width, height: work.height });
+  const { frames: raw, fps } = await decodeVideo(mp4, { width: work.width, height: work.height, crop: opts.crop });
 
   // Background removal
   let matted: Frame[];
@@ -49,12 +51,13 @@ export async function processClip(mp4: Buffer, opts: ProcessOptions): Promise<Pr
     const limit = Math.max(1, opts.concurrency ?? 4);
     const out: Frame[] = new Array(raw.length);
     let next = 0;
+    // One retry per frame; a frame the provider still rejects falls back to the
+    // colour key (the temporal median then smooths it against its neighbours)
     const worker = async () => {
       while (next < raw.length) {
         const i = next++;
-        const png = await opts.removeBackground!(await framePng(raw[i]));
-        out[i] = png ? await pngFrame(png) : raw[i];
-        if (!png) throw new Error(`Background removal failed on frame ${i}`);
+        const png = (await opts.removeBackground!(await framePng(raw[i]))) ?? (await opts.removeBackground!(await framePng(raw[i])));
+        out[i] = png ? await pngFrame(png) : keyFrame(raw[i], bg);
       }
     };
     await Promise.all(Array.from({ length: Math.min(limit, raw.length) }, worker));

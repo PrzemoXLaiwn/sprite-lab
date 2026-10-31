@@ -78,10 +78,15 @@ describe("computeQa", () => {
     const frames = goodLoop(8).map((f) => {
       for (let o = 0; o < f.data.length; o += 4) {
         const a = f.data[o + 3];
+        // a white fringe around a dark subject (the threshold only trips on a gross one)
         if (a > 0 && a < 200) {
           f.data[o] = 255;
           f.data[o + 1] = 255;
           f.data[o + 2] = 255;
+        } else if (a >= 200) {
+          f.data[o] = 40;
+          f.data[o + 1] = 40;
+          f.data[o + 2] = 40;
         }
       }
       return f;

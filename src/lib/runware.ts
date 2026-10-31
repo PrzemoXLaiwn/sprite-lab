@@ -865,7 +865,10 @@ export interface StVideoSubmit {
   width: number;
   height: number;
   seconds: number;
-  fps: number;
+  /** Omitted for models that fix their own frame rate. */
+  fps?: number | null;
+  /** Provider-specific request fields (settings, providerSettings). */
+  extra?: Record<string, unknown>;
 }
 
 /**
@@ -883,7 +886,8 @@ export async function submitStVideo(opts: StVideoSubmit): Promise<void> {
     width: opts.width,
     height: opts.height,
     duration: opts.seconds,
-    fps: opts.fps,
+    ...(opts.fps ? { fps: opts.fps } : {}),
+    ...(opts.extra ?? {}),
     inputs: { frameImages: [{ image: still, frame: "first" }, { image: still, frame: "last" }] },
     outputFormat: "MP4",
     outputQuality: 95,

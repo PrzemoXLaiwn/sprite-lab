@@ -46,9 +46,46 @@ function luminance(data: Buffer, o: number): number {
   return 0.299 * data[o] + 0.587 * data[o + 1] + 0.114 * data[o + 2];
 }
 
+/** Interior pixels within this many px of an edge pixel are the halo reference (a bright face against a dark coat is not a fringe). */
+const HALO_RING = 3;
+
+/** 1 where a semi-transparent edge pixel lies within HALO_RING px (separable dilation). */
+function nearEdgeMask(frame: Frame): Uint8Array {
+  const { width, height, data } = frame;
+  const edge = new Uint8Array(width * height);
+  for (let i = 0; i < width * height; i++) {
+    const a = data[i * 4 + 3];
+    if (a > 0 && a < INTERIOR) edge[i] = 1;
+  }
+  const row = new Uint8Array(width * height);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let hit = 0;
+      for (let k = -HALO_RING; k <= HALO_RING && !hit; k++) {
+        const xx = x + k;
+        if (xx >= 0 && xx < width && edge[y * width + xx]) hit = 1;
+      }
+      row[y * width + x] = hit;
+    }
+  }
+  const near = new Uint8Array(width * height);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let hit = 0;
+      for (let k = -HALO_RING; k <= HALO_RING && !hit; k++) {
+        const yy = y + k;
+        if (yy >= 0 && yy < height && row[yy * width + x]) hit = 1;
+      }
+      near[y * width + x] = hit;
+    }
+  }
+  return near;
+}
+
 function accumulate(frame: Frame, s: PixelStats): void {
   const { width, height, data } = frame;
   const cp = Math.min(CORNER_PATCH, width, height);
+  const near = nearEdgeMask(frame);
   for (let y = 0; y < height; y++) {
     const inCornerRow = y < cp || y >= height - cp;
     for (let x = 0; x < width; x++) {
@@ -64,8 +101,10 @@ function accumulate(frame: Frame, s: PixelStats): void {
         if (a > OPAQUE) s.cornerOpaque++;
       }
       if (a >= INTERIOR) {
-        s.interiorLum += luminance(data, o);
-        s.interiorCount++;
+        if (near[y * width + x]) {
+          s.interiorLum += luminance(data, o);
+          s.interiorCount++;
+        }
       } else if (a > 0) {
         s.edgeLum += luminance(data, o);
         s.edgeCount++;

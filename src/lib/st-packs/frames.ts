@@ -21,7 +21,10 @@ async function ffmpegPath(): Promise<string> {
  * Decode a short MP4 into RGBA frames at `width`×`height` (lanczos). The
  * clip's fps is read from ffmpeg's stream line; 24 when it cannot be read.
  */
-export async function decodeVideo(mp4: Buffer, opts: { width: number; height: number; maxFrames?: number }): Promise<{ frames: Frame[]; fps: number }> {
+/** A region of the clip as fractions of its size (0–1). */
+export interface CropFraction { x: number; y: number; w: number; h: number }
+
+export async function decodeVideo(mp4: Buffer, opts: { width: number; height: number; maxFrames?: number; crop?: CropFraction }): Promise<{ frames: Frame[]; fps: number }> {
   const bin = await ffmpegPath();
   const dir = await mkdtemp(join(tmpdir(), "stpack-"));
   const file = join(dir, "clip.mp4");
@@ -34,7 +37,7 @@ export async function decodeVideo(mp4: Buffer, opts: { width: number; height: nu
       "-hide_banner", "-loglevel", "info", "-nostdin",
       "-i", file,
       "-frames:v", String(maxFrames),
-      "-vf", `scale=${width}:${height}:flags=lanczos`,
+      "-vf", `${opts.crop ? `crop=iw*${opts.crop.w.toFixed(4)}:ih*${opts.crop.h.toFixed(4)}:iw*${opts.crop.x.toFixed(4)}:ih*${opts.crop.y.toFixed(4)},` : ""}scale=${width}:${height}:flags=lanczos`,
       "-f", "rawvideo", "-pix_fmt", "rgba", "pipe:1",
     ];
     const { stdout, stderr } = await run(bin, args, frameBytes * maxFrames + 1024);
@@ -102,6 +105,30 @@ export async function fitPng(png: Buffer, width: number, height: number): Promis
 }
 
 const BASE_BACKGROUND = { r: 236, g: 236, b: 236, alpha: 1 };
+
+/**
+ * Fit a 3:4 still into a model canvas: resized to cover the width (or height)
+ * and centred on the still's own background colour (its top-left pixel), so
+ * the clip looks like a wider plain background. Returns the content region to
+ * crop the decoded frames back to.
+ */
+export async function padToCanvas(png: Buffer, width: number, height: number): Promise<{ png: Buffer; crop: CropFraction }> {
+  const src = sharp(png);
+  const meta = await src.metadata();
+  const sw = meta.width ?? width, sh = meta.height ?? height;
+  const scale = Math.min(width / sw, height / sh);
+  const cw = Math.round(sw * scale), ch = Math.round(sh * scale);
+  // Within a few pixels of the canvas (896×1200 → 768×1024 is 765 wide): cover-crop instead of a 1 px border
+  if (Math.abs(cw - width) <= 4 && Math.abs(ch - height) <= 4) {
+    return { png: await src.resize(width, height, { kernel: "lanczos3", fit: "cover" }).png().toBuffer(), crop: { x: 0, y: 0, w: 1, h: 1 } };
+  }
+  const { data } = await sharp(png).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const bg = { r: data[0], g: data[1], b: data[2], alpha: 1 };
+  const content = await src.resize(cw, ch, { kernel: "lanczos3", fit: "fill" }).png().toBuffer();
+  const left = Math.floor((width - cw) / 2), top = Math.floor((height - ch) / 2);
+  const out = await sharp({ create: { width, height, channels: 4, background: bg } }).composite([{ input: content, left, top }]).png().toBuffer();
+  return { png: out, crop: { x: left / width, y: top / height, w: cw / width, h: ch / height } };
+}
 
 /**
  * An uploaded character picture → the job's base: auto-oriented, sRGB, plain
