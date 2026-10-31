@@ -16,6 +16,7 @@
 
 import sharp from "sharp";
 import { keySpriteBackground } from "./sprite-postprocess";
+import { finalizeAnimationFrames } from "./quality-postprocess";
 
 export interface AnimationResult {
   /** Horizontal strip: frameCount × frameWidth, frameHeight tall. */
@@ -286,17 +287,22 @@ export async function assembleAnimation(sprites: Frame[], opts: AssembleOptions)
     }
   }
 
+  // Optional quality pass. Flag off returns the same frames and sizes.
+  const finalized = await finalizeAnimationFrames(frames, { pixel, frameWidth: frameW, frameHeight: frameH });
+  frameW = finalized.frameWidth;
+  frameH = finalized.frameHeight;
+
   // 5. Sheet + GIF
   const sheetPng = await sharp({
-    create: { width: frameW * frames.length, height: frameH, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+    create: { width: frameW * finalized.frames.length, height: frameH, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
   })
-    .composite(frames.map((input, i) => ({ input, left: i * frameW, top: 0 })))
+    .composite(finalized.frames.map((input, i) => ({ input, left: i * frameW, top: 0 })))
     .png({ compressionLevel: 9 })
     .toBuffer();
 
-  const gif = await encodeGif(frames, fps);
+  const gif = await encodeGif(finalized.frames, fps);
 
-  return { sheetPng, gif, frameCount: frames.length, frameWidth: frameW, frameHeight: frameH, frames };
+  return { sheetPng, gif, frameCount: finalized.frames.length, frameWidth: frameW, frameHeight: frameH, frames: finalized.frames };
 }
 
 /**

@@ -45,6 +45,7 @@ import { startOperation, type OpHandle } from "@/lib/billing/operations";
 import { saveGeneration, type SaveGenerationParams } from "@/lib/db/generations";
 import { COLOR_PALETTES } from "@/config/features/premium-features";
 import { postprocessSprite, postprocessTile } from "@/lib/image/sprite-postprocess";
+import { applyQualityPassIfEnabled } from "@/lib/image/quality-postprocess";
 import { buildSpritePrompt, isPixelStyle, isTileCategory, normalizeStyleId } from "@/config/prompts/sprite-prompt";
 import { interpretSubject } from "@/lib/prompt-interpret";
 
@@ -357,6 +358,8 @@ export async function generateGuestAsset(
   } catch (err) {
     log("generation:error", { mode: "guest", stage: "postprocess", error: err instanceof Error ? err.message : String(err) });
   }
+  // Off unless SPRITE_QUALITY_POSTPROCESS=1. The default buffer is unchanged.
+  png = await applyQualityPassIfEnabled(png, { pixel: request.style === "pixel" });
 
   // Persist under a claim token so the sprite can move into the account the
   // visitor creates next (src/lib/guest-claim). Fall back to an inline data
@@ -625,6 +628,12 @@ async function generateSingle2D(request: GenerationRequest): Promise<{ asset: Ge
     });
     png = generated.image;
     warnings.push("Post-processing failed for this sprite — showing the raw image.");
+  }
+
+  // Optional second pass (fringe, recentre, pixel palette snap). No-op unless
+  // SPRITE_QUALITY_POSTPROCESS=1, and never for seamless tiles.
+  if (!isTileCategory(request.categoryId)) {
+    png = await applyQualityPassIfEnabled(png, { pixel: Boolean(pixelGrid) });
   }
 
   // ── 5. Upload ──────────────────────────────────────────────────────────────
