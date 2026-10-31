@@ -975,3 +975,26 @@ model DungeonSkillScore {
 
   @@map("dungeon_skill_scores")
 }
+
+// First-party funnel. Created by prisma/sql/2026-10-31_funnel_events.sql.
+// Not applied automatically. Writes fail soft until that SQL is run.
+model FunnelEvent {
+  id         String   @id
+  visitorId  String   @map("visitor_id")
+  userId     String?  @map("user_id")
+  name       String
+  path       String?
+  referrer   String?
+  utmSource  String?  @map("utm_source")
+  utmMedium  String?  @map("utm_medium")
+  utmCampaign String? @map("utm_campaign")
+  utmContent String?  @map("utm_content")
+  utmTerm    String?  @map("utm_term")
+  dedupeKey  String?  @unique @map("dedupe_key")
+  props      Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([visitorId, createdAt])
+  @@index([userId, createdAt])
+  @@map("funnel_events")
+}

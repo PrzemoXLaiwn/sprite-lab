@@ -490,6 +490,17 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
         ? `${planName} plan subscription`
         : `${planName} plan renewal`,
   });
+
+  // Read-only analytics. A failure here must not change the credit grant.
+  const { notePurchase } = await import("@/lib/funnel/purchase");
+  await notePurchase({
+    dedupeKey: `invoice:${invoice.id}`,
+    userId,
+    kind: "subscription",
+    amountMinor: invoice.amount_paid || 0,
+    currency: invoice.currency || "gbp",
+    plan: planName,
+  });
 }
 
 async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
@@ -535,6 +546,16 @@ async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent)
 
   const result = await fulfillOneTimePayment(paymentIntent.id);
   console.log(`payment_intent.succeeded ${paymentIntent.id}: ${result.status}`);
+
+  // Read-only analytics. Does not grant credits and does not change fulfillment.
+  const { notePurchase } = await import("@/lib/funnel/purchase");
+  await notePurchase({
+    dedupeKey: `pi:${paymentIntent.id}`,
+    userId: paymentIntent.metadata?.userId ?? null,
+    kind: type === "lifetime_deal" ? "lifetime_deal" : "credit_pack",
+    amountMinor: paymentIntent.amount_received || paymentIntent.amount || 0,
+    currency: paymentIntent.currency || "gbp",
+  });
 }
 
 async function handleChargeRefunded(charge: Stripe.Charge) {

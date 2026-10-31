@@ -3,6 +3,7 @@ import { NextResponse, after } from "next/server";
 import { sendWelcomeFor } from "@/lib/auth/sync-user";
 import { establishFirstLogin } from "@/lib/auth/first-login";
 import { isCheckoutReturn, safeRedirectPath } from "@/lib/safe-redirect";
+import { recordSignupFromRequest } from "@/lib/funnel/signup";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -32,7 +33,10 @@ export async function GET(request: Request) {
       // first time. Supabase PKCE does not consistently carry `type=signup`
       // through the redirect, so fall back to the insert result above.
       // The welcome email goes out only when the users row was created.
-      if (user && isNewUser) after(() => sendWelcomeFor(user));
+      if (user && isNewUser) {
+        after(() => sendWelcomeFor(user));
+        after(() => recordSignupFromRequest(request, user.id));
+      }
       if (type === "signup" || isNewUser) {
         // A plan or credit pack chosen before sign-up has to survive email
         // confirmation and OAuth. Other first-time users still see /auth/confirm.
