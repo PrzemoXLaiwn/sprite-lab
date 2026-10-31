@@ -222,6 +222,7 @@ export async function tick(jobId: string): Promise<{ snapshot: JobSnapshot | nul
   const exprs = [...job.expressions].sort((a, b) => (order.get(a.label as StExpressionLabel) ?? 99) - (order.get(b.label as StExpressionLabel) ?? 99));
 
   let busy = exprs.filter((e) => e.status === "editing" || e.status === "processing").length;
+  let posting = exprs.filter((e) => e.status === "processing").length;
   let openVideos = exprs.filter((e) => e.status === "video_submitted").length;
   const capLeft = () => settings.maxUsdPerJob - job!.costUsd;
 
@@ -240,8 +241,8 @@ export async function tick(jobId: string): Promise<{ snapshot: JobSnapshot | nul
     if (await claim(e.id, "edited", "video_submitted", LOCK_MS.submit)) { openVideos++; work.push(() => runSubmit(e.id)); }
   }
   for (const e of exprs) {
-    if (e.status !== "video_ready" || busy >= settings.concurrency) continue;
-    if (await claim(e.id, "video_ready", "processing", LOCK_MS.post)) { busy++; work.push(() => runPost(e.id)); }
+    if (e.status !== "video_ready" || busy >= settings.concurrency || posting >= settings.postConcurrency) continue;
+    if (await claim(e.id, "video_ready", "processing", LOCK_MS.post)) { busy++; posting++; work.push(() => runPost(e.id)); }
   }
 
   job = (await getJob(jobId))!;

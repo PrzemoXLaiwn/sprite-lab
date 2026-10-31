@@ -99,7 +99,7 @@ claimed with `UPDATE … WHERE status = … AND lock expired` (so two polls neve
 run the same step), and the claimed steps run in `after()` after the response,
 each well under the 300 s function limit. Each step is retried once; the
 Runware task id is written before the clip is submitted, so a crash never
-submits twice. Concurrency: `ST_PACKS_CONCURRENCY` busy expressions,
+submits twice. Concurrency: `ST_PACKS_CONCURRENCY` busy expressions (`ST_PACKS_POST_CONCURRENCY`, default 1, for post-processing),
 `ST_PACKS_VIDEO_CONCURRENCY` open video tasks.
 
 **Known limitation:** the job only advances while an admin has the page open

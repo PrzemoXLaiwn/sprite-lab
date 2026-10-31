@@ -27,6 +27,8 @@ export function stPacksSettings(env: Record<string, string | undefined> = proces
   const matte = env.ST_PACKS_MATTE_MODE === "runware" ? "runware" : "key";
   return {
     concurrency: intEnv("ST_PACKS_CONCURRENCY", 4, env),
+    /** Post-processing (decode + matte + encode) holds hundreds of MB of raw frames: one at a time per job. */
+    postConcurrency: intEnv("ST_PACKS_POST_CONCURRENCY", 1, env),
     videoConcurrency: intEnv("ST_PACKS_VIDEO_CONCURRENCY", 8, env),
     videoModel: videoModelSpec(env.ST_PACKS_VIDEO_MODEL?.trim()).air,
     videoSeconds: Math.min(5, Math.max(3, intEnv("ST_PACKS_VIDEO_SECONDS", 4, env))),

@@ -42,11 +42,19 @@ export function workingSize(width: number, height: number): { width: number; hei
 
 export async function processClip(mp4: Buffer, opts: ProcessOptions): Promise<ProcessResult> {
   const work = workingSize(opts.width, opts.height);
-  const { frames: raw, fps } = await decodeVideo(mp4, { width: work.width, height: work.height, crop: opts.crop });
+  // Decode straight at the pack's fps: a 5 s clip is 80 working frames instead of
+  // 120–150. Each stage below copies every frame (~4.4 MB each at 912×1215), so
+  // one `frames` variable is reassigned and the previous stage can be collected —
+  // keeping all six stages alive at once ran the function out of memory.
+  const decoded = await decodeVideo(mp4, { width: work.width, height: work.height, crop: opts.crop, fps: ST_PIPELINE.outputFps });
+  const fps = decoded.fps;
+  const sourceFrames = decoded.frames.length;
+  let frames: Frame[] = decoded.frames;
+  decoded.frames = [];
 
   // Background removal
-  let matted: Frame[];
   if (opts.matteMode === "runware" && opts.removeBackground) {
+    const raw = frames;
     const bg = estimateBackground(raw[0]);
     const limit = Math.max(1, opts.concurrency ?? 4);
     const out: Frame[] = new Array(raw.length);
@@ -61,21 +69,25 @@ export async function processClip(mp4: Buffer, opts: ProcessOptions): Promise<Pr
       }
     };
     await Promise.all(Array.from({ length: Math.min(limit, raw.length) }, worker));
-    matted = postMatte(out, bg);
+    frames = postMatte(out, bg);
   } else {
-    matted = matteFrames(raw).frames;
+    frames = matteFrames(frames).frames;
   }
 
   // Drift
-  const stab = stabilizeFrames(matted, { band: ST_PIPELINE.stabilizeBand, window: ST_PIPELINE.stabilizeWindow, maxShiftPx: ST_PIPELINE.stabilizeMaxShiftPx });
+  const stab = stabilizeFrames(frames, { band: ST_PIPELINE.stabilizeBand, window: ST_PIPELINE.stabilizeWindow, maxShiftPx: ST_PIPELINE.stabilizeMaxShiftPx });
+  frames = stab.frames;
+  stab.frames = [];
 
   // Loop at the clip's fps, then down to the pack's fps
   const k = Math.max(2, Math.round(ST_PIPELINE.crossfadeFrames * (fps / 24)));
-  const loop = makeSeamlessLoop(stab.frames, { k, allowPingPong: PING_PONG_ALLOWED.has(opts.label), duplicateThreshold: ST_PIPELINE.duplicateFrameThreshold });
-  const sampled = resampleFps(loop.frames, fps, ST_PIPELINE.outputFps);
+  const loop = makeSeamlessLoop(frames, { k, allowPingPong: PING_PONG_ALLOWED.has(opts.label), duplicateThreshold: ST_PIPELINE.duplicateFrameThreshold });
+  frames = loop.frames;
+  loop.frames = [];
+  if (fps !== ST_PIPELINE.outputFps) frames = resampleFps(frames, fps, ST_PIPELINE.outputFps);
 
   // Final size and file
-  const frames = await resizeFrames(sampled, opts.width, opts.height);
+  frames = await resizeFrames(frames, opts.width, opts.height);
   const webp = await encodeAnimatedWebp(frames, ST_PIPELINE.outputFps);
   const qa = computeQa(frames, { fps: ST_PIPELINE.outputFps, bytes: webp.bytes, band: ST_PIPELINE.stabilizeBand }, ST_QA);
   if (stab.flagged) {
@@ -87,6 +99,6 @@ export async function processClip(mp4: Buffer, opts: ProcessOptions): Promise<Pr
     loopMethod: loop.method,
     stabilize: { maxShift: stab.maxShift, flagged: stab.flagged, residualRangePx: stab.residualRangePx },
     sourceFps: fps,
-    sourceFrames: raw.length,
+    sourceFrames,
   };
 }
