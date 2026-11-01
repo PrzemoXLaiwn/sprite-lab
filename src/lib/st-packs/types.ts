@@ -16,6 +16,8 @@ export interface JobOptions {
   readme: boolean;
   matteMode: StMatteMode;
   videoSeconds: number;
+  /** HQ lossy is the default. Lossless is exact and usually larger. */
+  lossless: boolean;
 }
 
 /** Per-step wall time in ms, written by the worker as each step finishes. */

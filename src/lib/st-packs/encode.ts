@@ -13,37 +13,38 @@ export interface WebpResult {
   bytes: number;
   quality: number;
   alphaQuality: number;
+  lossless: boolean;
   frames: number;
   fps: number;
 }
 
-export type WebpLadderStep = { quality: number; alphaQuality: number };
-
 /**
- * Animated WebP, loop forever, one delay per frame. Walks the quality ladder
- * until the file fits `targetBytes`; the last rung is used even if it doesn't
- * (the QA step flags anything over the hard cap).
+ * Animated WebP, loop forever, one delay per frame. One encode: HQ lossy
+ * (quality 90, full alpha, effort 4) or lossless. The size cap is a QA flag,
+ * not a second pass.
  */
 export async function encodeAnimatedWebp(
   frames: Frame[],
   fps: number,
-  opts: { ladder?: readonly WebpLadderStep[]; targetBytes?: number; effort?: number } = {},
+  opts: { quality?: number; alphaQuality?: number; effort?: number; lossless?: boolean } = {},
 ): Promise<WebpResult> {
   if (frames.length === 0) throw new Error("No frames to encode");
-  const ladder = opts.ladder ?? ST_PIPELINE.webpLadder;
-  const target = opts.targetBytes ?? ST_PIPELINE.webpTargetBytes;
+  const lossless = opts.lossless === true;
+  const quality = opts.quality ?? ST_PIPELINE.webpQuality;
+  const alphaQuality = opts.alphaQuality ?? ST_PIPELINE.webpAlphaQuality;
   const effort = opts.effort ?? ST_PIPELINE.webpEffort;
   const delay = Array(frames.length).fill(Math.round(1000 / fps));
   const pngs = await Promise.all(frames.map(framePng));
-  let last: WebpResult | null = null;
-  for (const step of ladder) {
-    const webp = await sharp(pngs.length === 1 ? pngs[0] : pngs, pngs.length === 1 ? {} : { join: { animated: true } })
-      .webp({ quality: step.quality, alphaQuality: step.alphaQuality, effort, loop: 0, delay })
-      .toBuffer();
-    last = { webp, bytes: webp.length, quality: step.quality, alphaQuality: step.alphaQuality, frames: frames.length, fps };
-    if (webp.length <= target) break;
-  }
-  return last!;
+  const webp = await sharp(pngs.length === 1 ? pngs[0] : pngs, pngs.length === 1 ? {} : { join: { animated: true } })
+    .webp(lossless
+      ? { lossless: true, effort, loop: 0, delay }
+      : { quality, alphaQuality, effort, loop: 0, delay })
+    .toBuffer();
+  return {
+    webp, bytes: webp.length, frames: frames.length, fps, lossless,
+    quality: lossless ? 100 : quality,
+    alphaQuality: lossless ? 100 : alphaQuality,
+  };
 }
 
 /** Page count, loop and per-frame delay of an animated WebP (for tests and QA). */

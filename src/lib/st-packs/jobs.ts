@@ -57,6 +57,7 @@ export function normaliseOptions(raw: unknown, settings = stPacksSettings()): Jo
     readme: o.readme !== false,
     matteMode: o.matteMode === "runware" ? "runware" : o.matteMode === "key" ? "key" : settings.matteMode,
     videoSeconds: Number.isFinite(seconds) && seconds >= 3 && seconds <= 5 ? Math.round(seconds) : settings.videoSeconds,
+    lossless: o.lossless === true,
   };
 }
 
@@ -355,8 +356,12 @@ async function runEdit(exprId: string): Promise<void> {
       where: { id: e.id, status: "editing" },
       data: { status: "edited", lockedUntil: null, editKey, error: null, timings: t as unknown as Prisma.InputJsonValue },
     });
-    // Straight on to the clip: no need to wait for the next tick
-    if (r.count === 1 && await claim(e.id, "edited", "video_submitted", LOCK_MS.submit)) await runSubmit(e.id);
+    // Straight on to the clip, while the open-video cap still has room.
+    // Past the cap the row stays `edited` and the next tick submits it.
+    if (r.count === 1) {
+      const open = await prisma.stPackExpression.count({ where: { jobId: e.jobId, status: "video_submitted" } });
+      if (open < settings.videoConcurrency && await claim(e.id, "edited", "video_submitted", LOCK_MS.submit)) await runSubmit(e.id);
+    }
   } catch (err) {
     await stepFailed(e, "edit", err, "queued");
   }
@@ -469,6 +474,7 @@ async function runPost(exprId: string): Promise<void> {
       removeBackground: options.matteMode === "runware" ? (png) => removeBackgroundBuffer(png) : undefined,
       concurrency: 4,
       crop: timingsOf(e).crop,
+      lossless: options.lossless,
     }));
     await addCost(e, ctx.spentUsd);
     const webpKey = await put(result.webp.webp, exprKey(job.id, e.label, "loop.webp"), "image/webp");

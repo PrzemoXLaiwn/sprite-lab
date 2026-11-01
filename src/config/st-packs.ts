@@ -27,8 +27,15 @@ export function stPacksSettings(env: Record<string, string | undefined> = proces
   const matte = env.ST_PACKS_MATTE_MODE === "runware" ? "runware" : "key";
   return {
     concurrency: intEnv("ST_PACKS_CONCURRENCY", 4, env),
-    /** Post-processing (decode + matte + encode) holds hundreds of MB of raw frames: one at a time per job. */
-    postConcurrency: intEnv("ST_PACKS_POST_CONCURRENCY", 1, env),
+    /**
+     * Two posts at once inside the one leased worker. #28 peaked near 1506 MB
+     * for a single 5 s clip at 912×1215 (~80 frames). Native 720×960 is about
+     * 0.62× the pixels, so two posts sit near 1.5 GB inside the 3009 MB
+     * function, with headroom left. A second worker per expression would need
+     * a second lease; #29 allows one.
+     */
+    postConcurrency: intEnv("ST_PACKS_POST_CONCURRENCY", 2, env),
+    /** Open Vidu tasks. 8 is one full default set in a single round. */
     videoConcurrency: intEnv("ST_PACKS_VIDEO_CONCURRENCY", 8, env),
     videoModel: videoModelSpec(env.ST_PACKS_VIDEO_MODEL?.trim()).air,
     videoSeconds: Math.min(5, Math.max(3, intEnv("ST_PACKS_VIDEO_SECONDS", 4, env))),
@@ -89,14 +96,39 @@ export const ST_MATTE_USD_PER_FRAME = 0.002;
 export const ST_FRAMINGS = ["waist", "bust"] as const;
 export type StFraming = (typeof ST_FRAMINGS)[number];
 
-export const ST_OUTPUT_SIZES = [
+/**
+ * Pixels the character occupies inside a model canvas. A 3:4 still letterboxed
+ * into Vidu's 720×1280 is 720×960; LTX's canvas is already 3:4 (768×1024).
+ * A near-fit (within 4 px, same rule as padToCanvas) uses the whole canvas.
+ */
+export function nativeContentSize(spec: StVideoModelSpec = ST_VIDEO_MODEL): { width: number; height: number } {
+  const scale = Math.min(spec.width / 3, spec.height / 4);
+  let width = Math.round(3 * scale);
+  let height = Math.round(4 * scale);
+  if (Math.abs(width - spec.width) <= 4 && Math.abs(height - spec.height) <= 4) {
+    width = spec.width;
+    height = spec.height;
+  }
+  if (width % 2) width -= 1;
+  if (height % 2) height -= 1;
+  return { width, height };
+}
+
+/** Older packs. Still accepted so a stored job can be retried; new jobs use the native size. */
+export const ST_LEGACY_OUTPUT_SIZES = [
   { width: 432, height: 576 },
   { width: 504, height: 672 },
   { width: 608, height: 810 },
 ] as const;
-export const ST_DEFAULT_SIZE = ST_OUTPUT_SIZES[1];
+export const ST_DEFAULT_SIZE = nativeContentSize();
 export function isOutputSize(w: unknown, h: unknown): boolean {
-  return ST_OUTPUT_SIZES.some((s) => s.width === w && s.height === h);
+  if (typeof w !== "number" || typeof h !== "number") return false;
+  if (ST_LEGACY_OUTPUT_SIZES.some((s) => s.width === w && s.height === h)) return true;
+  if (w === ST_DEFAULT_SIZE.width && h === ST_DEFAULT_SIZE.height) return true;
+  return Object.values(ST_VIDEO_MODELS).some((spec) => {
+    const n = nativeContentSize(spec);
+    return n.width === w && n.height === h;
+  });
 }
 
 // ── Pipeline parameters (from the validated Python prototype) ────────────────
@@ -110,19 +142,15 @@ export const ST_PIPELINE = {
   stabilizeBand: [0.8, 0.97] as [number, number],
   stabilizeWindow: 5,
   stabilizeMaxShiftPx: 24,
-  /** Encoder quality ladder and the hard size cap (ST handles ≤ 1.5 MB comfortably). */
-  webpLadder: [
-    { quality: 78, alphaQuality: 50 },
-    { quality: 75, alphaQuality: 50 },
-    { quality: 72, alphaQuality: 50 },
-    { quality: 70, alphaQuality: 45 },
-    { quality: 66, alphaQuality: 45 },
-  ],
-  webpEffort: 6,
-  webpTargetBytes: 1_480_000,
-  webpMaxBytes: 1_500_000,
-  /** Working canvas: ~1.5× the largest output so the matte has detail to work with. */
-  workScale: 1.5,
+  /**
+   * One encode, chosen up front: quality 90 and full alpha, effort 4.
+   * No ladder. A file over the cap is flagged, not re-encoded.
+   */
+  webpQuality: 90,
+  webpAlphaQuality: 100,
+  webpEffort: 4,
+  /** Hard cap. QA flags a file over this; the encoder does not retry. */
+  webpMaxBytes: 6_000_000,
 } as const;
 
 /** QA thresholds (qa.ts). Any failure flags the expression; the admin decides. */
