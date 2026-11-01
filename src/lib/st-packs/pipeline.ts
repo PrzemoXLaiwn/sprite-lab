@@ -8,7 +8,7 @@ import { ST_PIPELINE, ST_QA, type StMatteMode } from "@/config/st-packs";
 import { encodeAnimatedWebp, type WebpResult } from "./encode";
 import { decodeVideo, framePng, pngFrame, resizeFrames, type CropFraction } from "./frames";
 import { makeSeamlessLoop, resampleFps } from "./loop";
-import { closeSilhouette, estimateBackground, keyFrame, matteFrames, postMatte } from "./matte";
+import { estimateBackground, matteFrames, matteKeyFrame, postMatte } from "./matte";
 import { computeQa } from "./qa";
 import { stabilizeFrames } from "./stabilize";
 import type { Frame, QaResult } from "./types";
@@ -68,11 +68,9 @@ export async function processClip(mp4: Buffer, opts: ProcessOptions): Promise<Pr
         if (png) {
           out[i] = await pngFrame(png);
         } else {
-          // Same hole fill as key mode. This frame's own border, not frame 0:
-          // a rejected frame can sit on a slightly different flat colour.
-          const keyed = keyFrame(raw[i], estimateBackground(raw[i]));
-          closeSilhouette(keyed);
-          out[i] = keyed;
+          // Same key as key mode, including the gradient walk. This frame's own
+          // border, not frame 0: a rejected frame can sit on a slightly different colour.
+          out[i] = matteKeyFrame(raw[i]).frame;
         }
       }
     };

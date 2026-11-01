@@ -76,11 +76,18 @@ Parameters (`src/config/st-packs.ts`, from the validated Python prototype):
 - working canvas 1.5× the output; output 504×672 (3:4) by default
 - duplicate closing frame dropped when mean |last − first| < 0.02
 - key: background = per-frame median of the outer 8 px border; smoothstep
-  key between RGB distance 18 and 60; flood-fill that key from the frame
-  border (4-connected, alpha ≤ 127) and force every enclosed pixel opaque,
-  leaving partial alpha only in a 3 px band on the outer silhouette;
-  temporal median on alpha (radius 1, circular); un-mix
-  `C = (I − (1−a)·B)/a` for 0.05 < a < 1; erode 1 px; blur σ≈0.6; alpha < 8 → 0
+  key between RGB distance 18 and 60. A gradient walk on a half-resolution
+  average then keeps going from that key: a cell joins the background when the step is small, the colour
+  stays near a drifting local anchor (α = 1/2), and the pixel 3 steps ahead
+  still looks like background. Skin, hair and clothing fail that test and
+  stop the walk. Flood-fill the result from the frame border (4-connected,
+  alpha ≤ 127) and force every enclosed pixel opaque, so light skin and
+  white or grey cloth inside the silhouette stay solid. A detached
+  low-chroma island that matches the cleared background is dropped; the
+  largest opaque component never is. Partial alpha survives only in a 3 px
+  band on the outer silhouette; temporal median on alpha (radius 1,
+  circular); un-mix `C = (I − (1−a)·B)/a` for 0.05 < a < 1; erode 1 px;
+  blur σ≈0.6; alpha < 8 → 0
 - stabiliser: band rows 80–97 %, moving average window 5, x always, y when
   |dy| > 0.5; shifts over 24 px are flagged instead of warped
 - loop: the clip is decoded at 16 fps; crossfade K = 8 × 16/24 ≈ 5 frames (≈ 0.33 s), tail dropped
@@ -201,8 +208,9 @@ for one label. Validated on ST 1.19.0.
   models lack a last frame. Nano Banana 2 draws fixed sizes, so the edit
   canvas is 896×1200, scaled to the output.
 - Each step is bounded by the 300 s function limit; a 5 s clip at 24 fps
-  (120 frames) processes in well under that, but very busy backgrounds can
-  make the colour key leave fringes — switch that job to the Runware matte.
+  (120 frames) processes in well under that. Soft gradients and contact
+  shadows are keyed locally. A busy, detailed background can still leave
+  fringes — switch that job to the Runware matte.
 - Busy hair against a similar background is the weak point of the key matte.
 - 28 expressions: ≈ $4 and 20–30 minutes with default concurrency.
 - `.env.example` could not be edited from the session (the tooling protects

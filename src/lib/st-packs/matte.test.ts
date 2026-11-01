@@ -308,3 +308,193 @@ describe("closeSilhouette", () => {
     expect(soft).toBeGreaterThan(0);
   });
 });
+
+/**
+ * Studio still: darker flat-ish border, lighter toward the character, plus a
+ * soft shadow on the left. The flat key stops where the gradient has moved
+ * ~40 levels off the border colour and the hole fill then paints that whole
+ * unreached region opaque — the blob in production. Skin, an enclosed white
+ * shirt and a light-grey outer panel must stay solid.
+ */
+function studioStill(): {
+  frame: Frame;
+  blob: [number, number];
+  skin: [number, number];
+  shirt: [number, number];
+  cloth: [number, number];
+  outside: [number, number];
+} {
+  const W = 180;
+  const H = 220;
+  const f = makeFrame(W, H, [0, 0, 0, 255]);
+  const cx = 100;
+  const cy = 100;
+  const sigma = 78;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const d2 = (x - cx) * (x - cx) + (y - cy) * (y - cy);
+      // Coding noise, the size of a soft video frame, must not stall the walk.
+      let l = 186 + 52 * Math.exp(-d2 / (2 * sigma * sigma)) + ((x * 13 + y * 7) % 11) - 5;
+      // Contact shadow to the left of the torso: a short ramp, then flat.
+      if (y > 80 && y < 190) {
+        if (x < 48) l -= 22;
+        else if (x < 66) l -= ((66 - x) / 18) * 22;
+      }
+      const v = Math.max(0, Math.min(255, Math.round(l)));
+      const o = (y * W + x) * 4;
+      f.data[o] = v;
+      f.data[o + 1] = v;
+      f.data[o + 2] = Math.min(255, v + 1);
+      f.data[o + 3] = 255;
+    }
+  }
+  drawRect(f, 78, 96, 128, 210, [136, 164, 196]);
+  // Light-grey outer panel. Its right edge is the silhouette against the gradient.
+  drawRect(f, 124, 108, 146, 188, [198, 200, 204]);
+  drawRect(f, 92, 124, 114, 168, [250, 250, 248]);
+  drawDisc(f, 100, 78, 26, [244, 216, 200]);
+  return {
+    frame: f,
+    blob: [70, 90],
+    skin: [100, 78],
+    shirt: [102, 146],
+    cloth: [135, 148],
+    outside: [100, 44],
+  };
+}
+
+describe("gradient backgrounds", () => {
+  it("clears a light gradient and shadow the flat key leaves stuck to the character", () => {
+    const scene = studioStill();
+    const source = scene.frame;
+    const bg = estimateBackground(source);
+    const keyed = keyFrame(source, bg);
+    closeSilhouette(keyed);
+    // Root cause: the bright patch is too far from the border colour to be
+    // keyed, so the hole fill turns it into foreground.
+    expect(pixel(keyed, scene.blob[0], scene.blob[1])[3]).toBe(255);
+    expect(pixel(source, scene.blob[0], scene.blob[1])[3]).toBe(255);
+
+    const { frames: out } = matteFrames([studioStill().frame, studioStill().frame, studioStill().frame]);
+    const f = out[1];
+    expect(pixel(f, scene.blob[0], scene.blob[1])[3]).toBe(0);
+    expect(pixel(f, 36, 120)[3]).toBe(0); // the flat part of the contact shadow
+    expect(pixel(f, scene.outside[0], scene.outside[1])[3]).toBe(0);
+    expect(pixel(f, 2, 2)[3]).toBe(0);
+    expect(pixel(f, scene.skin[0], scene.skin[1])[3]).toBe(255);
+    expect(pixel(f, scene.skin[0], scene.skin[1]).slice(0, 3)).toEqual([244, 216, 200]);
+    expect(pixel(f, scene.shirt[0], scene.shirt[1])[3]).toBe(255);
+    expect(pixel(f, scene.shirt[0], scene.shirt[1]).slice(0, 3)).toEqual([250, 250, 248]);
+    expect(pixel(f, scene.cloth[0], scene.cloth[1])[3]).toBe(255);
+    expect(pixel(f, scene.cloth[0], scene.cloth[1]).slice(0, 3)).toEqual([198, 200, 204]);
+    expect(pixel(f, 100, 170)[3]).toBe(255); // blue sweater
+  });
+
+  it("keeps an anime outline, pale skin and white hair opaque on the same gradient", () => {
+    const W = 140;
+    const H = 180;
+    const paint = (): Frame => {
+      const f = makeFrame(W, H, [0, 0, 0, 255]);
+      for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+          const d = Math.hypot(x - 70, y - 90);
+          const l = Math.round(190 + 46 * Math.exp(-(d * d) / (2 * 64 * 64)));
+          const o = (y * W + x) * 4;
+          f.data[o] = l;
+          f.data[o + 1] = l;
+          f.data[o + 2] = l;
+          f.data[o + 3] = 255;
+        }
+      }
+      drawRect(f, 44, 48, 100, 168, [24, 26, 34]);
+      drawRect(f, 48, 52, 96, 164, [255, 232, 220]);
+      drawRect(f, 56, 96, 88, 150, [247, 247, 245]);
+      drawDisc(f, 72, 46, 22, [24, 26, 34]);
+      drawDisc(f, 72, 46, 16, [250, 250, 248]);
+      return f;
+    };
+    const { frames: out } = matteFrames([paint(), paint(), paint()]);
+    const f = out[1];
+    expect(pixel(f, 2, 2)[3]).toBe(0);
+    expect(pixel(f, 20, 90)[3]).toBe(0);
+    expect(pixel(f, 72, 70)[3]).toBe(255); // pale cheek inside the outline
+    expect(pixel(f, 72, 70).slice(0, 3)).toEqual([255, 232, 220]);
+    expect(pixel(f, 72, 120)[3]).toBe(255); // white clothing
+    expect(pixel(f, 72, 120).slice(0, 3)).toEqual([247, 247, 245]);
+    expect(pixel(f, 72, 46)[3]).toBe(255); // white hair
+    expect(pixel(f, 72, 46).slice(0, 3)).toEqual([250, 250, 248]);
+  });
+
+  it("clears a smooth bay between an arm and the torso without eating either", () => {
+    const W = 160;
+    const H = 200;
+    const paint = (): Frame => {
+      const f = makeFrame(W, H, [0, 0, 0, 255]);
+      for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+          const d = Math.hypot(x - 90, y - 100);
+          const l = Math.round(168 + 74 * Math.exp(-(d * d) / (2 * 70 * 70)));
+          const o = (y * W + x) * 4;
+          f.data[o] = l;
+          f.data[o + 1] = l;
+          f.data[o + 2] = l;
+          f.data[o + 3] = 255;
+        }
+      }
+      drawRect(f, 86, 70, 122, 190, [150, 176, 206]);
+      drawRect(f, 48, 96, 66, 188, [168, 188, 214]);
+      // White cuff enclosed by the arm, and a skin-coloured hand on its end.
+      drawRect(f, 52, 150, 62, 172, [248, 248, 246]);
+      drawDisc(f, 57, 184, 8, [236, 206, 190]);
+      return f;
+    };
+    const raw = paint();
+    const keyed = keyFrame(raw, estimateBackground(raw));
+    closeSilhouette(keyed);
+    // The bright gap reads as an enclosed blob once the flat key gives up.
+    expect(pixel(keyed, 76, 140)[3]).toBe(255);
+
+    const { frames: out } = matteFrames([paint(), paint(), paint()]);
+    const f = out[1];
+    expect(pixel(f, 76, 140)[3]).toBe(0);
+    expect(pixel(f, 100, 120)[3]).toBe(255);
+    expect(pixel(f, 57, 130)[3]).toBe(255);
+    expect(pixel(f, 57, 160)[3]).toBe(255);
+    expect(pixel(f, 57, 160).slice(0, 3)).toEqual([248, 248, 246]);
+    expect(pixel(f, 57, 184)[3]).toBe(255);
+  });
+
+  it("mattes a working-size stack well inside the post-process budget", () => {
+    const W = 912;
+    const H = 1215;
+    const f = makeFrame(W, H, [180, 180, 182, 255]);
+    const { data } = f;
+    const cx = W / 2;
+    const cy = H / 2;
+    for (let y = 0; y < H; y++) {
+      const row = y * W;
+      for (let x = 0; x < W; x++) {
+        const d = Math.hypot(x - cx, y - cy);
+        const l = Math.max(150, Math.min(245, Math.round(176 + 58 * Math.exp(-(d * d) / (2 * 420 * 420)))));
+        const o = (row + x) * 4;
+        data[o] = l;
+        data[o + 1] = l;
+        data[o + 2] = l;
+      }
+    }
+    drawRect(f, 330, 520, 590, 1180, [138, 166, 198]);
+    drawRect(f, 400, 700, 520, 980, [248, 248, 246]);
+    drawDisc(f, 460, 430, 90, [242, 214, 198]);
+    const frames = [f, f, f, f, f, f, f, f];
+    const t0 = performance.now();
+    const { frames: out } = matteFrames(frames);
+    const ms = performance.now() - t0;
+    // 8 frames at the 608×810 working canvas (912×1215). A 4 s clip is 64
+    // frames, so two clips are 16× this. The whole post-process is ~2 min.
+    console.log(`matte 8×${W}×${H}: ${ms.toFixed(0)} ms (${(ms / 8).toFixed(1)} ms/frame)`);
+    expect(pixel(out[3], 12, 12)[3]).toBe(0);
+    expect(pixel(out[3], 460, 430)[3]).toBe(255);
+    expect(pixel(out[3], 450, 840)[3]).toBe(255);
+    expect(ms).toBeLessThan(5_000);
+  });
+});
