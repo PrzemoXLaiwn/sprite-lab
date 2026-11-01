@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
-import { closeSilhouette, conformAlphaCoverage, defringe, estimateBackground, keyFrame, matteFrames, postMatte, sealInteriorHoles, temporalMedianAlpha } from "./matte";
+import { clearEdgeBars, closeSilhouette, conformAlphaCoverage, defringe, estimateBackground, keyFrame, matteFrames, postMatte, sealInteriorHoles, temporalMedianAlpha } from "./matte";
 import { drawDisc, drawRect, makeFrame, pixel } from "./test-fixtures";
 import type { Frame } from "./types";
 
@@ -557,5 +557,29 @@ describe("closeSilhouette", () => {
       }
     }
     expect(soft).toBeGreaterThan(0);
+  });
+});
+
+describe("clearEdgeBars", () => {
+  it("clears a near-black bar on the bottom edge and leaves the figure", () => {
+    const f = makeFrame(40, 40, [180, 170, 160, 255]);
+    for (let y = 32; y < 40; y++) {
+      for (let x = 0; x < 40; x++) {
+        const o = (y * 40 + x) * 4;
+        f.data[o] = 4;
+        f.data[o + 1] = 4;
+        f.data[o + 2] = 6;
+        f.data[o + 3] = 255;
+      }
+    }
+    // A dark patch that does not span the frame stays opaque.
+    f.data[4] = 8;
+    f.data[5] = 8;
+    f.data[6] = 8;
+    f.data[7] = 255;
+    clearEdgeBars(f);
+    expect(pixel(f, 20, 36)[3]).toBe(0);
+    expect(pixel(f, 20, 20)[3]).toBe(255);
+    expect(pixel(f, 1, 0)[3]).toBe(255);
   });
 });

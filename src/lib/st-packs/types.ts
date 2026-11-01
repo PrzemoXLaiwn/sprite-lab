@@ -18,6 +18,10 @@ export interface JobOptions {
   videoSeconds: number;
   /** Subtle is the still idle. Expressive is one acting beat; admin studio only. */
   motion: StMotionMode;
+  /** Vidu model AIR. Only the admin studio sets this. */
+  videoModel: string;
+  /** Flat backdrop the edit and the clip keep, then the matte removes. Null on older jobs. */
+  keyColour: string | null;
   /** HQ lossy is the default. Lossless is exact and usually larger. */
   lossless: boolean;
 }

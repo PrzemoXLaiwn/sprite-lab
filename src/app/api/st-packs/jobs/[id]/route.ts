@@ -4,7 +4,8 @@
 // stall). With no QUEUE_SECRET the poll itself advances the job.
 import { NextResponse, after } from "next/server";
 import { JOB_ID_RE, requireStAdmin } from "../../_lib/guard";
-import { getSnapshot, runWork, tick } from "@/lib/st-packs/jobs";
+import { packRepairDue } from "@/lib/st-packs/downloads";
+import { getSnapshot, repairPack, runWork, tick } from "@/lib/st-packs/jobs";
 import { isStalled, kickWorker } from "@/lib/st-packs/worker";
 
 export const maxDuration = 300;
@@ -16,6 +17,11 @@ export async function GET(_request: Request, ctx: { params: Promise<{ id: string
   if (!JOB_ID_RE.test(id)) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const snapshot = await getSnapshot(id);
   if (!snapshot) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (packRepairDue({ status: snapshot.status, hasZip: !!snapshot.has?.zip, finishedAt: snapshot.finishedAt })) {
+    after(async () => {
+      await repairPack(id);
+    });
+  }
   if (isStalled(snapshot)) {
     after(async () => {
       // One tick when the kick cannot start. Never the 240 s loop: that would

@@ -1219,6 +1219,62 @@ export function matteAlpha(frame: Frame, opts: { hard?: number; soft?: number } 
   return out;
 }
 
+const BAR_LUMA = 32;
+const BAR_CHROMA = 14;
+const BAR_COVERAGE = 0.9;
+const BAR_MAX_FRAC = 0.12;
+
+function isLetterboxPixel(data: Buffer, o: number): boolean {
+  if (data[o + 3] < 128) return false;
+  const r = data[o];
+  const g = data[o + 1];
+  const b = data[o + 2];
+  const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+  return luma <= BAR_LUMA && Math.max(r, g, b) - Math.min(r, g, b) <= BAR_CHROMA;
+}
+
+/**
+ * Drop a near-black bar that touches the frame edge and spans that edge.
+ * Vidu paints one inside the cropped 3:4 window; the grey flood does not
+ * treat it as backdrop, so it ships as a solid strip and fails corner QA.
+ * A dark coat does not cover 90% of a row, so it stays.
+ */
+export function clearEdgeBars(frame: Frame): Frame {
+  const { width, height, data } = frame;
+  if (width < 8 || height < 8) return frame;
+  const maxRows = Math.max(2, Math.floor(height * BAR_MAX_FRAC));
+  const maxCols = Math.max(2, Math.floor(width * BAR_MAX_FRAC));
+  const rowFrac = (y: number) => {
+    let n = 0;
+    const row = y * width * 4;
+    for (let x = 0; x < width; x++) if (isLetterboxPixel(data, row + x * 4)) n++;
+    return n / width;
+  };
+  const clearRow = (y: number) => {
+    const row = y * width * 4;
+    for (let x = 0; x < width; x++) {
+      const o = row + x * 4;
+      if (isLetterboxPixel(data, o)) data[o + 3] = 0;
+    }
+  };
+  for (let y = 0; y < maxRows && rowFrac(y) >= BAR_COVERAGE; y++) clearRow(y);
+  for (let y = height - 1; y >= height - maxRows && rowFrac(y) >= BAR_COVERAGE; y--) clearRow(y);
+  const colFrac = (x: number) => {
+    let n = 0;
+    for (let y = 0; y < height; y++) if (isLetterboxPixel(data, (y * width + x) * 4)) n++;
+    return n / height;
+  };
+  const clearCol = (x: number) => {
+    for (let y = 0; y < height; y++) {
+      const o = (y * width + x) * 4;
+      if (isLetterboxPixel(data, o)) data[o + 3] = 0;
+    }
+  };
+  for (let x = 0; x < maxCols && colFrac(x) >= BAR_COVERAGE; x++) clearCol(x);
+  for (let x = width - 1; x >= width - maxCols && colFrac(x) >= BAR_COVERAGE; x--) clearCol(x);
+  return frame;
+}
+
 /**
  * Key mode. Each frame floods from its own border through the backdrop colour
  * only. Frame 0's deep interior is protected on later frames, so a crack cannot

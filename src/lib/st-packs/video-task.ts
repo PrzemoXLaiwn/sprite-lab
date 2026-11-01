@@ -27,7 +27,7 @@ export const ST_VIDEO_PROMPT_MAX = 2000;
 
 /** Subtle keeps the model's saved body. Expressive asks Vidu for large motion; the prompt still has to land on the last frame. */
 export function videoProviderExtra(model: string, motion: StMotionMode, base: Record<string, unknown>): Record<string, unknown> {
-  if (motion !== "expressive" || model !== "vidu:3@2") return base;
+  if (motion !== "expressive" || (model !== "vidu:3@2" && model !== "vidu:3@1")) return base;
   return { providerSettings: { vidu: { movementAmplitude: "large", bgm: false } } };
 }
 

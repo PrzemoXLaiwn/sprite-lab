@@ -81,9 +81,11 @@ Parameters (`src/config/st-packs.ts`, from the validated Python prototype):
   stay the edited still. Duration is an integer from 1 to 8. The studio offers
   3, 4, 5, 6 and 8. QA loosens drift and pop for Expressive only; alpha coverage,
   opaque corners and the seam bar stay put, so a white field or a hole still fails.
-  A 6 s or 8 s job post-processes one clip at a time. LTX takes a true
+  A 6 s clip is post-processed two at a time, same as a 4 s clip. LTX takes a true
   3:4 canvas but moves more (its prompt enhancer is off; it still drifted
   3 px with a pop on the test still vs 0.006 px for Vidu)
+- the expression edit paints a flat chroma background (`#00FF00`, or `#FF00FF` when the character is green). The clip is told to keep that colour, including gaps between an arm and the torso. The matte removes every pixel close to it, not only pixels the border can reach, and does not protect those pixels from frame 0. A white shirt and a grey coat stay opaque
+- the loop eases its tail onto an exact copy of frame 0, so a crossfade or a pinned last frame cannot leave a one-frame pose jump at the join
 - output is the native cropped frame (Vidu 720×960, LTX 768×1024). The clip
   is decoded at that size; there is no 1.5× working canvas
 - a closing frame that copies the first is dropped only when the frame
@@ -144,7 +146,7 @@ steps → 3 s pause → … for up to 240 s, then hands its lease to a fresh
 invocation, until the job ends. Before a tick claims another step, the loop
 hands off when less than 90 s remain of the 240 s budget or of the 300 s
 function limit. 90 s covers native post-processing, the slowest step. The tick that marks the job finished also queues `pack.zip`, the
-preview GIF and the static PNG zip (stills already in storage). GIF frames are not encoded there. That work runs before the lease is released. The studio leaves Download ZIP disabled (“Preparing ZIP…”) and keeps polling until `zipKey` is set, and a second click inside 10 s is ignored. A missing archive is still built by the download route. One job has one worker. The kick
+preview GIF and the static PNG zip (stills already in storage). GIF frames are not encoded there. That work runs before the lease is released. The studio shows “Preparing ZIP…” for about 20 s after the job is done. The zip key is stored before the preview grid, which is what the worker was killed on (120 s timeout, key never written). After 20 s, or if packaging fails, Download ZIP builds the file on click. A poll also retries a missing zip. A second click inside 10 s is ignored. One job has one worker. The kick
 compare-and-swaps `st_pack_jobs.worker_lease_until` (60 s, renewed every loop,
 taken over by the successor — never cleared in between, so a poll cannot slip
 in). The page only reads snapshots. It kicks a worker only when that lease has

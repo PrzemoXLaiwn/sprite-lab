@@ -148,12 +148,12 @@ describe("makeSeamlessLoop", () => {
     expect(res.frames).toHaveLength(40);
   });
 
-  it("never ping-pongs when not allowed, even for a hard cut", () => {
+  it("eases a hard cut onto an exact copy of frame 0 when ping-pong is off", () => {
     const frames = driftingOrbit(48, 24); // the disc ends nowhere near where it started
     const res = makeSeamlessLoop(frames, { ...opts, allowPingPong: false });
     expect(res.method).toBe("crossfade");
-    expect(res.seamAfter).toBeGreaterThan(2);
-    expect(res.frames).toHaveLength(40);
+    expect(res.seamAfter).toBeLessThan(1);
+    expect(res.frames.at(-1)!.data.equals(res.frames[0].data)).toBe(true);
   });
 
   it("ping-pongs when allowed and the crossfade cannot fix a hard cut", () => {
@@ -212,8 +212,8 @@ describe("loop point", () => {
     expect(raw.seam).toBeLessThan(1);
     expect(raw.consMax).toBeGreaterThan(100);
     expect(old.seam).toBeGreaterThan(6);
-    expect(seamRatio(held.frames).seam).toBeLessThan(6);
-    expect(held.frames).toHaveLength(n + 1);
+    expect(seamRatio(held.frames).seam).toBeLessThan(1);
+    expect(held.frames.at(-1)!.data.equals(held.frames[0].data)).toBe(true);
 
     const reversed = makeSeamlessLoop(frames, { ...opts, allowPingPong: true });
     const after = seamRatio(reversed.frames);

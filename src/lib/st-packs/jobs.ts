@@ -25,14 +25,15 @@ import { getR2ObjectBuffer, uploadBufferToR2 } from "@/lib/r2";
 import { generateStImage, pollStVideo, ProviderModerationError, removeBackgroundBuffer, submitStVideo } from "@/lib/runware";
 import { ST_EXPRESSION_LABELS, isExpressionLabel, type StExpressionLabel, type StExpressionSet } from "@/config/st-expressions";
 import {
-  ST_EDIT_MODEL, clipListUsd, estimateExpressionUsd, estimateJobUsd, isVideoSeconds, stPacksSettings, videoModelSpec,
+  ST_DEFAULT_VIDEO_MODEL, ST_EDIT_MODEL, clipListUsd, estimateExpressionUsd, estimateJobUsd, isSelectableVideoModel, isVideoSeconds, stPacksSettings, videoModelSpec,
   type StExpressionStatus, type StFraming, type StJobStatus, type StMatteMode,
 } from "@/config/st-packs";
+import { chromaHex, parseChromaHex } from "./chroma";
 import { videoProviderExtra } from "./video-task";
 import { alignToBase } from "./align";
 import { encodeGifFallback, encodePreviewGrid, stillPng } from "./encode";
 import { fitPng, padToCanvas, pngFrame, type CropFraction } from "./frames";
-import { gifPackKey, packFlags, pngPackKey, withPackFlags } from "./downloads";
+import { ZIP_PREPARE_MS, gifPackKey, packFlags, pngPackKey, withPackFlags } from "./downloads";
 import { buildExtraZip, buildMainZip, packSlug } from "./package";
 import { processClip } from "./pipeline";
 import { FAMILY_FRIENDLY_PREFIX, editPrompt, videoPrompt } from "./prompts";
@@ -60,6 +61,8 @@ export function normaliseOptions(raw: unknown, settings = stPacksSettings()): Jo
     matteMode: o.matteMode === "runware" ? "runware" : o.matteMode === "key" ? "key" : settings.matteMode,
     videoSeconds: Number.isFinite(seconds) && isVideoSeconds(Math.round(seconds)) ? Math.round(seconds) as 3 | 4 | 5 | 6 | 8 : settings.videoSeconds,
     motion: o.motion === "expressive" ? "expressive" : "subtle",
+    videoModel: typeof o.videoModel === "string" && isSelectableVideoModel(o.videoModel) ? o.videoModel : ST_DEFAULT_VIDEO_MODEL,
+    keyColour: (() => { const rgb = parseChromaHex(o.keyColour); return rgb ? chromaHex(rgb) : null; })(),
     lossless: o.lossless === true,
   };
 }
@@ -83,7 +86,7 @@ export interface CreateJobInput {
 }
 
 export async function createJob(input: CreateJobInput): Promise<string> {
-  const spec = videoModelSpec(stPacksSettings().videoModel);
+  const spec = videoModelSpec(input.options.videoModel);
   const estCostUsd = estimateJobUsd(input.labels, { videoSeconds: input.options.videoSeconds, matteMode: input.options.matteMode, model: spec.air });
   const job = await prisma.stPackJob.create({
     data: {
@@ -224,8 +227,8 @@ export async function tick(jobId: string): Promise<{ snapshot: JobSnapshot | nul
   await recoverExpired(job);
   job = (await getJob(jobId))!;
   const settings = stPacksSettings();
-  const spec = videoModelSpec(settings.videoModel);
   const options = normaliseOptions(job.options, settings);
+  const spec = videoModelSpec(options.videoModel);
   const work: Work[] = [];
   const order = new Map(ST_EXPRESSION_LABELS.map((l, i) => [l, i]));
   const exprs = [...job.expressions].sort((a, b) => (order.get(a.label as StExpressionLabel) ?? 99) - (order.get(b.label as StExpressionLabel) ?? 99));
@@ -250,9 +253,7 @@ export async function tick(jobId: string): Promise<{ snapshot: JobSnapshot | nul
     if (await claim(e.id, "edited", "video_submitted", LOCK_MS.submit)) { openVideos++; work.push(() => runSubmit(e.id)); }
   }
   for (const e of exprs) {
-    // An 8 s clip is about twice the frames of a 4 s one. One post at a time keeps the 3 GB function.
-    const postCap = options.videoSeconds >= 6 ? 1 : settings.postConcurrency;
-    if (e.status !== "video_ready" || busy >= settings.concurrency || posting >= postCap) continue;
+    if (e.status !== "video_ready" || busy >= settings.concurrency || posting >= settings.postConcurrency) continue;
     if (await claim(e.id, "video_ready", "processing", LOCK_MS.post)) { busy++; posting++; work.push(() => runPost(e.id)); }
   }
 
@@ -344,7 +345,7 @@ async function runEdit(exprId: string): Promise<void> {
     } else {
       const ctx = operationContext(e, settings.maxUsdPerExpression - e.costUsd);
       const { image } = await runInOperation(ctx, () => generateStImage({
-        prompt: editPrompt(e.label as StExpressionLabel, job.styleNotes, { motion: options.motion, framing: job.framing as StFraming }),
+        prompt: editPrompt(e.label as StExpressionLabel, job.styleNotes, { motion: options.motion, framing: job.framing as StFraming, keyColour: options.keyColour }),
         reference: base,
         width: ST_EDIT_MODEL.width,
         height: ST_EDIT_MODEL.height,
@@ -382,7 +383,7 @@ async function runSubmit(exprId: string): Promise<void> {
   const { e, job } = loaded;
   const settings = stPacksSettings();
   const options = normaliseOptions(job.options, settings);
-  const spec = videoModelSpec(settings.videoModel);
+  const spec = videoModelSpec(options.videoModel);
   try {
     const edit = await mustRead(e.editKey, "Edited still");
     const { png: still, crop } = await padToCanvas(edit, spec.width, spec.height);
@@ -396,7 +397,7 @@ async function runSubmit(exprId: string): Promise<void> {
     await submitStVideo({
       taskUUID,
       model: spec.air,
-      prompt: videoPrompt(e.label as StExpressionLabel, options.motion),
+      prompt: videoPrompt(e.label as StExpressionLabel, options.motion, options.keyColour),
       still,
       width: spec.width,
       height: spec.height,
@@ -484,6 +485,7 @@ async function runPost(exprId: string): Promise<void> {
       crop: timingsOf(e).crop,
       lossless: options.lossless,
       motion: options.motion,
+      keyColour: parseChromaHex(options.keyColour),
     }));
     await addCost(e, ctx.spentUsd);
     const webpKey = await put(result.webp.webp, exprKey(job.id, e.label, "loop.webp"), "image/webp");
@@ -528,7 +530,7 @@ async function finalize(jobId: string): Promise<void> {
  * re-download is the 45–70 s wait. GIF frames are encoded only on download
  * unless every expression already has a GIF file.
  */
-export async function buildArtifacts(jobId: string): Promise<{ zipKey: string; gridKey: string | null }> {
+export async function buildArtifacts(jobId: string, opts: { grid?: boolean } = {}): Promise<{ zipKey: string; gridKey: string | null }> {
   const job = await getJob(jobId);
   if (!job) throw new Error("Job not found");
   const options = normaliseOptions(job.options);
@@ -539,16 +541,23 @@ export async function buildArtifacts(jobId: string): Promise<{ zipKey: string; g
   if (!zipKey) {
     const entries = await Promise.all(done.map(async (e) => ({ label: e.label, data: await mustRead(e.webpKey, `${e.label}.webp`) })));
     zipKey = await put(await buildMainZip(entries, { readme: options.readme }), `st-packs/${job.id}/pack.zip`, "application/zip");
+    // The preview grid decodes every frame and has been killed at the 120 s
+    // limit, which used to throw away this upload. The key is stored first.
+    await prisma.stPackJob.update({ where: { id: jobId }, data: { zipKey } });
   }
 
   let gridKey: string | null = job.gridKey;
-  if (options.grid && !gridKey) {
-    const order = new Map(ST_EXPRESSION_LABELS.map((l, i) => [l, i]));
-    const items: Array<{ label: string; frames: Frame[] }> = [];
-    for (const e of [...done].sort((a, b) => (order.get(a.label as StExpressionLabel) ?? 99) - (order.get(b.label as StExpressionLabel) ?? 99)).slice(0, 8)) {
-      items.push({ label: e.label, frames: await webpFrames(await mustRead(e.webpKey, e.label)) });
+  if (opts.grid !== false && options.grid && !gridKey) {
+    try {
+      const order = new Map(ST_EXPRESSION_LABELS.map((l, i) => [l, i]));
+      const items: Array<{ label: string; frames: Frame[] }> = [];
+      for (const e of [...done].sort((a, b) => (order.get(a.label as StExpressionLabel) ?? 99) - (order.get(b.label as StExpressionLabel) ?? 99)).slice(0, 8)) {
+        items.push({ label: e.label, frames: await webpFrames(await mustRead(e.webpKey, e.label)) });
+      }
+      gridKey = await put(await encodePreviewGrid(items, 16), `st-packs/${job.id}/preview.gif`, "image/gif");
+    } catch (err) {
+      console.error("[st-packs] preview grid failed:", err instanceof Error ? err.message : err);
     }
-    gridKey = await put(await encodePreviewGrid(items, 16), `st-packs/${job.id}/preview.gif`, "image/gif");
   }
 
   const flags = packFlags(job.options);
@@ -589,6 +598,39 @@ export async function buildArtifacts(jobId: string): Promise<{ zipKey: string; g
     });
   }
   return { zipKey, gridKey };
+}
+
+/**
+ * One poll retries a pack that the worker never stored. The lease stops a
+ * second poll from starting another build. The zip itself is committed before
+ * the preview grid, so a killed grid still leaves a downloadable file.
+ */
+export async function repairPack(jobId: string, now = new Date()): Promise<boolean> {
+  const until = new Date(now.getTime() + 60_000);
+  const cutoff = new Date(now.getTime() - ZIP_PREPARE_MS);
+  const claimed = await prisma.stPackJob.updateMany({
+    where: {
+      id: jobId,
+      status: { in: ["done", "partial"] },
+      zipKey: null,
+      finishedAt: { lt: cutoff },
+      OR: [{ workerLeaseUntil: null }, { workerLeaseUntil: { lt: now } }],
+    },
+    data: { workerLeaseUntil: until },
+  });
+  if (claimed.count !== 1) return false;
+  try {
+    await buildArtifacts(jobId, { grid: false });
+    await prisma.stPackJob.updateMany({ where: { id: jobId, workerLeaseUntil: until }, data: { workerLeaseUntil: null } });
+    return true;
+  } catch (err) {
+    console.error("[st-packs] pack repair failed:", err instanceof Error ? err.message : err);
+    await prisma.stPackJob.update({
+      where: { id: jobId },
+      data: { error: `Packaging failed: ${err instanceof Error ? err.message : String(err)}`.slice(0, 500) },
+    });
+    return false;
+  }
 }
 
 async function webpFrames(webp: Buffer): Promise<Frame[]> {

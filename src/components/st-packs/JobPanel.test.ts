@@ -10,7 +10,8 @@ vi.mock("@/components/tools/ToolWorkspace", () => ({
   InfoNote: ({ children }: { children: ReactNode }) => createElement("p", null, children),
 }));
 
-function snapshot(over: { status: JobSnapshot["status"]; hasZip: boolean; error?: string | null }): JobSnapshot {
+function snapshot(over: { status: JobSnapshot["status"]; hasZip: boolean; error?: string | null; finishedAgoMs?: number }): JobSnapshot {
+  const finishedAt = over.status === "running" ? null : new Date(Date.now() - (over.finishedAgoMs ?? 0)).toISOString();
   return {
     id: "job1abcdefg",
     status: over.status,
@@ -22,13 +23,13 @@ function snapshot(over: { status: JobSnapshot["status"]; hasZip: boolean; error?
     labels: ["joy"],
     width: 720,
     height: 960,
-    options: { gif: true, png: true, grid: false, readme: true, matteMode: "key", videoSeconds: 4, lossless: false },
+    options: { gif: true, png: true, grid: false, readme: true, matteMode: "key", motion: "subtle", videoModel: "vidu:3@2", keyColour: "#00FF00", videoSeconds: 4, lossless: false },
     estCostUsd: 1,
     costUsd: 1,
     error: over.error ?? null,
     createdAt: "2026-11-01T00:00:00.000Z",
     startedAt: "2026-11-01T00:00:00.000Z",
-    finishedAt: over.status === "running" ? null : "2026-11-01T00:03:00.000Z",
+    finishedAt,
     workerLeaseUntil: null,
     has: { base: true, zip: over.hasZip, grid: false },
     timings: { edit: 0, video: 0, post: 0 },
@@ -91,5 +92,10 @@ describe("JobPanel downloads", () => {
     const failed = html(snapshot({ status: "done", hasZip: false, error: "Packaging failed: storage" }));
     expect(failed).toContain("download?kind=zip");
     expect(failed).not.toContain("Preparing ZIP…");
+
+    const stuck = html(snapshot({ status: "done", hasZip: false, finishedAgoMs: 30_000 }));
+    expect(stuck).toContain("download?kind=zip");
+    expect(stuck).toContain("download?kind=png");
+    expect(stuck).not.toContain("Preparing ZIP…");
   });
 });

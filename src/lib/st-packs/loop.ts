@@ -261,6 +261,10 @@ function withoutFrozenClose(frames: Frame[], threshold: number): Frame[] {
 export function makeSeamlessLoop(frames: Frame[], opts: SeamlessLoopOptions): SeamlessLoopResult {
   const seamBefore = seamToStep(seamRatioFast(frames));
   const minKeep = Math.max(8, Math.round(frames.length * 0.45));
+  const finish = (picked: Frame[], method: LoopMethod): SeamlessLoopResult => {
+    const eased = easeOntoFirst(picked, opts.k);
+    return { frames: eased, method, seamBefore, seamAfter: seamToStep(seamRatio(eased)) };
+  };
   const closedEnd = bestClosedEnd(frames, minKeep);
   if (closedEnd !== null) {
     const cut = withoutFrozenClose(frames.slice(0, closedEnd + 1), opts.duplicateThreshold);
@@ -268,24 +272,57 @@ export function makeSeamlessLoop(frames: Frame[], opts: SeamlessLoopOptions): Se
     if (closes(stats)) {
       // A single-frame snap onto the pinned still closes the seam and leaves a
       // pop. Reverse the motion before that snap; the join is then one normal step.
+      // Expressive raises the pop bar so a fast gesture is not reversed. The
+      // ease below still removes a hard cut the loose bar would have kept.
       if (opts.allowPingPong && terminalPop(cut, opts.popRatio ?? ST_QA.consSpikeRatio, opts.popAbs ?? ST_QA.consSpikeAbs)) {
         const body = cut.slice(0, -1);
         const pp = pingPong(body);
         const ppStats = seamRatio(pp);
-        if (closes(ppStats)) {
-          return { frames: pp, method: "pingpong", seamBefore, seamAfter: seamToStep(ppStats) };
-        }
+        if (closes(ppStats)) return finish(pp, "pingpong");
       }
-      return { frames: cut, method: "trim", seamBefore, seamAfter: seamToStep(stats) };
+      return finish(cut, "trim");
     }
   }
   const base = dropDuplicateClosingFrame(frames, opts.duplicateThreshold);
   const faded = crossfadeLoop(base, opts.k);
   const fadedStats = seamRatio(faded);
-  const seamAfter = seamToStep(fadedStats);
   if (!closes(fadedStats) && opts.allowPingPong) {
     const pp = pingPong(base);
-    return { frames: pp, method: "pingpong", seamBefore, seamAfter: seamToStep(seamRatio(pp)) };
+    return finish(pp, "pingpong");
   }
-  return { frames: faded, method: "crossfade", seamBefore, seamAfter };
+  return finish(faded, "crossfade");
+}
+
+/**
+ * The delivered loop has to start and end on the same pixels. A crossfade used
+ * to leave the last frame mid-pose, and a pinned still used to sit one hard
+ * cut after the gesture. Ease the tail onto frame 0 and copy that frame onto
+ * the end, so the join itself is exact. A snap in the last second is where
+ * the ease starts, which drops the cut instead of playing it.
+ */
+export function easeOntoFirst(frames: Frame[], k: number): Frame[] {
+  const n = frames.length;
+  if (n < 2) return frames.map(cloneFrame);
+  const steps: number[] = [];
+  for (let i = 0; i < n - 1; i++) steps.push(meanAbsDiffFast(frames[i], frames[i + 1]) * 1000);
+  const med = median(steps.slice(0, -1)) || median(steps) || 0;
+  const window = Math.min(n - 2, Math.max(k, 16));
+  let keep = n - 1;
+  for (let i = n - 2; i >= n - 1 - window && i >= 1; i--) {
+    if (med > 0 && steps[i] > ST_QA.consSpikeRatio * med && steps[i] > ST_QA.consSpikeAbs) {
+      keep = i;
+      break;
+    }
+  }
+  const head = frames.slice(0, keep + 1);
+  const kk = Math.max(1, Math.min(Math.max(k, 8), head.length - 1));
+  const out: Frame[] = [];
+  for (let i = 0; i < head.length - kk; i++) out.push(cloneFrame(head[i]));
+  for (let i = 0; i < kk - 1; i++) {
+    const src = head[head.length - kk + i];
+    const w = (i + 1) / kk;
+    out.push(blendPremultiplied(src, frames[0], w));
+  }
+  out.push(cloneFrame(frames[0]));
+  return out;
 }

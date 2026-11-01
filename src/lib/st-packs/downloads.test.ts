@@ -7,8 +7,17 @@ describe("zipButtonState", () => {
   });
 
   it("prepares after the job finishes and before the zip is stored", () => {
-    expect(zipButtonState({ status: "done", hasZip: false, doneCount: 4, error: null })).toBe("preparing");
-    expect(zipButtonState({ status: "partial", hasZip: false, doneCount: 1, error: null })).toBe("preparing");
+    const now = 1_000_000;
+    const just = new Date(now - 5_000).toISOString();
+    expect(zipButtonState({ status: "done", hasZip: false, doneCount: 4, error: null, finishedAt: just, now })).toBe("preparing");
+    expect(zipButtonState({ status: "partial", hasZip: false, doneCount: 1, error: null, finishedAt: just, now })).toBe("preparing");
+  });
+
+  it("falls back to a click download when the prebuild is still missing after 20 s", () => {
+    const now = 1_000_000;
+    const stuck = new Date(now - 21_000).toISOString();
+    expect(zipButtonState({ status: "done", hasZip: false, doneCount: 4, error: null, finishedAt: stuck, now })).toBe("fallback");
+    expect(zipButtonState({ status: "done", hasZip: true, doneCount: 4, error: null, finishedAt: stuck, now })).toBe("ready");
   });
 
   it("is ready only when the zip key exists", () => {

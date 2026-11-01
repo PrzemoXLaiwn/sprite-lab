@@ -41,6 +41,7 @@ const INITIAL_INPUTS: InputsState = {
   lossless: false,
   videoSeconds: 4,
   motion: "subtle",
+  videoModel: "vidu:3@2",
   candidateCount: 3,
 };
 
@@ -99,10 +100,11 @@ export function StPacksStudio() {
   const jobStatus = job?.status ?? null;
   const doneCount = job?.expressions.filter((e) => e.status === "done").length ?? 0;
   const zipState = job
-    ? zipButtonState({ status: job.status, hasZip: job.has.zip, doneCount, error: job.error })
+    ? zipButtonState({ status: job.status, hasZip: job.has.zip, doneCount, error: job.error, finishedAt: job.finishedAt })
     : "idle";
   useEffect(() => {
-    if (!jobId || (jobStatus !== "running" && zipState !== "preparing")) return;
+    const waitingOnZip = zipState === "preparing" || (zipState === "fallback" && !job?.has.zip && !job?.error);
+    if (!jobId || (jobStatus !== "running" && !waitingOnZip)) return;
     let stopped = false;
     let inFlight = false;
     const tick = async () => {
@@ -215,6 +217,7 @@ export function StPacksStudio() {
           matteMode: inputs.matteMode,
           videoSeconds: inputs.videoSeconds,
           motion: inputs.motion,
+          videoModel: inputs.videoModel,
           lossless: inputs.lossless,
         },
       });

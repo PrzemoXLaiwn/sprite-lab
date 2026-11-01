@@ -11,7 +11,7 @@ import {
   type StExpressionLabel,
   type StExpressionSet,
 } from "@/config/st-expressions";
-import { ST_DEFAULT_SIZE, ST_VIDEO_SECOND_CHOICES, estimateJobUsd, viduQ2TurboClipUsd, type StFraming, type StMatteMode, type StMotionMode, type StVideoSeconds } from "@/config/st-packs";
+import { ST_DEFAULT_SIZE, ST_DEFAULT_VIDEO_MODEL, ST_SELECTABLE_VIDEO_MODELS, ST_VIDEO_COST_TABLE, ST_VIDEO_MODELS, ST_VIDEO_SECOND_CHOICES, estimateJobUsd, viduQ2TurboClipUsd, type StFraming, type StMatteMode, type StMotionMode, type StVideoSeconds } from "@/config/st-packs";
 import { ErrorNote, Field } from "@/components/tools/ToolWorkspace";
 import type { BaseCandidate } from "./api";
 import { CheckRow, FIELD_CLS, SelectSlot, formatUsd, labelTitle } from "./ui";
@@ -35,6 +35,7 @@ export interface InputsState {
   lossless: boolean;
   videoSeconds: StVideoSeconds;
   motion: StMotionMode;
+  videoModel: string;
   candidateCount: 2 | 3 | 4;
 }
 
@@ -70,7 +71,7 @@ export function InputsPanel({
   const uid = useId();
   const fileRef = useRef<HTMLInputElement>(null);
   const labels = resolveExpressionLabels(inputs.expressionSet, inputs.customLabels);
-  const estimate = estimateJobUsd(labels, { videoSeconds: inputs.videoSeconds, matteMode: inputs.matteMode });
+  const estimate = estimateJobUsd(labels, { videoSeconds: inputs.videoSeconds, matteMode: inputs.matteMode, model: inputs.videoModel });
   const busy = baseBusy !== null;
   const canSubmit = !!base && !submitting && !jobRunning && !busy;
   const framingMismatch = base && base.framing !== inputs.framing;
@@ -246,6 +247,12 @@ export function InputsPanel({
             </SelectSlot>
           </div>
           <div className="col-span-2">
+            <label htmlFor={`${uid}-model`} className="mb-1.5 block text-[11.5px] font-medium text-[#A7ADD4]">Video model</label>
+            <SelectSlot id={`${uid}-model`} value={inputs.videoModel} onChange={(v) => onChange({ videoModel: (ST_SELECTABLE_VIDEO_MODELS as readonly string[]).includes(v) ? v : ST_DEFAULT_VIDEO_MODEL })}>
+              {ST_SELECTABLE_VIDEO_MODELS.map((air) => <option key={air} value={air}>{ST_VIDEO_MODELS[air].label}</option>)}
+            </SelectSlot>
+          </div>
+          <div className="col-span-2">
             <label htmlFor={`${uid}-video`} className="mb-1.5 block text-[11.5px] font-medium text-[#A7ADD4]">Video length</label>
             <SelectSlot id={`${uid}-video`} value={String(inputs.videoSeconds)} onChange={(v) => onChange({ videoSeconds: Number(v) as StVideoSeconds })}>
               {ST_VIDEO_SECOND_CHOICES.map((s) => <option key={s} value={s}>{s} s</option>)}
@@ -254,9 +261,24 @@ export function InputsPanel({
         </div>
         <p className="mt-1.5 text-[11.5px] leading-snug text-[#8A92BF]">
           {inputs.motion === "expressive"
-            ? `Expressive acts once, then returns to the still. Admin test only. Vidu first+last is about ${formatUsd(viduQ2TurboClipUsd(inputs.videoSeconds))} per clip before the edit. Credit prices are unchanged.`
+            ? `Expressive eases into one gesture, holds it, then returns to the still. Admin test only. This model is about ${formatUsd(inputs.videoModel === "vidu:3@1" ? 0.179 : viduQ2TurboClipUsd(inputs.videoSeconds))} per clip before the edit. Credit prices are unchanged.`
             : "Subtle is a still idle: breathing and a little hair. 6 s and 8 s are the longer lengths."}
         </p>
+        <table className="mt-2 w-full text-left text-[11px] text-[#A7ADD4]">
+          <caption className="mb-1 text-left text-[11.5px] text-[#C8CCE8]">720p, about 6 s. Only Vidu is wired. First and last frame stay the still.</caption>
+          <thead>
+            <tr className="text-[#8A92BF]"><th className="py-1 font-medium">Model</th><th className="py-1 font-medium">6 s</th><th className="py-1 font-medium">Note</th></tr>
+          </thead>
+          <tbody>
+            {ST_VIDEO_COST_TABLE.map((row) => (
+              <tr key={row.label} className="align-top">
+                <td className="py-1 pr-2 text-[#FFF1E8]">{row.label}</td>
+                <td className="py-1 pr-2 font-mono tabular-nums">{formatUsd(row.usd6)}</td>
+                <td className="py-1">{row.wired ? row.note : `Not wired. ${row.note}`}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </Field>
 
       {/* Estimate + submit */}
