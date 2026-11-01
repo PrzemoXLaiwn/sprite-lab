@@ -1,14 +1,22 @@
 // =============================================================================
 // ST Packs — matte (background removal) for video frames
 // =============================================================================
-// The video model draws the character on a flat, solid background. We key that
-// colour out (colour-difference key with a soft ramp). The key also hits
-// interior pixels whose colour is close to the background — light skin,
-// highlights, grey metal — and those must not become holes. A flood fill from
-// the frame border, through the key's background, marks only the region that
-// is actually connected to the edge. Everything else is the silhouette and is
-// forced opaque. Partial alpha survives only in a thin band on that outer
-// edge, for anti-aliasing and the defringe.
+// The video model draws the character on a light background that is often a
+// soft gradient with shadows, not a flat colour. A single border median cannot
+// describe that field: the colour key leaves a patch opaque, and treating
+// every unreached patch as foreground (the hole fill) glues that patch to the
+// character as a ragged blob.
+//
+// The background is a smooth plane fitted to the border (inliers only, so a
+// waist-up body along the bottom edge does not tilt it). A 4-connected flood
+// grows from border pixels that lie on the plane, stepping only through small
+// colour changes that also stay near the plane. That follows a gradient and a
+// soft shadow, and stops at the character's edge — so skin, face and light
+// clothing are not entered just because they resemble the backdrop. Enclosed
+// pixels the flood never reaches stay opaque (the flat-key hole case). Other
+// connected components are kept only when they are large and unlike the
+// backdrop; the largest one is the character. Partial alpha survives only in
+// a thin band on that outer edge, for anti-aliasing and the defringe.
 //
 // A temporal median of the silhouette alpha then removes one-frame flicker,
 // and defringe un-mixes the background from the semi-transparent edge so the
@@ -343,10 +351,341 @@ export function defringe(frames: Frame[], bg: Rgb): Frame[] {
   });
 }
 
+/** Euclidean RGB distance. */
+function rgbDist(r0: number, g0: number, b0: number, r1: number, g1: number, b1: number): number {
+  const dr = r0 - r1, dg = g0 - g1, db = b0 - b1;
+  return Math.sqrt(dr * dr + dg * dg + db * db);
+}
+
+/** Smoothstep key factor against a colour distance. 0 = background, 1 = solid. */
+function keyFactor(dist: number, hard: number, soft: number): number {
+  if (dist <= hard) return 0;
+  const range = soft - hard;
+  if (dist >= soft || range <= 0) return 1;
+  const t = (dist - hard) / range;
+  return t * t * (3 - 2 * t);
+}
+
+type Plane = { a: number; b: number; c: number };
+
+/** Solve M x = rhs for a 3×3 row-major matrix. Null when the fit is degenerate. */
+function solve3(m: number[], rhs: number[]): [number, number, number] | null {
+  const a = m.slice();
+  const b = rhs.slice();
+  for (let col = 0; col < 3; col++) {
+    let piv = col;
+    for (let row = col + 1; row < 3; row++) {
+      if (Math.abs(a[row * 3 + col]) > Math.abs(a[piv * 3 + col])) piv = row;
+    }
+    if (Math.abs(a[piv * 3 + col]) < 1e-8) return null;
+    if (piv !== col) {
+      for (let k = col; k < 3; k++) {
+        const tmp = a[col * 3 + k];
+        a[col * 3 + k] = a[piv * 3 + k];
+        a[piv * 3 + k] = tmp;
+      }
+      const tb = b[col];
+      b[col] = b[piv];
+      b[piv] = tb;
+    }
+    const div = a[col * 3 + col];
+    for (let row = col + 1; row < 3; row++) {
+      const f = a[row * 3 + col] / div;
+      if (f === 0) continue;
+      for (let k = col; k < 3; k++) a[row * 3 + k] -= f * a[col * 3 + k];
+      b[row] -= f * b[col];
+    }
+  }
+  const x: [number, number, number] = [0, 0, 0];
+  for (let row = 2; row >= 0; row--) {
+    let s = b[row];
+    for (let k = row + 1; k < 3; k++) s -= a[row * 3 + k] * x[k];
+    const diag = a[row * 3 + row];
+    if (Math.abs(diag) < 1e-8) return null;
+    x[row] = s / diag;
+  }
+  return x;
+}
+
+function fitPlane(xs: number[], ys: number[], vs: number[]): Plane | null {
+  const n = xs.length;
+  if (n < 3) return null;
+  let sx = 0, sy = 0, sx2 = 0, sy2 = 0, sxy = 0, sv = 0, sxv = 0, syv = 0;
+  for (let i = 0; i < n; i++) {
+    const x = xs[i], y = ys[i], v = vs[i];
+    sx += x; sy += y; sx2 += x * x; sy2 += y * y; sxy += x * y;
+    sv += v; sxv += x * v; syv += y * v;
+  }
+  const sol = solve3(
+    [n, sx, sy, sx, sx2, sxy, sy, sxy, sy2],
+    [sv, sxv, syv],
+  );
+  if (!sol || !sol.every(Number.isFinite)) return null;
+  return { a: sol[0], b: sol[1], c: sol[2] };
+}
+
+type Backdrop = {
+  median: Rgb;
+  plane: [Plane, Plane, Plane];
+  invW: number;
+  invH: number;
+};
+
 /**
- * Key mode. Each frame is keyed from its own border median, holes inside the
- * silhouette are closed, then the alpha is median-smoothed across neighbours
- * and defringed. One owned buffer per frame — no second RGBA copy of the clip.
+ * Border pixels within this distance of the median may vote in the first fit.
+ * Wide enough to include a studio gradient, tight enough to drop a coloured
+ * body sitting on the bottom edge.
+ */
+const PLANE_INLIER = 110;
+/** Residual above this is dropped before the second fit (the body, a logo). */
+const PLANE_REFIT = 36;
+/** A border pixel this close to the plane is a flood seed. */
+const SEED_DIST = 28;
+/** Largest per-step jump the flood may take (stops at the character edge). */
+const STEP_DIST = 18;
+/** A smooth step is still rejected once it has wandered this far from the plane. */
+const LOOSE_DIST = 48;
+/** A non-main component whose RMS plane distance is below this is leftover backdrop. */
+const ISLAND_DIST = 40;
+/** Non-main components smaller than this are specks and are dropped. */
+const SPECK_PX = 64;
+const SEED2 = SEED_DIST * SEED_DIST;
+const STEP2 = STEP_DIST * STEP_DIST;
+const LOOSE2 = LOOSE_DIST * LOOSE_DIST;
+const ISLAND2 = ISLAND_DIST * ISLAND_DIST;
+
+function constantPlane(median: Rgb): [Plane, Plane, Plane] {
+  return [
+    { a: median[0], b: 0, c: 0 },
+    { a: median[1], b: 0, c: 0 },
+    { a: median[2], b: 0, c: 0 },
+  ];
+}
+
+/** Per-channel plane of the backdrop, in normalised x/y, robust to the subject touching the border. */
+function fitBackdrop(frame: Frame, median: Rgb): Backdrop {
+  const { width, height, data } = frame;
+  const invW = 1 / Math.max(1, width - 1);
+  const invH = 1 / Math.max(1, height - 1);
+  const b = Math.max(1, Math.min(BORDER_PX, width, height));
+  const xs: number[] = [];
+  const ys: number[] = [];
+  const rs: number[] = [];
+  const gs: number[] = [];
+  const bs: number[] = [];
+  const push = (x: number, y: number) => {
+    const o = (y * width + x) * 4;
+    const r = data[o], g = data[o + 1], bl = data[o + 2];
+    if (rgbDist(r, g, bl, median[0], median[1], median[2]) > PLANE_INLIER) return;
+    xs.push(x * invW);
+    ys.push(y * invH);
+    rs.push(r);
+    gs.push(g);
+    bs.push(bl);
+  };
+  if (b * 2 >= height || b * 2 >= width) {
+    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) push(x, y);
+  } else {
+    for (let y = 0; y < b; y++) for (let x = 0; x < width; x++) push(x, y);
+    for (let y = height - b; y < height; y++) for (let x = 0; x < width; x++) push(x, y);
+    for (let y = b; y < height - b; y++) {
+      for (let x = 0; x < b; x++) push(x, y);
+      for (let x = width - b; x < width; x++) push(x, y);
+    }
+  }
+  let plane = fitChannels(xs, ys, rs, gs, bs) ?? constantPlane(median);
+  const keep: number[] = [];
+  for (let i = 0; i < xs.length; i++) {
+    const pr = plane[0].a + plane[0].b * xs[i] + plane[0].c * ys[i];
+    const pg = plane[1].a + plane[1].b * xs[i] + plane[1].c * ys[i];
+    const pb = plane[2].a + plane[2].b * xs[i] + plane[2].c * ys[i];
+    if (rgbDist(rs[i], gs[i], bs[i], pr, pg, pb) <= PLANE_REFIT) keep.push(i);
+  }
+  if (keep.length >= 20 && keep.length < xs.length) {
+    const x2 = keep.map((i) => xs[i]);
+    const y2 = keep.map((i) => ys[i]);
+    plane = fitChannels(x2, y2, keep.map((i) => rs[i]), keep.map((i) => gs[i]), keep.map((i) => bs[i])) ?? plane;
+  }
+  return { median, plane, invW, invH };
+}
+
+function fitChannels(xs: number[], ys: number[], rs: number[], gs: number[], bs: number[]): [Plane, Plane, Plane] | null {
+  const r = fitPlane(xs, ys, rs);
+  const g = fitPlane(xs, ys, gs);
+  const b = fitPlane(xs, ys, bs);
+  if (!r || !g || !b) return null;
+  return [r, g, b];
+}
+
+/** Squared distance from every pixel to the backdrop plane. One tight pass, no sqrt. */
+function planeDist2(frame: Frame, bg: Backdrop): Float32Array {
+  const { data, width, height } = frame;
+  const out = new Float32Array(width * height);
+  const p0 = bg.plane[0], p1 = bg.plane[1], p2 = bg.plane[2];
+  const br = p0.b * bg.invW, bgc = p1.b * bg.invW, bb = p2.b * bg.invW;
+  for (let y = 0; y < height; y++) {
+    const yn = y * bg.invH;
+    const ar = p0.a + p0.c * yn;
+    const ag = p1.a + p1.c * yn;
+    const ab = p2.a + p2.c * yn;
+    const row = y * width;
+    let o = row * 4;
+    for (let x = 0; x < width; x++, o += 4) {
+      const dr = data[o] - (ar + br * x);
+      const dg = data[o + 1] - (ag + bgc * x);
+      const db = data[o + 2] - (ab + bb * x);
+      out[row + x] = dr * dr + dg * dg + db * db;
+    }
+  }
+  return out;
+}
+
+/**
+ * Backdrop mask, then the character as the largest foreground component
+ * (plus any other component that is too unlike the backdrop to be a shadow).
+ * Mutates alpha. Scratch is a few byte-planes for this frame only.
+ */
+function paintBackdropAlpha(frame: Frame, opts: { hard?: number; soft?: number }): void {
+  const { data, width, height } = frame;
+  const n = width * height;
+  if (n === 0) return;
+  const hard = opts.hard ?? DEFAULT_HARD;
+  const soft = opts.soft ?? DEFAULT_SOFT;
+  const dist2 = planeDist2(frame, fitBackdrop(frame, estimateBackground(frame)));
+  const reached = new Uint8Array(n);
+  const queue = new Int32Array(n);
+  let qh = 0, qt = 0;
+  const push = (i: number) => {
+    reached[i] = 1;
+    queue[qt++] = i;
+  };
+  for (let x = 0; x < width; x++) {
+    if (dist2[x] <= SEED2) push(x);
+    if (height > 1) {
+      const bot = (height - 1) * width + x;
+      if (dist2[bot] <= SEED2) push(bot);
+    }
+  }
+  for (let y = 1; y < height - 1; y++) {
+    const left = y * width;
+    if (dist2[left] <= SEED2) push(left);
+    if (width > 1) {
+      const right = left + width - 1;
+      if (dist2[right] <= SEED2) push(right);
+    }
+  }
+  while (qh < qt) {
+    const i = queue[qh++];
+    const x = i % width;
+    const o = i * 4;
+    const r = data[o], g = data[o + 1], b = data[o + 2];
+    if (x > 0) {
+      const j = i - 1;
+      if (!reached[j] && dist2[j] <= LOOSE2) {
+        const o2 = j * 4;
+        const dr = data[o2] - r, dg = data[o2 + 1] - g, db = data[o2 + 2] - b;
+        if (dr * dr + dg * dg + db * db <= STEP2) push(j);
+      }
+    }
+    if (x + 1 < width) {
+      const j = i + 1;
+      if (!reached[j] && dist2[j] <= LOOSE2) {
+        const o2 = j * 4;
+        const dr = data[o2] - r, dg = data[o2 + 1] - g, db = data[o2 + 2] - b;
+        if (dr * dr + dg * dg + db * db <= STEP2) push(j);
+      }
+    }
+    if (i >= width) {
+      const j = i - width;
+      if (!reached[j] && dist2[j] <= LOOSE2) {
+        const o2 = j * 4;
+        const dr = data[o2] - r, dg = data[o2 + 1] - g, db = data[o2 + 2] - b;
+        if (dr * dr + dg * dg + db * db <= STEP2) push(j);
+      }
+    }
+    if (i + width < n) {
+      const j = i + width;
+      if (!reached[j] && dist2[j] <= LOOSE2) {
+        const o2 = j * 4;
+        const dr = data[o2] - r, dg = data[o2 + 1] - g, db = data[o2 + 2] - b;
+        if (dr * dr + dg * dg + db * db <= STEP2) push(j);
+      }
+    }
+  }
+
+  // Foreground components among pixels the flood did not claim.
+  const visited = new Uint8Array(n);
+  const comps: { seed: number; size: number; sum: number; keep: boolean }[] = [];
+  for (let s = 0; s < n; s++) {
+    if (reached[s] || visited[s]) continue;
+    let size = 0, sum = 0;
+    qh = 0;
+    qt = 0;
+    visited[s] = 1;
+    queue[qt++] = s;
+    while (qh < qt) {
+      const i = queue[qh++];
+      const x = i % width;
+      size++;
+      sum += dist2[i];
+      if (x > 0 && !reached[i - 1] && !visited[i - 1]) { visited[i - 1] = 1; queue[qt++] = i - 1; }
+      if (x + 1 < width && !reached[i + 1] && !visited[i + 1]) { visited[i + 1] = 1; queue[qt++] = i + 1; }
+      if (i >= width && !reached[i - width] && !visited[i - width]) { visited[i - width] = 1; queue[qt++] = i - width; }
+      if (i + width < n && !reached[i + width] && !visited[i + width]) { visited[i + width] = 1; queue[qt++] = i + width; }
+    }
+    comps.push({ seed: s, size, sum, keep: false });
+  }
+  let main = 0;
+  for (let k = 1; k < comps.length; k++) if (comps[k].size > comps[main].size) main = k;
+  for (let k = 0; k < comps.length; k++) {
+    const mean2 = comps[k].sum / comps[k].size;
+    comps[k].keep = k === main || (comps[k].size >= SPECK_PX && mean2 >= ISLAND2);
+  }
+  const foreground = new Uint8Array(n);
+  for (let k = 0; k < comps.length; k++) {
+    if (!comps[k].keep) continue;
+    qh = 0;
+    qt = 0;
+    foreground[comps[k].seed] = 1;
+    queue[qt++] = comps[k].seed;
+    while (qh < qt) {
+      const i = queue[qh++];
+      const x = i % width;
+      if (x > 0 && !reached[i - 1] && !foreground[i - 1]) { foreground[i - 1] = 1; queue[qt++] = i - 1; }
+      if (x + 1 < width && !reached[i + 1] && !foreground[i + 1]) { foreground[i + 1] = 1; queue[qt++] = i + 1; }
+      if (i >= width && !reached[i - width] && !foreground[i - width]) { foreground[i - width] = 1; queue[qt++] = i - width; }
+      if (i + width < n && !reached[i + width] && !foreground[i + width]) { foreground[i + width] = 1; queue[qt++] = i + width; }
+    }
+  }
+
+  // Reuse the visited plane as the backdrop mask (every non-foreground pixel).
+  for (let i = 0; i < n; i++) visited[i] = foreground[i] ? 0 : 1;
+  const nearBg = dilate(visited, width, height, EDGE_BAND);
+  const nearFg = dilate(foreground, width, height, EDGE_BAND);
+  for (let i = 0; i < n; i++) {
+    const o = i * 4 + 3;
+    if (foreground[i] && !nearBg[i]) data[o] = 255;
+    else if (!foreground[i] && !nearFg[i]) data[o] = 0;
+    else data[o] = Math.round(data[o] * keyFactor(Math.sqrt(dist2[i]), hard, soft));
+  }
+}
+
+/**
+ * One frame's key alpha for a flat or gently graded backdrop. Does not defringe
+ * and does not read neighbouring frames. The returned buffer is new.
+ */
+export function matteAlpha(frame: Frame, opts: { hard?: number; soft?: number } = {}): Frame {
+  const out = cloneFrame(frame);
+  paintBackdropAlpha(out, opts);
+  return out;
+}
+
+/**
+ * Key mode. Each frame grows its own backdrop from the border plane, the
+ * character component is kept (enclosed holes included), then the alpha is
+ * median-smoothed across neighbours and defringed. One owned buffer per frame
+ * — the flood scratch is dropped before the next frame, and the median keeps
+ * only alpha planes.
  */
 export function matteFrames(frames: Frame[], opts: { hard?: number; soft?: number } = {}): { frames: Frame[]; background: Rgb } {
   if (frames.length === 0) return { frames: [], background: [0, 0, 0] };
@@ -354,9 +693,7 @@ export function matteFrames(frames: Frame[], opts: { hard?: number; soft?: numbe
   const backgrounds: Rgb[] = new Array(frames.length);
   for (let i = 0; i < frames.length; i++) {
     backgrounds[i] = estimateBackground(frames[i]);
-    const keyed = keyFrame(frames[i], backgrounds[i], opts);
-    closeSilhouette(keyed);
-    out[i] = keyed;
+    out[i] = matteAlpha(frames[i], opts);
   }
   applyTemporalMedianInPlace(out);
   for (let i = 0; i < out.length; i++) defringeOwned(out[i], backgrounds[i]);

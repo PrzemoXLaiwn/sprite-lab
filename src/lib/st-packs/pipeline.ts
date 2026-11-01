@@ -8,7 +8,7 @@ import { ST_PIPELINE, ST_QA, type StMatteMode } from "@/config/st-packs";
 import { encodeAnimatedWebp, type WebpResult } from "./encode";
 import { decodeVideo, framePng, pngFrame, resizeFrames, type CropFraction } from "./frames";
 import { makeSeamlessLoop, resampleFps } from "./loop";
-import { closeSilhouette, estimateBackground, keyFrame, matteFrames, postMatte } from "./matte";
+import { estimateBackground, matteAlpha, matteFrames, postMatte } from "./matte";
 import { computeQa } from "./qa";
 import { stabilizeFrames } from "./stabilize";
 import type { Frame, QaResult } from "./types";
@@ -65,15 +65,9 @@ export async function processClip(mp4: Buffer, opts: ProcessOptions): Promise<Pr
       while (next < raw.length) {
         const i = next++;
         const png = (await opts.removeBackground!(await framePng(raw[i]))) ?? (await opts.removeBackground!(await framePng(raw[i])));
-        if (png) {
-          out[i] = await pngFrame(png);
-        } else {
-          // Same hole fill as key mode. This frame's own border, not frame 0:
-          // a rejected frame can sit on a slightly different flat colour.
-          const keyed = keyFrame(raw[i], estimateBackground(raw[i]));
-          closeSilhouette(keyed);
-          out[i] = keyed;
-        }
+        // Same backdrop matte as key mode when the provider rejects a frame.
+        // postMatte below does the temporal median and the defringe.
+        out[i] = png ? await pngFrame(png) : matteAlpha(raw[i]);
       }
     };
     await Promise.all(Array.from({ length: Math.min(limit, raw.length) }, worker));
