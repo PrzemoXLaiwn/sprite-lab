@@ -30,12 +30,14 @@ export function editPrompt(label: StExpressionLabel, styleNotes?: string | null,
     ? ` Replace the whole background, including every gap around the arms and torso, with one perfectly flat colour ${opts.keyColour}. No grey, no white, no gradient, no shadow.`
     : "";
   const hands = expressive && opts?.framing !== "bust"
-    ? " Waist-up framing with room for the hands: both hands and forearms are inside the frame, elbows are not cropped, and there is empty space on both sides of the torso so a later gesture is not cut off. Arms rest at the sides. You may shift the crop slightly so the hands fit."
+    ? " Hands and forearms stay where they are in the input image, away from the face. Arms rest at the sides."
     : "";
   const lock = expressive
     ? "Keep the same character identity, face shape, eye colour, hair style and colour, outfit, lighting, art style and plain background."
     : "Keep everything else pixel-identical: same character identity, face shape, eye colour, hair style and colour, outfit, body pose, hands, camera framing, crop, canvas size, lighting, art style and plain background.";
-  const still = expressive ? "" : " Do not move or resize the character.";
+  // Every expression must sit exactly on the neutral: SillyTavern swaps the
+  // files in place, so a new crop reads as the character jumping.
+  const still = " Keep exactly the same framing, crop, scale and position as the input image. Do not move or resize the character. Do not zoom or reframe, and keep the same canvas.";
   return `${SFW_PREFIX}. Edit this exact image. Change ONLY the facial expression to: ${ST_EXPRESSION_FRAGMENTS[label]}. ${lock}${key || " Keep the background one flat colour: do not add a gradient, vignette, studio wall or cast shadow."}${still}${hands} Do not add objects, text, tears effects beyond what is described. ${expressive ? "The rest pose must leave the hands free to move later." : "Subtle, natural,"} SFW${notes(styleNotes)}.`;
 }
 

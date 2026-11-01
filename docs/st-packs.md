@@ -118,6 +118,37 @@ Parameters (`src/config/st-packs.ts`, from the validated Python prototype):
 - WebP: one encode, quality 90, alpha quality 100, effort 4, hard cap 6 MB.
   Lossless is optional on the job (default off) and is also a single encode
 
+### Stills before the clip (src/lib/st-packs/still.ts)
+
+Every still sent to the video model, the neutral included, goes through
+`prepareStill`:
+
+1. **backgroundToKey.** The dominant colours of the top border and the upper
+   60 % of the sides are clustered (the lower sides and the bottom edge are
+   the character in a waist-up shot). A flood from the border takes every
+   pixel close to one of those colours or to the key, and follows gradients
+   step by step. Everything it reaches is repainted as the pure key colour,
+   so a white or grey band left by the edit and the neutral's own dark or
+   purple backdrop both become key.
+2. **alignStill** (edits only). The row-by-row width profile of the subject,
+   from the head top down over 40 % of the height, is matched to the
+   neutral's: the best scale (0.6–1.7) and the median centre offset map the
+   edit onto a canvas of exactly the neutral's size, with key colour outside.
+   An edit that already matches within 1.5 px is not resampled.
+3. **Gate.** The top and side ring (8 px) must be at least 97 % key colour
+   and the framing must be measurable. Otherwise the edit is drawn once more
+   (about $0.07) and the cleaner result is used, instead of paying for a
+   clip of a broken still.
+
+The edit prompt also says "keep exactly the same framing, crop, scale and
+position as the input image" for every mode.
+
+After the key, each clip frame goes through `clearBorderBlack`: near-black
+pixels connected to a corner wedge, within 24 px of the edge, become
+transparent. Vidu paints them into the top corners and a green key never
+removes black. A dark sleeve touching a side in the middle of the frame is
+not connected to a corner and stays.
+
 ### Orchestration
 
 A full job takes 10–15 minutes, so nothing runs in one request. Jobs and

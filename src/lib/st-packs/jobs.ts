@@ -29,9 +29,9 @@ import {
   type StExpressionStatus, type StFraming, type StJobStatus, type StMatteMode,
 } from "@/config/st-packs";
 import { PROVIDER_BALANCE_MESSAGE, isProviderBalanceMessage } from "@/lib/provider-balance";
-import { chromaHex, compositeOverKey, parseChromaHex } from "./chroma";
+import { chromaHex, parseChromaHex, type Rgb } from "./chroma";
+import { prepareStill, type PreparedStill } from "./still";
 import { findReusableNeutral, planNeutral, skippedEstimateLabels, type ReusableNeutral } from "./neutral-reuse";
-import { matteFrames } from "./matte";
 import { videoProviderExtra } from "./video-task";
 import { alignToBase } from "./align";
 import { encodeGifFallback, encodePreviewGrid, stillPng } from "./encode";
@@ -71,7 +71,7 @@ export function normaliseOptions(raw: unknown, settings = stPacksSettings()): Jo
   };
 }
 
-type Timings = StepTimings & { attempts?: Partial<Record<"edit" | "video" | "post", number>>; videoStartedAt?: number; align?: { dx: number; dy: number; scale: number; shifted: boolean }; loop?: string; crop?: CropFraction; videoModel?: string; fetch?: number; reusedFrom?: string };
+type Timings = StepTimings & { attempts?: Partial<Record<"edit" | "video" | "post", number>>; videoStartedAt?: number; align?: { dx: number; dy: number; scale: number; shifted: boolean }; loop?: string; crop?: CropFraction; videoModel?: string; fetch?: number; reusedFrom?: string; still?: { ring: number; editAttempts: number; scale?: number; moved?: boolean; alignFailed?: boolean } };
 const timingsOf = (row: ExprRow): Timings => ((row.timings && typeof row.timings === "object" ? row.timings : {}) as Timings);
 
 // ── Create / list / snapshot ─────────────────────────────────────────────────
@@ -403,16 +403,21 @@ async function runEdit(exprId: string): Promise<void> {
     const base = await mustRead(job.baseKey, "Base image");
     let editKey: string;
     const t = timingsOf(e);
-    if (e.label === "neutral") {
-      const rgb = parseChromaHex(options.keyColour);
-      if (rgb) {
-        // The base still is light grey. Neutral used to skip the edit, so the
-        // clip never saw the chroma ground and the key removed nothing.
-        const matted = matteFrames([await pngFrame(base)]).frames[0];
-        editKey = await put(await stillPng(compositeOverKey(matted, rgb)), exprKey(job.id, e.label, "edit.png"), "image/png");
-      } else {
-        editKey = job.baseKey!;
-      }
+    const rgb = parseChromaHex(options.keyColour);
+    if (rgb) {
+      // Every still goes to the clip the same way: backdrop repainted as the
+      // pure key colour (bands, dark or purple uploads included) and, for an
+      // edit, the framing matched to the neutral so the sprite does not jump
+      // between expressions in SillyTavern.
+      const neutral = prepareStill(await pngFrame(base), rgb);
+      let editAttempts = 0;
+      const prepared = e.label === "neutral"
+        ? neutral
+        : await editUntilClean(e, job, options, base, rgb, neutral.frame, settings.maxUsdPerExpression - e.costUsd, (n) => { editAttempts = n; });
+      t.still = { ring: round2(prepared.ringRatio), editAttempts, scale: prepared.align ? round2(prepared.align.scale) : undefined, moved: prepared.align?.moved, alignFailed: prepared.align?.failed };
+      editKey = await put(await stillPng(prepared.frame), exprKey(job.id, e.label, "edit.png"), "image/png");
+    } else if (e.label === "neutral") {
+      editKey = job.baseKey!;
     } else {
       const ctx = operationContext(e, settings.maxUsdPerExpression - e.costUsd);
       const { image } = await runInOperation(ctx, () => generateStImage({
@@ -445,6 +450,48 @@ async function runEdit(exprId: string): Promise<void> {
   } catch (err) {
     await stepFailed(e, "edit", err, "queued");
   }
+}
+
+/**
+ * One edit, prepared for the clip. When the outer ring is still not the key
+ * colour (a white or grey frame the repaint could not reach) or the framing
+ * cannot be measured, the edit is drawn once more (~$0.07) instead of paying
+ * for a clip of a broken still. The cleaner of the two is kept.
+ */
+async function editUntilClean(
+  e: ExprRow, job: JobRow, options: JobOptions, base: Buffer, rgb: Rgb, reference: Frame, capUsd: number,
+  onAttempt: (n: number) => void,
+): Promise<PreparedStill> {
+  const ctx = operationContext(e, capUsd);
+  let best: PreparedStill | null = null;
+  try {
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      if (attempt > 1 && !canSpendIn(ctx, ST_EDIT_MODEL.approxCostUsd)) break;
+      onAttempt(attempt);
+      const { image } = await runInOperation(ctx, () => generateStImage({
+        prompt: editPrompt(e.label as StExpressionLabel, job.styleNotes, { motion: options.motion, framing: job.framing as StFraming, keyColour: options.keyColour }),
+        reference: base,
+        width: ST_EDIT_MODEL.width,
+        height: ST_EDIT_MODEL.height,
+        task: "st_expression",
+        listPrice: ST_EDIT_MODEL.approxCostUsd,
+        moderationRetryPrefix: FAMILY_FRIENDLY_PREFIX,
+      }));
+      const edited = await fitPng(image, ST_EDIT_MODEL.width, ST_EDIT_MODEL.height);
+      const prepared = prepareStill(await pngFrame(edited), rgb, reference);
+      if (!best || (prepared.ok && !best.ok) || (prepared.ok === best.ok && prepared.ringRatio > best.ringRatio)) best = prepared;
+      if (prepared.ok) break;
+      console.warn(`[st-packs] ${e.label} edit ${attempt}: ring ${prepared.ringRatio.toFixed(3)}, align ${prepared.align?.failed ? "failed" : "ok"}`);
+    }
+  } finally {
+    await addCost(e, ctx.spentUsd);
+  }
+  return best!;
+}
+
+/** Same rule as canSpend(), on a context that is not the active one. */
+function canSpendIn(ctx: OperationContext, usd: number): boolean {
+  return ctx.spentUsd + usd <= ctx.capUsd + 1e-9;
 }
 
 // ── Step 2: idle clip (submit, then poll) ────────────────────────────────────

@@ -88,12 +88,14 @@ describe("prompts", () => {
     expect(ST_EXPRESSIVE_ACTING.surprise).toMatch(/step back/);
   });
 
-  it("asks an expressive waist-up edit to leave room for the hands", () => {
-    const waist = editPrompt("anger", null, { motion: "expressive", framing: "waist" });
-    expect(waist).toMatch(/room for the hands/);
-    expect(waist).toMatch(/forearms are inside the frame/);
-    expect(editPrompt("anger", null, { motion: "expressive", framing: "bust" })).not.toMatch(/room for the hands/);
-    expect(editPrompt("anger", null)).toMatch(/Do not move or resize the character/);
-    expect(editPrompt("anger", null)).not.toMatch(/room for the hands/);
+  it("locks every edit to the input framing (expressive included), hands away from the face", () => {
+    // SillyTavern swaps the files in place: a new crop reads as a jump (Nov 2026)
+    for (const opts of [undefined, { motion: "expressive" as const, framing: "waist" as const }, { motion: "expressive" as const, framing: "bust" as const }]) {
+      const p = editPrompt("anger", null, opts);
+      expect(p).toMatch(/Keep exactly the same framing, crop, scale and position as the input image/);
+      expect(p).toMatch(/Do not move or resize the character/);
+      expect(p).not.toMatch(/shift the crop/);
+    }
+    expect(editPrompt("anger", null, { motion: "expressive", framing: "waist" })).toMatch(/away from the face/);
   });
 });
