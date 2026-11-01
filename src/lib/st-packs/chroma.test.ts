@@ -62,13 +62,46 @@ describe("chroma key", () => {
     expect(pixel(c1, 14, 36)[3]).toBe(255);
   });
 
-  it("clears a darkened green edge sampled from the corners", () => {
+  it("clears a backdrop that drifted off #00FF00 and keeps the shirt", () => {
     const frame = makeFrame(40, 40);
     fill(frame, [13, 77, 9]);
     rect(frame, 12, 10, 28, 32, [244, 244, 244]);
     const [out] = keyChromaFrames([frame], CHROMA_GREEN);
     expect(pixel(out, 2, 2)[3]).toBe(0);
+    expect(pixel(out, 10, 20)[3]).toBe(0);
     expect(pixel(out, 20, 20)[3]).toBe(255);
+  });
+
+  it("clears a dark green edge line and keeps a navy suit in that band", () => {
+    const frame = makeFrame(80, 80);
+    fill(frame, CHROMA_GREEN);
+    for (let y = 0; y < 80; y++) {
+      for (let x = 0; x < 80; x++) {
+        if (Math.min(x, y, 79 - x, 79 - y) >= 3) continue;
+        const o = (y * 80 + x) * 4;
+        frame.data[o] = 10;
+        frame.data[o + 1] = 80;
+        frame.data[o + 2] = 8;
+      }
+    }
+    rect(frame, 24, 20, 56, 64, [244, 244, 244]);
+    rect(frame, 2, 30, 6, 36, [36, 37, 45]);
+    const dull = (40 * 80) * 4;
+    frame.data[dull] = 31;
+    frame.data[dull + 1] = 37;
+    frame.data[dull + 2] = 28;
+    const corner = (79 * 80) * 4;
+    frame.data[corner] = 33;
+    frame.data[corner + 1] = 34;
+    frame.data[corner + 2] = 27;
+    const [out] = keyChromaFrames([frame], CHROMA_GREEN);
+    expect(pixel(out, 1, 1)[3]).toBe(0);
+    expect(pixel(out, 40, 1)[3]).toBe(0);
+    expect(pixel(out, 0, 40)[3]).toBe(0);
+    expect(pixel(out, 0, 79)[3]).toBe(0);
+    expect(pixel(out, 40, 40)[3]).toBe(255);
+    expect(pixel(out, 40, 16)[3]).toBe(0);
+    expect(pixel(out, 3, 32)[3]).toBe(255);
   });
 
   it("despills a green fringe without painting the shirt", () => {
