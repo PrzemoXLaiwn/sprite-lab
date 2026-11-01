@@ -13,7 +13,7 @@ import { seamRatio } from "./loop";
 import { centroidRangeX } from "./stabilize";
 import type { Frame, QaMetrics, QaResult } from "./types";
 
-export type QaThresholds = typeof ST_QA;
+export type QaThresholds = { [K in keyof typeof ST_QA]: number };
 
 export interface QaInfo {
   fps: number;

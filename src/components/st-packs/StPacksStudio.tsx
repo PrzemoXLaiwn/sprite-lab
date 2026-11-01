@@ -40,6 +40,7 @@ const INITIAL_INPUTS: InputsState = {
   matteMode: "key",
   lossless: false,
   videoSeconds: 4,
+  motion: "subtle",
   candidateCount: 3,
 };
 
@@ -213,6 +214,7 @@ export function StPacksStudio() {
           readme: inputs.readme,
           matteMode: inputs.matteMode,
           videoSeconds: inputs.videoSeconds,
+          motion: inputs.motion,
           lossless: inputs.lossless,
         },
       });

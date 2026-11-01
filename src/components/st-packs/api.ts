@@ -6,7 +6,7 @@
 // =============================================================================
 
 import type { StExpressionSet } from "@/config/st-expressions";
-import type { StFraming, StMatteMode } from "@/config/st-packs";
+import type { StFraming, StMatteMode, StMotionMode, StVideoSeconds } from "@/config/st-packs";
 import type { DownloadKind, JobListItem, JobSnapshot } from "@/lib/st-packs/types";
 
 const BASE = "/api/st-packs";
@@ -32,7 +32,8 @@ export interface CreateJobBody {
     grid: boolean;
     readme: boolean;
     matteMode?: StMatteMode;
-    videoSeconds?: number;
+    videoSeconds?: StVideoSeconds;
+    motion?: StMotionMode;
     lossless?: boolean;
   };
 }

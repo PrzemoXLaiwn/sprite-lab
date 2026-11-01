@@ -1224,7 +1224,7 @@ export function matteAlpha(frame: Frame, opts: { hard?: number; soft?: number } 
  * only. Frame 0's deep interior is protected on later frames, so a crack cannot
  * eat a white shirt. A frame whose coverage jumps is given a neighbour's alpha.
  */
-export function matteFrames(frames: Frame[], opts: { hard?: number; soft?: number } = {}): { frames: Frame[]; background: Rgb } {
+export function matteFrames(frames: Frame[], opts: { hard?: number; soft?: number; interiorShiftMax?: number; coverageMaxFrac?: number } = {}): { frames: Frame[]; background: Rgb } {
   if (frames.length === 0) return { frames: [], background: [0, 0, 0] };
   const out: Frame[] = new Array(frames.length);
   const backgrounds: Rgb[] = new Array(frames.length);
@@ -1246,7 +1246,8 @@ export function matteFrames(frames: Frame[], opts: { hard?: number; soft?: numbe
       const c = maskCentroid(solid, frame.width);
       const dx = Math.round(c.x - ref.x);
       const dy = Math.round(c.y - ref.y);
-      if (c.n > 0 && Math.abs(dx) <= INTERIOR_SHIFT_MAX && Math.abs(dy) <= INTERIOR_SHIFT_MAX) {
+      const shiftMax = opts.interiorShiftMax ?? INTERIOR_SHIFT_MAX;
+      if (c.n > 0 && Math.abs(dx) <= shiftMax && Math.abs(dy) <= shiftMax) {
         protectInterior(reached, interior, frame.width, frame.height, dx, dy);
       }
     }
@@ -1256,7 +1257,7 @@ export function matteFrames(frames: Frame[], opts: { hard?: number; soft?: numbe
   applyTemporalMedianInPlace(out);
   for (let i = 0; i < out.length; i++) defringeOwned(out[i], backgrounds[i]);
   sealInteriorHoles(out);
-  conformAlphaCoverage(out);
+  conformAlphaCoverage(out, opts.coverageMaxFrac ?? COVERAGE_MAX_FRAC);
   return { frames: out, background: backgrounds[0] };
 }
 

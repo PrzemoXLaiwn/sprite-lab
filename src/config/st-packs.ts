@@ -39,7 +39,7 @@ export function stPacksSettings(env: Record<string, string | undefined> = proces
     /** Open Vidu tasks. 8 is one full default set in a single round. */
     videoConcurrency: intEnv("ST_PACKS_VIDEO_CONCURRENCY", 8, env),
     videoModel: videoModelSpec(env.ST_PACKS_VIDEO_MODEL?.trim()).air,
-    videoSeconds: Math.min(5, Math.max(3, intEnv("ST_PACKS_VIDEO_SECONDS", 4, env))),
+    videoSeconds: videoSecondsSetting(intEnv("ST_PACKS_VIDEO_SECONDS", 4, env)),
     matteMode: matte as StMatteMode,
     maxUsdPerJob: Number(env.ST_PACKS_MAX_USD_PER_JOB) > 0 ? Number(env.ST_PACKS_MAX_USD_PER_JOB) : 10,
     maxUsdPerExpression: Number(env.ST_PACKS_MAX_USD_PER_EXPRESSION) > 0 ? Number(env.ST_PACKS_MAX_USD_PER_EXPRESSION) : 1.5,
@@ -176,16 +176,82 @@ export const ST_QA = {
   maxBytes: ST_PIPELINE.webpMaxBytes,
 } as const;
 
+export const ST_MOTION_MODES = ["subtle", "expressive"] as const;
+export type StMotionMode = (typeof ST_MOTION_MODES)[number];
+
+/** Lengths the studio offers. Vidu Q2 Turbo accepts any integer from 1 to 8; 6 and 8 are the longer acting clips. */
+export const ST_VIDEO_SECOND_CHOICES = [3, 4, 5, 6, 8] as const;
+export type StVideoSeconds = (typeof ST_VIDEO_SECOND_CHOICES)[number];
+
+export function isVideoSeconds(n: number): n is StVideoSeconds {
+  return (ST_VIDEO_SECOND_CHOICES as readonly number[]).includes(n);
+}
+
+function videoSecondsSetting(n: number): StVideoSeconds {
+  return isVideoSeconds(n) ? n : 4;
+}
+
+/**
+ * Vidu Q2 Turbo, 720p, the request we send (first frame and last frame are the
+ * same still). Sources, Runware docs for `vidu:3@2` (checked 2026-11-01):
+ *   4s  $0.0825  rate card, 720p
+ *   5s  $0.11    published example, first-frame 720p
+ *   8s  $0.193   published example, first-last-frame 720p
+ * The rate card also lists 720p 8s at $0.138 without that first-last example.
+ * 6s has no published 720p first-last price: $0.1375 is the 4s rate plus two
+ * steps of ($0.11 − $0.0825). 3s has no published price; it stays 3/4 of the 4s rate.
+ */
+export function viduQ2TurboClipUsd(seconds: number): number {
+  switch (seconds) {
+    case 3: return 0.061875;
+    case 4: return 0.0825;
+    case 5: return 0.11;
+    case 6: return 0.1375;
+    case 8: return 0.193;
+    default: return Math.round((0.0825 + (seconds - 4) * 0.0275) * 10000) / 10000;
+  }
+}
+
+/** Provider list price for one clip. Vidu uses the table above; LTX stays per second. */
+export function clipListUsd(air: string, seconds: number): number {
+  if (air === "vidu:3@2") return viduQ2TurboClipUsd(seconds);
+  return videoModelSpec(air).usdPerSecond * seconds;
+}
+
+/**
+ * Expressive QA. Alpha, corners and the seam stay on the subtle bars: a white
+ * field, a hole, or an open loop still fails. Drift and pop are looser so a
+ * step, a head turn or a fast arm is not a glitch. The stabiliser only removes
+ * jitter under `stabilizeJitterPx`; a larger lower-body move is left in the frames.
+ */
+export const ST_EXPRESSIVE = {
+  driftPx: 72,
+  consSpikeRatio: 8,
+  consSpikeAbs: 40,
+  stabilizeJitterPx: 6,
+  interiorShiftPx: 96,
+  coverageMaxFrac: 0.12,
+} as const;
+
+export function qaThresholds(motion: StMotionMode): { [K in keyof typeof ST_QA]: number } {
+  if (motion !== "expressive") return ST_QA;
+  return { ...ST_QA, driftPx: ST_EXPRESSIVE.driftPx, consSpikeRatio: ST_EXPRESSIVE.consSpikeRatio, consSpikeAbs: ST_EXPRESSIVE.consSpikeAbs };
+}
+
 // ── Cost estimate shown before a job starts ──────────────────────────────────
-export function estimateExpressionUsd(label: StExpressionLabel, opts: { videoSeconds: number; matteMode: StMatteMode; fps?: number; usdPerSecond?: number }): number {
+export function estimateExpressionUsd(label: StExpressionLabel, opts: { videoSeconds: number; matteMode: StMatteMode; fps?: number; usdPerSecond?: number; model?: string }): number {
   const edit = label === "neutral" ? 0 : ST_EDIT_MODEL.approxCostUsd;
-  const video = (opts.usdPerSecond ?? ST_VIDEO_MODEL.usdPerSecond) * opts.videoSeconds;
+  const video = opts.model
+    ? clipListUsd(opts.model, opts.videoSeconds)
+    : opts.usdPerSecond != null
+      ? opts.usdPerSecond * opts.videoSeconds
+      : clipListUsd(ST_DEFAULT_VIDEO_MODEL, opts.videoSeconds);
   const frames = opts.videoSeconds * (opts.fps ?? ST_VIDEO_MODEL.fps ?? ST_ASSUMED_FPS);
   const matte = opts.matteMode === "runware" ? frames * ST_MATTE_USD_PER_FRAME : 0;
   return edit + video + matte;
 }
 
-export function estimateJobUsd(labels: readonly StExpressionLabel[], opts: { videoSeconds: number; matteMode: StMatteMode; usdPerSecond?: number }): number {
+export function estimateJobUsd(labels: readonly StExpressionLabel[], opts: { videoSeconds: number; matteMode: StMatteMode; usdPerSecond?: number; model?: string }): number {
   return labels.reduce((sum, l) => sum + estimateExpressionUsd(l, opts), 0);
 }
 

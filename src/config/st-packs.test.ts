@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { resolveExpressionLabels } from "./st-expressions";
 import {
   ST_DEFAULT_SIZE, ST_PIPELINE, ST_QA, ST_VIDEO_MODELS,
-  estimateJobUsd, isOutputSize, nativeContentSize, stPacksSettings,
+  clipListUsd, estimateJobUsd, isOutputSize, nativeContentSize, qaThresholds, stPacksSettings, viduQ2TurboClipUsd,
 } from "./st-packs";
 
 describe("ST Packs native output and throughput", () => {
@@ -38,5 +38,27 @@ describe("ST Packs native output and throughput", () => {
     const usd = estimateJobUsd(resolveExpressionLabels("all28"), { videoSeconds: 4, matteMode: "key" });
     expect(usd).toBeLessThan(stPacksSettings({}).maxUsdPerJob);
     expect(usd).toBeGreaterThan(0);
+  });
+
+  it("prices Vidu from the published 720p points, including first-and-last at 8 s", () => {
+    expect(viduQ2TurboClipUsd(3)).toBeCloseTo(0.061875, 6);
+    expect(viduQ2TurboClipUsd(4)).toBe(0.0825);
+    expect(viduQ2TurboClipUsd(5)).toBe(0.11);
+    expect(viduQ2TurboClipUsd(6)).toBe(0.1375);
+    expect(viduQ2TurboClipUsd(8)).toBe(0.193);
+    expect(clipListUsd("lightricks:ltx@2.3-fast", 4)).toBeCloseTo(0.12, 6);
+    const eight = estimateJobUsd(resolveExpressionLabels("all28"), { videoSeconds: 8, matteMode: "key" });
+    expect(eight).toBeLessThan(stPacksSettings({}).maxUsdPerJob);
+    expect(eight).toBeGreaterThan(28 * 0.193);
+  });
+
+  it("loosens drift and pop for expressive and keeps the hole checks", () => {
+    const bars = qaThresholds("expressive");
+    expect(bars.driftPx).toBeGreaterThan(ST_QA.driftPx);
+    expect(bars.consSpikeAbs).toBeGreaterThan(ST_QA.consSpikeAbs);
+    expect(bars.alphaCoverageMax).toBe(ST_QA.alphaCoverageMax);
+    expect(bars.cornerOpaqueMax).toBe(ST_QA.cornerOpaqueMax);
+    expect(bars.seamAbs).toBe(ST_QA.seamAbs);
+    expect(qaThresholds("subtle")).toBe(ST_QA);
   });
 });

@@ -34,6 +34,9 @@ export interface SeamlessLoopOptions {
   allowPingPong: boolean;
   /** Mean |last − first| (0–1) below which the closing frame is a repeat of the first and is dropped. */
   duplicateThreshold: number;
+  /** A last-step snap at least this many times the median, and above popAbs, is reversed. Defaults are the subtle QA bars. */
+  popRatio?: number;
+  popAbs?: number;
 }
 
 export interface SeamlessLoopResult {
@@ -196,13 +199,13 @@ export function seamRatio(frames: Frame[]): SeamStats {
 }
 
 /** The last step is a cut onto a pinned frame, not part of the idle. */
-function terminalPop(frames: Frame[]): boolean {
+function terminalPop(frames: Frame[], ratio: number, abs: number): boolean {
   if (frames.length < 4) return false;
   const steps: number[] = [];
   for (let i = 0; i < frames.length - 1; i++) steps.push(meanAbsDiffFast(frames[i], frames[i + 1]) * 1000);
   const last = steps[steps.length - 1];
   const med = median(steps.slice(0, -1));
-  return med > 0 && last > ST_QA.consSpikeRatio * med && last > ST_QA.consSpikeAbs;
+  return med > 0 && last > ratio * med && last > abs;
 }
 
 function seamToStep(stats: SeamStats): number {
@@ -265,7 +268,7 @@ export function makeSeamlessLoop(frames: Frame[], opts: SeamlessLoopOptions): Se
     if (closes(stats)) {
       // A single-frame snap onto the pinned still closes the seam and leaves a
       // pop. Reverse the motion before that snap; the join is then one normal step.
-      if (opts.allowPingPong && terminalPop(cut)) {
+      if (opts.allowPingPong && terminalPop(cut, opts.popRatio ?? ST_QA.consSpikeRatio, opts.popAbs ?? ST_QA.consSpikeAbs)) {
         const body = cut.slice(0, -1);
         const pp = pingPong(body);
         const ppStats = seamRatio(pp);

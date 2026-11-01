@@ -55,6 +55,42 @@ export const ST_EXPRESSION_FRAGMENTS: Record<StExpressionLabel, string> = {
   remorse: "guilty look, eyes downcast, lips pressed, brows drawn up",
 };
 
+/**
+ * Expressive mode: one body-acting beat per label. The clip starts and ends
+ * on the still; this is what happens in the middle. Each line is a different
+ * performance, not a swapped adjective.
+ */
+export const ST_EXPRESSIVE_ACTING: Record<StExpressionLabel, string> = {
+  admiration: "eyes lift, a small impressed nod, one hand rises to the chest, then the arm settles",
+  amusement: "a short laugh in the chest, one shoulder hitches, eyes crinkle, then the body stills",
+  anger: "fists clench, shoulders tense and rise, a sharp head turn to one side and back, one arm juts out once, then the arms return",
+  annoyance: "a flat exhale, one brow drops, a short dismissive flick of one hand, then the hand falls",
+  approval: "one firm nod, a small open palm toward the viewer, a satisfied breath, then the hand lowers",
+  caring: "the head tilts, one hand reaches slightly forward as if to steady someone, then the arm returns",
+  confusion: "the head cocks, one hand comes up beside the temple, the eyes search once, then the hand drops",
+  curiosity: "a lean in, eyes widen, one hand lifts with the fingers opening, then the body comes back upright",
+  desire: "a slow inhale, one hand rests over the heart, the eyes soften and glance aside, fully clothed, then the hand lowers",
+  disappointment: "shoulders sink, a sigh, the head dips, one hand falls, then the posture eases back up",
+  disapproval: "one slow head shake, lips press, one palm lifts in a single stop, then the hand lowers",
+  disgust: "the head pulls back, the nose wrinkles, one hand waves the air away once, shoulders hunch, then the pose returns",
+  embarrassment: "the eyes dart aside, one hand covers the mouth, the shoulders rise, then the hand comes down",
+  excitement: "a small bounce, a wide grin, both hands lift once, then the feet and hands settle",
+  fear: "a flinch and a half step back, both hands rise, a sharp inhale, then the body eases forward again",
+  gratitude: "one hand to the chest, a small bow of the head, then the spine straightens",
+  grief: "the head lowers, the shoulders collapse, one hand rubs the opposite arm, the eyes close briefly, then the head lifts",
+  joy: "a laugh, the shoulders shake, the head tilts back, one hand goes to the mouth, then the head comes level again",
+  love: "one hand over the heart, a soft sway, a small lean in, then the body returns to centre",
+  nervousness: "weight shifts to one foot, the hands fidget together once, a glance aside, then the stance evens out",
+  optimism: "the chin lifts, a hopeful breath, one open hand gestures outward, then the arm returns",
+  pride: "the chin rises, the chest expands, the hands rest on the hips for a moment, then the arms relax",
+  realization: "the eyes widen, a small gasp, one finger lifts, the head comes up, then the hand lowers",
+  relief: "a long exhale, the shoulders drop, the eyes close for a beat, then they open and the posture recovers",
+  remorse: "the eyes go down, one hand rubs the arm, one slow head shake, then the eyes come back up",
+  sadness: "the head lowers, the shoulders drop, one hand rubs the opposite arm, the eyes look down and then up",
+  surprise: "a step back, both hands come up, the eyes and mouth open, a short freeze, then the feet return",
+  neutral: "one deeper breath, a small shift of weight, hair and clothes move once, at most one blink, no gesture",
+};
+
 const MOTION_NOTES: Partial<Record<StExpressionLabel, string>> = {
   joy: "a gentle held smile, no giggle, NOT a continuous looping laugh",
   anger: "tense still breathing, one quiet exhale at most, no repeated gesture",
