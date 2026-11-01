@@ -134,8 +134,8 @@ pattern). It answers 202 at once and loops in `after()`: tick → run the claime
 steps → 3 s pause → … for up to 240 s, then hands its lease to a fresh
 invocation, until the job ends. Before a tick claims another step, the loop
 hands off when less than 90 s remain of the 240 s budget or of the 300 s
-function limit. 90 s covers native post-processing, the slowest step. The tick that marks the job finished also queues `pack.zip` and the
-preview GIF; that work runs before the lease is released. One job has one worker. The kick
+function limit. 90 s covers native post-processing, the slowest step. The tick that marks the job finished also queues `pack.zip`, the
+preview GIF and the static PNG zip (stills already in storage). GIF frames are not encoded there. That work runs before the lease is released. The studio leaves Download ZIP disabled (“Preparing ZIP…”) and keeps polling until `zipKey` is set, and a second click inside 10 s is ignored. A missing archive is still built by the download route. One job has one worker. The kick
 compare-and-swaps `st_pack_jobs.worker_lease_until` (60 s, renewed every loop,
 taken over by the successor — never cleared in between, so a poll cannot slip
 in). The page only reads snapshots. It kicks a worker only when that lease has
@@ -146,8 +146,8 @@ Steps chain inside one invocation: an edited still is submitted as a clip at
 once (while fewer than 8 clips are already open), a finished clip is
 post-processed at once (two at a time per invocation —
 `ST_PACKS_POST_CONCURRENCY` — sharing the 3 GB function). The per-expression
-step writes the WebP and a still PNG. The GIF pack is encoded when it is
-downloaded. A job still marked running with an expired lease and no row
+step writes the WebP and a still PNG. The worker zips those stills into the PNG pack as soon as the job finishes. The GIF pack is encoded when it is
+downloaded, unless every expression already has a GIF file. A job still marked running with an expired lease and no row
 change for 30 minutes is closed the next time the studio loads or polls.
 A regenerate runs the step `tick()` just claimed and then kicks; it does not
 drop that claim when the kick is accepted.

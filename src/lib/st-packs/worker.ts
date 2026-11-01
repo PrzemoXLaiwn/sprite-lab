@@ -118,8 +118,9 @@ export async function workerLoop(
     const t = await tick(jobId);
     snapshot = t.snapshot;
     if (!snapshot || snapshot.status !== "running") {
-      // The finishing tick queues pack.zip / the preview GIF and then marks
-      // the job done. Run that work before dropping the lease.
+      // The finishing tick marks the job done and queues pack.zip (plus the
+      // preview GIF and the static PNG zip). Run that before dropping the lease.
+      // The page keeps polling until zipKey is set; it does not offer the download early.
       if (t.work.length) await runWork(t.work);
       await releaseWorkerLease(jobId, held);
       return { snapshot, continueNeeded: false, handoffFrom: null };
