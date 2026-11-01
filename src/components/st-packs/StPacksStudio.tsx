@@ -24,6 +24,9 @@ import type { PreviewMode } from "./ExpressionTile";
 
 const POLL_MS = 4000;
 
+// Defaults that give a clean pack with no changes: waist-up, the 8 labels
+// SillyTavern uses most, one expressive gesture over 6 s on Vidu Q2 Turbo.
+// GIF fallbacks are off (SillyTavern plays animated WebP; GIF only adds time).
 const INITIAL_INPUTS: InputsState = {
   source: "upload",
   prompt: "",
@@ -33,14 +36,14 @@ const INITIAL_INPUTS: InputsState = {
   customLabels: [...ST_DEFAULT_LABELS],
   width: ST_DEFAULT_SIZE.width,
   height: ST_DEFAULT_SIZE.height,
-  gif: true,
+  gif: false,
   png: true,
   grid: true,
   readme: true,
   matteMode: "key",
   lossless: false,
-  videoSeconds: 4,
-  motion: "subtle",
+  videoSeconds: 6,
+  motion: "expressive",
   videoModel: "vidu:3@2",
   candidateCount: 3,
   includeNeutral: true,

@@ -11,6 +11,7 @@ import { makeSeamlessLoop, resampleFps } from "./loop";
 import { keyChromaFrames, type Rgb } from "./chroma";
 import { clearEdgeBars, estimateBackground, matteAlpha, matteFrames, postMatte } from "./matte";
 import { computeQa } from "./qa";
+import { clearBorderBlack } from "./still";
 import { stabilizeFrames } from "./stabilize";
 import type { Frame, QaResult } from "./types";
 
@@ -84,6 +85,9 @@ export async function processClip(mp4: Buffer, opts: ProcessOptions): Promise<Pr
   // The grey-backdrop flood leaves it opaque, which is the bottom bar and the
   // corner/edge QA flags. A full-width bar is cleared; a dark outfit is not.
   for (const frame of frames) clearEdgeBars(frame);
+  // Vidu also paints near-black wedges into the top corners. A green key never
+  // removes black, so black connected to a corner is cleared here.
+  for (const frame of frames) clearBorderBlack(frame);
 
   // Drift. Expressive only cancels a few pixels of jitter; a step or a lean
   // is the performance, so a larger shift is left in the frames and not flagged.
