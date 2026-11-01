@@ -5,7 +5,7 @@
 // =============================================================================
 import type { StExpressionLabel } from "@/config/st-expressions";
 import { ST_EXPRESSIVE, ST_PIPELINE, qaThresholds, type StMatteMode, type StMotionMode } from "@/config/st-packs";
-import { encodeAnimatedWebp, type WebpResult } from "./encode";
+import { encodeWithinCap, type WebpResult } from "./encode";
 import { decodeVideo, framePng, pngFrame, type CropFraction } from "./frames";
 import { makeSeamlessLoop, resampleFps } from "./loop";
 import { keyChromaFrames, type Rgb } from "./chroma";
@@ -115,7 +115,8 @@ export async function processClip(mp4: Buffer, opts: ProcessOptions): Promise<Pr
   loop.frames = [];
   if (fps !== ST_PIPELINE.outputFps) frames = resampleFps(frames, fps, ST_PIPELINE.outputFps);
 
-  const webp = await encodeAnimatedWebp(frames, ST_PIPELINE.outputFps, { lossless: opts.lossless });
+  // Over the cap: one smaller encode instead of a QA flag
+  const webp = await encodeWithinCap(frames, ST_PIPELINE.outputFps, ST_PIPELINE.webpMaxBytes, { lossless: opts.lossless });
   const qa = computeQa(frames, { fps: ST_PIPELINE.outputFps, bytes: webp.bytes, band: ST_PIPELINE.stabilizeBand }, bars);
   if (stab.flagged && !expressive) {
     qa.flags.push(`drift too large to correct (${stab.maxShift.toFixed(1)} px > ${ST_PIPELINE.stabilizeMaxShiftPx})`);

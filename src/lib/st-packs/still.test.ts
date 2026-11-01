@@ -151,6 +151,23 @@ describe("alignStill (bug 1: framing jumps between expressions)", () => {
   });
 });
 
+describe("artefact lines (prod, Nov 2026)", () => {
+  it("a 1 px light line that runs into the torso is cleared, and the framing still fits", () => {
+    const base = backgroundToKey(figureOn(purple), KEY);
+    const edit = figureOn(green);
+    // Nano Banana redraws the old backdrop edge as a faint line down to the jacket
+    const x = Math.round(W / 2 + 140);
+    for (let y = 30; y < H; y++) { const o = (y * W + x) * 4; edit.data[o] = 210; edit.data[o + 1] = 205; edit.data[o + 2] = 220; }
+    for (let y = 300; y < H; y++) for (let xx = W / 2 + 92; xx <= x; xx++) { const o = (y * W + xx) * 4; edit.data[o] = SHIRT[0]; edit.data[o + 1] = SHIRT[1]; edit.data[o + 2] = SHIRT[2]; }
+    const prepared = prepareStill(edit, KEY, base);
+    expect(prepared.align?.failed).toBe(false);
+    expect(Math.abs((prepared.align?.scale ?? 0) - 1)).toBeLessThan(0.01);
+    // the line above the torso is key now
+    expect(prepared.frame.data[(100 * W + x) * 4 + 1]).toBe(255);
+    expect(prepared.frame.data[(100 * W + x) * 4]).toBe(0);
+  });
+});
+
 describe("clearBorderBlack (bug 3: black corners in Vidu clips)", () => {
   function viduFrame(): Frame {
     const w = 360, h = 480;

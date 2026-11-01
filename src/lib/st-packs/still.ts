@@ -317,6 +317,12 @@ export function measureFraming(mask: Uint8Array, width: number, height: number, 
   return { top, upperWidth: widths[widths.length >> 1], centreX: sx / sn, left, right, bottom };
 }
 
+/**
+ * Per row: the outermost subject pixels. (A pixel count was tried: the
+ * segmented neutral and a colour-keyed edit disagree on hair wisps by a few
+ * percent, which read as a 4 % zoom on identical framing.) Thin artefact
+ * lines are cleared before this, so they cannot stretch an extent.
+ */
 interface RowProfile { left: Int32Array; right: Int32Array }
 
 function rowProfile(mask: Uint8Array, width: number, height: number): RowProfile {
@@ -518,6 +524,65 @@ export function isCroppedAgainst(reference: Frame, frame: Frame, key: Rgb): bool
  * 0.2 % of the largest piece and not a line one to four pixels wide.
  */
 export function clearStrays(frame: Frame, key: Rgb): number {
+  const cleared = clearThinLines(frame, key);
+  return cleared + clearSmallPieces(frame, key);
+}
+
+/** A straight run this long, at most 3 px wide with key on both sides, is an artefact line. */
+const LINE_MIN_RUN = 40;
+const LINE_GAP = 3;
+
+/**
+ * Nano Banana redraws the edge of an upload's backdrop rectangle as a faint
+ * 1 px line that runs into the jacket at the bottom, so it is not a separate
+ * piece. A pixel is "thin" when the subject is absent 3 px left and right of
+ * it (or above and below); a straight vertical (horizontal) run of thin
+ * pixels this long is cleared. Hair strands curve and do not stay in one
+ * column for 40 px.
+ */
+function clearThinLines(frame: Frame, key: Rgb): number {
+  const { width, height, data } = frame;
+  const mask = subjectMask(frame, key);
+  const thinV = (x: number, y: number) => {
+    const i = y * width + x;
+    if (!mask[i]) return false;
+    const l = x - LINE_GAP - 1, r = x + LINE_GAP + 1;
+    return (l < 0 || !mask[i - LINE_GAP - 1]) && (r >= width || !mask[i + LINE_GAP + 1]);
+  };
+  const thinH = (x: number, y: number) => {
+    const i = y * width + x;
+    if (!mask[i]) return false;
+    const u = y - LINE_GAP - 1, d = y + LINE_GAP + 1;
+    return (u < 0 || !mask[i - (LINE_GAP + 1) * width]) && (d >= height || !mask[i + (LINE_GAP + 1) * width]);
+  };
+  const paint = (i: number) => { const o = i * 4; data[o] = key[0]; data[o + 1] = key[1]; data[o + 2] = key[2]; data[o + 3] = 255; };
+  let cleared = 0;
+  for (let x = 0; x < width; x++) {
+    let start = -1;
+    for (let y = 0; y <= height; y++) {
+      const on = y < height && thinV(x, y);
+      if (on && start < 0) start = y;
+      if (!on && start >= 0) {
+        if (y - start >= LINE_MIN_RUN) for (let yy = start; yy < y; yy++) { paint(yy * width + x); cleared++; }
+        start = -1;
+      }
+    }
+  }
+  for (let y = 0; y < height; y++) {
+    let start = -1;
+    for (let x = 0; x <= width; x++) {
+      const on = x < width && thinH(x, y);
+      if (on && start < 0) start = x;
+      if (!on && start >= 0) {
+        if (x - start >= LINE_MIN_RUN) for (let xx = start; xx < x; xx++) { paint(y * width + xx); cleared++; }
+        start = -1;
+      }
+    }
+  }
+  return cleared;
+}
+
+function clearSmallPieces(frame: Frame, key: Rgb): number {
   const { width, height, data } = frame;
   const mask = subjectMask(frame, key);
   const n = width * height;

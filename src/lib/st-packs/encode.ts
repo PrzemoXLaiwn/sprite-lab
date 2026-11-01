@@ -62,6 +62,23 @@ export async function encodeAnimatedWebp(
   };
 }
 
+/** The one fallback when the HQ encode is over the cap: still sharp at 720 px, about a third smaller. */
+export const WEBP_FALLBACK = { quality: 80, alphaQuality: 90 } as const;
+
+/**
+ * HQ encode; when it is over `maxBytes` (a 6 s expressive clip often is),
+ * one more encode at WEBP_FALLBACK instead of shipping a flagged file. Only
+ * the smaller result is kept, and lossless is never re-encoded.
+ */
+export async function encodeWithinCap(
+  frames: Frame[], fps: number, maxBytes: number, opts: { lossless?: boolean } = {},
+): Promise<WebpResult & { reencoded: boolean }> {
+  const first = await encodeAnimatedWebp(frames, fps, { lossless: opts.lossless });
+  if (first.lossless || first.bytes <= maxBytes) return { ...first, reencoded: false };
+  const second = await encodeAnimatedWebp(frames, fps, WEBP_FALLBACK);
+  return second.bytes < first.bytes ? { ...second, reencoded: true } : { ...first, reencoded: false };
+}
+
 /** Page count, loop and per-frame delay of an animated WebP (for tests and QA). */
 export async function readAnimatedWebp(webp: Buffer): Promise<{ pages: number; loop: number; delay: number[]; width: number; height: number }> {
   const m = await sharp(webp, { animated: true }).metadata();
