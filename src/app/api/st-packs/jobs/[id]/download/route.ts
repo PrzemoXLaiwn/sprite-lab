@@ -103,7 +103,7 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
       case "grid": {
         let key = kind === "zip" ? job.zipKey : job.gridKey;
         if (!key && (job.status === "done" || job.status === "partial")) {
-          const built = await buildArtifacts(id);
+          const built = await buildArtifacts(id, { grid: false });
           key = kind === "zip" ? built.zipKey : built.gridKey;
         }
         if (!key) return notFound();

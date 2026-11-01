@@ -9,6 +9,7 @@ const M = vi.hoisted(() => ({
   kickOk: true,
   ticks: 0,
   ran: 0,
+  repairs: 0,
   snapshot: null as JobSnapshot | null,
   pending: Promise.resolve() as Promise<unknown>,
 }));
@@ -26,6 +27,7 @@ vi.mock("@/lib/st-packs/jobs", () => ({
   getSnapshot: async () => M.snapshot,
   tick: async () => { M.ticks++; return { work: [async () => { M.ran++; }] }; },
   runWork: async (work: Array<() => Promise<void>>) => { for (const w of work) await w(); },
+  repairPack: async () => { M.repairs++; return true; },
 }));
 vi.mock("@/lib/st-packs/worker", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/st-packs/worker")>();
@@ -62,6 +64,7 @@ describe("GET /api/st-packs/jobs/[id]", () => {
     M.kickOk = true;
     M.ticks = 0;
     M.ran = 0;
+    M.repairs = 0;
     M.snapshot = null;
     M.pending = Promise.resolve();
     process.env.ST_PACKS_ENABLED = "true";
@@ -98,5 +101,17 @@ describe("GET /api/st-packs/jobs/[id]", () => {
     expect(M.kicks).toBe(1);
     expect(M.ticks).toBe(1);
     expect(M.ran).toBe(1);
+  });
+
+  it("retries the zip when a finished job has been waiting more than 20 s", async () => {
+    M.snapshot = {
+      ...snap({ status: "done" }),
+      has: { zip: false },
+      finishedAt: new Date(Date.now() - 30_000).toISOString(),
+    } as unknown as JobSnapshot;
+    expect((await get()).status).toBe(200);
+    await M.pending;
+    expect(M.repairs).toBe(1);
+    expect(M.kicks).toBe(0);
   });
 });

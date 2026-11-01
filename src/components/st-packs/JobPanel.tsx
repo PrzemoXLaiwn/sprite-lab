@@ -118,6 +118,7 @@ export function JobPanel({ job, loading, error, previewMode, onPreviewMode, canc
     hasZip: job.has.zip,
     doneCount: done,
     error: job.error,
+    finishedAt: job.finishedAt,
   });
   const zipMode = zipState === "preparing" ? "preparing" : zipState === "ready" || zipState === "fallback" ? "link" : "off";
   const extrasReady = zipState === "ready" || zipState === "fallback";

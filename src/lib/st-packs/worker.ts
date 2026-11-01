@@ -120,7 +120,7 @@ export async function workerLoop(
     if (!snapshot || snapshot.status !== "running") {
       // The finishing tick marks the job done and queues pack.zip (plus the
       // preview GIF and the static PNG zip). Run that before dropping the lease.
-      // The page keeps polling until zipKey is set; it does not offer the download early.
+      // The page offers the download anyway 20 s after done, so a killed pack never blocks it.
       if (t.work.length) await runWork(t.work);
       await releaseWorkerLease(jobId, held);
       return { snapshot, continueNeeded: false, handoffFrom: null };

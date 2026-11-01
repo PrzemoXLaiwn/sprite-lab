@@ -108,7 +108,7 @@ describe("GET /api/st-packs/jobs/[id]/download", () => {
     const res = await download("zip");
     expect(res.status).toBe(302);
     expect(M.buildArtifacts).toHaveBeenCalledTimes(1);
-    expect(M.buildArtifacts).toHaveBeenCalledWith("job1abcdefg");
+    expect(M.buildArtifacts).toHaveBeenCalledWith("job1abcdefg", { grid: false });
     expect(M.signedKey).toBe("st-packs/job1abcdefg/pack.zip");
   });
 

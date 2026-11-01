@@ -89,6 +89,9 @@ export function ExpressionTile({ jobId, expression: e, previewMode, pending, onR
           {e.qa.flagged ? "flagged" : "QA ok"}
         </StatusChip>
       )}
+      {e.qa?.flagged && e.qa.flags.length > 0 && (
+        <p className="text-[11px] leading-snug text-amber-200" title={e.qa.flags.join("; ")}>{e.qa.flags.join("; ")}</p>
+      )}
 
       {e.error && e.status === "failed" && (
         <p role="alert" className="line-clamp-3 text-[11px] leading-snug text-red-200" title={e.error}>{e.error}</p>
