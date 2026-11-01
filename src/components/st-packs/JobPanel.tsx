@@ -3,21 +3,64 @@
 // Right / bottom panel: the open job's header (status, elapsed, cost, step
 // timings, downloads, cancel), the preview backdrop toggle and the tile grid.
 
+import { useEffect, useRef, useState } from "react";
 import { Ban, Download, Loader2 } from "lucide-react";
 import type { JobSnapshot } from "@/lib/st-packs/types";
+import { zipButtonState } from "@/lib/st-packs/downloads";
 import { ErrorNote, InfoNote } from "@/components/tools/ToolWorkspace";
 import { downloadUrl } from "./api";
 import { ExpressionTile, type PreviewMode } from "./ExpressionTile";
 import { SIZE_LABEL, StatusChip, formatMs, formatUsd, jobStage, useNow } from "./ui";
 
-function DownloadLink({ href, filename, enabled, children, light }: {
-  href: string; filename: string; enabled: boolean; children: React.ReactNode; light?: boolean;
+/** Second click inside this window is ignored. The first click already started the browser download. */
+const DOWNLOAD_LOCK_MS = 10_000;
+
+function DownloadLink({ href, filename, mode, children, light }: {
+  href: string; filename: string; mode: "off" | "preparing" | "link"; children: React.ReactNode; light?: boolean;
 }) {
   const cls = `btn ${light ? "btn-light" : "btn-secondary"}`;
-  if (!enabled) {
+  const lock = useRef(false);
+  const timer = useRef<number | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => () => {
+    if (timer.current !== null) window.clearTimeout(timer.current);
+  }, []);
+  if (mode === "preparing") {
+    return (
+      <button type="button" className={cls} disabled aria-busy="true">
+        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+        Preparing ZIP…
+      </button>
+    );
+  }
+  if (mode !== "link") {
     return <button type="button" className={cls} disabled><Download className="h-4 w-4" aria-hidden />{children}</button>;
   }
-  return <a className={cls} href={href} download={filename}><Download className="h-4 w-4" aria-hidden />{children}</a>;
+  return (
+    <a
+      className={cls}
+      href={href}
+      download={filename}
+      aria-disabled={busy || undefined}
+      onClick={(e) => {
+        if (lock.current) {
+          e.preventDefault();
+          return;
+        }
+        lock.current = true;
+        setBusy(true);
+        if (timer.current !== null) window.clearTimeout(timer.current);
+        timer.current = window.setTimeout(() => {
+          lock.current = false;
+          timer.current = null;
+          setBusy(false);
+        }, DOWNLOAD_LOCK_MS);
+      }}
+    >
+      {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Download className="h-4 w-4" aria-hidden />}
+      {busy ? "Downloading…" : children}
+    </a>
+  );
 }
 
 function Stat({ label, value, title }: { label: string; value: string; title?: string }) {
@@ -70,7 +113,14 @@ export function JobPanel({ job, loading, error, previewMode, onPreviewMode, canc
   const failed = job.expressions.filter((e) => e.status === "failed").length;
   const flagged = job.expressions.filter((e) => e.flagged).length;
   const done = job.expressions.filter((e) => e.status === "done").length;
-  const canZip = job.status === "done" || job.status === "partial";
+  const zipState = zipButtonState({
+    status: job.status,
+    hasZip: job.has.zip,
+    doneCount: done,
+    error: job.error,
+  });
+  const zipMode = zipState === "preparing" ? "preparing" : zipState === "ready" || zipState === "fallback" ? "link" : "off";
+  const extrasReady = zipState === "ready" || zipState === "fallback";
   const isDone = job.status === "done";
   const short = job.id.length > 10 ? `${job.id.slice(0, 8)}…` : job.id;
 
@@ -84,6 +134,7 @@ export function JobPanel({ job, loading, error, previewMode, onPreviewMode, canc
             {elapsedMs === null ? (running ? "…" : "not started") : `${formatMs(elapsedMs)} elapsed`}
           </span>
           {running && <span className="text-[11px] text-[#8A92BF]">{done}/{job.expressions.length} done · refreshes every 4 s</span>}
+          {zipState === "preparing" && <span role="status" className="text-[11px] text-[#8A92BF]">Preparing the ZIP · refreshes every 4 s</span>}
         </div>
         <p className="text-[12px] text-[#A7ADD4]">
           {job.labels.length} expression{job.labels.length === 1 ? "" : "s"} · {SIZE_LABEL(job.width, job.height)} · {job.framing === "bust" ? "bust/face" : "waist-up"} ·{" "}
@@ -99,15 +150,15 @@ export function JobPanel({ job, loading, error, previewMode, onPreviewMode, canc
         <p className="-mt-1 font-mono text-[11px] text-[#8A92BF]">reported {formatUsd(job.costUsd)} (est. {formatUsd(job.estCostUsd)})</p>
 
         <div className="flex flex-wrap items-center gap-2">
-          <DownloadLink light enabled={canZip} href={downloadUrl(job.id, "zip")} filename={`st-pack-${job.id}.zip`}>Download ZIP</DownloadLink>
+          <DownloadLink light mode={zipMode} href={downloadUrl(job.id, "zip")} filename={`st-pack-${job.id}.zip`}>Download ZIP</DownloadLink>
           {job.has.grid && (
-            <DownloadLink enabled href={downloadUrl(job.id, "grid")} filename={`st-pack-${job.id}-grid.gif`}>Download preview grid</DownloadLink>
+            <DownloadLink mode="link" href={downloadUrl(job.id, "grid")} filename={`st-pack-${job.id}-grid.gif`}>Download preview grid</DownloadLink>
           )}
           {job.options.png && isDone && (
-            <DownloadLink enabled href={downloadUrl(job.id, "png")} filename={`st-pack-${job.id}-png.zip`}>Download PNG pack</DownloadLink>
+            <DownloadLink mode={extrasReady ? "link" : "off"} href={downloadUrl(job.id, "png")} filename={`st-pack-${job.id}-png.zip`}>Download PNG pack</DownloadLink>
           )}
           {job.options.gif && isDone && (
-            <DownloadLink enabled href={downloadUrl(job.id, "gif")} filename={`st-pack-${job.id}-gif.zip`}>Download GIF pack</DownloadLink>
+            <DownloadLink mode={extrasReady ? "link" : "off"} href={downloadUrl(job.id, "gif")} filename={`st-pack-${job.id}-gif.zip`}>Download GIF pack</DownloadLink>
           )}
           {running && (
             <button type="button" className="btn btn-danger sm:ml-auto" disabled={cancelling} onClick={onCancel}>

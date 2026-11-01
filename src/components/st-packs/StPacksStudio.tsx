@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ST_DEFAULT_LABELS, resolveExpressionLabels } from "@/config/st-expressions";
 import { ST_DEFAULT_SIZE } from "@/config/st-packs";
+import { zipButtonState } from "@/lib/st-packs/downloads";
 import type { JobListItem, JobSnapshot } from "@/lib/st-packs/types";
 import {
   cancelJob, createJob, errorText, generateBases, getJob, listJobs, regenerateExpression, uploadBase,
@@ -90,11 +91,17 @@ export function StPacksStudio() {
 
   useEffect(() => { void loadHistory(); }, [loadHistory]);
 
-  // Poll the open job every 4 s while it runs; the GET also advances it.
+  // Poll while the job runs, and after it finishes until pack.zip is stored.
+  // The row flips to done before the worker writes the zip; stopping there
+  // left the button enabled with nothing to download.
   const jobId = job?.id ?? null;
   const jobStatus = job?.status ?? null;
+  const doneCount = job?.expressions.filter((e) => e.status === "done").length ?? 0;
+  const zipState = job
+    ? zipButtonState({ status: job.status, hasZip: job.has.zip, doneCount, error: job.error })
+    : "idle";
   useEffect(() => {
-    if (!jobId || jobStatus !== "running") return;
+    if (!jobId || (jobStatus !== "running" && zipState !== "preparing")) return;
     let stopped = false;
     let inFlight = false;
     const tick = async () => {
@@ -118,7 +125,7 @@ export function StPacksStudio() {
       stopped = true;
       clearInterval(timer);
     };
-  }, [jobId, jobStatus]);
+  }, [jobId, jobStatus, zipState]);
 
   // Refresh the history once the open job reaches a final state.
   useEffect(() => {

@@ -31,6 +31,7 @@ import {
 import { alignToBase } from "./align";
 import { encodeGifFallback, encodePreviewGrid, stillPng } from "./encode";
 import { fitPng, padToCanvas, pngFrame, type CropFraction } from "./frames";
+import { gifPackKey, packFlags, pngPackKey, withPackFlags } from "./downloads";
 import { buildExtraZip, buildMainZip, packSlug } from "./package";
 import { processClip } from "./pipeline";
 import { FAMILY_FRIENDLY_PREFIX, editPrompt, videoPrompt } from "./prompts";
@@ -503,7 +504,7 @@ async function runPost(exprId: string): Promise<void> {
   }
 }
 
-// ── Finalise: the ZIP (and the preview grid) ─────────────────────────────────
+// ── Finalise: the ZIP (and the preview grid, plus cheap extra packs) ─────────
 async function finalize(jobId: string): Promise<void> {
   try {
     await buildArtifacts(jobId);
@@ -513,15 +514,27 @@ async function finalize(jobId: string): Promise<void> {
   }
 }
 
-/** Builds pack.zip (+ grid) from the finished expressions; also used lazily by the download route. */
+/**
+ * Builds pack.zip, the preview GIF, and the extra packs that are cheap to
+ * assemble from files already in storage. Called by the worker the moment
+ * the last expression finishes, and again by the download route when the
+ * object is missing. A zip key already on the row is not rebuilt: that
+ * re-download is the 45–70 s wait. GIF frames are encoded only on download
+ * unless every expression already has a GIF file.
+ */
 export async function buildArtifacts(jobId: string): Promise<{ zipKey: string; gridKey: string | null }> {
   const job = await getJob(jobId);
   if (!job) throw new Error("Job not found");
   const options = normaliseOptions(job.options);
   const done = job.expressions.filter((e) => e.status === "done" && e.webpKey);
   if (done.length === 0) throw new Error("No finished expressions");
-  const entries = await Promise.all(done.map(async (e) => ({ label: e.label, data: await mustRead(e.webpKey, `${e.label}.webp`) })));
-  const zipKey = await put(await buildMainZip(entries, { readme: options.readme }), `st-packs/${job.id}/pack.zip`, "application/zip");
+
+  let zipKey = job.zipKey;
+  if (!zipKey) {
+    const entries = await Promise.all(done.map(async (e) => ({ label: e.label, data: await mustRead(e.webpKey, `${e.label}.webp`) })));
+    zipKey = await put(await buildMainZip(entries, { readme: options.readme }), `st-packs/${job.id}/pack.zip`, "application/zip");
+  }
+
   let gridKey: string | null = job.gridKey;
   if (options.grid && !gridKey) {
     const order = new Map(ST_EXPRESSION_LABELS.map((l, i) => [l, i]));
@@ -531,7 +544,44 @@ export async function buildArtifacts(jobId: string): Promise<{ zipKey: string; g
     }
     gridKey = await put(await encodePreviewGrid(items, 16), `st-packs/${job.id}/preview.gif`, "image/gif");
   }
-  await prisma.stPackJob.update({ where: { id: jobId }, data: { zipKey, gridKey } });
+
+  const flags = packFlags(job.options);
+  let pngReady = flags.png;
+  if (options.png && !pngReady) {
+    const pngRows = done.filter((e) => e.pngKey);
+    if (pngRows.length === done.length) {
+      try {
+        const pngEntries = await Promise.all(pngRows.map(async (e) => ({ label: e.label, data: await mustRead(e.pngKey, `${e.label}.png`) })));
+        await put(await buildExtraZip(pngEntries, "png"), pngPackKey(job.id), "application/zip");
+        pngReady = true;
+      } catch (err) {
+        console.error("[st-packs] png pack failed:", err instanceof Error ? err.message : err);
+      }
+    }
+  }
+
+  let gifReady = flags.gif;
+  // Encoding GIF frames from the WebP is the old multi-minute post. Only zip GIFs that already exist.
+  if (options.gif && !gifReady && done.every((e) => e.gifKey)) {
+    try {
+      const gifEntries = await Promise.all(done.map(async (e) => ({ label: e.label, data: await mustRead(e.gifKey, `${e.label}.gif`) })));
+      await put(await buildExtraZip(gifEntries, "gif"), gifPackKey(job.id), "application/zip");
+      gifReady = true;
+    } catch (err) {
+      console.error("[st-packs] gif pack failed:", err instanceof Error ? err.message : err);
+    }
+  }
+
+  if (zipKey !== job.zipKey || gridKey !== job.gridKey || pngReady !== flags.png || gifReady !== flags.gif) {
+    await prisma.stPackJob.update({
+      where: { id: jobId },
+      data: {
+        zipKey,
+        gridKey,
+        options: withPackFlags(job.options, { png: pngReady, gif: gifReady }) as Prisma.InputJsonValue,
+      },
+    });
+  }
   return { zipKey, gridKey };
 }
 
@@ -614,6 +664,7 @@ export async function regenerateExpression(jobId: string, label: string, from: "
   if (from === "video" && !e.editKey) return false;
   if (from === "post" && !(e.editKey && e.videoUrl)) return false;
   const t = timingsOf(e);
+  const jobRow = await prisma.stPackJob.findUnique({ where: { id: jobId }, select: { options: true } });
   await prisma.$transaction([
     prisma.stPackExpression.update({
       where: { id: e.id },
@@ -630,7 +681,18 @@ export async function regenerateExpression(jobId: string, label: string, from: "
         } as unknown as Prisma.InputJsonValue,
       },
     }),
-    prisma.stPackJob.update({ where: { id: jobId }, data: { status: "running", finishedAt: null, zipKey: null, gridKey: null, error: null } }),
+    prisma.stPackJob.update({
+      where: { id: jobId },
+      data: {
+        status: "running",
+        finishedAt: null,
+        zipKey: null,
+        gridKey: null,
+        error: null,
+        // The previous PNG/GIF objects are stale as soon as one expression is rebuilt.
+        ...(jobRow ? { options: withPackFlags(jobRow.options, { png: false, gif: false }) as Prisma.InputJsonValue } : {}),
+      },
+    }),
   ]);
   return true;
 }
