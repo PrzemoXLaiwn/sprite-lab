@@ -273,6 +273,56 @@ describe("matteFrames / postMatte", () => {
   });
 });
 
+describe("gradient backdrop", () => {
+  it("clears a graded studio background the flat key would keep, and keeps enclosed light skin and grey cloth", () => {
+    const W = 96;
+    const H = 128;
+    const f = makeFrame(W, H, [0, 0, 0, 255]);
+    const tone = (x: number, y: number) => {
+      const v = 110 + 130 * (x / (W - 1)) + 8 * (y / (H - 1));
+      const n = ((x * 17 + y * 13) % 5) - 2;
+      return Math.max(0, Math.min(255, Math.round(v + n)));
+    };
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const v = tone(x, y);
+        const o = (y * W + x) * 4;
+        f.data[o] = v;
+        f.data[o + 1] = v;
+        f.data[o + 2] = Math.min(255, v + 2);
+      }
+    }
+    // Waist-up body reaches the bottom edge. Hair encloses the face so the
+    // near-white highlight is a hole, not a path out to the backdrop.
+    const sweater: Rgb = [120, 145, 185];
+    const hair: Rgb = [70, 48, 32];
+    const skin: Rgb = [230, 198, 176];
+    const highlight: Rgb = [252, 250, 248];
+    const collar: Rgb = [214, 214, 218];
+    drawRect(f, 30, 48, 70, H, sweater);
+    drawRect(f, 34, 36, 66, 78, hair);
+    drawRect(f, 40, 44, 60, 70, skin);
+    drawRect(f, 46, 52, 54, 60, highlight);
+    drawRect(f, 40, 78, 58, 92, collar);
+
+    const old = keyFrame(f, estimateBackground(f));
+    closeSilhouette(old);
+    expect(pixel(old, 4, 64)[3]).toBe(255);
+
+    const { frames } = matteFrames([f, f, f]);
+    const out = frames[1];
+    expect(pixel(out, 4, 64)[3]).toBe(0);
+    expect(pixel(out, 90, 16)[3]).toBe(0);
+    expect(pixel(out, 16, 90)[3]).toBe(0);
+    expect(pixel(out, 50, 56)[3]).toBe(255);
+    expect(pixel(out, 50, 56).slice(0, 3)).toEqual(highlight);
+    expect(pixel(out, 48, 60)[3]).toBe(255);
+    expect(pixel(out, 48, 84)[3]).toBe(255);
+    expect(pixel(out, 36, 100)[3]).toBe(255);
+    expect(pixel(out, 2, 2)[3]).toBe(0);
+  });
+});
+
 describe("closeSilhouette", () => {
   it("fills an enclosed hole and leaves the border-connected background clear", () => {
     const f = makeFrame(21, 21, [255, 255, 255, 0]);

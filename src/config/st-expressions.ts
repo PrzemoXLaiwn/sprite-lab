@@ -56,14 +56,14 @@ export const ST_EXPRESSION_FRAGMENTS: Record<StExpressionLabel, string> = {
 };
 
 const MOTION_NOTES: Partial<Record<StExpressionLabel, string>> = {
-  joy: "a gentle held smile, at most one soft brief giggle, NOT a continuous looping laugh",
-  anger: "tense still breathing, maybe one sharp exhale",
-  sadness: "slow heavy breathing, eyes lowering slightly",
-  surprise: "held surprised look, one blink",
-  love: "soft smile, slow blink",
-  embarrassment: "shy glance aside and back, holds blush",
-  fear: "slight trembling, quick shallow breaths",
-  neutral: "calm breathing and blinking only",
+  joy: "a gentle held smile, no giggle, NOT a continuous looping laugh",
+  anger: "tense still breathing, one quiet exhale at most, no repeated gesture",
+  sadness: "slow breathing, the expression held, no head bob",
+  surprise: "holds the surprised look, no extra blink and no recoil",
+  love: "soft smile held still, no rhythmic blink",
+  embarrassment: "holds the shy look, no repeated glance",
+  fear: "shallow breathing, the expression held still, no shaking loop",
+  neutral: "quiet chest breathing, no blink or one slow blink at most, no head bob",
 };
 const DEFAULT_MOTION_NOTE = "calm, subtle, holds the expression";
 

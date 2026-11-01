@@ -3,8 +3,8 @@
 One character in, a SillyTavern *Character Expressions* sprite pack out: a flat
 ZIP of animated, transparent WebP files named after ST's 28 emotion labels
 (`joy.webp`, `anger.webp`, …). Each file is a subtle, seamlessly looping idle
-(breathing, blinking, a little hair sway) on a transparent background, the
-character identical across all expressions.
+(gentle breathing, a slight head drift, a little hair sway, at most one blink)
+on a transparent background, the character identical across all expressions.
 
 The tool is internal: admin only (`ADMIN` / `OWNER`), behind a server flag,
 charges no credits and touches no pricing, Stripe or auth code.
@@ -75,12 +75,16 @@ Parameters (`src/config/st-packs.ts`, from the validated Python prototype):
   3 px with a pop on the test still vs 0.006 px for Vidu)
 - working canvas 1.5× the output; output 504×672 (3:4) by default
 - duplicate closing frame dropped when mean |last − first| < 0.02
-- key: background = per-frame median of the outer 8 px border; smoothstep
-  key between RGB distance 18 and 60; flood-fill that key from the frame
-  border (4-connected, alpha ≤ 127) and force every enclosed pixel opaque,
-  leaving partial alpha only in a 3 px band on the outer silhouette;
-  temporal median on alpha (radius 1, circular); un-mix
-  `C = (I − (1−a)·B)/a` for 0.05 < a < 1; erode 1 px; blur σ≈0.6; alpha < 8 → 0
+- key: per frame, a colour plane fitted to the outer 8 px border (subject
+  pixels on that border are outliers and dropped); 4-connected flood from
+  border pixels on the plane, stepping at most 18 levels and never more than
+  48 from the plane, so a gradient or soft shadow is background and the
+  character edge stops the flood; the largest foreground component is kept
+  (enclosed skin, face and light clothing stay opaque) and other components
+  are dropped when they are specks or still the backdrop colour; partial
+  alpha only in a 3 px band on that outer edge; temporal median on alpha
+  (radius 1, circular); un-mix `C = (I − (1−a)·B)/a` for 0.05 < a < 1;
+  erode 1 px; blur σ≈0.6; alpha < 8 → 0
 - stabiliser: band rows 80–97 %, moving average window 5, x always, y when
   |dy| > 0.5; shifts over 24 px are flagged instead of warped
 - loop: the clip is decoded at 16 fps; crossfade K = 8 × 16/24 ≈ 5 frames (≈ 0.33 s), tail dropped
