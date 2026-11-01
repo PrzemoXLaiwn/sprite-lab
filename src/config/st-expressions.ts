@@ -119,12 +119,17 @@ export function expressionFileName(label: string, ext: "webp" | "gif" | "png" = 
 }
 
 /**
- * The labels a job will produce, in ST order, `neutral` first and always
- * present. Unknown custom entries are dropped.
+ * The labels a job will produce, in ST order. Neutral is first when it is
+ * included. Unknown custom entries are dropped. `includeNeutral` defaults
+ * on; the studio toggle can turn it off.
  */
-export function resolveExpressionLabels(set: StExpressionSet, custom: readonly string[] = []): StExpressionLabel[] {
-  const picked = new Set<StExpressionLabel>(["neutral"]);
+export function resolveExpressionLabels(set: StExpressionSet, custom: readonly string[] = [], includeNeutral = true): StExpressionLabel[] {
+  const picked = new Set<StExpressionLabel>(includeNeutral ? ["neutral"] : []);
   const source = set === "all28" ? ST_EXPRESSION_LABELS : set === "default8" ? ST_DEFAULT_LABELS : custom.filter(isExpressionLabel);
-  for (const l of source) picked.add(l);
-  return ["neutral", ...ST_EXPRESSION_LABELS.filter((l) => l !== "neutral" && picked.has(l))];
+  for (const l of source) {
+    if (l === "neutral" && !includeNeutral) continue;
+    picked.add(l);
+  }
+  const rest = ST_EXPRESSION_LABELS.filter((l) => l !== "neutral" && picked.has(l));
+  return includeNeutral && picked.has("neutral") ? ["neutral", ...rest] : rest;
 }

@@ -284,8 +284,13 @@ export function estimateExpressionUsd(label: StExpressionLabel, opts: { videoSec
   return edit + video + matte;
 }
 
-export function estimateJobUsd(labels: readonly StExpressionLabel[], opts: { videoSeconds: number; matteMode: StMatteMode; usdPerSecond?: number; model?: string }): number {
-  return labels.reduce((sum, l) => sum + estimateExpressionUsd(l, opts), 0);
+export function estimateJobUsd(
+  labels: readonly StExpressionLabel[],
+  opts: { videoSeconds: number; matteMode: StMatteMode; usdPerSecond?: number; model?: string },
+  skip: readonly StExpressionLabel[] = [],
+): number {
+  const skipped = new Set(skip);
+  return labels.reduce((sum, l) => sum + (skipped.has(l) ? 0 : estimateExpressionUsd(l, opts)), 0);
 }
 
 export const ST_JOB_STATUSES = ["draft", "base_ready", "running", "done", "partial", "failed", "cancelled"] as const;

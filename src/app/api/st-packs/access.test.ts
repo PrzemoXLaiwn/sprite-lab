@@ -60,7 +60,7 @@ const json = (body: unknown) => ({ method: "POST", headers: { "Content-Type": "a
 /** Every route, called the way the app would. */
 async function statuses(): Promise<number[]> {
   const calls = [
-    () => jobsList.GET(),
+    () => jobsList.GET(req("/api/st-packs/jobs")),
     () => jobsList.POST(req("/api/st-packs/jobs", json({ baseId: "00000000-0000-4000-8000-000000000000", source: "upload", expressionSet: "default8", width: 504, height: 672 }))),
     () => jobOne.GET(req("/api/st-packs/jobs/job1"), params({ id: "job1abcdefg" })),
     () => advance.POST(req("/api/st-packs/jobs/job1/advance", { method: "POST" }), params({ id: "job1abcdefg" })),

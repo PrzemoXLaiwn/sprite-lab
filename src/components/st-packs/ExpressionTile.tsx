@@ -82,7 +82,7 @@ export function ExpressionTile({ jobId, expression: e, previewMode, pending, onR
 
       <div className="flex items-center justify-between gap-2 font-mono text-[11px] tabular-nums text-[#A7ADD4]">
         <span title={timingTitle}>{totalMs > 0 ? formatMs(totalMs) : "—"}</span>
-        <span title="Reported cost so far">{formatUsd(e.costUsd)}</span>
+        <span title={e.reused ? "Copied from an earlier pack of this base" : "Reported cost so far"}>{e.reused ? "reused" : formatUsd(e.costUsd)}</span>
       </div>
 
       {e.qa && (

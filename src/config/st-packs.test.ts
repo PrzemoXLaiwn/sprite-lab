@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { resolveExpressionLabels } from "./st-expressions";
 import {
   ST_DEFAULT_SIZE, ST_PIPELINE, ST_QA, ST_VIDEO_MODELS,
-  clipListUsd, estimateJobUsd, isOutputSize, nativeContentSize, qaThresholds, stPacksSettings, viduQ2TurboClipUsd,
+  clipListUsd, estimateExpressionUsd, estimateJobUsd, isOutputSize, nativeContentSize, qaThresholds, stPacksSettings, viduQ2TurboClipUsd,
 } from "./st-packs";
 
 describe("ST Packs native output and throughput", () => {
@@ -50,6 +50,18 @@ describe("ST Packs native output and throughput", () => {
     const eight = estimateJobUsd(resolveExpressionLabels("all28"), { videoSeconds: 8, matteMode: "key" });
     expect(eight).toBeLessThan(stPacksSettings({}).maxUsdPerJob);
     expect(eight).toBeGreaterThan(28 * 0.193);
+  });
+
+  it("drops a reused neutral from the estimate without changing the per-clip price", () => {
+    const opts = { videoSeconds: 6 as const, matteMode: "key" as const, model: "vidu:3@2" };
+    const labels = resolveExpressionLabels("custom", ["excitement"]);
+    const full = estimateJobUsd(labels, opts);
+    const reused = estimateJobUsd(labels, opts, ["neutral"]);
+    const one = estimateExpressionUsd("neutral", opts);
+    expect(labels).toEqual(["neutral", "excitement"]);
+    expect(full - reused).toBeCloseTo(one, 6);
+    expect(reused).toBeCloseTo(estimateExpressionUsd("excitement", opts), 6);
+    expect(estimateExpressionUsd("excitement", opts)).toBeGreaterThan(one);
   });
 
   it("loosens drift and pop for expressive and keeps the hole checks", () => {

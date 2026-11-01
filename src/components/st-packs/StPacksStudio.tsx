@@ -14,7 +14,7 @@ import { ST_DEFAULT_SIZE } from "@/config/st-packs";
 import { zipButtonState } from "@/lib/st-packs/downloads";
 import type { JobListItem, JobSnapshot } from "@/lib/st-packs/types";
 import {
-  cancelJob, createJob, errorText, generateBases, getJob, listJobs, regenerateExpression, uploadBase,
+  cancelJob, createJob, errorText, generateBases, getJob, listJobs, neutralReuseForBase, regenerateExpression, uploadBase,
   type BaseCandidate,
 } from "./api";
 import { InputsPanel, MAX_UPLOAD_BYTES, type ChosenBase, type InputsState } from "./InputsPanel";
@@ -43,11 +43,13 @@ const INITIAL_INPUTS: InputsState = {
   motion: "subtle",
   videoModel: "vidu:3@2",
   candidateCount: 3,
+  includeNeutral: true,
 };
 
 export function StPacksStudio() {
   // ── Inputs ────────────────────────────────────────────────────────────────
   const [inputs, setInputs] = useState<InputsState>(INITIAL_INPUTS);
+  const [neutralReuse, setNeutralReuse] = useState(false);
   const patchInputs = useCallback((patch: Partial<InputsState>) => setInputs((s) => ({ ...s, ...patch })), []);
   const [base, setBase] = useState<ChosenBase | null>(null);
   const [candidates, setCandidates] = useState<BaseCandidate[]>([]);
@@ -77,6 +79,18 @@ export function StPacksStudio() {
     mounted.current = true;
     return () => { mounted.current = false; };
   }, []);
+
+  const baseId = base?.id ?? null;
+  useEffect(() => {
+    if (!baseId) {
+      setNeutralReuse(false);
+      return;
+    }
+    let cancel = false;
+    setInputs((s) => ({ ...s, includeNeutral: true }));
+    neutralReuseForBase(baseId).then((v) => { if (!cancel) setNeutralReuse(v); }).catch(() => { if (!cancel) setNeutralReuse(false); });
+    return () => { cancel = true; };
+  }, [baseId]);
 
   const loadHistory = useCallback(async () => {
     try {
@@ -210,7 +224,7 @@ export function StPacksStudio() {
     setSubmitError("");
     setJobError("");
     try {
-      const labels = resolveExpressionLabels(inputs.expressionSet, inputs.customLabels);
+      const labels = resolveExpressionLabels(inputs.expressionSet, inputs.customLabels, inputs.includeNeutral !== false);
       const id = await createJob({
         baseId: base.id,
         source: base.source,
@@ -231,6 +245,7 @@ export function StPacksStudio() {
           motion: inputs.motion,
           videoModel: inputs.videoModel,
           lossless: inputs.lossless,
+          includeNeutral: inputs.includeNeutral !== false,
         },
       });
       const snap = await getJob(id);
@@ -325,6 +340,7 @@ export function StPacksStudio() {
           onGenerateBases={() => { void handleGenerateBases(); }}
           onPickCandidate={handlePickCandidate}
           submitting={submitting} submitError={submitError} jobRunning={jobRunning}
+          neutralReuse={neutralReuse}
           onSubmit={() => { void handleSubmit(); }} />
 
         <div className="flex min-w-0 flex-col gap-5">
