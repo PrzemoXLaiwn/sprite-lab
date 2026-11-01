@@ -57,6 +57,7 @@ export async function kickWorker(jobId: string, opts?: { handoffFrom?: Date }): 
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "User-Agent": "SpriteLab-STPacks-Worker",
         [WORKER_HEADER]: secret,
         // Preview deployments sit behind Vercel's SSO; the bypass secret is set by Vercel when enabled
         ...(process.env.VERCEL_AUTOMATION_BYPASS_SECRET ? { "x-vercel-protection-bypass": process.env.VERCEL_AUTOMATION_BYPASS_SECRET } : {}),
@@ -65,9 +66,12 @@ export async function kickWorker(jobId: string, opts?: { handoffFrom?: Date }): 
       signal: AbortSignal.timeout(15_000),
     });
     if (!res.ok) {
-      console.error(`[st-packs] worker kick for ${jobId} answered ${res.status}`);
-      await releaseWorkerLease(jobId, held);
-      return false;
+      // The hop never reached the route (production logged 404 on every kick,
+      // so the 240 s loop never started and the page poll did one tick at a time).
+      // Keep the lease and run the loop in this invocation.
+      console.error(`[st-packs] worker kick ${res.url} answered ${res.status}; running the loop here`);
+      await workerLoop(jobId, { leaseUntil: held });
+      return true;
     }
     return true;
   } catch (err) {

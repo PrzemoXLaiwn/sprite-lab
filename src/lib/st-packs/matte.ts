@@ -453,6 +453,13 @@ const SEED2 = SEED_DIST * SEED_DIST;
 const STEP2 = STEP_DIST * STEP_DIST;
 const LOOSE2 = LOOSE_DIST * LOOSE_DIST;
 const ISLAND2 = ISLAND_DIST * ISLAND_DIST;
+/**
+ * Enclosed pixels this close to the backdrop plane are the same colour as the
+ * ground (a gap between an arm and the coat), not a white shirt. A shirt is
+ * either farther from the plane or the largest such region and is kept.
+ */
+const HOLE_DIST = 14;
+const HOLE2 = HOLE_DIST * HOLE_DIST;
 
 function constantPlane(median: Rgb): [Plane, Plane, Plane] {
   return [
@@ -611,6 +618,49 @@ function paintBackdropAlpha(frame: Frame, opts: { hard?: number; soft?: number }
         if (dr * dr + dg * dg + db * db <= STEP2) push(j);
       }
     }
+  }
+
+  // Enclosed backdrop: the same plane colour trapped between an arm and the
+  // torso. The border flood cannot reach it. A white shirt is a larger region
+  // or sits in the middle, so it stays; small side gaps are cleared.
+  const holeMax = Math.max(48, Math.floor(n * 0.04));
+  const seenHole = new Uint8Array(n);
+  const holes: { size: number; sumX: number; pixels: number[] }[] = [];
+  for (let s = 0; s < n; s++) {
+    if (reached[s] || seenHole[s] || dist2[s] > HOLE2) continue;
+    const pixels: number[] = [];
+    let sumX = 0;
+    qh = 0;
+    qt = 0;
+    seenHole[s] = 1;
+    queue[qt++] = s;
+    while (qh < qt) {
+      const i = queue[qh++];
+      pixels.push(i);
+      sumX += i % width;
+      const x = i % width;
+      const take = (j: number) => {
+        if (reached[j] || seenHole[j] || dist2[j] > HOLE2) return;
+        seenHole[j] = 1;
+        queue[qt++] = j;
+      };
+      if (x > 0) take(i - 1);
+      if (x + 1 < width) take(i + 1);
+      if (i >= width) take(i - width);
+      if (i + width < n) take(i + width);
+    }
+    holes.push({ size: pixels.length, sumX, pixels });
+  }
+  let largestHole = 0;
+  for (const h of holes) if (h.size > largestHole) largestHole = h.size;
+  const mid = width / 2;
+  const lateral = width * 0.15;
+  for (const h of holes) {
+    if (h.size > holeMax) continue;
+    const cx = h.sumX / h.size;
+    const side = Math.abs(cx - mid) > lateral;
+    const smallerThanShirt = h.size < largestHole;
+    if (side || smallerThanShirt) for (const i of h.pixels) reached[i] = 1;
   }
 
   // Foreground components among pixels the flood did not claim.

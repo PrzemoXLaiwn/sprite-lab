@@ -106,7 +106,7 @@ runs a *tick*: expired locks are recovered, the next steps are claimed with
 step), and the claimed steps run in `after()` after the response, each well
 under the 300 s function limit. Each step is retried once; the Runware task id
 is written before the clip is submitted, so a crash never submits twice.
-Concurrency: `ST_PACKS_CONCURRENCY` busy expressions (default 4),
+Concurrency: `ST_PACKS_CONCURRENCY` busy expressions (default 8, so a default pack edits and submits together),
 `ST_PACKS_POST_CONCURRENCY` (default 2) post-processes inside that one worker,
 `ST_PACKS_VIDEO_CONCURRENCY` (default 8) open video tasks — a full default set
 in one Vidu round.
@@ -128,8 +128,12 @@ expired **and** no expression holds an active `locked_until`. A Vidu render does
 not touch the row, so "no row changed" is not a dead worker. Without
 `QUEUE_SECRET` the routes fall back to advancing on the page's polls.
 Steps chain inside one invocation: an edited still is submitted as a clip at
-once, a finished clip is post-processed at once (two at a time per
-invocation — `ST_PACKS_POST_CONCURRENCY` — sharing the 3 GB function).
+once (while fewer than 8 clips are already open), a finished clip is
+post-processed at once (two at a time per invocation —
+`ST_PACKS_POST_CONCURRENCY` — sharing the 3 GB function). The per-expression
+step writes the WebP and a still PNG. The GIF pack is encoded when it is
+downloaded. A job still marked running with an expired lease and no row
+change for 30 minutes is closed the next time the studio loads or polls.
 A regenerate runs the step `tick()` just claimed and then kicks; it does not
 drop that claim when the kick is accepted.
 
@@ -157,7 +161,7 @@ in the raw provider totals. Costs also accumulate on the expression and job rows
 
 | metric | fail when |
 |---|---|
-| `drift_px` lower-band centroid x range | > 0.5 px |
+| `drift_px` lower-band centroid x range | > 4 px |
 | `head_x_range` | informative only |
 | `seam` vs `cons_med` | seam > 2 × median consecutive diff, or > 6 absolute |
 | `cons_max` | > 4 × median and > 10 absolute (pop / cut; a blink on a still loop is not one) |

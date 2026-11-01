@@ -16,10 +16,22 @@ const KINDS = new Set(["zip", "png", "gif", "grid", "readme", "webp", "still", "
 
 function file(body: Buffer | string, contentType: string, name?: string): NextResponse {
   const bytes = typeof body === "string" ? Buffer.from(body, "utf8") : body;
-  return new NextResponse(new Uint8Array(bytes), {
+  // Chunk the body. A buffered response over ~4.5 MB (the four-expression ZIP
+  // is 10–18 MB) is dropped by the platform and the browser never saves it.
+  const chunk = 64 * 1024;
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (let off = 0; off < bytes.length; off += chunk) {
+        controller.enqueue(bytes.subarray(off, Math.min(bytes.length, off + chunk)));
+      }
+      controller.close();
+    },
+  });
+  return new NextResponse(stream, {
     headers: {
       "Content-Type": contentType,
-      "Cache-Control": "private, max-age=300",
+      "Content-Length": String(bytes.length),
+      "Cache-Control": "private, no-store",
       ...(name ? { "Content-Disposition": `attachment; filename="${name}"` } : {}),
     },
   });

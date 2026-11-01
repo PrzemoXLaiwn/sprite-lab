@@ -200,10 +200,15 @@ describe("kickWorker", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("releases the lease when the kick is rejected, so the caller can do the work", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 500 })));
-    expect(await kickWorker("job1")).toBe(false);
-    expect(M.releases.map((d) => d.toISOString())).toEqual(["2030-03-01T00:00:00.000Z"]);
+  it("runs the loop in this process when the kick is rejected", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 404 })));
+    M.statuses.length = 0;
+    M.statuses.push("done");
+    M.workOnTerminal = false;
+    M.ticks = 0;
+    expect(await kickWorker("job1")).toBe(true);
+    expect(M.ticks).toBeGreaterThan(0);
+    expect(M.releases.length).toBeGreaterThan(0);
   });
 });
 

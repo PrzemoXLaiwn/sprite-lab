@@ -26,7 +26,8 @@ export type StMatteMode = "key" | "runware";
 export function stPacksSettings(env: Record<string, string | undefined> = process.env) {
   const matte = env.ST_PACKS_MATTE_MODE === "runware" ? "runware" : "key";
   return {
-    concurrency: intEnv("ST_PACKS_CONCURRENCY", 4, env),
+    /** Edits in flight. 8 lets a default pack submit every clip in one wave. */
+    concurrency: intEnv("ST_PACKS_CONCURRENCY", 8, env),
     /**
      * Two posts at once inside the one leased worker. #28 peaked near 1506 MB
      * for a single 5 s clip at 912×1215 (~80 frames). Native 720×960 is about
@@ -155,7 +156,12 @@ export const ST_PIPELINE = {
 
 /** QA thresholds (qa.ts). Any failure flags the expression; the admin decides. */
 export const ST_QA = {
-  driftPx: 0.5,
+  /**
+   * Residual sideways drift after stabilising. 0.5 px flagged ordinary idle
+   * on a 720-wide frame (the man's anger was 3.2 px and looked fine). A real
+   * slide still fails above 4 px.
+   */
+  driftPx: 4,
   seamRatio: 2,
   seamAbs: 6,
   consSpikeRatio: 4,
