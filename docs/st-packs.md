@@ -180,7 +180,7 @@ in the raw provider totals. Costs also accumulate on the expression and job rows
 | `head_x_range` | informative only |
 | `seam` vs `cons_med` | seam > 2 × median consecutive diff, or > 6 absolute |
 | `cons_max` | > 4 × median and > 10 absolute (pop / cut; a blink on a still loop is not one) |
-| `alpha_coverage` | outside 8–75 % |
+| `alpha_coverage` | outside 8–65 % |
 | `edge_touch` | subject touches the left/right edge |
 | `corner_opaque` | > 2 % opaque pixels in the corner patches |
 | `halo` | edge luminance − luminance of the interior within 3 px > 100 (line-art outlines sit at the edge, so only a gross fringe trips it) |

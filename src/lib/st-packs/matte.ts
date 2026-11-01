@@ -809,12 +809,12 @@ const INTERIOR_SHIFT_MAX = 24;
 /** A frame whose opaque area differs from the median by more than this is re-matted from a neighbour. */
 const COVERAGE_MAX_FRAC = 0.03;
 
-function matchesBackdrop(data: Buffer, i: number, bg: Rgb): boolean {
+function matchesBackdrop(data: Buffer, i: number, bg: Rgb, max2 = BG_MATCH2): boolean {
   const o = i * 4;
   const dr = data[o] - bg[0];
   const dg = data[o + 1] - bg[1];
   const db = data[o + 2] - bg[2];
-  return dr * dr + dg * dg + db * db <= BG_MATCH2;
+  return dr * dr + dg * dg + db * db <= max2;
 }
 
 function distToBackdrop(data: Buffer, i: number, bg: Rgb): number {
@@ -826,7 +826,7 @@ function distToBackdrop(data: Buffer, i: number, bg: Rgb): number {
 }
 
 /** 4-connected flood from the frame border, only through pixels of the backdrop colour. */
-function floodBackdrop(frame: Frame, bg: Rgb): Uint8Array {
+function floodBackdrop(frame: Frame, bg: Rgb, max2 = BG_MATCH2): Uint8Array {
   const { data, width, height } = frame;
   const n = width * height;
   const reached = new Uint8Array(n);
@@ -835,7 +835,7 @@ function floodBackdrop(frame: Frame, bg: Rgb): Uint8Array {
   let qh = 0;
   let qt = 0;
   const push = (i: number) => {
-    if (reached[i] || !matchesBackdrop(data, i, bg)) return;
+    if (reached[i] || !matchesBackdrop(data, i, bg, max2)) return;
     reached[i] = 1;
     queue[qt++] = i;
   };
@@ -863,10 +863,10 @@ function floodBackdrop(frame: Frame, bg: Rgb): Uint8Array {
  * when that pixel itself is the backdrop colour. The coarse mask is grown by
  * one cell so the silhouette edge is decided at full resolution.
  */
-function floodBackdropFast(frame: Frame, bg: Rgb): Uint8Array {
+function floodBackdropFast(frame: Frame, bg: Rgb, max2 = BG_MATCH2): Uint8Array {
   const { data, width, height } = frame;
   const scale = width >= 160 && height >= 160 ? 2 : 1;
-  if (scale === 1) return floodBackdrop(frame, bg);
+  if (scale === 1) return floodBackdrop(frame, bg, max2);
   const sw = Math.ceil(width / scale);
   const sh = Math.ceil(height / scale);
   const smallData = Buffer.alloc(sw * sh * 4);
@@ -882,7 +882,7 @@ function floodBackdropFast(frame: Frame, bg: Rgb): Uint8Array {
       smallData[o + 3] = 255;
     }
   }
-  const coarse = dilate(floodBackdrop({ data: smallData, width: sw, height: sh }, bg), sw, sh, 1);
+  const coarse = dilate(floodBackdrop({ data: smallData, width: sw, height: sh }, bg, max2), sw, sh, 1);
   const reached = new Uint8Array(width * height);
   for (let y = 0; y < height; y++) {
     const sy = Math.min(sh - 1, (y / scale) | 0);
@@ -892,7 +892,7 @@ function floodBackdropFast(frame: Frame, bg: Rgb): Uint8Array {
       const sx = Math.min(sw - 1, (x / scale) | 0);
       if (!coarse[srow + sx]) continue;
       const i = row + x;
-      if (matchesBackdrop(data, i, bg)) reached[i] = 1;
+      if (matchesBackdrop(data, i, bg, max2)) reached[i] = 1;
     }
   }
   return reached;
@@ -1094,6 +1094,108 @@ export function conformAlphaCoverage(frames: Frame[], maxFrac = COVERAGE_MAX_FRA
 }
 
 /**
+ * Top edge and the upper part of the sides. A waist-up figure is cut off
+ * along the bottom, and that edge is the coat, not the ground.
+ */
+export function estimateBackdropOpen(frame: Frame, border = BORDER_PX): Rgb {
+  const { width, height, data } = frame;
+  if (width === 0 || height === 0) return [0, 0, 0];
+  const b = Math.max(1, Math.min(Math.floor(border), width, Math.floor(height / 2)));
+  const r: number[] = [];
+  const g: number[] = [];
+  const bl: number[] = [];
+  const push = (x: number, y: number) => {
+    const o = (y * width + x) * 4;
+    r.push(data[o]);
+    g.push(data[o + 1]);
+    bl.push(data[o + 2]);
+  };
+  const sideBottom = Math.max(b + 1, Math.floor(height * 0.72));
+  for (let y = 0; y < b; y++) for (let x = 0; x < width; x++) push(x, y);
+  for (let y = b; y < sideBottom; y++) {
+    for (let x = 0; x < b; x++) push(x, y);
+    for (let x = Math.max(b, width - b); x < width; x++) push(x, y);
+  }
+  if (r.length === 0) return estimateBackground(frame, border);
+  return [medianOf(r), medianOf(g), medianOf(bl)];
+}
+
+const FLOOD_TOLERANCES = [26, 36, 48, 64];
+
+function floodStats(reached: Uint8Array, width: number, height: number): { clearedFrac: number; opaqueFrac: number; corners: boolean } {
+  const n = width * height;
+  if (n === 0) return { clearedFrac: 0, opaqueFrac: 1, corners: false };
+  let cleared = 0;
+  for (let i = 0; i < n; i++) if (reached[i]) cleared++;
+  const on = (x: number, y: number) => reached[y * width + x] === 1;
+  return {
+    clearedFrac: cleared / n,
+    opaqueFrac: 1 - cleared / n,
+    corners: on(0, 0) && on(width - 1, 0) && on(0, height - 1) && on(width - 1, height - 1),
+  };
+}
+
+function floodOk(stats: { clearedFrac: number; opaqueFrac: number; corners: boolean }): boolean {
+  return stats.clearedFrac >= 0.10 && stats.opaqueFrac <= 0.65 && stats.corners;
+}
+
+/** The older plane flood. Only when a flat colour match cannot clear the ground. */
+function floodLoosePlane(frame: Frame): Uint8Array {
+  const { data, width, height } = frame;
+  const n = width * height;
+  const dist2 = planeDist2(frame, fitBackdrop(frame, estimateBackdropOpen(frame)));
+  const reached = new Uint8Array(n);
+  const queue = new Int32Array(n);
+  let qh = 0;
+  let qt = 0;
+  const push = (i: number) => { reached[i] = 1; queue[qt++] = i; };
+  for (let x = 0; x < width; x++) {
+    if (dist2[x] <= SEED2) push(x);
+    if (height > 1 && dist2[(height - 1) * width + x] <= SEED2) push((height - 1) * width + x);
+  }
+  for (let y = 1; y < height - 1; y++) {
+    if (dist2[y * width] <= SEED2) push(y * width);
+    if (width > 1 && dist2[y * width + width - 1] <= SEED2) push(y * width + width - 1);
+  }
+  while (qh < qt) {
+    const i = queue[qh++];
+    const x = i % width;
+    const o = i * 4;
+    const step = (j: number) => {
+      if (reached[j] || dist2[j] > LOOSE2) return;
+      const o2 = j * 4;
+      const dr = data[o2] - data[o];
+      const dg = data[o2 + 1] - data[o + 1];
+      const db = data[o2 + 2] - data[o + 2];
+      if (dr * dr + dg * dg + db * db <= STEP2) push(j);
+    };
+    if (x > 0) step(i - 1);
+    if (x + 1 < width) step(i + 1);
+    if (i >= width) step(i - width);
+    if (i + width < n) step(i + width);
+  }
+  return reached;
+}
+
+function chooseReached(frame: Frame, bg: Rgb, max2: number | null): { reached: Uint8Array; max2: number } {
+  if (max2 != null) {
+    const reached = floodBackdropFast(frame, bg, max2);
+    if (floodOk(floodStats(reached, frame.width, frame.height))) return { reached, max2 };
+  }
+  let last = floodBackdropFast(frame, bg, FLOOD_TOLERANCES[0] * FLOOD_TOLERANCES[0]);
+  let used = FLOOD_TOLERANCES[0] * FLOOD_TOLERANCES[0];
+  for (const tol of FLOOD_TOLERANCES) {
+    const reached = floodBackdropFast(frame, bg, tol * tol);
+    last = reached;
+    used = tol * tol;
+    if (floodOk(floodStats(reached, frame.width, frame.height))) return { reached, max2: used };
+  }
+  const loose = floodLoosePlane(frame);
+  if (floodOk(floodStats(loose, frame.width, frame.height))) return { reached: loose, max2: used };
+  return { reached: last, max2: used };
+}
+
+/**
  * Backdrop mask from a border flood through the backdrop colour only.
  * Anything the flood cannot reach stays opaque, including a white shirt
  * and a light coat. Mutates alpha.
@@ -1112,8 +1214,8 @@ function paintBackdropAlpha(frame: Frame, opts: { hard?: number; soft?: number }
  */
 export function matteAlpha(frame: Frame, opts: { hard?: number; soft?: number } = {}): Frame {
   const out = cloneFrame(frame);
-  const bg = estimateBackground(out);
-  paintBackdropAlpha(out, opts, bg, floodBackdropFast(out, bg));
+  const bg = estimateBackdropOpen(out);
+  paintBackdropAlpha(out, opts, bg, chooseReached(out, bg, null).reached);
   return out;
 }
 
@@ -1128,11 +1230,14 @@ export function matteFrames(frames: Frame[], opts: { hard?: number; soft?: numbe
   const backgrounds: Rgb[] = new Array(frames.length);
   let interior: Uint8Array | null = null;
   let ref = { x: 0, y: 0, n: 0 };
+  let max2: number | null = null;
   for (let i = 0; i < frames.length; i++) {
     const frame = cloneFrame(frames[i]);
-    const bg = estimateBackground(frame);
+    const bg = estimateBackdropOpen(frame);
     backgrounds[i] = bg;
-    const reached = floodBackdropFast(frame, bg);
+    const chosen = chooseReached(frame, bg, i === 0 ? null : max2);
+    if (i === 0) max2 = chosen.max2;
+    const reached = chosen.reached;
     const solid = invertMask(reached);
     if (i === 0) {
       interior = erodeBin(solid, frame.width, frame.height, INTERIOR_ERODE);

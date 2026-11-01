@@ -168,7 +168,8 @@ export const ST_QA = {
   /** A blink on an otherwise still loop is a 4× spike too; a pop must also exceed this absolute step (×1000). */
   consSpikeAbs: 10,
   alphaCoverageMin: 0.08,
-  alphaCoverageMax: 0.75,
+  /** 0.706 shipped a near-white field with the corners already clear. */
+  alphaCoverageMax: 0.65,
   cornerOpaqueMax: 0.02,
   /** Edge vs near-interior luminance. Line-art outlines sit right at the edge, so only a gross fringe trips this. */
   haloDelta: 100,
