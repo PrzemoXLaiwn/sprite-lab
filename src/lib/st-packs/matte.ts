@@ -323,7 +323,14 @@ function erodeAlpha(data: Buffer, width: number, height: number): Uint8Array {
       const row = y * width;
       const up = row - width;
       const dn = row + width;
-      for (let x = 1; x < width - 1; x++) out[row + x] = min9(row + x, up + x, dn + x);
+      for (let x = 1; x < width - 1; x++) {
+        const c = src[row + x];
+        if ((c === 0 || c === 255) && src[up + x] === c && src[dn + x] === c && src[row + x - 1] === c && src[row + x + 1] === c) {
+          out[row + x] = c;
+          continue;
+        }
+        out[row + x] = min9(row + x, up + x, dn + x);
+      }
     }
   }
   const edgeMin = (x: number, y: number) => {
@@ -361,6 +368,11 @@ function blurAlpha(src: Uint8Array, width: number, height: number): Uint8Array {
       const up = row - width;
       const dn = row + width;
       for (let x = 1; x < width - 1; x++) {
+        const c = src[row + x];
+        if ((c === 0 || c === 255) && src[up + x] === c && src[dn + x] === c && src[row + x - 1] === c && src[row + x + 1] === c) {
+          out[row + x] = c;
+          continue;
+        }
         const sum =
           src[up + x - 1] + 2 * src[up + x] + src[up + x + 1] +
           2 * src[row + x - 1] + 4 * src[row + x] + 2 * src[row + x + 1] +
@@ -784,154 +796,314 @@ function planeDist2(frame: Frame, bg: Backdrop): Float32Array {
 }
 
 /**
- * Backdrop mask, then the character as the largest foreground component
- * (plus any other component that is too unlike the backdrop to be a shadow).
- * Mutates alpha. Scratch is a few byte-planes for this frame only.
+ * Euclidean match to the backdrop colour. A white shirt or a light coat is
+ * not background just because a neighbour is a little closer to the ground.
+ * The prompt asks for a flat light grey; the border median is that colour
+ * as the model painted it.
  */
-function paintBackdropAlpha(
-  frame: Frame,
-  opts: { hard?: number; soft?: number; gaps?: GapPlan | null; captureGaps?: boolean },
-): GapPlan | null {
+const BG_MATCH = 26;
+const BG_MATCH2 = BG_MATCH * BG_MATCH;
+/** Deep interior of frame 0. A later flood may not punch inside it. */
+const INTERIOR_ERODE = 4;
+const INTERIOR_SHIFT_MAX = 24;
+/** A frame whose opaque area differs from the median by more than this is re-matted from a neighbour. */
+const COVERAGE_MAX_FRAC = 0.03;
+
+function matchesBackdrop(data: Buffer, i: number, bg: Rgb): boolean {
+  const o = i * 4;
+  const dr = data[o] - bg[0];
+  const dg = data[o + 1] - bg[1];
+  const db = data[o + 2] - bg[2];
+  return dr * dr + dg * dg + db * db <= BG_MATCH2;
+}
+
+function distToBackdrop(data: Buffer, i: number, bg: Rgb): number {
+  const o = i * 4;
+  const dr = data[o] - bg[0];
+  const dg = data[o + 1] - bg[1];
+  const db = data[o + 2] - bg[2];
+  return Math.sqrt(dr * dr + dg * dg + db * db);
+}
+
+/** 4-connected flood from the frame border, only through pixels of the backdrop colour. */
+function floodBackdrop(frame: Frame, bg: Rgb): Uint8Array {
   const { data, width, height } = frame;
   const n = width * height;
-  if (n === 0) return null;
-  const hard = opts.hard ?? DEFAULT_HARD;
-  const soft = opts.soft ?? DEFAULT_SOFT;
-  const dist2 = planeDist2(frame, fitBackdrop(frame, estimateBackground(frame)));
   const reached = new Uint8Array(n);
+  if (n === 0) return reached;
   const queue = new Int32Array(n);
-  let qh = 0, qt = 0;
+  let qh = 0;
+  let qt = 0;
   const push = (i: number) => {
+    if (reached[i] || !matchesBackdrop(data, i, bg)) return;
     reached[i] = 1;
     queue[qt++] = i;
   };
   for (let x = 0; x < width; x++) {
-    if (dist2[x] <= SEED2) push(x);
-    if (height > 1) {
-      const bot = (height - 1) * width + x;
-      if (dist2[bot] <= SEED2) push(bot);
-    }
+    push(x);
+    if (height > 1) push((height - 1) * width + x);
   }
   for (let y = 1; y < height - 1; y++) {
-    const left = y * width;
-    if (dist2[left] <= SEED2) push(left);
-    if (width > 1) {
-      const right = left + width - 1;
-      if (dist2[right] <= SEED2) push(right);
-    }
+    push(y * width);
+    if (width > 1) push(y * width + width - 1);
   }
   while (qh < qt) {
     const i = queue[qh++];
     const x = i % width;
-    const o = i * 4;
-    const r = data[o], g = data[o + 1], b = data[o + 2];
-    if (x > 0) {
-      const j = i - 1;
-      if (!reached[j] && dist2[j] <= LOOSE2) {
-        const o2 = j * 4;
-        const dr = data[o2] - r, dg = data[o2 + 1] - g, db = data[o2 + 2] - b;
-        if (dr * dr + dg * dg + db * db <= STEP2) push(j);
-      }
-    }
-    if (x + 1 < width) {
-      const j = i + 1;
-      if (!reached[j] && dist2[j] <= LOOSE2) {
-        const o2 = j * 4;
-        const dr = data[o2] - r, dg = data[o2 + 1] - g, db = data[o2 + 2] - b;
-        if (dr * dr + dg * dg + db * db <= STEP2) push(j);
-      }
-    }
-    if (i >= width) {
-      const j = i - width;
-      if (!reached[j] && dist2[j] <= LOOSE2) {
-        const o2 = j * 4;
-        const dr = data[o2] - r, dg = data[o2 + 1] - g, db = data[o2 + 2] - b;
-        if (dr * dr + dg * dg + db * db <= STEP2) push(j);
-      }
-    }
-    if (i + width < n) {
-      const j = i + width;
-      if (!reached[j] && dist2[j] <= LOOSE2) {
-        const o2 = j * 4;
-        const dr = data[o2] - r, dg = data[o2 + 1] - g, db = data[o2 + 2] - b;
-        if (dr * dr + dg * dg + db * db <= STEP2) push(j);
-      }
-    }
+    if (x > 0) push(i - 1);
+    if (x + 1 < width) push(i + 1);
+    if (i >= width) push(i - width);
+    if (i + width < n) push(i + width);
   }
+  return reached;
+}
 
-  // Side gaps are decided once, on the reference frame, then stamped here.
-  // A white shirt matches the plane too, so it is not re-classified per frame.
-  const centroid = foregroundCentroid(dist2, reached, width, height);
-  let plan = opts.gaps ?? null;
-  if (opts.captureGaps) {
-    plan = { mask: buildGapMask(dist2, reached, width, height), refX: centroid.x, refY: centroid.y };
+/**
+ * Flood on a half-resolution grid, then accept a full-resolution pixel only
+ * when that pixel itself is the backdrop colour. The coarse mask is grown by
+ * one cell so the silhouette edge is decided at full resolution.
+ */
+function floodBackdropFast(frame: Frame, bg: Rgb): Uint8Array {
+  const { data, width, height } = frame;
+  const scale = width >= 160 && height >= 160 ? 2 : 1;
+  if (scale === 1) return floodBackdrop(frame, bg);
+  const sw = Math.ceil(width / scale);
+  const sh = Math.ceil(height / scale);
+  const smallData = Buffer.alloc(sw * sh * 4);
+  for (let y = 0; y < sh; y++) {
+    const sy = Math.min(height - 1, y * scale);
+    for (let x = 0; x < sw; x++) {
+      const sx = Math.min(width - 1, x * scale);
+      const so = (sy * width + sx) * 4;
+      const o = (y * sw + x) * 4;
+      smallData[o] = data[so];
+      smallData[o + 1] = data[so + 1];
+      smallData[o + 2] = data[so + 2];
+      smallData[o + 3] = 255;
+    }
   }
-  if (plan && centroid.n > 0) {
-    let dx = Math.round(centroid.x - plan.refX);
-    let dy = Math.round(centroid.y - plan.refY);
-    if (dx > GAP_SHIFT_MAX) dx = GAP_SHIFT_MAX;
-    else if (dx < -GAP_SHIFT_MAX) dx = -GAP_SHIFT_MAX;
-    if (dy > GAP_SHIFT_MAX) dy = GAP_SHIFT_MAX;
-    else if (dy < -GAP_SHIFT_MAX) dy = -GAP_SHIFT_MAX;
-    stampGaps(reached, dist2, plan.mask, width, height, dx, dy);
+  const coarse = dilate(floodBackdrop({ data: smallData, width: sw, height: sh }, bg), sw, sh, 1);
+  const reached = new Uint8Array(width * height);
+  for (let y = 0; y < height; y++) {
+    const sy = Math.min(sh - 1, (y / scale) | 0);
+    const srow = sy * sw;
+    const row = y * width;
+    for (let x = 0; x < width; x++) {
+      const sx = Math.min(sw - 1, (x / scale) | 0);
+      if (!coarse[srow + sx]) continue;
+      const i = row + x;
+      if (matchesBackdrop(data, i, bg)) reached[i] = 1;
+    }
   }
+  return reached;
+}
 
-  // Foreground components among pixels the flood did not claim.
-  const visited = new Uint8Array(n);
-  const comps: { seed: number; size: number; sum: number; keep: boolean }[] = [];
-  for (let s = 0; s < n; s++) {
-    if (reached[s] || visited[s]) continue;
-    let size = 0, sum = 0;
-    qh = 0;
-    qt = 0;
-    visited[s] = 1;
-    queue[qt++] = s;
+function invertMask(src: Uint8Array): Uint8Array {
+  const out = new Uint8Array(src.length);
+  for (let i = 0; i < src.length; i++) out[i] = src[i] ? 0 : 1;
+  return out;
+}
+
+function maskCentroid(mask: Uint8Array, width: number): { x: number; y: number; n: number } {
+  let n = 0;
+  let sx = 0;
+  let sy = 0;
+  for (let i = 0; i < mask.length; i++) {
+    if (!mask[i]) continue;
+    n++;
+    sx += i % width;
+    sy += (i / width) | 0;
+  }
+  return n ? { x: sx / n, y: sy / n, n } : { x: 0, y: 0, n: 0 };
+}
+
+/** Clear `reached` where the reference interior sits, shifted with the body. */
+function protectInterior(reached: Uint8Array, interior: Uint8Array, width: number, height: number, dx: number, dy: number): void {
+  for (let y = 0; y < height; y++) {
+    const sy = y - dy;
+    if (sy < 0 || sy >= height) continue;
+    const row = y * width;
+    const srow = sy * width;
+    for (let x = 0; x < width; x++) {
+      const sx = x - dx;
+      if (sx < 0 || sx >= width) continue;
+      if (interior[srow + sx]) reached[row + x] = 0;
+    }
+  }
+}
+
+function neighbourDiffers(reached: Uint8Array, i: number, x: number, width: number, height: number): boolean {
+  const v = reached[i];
+  if (x > 0 && reached[i - 1] !== v) return true;
+  if (x + 1 < width && reached[i + 1] !== v) return true;
+  if (i >= width && reached[i - width] !== v) return true;
+  if (i + width < width * height && reached[i + width] !== v) return true;
+  return false;
+}
+
+function writeFloodAlpha(frame: Frame, reached: Uint8Array, bg: Rgb, hard: number, soft: number): void {
+  const { data, width, height } = frame;
+  for (let y = 0; y < height; y++) {
+    const row = y * width;
+    for (let x = 0; x < width; x++) {
+      const i = row + x;
+      const o = i * 4 + 3;
+      if (!neighbourDiffers(reached, i, x, width, height)) data[o] = reached[i] ? 0 : 255;
+      else data[o] = Math.round(255 * keyFactor(distToBackdrop(data, i, bg), hard, soft));
+    }
+  }
+}
+
+/**
+ * Transparent pixels the border cannot reach are inside the character.
+ * Their colour is still in the RGB channels; put the alpha back.
+ */
+/**
+ * A punched garment pixel still holds its colour and sits against an opaque
+ * neighbour of that colour. Fill it. Cleared backdrop is near-black and is left
+ * alone. Not used on a fresh key: there the transparent pixels are still the
+ * grey ground and would grow a halo.
+ */
+export function healPunchedGarment(frame: Frame, passes = 8): void {
+  const { data, width, height } = frame;
+  const dirs = [1, -1, width, -width];
+  for (let pass = 0; pass < passes; pass++) {
+    const grow: number[] = [];
+    for (let y = 1; y < height - 1; y++) {
+      const row = y * width;
+      for (let x = 1; x < width - 1; x++) {
+        const i = row + x;
+        const o = i * 4;
+        if (data[o + 3] >= 128) continue;
+        if (data[o] + data[o + 1] + data[o + 2] < 48) continue;
+        for (const d of dirs) {
+          const n = (i + d) * 4;
+          if (data[n + 3] < 200) continue;
+          const dr = data[o] - data[n];
+          const dg = data[o + 1] - data[n + 1];
+          const db = data[o + 2] - data[n + 2];
+          if (dr * dr + dg * dg + db * db <= 45 * 45) {
+            grow.push(o);
+            break;
+          }
+        }
+      }
+    }
+    for (const o of grow) data[o + 3] = 255;
+    if (grow.length === 0) break;
+  }
+}
+
+export function sealInteriorHoles(frames: Frame[]): void {
+  for (const frame of frames) {
+    const { data, width, height } = frame;
+    const n = width * height;
+    if (n === 0) continue;
+    const open = new Uint8Array(n);
+    for (let i = 0; i < n; i++) if (data[i * 4 + 3] < 128) open[i] = 1;
+    const seen = new Uint8Array(n);
+    const queue = new Int32Array(n);
+    let qh = 0;
+    let qt = 0;
+    const push = (i: number) => {
+      if (!open[i] || seen[i]) return;
+      seen[i] = 1;
+      queue[qt++] = i;
+    };
+    for (let x = 0; x < width; x++) {
+      push(x);
+      if (height > 1) push((height - 1) * width + x);
+    }
+    for (let y = 1; y < height - 1; y++) {
+      push(y * width);
+      if (width > 1) push(y * width + width - 1);
+    }
     while (qh < qt) {
       const i = queue[qh++];
       const x = i % width;
-      size++;
-      sum += dist2[i];
-      if (x > 0 && !reached[i - 1] && !visited[i - 1]) { visited[i - 1] = 1; queue[qt++] = i - 1; }
-      if (x + 1 < width && !reached[i + 1] && !visited[i + 1]) { visited[i + 1] = 1; queue[qt++] = i + 1; }
-      if (i >= width && !reached[i - width] && !visited[i - width]) { visited[i - width] = 1; queue[qt++] = i - width; }
-      if (i + width < n && !reached[i + width] && !visited[i + width]) { visited[i + width] = 1; queue[qt++] = i + width; }
+      if (x > 0) push(i - 1);
+      if (x + 1 < width) push(i + 1);
+      if (i >= width) push(i - width);
+      if (i + width < n) push(i + width);
     }
-    comps.push({ seed: s, size, sum, keep: false });
+    for (let i = 0; i < n; i++) if (open[i] && !seen[i]) data[i * 4 + 3] = 255;
   }
-  let main = 0;
-  for (let k = 1; k < comps.length; k++) if (comps[k].size > comps[main].size) main = k;
-  for (let k = 0; k < comps.length; k++) {
-    const mean2 = comps[k].sum / comps[k].size;
-    comps[k].keep = k === main || (comps[k].size >= SPECK_PX && mean2 >= ISLAND2);
-  }
-  const foreground = new Uint8Array(n);
-  for (let k = 0; k < comps.length; k++) {
-    if (!comps[k].keep) continue;
-    qh = 0;
-    qt = 0;
-    foreground[comps[k].seed] = 1;
-    queue[qt++] = comps[k].seed;
-    while (qh < qt) {
-      const i = queue[qh++];
-      const x = i % width;
-      if (x > 0 && !reached[i - 1] && !foreground[i - 1]) { foreground[i - 1] = 1; queue[qt++] = i - 1; }
-      if (x + 1 < width && !reached[i + 1] && !foreground[i + 1]) { foreground[i + 1] = 1; queue[qt++] = i + 1; }
-      if (i >= width && !reached[i - width] && !foreground[i - width]) { foreground[i - width] = 1; queue[qt++] = i - width; }
-      if (i + width < n && !reached[i + width] && !foreground[i + width]) { foreground[i + width] = 1; queue[qt++] = i + width; }
-    }
-  }
+}
 
-  // Reuse the visited plane as the backdrop mask (every non-foreground pixel).
-  for (let i = 0; i < n; i++) visited[i] = foreground[i] ? 0 : 1;
-  const nearBg = dilate(visited, width, height, EDGE_BAND);
-  const nearFg = dilate(foreground, width, height, EDGE_BAND);
+function opaqueCount(frame: Frame): number {
+  const data = frame.data;
+  let n = 0;
+  for (let i = 0; i < data.length; i += 4) if (data[i + 3] > 127) n++;
+  return n;
+}
+
+function cornersFailed(frame: Frame): boolean {
+  const { data, width, height } = frame;
+  const s = Math.min(8, width, height);
+  if (s === 0) return false;
+  let bad = 0;
+  let tot = 0;
+  const sample = (x0: number, y0: number) => {
+    for (let y = y0; y < y0 + s; y++) {
+      for (let x = x0; x < x0 + s; x++) {
+        tot++;
+        if (data[(y * width + x) * 4 + 3] > 32) bad++;
+      }
+    }
+  };
+  sample(0, 0);
+  sample(width - s, 0);
+  sample(0, height - s);
+  sample(width - s, height - s);
+  return tot > 0 && bad / tot > 0.5;
+}
+
+/**
+ * A frame that kept a slab of backdrop (or lost a slab of the character)
+ * takes its alpha from the nearest frame that matches the median coverage.
+ * RGB stays. Returns how many frames were replaced.
+ */
+export function conformAlphaCoverage(frames: Frame[], maxFrac = COVERAGE_MAX_FRAC): number {
+  const n = frames.length;
+  if (n < 3) return 0;
+  const area = frames[0].width * frames[0].height;
+  if (area === 0) return 0;
+  const counts = frames.map(opaqueCount);
+  const med = medianOf(counts);
+  const good: number[] = [];
   for (let i = 0; i < n; i++) {
-    const o = i * 4 + 3;
-    if (foreground[i] && !nearBg[i]) data[o] = 255;
-    else if (!foreground[i] && !nearFg[i]) data[o] = 0;
-    else data[o] = Math.round(data[o] * keyFactor(Math.sqrt(dist2[i]), hard, soft));
+    if (!cornersFailed(frames[i]) && Math.abs(counts[i] - med) / area <= maxFrac) good.push(i);
   }
-  return plan;
+  if (good.length === 0) return 0;
+  let replaced = 0;
+  for (let i = 0; i < n; i++) {
+    const deviant = cornersFailed(frames[i]) || Math.abs(counts[i] - med) / area > maxFrac;
+    if (!deviant) continue;
+    let donor = good[0];
+    let best = Math.abs(good[0] - i);
+    for (const g of good) {
+      const d = Math.abs(g - i);
+      if (d < best) { best = d; donor = g; }
+    }
+    const src = frames[donor].data;
+    const dst = frames[i].data;
+    for (let o = 3; o < dst.length; o += 4) dst[o] = src[o];
+    replaced++;
+  }
+  return replaced;
+}
+
+/**
+ * Backdrop mask from a border flood through the backdrop colour only.
+ * Anything the flood cannot reach stays opaque, including a white shirt
+ * and a light coat. Mutates alpha.
+ */
+function paintBackdropAlpha(frame: Frame, opts: { hard?: number; soft?: number }, bg: Rgb, reached: Uint8Array): void {
+  const { width, height } = frame;
+  if (width * height === 0) return;
+  const hard = opts.hard ?? DEFAULT_HARD;
+  const soft = opts.soft ?? DEFAULT_SOFT;
+  writeFloodAlpha(frame, reached, bg, hard, soft);
 }
 
 /**
@@ -940,33 +1112,46 @@ function paintBackdropAlpha(
  */
 export function matteAlpha(frame: Frame, opts: { hard?: number; soft?: number } = {}): Frame {
   const out = cloneFrame(frame);
-  paintBackdropAlpha(out, { ...opts, captureGaps: true });
+  const bg = estimateBackground(out);
+  paintBackdropAlpha(out, opts, bg, floodBackdropFast(out, bg));
   return out;
 }
 
 /**
- * Key mode. Each frame grows its own backdrop from the border plane, the
- * character component is kept (enclosed holes included), then the alpha is
- * median-smoothed across neighbours and defringed. One owned buffer per frame
- * — the flood scratch is dropped before the next frame, and the median keeps
- * only alpha planes.
+ * Key mode. Each frame floods from its own border through the backdrop colour
+ * only. Frame 0's deep interior is protected on later frames, so a crack cannot
+ * eat a white shirt. A frame whose coverage jumps is given a neighbour's alpha.
  */
 export function matteFrames(frames: Frame[], opts: { hard?: number; soft?: number } = {}): { frames: Frame[]; background: Rgb } {
   if (frames.length === 0) return { frames: [], background: [0, 0, 0] };
   const out: Frame[] = new Array(frames.length);
   const backgrounds: Rgb[] = new Array(frames.length);
-  // The edited still is frame 0. Gap pixels are chosen there and reused, so a
-  // fold that crosses the colour threshold on a later frame cannot eat the shirt.
-  let gaps: GapPlan | null = null;
+  let interior: Uint8Array | null = null;
+  let ref = { x: 0, y: 0, n: 0 };
   for (let i = 0; i < frames.length; i++) {
-    backgrounds[i] = estimateBackground(frames[i]);
     const frame = cloneFrame(frames[i]);
-    if (i === 0) gaps = paintBackdropAlpha(frame, { ...opts, captureGaps: true });
-    else paintBackdropAlpha(frame, { ...opts, gaps });
+    const bg = estimateBackground(frame);
+    backgrounds[i] = bg;
+    const reached = floodBackdropFast(frame, bg);
+    const solid = invertMask(reached);
+    if (i === 0) {
+      interior = erodeBin(solid, frame.width, frame.height, INTERIOR_ERODE);
+      ref = maskCentroid(solid, frame.width);
+    } else if (interior && ref.n > 0) {
+      const c = maskCentroid(solid, frame.width);
+      const dx = Math.round(c.x - ref.x);
+      const dy = Math.round(c.y - ref.y);
+      if (c.n > 0 && Math.abs(dx) <= INTERIOR_SHIFT_MAX && Math.abs(dy) <= INTERIOR_SHIFT_MAX) {
+        protectInterior(reached, interior, frame.width, frame.height, dx, dy);
+      }
+    }
+    paintBackdropAlpha(frame, opts, bg, reached);
     out[i] = frame;
   }
   applyTemporalMedianInPlace(out);
   for (let i = 0; i < out.length; i++) defringeOwned(out[i], backgrounds[i]);
+  sealInteriorHoles(out);
+  conformAlphaCoverage(out);
   return { frames: out, background: backgrounds[0] };
 }
 

@@ -6,7 +6,7 @@
 import { NextResponse } from "next/server";
 import { JOB_ID_RE, requireStAdmin } from "../../../_lib/guard";
 import { isExpressionLabel } from "@/config/st-expressions";
-import { getR2ObjectBuffer } from "@/lib/r2";
+import { getR2ObjectBuffer, getR2SignedGetUrl } from "@/lib/r2";
 import { buildArtifacts, buildExtraArchive, getJob, jobSlug } from "@/lib/st-packs/jobs";
 import { packFileName, readmeText } from "@/lib/st-packs/package";
 
@@ -65,8 +65,14 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
           const built = await buildArtifacts(id);
           key = kind === "zip" ? built.zipKey : built.gridKey;
         }
-        const buf = key ? await getR2ObjectBuffer(key) : null;
-        return buf ? file(buf, kind === "zip" ? "application/zip" : "image/gif", packFileName(slug, kind)) : notFound();
+        if (!key) return notFound();
+        const type = kind === "zip" ? "application/zip" : "image/gif";
+        const name = packFileName(slug, kind);
+        // The browser fetches the bytes from storage. The function only mints the URL.
+        const signed = await getR2SignedGetUrl(key, { contentType: type, filename: name });
+        if (signed) return NextResponse.redirect(signed, 302);
+        const buf = await getR2ObjectBuffer(key);
+        return buf ? file(buf, type, name) : notFound();
       }
       case "png":
       case "gif": {

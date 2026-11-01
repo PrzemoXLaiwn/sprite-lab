@@ -1,4 +1,5 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { GetObjectCommand, S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 /**
  * Cloudflare R2 Storage Client
@@ -318,6 +319,28 @@ export async function uploadBufferToR2(
 /** Public URL for an object key (no I/O). */
 export function getR2PublicUrl(key: string): string {
   return getPublicUrl(key);
+}
+
+/**
+ * Short-lived URL so the browser downloads straight from storage.
+ * A 10–20 MB ZIP streamed through the function is dropped on the first click.
+ * Null when R2 is not configured (the caller streams the bytes itself).
+ */
+export async function getR2SignedGetUrl(
+  key: string,
+  opts: { contentType: string; filename: string; expiresSeconds?: number },
+): Promise<string | null> {
+  const client = getR2Client();
+  const bucketName = process.env.R2_BUCKET_NAME;
+  if (!client || !bucketName) return null;
+  const filename = opts.filename.replace(/["\r\n]/g, "");
+  const command = new GetObjectCommand({
+    Bucket: bucketName,
+    Key: key,
+    ResponseContentType: opts.contentType,
+    ResponseContentDisposition: `attachment; filename="${filename}"`,
+  });
+  return getSignedUrl(client, command, { expiresIn: opts.expiresSeconds ?? 180 });
 }
 
 function httpStatusOf(error: unknown): number | undefined {
