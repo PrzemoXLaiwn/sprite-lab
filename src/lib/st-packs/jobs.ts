@@ -28,7 +28,9 @@ import {
   ST_DEFAULT_VIDEO_MODEL, ST_EDIT_MODEL, clipListUsd, estimateExpressionUsd, estimateJobUsd, isSelectableVideoModel, isVideoSeconds, stPacksSettings, videoModelSpec,
   type StExpressionStatus, type StFraming, type StJobStatus, type StMatteMode,
 } from "@/config/st-packs";
-import { chromaHex, parseChromaHex } from "./chroma";
+import { PROVIDER_BALANCE_MESSAGE, isProviderBalanceMessage } from "@/lib/provider-balance";
+import { chromaHex, compositeOverKey, parseChromaHex } from "./chroma";
+import { matteFrames } from "./matte";
 import { videoProviderExtra } from "./video-task";
 import { alignToBase } from "./align";
 import { encodeGifFallback, encodePreviewGrid, stillPng } from "./encode";
@@ -284,17 +286,21 @@ async function stepFailed(e: ExprRow, step: "edit" | "video" | "post", err: unkn
   const t = timingsOf(e);
   const attempts = (t.attempts?.[step] ?? 0) + 1;
   const moderated = err instanceof ProviderModerationError;
-  const exhausted = moderated || attempts >= MAX_ATTEMPTS;
+  const balance = isProviderBalanceMessage(message);
+  const exhausted = moderated || balance || attempts >= MAX_ATTEMPTS;
   console.warn(`[st-packs] ${e.label} ${step} failed (attempt ${attempts}): ${message}`);
   await prisma.stPackExpression.update({
     where: { id: e.id },
     data: {
       status: exhausted ? "failed" : backTo,
       lockedUntil: null,
-      error: moderated ? "Blocked by provider moderation" : message.slice(0, 500),
+      error: balance ? PROVIDER_BALANCE_MESSAGE : moderated ? "Blocked by provider moderation" : message.slice(0, 500),
       timings: { ...t, attempts: { ...t.attempts, [step]: attempts } } as unknown as Prisma.InputJsonValue,
     },
   });
+  if (balance) {
+    await prisma.stPackJob.update({ where: { id: e.jobId }, data: { error: PROVIDER_BALANCE_MESSAGE } });
+  }
 }
 
 function operationContext(e: ExprRow, capUsd: number): OperationContext {
@@ -341,7 +347,15 @@ async function runEdit(exprId: string): Promise<void> {
     let editKey: string;
     const t = timingsOf(e);
     if (e.label === "neutral") {
-      editKey = job.baseKey!; // the base is the neutral still
+      const rgb = parseChromaHex(options.keyColour);
+      if (rgb) {
+        // The base still is light grey. Neutral used to skip the edit, so the
+        // clip never saw the chroma ground and the key removed nothing.
+        const matted = matteFrames([await pngFrame(base)]).frames[0];
+        editKey = await put(await stillPng(compositeOverKey(matted, rgb)), exprKey(job.id, e.label, "edit.png"), "image/png");
+      } else {
+        editKey = job.baseKey!;
+      }
     } else {
       const ctx = operationContext(e, settings.maxUsdPerExpression - e.costUsd);
       const { image } = await runInOperation(ctx, () => generateStImage({

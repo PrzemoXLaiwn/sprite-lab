@@ -5,6 +5,7 @@ import { persistImage } from "@/lib/storage";
 import { generateImage, removeBackground } from "@/lib/runware";
 import Replicate from "replicate";
 import { PRICE } from "@/lib/billing/features";
+import { isProviderBalanceMessage } from "@/lib/provider-balance";
 import { replicateCall } from "@/lib/billing/replicate";
 import { timingSafeEqual } from "crypto";
 
@@ -123,7 +124,9 @@ export async function POST(request: Request) {
           data: {
             status: "failed",
             completedAt: new Date(),
-            errorMessage: "Generation failed. Your credits were refunded.",
+            errorMessage: isProviderBalanceMessage(internalMessage)
+              ? "The image service is out of capacity right now. Your credits were refunded."
+              : "Generation failed. Your credits were refunded.",
             progressMessage: "Failed"
           }
         });

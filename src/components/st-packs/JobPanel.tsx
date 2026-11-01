@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { Ban, Download, Loader2 } from "lucide-react";
 import type { JobSnapshot } from "@/lib/st-packs/types";
 import { zipButtonState } from "@/lib/st-packs/downloads";
+import { isProviderBalanceMessage, PROVIDER_BALANCE_MESSAGE } from "@/lib/provider-balance";
 import { ErrorNote, InfoNote } from "@/components/tools/ToolWorkspace";
 import { downloadUrl } from "./api";
 import { ExpressionTile, type PreviewMode } from "./ExpressionTile";
@@ -179,7 +180,9 @@ export function JobPanel({ job, loading, error, previewMode, onPreviewMode, canc
             {failed} expression{failed === 1 ? "" : "s"} failed. Retry {failed === 1 ? "it" : "them"} or ship the ZIP without.
           </InfoNote>
         )}
-        {job.error && <ErrorNote>{job.error}</ErrorNote>}
+        {(job.error && isProviderBalanceMessage(job.error)) || job.expressions.some((e) => e.error && isProviderBalanceMessage(e.error))
+          ? <ErrorNote>{PROVIDER_BALANCE_MESSAGE}. Top up the Runware balance, then retry the failed expressions. Nothing was charged for those clips.</ErrorNote>
+          : job.error ? <ErrorNote>{job.error}</ErrorNote> : null}
         {error && <ErrorNote>{error}</ErrorNote>}
       </div>
 

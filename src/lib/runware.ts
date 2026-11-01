@@ -12,6 +12,26 @@ import { cloudflareAiConfigured, generateWithCloudflare } from "./cloudflare-ai"
 let runwareInstance: InstanceType<typeof Runware> | null = null;
 let isConnected = false;
 
+/** Prepaid balance for the admin studio. Null when the key is missing or the call fails. Never returns account secrets. */
+export async function getRunwareBalance(): Promise<{ amount: number; currency: string } | null> {
+  const apiKey = process.env.RUNWARE_API_KEY;
+  if (!apiKey) return null;
+  try {
+    const res = await fetch("https://api.runware.ai/v1", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify([{ taskType: "accountManagement", taskUUID: crypto.randomUUID(), operation: "getDetails" }]),
+      signal: AbortSignal.timeout(8_000),
+    });
+    const json = (await res.json().catch(() => null)) as { data?: Array<{ balance?: { amount?: number; currency?: string } }> } | null;
+    const amount = json?.data?.[0]?.balance?.amount;
+    if (typeof amount !== "number") return null;
+    return { amount, currency: json?.data?.[0]?.balance?.currency || "USD" };
+  } catch {
+    return null;
+  }
+}
+
 export async function getRunwareClient(): Promise<InstanceType<typeof Runware>> {
   const apiKey = process.env.RUNWARE_API_KEY;
   if (!apiKey) {

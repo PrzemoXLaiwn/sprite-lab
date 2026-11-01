@@ -66,7 +66,8 @@ function statusForCode(code: string): number {
     case "UNSUPPORTED_MODE":       return 400;
     case "UNAUTHENTICATED":        return 401;
     case "CAPACITY_EXHAUSTED":
-    case "SERVICE_PAUSED":         return 503;
+    case "SERVICE_PAUSED":
+    case "PROVIDER_BALANCE":       return 503;
     case "RATE_LIMITED":           return 429;
     case "PROVIDER_ERROR":
     case "PROVIDER_TIMEOUT":       return 500;

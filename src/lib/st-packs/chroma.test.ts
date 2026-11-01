@@ -62,6 +62,15 @@ describe("chroma key", () => {
     expect(pixel(c1, 14, 36)[3]).toBe(255);
   });
 
+  it("clears a darkened green edge sampled from the corners", () => {
+    const frame = makeFrame(40, 40);
+    fill(frame, [13, 77, 9]);
+    rect(frame, 12, 10, 28, 32, [244, 244, 244]);
+    const [out] = keyChromaFrames([frame], CHROMA_GREEN);
+    expect(pixel(out, 2, 2)[3]).toBe(0);
+    expect(pixel(out, 20, 20)[3]).toBe(255);
+  });
+
   it("despills a green fringe without painting the shirt", () => {
     const frame = makeFrame(16, 16);
     fill(frame, CHROMA_GREEN);

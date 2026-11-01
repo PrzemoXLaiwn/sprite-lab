@@ -61,6 +61,7 @@ export function StPacksStudio() {
   const [job, setJob] = useState<JobSnapshot | null>(null);
   const [jobLoading, setJobLoading] = useState(false);
   const [jobError, setJobError] = useState("");
+  const [providerBalance, setProviderBalance] = useState<number | null>(null);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [pending, setPending] = useState<Record<string, boolean>>({});
@@ -92,6 +93,17 @@ export function StPacksStudio() {
   }, []);
 
   useEffect(() => { void loadHistory(); }, [loadHistory]);
+
+  useEffect(() => {
+    let stopped = false;
+    void fetch("/api/st-packs/balance")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { amount?: number } | null) => {
+        if (!stopped && typeof data?.amount === "number") setProviderBalance(data.amount);
+      })
+      .catch(() => {});
+    return () => { stopped = true; };
+  }, []);
 
   // Poll while the job runs, and after it finishes until pack.zip is stored.
   // The row flips to done before the worker writes the zip; stopping there
@@ -298,6 +310,11 @@ export function StPacksStudio() {
         </div>
         <p className="mt-1 text-[13px] text-[#C8CCE8]">SillyTavern expression packs: one character, animated transparent sprites, flat ZIP.</p>
         <p className="mt-0.5 text-[12px] text-[#8A92BF]">Admin-only internal tool. Each run spends real provider credit; the estimate is a guide, not a cap.</p>
+        {providerBalance !== null && (
+          <p role="status" className={`mt-1 text-[12px] ${providerBalance < 2 ? "text-amber-200" : "text-[#8A92BF]"}`}>
+            Runware balance ${providerBalance.toFixed(2)}{providerBalance < 2 ? ". Provider balance too low — top up before the next pack." : ""}
+          </p>
+        )}
       </header>
 
       <div className="grid gap-5 lg:grid-cols-[380px_minmax(0,1fr)] lg:items-start">

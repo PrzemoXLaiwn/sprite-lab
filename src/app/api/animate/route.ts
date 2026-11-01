@@ -10,6 +10,7 @@ import { safeFetchImage } from "@/lib/safe-fetch";
 import { uploadGenerationBufferToR2 } from "@/lib/r2";
 import { makeAnimation, makeRotation } from "@/lib/services/animation-service";
 import { isOutOfTime, workDeadline } from "@/lib/services/animation-budget";
+import { isProviderBalanceMessage } from "@/lib/provider-balance";
 import { makeRigAnimation } from "@/lib/image/rig-animation";
 import { makeItemMotion } from "@/lib/image/item-motion";
 import { makeSkeletonAnimation, makeSkeletonIdle } from "@/lib/image/skeleton-rig";
@@ -141,7 +142,7 @@ export async function POST(request: Request) {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("[Rotate] Failed:", msg);
-      const balance = /insufficientCredits|insufficient credits|top-up/i.test(msg);
+      const balance = isProviderBalanceMessage(msg);
       const slow = !balance && isOutOfTime(err);
       await op.fail(balance ? "PROVIDER_BALANCE" : slow ? "ROTATION_TIMEOUT" : "ROTATION_FAILED");
       if (balance) {
@@ -333,7 +334,7 @@ export async function POST(request: Request) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[Animate] Failed:", msg);
-    const balance = /insufficientCredits|insufficient credits|top-up/i.test(msg);
+    const balance = isProviderBalanceMessage(msg);
     const slow = !balance && isOutOfTime(err);
     await op.fail(balance ? "PROVIDER_BALANCE" : slow ? "ANIMATION_TIMEOUT" : "ANIMATION_FAILED");
     // Provider balance ran out: say so plainly instead of "try again"

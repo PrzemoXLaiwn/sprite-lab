@@ -73,10 +73,49 @@ function despill(data: Buffer, o: number, key: Rgb): void {
   }
 }
 
-function keyOne(frame: Frame, key: Rgb): Frame {
+/** Median colour of opaque corner pixels, when they share the key's hue. Vidu darkens #00FF00 toward the frame edge. */
+export function cornerKey(frame: Frame, nominal: Rgb): Rgb | null {
+  const { width, height, data } = frame;
+  const cp = Math.min(16, width >> 2, height >> 2);
+  if (cp < 2) return null;
+  const samples: Array<[number, number, number]> = [];
+  const origins: Array<[number, number]> = [[0, 0], [width - cp, 0], [0, height - cp], [width - cp, height - cp]];
+  for (const [x0, y0] of origins) {
+    for (let y = y0; y < y0 + cp; y++) {
+      for (let x = x0; x < x0 + cp; x++) {
+        const o = (y * width + x) * 4;
+        if (data[o + 3] < 128) continue;
+        samples.push([data[o], data[o + 1], data[o + 2]]);
+      }
+    }
+  }
+  if (samples.length < 24) return null;
+  const channel = (i: 0 | 1 | 2) => {
+    const vals = samples.map((s) => s[i]).sort((a, b) => a - b);
+    return vals[vals.length >> 1];
+  };
+  const med: Rgb = [channel(0), channel(1), channel(2)];
+  const greenish = (c: Rgb) => c[1] > c[0] + 12 && c[1] > c[2] + 12;
+  const magentaish = (c: Rgb) => c[0] > c[1] + 12 && c[2] > c[1] + 12;
+  const nominalGreen = nominal[1] > nominal[0] && nominal[1] > nominal[2];
+  if (nominalGreen ? !greenish(med) : !magentaish(med)) return null;
+  return med;
+}
+
+function closest(r: number, g: number, b: number, keys: Rgb[]): { d: number; key: Rgb } {
+  let d = Infinity;
+  let key = keys[0];
+  for (const k of keys) {
+    const next = dist(r, g, b, k);
+    if (next < d) { d = next; key = k; }
+  }
+  return { d, key };
+}
+
+function keyOne(frame: Frame, keys: Rgb[]): Frame {
   const data = Buffer.from(frame.data);
   for (let o = 0; o < data.length; o += 4) {
-    const d = dist(data[o], data[o + 1], data[o + 2], key);
+    const { d, key } = closest(data[o], data[o + 1], data[o + 2], keys);
     if (d <= HARD) {
       data[o + 3] = 0;
       continue;
@@ -111,8 +150,25 @@ function interiorMask(frame: Frame, key: Rgb): Uint8Array {
  * Remove the key colour in every pixel, enclosed pockets included.
  * Frame 0 can restore a later pixel only when that pixel is not close to the key.
  */
+/** Opaque plate: transparent pixels become the key colour so a video model has a flat ground to keep. */
+export function compositeOverKey(frame: Frame, key: Rgb): Frame {
+  const data = Buffer.from(frame.data);
+  for (let o = 0; o < data.length; o += 4) {
+    const a = data[o + 3] / 255;
+    data[o] = Math.round(data[o] * a + key[0] * (1 - a));
+    data[o + 1] = Math.round(data[o + 1] * a + key[1] * (1 - a));
+    data[o + 2] = Math.round(data[o + 2] * a + key[2] * (1 - a));
+    data[o + 3] = 255;
+  }
+  return { data, width: frame.width, height: frame.height };
+}
+
 export function keyChromaFrames(frames: Frame[], key: Rgb): Frame[] {
-  const out = frames.map((f) => keyOne(f, key));
+  const keysByFrame = frames.map((f) => {
+    const sampled = cornerKey(f, key);
+    return sampled ? [key, sampled] : [key];
+  });
+  const out = frames.map((f, i) => keyOne(f, keysByFrame[i]));
   if (out.length < 2) return out;
   const interior = interiorMask(out[0], key);
   const width = out[0].width;
@@ -132,7 +188,7 @@ export function keyChromaFrames(frames: Frame[], key: Rgb): Frame[] {
         if (sx < 0 || sx >= width) continue;
         if (!interior[sy * width + sx]) continue;
         const o = (y * width + x) * 4;
-        if (dist(data[o], data[o + 1], data[o + 2], key) <= SOFT) continue;
+        if (closest(data[o], data[o + 1], data[o + 2], keysByFrame[f]).d <= SOFT) continue;
         data[o + 3] = 255;
       }
     }
