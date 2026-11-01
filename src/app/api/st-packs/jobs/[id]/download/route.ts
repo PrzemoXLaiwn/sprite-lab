@@ -6,7 +6,7 @@
 import { NextResponse } from "next/server";
 import { JOB_ID_RE, requireStAdmin } from "../../../_lib/guard";
 import { isExpressionLabel } from "@/config/st-expressions";
-import { getR2ObjectBuffer, getR2SignedGetUrl } from "@/lib/r2";
+import { getR2ObjectBuffer, getR2ObjectStream, getR2SignedGetUrl, zipDelivery } from "@/lib/r2";
 import { buildArtifacts, buildExtraArchive, getJob, jobSlug } from "@/lib/st-packs/jobs";
 import { packFileName, readmeText } from "@/lib/st-packs/package";
 
@@ -68,9 +68,28 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
         if (!key) return notFound();
         const type = kind === "zip" ? "application/zip" : "image/gif";
         const name = packFileName(slug, kind);
-        // The browser fetches the bytes from storage. The function only mints the URL.
-        const signed = await getR2SignedGetUrl(key, { contentType: type, filename: name });
-        if (signed) return NextResponse.redirect(signed, 302);
+        const signed = await getR2SignedGetUrl(key, { contentType: type, filename: name }).catch((err) => {
+          console.error("[st-packs] zip presign failed:", err instanceof Error ? err.message : err);
+          return null;
+        });
+        if (zipDelivery(signed, process.env.R2_ACCOUNT_ID) === "redirect" && signed) {
+          return NextResponse.redirect(signed, 302);
+        }
+        // Same-origin stream with the real size. A buffered body over ~4.5 MB never saves.
+        const opened = await getR2ObjectStream(key).catch((err) => {
+          console.error("[st-packs] zip stream failed:", err instanceof Error ? err.message : err);
+          return null;
+        });
+        if (opened) {
+          return new NextResponse(opened.body, {
+            headers: {
+              "Content-Type": type,
+              "Content-Length": String(opened.contentLength),
+              "Content-Disposition": `attachment; filename="${name.replace(/["\r\n]/g, "")}"`,
+              "Cache-Control": "private, no-store",
+            },
+          });
+        }
         const buf = await getR2ObjectBuffer(key);
         return buf ? file(buf, type, name) : notFound();
       }

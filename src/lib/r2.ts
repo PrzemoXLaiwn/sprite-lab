@@ -322,17 +322,52 @@ export function getR2PublicUrl(key: string): string {
 }
 
 /**
+ * A presigned GET the browser can follow. Path-style on this account's R2
+ * endpoint only. Virtual-hosted names (`bucket.account.r2…`) do not resolve,
+ * which is what Chrome reports as "site wasn't available".
+ */
+export function signedDownloadUrlOk(url: string, accountId: string): boolean {
+  try {
+    return new URL(url).hostname === `${accountId}.r2.cloudflarestorage.com`;
+  } catch {
+    return false;
+  }
+}
+
+/** Redirect when the signed URL is on our R2 host; otherwise stream the bytes. */
+export function zipDelivery(signed: string | null, accountId: string | undefined): "redirect" | "stream" {
+  if (!signed || !accountId || !signedDownloadUrlOk(signed, accountId)) return "stream";
+  return "redirect";
+}
+
+function getR2PresignClient(): S3Client | null {
+  const accountId = process.env.R2_ACCOUNT_ID;
+  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+  if (!accountId || !accessKeyId || !secretAccessKey) return null;
+  return new S3Client({
+    region: "auto",
+    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+    credentials: { accessKeyId, secretAccessKey },
+    forcePathStyle: true,
+    // SDK defaults add a checksum the browser never sends, and R2 then rejects the GET.
+    requestChecksumCalculation: "WHEN_REQUIRED",
+    responseChecksumValidation: "WHEN_REQUIRED",
+  });
+}
+
+/**
  * Short-lived URL so the browser downloads straight from storage.
- * A 10–20 MB ZIP streamed through the function is dropped on the first click.
- * Null when R2 is not configured (the caller streams the bytes itself).
+ * Null when R2 is not configured, the signer hangs, or the host is not ours.
  */
 export async function getR2SignedGetUrl(
   key: string,
   opts: { contentType: string; filename: string; expiresSeconds?: number },
 ): Promise<string | null> {
-  const client = getR2Client();
+  const accountId = process.env.R2_ACCOUNT_ID;
+  const client = getR2PresignClient();
   const bucketName = process.env.R2_BUCKET_NAME;
-  if (!client || !bucketName) return null;
+  if (!client || !bucketName || !accountId) return null;
   const filename = opts.filename.replace(/["\r\n]/g, "");
   const command = new GetObjectCommand({
     Bucket: bucketName,
@@ -340,7 +375,24 @@ export async function getR2SignedGetUrl(
     ResponseContentType: opts.contentType,
     ResponseContentDisposition: `attachment; filename="${filename}"`,
   });
-  return getSignedUrl(client, command, { expiresIn: opts.expiresSeconds ?? 180 });
+  const signed = await Promise.race([
+    getSignedUrl(client, command, { expiresIn: opts.expiresSeconds ?? 180 }),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 2_000)),
+  ]);
+  if (!signed || !signedDownloadUrlOk(signed, accountId)) return null;
+  return signed;
+}
+
+/** Stream an object without buffering it. Content-Length is the stored size. */
+export async function getR2ObjectStream(key: string): Promise<{ body: ReadableStream<Uint8Array>; contentLength: number } | null> {
+  const client = getR2Client();
+  const bucketName = process.env.R2_BUCKET_NAME;
+  if (!client || !bucketName) return null;
+  const out = await client.send(new GetObjectCommand({ Bucket: bucketName, Key: key }), { abortSignal: AbortSignal.timeout(30_000) });
+  if (!out.Body) return null;
+  const contentLength = Number(out.ContentLength || 0);
+  if (!contentLength) return null;
+  return { body: out.Body.transformToWebStream(), contentLength };
 }
 
 function httpStatusOf(error: unknown): number | undefined {

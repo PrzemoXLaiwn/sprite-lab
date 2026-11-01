@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ST_QA } from "@/config/st-packs";
 import { computeQa } from "./qa";
-import { bustFrame, drawRect } from "./test-fixtures";
+import { bustFrame, drawRect, makeFrame } from "./test-fixtures";
 import type { Frame } from "./types";
 
 const W = 96;
@@ -102,5 +102,18 @@ describe("computeQa", () => {
     expect(empty.flags).toContain("no frames");
     const blank = computeQa([bustFrame(W, H, { headR: 0 })].map((f) => ({ ...f, data: Buffer.alloc(f.data.length) })), INFO);
     expect(blank.flags.some((f) => f.startsWith("alpha coverage"))).toBe(true);
+  });
+
+  it("flags a near-white field that leaves more than 65% of the frame opaque", () => {
+    const f = makeFrame(200, 200, [255, 253, 255, 255]);
+    const clear = (x: number, y: number) => { f.data[(y * 200 + x) * 4 + 3] = 0; };
+    for (let y = 0; y < 24; y++) for (let x = 0; x < 24; x++) {
+      clear(x, y); clear(199 - x, y); clear(x, 199 - y); clear(199 - x, 199 - y);
+    }
+    const res = computeQa([f], INFO);
+    expect(res.metrics.alpha_coverage).toBeGreaterThan(0.65);
+    expect(res.metrics.corner_opaque).toBe(0);
+    expect(res.flagged).toBe(true);
+    expect(res.flags.some((flag) => flag.startsWith("alpha coverage"))).toBe(true);
   });
 });

@@ -30,7 +30,13 @@ vi.mock("@/lib/st-packs/jobs", () => ({
   normaliseOptions: (o: unknown) => o,
   buildArtifacts: vi.fn(), buildExtraArchive: vi.fn(), jobSlug: () => "x",
 }));
-vi.mock("@/lib/r2", () => ({ getR2ObjectBuffer: async () => null, uploadBufferToR2: async () => ({ success: true }) }));
+vi.mock("@/lib/r2", () => ({
+  getR2ObjectBuffer: async () => null,
+  getR2ObjectStream: async () => null,
+  getR2SignedGetUrl: async () => null,
+  zipDelivery: () => "stream",
+  uploadBufferToR2: async () => ({ success: true }),
+}));
 vi.mock("@/lib/rate-limit", () => ({ rateLimitUserAction: async () => ({ blocked: null }) }));
 vi.mock("@/lib/runware", () => ({ generateStImage: vi.fn(), ProviderModerationError: class extends Error {} }));
 vi.mock("@/lib/prisma", () => ({ prisma: {} }));

@@ -462,6 +462,34 @@ function interiorTransparent(frame: Frame): number {
 }
 
 describe("production packs", () => {
+  it("keys the man's near-white ground when the coat owns the bottom edge", async () => {
+    const shipped = await loadFixture("man-joy-unkeyed-f8.png");
+    let opaque = 0;
+    for (let i = 3; i < shipped.data.length; i += 4) if (shipped.data[i] > 127) opaque++;
+    expect(opaque / (shipped.width * shipped.height)).toBeGreaterThan(0.65);
+    const restored = {
+      data: Buffer.from(shipped.data),
+      width: shipped.width,
+      height: shipped.height,
+    };
+    for (let i = 0; i < restored.data.length; i += 4) {
+      if (restored.data[i + 3] < 128) {
+        restored.data[i] = 255;
+        restored.data[i + 1] = 253;
+        restored.data[i + 2] = 255;
+        restored.data[i + 3] = 255;
+      }
+    }
+    const { frames } = matteFrames([restored, restored, restored]);
+    const out = frames[1];
+    let left = 0;
+    for (let i = 3; i < out.data.length; i += 4) if (out.data[i] > 127) left++;
+    expect(left / (out.width * out.height)).toBeLessThanOrEqual(0.65);
+    expect(pixel(out, 0, 0)[3]).toBe(0);
+    expect(pixel(out, 100, 100)[3]).toBe(0);
+    expect(pixel(out, 250, 500)[3]).toBe(255);
+  });
+
   it("seals the woman's interior shirt holes from the shipped webp frame", async () => {
     const frame = await loadFixture("woman-anger-f15.png");
     const before = interiorTransparent(frame);
