@@ -78,6 +78,9 @@ export const ST_VIDEO_MODELS: Record<string, StVideoModelSpec> = {
   // Frame mode only takes 720×1280 (9:16) — the 3:4 still is padded — but it
   // has a "small" movement amplitude, which is exactly an idle. $0.0825 per 4 s.
   "vidu:3@2": { air: "vidu:3@2", label: "Vidu Q2 Turbo", width: 720, height: 1280, fps: null, usdPerSecond: 0.0825 / 4, body: { providerSettings: { vidu: { movementAmplitude: "small", bgm: false } } } },
+  // Same 720×1280 first+last request as Turbo. 720p 6s first-frame example is
+  // $0.179; first-last 720p 8s is $0.234 (Runware docs, 2026-11-01).
+  "vidu:3@1": { air: "vidu:3@1", label: "Vidu Q2 Pro", width: 720, height: 1280, fps: null, usdPerSecond: 0.179 / 6, body: { providerSettings: { vidu: { movementAmplitude: "small", bgm: false } } } },
 };
 // Measured on the same still (Oct 2026): Vidu small-amplitude idle drifted 0.006 px with a clean
 // seam; LTX (enhancer off) still drifted 3 px with a pop. Vidu is the default.
@@ -213,8 +216,38 @@ export function viduQ2TurboClipUsd(seconds: number): number {
 }
 
 /** Provider list price for one clip. Vidu uses the table above; LTX stays per second. */
+/** Published first-frame 720p 6s is $0.179. First-last 720p 8s is $0.234. 5s rate card is $0.0963. */
+export function viduQ2ProClipUsd(seconds: number): number {
+  if (seconds >= 8) return 0.234;
+  if (seconds >= 6) return 0.179;
+  return 0.0963;
+}
+
+export const ST_SELECTABLE_VIDEO_MODELS = ["vidu:3@2", "vidu:3@1"] as const;
+
+export function isSelectableVideoModel(air: string): air is (typeof ST_SELECTABLE_VIDEO_MODELS)[number] {
+  return (ST_SELECTABLE_VIDEO_MODELS as readonly string[]).includes(air);
+}
+
+/**
+ * What an admin sees before picking a stronger clip model. Only the two Vidu
+ * rows are sent to Runware: they share the 720×1280 first+last request we
+ * already run. The others are priced from the Runware docs (2026-11-01) and
+ * are not wired, because their request shape is different or first+last at
+ * 720p is not what the example measured.
+ */
+export const ST_VIDEO_COST_TABLE = [
+  { label: "Vidu Q2 Turbo", air: "vidu:3@2", usd6: 0.1375, wired: true, note: "first+last. 6s estimated; 8s first-last example $0.193" },
+  { label: "Vidu Q2 Pro", air: "vidu:3@1", usd6: 0.179, wired: true, note: "published first-frame 720p 6s. First-last 720p 8s is $0.234" },
+  { label: "Wan 2.7", air: null, usd6: 0.6, wired: false, note: "$0.10/s at 720p. First-last 7s example $0.708. Not wired" },
+  { label: "Seedance 2.5", air: null, usd6: 1.38, wired: false, note: "$0.23/s at 720p. First-last 10s example $2.32. Not wired" },
+  { label: "Kling 3.0 Pro", air: null, usd6: 0.672, wired: false, note: "published first-frame 6s. First+last not confirmed. Not wired" },
+  { label: "Hailuo 2.3", air: null, usd6: 0.49, wired: false, note: "1080p 6s, not a 720p first-last price. Not wired" },
+] as const;
+
 export function clipListUsd(air: string, seconds: number): number {
   if (air === "vidu:3@2") return viduQ2TurboClipUsd(seconds);
+  if (air === "vidu:3@1") return viduQ2ProClipUsd(seconds);
   return videoModelSpec(air).usdPerSecond * seconds;
 }
 

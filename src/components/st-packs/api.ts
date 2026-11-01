@@ -34,6 +34,7 @@ export interface CreateJobBody {
     matteMode?: StMatteMode;
     videoSeconds?: StVideoSeconds;
     motion?: StMotionMode;
+    videoModel?: string;
     lossless?: boolean;
   };
 }

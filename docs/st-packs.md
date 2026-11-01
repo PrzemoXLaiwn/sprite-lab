@@ -84,6 +84,8 @@ Parameters (`src/config/st-packs.ts`, from the validated Python prototype):
   A 6 s clip is post-processed two at a time, same as a 4 s clip. LTX takes a true
   3:4 canvas but moves more (its prompt enhancer is off; it still drifted
   3 px with a pop on the test still vs 0.006 px for Vidu)
+- the expression edit paints a flat chroma background (`#00FF00`, or `#FF00FF` when the character is green). The clip is told to keep that colour, including gaps between an arm and the torso. The matte removes every pixel close to it, not only pixels the border can reach, and does not protect those pixels from frame 0. A white shirt and a grey coat stay opaque
+- the loop eases its tail onto an exact copy of frame 0, so a crossfade or a pinned last frame cannot leave a one-frame pose jump at the join
 - output is the native cropped frame (Vidu 720×960, LTX 768×1024). The clip
   is decoded at that size; there is no 1.5× working canvas
 - a closing frame that copies the first is dropped only when the frame

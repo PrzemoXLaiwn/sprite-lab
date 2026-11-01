@@ -25,6 +25,7 @@ const inputs: InputsState = {
   lossless: false,
   videoSeconds: 6,
   motion: "expressive",
+  videoModel: "vidu:3@2",
   candidateCount: 3,
 };
 

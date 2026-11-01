@@ -8,6 +8,7 @@ import { ST_EXPRESSIVE, ST_PIPELINE, qaThresholds, type StMatteMode, type StMoti
 import { encodeAnimatedWebp, type WebpResult } from "./encode";
 import { decodeVideo, framePng, pngFrame, type CropFraction } from "./frames";
 import { makeSeamlessLoop, resampleFps } from "./loop";
+import { keyChromaFrames, type Rgb } from "./chroma";
 import { clearEdgeBars, estimateBackground, matteAlpha, matteFrames, postMatte } from "./matte";
 import { computeQa } from "./qa";
 import { stabilizeFrames } from "./stabilize";
@@ -27,6 +28,8 @@ export interface ProcessOptions {
   lossless?: boolean;
   /** Subtle cancels idle drift. Expressive keeps a real body move and loosens drift/pop QA only. */
   motion?: StMotionMode;
+  /** When set, the matte removes this colour everywhere instead of flooding from the border. */
+  keyColour?: Rgb | null;
 }
 
 export interface ProcessResult {
@@ -70,6 +73,8 @@ export async function processClip(mp4: Buffer, opts: ProcessOptions): Promise<Pr
     };
     await Promise.all(Array.from({ length: Math.min(limit, raw.length) }, worker));
     frames = postMatte(out, bg);
+  } else if (opts.keyColour) {
+    frames = keyChromaFrames(frames, opts.keyColour);
   } else {
     frames = matteFrames(frames, opts.motion === "expressive"
       ? { interiorShiftMax: ST_EXPRESSIVE.interiorShiftPx, coverageMaxFrac: ST_EXPRESSIVE.coverageMaxFrac }

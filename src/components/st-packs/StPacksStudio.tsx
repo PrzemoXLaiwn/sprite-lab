@@ -41,6 +41,7 @@ const INITIAL_INPUTS: InputsState = {
   lossless: false,
   videoSeconds: 4,
   motion: "subtle",
+  videoModel: "vidu:3@2",
   candidateCount: 3,
 };
 
@@ -216,6 +217,7 @@ export function StPacksStudio() {
           matteMode: inputs.matteMode,
           videoSeconds: inputs.videoSeconds,
           motion: inputs.motion,
+          videoModel: inputs.videoModel,
           lossless: inputs.lossless,
         },
       });

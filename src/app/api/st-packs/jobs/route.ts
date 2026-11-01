@@ -6,6 +6,7 @@ import { requireStAdmin } from "../_lib/guard";
 import { ST_EXPRESSION_LABELS, ST_EXPRESSION_SETS, resolveExpressionLabels } from "@/config/st-expressions";
 import { ST_FRAMINGS, ST_MOTION_MODES, isOutputSize, isVideoSeconds, nativeContentSize, stPacksSettings, videoModelSpec } from "@/config/st-packs";
 import { getR2ObjectBuffer } from "@/lib/r2";
+import { chromaKeyForStill } from "@/lib/st-packs/chroma";
 import { rateLimitUserAction } from "@/lib/rate-limit";
 import { baseKeyFor, createJob, listJobs, normaliseOptions, runWork, tick } from "@/lib/st-packs/jobs";
 import { kickWorker } from "@/lib/st-packs/worker";
@@ -33,6 +34,7 @@ const Body = z.object({
     matteMode: z.enum(["key", "runware"]).optional(),
     videoSeconds: z.number().int().refine(isVideoSeconds).optional(),
     motion: z.enum(ST_MOTION_MODES).optional(),
+    videoModel: z.string().optional(),
     lossless: z.boolean().optional(),
   }).default({}),
 });
@@ -58,7 +60,9 @@ export async function POST(request: Request) {
   const labels = resolveExpressionLabels(b.expressionSet, b.labels ?? []);
   const native = nativeContentSize(videoModelSpec(stPacksSettings().videoModel));
   if (b.expressionSet === "custom" && labels.length < 1) return NextResponse.json({ error: "Pick at least one expression." }, { status: 400 });
-  if (!(await getR2ObjectBuffer(baseKeyFor(b.baseId)))) return NextResponse.json({ error: "That base image is gone. Upload or generate it again." }, { status: 404 });
+  const baseStill = await getR2ObjectBuffer(baseKeyFor(b.baseId));
+  if (!baseStill) return NextResponse.json({ error: "That base image is gone. Upload or generate it again." }, { status: 404 });
+  const keyColour = await chromaKeyForStill(baseStill).catch(() => "#00FF00");
 
   const id = await createJob({
     userId: guard.userId,
@@ -71,7 +75,7 @@ export async function POST(request: Request) {
     labels,
     width: native.width,
     height: native.height,
-    options: normaliseOptions(b.options),
+    options: normaliseOptions({ ...b.options, keyColour }),
   });
   // The background worker carries the job from here. If the kick cannot start,
   // one tick runs now; the poll keeps it moving. Not the 240 s loop.

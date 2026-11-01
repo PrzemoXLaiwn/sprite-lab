@@ -72,6 +72,9 @@ describe("prompts", () => {
       expect(prompt).toContain("no mechanical repetition");
       expect(prompt).toContain(ST_EXPRESSIVE_ACTING[l]);
       expect(prompt).toContain("last frame matches the first");
+      expect(prompt).toContain("ease in");
+      expect(prompt).toContain("Do not touch the face");
+      expect(videoPrompt(l, "expressive", "#00FF00")).toContain("#00FF00");
       expect(prompt).not.toMatch(/no head sway/);
       expect(prompt.length).toBeLessThan(2000);
     }

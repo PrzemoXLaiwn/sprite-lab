@@ -25,9 +25,10 @@ import { getR2ObjectBuffer, uploadBufferToR2 } from "@/lib/r2";
 import { generateStImage, pollStVideo, ProviderModerationError, removeBackgroundBuffer, submitStVideo } from "@/lib/runware";
 import { ST_EXPRESSION_LABELS, isExpressionLabel, type StExpressionLabel, type StExpressionSet } from "@/config/st-expressions";
 import {
-  ST_EDIT_MODEL, clipListUsd, estimateExpressionUsd, estimateJobUsd, isVideoSeconds, stPacksSettings, videoModelSpec,
+  ST_DEFAULT_VIDEO_MODEL, ST_EDIT_MODEL, clipListUsd, estimateExpressionUsd, estimateJobUsd, isSelectableVideoModel, isVideoSeconds, stPacksSettings, videoModelSpec,
   type StExpressionStatus, type StFraming, type StJobStatus, type StMatteMode,
 } from "@/config/st-packs";
+import { chromaHex, parseChromaHex } from "./chroma";
 import { videoProviderExtra } from "./video-task";
 import { alignToBase } from "./align";
 import { encodeGifFallback, encodePreviewGrid, stillPng } from "./encode";
@@ -60,6 +61,8 @@ export function normaliseOptions(raw: unknown, settings = stPacksSettings()): Jo
     matteMode: o.matteMode === "runware" ? "runware" : o.matteMode === "key" ? "key" : settings.matteMode,
     videoSeconds: Number.isFinite(seconds) && isVideoSeconds(Math.round(seconds)) ? Math.round(seconds) as 3 | 4 | 5 | 6 | 8 : settings.videoSeconds,
     motion: o.motion === "expressive" ? "expressive" : "subtle",
+    videoModel: typeof o.videoModel === "string" && isSelectableVideoModel(o.videoModel) ? o.videoModel : ST_DEFAULT_VIDEO_MODEL,
+    keyColour: (() => { const rgb = parseChromaHex(o.keyColour); return rgb ? chromaHex(rgb) : null; })(),
     lossless: o.lossless === true,
   };
 }
@@ -83,7 +86,7 @@ export interface CreateJobInput {
 }
 
 export async function createJob(input: CreateJobInput): Promise<string> {
-  const spec = videoModelSpec(stPacksSettings().videoModel);
+  const spec = videoModelSpec(input.options.videoModel);
   const estCostUsd = estimateJobUsd(input.labels, { videoSeconds: input.options.videoSeconds, matteMode: input.options.matteMode, model: spec.air });
   const job = await prisma.stPackJob.create({
     data: {
@@ -224,8 +227,8 @@ export async function tick(jobId: string): Promise<{ snapshot: JobSnapshot | nul
   await recoverExpired(job);
   job = (await getJob(jobId))!;
   const settings = stPacksSettings();
-  const spec = videoModelSpec(settings.videoModel);
   const options = normaliseOptions(job.options, settings);
+  const spec = videoModelSpec(options.videoModel);
   const work: Work[] = [];
   const order = new Map(ST_EXPRESSION_LABELS.map((l, i) => [l, i]));
   const exprs = [...job.expressions].sort((a, b) => (order.get(a.label as StExpressionLabel) ?? 99) - (order.get(b.label as StExpressionLabel) ?? 99));
@@ -342,7 +345,7 @@ async function runEdit(exprId: string): Promise<void> {
     } else {
       const ctx = operationContext(e, settings.maxUsdPerExpression - e.costUsd);
       const { image } = await runInOperation(ctx, () => generateStImage({
-        prompt: editPrompt(e.label as StExpressionLabel, job.styleNotes, { motion: options.motion, framing: job.framing as StFraming }),
+        prompt: editPrompt(e.label as StExpressionLabel, job.styleNotes, { motion: options.motion, framing: job.framing as StFraming, keyColour: options.keyColour }),
         reference: base,
         width: ST_EDIT_MODEL.width,
         height: ST_EDIT_MODEL.height,
@@ -380,7 +383,7 @@ async function runSubmit(exprId: string): Promise<void> {
   const { e, job } = loaded;
   const settings = stPacksSettings();
   const options = normaliseOptions(job.options, settings);
-  const spec = videoModelSpec(settings.videoModel);
+  const spec = videoModelSpec(options.videoModel);
   try {
     const edit = await mustRead(e.editKey, "Edited still");
     const { png: still, crop } = await padToCanvas(edit, spec.width, spec.height);
@@ -394,7 +397,7 @@ async function runSubmit(exprId: string): Promise<void> {
     await submitStVideo({
       taskUUID,
       model: spec.air,
-      prompt: videoPrompt(e.label as StExpressionLabel, options.motion),
+      prompt: videoPrompt(e.label as StExpressionLabel, options.motion, options.keyColour),
       still,
       width: spec.width,
       height: spec.height,
@@ -482,6 +485,7 @@ async function runPost(exprId: string): Promise<void> {
       crop: timingsOf(e).crop,
       lossless: options.lossless,
       motion: options.motion,
+      keyColour: parseChromaHex(options.keyColour),
     }));
     await addCost(e, ctx.spentUsd);
     const webpKey = await put(result.webp.webp, exprKey(job.id, e.label, "loop.webp"), "image/webp");
