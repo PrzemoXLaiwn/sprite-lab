@@ -89,7 +89,24 @@ export function borderClusters(frame: Frame, key: Rgb): Rgb[] {
     for (let x = width - ring; x < width; x++) add(x, y);
   }
   if (total === 0) return [];
-  return clusters.filter((c) => c.n / total >= CLUSTER_MIN_SHARE).map((c) => c.c);
+  // A zoomed edit puts hair and jacket against the sides: dark, and plenty of
+  // it. Those clusters are character. A backdrop (a band, an upload's own
+  // ground) also fills the top strip or a top corner; the character does not.
+  const covers = (c: Rgb, x0: number, y0: number, w: number, h: number) => {
+    let hit = 0, n = 0;
+    const r2 = CLUSTER_RADIUS * CLUSTER_RADIUS;
+    for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) {
+      const o = (y * width + x) * 4;
+      n++;
+      if (data[o + 3] >= 128 && d2(data[o], data[o + 1], data[o + 2], c) <= r2) hit++;
+    }
+    return n ? hit / n : 0;
+  };
+  const cp = Math.max(4, Math.min(16, width >> 3, height >> 3));
+  return clusters
+    .filter((c) => c.n / total >= CLUSTER_MIN_SHARE)
+    .filter((c) => covers(c.c, 0, 0, width, ring) >= 0.5 || covers(c.c, 0, 0, cp, cp) >= 0.5 || covers(c.c, width - cp, 0, cp, cp) >= 0.5)
+    .map((c) => c.c);
 }
 
 function nearestD2(r: number, g: number, b: number, colours: Rgb[]): number {
@@ -300,6 +317,12 @@ export function measureFraming(mask: Uint8Array, width: number, height: number, 
   return { top, upperWidth: widths[widths.length >> 1], centreX: sx / sn, left, right, bottom };
 }
 
+/**
+ * Per row: the outermost subject pixels. (A pixel count was tried: the
+ * segmented neutral and a colour-keyed edit disagree on hair wisps by a few
+ * percent, which read as a 4 % zoom on identical framing.) Thin artefact
+ * lines are cleared before this, so they cannot stretch an extent.
+ */
 interface RowProfile { left: Int32Array; right: Int32Array }
 
 function rowProfile(mask: Uint8Array, width: number, height: number): RowProfile {
@@ -457,6 +480,8 @@ export interface PreparedStill {
   ringRatio: number;
   ok: boolean;
   align: { scale: number; dx: number; dy: number; moved: boolean; failed: boolean } | null;
+  /** The edit lost part of the body against the reference (zoomed in by the model). */
+  cropped?: boolean;
 }
 
 /**
@@ -465,14 +490,281 @@ export interface PreparedStill {
  */
 export function prepareStill(still: Frame, key: Rgb, reference?: Frame | null): PreparedStill {
   let frame = backgroundToKey(still, key);
+  clearStrays(frame, key);
   let align: PreparedStill["align"] = null;
   if (reference) {
     const a = alignStill(reference, frame, key);
     align = { scale: a.scale, dx: a.dx, dy: a.dy, moved: a.moved, failed: a.failed };
     frame = a.frame;
+    if (a.moved) clearStrays(frame, key);
   }
   const ringRatio = backdropRingRatio(frame, key);
-  return { frame, ringRatio, ok: ringRatio >= STILL_RING_MIN && !align?.failed, align };
+  const cropped = !!reference && !!align && !align.failed && isCroppedAgainst(reference, frame, key);
+  return { frame, ringRatio, ok: ringRatio >= STILL_RING_MIN && !align?.failed && !cropped, align, cropped };
+}
+
+/**
+ * After alignment, a zoomed edit shrinks and its lost parts show: the body
+ * stops in a straight line above the neutral's, or a side is missing. The
+ * edit is redrawn rather than animated with a hard cut.
+ */
+export function isCroppedAgainst(reference: Frame, frame: Frame, key: Rgb): boolean {
+  const r = measureFraming(subjectMask(reference, key), reference.width, reference.height);
+  const f = measureFraming(subjectMask(frame, key), frame.width, frame.height);
+  if (!r || !f) return false;
+  const tolY = Math.round(frame.height * 0.06);
+  const tolX = Math.round(frame.width * 0.06);
+  return f.bottom < r.bottom - tolY || f.left > r.left + tolX || f.right < r.right - tolX;
+}
+
+/**
+ * Subject pieces that are not the character: a thin line along an edge the
+ * edit left (it showed as a light vertical line after the zoom) and specks.
+ * Each 4-connected piece is kept only when it is a real part: at least
+ * 0.2 % of the largest piece and not a line one to four pixels wide.
+ */
+export function clearStrays(frame: Frame, key: Rgb): number {
+  const cleared = clearThinLines(frame, key);
+  return cleared + clearSmallPieces(frame, key);
+}
+
+/** A straight run this long, at most 3 px wide with key on both sides, is an artefact line. */
+const LINE_MIN_RUN = 40;
+const LINE_GAP = 3;
+
+/**
+ * Nano Banana redraws the edge of an upload's backdrop rectangle as a faint
+ * 1 px line that runs into the jacket at the bottom, so it is not a separate
+ * piece. A pixel is "thin" when the subject is absent 3 px left and right of
+ * it (or above and below); a straight vertical (horizontal) run of thin
+ * pixels this long is cleared. Hair strands curve and do not stay in one
+ * column for 40 px.
+ */
+function clearThinLines(frame: Frame, key: Rgb): number {
+  const { width, height, data } = frame;
+  const mask = subjectMask(frame, key);
+  const thinV = (x: number, y: number) => {
+    const i = y * width + x;
+    if (!mask[i]) return false;
+    const l = x - LINE_GAP - 1, r = x + LINE_GAP + 1;
+    return (l < 0 || !mask[i - LINE_GAP - 1]) && (r >= width || !mask[i + LINE_GAP + 1]);
+  };
+  const thinH = (x: number, y: number) => {
+    const i = y * width + x;
+    if (!mask[i]) return false;
+    const u = y - LINE_GAP - 1, d = y + LINE_GAP + 1;
+    return (u < 0 || !mask[i - (LINE_GAP + 1) * width]) && (d >= height || !mask[i + (LINE_GAP + 1) * width]);
+  };
+  const paint = (i: number) => { const o = i * 4; data[o] = key[0]; data[o + 1] = key[1]; data[o + 2] = key[2]; data[o + 3] = 255; };
+  let cleared = 0;
+  for (let x = 0; x < width; x++) {
+    let start = -1;
+    for (let y = 0; y <= height; y++) {
+      const on = y < height && thinV(x, y);
+      if (on && start < 0) start = y;
+      if (!on && start >= 0) {
+        if (y - start >= LINE_MIN_RUN) for (let yy = start; yy < y; yy++) { paint(yy * width + x); cleared++; }
+        start = -1;
+      }
+    }
+  }
+  for (let y = 0; y < height; y++) {
+    let start = -1;
+    for (let x = 0; x <= width; x++) {
+      const on = x < width && thinH(x, y);
+      if (on && start < 0) start = x;
+      if (!on && start >= 0) {
+        if (x - start >= LINE_MIN_RUN) for (let xx = start; xx < x; xx++) { paint(y * width + xx); cleared++; }
+        start = -1;
+      }
+    }
+  }
+  return cleared;
+}
+
+function clearSmallPieces(frame: Frame, key: Rgb): number {
+  const { width, height, data } = frame;
+  const mask = subjectMask(frame, key);
+  const n = width * height;
+  const label = new Int32Array(n).fill(-1);
+  const comps: Array<{ area: number; minx: number; maxx: number; miny: number; maxy: number }> = [];
+  const stack: number[] = [];
+  for (let i = 0; i < n; i++) {
+    if (!mask[i] || label[i] >= 0) continue;
+    const id = comps.length;
+    const c = { area: 0, minx: width, maxx: 0, miny: height, maxy: 0 };
+    label[i] = id;
+    stack.push(i);
+    while (stack.length) {
+      const q = stack.pop() as number;
+      const x = q % width, y = (q / width) | 0;
+      c.area++;
+      if (x < c.minx) c.minx = x;
+      if (x > c.maxx) c.maxx = x;
+      if (y < c.miny) c.miny = y;
+      if (y > c.maxy) c.maxy = y;
+      const visit = (r: number) => { if (mask[r] && label[r] < 0) { label[r] = id; stack.push(r); } };
+      if (x > 0) visit(q - 1);
+      if (x + 1 < width) visit(q + 1);
+      if (y > 0) visit(q - width);
+      if (y + 1 < height) visit(q + width);
+    }
+    comps.push(c);
+  }
+  if (comps.length < 2) return 0;
+  const largest = Math.max(...comps.map((c) => c.area));
+  const drop = comps.map((c) => {
+    if (c.area === largest) return false;
+    const w = c.maxx - c.minx + 1, h = c.maxy - c.miny + 1;
+    const line = (w <= 4 && h >= 30) || (h <= 4 && w >= 30);
+    return line || c.area < largest * 0.002;
+  });
+  let cleared = 0;
+  for (let i = 0; i < n; i++) {
+    const id = label[i];
+    if (id < 0 || !drop[id]) continue;
+    const o = i * 4;
+    data[o] = key[0]; data[o + 1] = key[1]; data[o + 2] = key[2]; data[o + 3] = 255;
+    cleared++;
+  }
+  return cleared;
+}
+
+/** Holes in a segmentation smaller than this share of the canvas are filled from the original. */
+const SEG_HOLE_MAX = 0.012;
+
+/**
+ * A segmentation model sometimes leaves a dark jacket on a dark backdrop
+ * partly transparent: a green patch inside the character. Transparent
+ * regions that the border cannot reach and that are small are filled with
+ * the original pixels. A gap between an arm and the torso is larger and stays.
+ */
+export function fillSegmentationHoles(cut: Frame, original: Frame): number {
+  const { width, height } = cut;
+  const n = width * height;
+  const clear = new Uint8Array(n);
+  for (let i = 0; i < n; i++) clear[i] = cut.data[i * 4 + 3] < 128 ? 1 : 0;
+  const seen = new Uint8Array(n);
+  const stack: number[] = [];
+  for (let x = 0; x < width; x++) for (const y of [0, height - 1]) { const i = y * width + x; if (clear[i] && !seen[i]) { seen[i] = 1; stack.push(i); } }
+  for (let y = 0; y < height; y++) for (const x of [0, width - 1]) { const i = y * width + x; if (clear[i] && !seen[i]) { seen[i] = 1; stack.push(i); } }
+  while (stack.length) {
+    const q = stack.pop() as number;
+    const x = q % width;
+    const visit = (r: number) => { if (clear[r] && !seen[r]) { seen[r] = 1; stack.push(r); } };
+    if (x > 0) visit(q - 1);
+    if (x + 1 < width) visit(q + 1);
+    if (q >= width) visit(q - width);
+    if (q + width < n) visit(q + width);
+  }
+  // Remaining clear pixels are holes; group them and fill the small ones
+  let filled = 0;
+  const done = new Uint8Array(n);
+  for (let i = 0; i < n; i++) {
+    if (!clear[i] || seen[i] || done[i]) continue;
+    const pixels: number[] = [];
+    done[i] = 1;
+    stack.push(i);
+    while (stack.length) {
+      const q = stack.pop() as number;
+      pixels.push(q);
+      const x = q % width;
+      const visit = (r: number) => { if (clear[r] && !seen[r] && !done[r]) { done[r] = 1; stack.push(r); } };
+      if (x > 0) visit(q - 1);
+      if (x + 1 < width) visit(q + 1);
+      if (q >= width) visit(q - width);
+      if (q + width < n) visit(q + width);
+    }
+    if (pixels.length > n * SEG_HOLE_MAX) continue;
+    for (const q of pixels) {
+      const o = q * 4;
+      cut.data[o] = original.data[o]; cut.data[o + 1] = original.data[o + 1]; cut.data[o + 2] = original.data[o + 2]; cut.data[o + 3] = 255;
+    }
+    filled += pixels.length;
+  }
+  // Semi-transparent pixels deep inside (not touching any clear border region) are made opaque too
+  for (let i = 0; i < n; i++) {
+    const o = i * 4;
+    const a = cut.data[o + 3];
+    if (a >= 128 && a < 255) {
+      const x = i % width;
+      const nearOutside = (x > 0 && seen[i - 1]) || (x + 1 < width && seen[i + 1]) || (i >= width && seen[i - width]) || (i + width < n && seen[i + width]);
+      if (!nearOutside) {
+        cut.data[o] = original.data[o]; cut.data[o + 1] = original.data[o + 1]; cut.data[o + 2] = original.data[o + 2]; cut.data[o + 3] = 255;
+      }
+    }
+  }
+  return filled;
+}
+
+// ── the neutral reference ────────────────────────────────────────────────────
+/** A usable reference covers between these shares of the canvas. */
+const REF_MIN_COVER = 0.03;
+const REF_MAX_COVER = 0.85;
+
+export function subjectCover(frame: Frame, key: Rgb): number {
+  const mask = subjectMask(frame, key);
+  let n = 0;
+  for (let i = 0; i < mask.length; i++) n += mask[i];
+  return n / mask.length;
+}
+
+/**
+ * True when the reference's subject looks like a character and not like a
+ * leftover backdrop rectangle: it covers a plausible share of the canvas and
+ * does not fill the top row (a head never spans the whole width).
+ */
+export function isUsableReference(frame: Frame, key: Rgb): boolean {
+  const cover = subjectCover(frame, key);
+  if (cover < REF_MIN_COVER || cover > REF_MAX_COVER) return false;
+  const mask = subjectMask(frame, key);
+  const f = measureFraming(mask, frame.width, frame.height);
+  if (!f) return false;
+  let topRow = 0;
+  for (let x = 0; x < frame.width; x++) topRow += mask[f.top * frame.width + x];
+  return topRow < frame.width * 0.6;
+}
+
+export interface NeutralReference extends PreparedStill {
+  /** The backdrop came from a segmentation model, not from the colour flood. */
+  segmented: boolean;
+  /** Safe to align the edits to. */
+  usable: boolean;
+}
+
+/**
+ * The neutral still and the reference every edit is aligned to. An upload
+ * keeps its own backdrop, and a dark character on a dark backdrop cannot be
+ * told apart by colour (Nov 2026: the whole dark rectangle stayed, and the
+ * edits were scaled to it). A segmentation model draws the alpha; the colour
+ * flood is the fallback when it is unavailable or returns nothing sensible.
+ */
+export async function neutralReference(
+  still: Frame, key: Rgb, segment?: (frame: Frame) => Promise<Frame | null>,
+): Promise<NeutralReference> {
+  if (segment) {
+    try {
+      const cut = await segment(still);
+      if (cut && cut.width === still.width && cut.height === still.height) {
+        const filled: Frame = { data: Buffer.from(cut.data), width: cut.width, height: cut.height };
+        fillSegmentationHoles(filled, still);
+        const data = filled.data;
+        for (let o = 0; o < data.length; o += 4) {
+          const a = data[o + 3] / 255;
+          data[o] = Math.round(data[o] * a + key[0] * (1 - a));
+          data[o + 1] = Math.round(data[o + 1] * a + key[1] * (1 - a));
+          data[o + 2] = Math.round(data[o + 2] * a + key[2] * (1 - a));
+          data[o + 3] = 255;
+        }
+        const prepared = prepareStill({ data, width: still.width, height: still.height }, key);
+        if (isUsableReference(prepared.frame, key)) return { ...prepared, segmented: true, usable: true };
+      }
+    } catch {
+      // fall through to the colour flood
+    }
+  }
+  const prepared = prepareStill(still, key);
+  return { ...prepared, segmented: false, usable: isUsableReference(prepared.frame, key) };
 }
 
 // ── video frames: black corners ──────────────────────────────────────────────

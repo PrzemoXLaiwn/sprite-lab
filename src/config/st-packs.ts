@@ -147,13 +147,13 @@ export const ST_PIPELINE = {
   stabilizeWindow: 5,
   stabilizeMaxShiftPx: 24,
   /**
-   * One encode, chosen up front: quality 90 and full alpha, effort 4.
-   * No ladder. A file over the cap is flagged, not re-encoded.
+   * HQ encode: quality 90 and full alpha, effort 4. Over the cap, one more
+   * encode at quality 80 (encodeWithinCap); still over is flagged.
    */
   webpQuality: 90,
   webpAlphaQuality: 100,
   webpEffort: 4,
-  /** Hard cap. QA flags a file over this; the encoder does not retry. */
+  /** Hard cap. Over it the encoder tries once smaller; QA flags what is still over. */
   webpMaxBytes: 6_000_000,
 } as const;
 

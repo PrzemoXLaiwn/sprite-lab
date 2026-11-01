@@ -8,9 +8,16 @@ import { prisma } from "@/lib/prisma";
 
 export type NeutralPlan = "omit" | "reuse" | "generate";
 
-/** sha256 of the stored base PNG. The same upload normalises to the same bytes. */
+/**
+ * Bumped whenever the neutral still is built differently. It is part of the
+ * hash, so a neutral made by an older pipeline (before the segmented
+ * reference: a dark upload kept its backdrop) is never reused.
+ */
+export const NEUTRAL_PIPELINE_VERSION = 2;
+
+/** sha256 of the stored base PNG and the pipeline version. The same upload normalises to the same bytes. */
 export function hashBasePng(png: Buffer): string {
-  return createHash("sha256").update(png).digest("hex");
+  return createHash("sha256").update(`neutral-v${NEUTRAL_PIPELINE_VERSION}\0`).update(png).digest("hex");
 }
 
 /**

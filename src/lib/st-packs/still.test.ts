@@ -107,18 +107,22 @@ describe("alignStill (bug 1: framing jumps between expressions)", () => {
   const base = backgroundToKey(figureOn(purple), KEY);
   const ref = measureFraming(subjectMask(base, KEY), W, H)!;
 
-  const edits: Array<[string, Frame]> = [
-    ["zoomed in, cut at the chest", figureOn(green, W / 2 - 20, 40, 1.3)],
-    ["zoomed out, shows more of the body", figureOn(green, W / 2 + 25, 120, 0.78)],
-    ["same scale, shifted", figureOn(green, W / 2 + 30, 95, 1)],
-    ["different canvas size", figureOn(green, 300, 60, 1.2, 600, 800)],
-    ["white band and a new crop", figureOn((x, y) => (y < 20 || x < 20 || x >= W - 20 ? [250, 250, 250] : KEY), W / 2 - 10, 50, 1.15)],
+  // [name, edit, the model zoomed in so far that the lower body is lost after alignment]
+  const edits: Array<[string, Frame, boolean]> = [
+    ["zoomed in, cut at the chest", figureOn(green, W / 2 - 20, 40, 1.3), true],
+    ["zoomed out, shows more of the body", figureOn(green, W / 2 + 25, 120, 0.78), false],
+    ["same scale, shifted", figureOn(green, W / 2 + 30, 85, 1), false],
+    ["different canvas size (relatively zoomed out)", figureOn(green, 300, 60, 1.2, 600, 800), false],
+    ["slightly zoomed with a white band", figureOn((x, y) => (y < 20 || x < 20 || x >= W - 20 ? [250, 250, 250] : KEY), W / 2 - 10, 62, 1.04), false],
+    ["white band and a big zoom", figureOn((x, y) => (y < 20 || x < 20 || x >= W - 20 ? [250, 250, 250] : KEY), W / 2 - 10, 50, 1.15), true],
   ];
 
-  for (const [name, edit] of edits) {
-    it(`${name}: head top, width and centre land within ±2 px of the reference`, () => {
+  for (const [name, edit, lostBody] of edits) {
+    it(`${name}: head top, width and centre land within ±2 px of the reference${lostBody ? "; the cut body sends it back for a redraw" : ""}`, () => {
       const prepared = prepareStill(edit, KEY, base);
-      expect(prepared.ok).toBe(true);
+      expect(prepared.cropped).toBe(lostBody);
+      expect(prepared.ok).toBe(!lostBody);
+      expect(prepared.ringRatio).toBeGreaterThanOrEqual(STILL_RING_MIN);
       expect(prepared.frame.width).toBe(W);
       expect(prepared.frame.height).toBe(H);
       const got = measureFraming(subjectMask(prepared.frame, KEY), W, H)!;
@@ -126,8 +130,10 @@ describe("alignStill (bug 1: framing jumps between expressions)", () => {
       expect(Math.abs(got.upperWidth - ref.upperWidth)).toBeLessThanOrEqual(2);
       expect(Math.abs(got.centreX - ref.centreX)).toBeLessThanOrEqual(2);
       // the whole silhouette sits in the same place (arms included)
-      expect(Math.abs(got.left - ref.left)).toBeLessThanOrEqual(3);
-      expect(Math.abs(got.right - ref.right)).toBeLessThanOrEqual(3);
+      if (!lostBody) {
+        expect(Math.abs(got.left - ref.left)).toBeLessThanOrEqual(3);
+        expect(Math.abs(got.right - ref.right)).toBeLessThanOrEqual(3);
+      }
     });
   }
 
@@ -142,6 +148,23 @@ describe("alignStill (bug 1: framing jumps between expressions)", () => {
     const empty = canvas(W, H, green);
     expect(alignStill(base, empty, KEY).failed).toBe(true);
     expect(prepareStill(empty, KEY, base).ok).toBe(false);
+  });
+});
+
+describe("artefact lines (prod, Nov 2026)", () => {
+  it("a 1 px light line that runs into the torso is cleared, and the framing still fits", () => {
+    const base = backgroundToKey(figureOn(purple), KEY);
+    const edit = figureOn(green);
+    // Nano Banana redraws the old backdrop edge as a faint line down to the jacket
+    const x = Math.round(W / 2 + 140);
+    for (let y = 30; y < H; y++) { const o = (y * W + x) * 4; edit.data[o] = 210; edit.data[o + 1] = 205; edit.data[o + 2] = 220; }
+    for (let y = 300; y < H; y++) for (let xx = W / 2 + 92; xx <= x; xx++) { const o = (y * W + xx) * 4; edit.data[o] = SHIRT[0]; edit.data[o + 1] = SHIRT[1]; edit.data[o + 2] = SHIRT[2]; }
+    const prepared = prepareStill(edit, KEY, base);
+    expect(prepared.align?.failed).toBe(false);
+    expect(Math.abs((prepared.align?.scale ?? 0) - 1)).toBeLessThan(0.01);
+    // the line above the torso is key now
+    expect(prepared.frame.data[(100 * W + x) * 4 + 1]).toBe(255);
+    expect(prepared.frame.data[(100 * W + x) * 4]).toBe(0);
   });
 });
 

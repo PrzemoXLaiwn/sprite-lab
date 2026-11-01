@@ -91,10 +91,16 @@ describe("default 8 pack, providers mocked", () => {
   ]));
   const ref = measureFraming(subjectMask(neutral.frame, KEY), W, H)!;
 
-  it("every still passes the gate before a clip would be paid for", () => {
+  // The mocked model zoomed joy (1.25) so far that more than 6 % of the body
+  // is gone: it goes back for one redraw. The milder zooms (1.1–1.15) lose
+  // less than that and are kept, aligned.
+  const ZOOMED = new Set(["joy"]);
+
+  it("every still gets a clean ring; only the over-zoomed edits are sent back for a redraw", () => {
     for (const label of ST_DEFAULT_LABELS) {
-      expect(stills[label].ok, label).toBe(true);
       expect(stills[label].ringRatio, label).toBeGreaterThanOrEqual(STILL_RING_MIN);
+      expect(!!stills[label].cropped, label).toBe(ZOOMED.has(label));
+      expect(stills[label].ok, label).toBe(!ZOOMED.has(label));
     }
   });
 
@@ -105,6 +111,7 @@ describe("default 8 pack, providers mocked", () => {
       expect(stills[label].frame.height, label).toBe(H);
       expect(Math.abs(f.top - ref.top), `${label} top`).toBeLessThanOrEqual(2);
       expect(Math.abs(f.centreX - ref.centreX), `${label} centre`).toBeLessThanOrEqual(2);
+      if (ZOOMED.has(label)) continue; // lost its sides; redrawn before any clip
       expect(Math.abs(f.left - ref.left), `${label} left`).toBeLessThanOrEqual(3);
       expect(Math.abs(f.right - ref.right), `${label} right`).toBeLessThanOrEqual(3);
     }

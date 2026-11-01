@@ -2,7 +2,7 @@
 // endless, each frame carries the 16 fps delay, and the file is encoded once.
 import { describe, expect, it } from "vitest";
 import sharp from "sharp";
-import { encodeAnimatedWebp, encodePreviewGrid, readAnimatedWebp } from "./encode";
+import { encodeAnimatedWebp, encodePreviewGrid, readAnimatedWebp, encodeWithinCap } from "./encode";
 import type { Frame } from "./types";
 
 function disc(w: number, h: number, cx: number, seed: number): Frame {
@@ -56,5 +56,22 @@ describe("encodeAnimatedWebp", () => {
     expect(meta.format).toBe("gif");
     expect(meta.pages).toBe(2);
     expect(meta.width).toBe(180);
+  });
+});
+
+describe("encodeWithinCap", () => {
+  it("re-encodes once, smaller, when the HQ file is over the cap; leaves a small file alone", async () => {
+    const frames = Array.from({ length: 6 }, (_, i) => {
+      const w = 96, h = 128, data = Buffer.alloc(w * h * 4);
+      for (let p = 0; p < w * h; p++) { data[p * 4] = (p * 31 + i * 17) & 255; data[p * 4 + 1] = (p * 7) & 255; data[p * 4 + 2] = (p * 13 + i) & 255; data[p * 4 + 3] = 255; }
+      return { data, width: w, height: h };
+    });
+    const roomy = await encodeWithinCap(frames, 16, 10_000_000);
+    expect(roomy.reencoded).toBe(false);
+    expect(roomy.quality).toBe(90);
+    const tight = await encodeWithinCap(frames, 16, Math.floor(roomy.bytes * 0.9));
+    expect(tight.reencoded).toBe(true);
+    expect(tight.quality).toBe(80);
+    expect(tight.bytes).toBeLessThan(roomy.bytes);
   });
 });

@@ -30,7 +30,7 @@ import {
 } from "@/config/st-packs";
 import { PROVIDER_BALANCE_MESSAGE, isProviderBalanceMessage } from "@/lib/provider-balance";
 import { chromaHex, parseChromaHex, type Rgb } from "./chroma";
-import { prepareStill, type PreparedStill } from "./still";
+import { isUsableReference, neutralReference, prepareStill, type PreparedStill } from "./still";
 import { findReusableNeutral, planNeutral, skippedEstimateLabels, type ReusableNeutral } from "./neutral-reuse";
 import { videoProviderExtra } from "./video-task";
 import { alignToBase } from "./align";
@@ -71,7 +71,7 @@ export function normaliseOptions(raw: unknown, settings = stPacksSettings()): Jo
   };
 }
 
-type Timings = StepTimings & { attempts?: Partial<Record<"edit" | "video" | "post", number>>; videoStartedAt?: number; align?: { dx: number; dy: number; scale: number; shifted: boolean }; loop?: string; crop?: CropFraction; videoModel?: string; fetch?: number; reusedFrom?: string; still?: { ring: number; editAttempts: number; scale?: number; moved?: boolean; alignFailed?: boolean } };
+type Timings = StepTimings & { attempts?: Partial<Record<"edit" | "video" | "post", number>>; videoStartedAt?: number; align?: { dx: number; dy: number; scale: number; shifted: boolean }; loop?: string; crop?: CropFraction; videoModel?: string; fetch?: number; reusedFrom?: string; still?: { ring: number; editAttempts: number; scale?: number; moved?: boolean; alignFailed?: boolean; referenceUsable?: boolean; segmented?: boolean; dx?: number; dy?: number; cropped?: boolean } };
 const timingsOf = (row: ExprRow): Timings => ((row.timings && typeof row.timings === "object" ? row.timings : {}) as Timings);
 
 // ── Create / list / snapshot ─────────────────────────────────────────────────
@@ -409,12 +409,20 @@ async function runEdit(exprId: string): Promise<void> {
       // pure key colour (bands, dark or purple uploads included) and, for an
       // edit, the framing matched to the neutral so the sprite does not jump
       // between expressions in SillyTavern.
-      const neutral = prepareStill(await pngFrame(base), rgb);
+      const neutral = await neutralStill(e, job, base, rgb, settings.maxUsdPerExpression - e.costUsd);
       let editAttempts = 0;
       const prepared = e.label === "neutral"
-        ? neutral
-        : await editUntilClean(e, job, options, base, rgb, neutral.frame, settings.maxUsdPerExpression - e.costUsd, (n) => { editAttempts = n; });
-      t.still = { ring: round2(prepared.ringRatio), editAttempts, scale: prepared.align ? round2(prepared.align.scale) : undefined, moved: prepared.align?.moved, alignFailed: prepared.align?.failed };
+        ? neutral.prepared
+        : await editUntilClean(e, job, options, base, rgb, neutral.usable ? neutral.prepared.frame : null, settings.maxUsdPerExpression - e.costUsd, (n) => { editAttempts = n; });
+      t.still = {
+        ring: round2(prepared.ringRatio), editAttempts,
+        scale: prepared.align ? round2(prepared.align.scale) : undefined,
+        dx: prepared.align ? round2(prepared.align.dx) : undefined,
+        dy: prepared.align ? round2(prepared.align.dy) : undefined,
+        moved: prepared.align?.moved, alignFailed: prepared.align?.failed, cropped: prepared.cropped,
+        referenceUsable: neutral.usable, segmented: neutral.segmented,
+      };
+      console.log(`[st-packs] ${job.id} ${e.label} still: ring ${(prepared.ringRatio * 100).toFixed(1)}%, scale ${t.still.scale ?? 1}, offset ${t.still.dx ?? 0},${t.still.dy ?? 0}, attempts ${editAttempts}, reference ${neutral.usable ? (neutral.segmented ? "segmented" : "flood") : "unusable"}`);
       editKey = await put(await stillPng(prepared.frame), exprKey(job.id, e.label, "edit.png"), "image/png");
     } else if (e.label === "neutral") {
       editKey = job.baseKey!;
@@ -459,7 +467,7 @@ async function runEdit(exprId: string): Promise<void> {
  * for a clip of a broken still. The cleaner of the two is kept.
  */
 async function editUntilClean(
-  e: ExprRow, job: JobRow, options: JobOptions, base: Buffer, rgb: Rgb, reference: Frame, capUsd: number,
+  e: ExprRow, job: JobRow, options: JobOptions, base: Buffer, rgb: Rgb, reference: Frame | null, capUsd: number,
   onAttempt: (n: number) => void,
 ): Promise<PreparedStill> {
   const ctx = operationContext(e, capUsd);
@@ -481,12 +489,54 @@ async function editUntilClean(
       const prepared = prepareStill(await pngFrame(edited), rgb, reference);
       if (!best || (prepared.ok && !best.ok) || (prepared.ok === best.ok && prepared.ringRatio > best.ringRatio)) best = prepared;
       if (prepared.ok) break;
-      console.warn(`[st-packs] ${e.label} edit ${attempt}: ring ${prepared.ringRatio.toFixed(3)}, align ${prepared.align?.failed ? "failed" : "ok"}`);
+      // Redraw only when the edit itself is at fault. A framing that cannot be
+      // measured against a good reference is; a reference that is not a
+      // character is not the edit's fault and a second edit would not help.
+      const ringBad = prepared.ringRatio < 0.97;
+      const editUnmeasurable = !!reference && !isUsableReference(prepared.frame, rgb);
+      if (!ringBad && !editUnmeasurable && !prepared.cropped) break;
+      console.warn(`[st-packs] ${e.label} edit ${attempt}: ring ${prepared.ringRatio.toFixed(3)}, align ${prepared.align?.failed ? "failed" : "ok"}, cropped ${!!prepared.cropped}`);
     }
   } finally {
     await addCost(e, ctx.spentUsd);
   }
   return best!;
+}
+
+const NEUTRAL_REF_FILE = "neutral-ref.png";
+
+/**
+ * The neutral still on the key colour, also the reference every edit is
+ * aligned to. Built once per job (segmentation, ~$0.002) and stored; later
+ * edits read it back. An unusable reference only disables the alignment.
+ */
+async function neutralStill(e: ExprRow, job: JobRow, base: Buffer, rgb: Rgb, capUsd: number): Promise<{ prepared: PreparedStill; usable: boolean; segmented: boolean }> {
+  const key = `st-packs/${job.id}/${NEUTRAL_REF_FILE}`;
+  const cached = await getR2ObjectBuffer(key).catch(() => null);
+  if (cached) {
+    const frame = await pngFrame(cached);
+    const prepared = prepareStill(frame, rgb);
+    return { prepared, usable: isUsableReference(prepared.frame, rgb), segmented: true };
+  }
+  const ctx = operationContext(e, capUsd);
+  try {
+    const baseFrame = await pngFrame(base);
+    const ref = await runInOperation(ctx, () => neutralReference(
+      // The base was normalised onto a grey canvas; the model sees exactly that still
+      baseFrame,
+      rgb,
+      async (f) => {
+        const png = await removeBackgroundBuffer(await stillPng(f));
+        if (!png) return null;
+        const cut = await pngFrame(png);
+        return cut.width === f.width && cut.height === f.height ? cut : pngFrame(await fitPng(png, f.width, f.height));
+      },
+    ));
+    if (ref.usable) await put(await stillPng(ref.frame), key, "image/png");
+    return { prepared: ref, usable: ref.usable, segmented: ref.segmented };
+  } finally {
+    await addCost(e, ctx.spentUsd);
+  }
 }
 
 /** Same rule as canSpend(), on a context that is not the active one. */
