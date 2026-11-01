@@ -41,11 +41,11 @@ const Body = z.object({
   }).default({}),
 });
 
-export async function GET(request?: Request) {
+export async function GET(request: Request) {
   const guard = await requireStAdmin();
   if (!guard.ok) return guard.response;
   const jobs = await listJobs(20);
-  const baseId = request ? new URL(request.url).searchParams.get("baseId") : null;
+  const baseId = new URL(request.url).searchParams.get("baseId");
   if (!baseId || !UUID_RE.test(baseId)) return NextResponse.json({ jobs });
   const png = await getR2ObjectBuffer(baseKeyFor(baseId));
   const neutralReuse = png ? !!(await findReusableNeutral(guard.userId, hashBasePng(png))) : false;
