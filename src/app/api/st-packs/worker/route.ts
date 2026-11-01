@@ -9,7 +9,7 @@ import { isStPacksEnabled } from "@/config/st-packs";
 import { JOB_ID_RE } from "../_lib/guard";
 import { WORKER_HEADER, kickWorker, workerLoop } from "@/lib/st-packs/worker";
 
-export const maxDuration = 300;
+export const maxDuration = 300; // keep in step with WORKER_MAX_MS
 
 function secretMatches(given: string | null): boolean {
   const expected = process.env.QUEUE_SECRET;

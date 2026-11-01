@@ -14,8 +14,18 @@ import type { JobSnapshot } from "./types";
 import { claimWorkerLease, releaseWorkerLease, renewWorkerLease, takeOverWorkerLease } from "./worker-lease";
 
 export const WORKER_HEADER = "x-queue-secret";
-/** How long one invocation keeps looping (the route allows 300 s). */
+/** How long one invocation keeps looping. The route's maxDuration is 300 s. */
 export const WORKER_BUDGET_MS = 240_000;
+/** Platform kill for this route. Keep equal to `maxDuration` in the worker route. */
+export const WORKER_MAX_MS = 300_000;
+/**
+ * Worst case of the longest step (post-processing, about two minutes).
+ * A tick claims the next step, so the loop hands off before calling tick when
+ * less than this remains — a step started in the last minute of the 300 s
+ * kill gets cut off. The crash locks in jobs.ts are longer than the slack
+ * under that kill, so the guard uses the runtime worst case.
+ */
+export const WORKER_STEP_WORST_MS = 120_000;
 /** Pause between ticks when nothing was ready to run (video still rendering). */
 export const WORKER_IDLE_MS = 3_000;
 
@@ -80,23 +90,34 @@ export async function kickWorker(jobId: string, opts?: { handoffFrom?: Date }): 
  */
 export async function workerLoop(
   jobId: string,
-  opts: { budgetMs?: number; leaseUntil?: Date | null } = {},
+  opts: { budgetMs?: number; leaseUntil?: Date | null; stepWorstMs?: number; maxDurationMs?: number } = {},
 ): Promise<{ snapshot: JobSnapshot | null; continueNeeded: boolean; handoffFrom: Date | null }> {
   const budgetMs = opts.budgetMs ?? WORKER_BUDGET_MS;
+  const stepWorstMs = opts.stepWorstMs ?? WORKER_STEP_WORST_MS;
+  const maxDurationMs = opts.maxDurationMs ?? WORKER_MAX_MS;
   let held = opts.leaseUntil ?? null;
   if (!held) {
     held = await claimWorkerLease(jobId);
     if (!held) return { snapshot: null, continueNeeded: false, handoffFrom: null };
   }
-  const deadline = Date.now() + budgetMs;
+  const started = Date.now();
+  const budgetDeadline = started + budgetMs;
+  const killAt = started + maxDurationMs;
   let snapshot: JobSnapshot | null = null;
-  while (Date.now() < deadline) {
+  const remaining = () => Math.min(budgetDeadline, killAt) - Date.now();
+  while (Date.now() < budgetDeadline && Date.now() < killAt) {
     const renewed = await renewWorkerLease(jobId, held);
     if (!renewed) return { snapshot, continueNeeded: false, handoffFrom: null };
     held = renewed;
+    // tick() claims the next step. Hand off first when that step cannot finish
+    // before the budget or the platform kill.
+    if (remaining() < stepWorstMs) return { snapshot, continueNeeded: true, handoffFrom: held };
     const t = await tick(jobId);
     snapshot = t.snapshot;
     if (!snapshot || snapshot.status !== "running") {
+      // The finishing tick queues pack.zip / the preview GIF and then marks
+      // the job done. Run that work before dropping the lease.
+      if (t.work.length) await runWork(t.work);
       await releaseWorkerLease(jobId, held);
       return { snapshot, continueNeeded: false, handoffFrom: null };
     }

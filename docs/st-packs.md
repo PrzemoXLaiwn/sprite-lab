@@ -110,7 +110,11 @@ Creating a job (and every regenerate / advance) kicks `POST /api/st-packs/worker
 — an internal route authenticated with `QUEUE_SECRET` (the `/api/queue`
 pattern). It answers 202 at once and loops in `after()`: tick → run the claimed
 steps → 3 s pause → … for up to 240 s, then hands its lease to a fresh
-invocation, until the job ends. One job has one worker. The kick
+invocation, until the job ends. Before a tick claims another step, the loop
+hands off when less than two minutes remain of the 240 s budget or of the 300 s
+function limit. Two minutes is the worst case for post-processing, the slowest
+step. The tick that marks the job finished also queues `pack.zip` and the
+preview GIF; that work runs before the lease is released. One job has one worker. The kick
 compare-and-swaps `st_pack_jobs.worker_lease_until` (60 s, renewed every loop,
 taken over by the successor — never cleared in between, so a poll cannot slip
 in). The page only reads snapshots. It kicks a worker only when that lease has

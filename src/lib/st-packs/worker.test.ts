@@ -7,11 +7,14 @@ import type { JobSnapshot } from "./types";
 const M = vi.hoisted(() => ({
   statuses: [] as string[],
   ran: 0,
+  ticks: 0,
   claims: 0,
   renews: 0,
   releases: [] as Date[],
+  events: [] as string[],
   takeOvers: 0,
   failRenewAt: 0,
+  workOnTerminal: false,
   claimResult: null as Date | null,
   takeOverResult: null as Date | null,
   token: new Date("2030-01-01T00:00:00.000Z"),
@@ -20,11 +23,15 @@ const M = vi.hoisted(() => ({
 vi.mock("./jobs", () => ({
   tick: async () => {
     await new Promise((r) => setTimeout(r, 2));
+    M.ticks++;
     const status = M.statuses.shift() ?? "done";
-    const work = status === "running" ? [async () => { M.ran++; }] : [];
+    const work = status === "running" || M.workOnTerminal ? [async () => { M.ran++; }] : [];
     return { snapshot: { id: "j", status, startedAt: null, createdAt: new Date().toISOString(), expressions: [] } as unknown as JobSnapshot, work };
   },
-  runWork: async (work: Array<() => Promise<void>>) => { for (const w of work) await w(); },
+  runWork: async (work: Array<() => Promise<void>>) => {
+    M.events.push("run");
+    for (const w of work) await w();
+  },
 }));
 
 vi.mock("./worker-lease", () => ({
@@ -39,6 +46,7 @@ vi.mock("./worker-lease", () => ({
     return M.token;
   },
   releaseWorkerLease: async (_id: string, held: Date) => {
+    M.events.push("release");
     M.releases.push(held);
     return true;
   },
@@ -54,11 +62,14 @@ describe("workerLoop", () => {
   beforeEach(() => {
     M.statuses.length = 0;
     M.ran = 0;
+    M.ticks = 0;
     M.claims = 0;
     M.renews = 0;
     M.releases = [];
+    M.events = [];
     M.takeOvers = 0;
     M.failRenewAt = 0;
+    M.workOnTerminal = false;
     M.token = new Date("2030-01-01T00:00:00.000Z");
     M.claimResult = M.token;
     M.takeOverResult = null;
@@ -66,7 +77,7 @@ describe("workerLoop", () => {
 
   it("renews the lease on every tick until the job leaves 'running', then releases it", async () => {
     M.statuses.push("running", "running", "done");
-    const out = await workerLoop("j", { budgetMs: 60_000 });
+    const out = await workerLoop("j", { budgetMs: 600_000 });
     expect(M.ran).toBe(2);
     expect(M.claims).toBe(1);
     expect(M.renews).toBe(3);
@@ -79,7 +90,7 @@ describe("workerLoop", () => {
   it("renews a lease the kick already claimed, instead of claiming a second one", async () => {
     M.statuses.push("done");
     const given = new Date("2030-02-01T00:00:00.000Z");
-    await workerLoop("j", { budgetMs: 60_000, leaseUntil: given });
+    await workerLoop("j", { budgetMs: 600_000, leaseUntil: given });
     expect(M.claims).toBe(0);
     expect(M.renews).toBe(1);
   });
@@ -87,7 +98,7 @@ describe("workerLoop", () => {
   it("stops without a successor when the lease was taken by someone else", async () => {
     M.failRenewAt = 1;
     M.statuses.push("running", "running");
-    const out = await workerLoop("j", { budgetMs: 60_000 });
+    const out = await workerLoop("j", { budgetMs: 600_000 });
     expect(M.ran).toBe(0);
     expect(M.releases).toHaveLength(0);
     expect(out.continueNeeded).toBe(false);
@@ -99,6 +110,36 @@ describe("workerLoop", () => {
     const out = await workerLoop("j", { budgetMs: 1 });
     expect(out.continueNeeded).toBe(true);
     expect(out.handoffFrom).toEqual(M.token);
+    expect(M.releases).toHaveLength(0);
+  });
+
+  it("runs the pack finalisation the finishing tick queued, then releases the lease", async () => {
+    M.workOnTerminal = true;
+    M.statuses.push("done");
+    const out = await workerLoop("j", { budgetMs: 600_000 });
+    expect(M.events).toEqual(["run", "release"]);
+    expect(M.ran).toBe(1);
+    expect(out.continueNeeded).toBe(false);
+    expect(out.handoffFrom).toBeNull();
+    expect(out.snapshot?.status).toBe("done");
+  });
+
+  it("hands off before tick when the remaining time cannot fit the longest step", async () => {
+    M.statuses.push("running", "running");
+    const out = await workerLoop("j", { budgetMs: 30_000 });
+    expect(M.ticks).toBe(0);
+    expect(M.ran).toBe(0);
+    expect(M.releases).toHaveLength(0);
+    expect(out.continueNeeded).toBe(true);
+    expect(out.handoffFrom).toEqual(M.token);
+  });
+
+  it("hands off before tick when the function kill is closer than the longest step, even if the budget is not", async () => {
+    M.statuses.push("running");
+    const out = await workerLoop("j", { budgetMs: 600_000, maxDurationMs: 30_000 });
+    expect(M.ticks).toBe(0);
+    expect(out.continueNeeded).toBe(true);
+    expect(out.handoffFrom).not.toBeNull();
     expect(M.releases).toHaveLength(0);
   });
 });
