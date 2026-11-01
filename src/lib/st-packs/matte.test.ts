@@ -1,5 +1,9 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import sharp from "sharp";
 import { describe, expect, it } from "vitest";
-import { closeSilhouette, defringe, estimateBackground, keyFrame, matteFrames, postMatte, temporalMedianAlpha } from "./matte";
+import { closeSilhouette, conformAlphaCoverage, defringe, estimateBackground, keyFrame, matteFrames, postMatte, sealInteriorHoles, temporalMedianAlpha } from "./matte";
 import { drawDisc, drawRect, makeFrame, pixel } from "./test-fixtures";
 import type { Frame } from "./types";
 
@@ -274,57 +278,36 @@ describe("matteFrames / postMatte", () => {
 });
 
 describe("gradient backdrop", () => {
-  it("clears a graded studio background the flat key would keep, and keeps enclosed light skin and grey cloth", () => {
+  it("clears a mild flat-grey field and keeps a light coat the loose key would enter", () => {
     const W = 96;
     const H = 128;
-    const f = makeFrame(W, H, [0, 0, 0, 255]);
-    const tone = (x: number, y: number) => {
-      const v = 110 + 130 * (x / (W - 1)) + 8 * (y / (H - 1));
-      const n = ((x * 17 + y * 13) % 5) - 2;
-      return Math.max(0, Math.min(255, Math.round(v + n)));
-    };
+    const bg: Rgb = [232, 232, 234];
+    const f = makeFrame(W, H, [bg[0], bg[1], bg[2], 255]);
     for (let y = 0; y < H; y++) {
       for (let x = 0; x < W; x++) {
-        const v = tone(x, y);
+        const n = ((x * 3 + y) % 5) - 2;
         const o = (y * W + x) * 4;
-        f.data[o] = v;
-        f.data[o + 1] = v;
-        f.data[o + 2] = Math.min(255, v + 2);
+        f.data[o] = bg[0] + n;
+        f.data[o + 1] = bg[1] + n;
+        f.data[o + 2] = bg[2] + n;
       }
     }
-    // Waist-up body reaches the bottom edge. Hair encloses the face so the
-    // near-white highlight is a hole, not a path out to the backdrop.
-    const sweater: Rgb = [120, 145, 185];
-    const hair: Rgb = [70, 48, 32];
-    const skin: Rgb = [230, 198, 176];
-    const highlight: Rgb = [252, 250, 248];
-    const collar: Rgb = [214, 214, 218];
-    drawRect(f, 30, 48, 70, H, sweater);
-    drawRect(f, 34, 36, 66, 78, hair);
-    drawRect(f, 40, 44, 60, 70, skin);
-    drawRect(f, 46, 52, 54, 60, highlight);
-    drawRect(f, 40, 78, 58, 92, collar);
-
-    const old = keyFrame(f, estimateBackground(f));
-    closeSilhouette(old);
-    expect(pixel(old, 4, 64)[3]).toBe(255);
-
+    const coat: Rgb = [196, 198, 202];
+    const shirt: Rgb = [250, 250, 252];
+    drawRect(f, 28, 36, 70, H, coat);
+    drawRect(f, 40, 48, 58, 100, shirt);
     const { frames } = matteFrames([f, f, f]);
     const out = frames[1];
     expect(pixel(out, 4, 64)[3]).toBe(0);
     expect(pixel(out, 90, 16)[3]).toBe(0);
-    expect(pixel(out, 16, 90)[3]).toBe(0);
-    expect(pixel(out, 50, 56)[3]).toBe(255);
-    expect(pixel(out, 50, 56).slice(0, 3)).toEqual(highlight);
-    expect(pixel(out, 48, 60)[3]).toBe(255);
-    expect(pixel(out, 48, 84)[3]).toBe(255);
-    expect(pixel(out, 36, 100)[3]).toBe(255);
-    expect(pixel(out, 2, 2)[3]).toBe(0);
+    expect(pixel(out, 32, 80)[3]).toBe(255);
+    expect(pixel(out, 48, 70)[3]).toBe(255);
+    expect(pixel(out, 48, 70).slice(0, 3)).toEqual(shirt);
   });
 });
 
 describe("enclosed backdrop", () => {
-  it("clears a side gap that matches the backdrop and keeps a central light shirt", () => {
+  it("keeps a trapped side gap opaque when the border cannot reach it, and keeps the shirt", () => {
     const W = 80;
     const H = 110;
     const bg: Rgb = [200, 200, 204];
@@ -338,8 +321,8 @@ describe("enclosed backdrop", () => {
     drawRect(f, 30, 36, 50, 96, shirt);
     const { frames } = matteFrames([f, f, f]);
     const out = frames[1];
-    expect(pixel(out, 22, 80)[3]).toBe(0);
-    expect(pixel(out, 56, 80)[3]).toBe(0);
+    expect(pixel(out, 22, 80)[3]).toBe(255);
+    expect(pixel(out, 56, 80)[3]).toBe(255);
     expect(pixel(out, 40, 60)[3]).toBe(255);
     expect(pixel(out, 40, 60).slice(0, 3)).toEqual(shirt);
     expect(pixel(out, 4, 4)[3]).toBe(0);
@@ -403,7 +386,115 @@ describe("enclosed backdrop", () => {
     expect(pixel(frames[2], 42, 110)[3]).toBe(0);
     expect(pixel(frames[0], 4, 4)[3]).toBe(0);
   });
+
+  it("keeps the shirt opaque when a later frame cracks the outline open to the backdrop", () => {
+    const W = 160;
+    const H = 210;
+    const bg: Rgb = [246, 246, 248];
+    const coat: Rgb = [22, 28, 52];
+    const shirt: Rgb = [254, 254, 255];
+    const scene = (): Frame => {
+      const f = makeFrame(W, H, [bg[0], bg[1], bg[2], 255]);
+      drawRect(f, 48, 36, 112, 200, coat);
+      drawRect(f, 58, 52, 102, 168, shirt);
+      return f;
+    };
+    const cracked = scene();
+    drawRect(cracked, 0, 100, 80, 104, bg);
+    const { frames } = matteFrames([scene(), cracked, scene()]);
+    expect(pixel(frames[1], 80, 102)[3]).toBe(255);
+    expect(pixel(frames[1], 4, 102)[3]).toBe(0);
+    expect(pixel(frames[0], 80, 102)[3]).toBe(255);
+  });
 });
+
+describe("shipped-frame repair", () => {
+  it("fills interior holes and replaces a frame that kept a backdrop slab", () => {
+    const base = subjectOnFlat(80, 80, 24);
+    const { frames } = matteFrames([base, base, base, base]);
+    const shirt = frames[1];
+    const o = (40 * 80 + 40) * 4;
+    shirt.data[o + 3] = 0;
+    shirt.data[o + 1 * 4 + 3] = 0;
+    sealInteriorHoles(frames);
+    expect(shirt.data[o + 3]).toBe(255);
+
+    const slab = frames[2];
+    for (let y = 0; y < 80; y++) {
+      for (let x = 0; x < 30; x++) slab.data[(y * 80 + x) * 4 + 3] = 255;
+    }
+    const replaced = conformAlphaCoverage(frames);
+    expect(replaced).toBe(1);
+    expect(pixel(slab, 2, 2)[3]).toBe(0);
+    expect(pixel(slab, 40, 40)[3]).toBe(255);
+  });
+});
+
+async function loadFixture(name: string): Promise<Frame> {
+  const png = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "fixtures", name));
+  const { data, info } = await sharp(png).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  return { data, width: info.width, height: info.height };
+}
+
+function interiorTransparent(frame: Frame): number {
+  const { data, width, height } = frame;
+  const n = width * height;
+  const open = new Uint8Array(n);
+  for (let i = 0; i < n; i++) if (data[i * 4 + 3] < 128) open[i] = 1;
+  const seen = new Uint8Array(n);
+  const q = new Int32Array(n);
+  let qt = 0;
+  const push = (i: number) => { if (!open[i] || seen[i]) return; seen[i] = 1; q[qt++] = i; };
+  for (let x = 0; x < width; x++) { push(x); push((height - 1) * width + x); }
+  for (let y = 0; y < height; y++) { push(y * width); push(y * width + width - 1); }
+  let qh = 0;
+  while (qh < qt) {
+    const i = q[qh++];
+    const x = i % width;
+    if (x > 0) push(i - 1);
+    if (x + 1 < width) push(i + 1);
+    if (i >= width) push(i - width);
+    if (i + width < n) push(i + width);
+  }
+  let c = 0;
+  for (let i = 0; i < n; i++) if (open[i] && !seen[i]) c++;
+  return c;
+}
+
+describe("production packs", () => {
+  it("seals the woman's interior shirt holes from the shipped webp frame", async () => {
+    const frame = await loadFixture("woman-anger-f15.png");
+    const before = interiorTransparent(frame);
+    expect(before).toBeGreaterThan(1000);
+    sealInteriorHoles([frame]);
+    expect(interiorTransparent(frame)).toBe(0);
+  });
+
+  it("drops the man's joy frame that kept a white backdrop slab", async () => {
+    const frames = await Promise.all(["man-joy-f15.png", "man-joy-f16.png", "man-joy-f17.png"].map(loadFixture));
+    const area = frames[0].width * frames[0].height;
+    const counts = frames.map((f) => {
+      let n = 0;
+      for (let i = 3; i < f.data.length; i += 4) if (f.data[i] > 127) n++;
+      return n;
+    });
+    expect(Math.abs(counts[1] - counts[0]) / area).toBeGreaterThan(0.03);
+    let whiteKept = 0;
+    for (let i = 0; i < area; i++) {
+      const o = i * 4;
+      if (frames[1].data[o + 3] > 200 && frames[0].data[o + 3] < 16 && frames[1].data[o] > 240 && frames[1].data[o + 1] > 240) whiteKept++;
+    }
+    expect(whiteKept).toBeGreaterThan(1000);
+    expect(conformAlphaCoverage(frames)).toBe(1);
+    expect(Math.abs(opaqueOf(frames[1]) - opaqueOf(frames[0])) / area).toBeLessThanOrEqual(0.03);
+  });
+});
+
+function opaqueOf(frame: Frame): number {
+  let n = 0;
+  for (let i = 3; i < frame.data.length; i += 4) if (frame.data[i] > 127) n++;
+  return n;
+}
 
 describe("closeSilhouette", () => {
   it("fills an enclosed hole and leaves the border-connected background clear", () => {
