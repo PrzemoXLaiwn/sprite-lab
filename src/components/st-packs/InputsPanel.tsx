@@ -11,10 +11,10 @@ import {
   type StExpressionLabel,
   type StExpressionSet,
 } from "@/config/st-expressions";
-import { ST_OUTPUT_SIZES, estimateJobUsd, type StFraming, type StMatteMode } from "@/config/st-packs";
+import { ST_DEFAULT_SIZE, estimateJobUsd, type StFraming, type StMatteMode } from "@/config/st-packs";
 import { ErrorNote, Field } from "@/components/tools/ToolWorkspace";
 import type { BaseCandidate } from "./api";
-import { CheckRow, FIELD_CLS, SIZE_LABEL, SelectSlot, formatUsd, labelTitle } from "./ui";
+import { CheckRow, FIELD_CLS, SelectSlot, formatUsd, labelTitle } from "./ui";
 
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
@@ -32,6 +32,7 @@ export interface InputsState {
   grid: boolean;
   readme: boolean;
   matteMode: StMatteMode;
+  lossless: boolean;
   videoSeconds: 3 | 4 | 5;
   candidateCount: 2 | 3 | 4;
 }
@@ -211,18 +212,13 @@ export function InputsPanel({
         </div>
       </Field>
 
-      {/* Output size */}
-      <Field label="Output size" labelFor={`${uid}-size`}>
-        <SelectSlot id={`${uid}-size`} value={`${inputs.width}x${inputs.height}`}
-          onChange={(v) => {
-            const [w, h] = v.split("x").map(Number);
-            const size = ST_OUTPUT_SIZES.find((s) => s.width === w && s.height === h);
-            if (size) onChange({ width: size.width, height: size.height });
-          }}>
-          {ST_OUTPUT_SIZES.map((s) => (
-            <option key={`${s.width}x${s.height}`} value={`${s.width}x${s.height}`}>{SIZE_LABEL(s.width, s.height)}</option>
-          ))}
-        </SelectSlot>
+      <Field label="Output" hint={`Native video frame, ${ST_DEFAULT_SIZE.width}×${ST_DEFAULT_SIZE.height}. The clip is processed at that size, not scaled up and back down.`}>
+        <div className="sl-card p-1.5">
+          <CheckRow checked={inputs.lossless} onChange={(v) => onChange({ lossless: v })}>
+            Lossless WebP
+          </CheckRow>
+        </div>
+        <p className="mt-1.5 text-[11.5px] leading-snug text-[#8A92BF]">Off is HQ lossy (quality 90, full alpha). Lossless keeps every pixel and makes a larger file.</p>
       </Field>
 
       {/* Options */}

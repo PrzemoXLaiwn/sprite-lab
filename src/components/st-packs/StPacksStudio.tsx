@@ -37,6 +37,7 @@ const INITIAL_INPUTS: InputsState = {
   grid: true,
   readme: true,
   matteMode: "key",
+  lossless: false,
   videoSeconds: 4,
   candidateCount: 3,
 };
@@ -205,6 +206,7 @@ export function StPacksStudio() {
           readme: inputs.readme,
           matteMode: inputs.matteMode,
           videoSeconds: inputs.videoSeconds,
+          lossless: inputs.lossless,
         },
       });
       const snap = await getJob(id);

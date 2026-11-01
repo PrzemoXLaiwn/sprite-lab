@@ -33,6 +33,7 @@ export interface CreateJobBody {
     readme: boolean;
     matteMode?: StMatteMode;
     videoSeconds?: number;
+    lossless?: boolean;
   };
 }
 

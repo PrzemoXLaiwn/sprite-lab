@@ -19,13 +19,12 @@ export const WORKER_BUDGET_MS = 240_000;
 /** Platform kill for this route. Keep equal to `maxDuration` in the worker route. */
 export const WORKER_MAX_MS = 300_000;
 /**
- * Worst case of the longest step (post-processing, about two minutes).
- * A tick claims the next step, so the loop hands off before calling tick when
- * less than this remains — a step started in the last minute of the 300 s
- * kill gets cut off. The crash locks in jobs.ts are longer than the slack
- * under that kill, so the guard uses the runtime worst case.
+ * Worst case of the longest step. Native 720×960 plus one WebP encode is well
+ * under a minute; 90 s still clears the 300 s kill if a post starts late in
+ * the 240 s budget. The loop hands off before tick when less than this remains,
+ * and the successor keeps the same lease.
  */
-export const WORKER_STEP_WORST_MS = 120_000;
+export const WORKER_STEP_WORST_MS = 90_000;
 /** Pause between ticks when nothing was ready to run (video still rendering). */
 export const WORKER_IDLE_MS = 3_000;
 

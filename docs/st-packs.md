@@ -73,7 +73,8 @@ Parameters (`src/config/st-packs.ts`, from the validated Python prototype):
   `movementAmplitude: small` is what makes the idle subtle. LTX takes a true
   3:4 canvas but moves more (its prompt enhancer is off; it still drifted
   3 px with a pop on the test still vs 0.006 px for Vidu)
-- working canvas 1.5× the output; output 504×672 (3:4) by default
+- output is the native cropped frame (Vidu 720×960, LTX 768×1024). The clip
+  is decoded at that size; there is no 1.5× working canvas
 - duplicate closing frame dropped when mean |last − first| < 0.02
 - key: per frame, a colour plane fitted to the outer 8 px border (subject
   pixels on that border are outliers and dropped); 4-connected flood from
@@ -88,8 +89,8 @@ Parameters (`src/config/st-packs.ts`, from the validated Python prototype):
 - stabiliser: band rows 80–97 %, moving average window 5, x always, y when
   |dy| > 0.5; shifts over 24 px are flagged instead of warped
 - loop: the clip is decoded at 16 fps; crossfade K = 8 × 16/24 ≈ 5 frames (≈ 0.33 s), tail dropped
-- WebP: quality 78/alpha 50 → 75 → 72 → 70/45 → 66, effort 6, target ≤ 1.48 MB,
-  hard cap 1.5 MB
+- WebP: one encode, quality 90, alpha quality 100, effort 4, hard cap 6 MB.
+  Lossless is optional on the job (default off) and is also a single encode
 
 ### Orchestration
 
@@ -105,8 +106,10 @@ runs a *tick*: expired locks are recovered, the next steps are claimed with
 step), and the claimed steps run in `after()` after the response, each well
 under the 300 s function limit. Each step is retried once; the Runware task id
 is written before the clip is submitted, so a crash never submits twice.
-Concurrency: `ST_PACKS_CONCURRENCY` busy expressions (`ST_PACKS_POST_CONCURRENCY`, default 1, for post-processing),
-`ST_PACKS_VIDEO_CONCURRENCY` open video tasks.
+Concurrency: `ST_PACKS_CONCURRENCY` busy expressions (default 4),
+`ST_PACKS_POST_CONCURRENCY` (default 2) post-processes inside that one worker,
+`ST_PACKS_VIDEO_CONCURRENCY` (default 8) open video tasks — a full default set
+in one Vidu round.
 
 ### Background worker
 
@@ -115,9 +118,8 @@ Creating a job (and every regenerate / advance) kicks `POST /api/st-packs/worker
 pattern). It answers 202 at once and loops in `after()`: tick → run the claimed
 steps → 3 s pause → … for up to 240 s, then hands its lease to a fresh
 invocation, until the job ends. Before a tick claims another step, the loop
-hands off when less than two minutes remain of the 240 s budget or of the 300 s
-function limit. Two minutes is the worst case for post-processing, the slowest
-step. The tick that marks the job finished also queues `pack.zip` and the
+hands off when less than 90 s remain of the 240 s budget or of the 300 s
+function limit. 90 s covers native post-processing, the slowest step. The tick that marks the job finished also queues `pack.zip` and the
 preview GIF; that work runs before the lease is released. One job has one worker. The kick
 compare-and-swaps `st_pack_jobs.worker_lease_until` (60 s, renewed every loop,
 taken over by the successor — never cleared in between, so a poll cannot slip
@@ -126,8 +128,8 @@ expired **and** no expression holds an active `locked_until`. A Vidu render does
 not touch the row, so "no row changed" is not a dead worker. Without
 `QUEUE_SECRET` the routes fall back to advancing on the page's polls.
 Steps chain inside one invocation: an edited still is submitted as a clip at
-once, a finished clip is post-processed at once (one post-processing at a
-time per invocation — `ST_PACKS_POST_CONCURRENCY` — because it is memory-bound).
+once, a finished clip is post-processed at once (two at a time per
+invocation — `ST_PACKS_POST_CONCURRENCY` — sharing the 3 GB function).
 A regenerate runs the step `tick()` just claimed and then kicks; it does not
 drop that claim when the kick is accepted.
 
@@ -136,9 +138,10 @@ drop that claim when the kick is accepted.
 The first production run was killed for memory at 608×810 (1.5× working
 frames at 24 fps, six stages alive at once). PR #28 decodes straight at 16 fps,
 cuts ffmpeg's output into whole frames as it streams, reassigns one `frames`
-variable per stage so the previous one can be collected, runs one
-post-processing at a time (`ST_PACKS_POST_CONCURRENCY`) and gives the
-`/api/st-packs/*` functions 3 GB (`vercel.json`).
+variable per stage so the previous one can be collected, and gives the
+`/api/st-packs/*` functions 3 GB (`vercel.json`). That one clip peaked near
+1506 MB at 912×1215. Native 720×960 is about 0.62× the pixels, so two posts
+in the same worker stay near 1.5 GB.
 
 ### Cost logging
 
@@ -162,7 +165,7 @@ in the raw provider totals. Costs also accumulate on the expression and job rows
 | `edge_touch` | subject touches the left/right edge |
 | `corner_opaque` | > 2 % opaque pixels in the corner patches |
 | `halo` | edge luminance − luminance of the interior within 3 px > 100 (line-art outlines sit at the edge, so only a gross fringe trips it) |
-| `bytes` | > 1.5 MB |
+| `bytes` | > 6 MB |
 
 A flagged tile still ships (with a warning on the ZIP button); the admin
 regenerates it (whole expression, or "video only" to re-roll the motion).

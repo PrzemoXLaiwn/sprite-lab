@@ -1,6 +1,5 @@
 // Animated WebP is the pack format: every frame keeps its alpha, the loop is
-// endless, each frame carries the 16 fps delay, and the size ladder steps
-// down until the file fits.
+// endless, each frame carries the 16 fps delay, and the file is encoded once.
 import { describe, expect, it } from "vitest";
 import sharp from "sharp";
 import { encodeAnimatedWebp, encodePreviewGrid, readAnimatedWebp } from "./encode";
@@ -28,20 +27,26 @@ describe("encodeAnimatedWebp", () => {
     expect(meta.delay).toEqual(Array(6).fill(63));
     expect(meta.width).toBe(120);
     expect(meta.height).toBe(160);
-    expect(out.quality).toBe(78);
+    expect(out.quality).toBe(90);
+    expect(out.alphaQuality).toBe(100);
+    expect(out.lossless).toBe(false);
     const page3 = await sharp(out.webp, { page: 3 }).ensureAlpha().raw().toBuffer();
     expect(page3[3]).toBe(0); // corner transparent
     expect(page3[((80 * 120) + 63) * 4 + 3]).toBe(255); // centre opaque
   });
 
-  it("steps down the quality ladder until the file fits the target", async () => {
-    const frames = Array.from({ length: 8 }, (_, i) => disc(200, 266, 100, i * 3));
-    const full = await encodeAnimatedWebp(frames, 16);
-    const squeezed = await encodeAnimatedWebp(frames, 16, { targetBytes: Math.floor(full.bytes * 0.9) });
-    expect(squeezed.quality).toBeLessThan(full.quality);
-    expect(squeezed.bytes).toBeLessThan(full.bytes);
-    const last = await encodeAnimatedWebp(frames, 16, { targetBytes: 10 });
-    expect(last.quality).toBe(66); // the last rung is used even if it does not fit
+  it("encodes once at the given quality, and lossless keeps the opaque pixel", async () => {
+    const frames = Array.from({ length: 4 }, (_, i) => disc(48, 64, 24, i));
+    const lossy = await encodeAnimatedWebp(frames, 16, { quality: 90, alphaQuality: 100, effort: 4 });
+    const exact = await encodeAnimatedWebp(frames, 16, { lossless: true, effort: 4 });
+    expect(lossy.lossless).toBe(false);
+    expect(lossy.quality).toBe(90);
+    expect(exact.lossless).toBe(true);
+    const page = await sharp(exact.webp, { page: 0 }).ensureAlpha().raw().toBuffer();
+    const src = frames[0].data;
+    // Centre of the disc is fully opaque and must survive lossless.
+    const o = (32 * 48 + 24) * 4;
+    expect([page[o], page[o + 1], page[o + 2], page[o + 3]]).toEqual([src[o], src[o + 1], src[o + 2], src[o + 3]]);
   });
 
   it("builds a labelled preview grid GIF", async () => {

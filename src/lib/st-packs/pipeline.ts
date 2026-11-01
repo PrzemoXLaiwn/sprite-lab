@@ -6,7 +6,7 @@
 import { PING_PONG_ALLOWED, type StExpressionLabel } from "@/config/st-expressions";
 import { ST_PIPELINE, ST_QA, type StMatteMode } from "@/config/st-packs";
 import { encodeAnimatedWebp, type WebpResult } from "./encode";
-import { decodeVideo, framePng, pngFrame, resizeFrames, type CropFraction } from "./frames";
+import { decodeVideo, framePng, pngFrame, type CropFraction } from "./frames";
 import { makeSeamlessLoop, resampleFps } from "./loop";
 import { estimateBackground, matteAlpha, matteFrames, postMatte } from "./matte";
 import { computeQa } from "./qa";
@@ -23,6 +23,8 @@ export interface ProcessOptions {
   concurrency?: number;
   /** Where the 3:4 still sits in the clip when the model canvas was padded. */
   crop?: CropFraction;
+  /** Exact pixels. Default is the HQ lossy encode. */
+  lossless?: boolean;
 }
 
 export interface ProcessResult {
@@ -35,18 +37,12 @@ export interface ProcessResult {
   sourceFrames: number;
 }
 
-/** Working canvas: ~1.5× the output so the matte has detail, 3:4 kept. */
-export function workingSize(width: number, height: number): { width: number; height: number } {
-  return { width: Math.round(width * ST_PIPELINE.workScale), height: Math.round(height * ST_PIPELINE.workScale) };
-}
-
 export async function processClip(mp4: Buffer, opts: ProcessOptions): Promise<ProcessResult> {
-  const work = workingSize(opts.width, opts.height);
-  // Decode straight at the pack's fps: a 5 s clip is 80 working frames instead of
-  // 120–150. Each stage below copies every frame (~4.4 MB each at 912×1215), so
-  // one `frames` variable is reassigned and the previous stage can be collected —
-  // keeping all six stages alive at once ran the function out of memory.
-  const decoded = await decodeVideo(mp4, { width: work.width, height: work.height, crop: opts.crop, fps: ST_PIPELINE.outputFps });
+  // Decode at the output size. That is the cropped Vidu frame (720×960), not a
+  // 1.5× upscale that would be scaled back down. One `frames` variable is
+  // reassigned so the previous stage can be collected — a 4 s clip is 64 frames,
+  // about 2.6 MB each at 720×960.
+  const decoded = await decodeVideo(mp4, { width: opts.width, height: opts.height, crop: opts.crop, fps: ST_PIPELINE.outputFps });
   const fps = decoded.fps;
   const sourceFrames = decoded.frames.length;
   let frames: Frame[] = decoded.frames;
@@ -88,9 +84,7 @@ export async function processClip(mp4: Buffer, opts: ProcessOptions): Promise<Pr
   loop.frames = [];
   if (fps !== ST_PIPELINE.outputFps) frames = resampleFps(frames, fps, ST_PIPELINE.outputFps);
 
-  // Final size and file
-  frames = await resizeFrames(frames, opts.width, opts.height);
-  const webp = await encodeAnimatedWebp(frames, ST_PIPELINE.outputFps);
+  const webp = await encodeAnimatedWebp(frames, ST_PIPELINE.outputFps, { lossless: opts.lossless });
   const qa = computeQa(frames, { fps: ST_PIPELINE.outputFps, bytes: webp.bytes, band: ST_PIPELINE.stabilizeBand }, ST_QA);
   if (stab.flagged) {
     qa.flags.push(`drift too large to correct (${stab.maxShift.toFixed(1)} px > ${ST_PIPELINE.stabilizeMaxShiftPx})`);
