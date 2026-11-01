@@ -87,7 +87,7 @@ export function JobPanel({ job, loading, error, previewMode, onPreviewMode, canc
         </div>
         <p className="text-[12px] text-[#A7ADD4]">
           {job.labels.length} expression{job.labels.length === 1 ? "" : "s"} · {SIZE_LABEL(job.width, job.height)} · {job.framing === "bust" ? "bust/face" : "waist-up"} ·{" "}
-          {job.options.matteMode === "runware" ? "Runware matte" : "key matte"} · {job.options.lossless ? "lossless WebP" : "WebP q90"} · {job.options.videoSeconds} s video
+          {job.options.matteMode === "runware" ? "Runware matte" : "key matte"} · {job.options.motion === "expressive" ? "expressive" : "subtle"} · {job.options.lossless ? "lossless WebP" : "WebP q90"} · {job.options.videoSeconds} s video
           {job.prompt ? <> · <span className="text-[#C8CCE8]" title={job.prompt}>“{job.prompt.length > 60 ? `${job.prompt.slice(0, 60)}…` : job.prompt}”</span></> : " · uploaded base"}
         </p>
         <dl className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">

@@ -11,7 +11,7 @@ import {
   type StExpressionLabel,
   type StExpressionSet,
 } from "@/config/st-expressions";
-import { ST_DEFAULT_SIZE, estimateJobUsd, type StFraming, type StMatteMode } from "@/config/st-packs";
+import { ST_DEFAULT_SIZE, ST_VIDEO_SECOND_CHOICES, estimateJobUsd, viduQ2TurboClipUsd, type StFraming, type StMatteMode, type StMotionMode, type StVideoSeconds } from "@/config/st-packs";
 import { ErrorNote, Field } from "@/components/tools/ToolWorkspace";
 import type { BaseCandidate } from "./api";
 import { CheckRow, FIELD_CLS, SelectSlot, formatUsd, labelTitle } from "./ui";
@@ -33,7 +33,8 @@ export interface InputsState {
   readme: boolean;
   matteMode: StMatteMode;
   lossless: boolean;
-  videoSeconds: 3 | 4 | 5;
+  videoSeconds: StVideoSeconds;
+  motion: StMotionMode;
   candidateCount: 2 | 3 | 4;
 }
 
@@ -238,12 +239,24 @@ export function InputsPanel({
             </SelectSlot>
           </div>
           <div>
+            <label htmlFor={`${uid}-motion`} className="mb-1.5 block text-[11.5px] font-medium text-[#A7ADD4]">Motion</label>
+            <SelectSlot id={`${uid}-motion`} value={inputs.motion} onChange={(v) => onChange({ motion: v === "expressive" ? "expressive" : "subtle" })}>
+              <option value="subtle">Subtle</option>
+              <option value="expressive">Expressive</option>
+            </SelectSlot>
+          </div>
+          <div className="col-span-2">
             <label htmlFor={`${uid}-video`} className="mb-1.5 block text-[11.5px] font-medium text-[#A7ADD4]">Video length</label>
-            <SelectSlot id={`${uid}-video`} value={String(inputs.videoSeconds)} onChange={(v) => onChange({ videoSeconds: Number(v) as 3 | 4 | 5 })}>
-              {[3, 4, 5].map((s) => <option key={s} value={s}>{s} s</option>)}
+            <SelectSlot id={`${uid}-video`} value={String(inputs.videoSeconds)} onChange={(v) => onChange({ videoSeconds: Number(v) as StVideoSeconds })}>
+              {ST_VIDEO_SECOND_CHOICES.map((s) => <option key={s} value={s}>{s} s</option>)}
             </SelectSlot>
           </div>
         </div>
+        <p className="mt-1.5 text-[11.5px] leading-snug text-[#8A92BF]">
+          {inputs.motion === "expressive"
+            ? `Expressive acts once, then returns to the still. Admin test only. Vidu first+last is about ${formatUsd(viduQ2TurboClipUsd(inputs.videoSeconds))} per clip before the edit. Credit prices are unchanged.`
+            : "Subtle is a still idle: breathing and a little hair. 6 s and 8 s are the longer lengths."}
+        </p>
       </Field>
 
       {/* Estimate + submit */}

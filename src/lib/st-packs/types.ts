@@ -1,6 +1,6 @@
 // Shared shapes for the ST Packs pipeline and its API (client-safe: types only).
 import type { StExpressionLabel, StExpressionSet } from "@/config/st-expressions";
-import type { StExpressionStatus, StFraming, StJobStatus, StMatteMode } from "@/config/st-packs";
+import type { StExpressionStatus, StFraming, StJobStatus, StMatteMode, StMotionMode } from "@/config/st-packs";
 
 /** Straight (non-premultiplied) RGBA pixels, row-major, 4 bytes per pixel. */
 export interface Frame {
@@ -16,6 +16,8 @@ export interface JobOptions {
   readme: boolean;
   matteMode: StMatteMode;
   videoSeconds: number;
+  /** Subtle is the still idle. Expressive is one acting beat; admin studio only. */
+  motion: StMotionMode;
   /** HQ lossy is the default. Lossless is exact and usually larger. */
   lossless: boolean;
 }

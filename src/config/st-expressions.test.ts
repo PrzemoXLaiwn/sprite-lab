@@ -2,10 +2,10 @@
 // prompt fragments hang off it, so it must stay complete and exact.
 import { describe, expect, it } from "vitest";
 import {
-  ST_DEFAULT_LABELS, ST_EXPRESSION_FRAGMENTS, ST_EXPRESSION_LABELS,
+  ST_DEFAULT_LABELS, ST_EXPRESSIVE_ACTING, ST_EXPRESSION_FRAGMENTS, ST_EXPRESSION_LABELS,
   expressionFileName, isExpressionLabel, motionNoteFor, resolveExpressionLabels,
 } from "./st-expressions";
-import { basePrompt, editPrompt, videoPrompt } from "@/lib/st-packs/prompts";
+import { EXPRESSIVE_MOTION_RULE, basePrompt, editPrompt, videoPrompt } from "@/lib/st-packs/prompts";
 import { SFW_PREFIX } from "@/lib/st-packs/sfw";
 
 describe("ST expression labels", () => {
@@ -59,5 +59,34 @@ describe("prompts", () => {
     expect(videoPrompt("joy")).toMatch(/robotic blink/);
     expect(videoPrompt("joy")).not.toMatch(/drift of the head/);
     expect(videoPrompt("joy").length).toBeLessThan(2000);
+  });
+
+  it("gives every emotion its own acting beat and forbids a robotic loop", () => {
+    const lines = ST_EXPRESSION_LABELS.map((l) => ST_EXPRESSIVE_ACTING[l]);
+    expect(new Set(lines).size).toBe(28);
+    for (const l of ST_EXPRESSION_LABELS) {
+      expect(ST_EXPRESSIVE_ACTING[l].length).toBeGreaterThan(40);
+      const prompt = videoPrompt(l, "expressive");
+      expect(prompt).toContain(EXPRESSIVE_MOTION_RULE);
+      expect(prompt).toContain("No robotic blinking");
+      expect(prompt).toContain("no mechanical repetition");
+      expect(prompt).toContain(ST_EXPRESSIVE_ACTING[l]);
+      expect(prompt).toContain("last frame matches the first");
+      expect(prompt).not.toMatch(/no head sway/);
+      expect(prompt.length).toBeLessThan(2000);
+    }
+    expect(ST_EXPRESSIVE_ACTING.anger).toMatch(/fists/);
+    expect(ST_EXPRESSIVE_ACTING.joy).toMatch(/shoulders shake/);
+    expect(ST_EXPRESSIVE_ACTING.sadness).toMatch(/hand rubs/);
+    expect(ST_EXPRESSIVE_ACTING.surprise).toMatch(/step back/);
+  });
+
+  it("asks an expressive waist-up edit to leave room for the hands", () => {
+    const waist = editPrompt("anger", null, { motion: "expressive", framing: "waist" });
+    expect(waist).toMatch(/room for the hands/);
+    expect(waist).toMatch(/forearms are inside the frame/);
+    expect(editPrompt("anger", null, { motion: "expressive", framing: "bust" })).not.toMatch(/room for the hands/);
+    expect(editPrompt("anger", null)).toMatch(/Do not move or resize the character/);
+    expect(editPrompt("anger", null)).not.toMatch(/room for the hands/);
   });
 });

@@ -2,10 +2,11 @@
 
 One character in, a SillyTavern *Character Expressions* sprite pack out: a flat
 ZIP of animated, transparent WebP files named after ST's 28 emotion labels
-(`joy.webp`, `anger.webp`, …). Each file is a subtle, seamlessly looping idle
-(gentle breathing, a little hair movement, the head held still and centred, at
-most one blink) on a transparent background, the character identical across
-all expressions.
+(`joy.webp`, `anger.webp`, …). **Subtle** (the default) is a seamlessly looping
+idle: gentle breathing, a little hair, the head held still, at most one blink.
+**Expressive** is an admin-only test mode: one body-acting beat per emotion,
+then the pose returns to the still. It does not change credit prices. The
+character stays the same across expressions, on a transparent background.
 
 The tool is internal: admin only (`ADMIN` / `OWNER`), behind a server flag,
 charges no credits and touches no pricing, Stripe or auth code.
@@ -35,7 +36,10 @@ Real generation spends real money. The cheap loop:
 | step | model | per expression |
 |---|---|---|
 | expression edit | Nano Banana 2 (`google:4@3`, 896×1200) | $0.07 (neutral: $0, it is the base) |
-| idle clip, 4 s | Vidu Q2 Turbo (`vidu:3@2`, 720×1280 padded, small movement) — default | $0.0825 |
+| idle clip, 4 s | Vidu Q2 Turbo (`vidu:3@2`, 720×1280 padded, small movement) — default | $0.0825 (rate card) |
+| clip, 5 s | Vidu, first frame, 720p (published example) | $0.11 |
+| clip, 6 s | Vidu, first and last frame, 720p | $0.1375 (estimate: 4 s rate + 2 × ($0.11 − $0.0825); no published 6 s price) |
+| clip, 8 s | Vidu, first and last frame, 720p | $0.193 (published example). The rate card also lists 720p 8 s at $0.138 without that example |
 | idle clip, 4 s | LTX-2.3 Fast (`lightricks:ltx@2.3-fast`, 768×1024, 24 fps) — `ST_PACKS_VIDEO_MODEL` | $0.12 |
 | matte | colour key (default) | $0 |
 | matte | Runware per frame (`ST_PACKS_MATTE_MODE=runware`) | ≈ $0.20 (≈100 frames × $0.002) |
@@ -72,7 +76,12 @@ Parameters (`src/config/st-packs.ts`, from the validated Python prototype):
 - video models (`ST_VIDEO_MODELS`): both take a first AND a last frame.
   Vidu's frame mode only accepts 720×1280, so the 3:4 still is padded on its
   own background colour and the decoded frames are cropped back; its
-  `movementAmplitude: small` is what makes the idle subtle. LTX takes a true
+  `movementAmplitude: small` is the Subtle idle. Expressive sends `large` and a
+  per-emotion acting line (`ST_EXPRESSIVE_ACTING`); the first and last frames
+  stay the edited still. Duration is an integer from 1 to 8. The studio offers
+  3, 4, 5, 6 and 8. QA loosens drift and pop for Expressive only; alpha coverage,
+  opaque corners and the seam bar stay put, so a white field or a hole still fails.
+  A 6 s or 8 s job post-processes one clip at a time. LTX takes a true
   3:4 canvas but moves more (its prompt enhancer is off; it still drifted
   3 px with a pop on the test still vs 0.006 px for Vidu)
 - output is the native cropped frame (Vidu 720×960, LTX 768×1024). The clip

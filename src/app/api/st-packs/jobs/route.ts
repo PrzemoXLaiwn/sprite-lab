@@ -4,7 +4,7 @@ import { NextResponse, after } from "next/server";
 import { z } from "zod";
 import { requireStAdmin } from "../_lib/guard";
 import { ST_EXPRESSION_LABELS, ST_EXPRESSION_SETS, resolveExpressionLabels } from "@/config/st-expressions";
-import { ST_FRAMINGS, isOutputSize, nativeContentSize, stPacksSettings, videoModelSpec } from "@/config/st-packs";
+import { ST_FRAMINGS, ST_MOTION_MODES, isOutputSize, isVideoSeconds, nativeContentSize, stPacksSettings, videoModelSpec } from "@/config/st-packs";
 import { getR2ObjectBuffer } from "@/lib/r2";
 import { rateLimitUserAction } from "@/lib/rate-limit";
 import { baseKeyFor, createJob, listJobs, normaliseOptions, runWork, tick } from "@/lib/st-packs/jobs";
@@ -31,7 +31,8 @@ const Body = z.object({
     grid: z.boolean().optional(),
     readme: z.boolean().optional(),
     matteMode: z.enum(["key", "runware"]).optional(),
-    videoSeconds: z.number().int().min(3).max(5).optional(),
+    videoSeconds: z.number().int().refine(isVideoSeconds).optional(),
+    motion: z.enum(ST_MOTION_MODES).optional(),
     lossless: z.boolean().optional(),
   }).default({}),
 });

@@ -25,9 +25,10 @@ import { getR2ObjectBuffer, uploadBufferToR2 } from "@/lib/r2";
 import { generateStImage, pollStVideo, ProviderModerationError, removeBackgroundBuffer, submitStVideo } from "@/lib/runware";
 import { ST_EXPRESSION_LABELS, isExpressionLabel, type StExpressionLabel, type StExpressionSet } from "@/config/st-expressions";
 import {
-  ST_EDIT_MODEL, estimateExpressionUsd, estimateJobUsd, stPacksSettings, videoModelSpec,
+  ST_EDIT_MODEL, clipListUsd, estimateExpressionUsd, estimateJobUsd, isVideoSeconds, stPacksSettings, videoModelSpec,
   type StExpressionStatus, type StFraming, type StJobStatus, type StMatteMode,
 } from "@/config/st-packs";
+import { videoProviderExtra } from "./video-task";
 import { alignToBase } from "./align";
 import { encodeGifFallback, encodePreviewGrid, stillPng } from "./encode";
 import { fitPng, padToCanvas, pngFrame, type CropFraction } from "./frames";
@@ -56,7 +57,8 @@ export function normaliseOptions(raw: unknown, settings = stPacksSettings()): Jo
     grid: o.grid === true,
     readme: o.readme !== false,
     matteMode: o.matteMode === "runware" ? "runware" : o.matteMode === "key" ? "key" : settings.matteMode,
-    videoSeconds: Number.isFinite(seconds) && seconds >= 3 && seconds <= 5 ? Math.round(seconds) : settings.videoSeconds,
+    videoSeconds: Number.isFinite(seconds) && isVideoSeconds(Math.round(seconds)) ? Math.round(seconds) as 3 | 4 | 5 | 6 | 8 : settings.videoSeconds,
+    motion: o.motion === "expressive" ? "expressive" : "subtle",
     lossless: o.lossless === true,
   };
 }
@@ -81,7 +83,7 @@ export interface CreateJobInput {
 
 export async function createJob(input: CreateJobInput): Promise<string> {
   const spec = videoModelSpec(stPacksSettings().videoModel);
-  const estCostUsd = estimateJobUsd(input.labels, { videoSeconds: input.options.videoSeconds, matteMode: input.options.matteMode, usdPerSecond: spec.usdPerSecond });
+  const estCostUsd = estimateJobUsd(input.labels, { videoSeconds: input.options.videoSeconds, matteMode: input.options.matteMode, model: spec.air });
   const job = await prisma.stPackJob.create({
     data: {
       userId: input.userId,
@@ -237,17 +239,19 @@ export async function tick(jobId: string): Promise<{ snapshot: JobSnapshot | nul
   }
   for (const e of exprs) {
     if (e.status !== "queued" || busy >= settings.concurrency) continue;
-    const est = estimateExpressionUsd(e.label as StExpressionLabel, { videoSeconds: options.videoSeconds, matteMode: options.matteMode, usdPerSecond: spec.usdPerSecond });
+    const est = estimateExpressionUsd(e.label as StExpressionLabel, { videoSeconds: options.videoSeconds, matteMode: options.matteMode, model: spec.air });
     if (est > capLeft()) { await failExpression(e.id, "Job spend cap reached"); continue; }
     if (await claim(e.id, "queued", "editing", LOCK_MS.edit)) { busy++; work.push(() => runEdit(e.id)); }
   }
   for (const e of exprs) {
     if (e.status !== "edited" || openVideos >= settings.videoConcurrency) continue;
-    if (spec.usdPerSecond * options.videoSeconds > capLeft()) { await failExpression(e.id, "Job spend cap reached"); continue; }
+    if (clipListUsd(spec.air, options.videoSeconds) > capLeft()) { await failExpression(e.id, "Job spend cap reached"); continue; }
     if (await claim(e.id, "edited", "video_submitted", LOCK_MS.submit)) { openVideos++; work.push(() => runSubmit(e.id)); }
   }
   for (const e of exprs) {
-    if (e.status !== "video_ready" || busy >= settings.concurrency || posting >= settings.postConcurrency) continue;
+    // An 8 s clip is about twice the frames of a 4 s one. One post at a time keeps the 3 GB function.
+    const postCap = options.videoSeconds >= 6 ? 1 : settings.postConcurrency;
+    if (e.status !== "video_ready" || busy >= settings.concurrency || posting >= postCap) continue;
     if (await claim(e.id, "video_ready", "processing", LOCK_MS.post)) { busy++; posting++; work.push(() => runPost(e.id)); }
   }
 
@@ -329,6 +333,7 @@ async function runEdit(exprId: string): Promise<void> {
   const { e, job } = loaded;
   const started = Date.now();
   const settings = stPacksSettings();
+  const options = normaliseOptions(job.options, settings);
   try {
     const base = await mustRead(job.baseKey, "Base image");
     let editKey: string;
@@ -338,7 +343,7 @@ async function runEdit(exprId: string): Promise<void> {
     } else {
       const ctx = operationContext(e, settings.maxUsdPerExpression - e.costUsd);
       const { image } = await runInOperation(ctx, () => generateStImage({
-        prompt: editPrompt(e.label as StExpressionLabel, job.styleNotes),
+        prompt: editPrompt(e.label as StExpressionLabel, job.styleNotes, { motion: options.motion, framing: job.framing as StFraming }),
         reference: base,
         width: ST_EDIT_MODEL.width,
         height: ST_EDIT_MODEL.height,
@@ -390,13 +395,13 @@ async function runSubmit(exprId: string): Promise<void> {
     await submitStVideo({
       taskUUID,
       model: spec.air,
-      prompt: videoPrompt(e.label as StExpressionLabel),
+      prompt: videoPrompt(e.label as StExpressionLabel, options.motion),
       still,
       width: spec.width,
       height: spec.height,
       seconds: options.videoSeconds,
       fps: spec.fps,
-      extra: spec.body,
+      extra: videoProviderExtra(spec.air, options.motion, spec.body),
     });
     // The submit lock is released: polling takes over
     await prisma.stPackExpression.updateMany({ where: { id: e.id, status: "video_submitted" }, data: { lockedUntil: null } });
@@ -414,7 +419,7 @@ async function pollVideo(exprId: string): Promise<void> {
   const t = timingsOf(e);
   const spec = videoModelSpec(t.videoModel ?? settings.videoModel);
   const startedAt = t.videoStartedAt ?? e.updatedAt.getTime();
-  const listPrice = spec.usdPerSecond * options.videoSeconds;
+  const listPrice = clipListUsd(spec.air, options.videoSeconds);
   try {
     const ctx = operationContext(e, settings.maxUsdPerExpression - e.costUsd);
     const result = await runInOperation(ctx, () => pollStVideo({
@@ -477,6 +482,7 @@ async function runPost(exprId: string): Promise<void> {
       concurrency: 4,
       crop: timingsOf(e).crop,
       lossless: options.lossless,
+      motion: options.motion,
     }));
     await addCost(e, ctx.spentUsd);
     const webpKey = await put(result.webp.webp, exprKey(job.id, e.label, "loop.webp"), "image/webp");

@@ -4,7 +4,7 @@
 // jobs.ts handles storage and the database.
 // =============================================================================
 import type { StExpressionLabel } from "@/config/st-expressions";
-import { ST_PIPELINE, ST_QA, type StMatteMode } from "@/config/st-packs";
+import { ST_EXPRESSIVE, ST_PIPELINE, qaThresholds, type StMatteMode, type StMotionMode } from "@/config/st-packs";
 import { encodeAnimatedWebp, type WebpResult } from "./encode";
 import { decodeVideo, framePng, pngFrame, type CropFraction } from "./frames";
 import { makeSeamlessLoop, resampleFps } from "./loop";
@@ -25,6 +25,8 @@ export interface ProcessOptions {
   crop?: CropFraction;
   /** Exact pixels. Default is the HQ lossy encode. */
   lossless?: boolean;
+  /** Subtle cancels idle drift. Expressive keeps a real body move and loosens drift/pop QA only. */
+  motion?: StMotionMode;
 }
 
 export interface ProcessResult {
@@ -69,26 +71,40 @@ export async function processClip(mp4: Buffer, opts: ProcessOptions): Promise<Pr
     await Promise.all(Array.from({ length: Math.min(limit, raw.length) }, worker));
     frames = postMatte(out, bg);
   } else {
-    frames = matteFrames(frames).frames;
+    frames = matteFrames(frames, opts.motion === "expressive"
+      ? { interiorShiftMax: ST_EXPRESSIVE.interiorShiftPx, coverageMaxFrac: ST_EXPRESSIVE.coverageMaxFrac }
+      : {}).frames;
   }
 
-  // Drift
-  const stab = stabilizeFrames(frames, { band: ST_PIPELINE.stabilizeBand, window: ST_PIPELINE.stabilizeWindow, maxShiftPx: ST_PIPELINE.stabilizeMaxShiftPx });
+  // Drift. Expressive only cancels a few pixels of jitter; a step or a lean
+  // is the performance, so a larger shift is left in the frames and not flagged.
+  const expressive = opts.motion === "expressive";
+  const maxShiftPx = expressive ? ST_EXPRESSIVE.stabilizeJitterPx : ST_PIPELINE.stabilizeMaxShiftPx;
+  const stab = stabilizeFrames(frames, { band: ST_PIPELINE.stabilizeBand, window: ST_PIPELINE.stabilizeWindow, maxShiftPx });
   frames = stab.frames;
   stab.frames = [];
 
   // Loop at the clip's fps, then down to the pack's fps
+  const bars = qaThresholds(opts.motion ?? "subtle");
   const k = Math.max(2, Math.round(ST_PIPELINE.crossfadeFrames * (fps / 24)));
   // Every label, including joy. A reversed held idle is the last resort when
   // the clip never returns to its start pose; leaving the seam open is worse.
-  const loop = makeSeamlessLoop(frames, { k, allowPingPong: true, duplicateThreshold: ST_PIPELINE.duplicateFrameThreshold });
+  // Expressive uses the looser pop bar so a motivated return to the still is
+  // not played backwards. The seam still has to close.
+  const loop = makeSeamlessLoop(frames, {
+    k,
+    allowPingPong: true,
+    duplicateThreshold: ST_PIPELINE.duplicateFrameThreshold,
+    popRatio: bars.consSpikeRatio,
+    popAbs: bars.consSpikeAbs,
+  });
   frames = loop.frames;
   loop.frames = [];
   if (fps !== ST_PIPELINE.outputFps) frames = resampleFps(frames, fps, ST_PIPELINE.outputFps);
 
   const webp = await encodeAnimatedWebp(frames, ST_PIPELINE.outputFps, { lossless: opts.lossless });
-  const qa = computeQa(frames, { fps: ST_PIPELINE.outputFps, bytes: webp.bytes, band: ST_PIPELINE.stabilizeBand }, ST_QA);
-  if (stab.flagged) {
+  const qa = computeQa(frames, { fps: ST_PIPELINE.outputFps, bytes: webp.bytes, band: ST_PIPELINE.stabilizeBand }, bars);
+  if (stab.flagged && !expressive) {
     qa.flags.push(`drift too large to correct (${stab.maxShift.toFixed(1)} px > ${ST_PIPELINE.stabilizeMaxShiftPx})`);
     qa.flagged = true;
   }

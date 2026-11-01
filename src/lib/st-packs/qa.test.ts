@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ST_QA } from "@/config/st-packs";
+import { ST_QA, qaThresholds } from "@/config/st-packs";
 import { computeQa } from "./qa";
 import { bustFrame, drawRect, makeFrame } from "./test-fixtures";
 import type { Frame } from "./types";
@@ -40,6 +40,18 @@ describe("computeQa", () => {
     expect(res.flagged).toBe(true);
     expect(res.flags.some((f) => f.startsWith("drift"))).toBe(true);
     expect(res.metrics.drift_px).toBeGreaterThan(2);
+  });
+
+  it("lets an expressive clip move and still flags a painted corner", () => {
+    const n = 32;
+    const moving = Array.from({ length: n }, (_, i) => bustFrame(W, H, { dx: Math.round((40 * i) / (n - 1)) }));
+    expect(computeQa(moving, INFO, qaThresholds("subtle")).flags.some((f) => f.startsWith("drift"))).toBe(true);
+    expect(computeQa(moving, INFO, qaThresholds("expressive")).flags.some((f) => f.startsWith("drift"))).toBe(false);
+    const painted = goodLoop(8).map((f) => {
+      drawRect(f, 0, 0, 24, 24, [40, 200, 60]);
+      return f;
+    });
+    expect(computeQa(painted, INFO, qaThresholds("expressive")).flags.some((f) => f.startsWith("corner opaque"))).toBe(true);
   });
 
   it("flags a popping seam", () => {
