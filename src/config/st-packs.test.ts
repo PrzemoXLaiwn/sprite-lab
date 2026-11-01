@@ -31,6 +31,7 @@ describe("ST Packs native output and throughput", () => {
     const s = stPacksSettings({});
     expect(s.postConcurrency).toBe(2);
     expect(s.videoConcurrency).toBe(8);
+    expect(s.concurrency).toBe(8);
   });
 
   it("keeps a 28-pack under the default spend cap with the free key matte", () => {

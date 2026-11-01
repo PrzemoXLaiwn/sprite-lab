@@ -128,6 +128,10 @@ function isAdminRateLimited(ip: string): boolean {
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  // The ST Packs worker is a server-to-server kick with QUEUE_SECRET. It has no
+  // browser user-agent and no session cookie; the general API checks below
+  // would refuse it before the route runs.
+  if (pathname === "/api/st-packs/worker") return NextResponse.next();
   const ip = getClientIP(request);
   const method = request.method;
 

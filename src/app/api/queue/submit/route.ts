@@ -10,6 +10,7 @@ import { getOrCreateUser, checkAndDeductCredits, refundCredits } from "@/lib/dat
 import { z } from "zod";
 import { parseJsonBody, validateBody } from "@/lib/validation/common";
 import { rateLimit3DGeneration, rateLimitUserGeneration } from "@/lib/rate-limit";
+import { internalBaseUrl } from "@/lib/internal-base-url";
 
 // The after() callback waits for /api/queue/process to finish, which can take
 // up to that route's maxDuration — keep this invocation alive as long.
@@ -228,13 +229,9 @@ export async function POST(request: Request) {
 // TRIGGER BACKGROUND PROCESSING
 // ===========================================
 function getBaseUrl(): string {
-  if (process.env.NEXT_PUBLIC_APP_URL) {
-    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/+$/, "");
-  }
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
-  return "http://localhost:3000";
+  // Same host as the ST Packs worker. NEXT_PUBLIC_APP_URL is not this project's
+  // deployment, and this request carries QUEUE_SECRET.
+  return internalBaseUrl();
 }
 
 async function triggerProcessing(jobId: string) {

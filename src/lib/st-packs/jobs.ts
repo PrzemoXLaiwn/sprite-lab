@@ -106,6 +106,7 @@ export async function createJob(input: CreateJobInput): Promise<string> {
 }
 
 export async function listJobs(limit = 20): Promise<JobListItem[]> {
+  await reapStaleJobs().catch((err) => console.error("[st-packs] stale reap failed:", err instanceof Error ? err.message : err));
   const rows = await prisma.stPackJob.findMany({
     orderBy: { createdAt: "desc" },
     take: limit,
@@ -171,6 +172,7 @@ export async function getJob(jobId: string): Promise<JobRow | null> {
 }
 
 export async function getSnapshot(jobId: string): Promise<JobSnapshot | null> {
+  await reapStaleJobs().catch((err) => console.error("[st-packs] stale reap failed:", err instanceof Error ? err.message : err));
   const job = await getJob(jobId);
   return job ? jobSnapshot(job) : null;
 }
@@ -479,7 +481,10 @@ async function runPost(exprId: string): Promise<void> {
     await addCost(e, ctx.spentUsd);
     const webpKey = await put(result.webp.webp, exprKey(job.id, e.label, "loop.webp"), "image/webp");
     const pngKey = await put(await stillPng(result.frames[0]), exprKey(job.id, e.label, "still.png"), "image/png");
-    const gifKey = options.gif ? await put(await encodeGifFallback(result.frames, result.webp.fps), exprKey(job.id, e.label, "loop.gif"), "image/gif") : null;
+    // GIF is built when someone downloads the GIF pack. Encoding 60 frames at
+    // 720×960 with a full palette (effort 10, no frame reuse) was the bulk of
+    // the 2–3 min post time.
+    const gifKey = null;
     const t = timingsOf(e);
     t.post = Date.now() - started;
     t.loop = result.loopMethod;
@@ -542,14 +547,59 @@ async function webpFrames(webp: Buffer): Promise<Frame[]> {
   return frames;
 }
 
-/** Static PNG or GIF archive built on demand from the finished expressions. */
+/** Static PNG or GIF archive built on demand. GIFs are encoded from the WebP here, not during post. */
 export async function buildExtraArchive(jobId: string, kind: "png" | "gif"): Promise<Buffer | null> {
   const job = await getJob(jobId);
   if (!job) return null;
-  const rows = job.expressions.filter((e) => e.status === "done" && (kind === "png" ? e.pngKey : e.gifKey));
+  const rows = job.expressions.filter((e) => e.status === "done" && (kind === "png" ? e.pngKey : e.webpKey));
   if (rows.length === 0) return null;
-  const entries = await Promise.all(rows.map(async (e) => ({ label: e.label, data: await mustRead(kind === "png" ? e.pngKey : e.gifKey, e.label) })));
+  const entries = await Promise.all(rows.map(async (e) => {
+    if (kind === "png") return { label: e.label, data: await mustRead(e.pngKey, e.label) };
+    if (e.gifKey) return { label: e.label, data: await mustRead(e.gifKey, e.label) };
+    const frames = await webpFrames(await mustRead(e.webpKey, e.label));
+    return { label: e.label, data: await encodeGifFallback(frames, 16) };
+  }));
   return buildExtraZip(entries, kind);
+}
+
+/** A running job with an expired lease and no step lock or row change for this long is finished. */
+export const STALE_JOB_MS = 30 * 60 * 1000;
+
+/**
+ * Fail or close jobs that are still "running" long after the worker lease
+ * died and nothing has moved. Opening the studio or polling a job runs this.
+ * No schema change.
+ */
+export async function reapStaleJobs(now = new Date()): Promise<number> {
+  const cutoff = new Date(now.getTime() - STALE_JOB_MS);
+  const stale = await prisma.stPackJob.findMany({
+    where: {
+      status: "running",
+      startedAt: { lt: cutoff },
+      OR: [{ workerLeaseUntil: null }, { workerLeaseUntil: { lt: cutoff } }],
+    },
+    include: { expressions: true },
+  });
+  let closed = 0;
+  for (const job of stale) {
+    const locked = job.expressions.some((e) => e.lockedUntil && e.lockedUntil > now);
+    const moved = job.expressions.some((e) => e.updatedAt > cutoff);
+    if (locked || moved) continue;
+    const done = job.expressions.filter((e) => e.status === "done").length;
+    const status: StJobStatus = done === job.expressions.length ? "done" : done > 0 ? "partial" : "failed";
+    const reason = "Stopped: no progress for 30 minutes and the worker lease had expired";
+    const r = await prisma.stPackJob.updateMany({
+      where: { id: job.id, status: "running" },
+      data: { status, finishedAt: now, error: reason },
+    });
+    if (r.count !== 1) continue;
+    await prisma.stPackExpression.updateMany({
+      where: { jobId: job.id, status: { notIn: ["done", "failed"] } },
+      data: { status: "failed", lockedUntil: null, error: reason },
+    });
+    closed++;
+  }
+  return closed;
 }
 
 export function jobSlug(job: { prompt: string | null; id: string }): string {

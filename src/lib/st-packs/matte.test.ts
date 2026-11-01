@@ -323,6 +323,29 @@ describe("gradient backdrop", () => {
   });
 });
 
+describe("enclosed backdrop", () => {
+  it("clears a side gap that matches the backdrop and keeps a central light shirt", () => {
+    const W = 80;
+    const H = 110;
+    const bg: Rgb = [200, 200, 204];
+    const coat: Rgb = [24, 32, 58];
+    const shirt: Rgb = [248, 248, 250];
+    const f = makeFrame(W, H, [bg[0], bg[1], bg[2], 255]);
+    drawRect(f, 16, 18, 64, 104, coat);
+    // Two pockets of the backdrop colour, trapped between the sleeves and the shirt.
+    drawRect(f, 18, 72, 28, 92, bg);
+    drawRect(f, 52, 72, 62, 92, bg);
+    drawRect(f, 30, 36, 50, 96, shirt);
+    const { frames } = matteFrames([f, f, f]);
+    const out = frames[1];
+    expect(pixel(out, 22, 80)[3]).toBe(0);
+    expect(pixel(out, 56, 80)[3]).toBe(0);
+    expect(pixel(out, 40, 60)[3]).toBe(255);
+    expect(pixel(out, 40, 60).slice(0, 3)).toEqual(shirt);
+    expect(pixel(out, 4, 4)[3]).toBe(0);
+  });
+});
+
 describe("closeSilhouette", () => {
   it("fills an enclosed hole and leaves the border-connected background clear", () => {
     const f = makeFrame(21, 21, [255, 255, 255, 0]);

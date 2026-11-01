@@ -18,6 +18,8 @@ export async function GET(_request: Request, ctx: { params: Promise<{ id: string
   if (!snapshot) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (isStalled(snapshot)) {
     after(async () => {
+      // One tick when the kick cannot start. Never the 240 s loop: that would
+      // hold this poll until the platform kills the function.
       if (!(await kickWorker(id))) {
         const { work } = await tick(id);
         await runWork(work);

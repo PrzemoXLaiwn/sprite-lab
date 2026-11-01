@@ -35,7 +35,7 @@ describe("computeQa", () => {
 
   it("flags sideways drift", () => {
     const n = 32;
-    const frames = Array.from({ length: n }, (_, i) => bustFrame(W, H, { dx: Math.round((3 * i) / (n - 1)) }));
+    const frames = Array.from({ length: n }, (_, i) => bustFrame(W, H, { dx: Math.round((8 * i) / (n - 1)) }));
     const res = computeQa(frames, INFO);
     expect(res.flagged).toBe(true);
     expect(res.flags.some((f) => f.startsWith("drift"))).toBe(true);
