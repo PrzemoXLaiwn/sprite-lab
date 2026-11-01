@@ -21,3 +21,16 @@ describe("st_packs migration", () => {
     expect(sql).toContain('"locked_until" TIMESTAMP(3)');
   });
 });
+
+describe("st_pack worker lease migration", () => {
+  const sql = readFileSync(join(process.cwd(), "prisma/migrations/20261031180000_st_pack_worker_lease/migration.sql"), "utf8");
+
+  it("adds one nullable column and does not rewrite or drop anything", () => {
+    expect(sql).toContain('ALTER TABLE "st_pack_jobs" ADD COLUMN IF NOT EXISTS "worker_lease_until" TIMESTAMP(3)');
+    expect(sql).not.toMatch(/DROP /i);
+    expect(sql).not.toMatch(/UPDATE /i);
+    expect(sql).not.toMatch(/CREATE TABLE/i);
+    expect(sql).not.toMatch(/ALTER TABLE "(users|generations|operations|provider_calls|st_pack_expressions)"/);
+    expect(sql.match(/ALTER TABLE/g)).toHaveLength(1);
+  });
+});

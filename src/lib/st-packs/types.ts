@@ -61,8 +61,10 @@ export interface ExpressionSnapshot {
   error: string | null;
   frames: number | null;
   bytes: number | null;
-  has: { edit: boolean; webp: boolean; gif: boolean; png: boolean };
+  has: { edit: boolean; video: boolean; webp: boolean; gif: boolean; png: boolean };
   updatedAt: string;
+  /** Set while this expression's current step is claimed. A poll must not start a worker before it passes. */
+  lockedUntil: string | null;
 }
 
 export interface JobSnapshot {
@@ -83,6 +85,8 @@ export interface JobSnapshot {
   createdAt: string;
   startedAt: string | null;
   finishedAt: string | null;
+  /** When the background worker last extended its lease. Null or in the past means no live worker. */
+  workerLeaseUntil: string | null;
   has: { base: boolean; zip: boolean; grid: boolean };
   /** Totals across expressions, ms. */
   timings: Required<StepTimings>;

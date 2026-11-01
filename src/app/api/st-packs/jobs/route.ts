@@ -8,6 +8,7 @@ import { ST_FRAMINGS, isOutputSize } from "@/config/st-packs";
 import { getR2ObjectBuffer } from "@/lib/r2";
 import { rateLimitUserAction } from "@/lib/rate-limit";
 import { baseKeyFor, createJob, listJobs, normaliseOptions, runWork, tick } from "@/lib/st-packs/jobs";
+import { kickWorker } from "@/lib/st-packs/worker";
 import { checkSfw } from "@/lib/st-packs/sfw";
 
 export const maxDuration = 300;
@@ -69,7 +70,11 @@ export async function POST(request: Request) {
     height: b.height,
     options: normaliseOptions(b.options),
   });
-  const { work } = await tick(id);
-  if (work.length) after(() => runWork(work));
+  // The background worker carries the job from here; without QUEUE_SECRET the
+  // first steps still start now and the page's polling keeps it moving
+  if (!(await kickWorker(id))) {
+    const { work } = await tick(id);
+    if (work.length) after(() => runWork(work));
+  }
   return NextResponse.json({ id });
 }

@@ -124,7 +124,7 @@ export function getJob(id: string): Promise<JobSnapshot> {
   return request<JobSnapshot>(`${BASE}/jobs/${encodeURIComponent(id)}`, { method: "GET" }, "Couldn't load the job.");
 }
 
-export function regenerateExpression(jobId: string, label: string, from: "edit" | "video"): Promise<JobSnapshot> {
+export function regenerateExpression(jobId: string, label: string, from: "edit" | "video" | "post"): Promise<JobSnapshot> {
   return request<JobSnapshot>(
     `${BASE}/jobs/${encodeURIComponent(jobId)}/expressions/${encodeURIComponent(label)}/regenerate`,
     json({ from }),

@@ -2,6 +2,7 @@
 import { NextResponse, after } from "next/server";
 import { JOB_ID_RE, requireStAdmin } from "../../../_lib/guard";
 import { runWork, tick } from "@/lib/st-packs/jobs";
+import { kickWorker } from "@/lib/st-packs/worker";
 
 export const maxDuration = 300;
 
@@ -12,6 +13,9 @@ export async function POST(_request: Request, ctx: { params: Promise<{ id: strin
   if (!JOB_ID_RE.test(id)) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const { snapshot, work } = await tick(id);
   if (!snapshot) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (work.length) after(() => runWork(work));
+  after(async () => {
+    await runWork(work);
+    if (snapshot.status === "running") await kickWorker(id);
+  });
   return NextResponse.json(snapshot, { headers: { "Cache-Control": "no-store" } });
 }

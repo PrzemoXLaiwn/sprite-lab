@@ -38,7 +38,7 @@ export function JobPanel({ job, loading, error, previewMode, onPreviewMode, canc
   cancelling: boolean;
   onCancel: () => void;
   pending: Record<string, boolean>;
-  onExpressionAction: (label: string, from: "edit" | "video") => void;
+  onExpressionAction: (label: string, from: "edit" | "video" | "post") => void;
 }) {
   const running = job?.status === "running";
   const now = useNow(running);
@@ -147,7 +147,8 @@ export function JobPanel({ job, loading, error, previewMode, onPreviewMode, canc
             <ExpressionTile key={e.id} jobId={job.id} expression={e} previewMode={previewMode} pending={!!pending[e.label]}
               onRegenerate={() => onExpressionAction(e.label, "edit")}
               onVideoOnly={() => onExpressionAction(e.label, "video")}
-              onRetry={() => onExpressionAction(e.label, "edit")} />
+              // Retry from the last step that has something to work with: free when the clip exists
+              onRetry={() => onExpressionAction(e.label, e.has.video ? "post" : e.has.edit ? "video" : "edit")} />
           ))}
         </ul>
       )}
