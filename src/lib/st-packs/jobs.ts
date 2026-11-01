@@ -8,11 +8,12 @@
 //   expression: queued → editing → edited → video_submitted → video_ready
 //               → processing → done | failed      (+ flagged from QA)
 //
-// `tick(jobId)` runs on every snapshot poll and on /advance: it recovers
-// expired locks, claims the next steps atomically (UPDATE … WHERE status = …
-// AND lock expired) and returns them as closures the route starts in
-// `after()`. Each step is idempotent and is retried once; the Runware task id
-// is stored before the clip is submitted, so a crash never submits twice.
+// `tick(jobId)` runs inside the background worker (and on /advance, and on a
+// poll only when that worker cannot be kicked). It recovers expired locks,
+// claims the next steps atomically (UPDATE … WHERE status = … AND lock
+// expired) and returns them as closures the caller runs. Each step is
+// idempotent and is retried once; the Runware task id is stored before the
+// clip is submitted, so a crash never submits twice.
 // Costs are logged to the provider ledger under operation ids
 // `stpack_<expressionId>` (no operations row: nobody is charged credits) and
 // accumulated on the expression and job rows.
@@ -131,6 +132,7 @@ function exprSnapshot(e: ExprRow): ExpressionSnapshot {
     bytes: e.bytes,
     has: { edit: !!e.editKey, video: !!e.videoUrl, webp: !!e.webpKey, gif: !!e.gifKey, png: !!e.pngKey },
     updatedAt: e.updatedAt.toISOString(),
+    lockedUntil: e.lockedUntil?.toISOString() ?? null,
   };
 }
 
@@ -156,6 +158,7 @@ function jobSnapshot(job: JobRow): JobSnapshot {
     createdAt: job.createdAt.toISOString(),
     startedAt: job.startedAt?.toISOString() ?? null,
     finishedAt: job.finishedAt?.toISOString() ?? null,
+    workerLeaseUntil: job.workerLeaseUntil?.toISOString() ?? null,
     has: { base: !!job.baseKey, zip: !!job.zipKey, grid: !!job.gridKey },
     timings,
     expressions,

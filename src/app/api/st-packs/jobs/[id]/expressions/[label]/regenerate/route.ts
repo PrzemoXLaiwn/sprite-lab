@@ -23,8 +23,11 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
   if (!(await regenerateExpression(id, label, from))) return NextResponse.json({ error: "Nothing to regenerate yet." }, { status: 409 });
   const { snapshot, work } = await tick(id);
   if (!snapshot) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  // tick() already claimed the step. Run it here — a successful kick used to
+  // drop that claim, and the lock then aged out as a failed attempt.
   after(async () => {
-    if (!(await kickWorker(id))) await runWork(work);
+    await runWork(work);
+    if (snapshot.status === "running") await kickWorker(id);
   });
   return NextResponse.json(snapshot, { headers: { "Cache-Control": "no-store" } });
 }

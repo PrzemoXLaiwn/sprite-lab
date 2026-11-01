@@ -1,6 +1,7 @@
 // GET /api/st-packs/jobs/[id] — snapshot. The background worker does the
-// work; a running job that has not moved for a while gets a fresh worker
-// (and, with no QUEUE_SECRET, the poll itself advances it).
+// work. A poll starts one only when the job's worker lease has expired and
+// no expression still holds its step lock (a quiet Vidu render is not a
+// stall). With no QUEUE_SECRET the poll itself advances the job.
 import { NextResponse, after } from "next/server";
 import { JOB_ID_RE, requireStAdmin } from "../../_lib/guard";
 import { getSnapshot, runWork, tick } from "@/lib/st-packs/jobs";

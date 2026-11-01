@@ -95,13 +95,13 @@ expressions are rows (`st_pack_jobs`, `st_pack_expressions`) with statuses:
 - job: `draft → base_ready → running → done | partial | failed | cancelled`
 - expression: `queued → editing → edited → video_submitted → video_ready → processing → done | failed` (+ `flagged`)
 
-Every `GET /api/st-packs/jobs/[id]` (the page polls every 4 s) and
-`POST …/advance` runs a *tick*: expired locks are recovered, the next steps are
-claimed with `UPDATE … WHERE status = … AND lock expired` (so two polls never
-run the same step), and the claimed steps run in `after()` after the response,
-each well under the 300 s function limit. Each step is retried once; the
-Runware task id is written before the clip is submitted, so a crash never
-submits twice. Concurrency: `ST_PACKS_CONCURRENCY` busy expressions (`ST_PACKS_POST_CONCURRENCY`, default 1, for post-processing),
+`POST …/advance` (and a poll, only when no background worker can be started)
+runs a *tick*: expired locks are recovered, the next steps are claimed with
+`UPDATE … WHERE status = … AND lock expired` (so two callers never run the same
+step), and the claimed steps run in `after()` after the response, each well
+under the 300 s function limit. Each step is retried once; the Runware task id
+is written before the clip is submitted, so a crash never submits twice.
+Concurrency: `ST_PACKS_CONCURRENCY` busy expressions (`ST_PACKS_POST_CONCURRENCY`, default 1, for post-processing),
 `ST_PACKS_VIDEO_CONCURRENCY` open video tasks.
 
 ### Background worker
@@ -109,13 +109,19 @@ submits twice. Concurrency: `ST_PACKS_CONCURRENCY` busy expressions (`ST_PACKS_P
 Creating a job (and every regenerate / advance) kicks `POST /api/st-packs/worker`
 — an internal route authenticated with `QUEUE_SECRET` (the `/api/queue`
 pattern). It answers 202 at once and loops in `after()`: tick → run the claimed
-steps → 3 s pause → … for up to 240 s, then kicks a fresh invocation, until the
-job ends. The page only reads snapshots; if a running job has not moved for
-45 s (a worker chain died) the next poll kicks a new one. Without
+steps → 3 s pause → … for up to 240 s, then hands its lease to a fresh
+invocation, until the job ends. One job has one worker. The kick
+compare-and-swaps `st_pack_jobs.worker_lease_until` (60 s, renewed every loop,
+taken over by the successor — never cleared in between, so a poll cannot slip
+in). The page only reads snapshots. It kicks a worker only when that lease has
+expired **and** no expression holds an active `locked_until`. A Vidu render does
+not touch the row, so "no row changed" is not a dead worker. Without
 `QUEUE_SECRET` the routes fall back to advancing on the page's polls.
 Steps chain inside one invocation: an edited still is submitted as a clip at
 once, a finished clip is post-processed at once (one post-processing at a
 time per invocation — `ST_PACKS_POST_CONCURRENCY` — because it is memory-bound).
+A regenerate runs the step `tick()` just claimed and then kicks; it does not
+drop that claim when the kick is accepted.
 
 ### Memory
 
@@ -173,8 +179,11 @@ for one label. Validated on ST 1.19.0.
 
 1. Run `prisma/migrations/20261031020000_st_packs/migration.sql` in the
    Supabase SQL editor (additive: two new tables with RLS on, no policies).
-   This repo does not use `prisma migrate deploy` in production; do **not**
-   run `prisma db push` for this.
+   Then run `prisma/migrations/20261031180000_st_pack_worker_lease/migration.sql`
+   (additive: nullable `worker_lease_until` on `st_pack_jobs`, no backfill).
+   The lease column has to exist before the worker code is deployed — apply it
+   before merging that change. This repo does not use `prisma migrate deploy`
+   in production; do **not** run `prisma db push` for this.
 2. Vercel → Production env: `ST_PACKS_ENABLED=true` (and any tunables above).
    Everything else reuses `RUNWARE_API_KEY` and the R2 variables.
 3. Owner approval for the spend: the 28-label set is ≈ $4 per character.

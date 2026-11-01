@@ -963,6 +963,8 @@ model StPackJob {
   createdAt     DateTime  @default(now()) @map("created_at")
   startedAt     DateTime? @map("started_at")
   finishedAt    DateTime? @map("finished_at")
+  /// Compare-and-swap lease for the single background worker. Null or in the past: a poll may start one.
+  workerLeaseUntil DateTime? @map("worker_lease_until")
 
   expressions StPackExpression[]
 
