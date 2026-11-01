@@ -29,17 +29,32 @@ export async function encodeAnimatedWebp(
   opts: { quality?: number; alphaQuality?: number; effort?: number; lossless?: boolean } = {},
 ): Promise<WebpResult> {
   if (frames.length === 0) throw new Error("No frames to encode");
+  const width = frames[0].width;
+  const height = frames[0].height;
+  for (const frame of frames) {
+    if (frame.width !== width || frame.height !== height) throw new Error("Frames differ in size");
+  }
   const lossless = opts.lossless === true;
   const quality = opts.quality ?? ST_PIPELINE.webpQuality;
   const alphaQuality = opts.alphaQuality ?? ST_PIPELINE.webpAlphaQuality;
   const effort = opts.effort ?? ST_PIPELINE.webpEffort;
   const delay = Array(frames.length).fill(Math.round(1000 / fps));
-  const pngs = await Promise.all(frames.map(framePng));
-  const webp = await sharp(pngs.length === 1 ? pngs[0] : pngs, pngs.length === 1 ? {} : { join: { animated: true } })
-    .webp(lossless
+  // One raw buffer, not a PNG per frame. Two posts share this isolate, so
+  // libvips does not also fan out across every core.
+  const threads = sharp.concurrency();
+  if (threads > 2) sharp.concurrency(2);
+  let webp: Buffer;
+  try {
+    const joined = frames.length === 1 ? frames[0].data : Buffer.concat(frames.map((frame) => frame.data));
+    webp = await sharp(joined, {
+      raw: { width, height: height * frames.length, channels: 4, pageHeight: height },
+    }).webp(lossless
       ? { lossless: true, effort, loop: 0, delay }
       : { quality, alphaQuality, effort, loop: 0, delay })
-    .toBuffer();
+      .toBuffer();
+  } finally {
+    if (threads > 2) sharp.concurrency(threads);
+  }
   return {
     webp, bytes: webp.length, frames: frames.length, fps, lossless,
     quality: lossless ? 100 : quality,

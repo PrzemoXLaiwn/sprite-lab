@@ -85,7 +85,10 @@ Parameters (`src/config/st-packs.ts`, from the validated Python prototype):
   border pixels on the plane, stepping at most 18 levels and never more than
   48 from the plane, so a gradient or soft shadow is background and the
   character edge stops the flood; the largest foreground component is kept
-  (enclosed skin, face and light clothing stay opaque) and other components
+  (enclosed skin, face and light clothing stay opaque). A narrow backdrop
+  pocket between a limb and the torso is cleared from a mask decided on
+  frame 0 and shifted with the body; a light shirt is not, even when it
+  matches the ground. Other components
   are dropped when they are specks or still the backdrop colour; partial
   alpha only in a 3 px band on that outer edge; temporal median on alpha
   (radius 1, circular); un-mix `C = (I − (1−a)·B)/a` for 0.05 < a < 1;

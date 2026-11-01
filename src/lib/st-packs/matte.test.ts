@@ -344,6 +344,65 @@ describe("enclosed backdrop", () => {
     expect(pixel(out, 40, 60).slice(0, 3)).toEqual(shirt);
     expect(pixel(out, 4, 4)[3]).toBe(0);
   });
+
+  it("keeps a white shirt on a light ground fully opaque and still clears the side gaps", () => {
+    const W = 160;
+    const H = 210;
+    const bg: Rgb = [246, 246, 248];
+    const coat: Rgb = [22, 28, 52];
+    const shirt: Rgb = [254, 254, 255];
+    const scene = (): Frame => {
+      const f = makeFrame(W, H, [bg[0], bg[1], bg[2], 255]);
+      // Torso, arms, and shoulders. The shoulders close the gaps so the flood
+      // cannot walk into them from the border.
+      drawRect(f, 48, 36, 112, 200, coat);
+      drawRect(f, 18, 48, 48, 78, coat);
+      drawRect(f, 112, 48, 142, 78, coat);
+      drawRect(f, 18, 78, 40, 168, coat);
+      drawRect(f, 120, 78, 142, 168, coat);
+      // Backdrop trapped between each arm and the torso.
+      drawRect(f, 40, 86, 48, 150, bg);
+      drawRect(f, 112, 86, 120, 150, bg);
+      // Shirt, plus a lateral white panel that is still clothing (not a gap).
+      drawRect(f, 58, 52, 102, 168, shirt);
+      drawRect(f, 50, 90, 58, 140, shirt);
+      return f;
+    };
+    const base = scene();
+    const flickered = scene();
+    // A fold on a later frame matches the ground exactly. It must not open a hole.
+    drawRect(flickered, 70, 80, 90, 110, bg);
+    const shifted = scene();
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const src = Math.min(W - 1, x + 2);
+        const so = (y * W + src) * 4;
+        const o = (y * W + x) * 4;
+        shifted.data[o] = base.data[so];
+        shifted.data[o + 1] = base.data[so + 1];
+        shifted.data[o + 2] = base.data[so + 2];
+        shifted.data[o + 3] = base.data[so + 3];
+      }
+    }
+    const { frames } = matteFrames([base, flickered, shifted]);
+    let shirtPx = 0;
+    let shirtOpaque = 0;
+    for (let y = 52; y < 168; y++) {
+      for (let x = 58; x < 102; x++) {
+        shirtPx++;
+        if (pixel(frames[0], x, y)[3] === 255) shirtOpaque++;
+      }
+    }
+    expect(shirtOpaque / shirtPx).toBeGreaterThan(0.99);
+    // The flickered patch and the shifted shirt stay solid. No per-frame blotches.
+    expect(pixel(frames[1], 80, 95)[3]).toBe(255);
+    expect(pixel(frames[2], 78, 100)[3]).toBe(255);
+    expect(pixel(frames[0], 44, 110)[3]).toBe(0);
+    expect(pixel(frames[0], 116, 110)[3]).toBe(0);
+    expect(pixel(frames[1], 44, 110)[3]).toBe(0);
+    expect(pixel(frames[2], 42, 110)[3]).toBe(0);
+    expect(pixel(frames[0], 4, 4)[3]).toBe(0);
+  });
 });
 
 describe("closeSilhouette", () => {

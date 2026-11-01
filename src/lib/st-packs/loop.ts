@@ -59,6 +59,33 @@ function median(values: number[]): number {
   return sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
+/**
+ * Same difference as `meanAbsDiff`, sampling every 4th pixel on large frames.
+ * Used to search for a loop point. The chosen cut is confirmed at full resolution.
+ */
+function meanAbsDiffFast(a: Frame, b: Frame): number {
+  if (a.width !== b.width || a.height !== b.height || a.width * a.height <= 160 * 160) return meanAbsDiff(a, b);
+  const stride = 4;
+  const da = a.data;
+  const db = b.data;
+  let sum = 0;
+  let count = 0;
+  for (let y = 0; y < a.height; y += stride) {
+    const row = y * a.width * 4;
+    const rowEnd = row + a.width * 4;
+    for (let o = row; o < rowEnd; o += stride * 4) {
+      const aa = da[o + 3] / 255;
+      const ab = db[o + 3] / 255;
+      sum += Math.abs(da[o] * aa - db[o] * ab);
+      sum += Math.abs(da[o + 1] * aa - db[o + 1] * ab);
+      sum += Math.abs(da[o + 2] * aa - db[o + 2] * ab);
+      sum += Math.abs(da[o + 3] - db[o + 3]);
+      count++;
+    }
+  }
+  return count === 0 ? 0 : sum / (count * 4 * 255);
+}
+
 /** Mean absolute difference over premultiplied RGBA, 0–1. Frames must share a size. */
 export function meanAbsDiff(a: Frame, b: Frame): number {
   if (a.width !== b.width || a.height !== b.height) {
@@ -148,6 +175,16 @@ export function resampleFps(frames: Frame[], fromFps: number, toFps: number): Fr
   return out;
 }
 
+/** Seam statistics on a stride, for the search. Small frames stay exact. */
+function seamRatioFast(frames: Frame[]): SeamStats {
+  const n = frames.length;
+  if (n === 0) return { seam: 0, consMed: 0, consMax: 0 };
+  const seam = meanAbsDiffFast(frames[n - 1], frames[0]) * 1000;
+  const steps: number[] = [];
+  for (let i = 0; i < n - 1; i++) steps.push(meanAbsDiffFast(frames[i], frames[i + 1]) * 1000);
+  return { seam, consMed: median(steps), consMax: steps.length ? Math.max(...steps) : 0 };
+}
+
 /** Seam and consecutive-step statistics (all ×1000). */
 export function seamRatio(frames: Frame[]): SeamStats {
   const n = frames.length;
@@ -162,7 +199,7 @@ export function seamRatio(frames: Frame[]): SeamStats {
 function terminalPop(frames: Frame[]): boolean {
   if (frames.length < 4) return false;
   const steps: number[] = [];
-  for (let i = 0; i < frames.length - 1; i++) steps.push(meanAbsDiff(frames[i], frames[i + 1]) * 1000);
+  for (let i = 0; i < frames.length - 1; i++) steps.push(meanAbsDiffFast(frames[i], frames[i + 1]) * 1000);
   const last = steps[steps.length - 1];
   const med = median(steps.slice(0, -1));
   return med > 0 && last > ST_QA.consSpikeRatio * med && last > ST_QA.consSpikeAbs;
@@ -186,10 +223,10 @@ function bestClosedEnd(frames: Frame[], minKeep: number): number | null {
   const n = frames.length;
   if (n < minKeep || n < 2) return null;
   const steps: number[] = [];
-  for (let i = 0; i < n - 1; i++) steps.push(meanAbsDiff(frames[i], frames[i + 1]) * 1000);
+  for (let i = 0; i < n - 1; i++) steps.push(meanAbsDiffFast(frames[i], frames[i + 1]) * 1000);
   let best: number | null = null;
   for (let end = Math.max(minKeep - 1, 1); end < n; end++) {
-    const seam = meanAbsDiff(frames[end], frames[0]) * 1000;
+    const seam = meanAbsDiffFast(frames[end], frames[0]) * 1000;
     if (seam > SEAM_ABS_MAX) continue;
     const med = median(steps.slice(0, end));
     const ratio = med > 0 ? seam / med : seam > 0 ? Infinity : 0;
@@ -219,7 +256,7 @@ function withoutFrozenClose(frames: Frame[], threshold: number): Frame[] {
  * allows it, ping-pong the clip instead.
  */
 export function makeSeamlessLoop(frames: Frame[], opts: SeamlessLoopOptions): SeamlessLoopResult {
-  const seamBefore = seamToStep(seamRatio(frames));
+  const seamBefore = seamToStep(seamRatioFast(frames));
   const minKeep = Math.max(8, Math.round(frames.length * 0.45));
   const closedEnd = bestClosedEnd(frames, minKeep);
   if (closedEnd !== null) {
