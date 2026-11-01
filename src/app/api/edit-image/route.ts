@@ -15,6 +15,7 @@ import { safeFetchImage, safeFetchErrorResponse } from "@/lib/safe-fetch";
 import { rateLimitUserGeneration } from "@/lib/rate-limit";
 import { prisma } from "@/lib/prisma";
 import { startOperation, requestIp, budgetPlan, type OpHandle } from "@/lib/billing/operations";
+import { isProviderBalanceMessage } from "@/lib/provider-balance";
 import { parseJsonBody, validateBody } from "@/lib/validation/common";
 import { editImageSchema } from "@/lib/validations";
 import { editSprite, EDIT_CREDITS } from "@/lib/image/sprite-edit";
@@ -732,9 +733,9 @@ export async function POST(request: Request) {
     if (pendingOp) {
       const op = pendingOp;
       pendingOp = null;
-      await op.fail(/insufficientCredits|insufficient credits|top-up/i.test(msg) ? "PROVIDER_BALANCE" : "EDIT_FAILED");
+      await op.fail(isProviderBalanceMessage(msg) ? "PROVIDER_BALANCE" : "EDIT_FAILED");
     }
-    if (/insufficientCredits|insufficient credits|top-up/i.test(msg)) {
+    if (isProviderBalanceMessage(msg)) {
       return NextResponse.json({ error: "Editing is paused for a short while — your credits were refunded." }, { status: 503 });
     }
     return NextResponse.json({ error: "Edit failed — your credits were refunded. Try describing the change differently." }, { status: 500 });

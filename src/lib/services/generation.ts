@@ -40,6 +40,7 @@ import {
   generateAnimationGrid,
 } from "@/lib/runware";
 import { isDailyAllowanceError, dailyAllowanceMessage } from "@/lib/cloudflare-ai";
+import { isProviderBalanceMessage } from "@/lib/provider-balance";
 import { uploadGenerationBufferToR2 } from "@/lib/r2";
 import { startOperation, type OpHandle } from "@/lib/billing/operations";
 import { saveGeneration, type SaveGenerationParams } from "@/lib/db/generations";
@@ -210,6 +211,7 @@ export type GenerationErrorCode =
   | "INVALID_SUBCATEGORY"
   | "INVALID_STYLE"
   | "PROVIDER_ERROR"
+  | "PROVIDER_BALANCE"
   | "PROVIDER_TIMEOUT"
   | "CAPACITY_EXHAUSTED"
   | "RATE_LIMITED"
@@ -533,10 +535,15 @@ async function generateSingle2D(request: GenerationRequest): Promise<{ asset: Ge
   const RETRY_BUDGET_MS = 100_000;
   const providerError = (cause: unknown) => {
     const exhausted = isDailyAllowanceError(cause);
+    const balance = isProviderBalanceMessage(cause instanceof Error ? cause.message : String(cause));
     return new GenerationError({
-      code: exhausted ? "CAPACITY_EXHAUSTED" : "PROVIDER_ERROR",
-      userMessage: exhausted ? dailyAllowanceMessage() : "Generation failed. Please try again.",
-      isExpected: exhausted,
+      code: exhausted ? "CAPACITY_EXHAUSTED" : balance ? "PROVIDER_BALANCE" : "PROVIDER_ERROR",
+      userMessage: exhausted
+        ? dailyAllowanceMessage()
+        : balance
+          ? "The image service is out of capacity right now. Your credits were refunded."
+          : "Generation failed. Please try again.",
+      isExpected: exhausted || balance,
       cause,
     });
   };
@@ -572,7 +579,7 @@ async function generateSingle2D(request: GenerationRequest): Promise<{ asset: Ge
       modelKey,
       error: err instanceof Error ? err.message : String(err),
     });
-    if (isDailyAllowanceError(err) || Date.now() - startedAt > RETRY_BUDGET_MS) throw providerError(err);
+    if (isProviderBalanceMessage(err instanceof Error ? err.message : String(err)) || isDailyAllowanceError(err) || Date.now() - startedAt > RETRY_BUDGET_MS) throw providerError(err);
     try {
       generated = await generateSpriteImage({ prompt: finalPrompt, model: "standard", seed: request.seed });
     } catch (retryErr) {

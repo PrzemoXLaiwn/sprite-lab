@@ -73,18 +73,117 @@ function despill(data: Buffer, o: number, key: Rgb): void {
   }
 }
 
-function keyOne(frame: Frame, key: Rgb): Frame {
-  const data = Buffer.from(frame.data);
-  for (let o = 0; o < data.length; o += 4) {
-    const d = dist(data[o], data[o + 1], data[o + 2], key);
-    if (d <= HARD) {
-      data[o + 3] = 0;
-      continue;
+/** How far a drifted edge key reaches. Wider than this starts to catch navy cloth. */
+const EXTRA_HARD = 36;
+const EXTRA_SOFT = 64;
+/** The joy clip's leftover green sits in the outer 8px. The suit is further in. */
+const EXTRA_BORDER = 8;
+
+function hueOf(nominal: Rgb, colour: Rgb, margin: number): boolean {
+  const nominalGreen = nominal[1] > nominal[0] && nominal[1] > nominal[2];
+  if (nominalGreen) return colour[1] > colour[0] + margin && colour[1] > colour[2] + margin;
+  return colour[0] > colour[1] + margin && colour[2] > colour[1] + margin;
+}
+
+function sameHue(nominal: Rgb, colour: Rgb): boolean {
+  return hueOf(nominal, colour, 12);
+}
+
+export type CornerKey = { colour: Rgb; global: boolean };
+
+/**
+ * Median of corner pixels the nominal key will leave opaque.
+ * A plain median is the bright key itself, because most of the corner is still
+ * #00FF00 and the darkened fringe is a thin line. Vidu pulls that line toward
+ * the frame edge (about 10,80,8 on the joy clip). When that fringe is most of
+ * the corner, the whole backdrop drifted and the extra key applies everywhere.
+ */
+export function cornerKey(frame: Frame, nominal: Rgb): CornerKey | null {
+  const { width, height, data } = frame;
+  const cp = Math.min(16, width >> 2, height >> 2);
+  if (cp < 2) return null;
+  const samples: Array<[number, number, number]> = [];
+  let opaque = 0;
+  const origins: Array<[number, number]> = [[0, 0], [width - cp, 0], [0, height - cp], [width - cp, height - cp]];
+  for (const [x0, y0] of origins) {
+    for (let y = y0; y < y0 + cp; y++) {
+      for (let x = x0; x < x0 + cp; x++) {
+        const o = (y * width + x) * 4;
+        if (data[o + 3] < 128) continue;
+        opaque++;
+        if (dist(data[o], data[o + 1], data[o + 2], nominal) <= SOFT) continue;
+        samples.push([data[o], data[o + 1], data[o + 2]]);
+      }
     }
-    data[o + 3] = d >= SOFT ? 255 : Math.round((255 * (d - HARD)) / (SOFT - HARD));
-    if (d < SOFT + 24) despill(data, o, key);
   }
-  return { data, width: frame.width, height: frame.height };
+  if (samples.length < 16) return null;
+  const channel = (i: 0 | 1 | 2) => {
+    const vals = samples.map((s) => s[i]).sort((a, b) => a - b);
+    return vals[vals.length >> 1];
+  };
+  const med: Rgb = [channel(0), channel(1), channel(2)];
+  if (!sameHue(nominal, med)) return null;
+  if (dist(med[0], med[1], med[2], nominal) <= SOFT) return null;
+  return { colour: med, global: opaque > 0 && samples.length / opaque > 0.5 };
+}
+
+function closest(r: number, g: number, b: number, keys: Rgb[]): { d: number; key: Rgb } {
+  let d = Infinity;
+  let key = keys[0];
+  for (const k of keys) {
+    const next = dist(r, g, b, k);
+    if (next < d) { d = next; key = k; }
+  }
+  return { d, key };
+}
+
+function ramp(d: number, hard: number, soft: number): number {
+  if (d <= hard) return 0;
+  if (d >= soft) return 255;
+  return Math.round((255 * (d - hard)) / (soft - hard));
+}
+
+function keyOne(frame: Frame, nominal: Rgb, extra: CornerKey | null): Frame {
+  const data = Buffer.from(frame.data);
+  const { width, height } = frame;
+  for (let y = 0; y < height; y++) {
+    const yEdge = y < EXTRA_BORDER || y >= height - EXTRA_BORDER;
+    for (let x = 0; x < width; x++) {
+      const o = (y * width + x) * 4;
+      const rgb: Rgb = [data[o], data[o + 1], data[o + 2]];
+      const near = yEdge || x < EXTRA_BORDER || x >= width - EXTRA_BORDER;
+      const speck = (x < 2 || x >= width - 2) && (y < 2 || y >= height - 2);
+      let d = dist(rgb[0], rgb[1], rgb[2], nominal);
+      let key = nominal;
+      let hard = HARD;
+      let soft = SOFT;
+      if (extra?.global) {
+        const d2 = dist(rgb[0], rgb[1], rgb[2], extra.colour);
+        if (ramp(d2, EXTRA_HARD, EXTRA_SOFT) < ramp(d, HARD, SOFT)) {
+          d = d2;
+          key = extra.colour;
+          hard = EXTRA_HARD;
+          soft = EXTRA_SOFT;
+        }
+      } else if (extra && speck && d > HARD && Math.max(...rgb) - Math.min(...rgb) < 20 && (rgb[0] + 2 * rgb[1] + rgb[2]) / 4 < 72) {
+        data[o + 3] = 0;
+        continue;
+      } else if (extra && near && d > HARD && hueOf(nominal, rgb, 4)) {
+        // A thin edge the nominal ball missed, including the dull corner pixel
+        // (about 31,37,28) that is green but not bright. Clearing only the
+        // border keeps a dark suit, which is not green enough to match.
+        data[o + 3] = 0;
+        continue;
+      }
+      if (d <= hard) {
+        data[o + 3] = 0;
+        continue;
+      }
+      data[o + 3] = ramp(d, hard, soft);
+      if (d < soft + 24) despill(data, o, key);
+    }
+  }
+  return { data, width, height };
 }
 
 function interiorMask(frame: Frame, key: Rgb): Uint8Array {
@@ -107,12 +206,27 @@ function interiorMask(frame: Frame, key: Rgb): Uint8Array {
   return out;
 }
 
+/** Opaque plate: transparent pixels become the key colour so a video model has a flat ground to keep. */
+export function compositeOverKey(frame: Frame, key: Rgb): Frame {
+  const data = Buffer.from(frame.data);
+  for (let o = 0; o < data.length; o += 4) {
+    const a = data[o + 3] / 255;
+    data[o] = Math.round(data[o] * a + key[0] * (1 - a));
+    data[o + 1] = Math.round(data[o + 1] * a + key[1] * (1 - a));
+    data[o + 2] = Math.round(data[o + 2] * a + key[2] * (1 - a));
+    data[o + 3] = 255;
+  }
+  return { data, width: frame.width, height: frame.height };
+}
+
 /**
  * Remove the key colour in every pixel, enclosed pockets included.
  * Frame 0 can restore a later pixel only when that pixel is not close to the key.
  */
 export function keyChromaFrames(frames: Frame[], key: Rgb): Frame[] {
-  const out = frames.map((f) => keyOne(f, key));
+  const extras = frames.map((f) => cornerKey(f, key));
+  const keysByFrame = extras.map((sampled) => (sampled ? [key, sampled.colour] : [key]));
+  const out = frames.map((f, i) => keyOne(f, key, extras[i]));
   if (out.length < 2) return out;
   const interior = interiorMask(out[0], key);
   const width = out[0].width;
@@ -132,7 +246,7 @@ export function keyChromaFrames(frames: Frame[], key: Rgb): Frame[] {
         if (sx < 0 || sx >= width) continue;
         if (!interior[sy * width + sx]) continue;
         const o = (y * width + x) * 4;
-        if (dist(data[o], data[o + 1], data[o + 2], key) <= SOFT) continue;
+        if (closest(data[o], data[o + 1], data[o + 2], keysByFrame[f]).d <= SOFT) continue;
         data[o + 3] = 255;
       }
     }

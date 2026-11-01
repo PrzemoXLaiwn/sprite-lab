@@ -5,6 +5,7 @@
 
 import { Download, Film, Loader2, RefreshCw, RotateCcw } from "lucide-react";
 import type { ExpressionSnapshot, QaResult } from "@/lib/st-packs/types";
+import { isProviderBalanceMessage, PROVIDER_BALANCE_MESSAGE } from "@/lib/provider-balance";
 import { downloadUrl } from "./api";
 import { StatusChip, expressionStage, formatMs, formatUsd, isExpressionBusy, labelTitle } from "./ui";
 
@@ -94,7 +95,9 @@ export function ExpressionTile({ jobId, expression: e, previewMode, pending, onR
       )}
 
       {e.error && e.status === "failed" && (
-        <p role="alert" className="line-clamp-3 text-[11px] leading-snug text-red-200" title={e.error}>{e.error}</p>
+        <p role="alert" className="line-clamp-3 text-[11px] leading-snug text-red-200" title={e.error}>
+          {isProviderBalanceMessage(e.error) ? PROVIDER_BALANCE_MESSAGE : e.error}
+        </p>
       )}
 
       <div className="mt-auto flex flex-wrap items-center gap-1.5">
