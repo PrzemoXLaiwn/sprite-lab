@@ -75,10 +75,12 @@ Parameters (`src/config/st-packs.ts`, from the validated Python prototype):
   3 px with a pop on the test still vs 0.006 px for Vidu)
 - working canvas 1.5× the output; output 504×672 (3:4) by default
 - duplicate closing frame dropped when mean |last − first| < 0.02
-- key: background = median of the four 24×24 corner patches; smoothstep key
-  between RGB distance 18 and 60; temporal median on alpha (radius 1,
-  circular); un-mix `C = (I − (1−a)·B)/a` for 0.05 < a < 1; erode 1 px; blur
-  σ≈0.6; alpha < 8 → 0
+- key: background = per-frame median of the outer 8 px border; smoothstep
+  key between RGB distance 18 and 60; flood-fill that key from the frame
+  border (4-connected, alpha ≤ 127) and force every enclosed pixel opaque,
+  leaving partial alpha only in a 3 px band on the outer silhouette;
+  temporal median on alpha (radius 1, circular); un-mix
+  `C = (I − (1−a)·B)/a` for 0.05 < a < 1; erode 1 px; blur σ≈0.6; alpha < 8 → 0
 - stabiliser: band rows 80–97 %, moving average window 5, x always, y when
   |dy| > 0.5; shifts over 24 px are flagged instead of warped
 - loop: crossfade K = 8 frames at 24 fps (≈ 0.33 s), tail dropped

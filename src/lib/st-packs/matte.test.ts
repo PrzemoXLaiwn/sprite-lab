@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { defringe, estimateBackground, keyFrame, matteFrames, postMatte, temporalMedianAlpha } from "./matte";
-import { drawDisc, makeFrame, pixel } from "./test-fixtures";
+import { closeSilhouette, defringe, estimateBackground, keyFrame, matteFrames, postMatte, temporalMedianAlpha } from "./matte";
+import { drawDisc, drawRect, makeFrame, pixel } from "./test-fixtures";
 import type { Frame } from "./types";
 
-const BG: [number, number, number] = [40, 200, 60];
-const FG: [number, number, number] = [220, 80, 30];
+type Rgb = [number, number, number];
+
+const BG: Rgb = [40, 200, 60];
+const FG: Rgb = [220, 80, 30];
 
 function subjectOnFlat(w = 64, h = 64, r = 18): Frame {
   const f = makeFrame(w, h, [BG[0], BG[1], BG[2], 255]);
@@ -13,12 +15,12 @@ function subjectOnFlat(w = 64, h = 64, r = 18): Frame {
 }
 
 describe("estimateBackground", () => {
-  it("returns the flat corner colour even with a character in the middle", () => {
+  it("returns the flat border colour even with a character in the middle", () => {
     const f = subjectOnFlat();
     expect(estimateBackground(f)).toEqual(BG);
   });
 
-  it("ignores a few noisy corner pixels (median)", () => {
+  it("ignores a few noisy border pixels (median)", () => {
     const f = subjectOnFlat();
     for (let i = 0; i < 20; i++) {
       const o = i * 4;
@@ -29,7 +31,18 @@ describe("estimateBackground", () => {
     expect(estimateBackground(f)).toEqual(BG);
   });
 
-  it("clamps the patch to tiny frames", () => {
+  it("uses the whole border, so a subject filling the corner patches cannot move it", () => {
+    const f = makeFrame(200, 80, [255, 255, 255, 255]);
+    const red: [number, number, number] = [200, 10, 10];
+    drawRect(f, 0, 0, 24, 24, red);
+    drawRect(f, 176, 0, 200, 24, red);
+    drawRect(f, 0, 56, 24, 80, red);
+    drawRect(f, 176, 56, 200, 80, red);
+    expect(pixel(f, 1, 1).slice(0, 3)).toEqual(red);
+    expect(estimateBackground(f)).toEqual([255, 255, 255]);
+  });
+
+  it("clamps a thick border to a tiny frame", () => {
     const f = makeFrame(8, 8, [1, 2, 3, 255]);
     expect(estimateBackground(f, 24)).toEqual([1, 2, 3]);
   });
@@ -178,5 +191,120 @@ describe("matteFrames / postMatte", () => {
 
   it("handles an empty input", () => {
     expect(matteFrames([])).toEqual({ frames: [], background: [0, 0, 0] });
+  });
+
+  it("keeps near-white interior regions opaque and the outer background clear", () => {
+    const W = 120;
+    const H = 120;
+    const white: Rgb = [255, 255, 255];
+    const red: Rgb = [180, 20, 30];
+    const hole: Rgb = [254, 254, 254];
+    const skin: Rgb = [250, 230, 220];
+    const ghost: Rgb = [240, 240, 240];
+    const scene = (): Frame => {
+      const f = makeFrame(W, H, [white[0], white[1], white[2], 255]);
+      drawRect(f, 40, 28, 108, 112, red);
+      drawRect(f, 58, 48, 88, 78, hole);
+      drawRect(f, 48, 84, 72, 102, skin);
+      // Near-background patch sitting in the real background, away from the character.
+      drawRect(f, 10, 10, 24, 24, ghost);
+      return f;
+    };
+    const source = scene();
+    const keyed = keyFrame(source, white);
+    // The raw key punches the interior: the highlight is gone, the skin is see-through.
+    expect(pixel(keyed, 73, 63)[3]).toBe(0);
+    expect(pixel(keyed, 60, 93)[3]).toBeGreaterThan(0);
+    expect(pixel(keyed, 60, 93)[3]).toBeLessThan(255);
+    // A flat near-white patch in the background survives defringe on its own.
+    const [keyedOnly] = defringe([keyed], white);
+    expect(pixel(keyedOnly, 16, 16)[3]).toBeGreaterThan(0);
+
+    const { frames: out, background } = matteFrames([scene(), scene(), scene()]);
+    expect(background).toEqual(white);
+    for (const f of out) {
+      expect(pixel(f, 2, 2)[3]).toBe(0);
+      expect(pixel(f, 12, 60)[3]).toBe(0);
+      expect(pixel(f, 16, 16)[3]).toBe(0);
+      expect(pixel(f, 73, 63)).toEqual([...hole, 255]);
+      expect(pixel(f, 60, 93)[3]).toBe(255);
+      expect(pixel(f, 50, 36)).toEqual([...red, 255]);
+    }
+    // The source frame the key was measured on is not mutated.
+    expect(pixel(source, 73, 63)[3]).toBe(255);
+  });
+
+  it("keys each frame from that frame's own border", () => {
+    const green: Rgb = [40, 200, 60];
+    const blue: Rgb = [30, 40, 220];
+    const near = (bg: Rgb): Rgb => [bg[0] + 6, bg[1] + 6, bg[2] + 6];
+    const framed = (bg: Rgb): Frame => {
+      const f = makeFrame(72, 72, [bg[0], bg[1], bg[2], 255]);
+      drawRect(f, 14, 14, 58, 58, [180, 20, 30]);
+      drawRect(f, 28, 28, 44, 44, near(bg));
+      return f;
+    };
+    const { frames: out, background } = matteFrames([framed(green), framed(blue), framed(blue)]);
+    expect(background).toEqual(green);
+    expect(pixel(out[0], 2, 2)[3]).toBe(0);
+    expect(pixel(out[1], 2, 2)[3]).toBe(0);
+    expect(pixel(out[2], 2, 2)[3]).toBe(0);
+    expect(pixel(out[0], 35, 35)[3]).toBe(255);
+    expect(pixel(out[1], 35, 35)[3]).toBe(255);
+    expect(pixel(out[1], 35, 35).slice(0, 3)).toEqual(near(blue));
+  });
+
+  it("repairs a one-frame crack into an interior hole from the neighbouring silhouettes", () => {
+    const base = (): Frame => {
+      const f = makeFrame(80, 80, [255, 255, 255, 255]);
+      drawRect(f, 12, 12, 68, 68, [180, 20, 30]);
+      drawRect(f, 30, 30, 50, 50, [254, 254, 254]);
+      return f;
+    };
+    const frames = [base(), base(), base()];
+    // Frame 0: a 4-connected white crack from the border into the highlight,
+    // so the flood can reach it. Frames 1 and 2 stay sealed.
+    for (let y = 0; y <= 30; y++) drawRect(frames[0], 40, y, 41, y + 1, [255, 255, 255]);
+    const { frames: out } = matteFrames(frames);
+    expect(pixel(out[0], 40, 40)[3]).toBe(255);
+    expect(pixel(out[1], 40, 40)[3]).toBe(255);
+    expect(pixel(out[2], 40, 40)[3]).toBe(255);
+    expect(pixel(out[0], 1, 1)[3]).toBe(0);
+  });
+});
+
+describe("closeSilhouette", () => {
+  it("fills an enclosed hole and leaves the border-connected background clear", () => {
+    const f = makeFrame(21, 21, [255, 255, 255, 0]);
+    drawRect(f, 2, 2, 19, 19, [180, 20, 30]);
+    for (let y = 8; y < 13; y++) {
+      for (let x = 8; x < 13; x++) {
+        const o = (y * 21 + x) * 4;
+        f.data[o] = 254;
+        f.data[o + 1] = 254;
+        f.data[o + 2] = 254;
+        f.data[o + 3] = 0;
+      }
+    }
+    closeSilhouette(f);
+    expect(pixel(f, 10, 10)[3]).toBe(255);
+    expect(pixel(f, 8, 8)[3]).toBe(255);
+    expect(pixel(f, 0, 0)[3]).toBe(0);
+    expect(pixel(f, 10, 10).slice(0, 3)).toEqual([254, 254, 254]);
+  });
+
+  it("keeps partial alpha on the outer edge of a keyed subject", () => {
+    const keyed = keyFrame(subjectOnFlat(), BG);
+    closeSilhouette(keyed);
+    expect(pixel(keyed, 32, 32)[3]).toBe(255);
+    expect(pixel(keyed, 1, 1)[3]).toBe(0);
+    let soft = 0;
+    for (let y = 0; y < keyed.height; y++) {
+      for (let x = 0; x < keyed.width; x++) {
+        const a = pixel(keyed, x, y)[3];
+        if (a > 0 && a < 255) soft++;
+      }
+    }
+    expect(soft).toBeGreaterThan(0);
   });
 });
