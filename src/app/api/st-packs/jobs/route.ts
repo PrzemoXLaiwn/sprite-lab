@@ -72,8 +72,8 @@ export async function POST(request: Request) {
     height: native.height,
     options: normaliseOptions(b.options),
   });
-  // The background worker carries the job from here; without QUEUE_SECRET the
-  // first steps still start now and the page's polling keeps it moving
+  // The background worker carries the job from here. If the kick cannot start,
+  // one tick runs now; the poll keeps it moving. Not the 240 s loop.
   if (!(await kickWorker(id))) {
     const { work } = await tick(id);
     if (work.length) after(() => runWork(work));

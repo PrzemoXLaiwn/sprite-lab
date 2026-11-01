@@ -56,7 +56,7 @@ vi.mock("./worker-lease", () => ({
   },
 }));
 
-import { isStalled, kickWorker, workerLoop } from "./worker";
+import { isStalled, kickWorker, workerBaseUrl, workerLoop } from "./worker";
 
 describe("workerLoop", () => {
   beforeEach(() => {
@@ -160,6 +160,23 @@ describe("kickWorker", () => {
     process.env.QUEUE_SECRET = "queue-secret";
     delete process.env.VERCEL_URL;
     delete process.env.NEXT_PUBLIC_APP_URL;
+    delete process.env.VERCEL_ENV;
+    delete process.env.VERCEL_PROJECT_PRODUCTION_URL;
+    delete process.env.ST_PACKS_WORKER_URL;
+  });
+
+  it("never sends the secret to NEXT_PUBLIC_APP_URL; uses the project's own host", async () => {
+    process.env.NEXT_PUBLIC_APP_URL = "https://someone-else.vercel.app";
+    process.env.VERCEL_ENV = "production";
+    process.env.VERCEL_PROJECT_PRODUCTION_URL = "www.sprite-lab.com";
+    process.env.VERCEL_URL = "sprite-lab-abc.vercel.app";
+    expect(await kickWorker("job1")).toBe(true);
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    expect(url).toBe("https://www.sprite-lab.com/api/st-packs/worker");
+    expect(url).not.toContain("someone-else.vercel.app");
+    expect((init?.headers as Record<string, string>)["x-queue-secret"]).toBe("queue-secret");
+    expect(workerBaseUrl({ VERCEL_ENV: "preview", VERCEL_URL: "p.vercel.app", NEXT_PUBLIC_APP_URL: "https://x.app" })).toBe("https://p.vercel.app");
+    expect(workerBaseUrl({ ST_PACKS_WORKER_URL: "https://w.example/" })).toBe("https://w.example");
   });
 
   it("does not claim or fetch when QUEUE_SECRET is missing", async () => {
@@ -200,15 +217,12 @@ describe("kickWorker", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("runs the loop in this process when the kick is rejected", async () => {
+  it("releases the lease when the kick is rejected, so the caller can do one tick", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 404 })));
-    M.statuses.length = 0;
-    M.statuses.push("done");
-    M.workOnTerminal = false;
     M.ticks = 0;
-    expect(await kickWorker("job1")).toBe(true);
-    expect(M.ticks).toBeGreaterThan(0);
-    expect(M.releases.length).toBeGreaterThan(0);
+    expect(await kickWorker("job1")).toBe(false);
+    expect(M.ticks).toBe(0);
+    expect(M.releases.map((d) => d.toISOString())).toEqual(["2030-03-01T00:00:00.000Z"]);
   });
 });
 

@@ -9,6 +9,7 @@
 // a fresh invocation. One job has one lease, so the page poll cannot start a
 // second 240 s function while a render or a post-process is quiet.
 // =============================================================================
+import { internalBaseUrl } from "@/lib/internal-base-url";
 import { runWork, tick } from "./jobs";
 import type { JobSnapshot } from "./types";
 import { claimWorkerLease, releaseWorkerLease, renewWorkerLease, takeOverWorkerLease } from "./worker-lease";
@@ -28,10 +29,9 @@ export const WORKER_STEP_WORST_MS = 90_000;
 /** Pause between ticks when nothing was ready to run (video still rendering). */
 export const WORKER_IDLE_MS = 3_000;
 
-function baseUrl(): string {
-  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL.replace(/\/+$/, "");
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return "http://localhost:3000";
+/** @see internalBaseUrl — re-exported so callers and tests share one host rule. */
+export function workerBaseUrl(env: Record<string, string | undefined> = process.env): string {
+  return internalBaseUrl(env);
 }
 
 /**
@@ -53,7 +53,7 @@ export async function kickWorker(jobId: string, opts?: { handoffFrom?: Date }): 
       : await claimWorkerLease(jobId);
     // Someone else owns the job (or the hand-off lost the race). Do not start a second function.
     if (!held) return true;
-    const res = await fetch(`${baseUrl()}/api/st-packs/worker`, {
+    const res = await fetch(`${workerBaseUrl()}/api/st-packs/worker`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -66,12 +66,12 @@ export async function kickWorker(jobId: string, opts?: { handoffFrom?: Date }): 
       signal: AbortSignal.timeout(15_000),
     });
     if (!res.ok) {
-      // The hop never reached the route (production logged 404 on every kick,
-      // so the 240 s loop never started and the page poll did one tick at a time).
-      // Keep the lease and run the loop in this invocation.
-      console.error(`[st-packs] worker kick ${res.url} answered ${res.status}; running the loop here`);
-      await workerLoop(jobId, { leaseUntil: held });
-      return true;
+      // Do not run the 240 s loop here. This function is also called from the
+      // page poll; a full loop would hold that request until the platform kills it.
+      // The caller does one tick when this returns false.
+      console.error(`[st-packs] worker kick ${res.url} answered ${res.status}`);
+      await releaseWorkerLease(jobId, held);
+      return false;
     }
     return true;
   } catch (err) {
