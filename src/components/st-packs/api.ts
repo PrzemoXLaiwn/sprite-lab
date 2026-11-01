@@ -36,6 +36,7 @@ export interface CreateJobBody {
     motion?: StMotionMode;
     videoModel?: string;
     lossless?: boolean;
+    includeNeutral?: boolean;
   };
 }
 
@@ -115,6 +116,16 @@ export async function createJob(body: CreateJobBody): Promise<string> {
   const data = await request<{ id: string }>(`${BASE}/jobs`, json(body), "Couldn't start the job.");
   if (!data?.id) throw new StApiError("The server didn't return a job id.", 0);
   return data.id;
+}
+
+/** True when a finished neutral for this base can be copied instead of generated. */
+export async function neutralReuseForBase(baseId: string): Promise<boolean> {
+  const data = await request<{ neutralReuse?: boolean }>(
+    `${BASE}/jobs?baseId=${encodeURIComponent(baseId)}`,
+    { method: "GET" },
+    "Couldn't check for an existing neutral.",
+  );
+  return data?.neutralReuse === true;
 }
 
 export async function listJobs(): Promise<JobListItem[]> {

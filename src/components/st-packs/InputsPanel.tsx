@@ -37,6 +37,8 @@ export interface InputsState {
   motion: StMotionMode;
   videoModel: string;
   candidateCount: 2 | 3 | 4;
+  /** Neutral idle. On for a new base; untick to leave it out of this pack. */
+  includeNeutral: boolean;
 }
 
 /** The base the job will use, with how it was made so a framing change can be flagged. */
@@ -52,6 +54,7 @@ export function InputsPanel({
   base, candidates, baseBusy, baseError, fileName,
   onUpload, onGenerateBases, onPickCandidate,
   submitting, submitError, jobRunning, onSubmit,
+  neutralReuse = false,
 }: {
   inputs: InputsState;
   onChange: (patch: Partial<InputsState>) => void;
@@ -67,13 +70,20 @@ export function InputsPanel({
   submitError: string;
   jobRunning: boolean;
   onSubmit: () => void;
+  /** A done neutral already exists for this base, so including it does not generate a clip. */
+  neutralReuse?: boolean;
 }) {
   const uid = useId();
   const fileRef = useRef<HTMLInputElement>(null);
-  const labels = resolveExpressionLabels(inputs.expressionSet, inputs.customLabels);
-  const estimate = estimateJobUsd(labels, { videoSeconds: inputs.videoSeconds, matteMode: inputs.matteMode, model: inputs.videoModel });
+  const includeNeutral = inputs.includeNeutral !== false;
+  const labels = resolveExpressionLabels(inputs.expressionSet, inputs.customLabels, includeNeutral);
+  const estimate = estimateJobUsd(
+    labels,
+    { videoSeconds: inputs.videoSeconds, matteMode: inputs.matteMode, model: inputs.videoModel },
+    includeNeutral && neutralReuse ? ["neutral"] : [],
+  );
   const busy = baseBusy !== null;
-  const canSubmit = !!base && !submitting && !jobRunning && !busy;
+  const canSubmit = !!base && !submitting && !jobRunning && !busy && labels.length > 0;
   const framingMismatch = base && base.framing !== inputs.framing;
 
   const toggleCustom = (label: StExpressionLabel, on: boolean) => {
@@ -183,7 +193,7 @@ export function InputsPanel({
       </Field>
 
       {/* Expression set */}
-      <Field label="Expression set" hint={`${labels.length} expression${labels.length === 1 ? "" : "s"} will be made. Neutral always ships.`}>
+      <Field label="Expression set" hint={`${labels.length} expression${labels.length === 1 ? "" : "s"} will be made.`}>
         <div className="sl-track" role="group" aria-label="Expression set">
           {([["default8", "Default 8"], ["all28", "All 28"], ["custom", "Custom"]] as const).map(([id, text]) => (
             <button key={id} type="button" aria-pressed={inputs.expressionSet === id} onClick={() => onChange({ expressionSet: id })} className="sl-seg flex-1">
@@ -193,17 +203,25 @@ export function InputsPanel({
         </div>
         {inputs.expressionSet === "custom" && (
           <div role="group" aria-label="Custom expressions" className="sl-card mt-3 grid grid-cols-2 gap-x-1 p-1.5 sm:grid-cols-3">
-            {ST_EXPRESSION_LABELS.map((label) => {
-              const isNeutral = label === "neutral";
-              return (
-                <CheckRow key={label} checked={isNeutral || inputs.customLabels.includes(label)} disabled={isNeutral}
-                  onChange={(on) => toggleCustom(label, on)} title={isNeutral ? "Neutral is always included" : undefined}>
-                  {labelTitle(label)}
-                </CheckRow>
-              );
-            })}
+            {ST_EXPRESSION_LABELS.filter((label) => label !== "neutral").map((label) => (
+              <CheckRow key={label} checked={inputs.customLabels.includes(label)} onChange={(on) => toggleCustom(label, on)}>
+                {labelTitle(label)}
+              </CheckRow>
+            ))}
           </div>
         )}
+        <div className="sl-card mt-3 p-1.5">
+          <CheckRow checked={includeNeutral} onChange={(on) => onChange({ includeNeutral: on })}>
+            Include neutral idle
+          </CheckRow>
+        </div>
+        <p className="mt-1.5 text-[11.5px] leading-snug text-[#8A92BF]">
+          {includeNeutral && neutralReuse
+            ? "A finished neutral for this base will be copied in. That clip is not generated again."
+            : includeNeutral
+              ? "On for the first pack of a base. Untick it to skip the idle clip."
+              : "Neutral is left out of this pack."}
+        </p>
       </Field>
 
       {/* Style notes */}
@@ -289,6 +307,7 @@ export function InputsPanel({
         </p>
         <p className="mt-1 text-[11.5px] leading-snug text-[#8A92BF]">
           Estimate only; the job reports the real cost. Neutral uses the base, no edit.
+          {includeNeutral && neutralReuse ? " Reused neutral is not charged." : ""}
           {inputs.matteMode === "runware" ? " Runware matte adds per-frame charges." : ""}
         </p>
       </div>

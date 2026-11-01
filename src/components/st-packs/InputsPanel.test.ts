@@ -27,6 +27,7 @@ const inputs: InputsState = {
   motion: "expressive",
   videoModel: "vidu:3@2",
   candidateCount: 3,
+  includeNeutral: true,
 };
 
 describe("InputsPanel motion", () => {
@@ -53,5 +54,28 @@ describe("InputsPanel motion", () => {
     expect(html).toContain(">8 s<");
     expect(html).toContain("Admin test only");
     expect(html).toContain("$0.14");
+    expect(html).toContain("Include neutral idle");
+  });
+
+  it("says a reused neutral is copied and is not in the estimate", () => {
+    const html = renderToStaticMarkup(createElement(InputsPanel, {
+      inputs: { ...inputs, expressionSet: "custom", customLabels: ["excitement"], includeNeutral: true },
+      onChange: () => {},
+      base: null,
+      candidates: [],
+      baseBusy: null,
+      baseError: "",
+      fileName: "",
+      onUpload: () => {},
+      onGenerateBases: () => {},
+      onPickCandidate: () => {},
+      submitting: false,
+      submitError: "",
+      jobRunning: false,
+      onSubmit: () => {},
+      neutralReuse: true,
+    }));
+    expect(html).toContain("copied in");
+    expect(html).toContain("Reused neutral is not charged.");
   });
 });

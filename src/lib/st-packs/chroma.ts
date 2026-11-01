@@ -227,7 +227,10 @@ export function keyChromaFrames(frames: Frame[], key: Rgb): Frame[] {
   const extras = frames.map((f) => cornerKey(f, key));
   const keysByFrame = extras.map((sampled) => (sampled ? [key, sampled.colour] : [key]));
   const out = frames.map((f, i) => keyOne(f, key, extras[i]));
-  if (out.length < 2) return out;
+  if (out.length < 2) {
+    for (const frame of out) finishFrame(frame, key);
+    return out;
+  }
   const interior = interiorMask(out[0], key);
   const width = out[0].width;
   const height = out[0].height;
@@ -251,7 +254,184 @@ export function keyChromaFrames(frames: Frame[], key: Rgb): Frame[] {
       }
     }
   }
+  for (const frame of out) finishFrame(frame, key);
   return out;
+}
+
+const BORDER_SPILL = 16;
+const POCKET_MIN = 200;
+const POCKET_GAP = 12;
+
+function dist2(r: number, g: number, b: number, key: Rgb): number {
+  const dr = r - key[0];
+  const dg = g - key[1];
+  const db = b - key[2];
+  return dr * dr + dg * dg + db * db;
+}
+
+function spillPixel(rgb: Rgb, key: Rgb): boolean {
+  const greenKey = key[1] > key[0] && key[1] > key[2];
+  if (greenKey) return rgb[1] > Math.max(rgb[0], rgb[2]);
+  return Math.min(rgb[0], rgb[2]) > rgb[1];
+}
+
+/**
+ * After the colour key and the frame-0 restore. Vidu leaves a dark-green band
+ * in the outer rows (the corner QA flag) and paints enclosed arm gaps the
+ * old light-grey studio colour. The shirt is the large light region and stays.
+ * A 1 px erode plus a second px on spill-coloured pixels takes off the fringe.
+ */
+function finishFrame(frame: Frame, key: Rgb): void {
+  clearBorderSpill(frame, key);
+  clearFlatPockets(frame);
+  erodeEdge(frame, key);
+}
+
+function clearBorderSpill(frame: Frame, key: Rgb): void {
+  const { width, height, data } = frame;
+  const hard2 = HARD * HARD;
+  const band = BORDER_SPILL;
+  for (let y = 0; y < height; y++) {
+    const yEdge = y < band || y >= height - band;
+    for (let x = 0; x < width; x++) {
+      if (!yEdge && x >= band && x < width - band) continue;
+      const o = (y * width + x) * 4;
+      if (data[o + 3] < 16) continue;
+      const rgb: Rgb = [data[o], data[o + 1], data[o + 2]];
+      if (!hueOf(key, rgb, 4)) continue;
+      if (dist2(rgb[0], rgb[1], rgb[2], key) <= hard2) continue;
+      data[o + 3] = 0;
+    }
+  }
+}
+
+interface LightComp {
+  area: number;
+  minx: number;
+  miny: number;
+  maxx: number;
+  maxy: number;
+  pixels: number[];
+}
+
+function bboxGap(a: LightComp, b: LightComp): number {
+  const dx = Math.max(0, a.minx - b.maxx - 1, b.minx - a.maxx - 1);
+  const dy = Math.max(0, a.miny - b.maxy - 1, b.miny - a.maxy - 1);
+  return Math.max(dx, dy);
+}
+
+/** Flat light blobs that are not the shirt (and not touching it) become transparent. */
+function clearFlatPockets(frame: Frame): void {
+  const { width, height, data } = frame;
+  const n = width * height;
+  const cand = new Uint8Array(n);
+  for (let i = 0; i < n; i++) {
+    const o = i * 4;
+    if (data[o + 3] < 200) continue;
+    const r = data[o];
+    const g = data[o + 1];
+    const b = data[o + 2];
+    const mx = r > g ? (r > b ? r : b) : (g > b ? g : b);
+    const mn = r < g ? (r < b ? r : b) : (g < b ? g : b);
+    if (mn > 200 && mx - mn < 28) cand[i] = 1;
+  }
+  const seen = new Uint8Array(n);
+  const comps: LightComp[] = [];
+  const stack: number[] = [];
+  for (let i = 0; i < n; i++) {
+    if (!cand[i] || seen[i]) continue;
+    stack.push(i);
+    seen[i] = 1;
+    const comp: LightComp = { area: 0, minx: width, miny: height, maxx: 0, maxy: 0, pixels: [] };
+    let touches = false;
+    while (stack.length) {
+      const p = stack.pop() as number;
+      comp.pixels.push(p);
+      comp.area++;
+      const x = p % width;
+      const y = (p / width) | 0;
+      if (x < comp.minx) comp.minx = x;
+      if (y < comp.miny) comp.miny = y;
+      if (x > comp.maxx) comp.maxx = x;
+      if (y > comp.maxy) comp.maxy = y;
+      if (x === 0 || y === 0 || x === width - 1 || y === height - 1) touches = true;
+      if (x > 0 && cand[p - 1] && !seen[p - 1]) { seen[p - 1] = 1; stack.push(p - 1); }
+      if (x + 1 < width && cand[p + 1] && !seen[p + 1]) { seen[p + 1] = 1; stack.push(p + 1); }
+      if (y > 0 && cand[p - width] && !seen[p - width]) { seen[p - width] = 1; stack.push(p - width); }
+      if (y + 1 < height && cand[p + width] && !seen[p + width]) { seen[p + width] = 1; stack.push(p + width); }
+    }
+    if (!touches) comps.push(comp);
+  }
+  const cap = Math.min(4000, Math.floor(n * 0.08));
+  const large = comps.filter((c) => c.area > cap);
+  for (const c of comps) {
+    if (c.area < POCKET_MIN || c.area > cap) continue;
+    if (large.some((other) => bboxGap(c, other) <= POCKET_GAP)) continue;
+    for (const p of c.pixels) data[p * 4 + 3] = 0;
+  }
+}
+
+function neighborClear(src: Uint8Array, width: number, height: number, x: number, y: number): boolean {
+  if (x > 0 && src[y * width + x - 1] === 0) return true;
+  if (x + 1 < width && src[y * width + x + 1] === 0) return true;
+  if (y > 0 && src[(y - 1) * width + x] === 0) return true;
+  if (y + 1 < height && src[(y + 1) * width + x] === 0) return true;
+  return x === 0 || y === 0 || x === width - 1 || y === height - 1;
+}
+
+/** 1 px off every silhouette edge, then two more px where that edge is still the key colour. */
+function erodeEdge(frame: Frame, key: Rgb): void {
+  const { width, height, data } = frame;
+  const n = width * height;
+  const clearBoundary = (onlySpill: boolean) => {
+    const src = new Uint8Array(n);
+    for (let i = 0; i < n; i++) src[i] = data[i * 4 + 3] === 0 ? 0 : 1;
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const i = y * width + x;
+        if (!src[i] || !neighborClear(src, width, height, x, y)) continue;
+        const o = i * 4;
+        if (onlySpill && !spillPixel([data[o], data[o + 1], data[o + 2]], key)) continue;
+        if (onlySpill) despill(data, o, key);
+        data[o + 3] = 0;
+      }
+    }
+  };
+  clearBoundary(false);
+  clearBoundary(true);
+  clearBoundary(true);
+  despillRim(frame, key);
+}
+
+function neighborOn(src: Uint8Array, width: number, height: number, x: number, y: number): boolean {
+  if (x > 0 && src[y * width + x - 1]) return true;
+  if (x + 1 < width && src[y * width + x + 1]) return true;
+  if (y > 0 && src[(y - 1) * width + x]) return true;
+  if (y + 1 < height && src[(y + 1) * width + x]) return true;
+  return false;
+}
+
+/** Clamp key-coloured spill on pixels within 2 px of transparency. */
+function despillRim(frame: Frame, key: Rgb): void {
+  const { width, height, data } = frame;
+  const n = width * height;
+  let mark = new Uint8Array(n);
+  for (let i = 0; i < n; i++) if (data[i * 4 + 3] < 16) mark[i] = 1;
+  for (let pass = 0; pass < 2; pass++) {
+    const next = new Uint8Array(mark);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const i = y * width + x;
+        if (mark[i]) continue;
+        if (neighborOn(mark, width, height, x, y)) next[i] = 1;
+      }
+    }
+    mark = next;
+  }
+  for (let i = 0; i < n; i++) {
+    if (!mark[i] || data[i * 4 + 3] < 16) continue;
+    despill(data, i * 4, key);
+  }
 }
 
 function centroid(mask: Uint8Array, width: number): { x: number; y: number; n: number } {

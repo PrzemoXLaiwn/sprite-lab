@@ -26,6 +26,10 @@ describe("ST expression labels", () => {
     expect(resolveExpressionLabels("all28")).toHaveLength(28);
     expect(resolveExpressionLabels("custom", ["joy", "bogus", "joy"])).toEqual(["neutral", "joy"]);
     expect(resolveExpressionLabels("custom", [])).toEqual(["neutral"]);
+    expect(resolveExpressionLabels("custom", ["excitement"], false)).toEqual(["excitement"]);
+    expect(resolveExpressionLabels("default8", [], false)).not.toContain("neutral");
+    expect(resolveExpressionLabels("default8", [], false)).toHaveLength(7);
+    expect(resolveExpressionLabels("all28", [], false)).toHaveLength(27);
   });
 
   it("maps labels to file names and rejects unknown ones", () => {

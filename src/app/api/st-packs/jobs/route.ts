@@ -9,6 +9,7 @@ import { getR2ObjectBuffer } from "@/lib/r2";
 import { chromaKeyForStill } from "@/lib/st-packs/chroma";
 import { rateLimitUserAction } from "@/lib/rate-limit";
 import { baseKeyFor, createJob, listJobs, normaliseOptions, runWork, tick } from "@/lib/st-packs/jobs";
+import { findReusableNeutral, hashBasePng } from "@/lib/st-packs/neutral-reuse";
 import { kickWorker } from "@/lib/st-packs/worker";
 import { checkSfw } from "@/lib/st-packs/sfw";
 
@@ -36,13 +37,19 @@ const Body = z.object({
     motion: z.enum(ST_MOTION_MODES).optional(),
     videoModel: z.string().optional(),
     lossless: z.boolean().optional(),
+    includeNeutral: z.boolean().optional(),
   }).default({}),
 });
 
-export async function GET() {
+export async function GET(request?: Request) {
   const guard = await requireStAdmin();
   if (!guard.ok) return guard.response;
-  return NextResponse.json({ jobs: await listJobs(20) });
+  const jobs = await listJobs(20);
+  const baseId = request ? new URL(request.url).searchParams.get("baseId") : null;
+  if (!baseId || !UUID_RE.test(baseId)) return NextResponse.json({ jobs });
+  const png = await getR2ObjectBuffer(baseKeyFor(baseId));
+  const neutralReuse = png ? !!(await findReusableNeutral(guard.userId, hashBasePng(png))) : false;
+  return NextResponse.json({ jobs, neutralReuse });
 }
 
 export async function POST(request: Request) {
@@ -57,12 +64,14 @@ export async function POST(request: Request) {
   if (!isOutputSize(b.width, b.height)) return NextResponse.json({ error: "Pick one of the listed output sizes." }, { status: 400 });
   const sfw = checkSfw(b.prompt, b.styleNotes);
   if (!sfw.ok) return NextResponse.json({ error: sfw.message }, { status: 400 });
-  const labels = resolveExpressionLabels(b.expressionSet, b.labels ?? []);
+  const includeNeutral = b.options.includeNeutral !== false;
+  const labels = resolveExpressionLabels(b.expressionSet, b.labels ?? [], includeNeutral);
   const native = nativeContentSize(videoModelSpec(stPacksSettings().videoModel));
   if (b.expressionSet === "custom" && labels.length < 1) return NextResponse.json({ error: "Pick at least one expression." }, { status: 400 });
   const baseStill = await getR2ObjectBuffer(baseKeyFor(b.baseId));
   if (!baseStill) return NextResponse.json({ error: "That base image is gone. Upload or generate it again." }, { status: 404 });
   const keyColour = await chromaKeyForStill(baseStill).catch(() => "#00FF00");
+  const baseHash = hashBasePng(baseStill);
 
   const id = await createJob({
     userId: guard.userId,
@@ -75,7 +84,8 @@ export async function POST(request: Request) {
     labels,
     width: native.width,
     height: native.height,
-    options: normaliseOptions({ ...b.options, keyColour }),
+    options: normaliseOptions({ ...b.options, keyColour, baseHash }),
+    baseHash,
   });
   // The background worker carries the job from here. If the kick cannot start,
   // one tick runs now; the poll keeps it moving. Not the 240 s loop.

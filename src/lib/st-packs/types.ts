@@ -22,6 +22,8 @@ export interface JobOptions {
   videoModel: string;
   /** Flat backdrop the edit and the clip keep, then the matte removes. Null on older jobs. */
   keyColour: string | null;
+  /** sha256 of the base PNG. Null on jobs from before reuse. */
+  baseHash: string | null;
   /** HQ lossy is the default. Lossless is exact and usually larger. */
   lossless: boolean;
 }
@@ -70,6 +72,8 @@ export interface ExpressionSnapshot {
   frames: number | null;
   bytes: number | null;
   has: { edit: boolean; video: boolean; webp: boolean; gif: boolean; png: boolean };
+  /** Copied from an earlier pack of the same base. No new video was generated. */
+  reused?: boolean;
   updatedAt: string;
   /** Set while this expression's current step is claimed. A poll must not start a worker before it passes. */
   lockedUntil: string | null;

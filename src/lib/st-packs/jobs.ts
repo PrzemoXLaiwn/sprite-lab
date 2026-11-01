@@ -30,6 +30,7 @@ import {
 } from "@/config/st-packs";
 import { PROVIDER_BALANCE_MESSAGE, isProviderBalanceMessage } from "@/lib/provider-balance";
 import { chromaHex, compositeOverKey, parseChromaHex } from "./chroma";
+import { findReusableNeutral, planNeutral, skippedEstimateLabels, type ReusableNeutral } from "./neutral-reuse";
 import { matteFrames } from "./matte";
 import { videoProviderExtra } from "./video-task";
 import { alignToBase } from "./align";
@@ -66,10 +67,11 @@ export function normaliseOptions(raw: unknown, settings = stPacksSettings()): Jo
     videoModel: typeof o.videoModel === "string" && isSelectableVideoModel(o.videoModel) ? o.videoModel : ST_DEFAULT_VIDEO_MODEL,
     keyColour: (() => { const rgb = parseChromaHex(o.keyColour); return rgb ? chromaHex(rgb) : null; })(),
     lossless: o.lossless === true,
+    baseHash: typeof o.baseHash === "string" && /^[0-9a-f]{64}$/i.test(o.baseHash) ? o.baseHash.toLowerCase() : null,
   };
 }
 
-type Timings = StepTimings & { attempts?: Partial<Record<"edit" | "video" | "post", number>>; videoStartedAt?: number; align?: { dx: number; dy: number; scale: number; shifted: boolean }; loop?: string; crop?: CropFraction; videoModel?: string };
+type Timings = StepTimings & { attempts?: Partial<Record<"edit" | "video" | "post", number>>; videoStartedAt?: number; align?: { dx: number; dy: number; scale: number; shifted: boolean }; loop?: string; crop?: CropFraction; videoModel?: string; fetch?: number; reusedFrom?: string };
 const timingsOf = (row: ExprRow): Timings => ((row.timings && typeof row.timings === "object" ? row.timings : {}) as Timings);
 
 // ── Create / list / snapshot ─────────────────────────────────────────────────
@@ -85,11 +87,18 @@ export interface CreateJobInput {
   width: number;
   height: number;
   options: JobOptions;
+  /** sha256 of the base PNG. Used to copy a neutral clip from an earlier job. */
+  baseHash: string | null;
 }
 
 export async function createJob(input: CreateJobInput): Promise<string> {
   const spec = videoModelSpec(input.options.videoModel);
-  const estCostUsd = estimateJobUsd(input.labels, { videoSeconds: input.options.videoSeconds, matteMode: input.options.matteMode, model: spec.air });
+  const baseHash = input.baseHash;
+  const options: JobOptions = { ...input.options, baseHash };
+  const costOpts = { videoSeconds: options.videoSeconds, matteMode: options.matteMode, model: spec.air };
+  const reusable = input.labels.includes("neutral") && baseHash ? await findReusableNeutral(input.userId, baseHash) : null;
+  const plan = planNeutral(input.labels.includes("neutral"), !!reusable);
+  const estCostUsd = estimateJobUsd(input.labels, costOpts, skippedEstimateLabels(plan));
   const job = await prisma.stPackJob.create({
     data: {
       userId: input.userId,
@@ -102,7 +111,7 @@ export async function createJob(input: CreateJobInput): Promise<string> {
       labels: input.labels,
       width: input.width,
       height: input.height,
-      options: input.options as unknown as Prisma.InputJsonValue,
+      options: options as unknown as Prisma.InputJsonValue,
       baseKey: input.baseKey,
       estCostUsd,
       startedAt: new Date(),
@@ -110,7 +119,54 @@ export async function createJob(input: CreateJobInput): Promise<string> {
     },
     select: { id: true },
   });
+  if (plan === "reuse" && reusable && !(await adoptNeutral(job.id, reusable))) {
+    await prisma.stPackJob.update({ where: { id: job.id }, data: { estCostUsd: estimateJobUsd(input.labels, costOpts) } });
+  }
   return job.id;
+}
+
+/** Copy a finished neutral onto this job. False when the webp is missing, so the clip is generated instead. */
+async function adoptNeutral(jobId: string, src: ReusableNeutral): Promise<boolean> {
+  const files: Array<["webpKey" | "pngKey" | "gifKey" | "editKey" | "videoKey", string, string]> = [
+    ["webpKey", "loop.webp", "image/webp"],
+    ["pngKey", "still.png", "image/png"],
+    ["gifKey", "loop.gif", "image/gif"],
+    ["editKey", "edit.png", "image/png"],
+    ["videoKey", "clip.mp4", "video/mp4"],
+  ];
+  const stored: Partial<Record<"webpKey" | "pngKey" | "gifKey" | "editKey" | "videoKey", string>> = {};
+  for (const [field, name, type] of files) {
+    const from = src[field];
+    if (typeof from !== "string" || !from) continue;
+    const buf = await getR2ObjectBuffer(from);
+    if (!buf) {
+      if (field === "webpKey") return false;
+      continue;
+    }
+    stored[field] = await put(buf, exprKey(jobId, "neutral", name), type);
+  }
+  if (!stored.webpKey) return false;
+  await prisma.stPackExpression.update({
+    where: { jobId_label: { jobId, label: "neutral" } },
+    data: {
+      status: "done",
+      lockedUntil: null,
+      error: null,
+      webpKey: stored.webpKey,
+      pngKey: stored.pngKey ?? null,
+      gifKey: stored.gifKey ?? null,
+      editKey: stored.editKey ?? null,
+      videoKey: stored.videoKey ?? null,
+      videoUrl: src.videoUrl,
+      qa: src.qa ?? undefined,
+      frames: src.frames,
+      bytes: src.bytes,
+      flagged: src.flagged,
+      costUsd: 0,
+      timings: { reusedFrom: src.jobId } as unknown as Prisma.InputJsonValue,
+    },
+  });
+  return true;
 }
 
 export async function listJobs(limit = 20): Promise<JobListItem[]> {
@@ -141,6 +197,7 @@ function exprSnapshot(e: ExprRow): ExpressionSnapshot {
     frames: e.frames,
     bytes: e.bytes,
     has: { edit: !!e.editKey, video: !!e.videoUrl, webp: !!e.webpKey, gif: !!e.gifKey, png: !!e.pngKey },
+    reused: typeof t.reusedFrom === "string",
     updatedAt: e.updatedAt.toISOString(),
     lockedUntil: e.lockedUntil?.toISOString() ?? null,
   };
@@ -486,6 +543,7 @@ async function runPost(exprId: string): Promise<void> {
   try {
     if (!e.videoUrl) throw new Error("No video to process");
     const mp4 = await fetchVideo(e.videoUrl);
+    const fetched = Date.now();
     let videoKey: string | null = null;
     if (settings.keepVideo) videoKey = await put(mp4, exprKey(job.id, e.label, "clip.mp4"), "video/mp4");
     const ctx = operationContext(e, settings.maxUsdPerExpression - e.costUsd);
@@ -509,7 +567,8 @@ async function runPost(exprId: string): Promise<void> {
     // the 2–3 min post time.
     const gifKey = null;
     const t = timingsOf(e);
-    t.post = Date.now() - started;
+    t.fetch = fetched - started;
+    t.post = Date.now() - fetched;
     t.loop = result.loopMethod;
     await prisma.stPackExpression.updateMany({
       where: { id: e.id, status: "processing" },

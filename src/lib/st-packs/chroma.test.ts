@@ -104,6 +104,24 @@ describe("chroma key", () => {
     expect(pixel(out, 3, 32)[3]).toBe(255);
   });
 
+  it("clears a dark-green frame edge and an enclosed light pocket, and keeps the shirt", () => {
+    const frame = makeFrame(80, 80);
+    fill(frame, CHROMA_GREEN);
+    for (let x = 0; x < 80; x++) {
+      const o = (6 * 80 + x) * 4;
+      frame.data[o] = 0;
+      frame.data[o + 1] = 39;
+      frame.data[o + 2] = 0;
+    }
+    rect(frame, 36, 30, 70, 68, [244, 244, 244]);
+    rect(frame, 2, 32, 16, 56, [236, 235, 237]);
+    const [out] = keyChromaFrames([frame], CHROMA_GREEN);
+    expect(pixel(out, 4, 6)[3]).toBe(0);
+    expect(pixel(out, 8, 40)[3]).toBe(0);
+    expect(pixel(out, 50, 48)[3]).toBe(255);
+    expect(pixel(out, 40, 16)[3]).toBe(0);
+  });
+
   it("despills a green fringe without painting the shirt", () => {
     const frame = makeFrame(16, 16);
     fill(frame, CHROMA_GREEN);

@@ -23,7 +23,7 @@ function snapshot(over: { status: JobSnapshot["status"]; hasZip: boolean; error?
     labels: ["joy"],
     width: 720,
     height: 960,
-    options: { gif: true, png: true, grid: false, readme: true, matteMode: "key", motion: "subtle", videoModel: "vidu:3@2", keyColour: "#00FF00", videoSeconds: 4, lossless: false },
+    options: { gif: true, png: true, grid: false, readme: true, matteMode: "key", motion: "subtle", videoModel: "vidu:3@2", keyColour: "#00FF00", videoSeconds: 4, lossless: false, baseHash: null },
     estCostUsd: 1,
     costUsd: 1,
     error: over.error ?? null,
