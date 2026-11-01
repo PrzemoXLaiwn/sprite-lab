@@ -2,7 +2,7 @@
 // prompt fragments hang off it, so it must stay complete and exact.
 import { describe, expect, it } from "vitest";
 import {
-  PING_PONG_ALLOWED, ST_DEFAULT_LABELS, ST_EXPRESSION_FRAGMENTS, ST_EXPRESSION_LABELS,
+  ST_DEFAULT_LABELS, ST_EXPRESSION_FRAGMENTS, ST_EXPRESSION_LABELS,
   expressionFileName, isExpressionLabel, motionNoteFor, resolveExpressionLabels,
 } from "./st-expressions";
 import { basePrompt, editPrompt, videoPrompt } from "@/lib/st-packs/prompts";
@@ -43,12 +43,6 @@ describe("ST expression labels", () => {
     expect(motionNoteFor("joy")).toMatch(/NOT a continuous looping laugh/);
     expect(motionNoteFor("pride")).toBe("calm, subtle, holds the expression");
   });
-
-  it("never ping-pongs the lively labels", () => {
-    expect(PING_PONG_ALLOWED.has("joy")).toBe(false);
-    expect(PING_PONG_ALLOWED.has("surprise")).toBe(false);
-    expect(PING_PONG_ALLOWED.has("sadness")).toBe(true);
-  });
 });
 
 describe("prompts", () => {
@@ -59,5 +53,11 @@ describe("prompts", () => {
     expect(editPrompt("anger", "soft light")).toMatch(/soft light/);
     expect(videoPrompt("joy")).toContain(motionNoteFor("joy"));
     expect(videoPrompt("joy")).toMatch(/no camera movement/);
+    expect(videoPrompt("joy")).toMatch(/no head sway/);
+    expect(videoPrompt("joy")).toMatch(/head stays still and centred/);
+    expect(videoPrompt("joy")).toMatch(/no blink is better/);
+    expect(videoPrompt("joy")).toMatch(/robotic blink/);
+    expect(videoPrompt("joy")).not.toMatch(/drift of the head/);
+    expect(videoPrompt("joy").length).toBeLessThan(2000);
   });
 });

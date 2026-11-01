@@ -1,19 +1,22 @@
 // =============================================================================
 // ST Packs — seamless loop and frame-rate resampling
 // =============================================================================
-// A generated clip rarely ends where it started. We measure the seam (the
-// last→first difference against a normal consecutive step), crossfade the
-// tail into the head in premultiplied space, and fall back to a ping-pong
-// (forward then backward) when the cut is too hard for a crossfade. Frame
+// A generated clip rarely ends where it started. Vidu is asked to pin the
+// last frame to the same still as the first, but a clip can still wander and
+// only pass the start pose in the middle — or land on it for a single frame
+// after a jump. We keep the longest prefix whose last frame already matches
+// the first (that is the loop point). A prefix that still pops is crossfaded
+// in premultiplied space, then ping-ponged when the label allows it. Frame
 // differences are mean absolute differences over premultiplied RGBA so
 // transparent pixels with garbage colour don't count.
 //
 // All functions are pure and return new frames.
 // =============================================================================
 
+import { ST_QA } from "@/config/st-packs";
 import type { Frame } from "./types";
 
-export type LoopMethod = "crossfade" | "pingpong";
+export type LoopMethod = "trim" | "crossfade" | "pingpong";
 
 export interface SeamStats {
   /** Mean |last − first| ×1000. */
@@ -41,8 +44,9 @@ export interface SeamlessLoopResult {
   seamAfter: number;
 }
 
-/** Seam-to-step ratio above which the loop still pops after a crossfade. */
-const SEAM_POP_RATIO = 2;
+/** Same bars as QA: a loop that still misses either one is not closed yet. */
+const SEAM_POP_RATIO = ST_QA.seamRatio;
+const SEAM_ABS_MAX = ST_QA.seamAbs;
 
 function cloneFrame(frame: Frame): Frame {
   return { data: Buffer.from(frame.data), width: frame.width, height: frame.height };
@@ -154,21 +158,92 @@ export function seamRatio(frames: Frame[]): SeamStats {
   return { seam, consMed: median(steps), consMax: steps.length ? Math.max(...steps) : 0 };
 }
 
+/** The last step is a cut onto a pinned frame, not part of the idle. */
+function terminalPop(frames: Frame[]): boolean {
+  if (frames.length < 4) return false;
+  const steps: number[] = [];
+  for (let i = 0; i < frames.length - 1; i++) steps.push(meanAbsDiff(frames[i], frames[i + 1]) * 1000);
+  const last = steps[steps.length - 1];
+  const med = median(steps.slice(0, -1));
+  return med > 0 && last > ST_QA.consSpikeRatio * med && last > ST_QA.consSpikeAbs;
+}
+
 function seamToStep(stats: SeamStats): number {
   if (stats.consMed > 0) return stats.seam / stats.consMed;
   return stats.seam > 0 ? Infinity : 0;
 }
 
+function closes(stats: SeamStats): boolean {
+  return seamToStep(stats) <= SEAM_POP_RATIO && stats.seam <= SEAM_ABS_MAX;
+}
+
 /**
- * Drop a duplicated closing frame, crossfade the seam, and when it still pops
- * (ratio > 2) and the motion allows it, ping-pong the clip instead.
+ * Longest prefix (at least `minKeep` frames) whose last frame already matches
+ * the first closely enough to pass the seam bars. Null when the clip never
+ * returns to the start pose.
+ */
+function bestClosedEnd(frames: Frame[], minKeep: number): number | null {
+  const n = frames.length;
+  if (n < minKeep || n < 2) return null;
+  const steps: number[] = [];
+  for (let i = 0; i < n - 1; i++) steps.push(meanAbsDiff(frames[i], frames[i + 1]) * 1000);
+  let best: number | null = null;
+  for (let end = Math.max(minKeep - 1, 1); end < n; end++) {
+    const seam = meanAbsDiff(frames[end], frames[0]) * 1000;
+    if (seam > SEAM_ABS_MAX) continue;
+    const med = median(steps.slice(0, end));
+    const ratio = med > 0 ? seam / med : seam > 0 ? Infinity : 0;
+    if (ratio <= SEAM_POP_RATIO) best = end;
+  }
+  return best;
+}
+
+/**
+ * A pinned end frame is often a copy of frame 0 after the pose has already
+ * jumped. Drop that hold only when the frame before it still closes the loop.
+ * Dropping it otherwise opens the seam the pin just shut (the joy pop).
+ */
+function withoutFrozenClose(frames: Frame[], threshold: number): Frame[] {
+  const cloned = frames.map(cloneFrame);
+  if (cloned.length < 4) return cloned;
+  const last = cloned.length - 1;
+  if (meanAbsDiff(cloned[last], cloned[0]) >= threshold) return cloned;
+  const opened = cloned.slice(0, last);
+  if (closes(seamRatio(opened))) return opened;
+  return cloned;
+}
+
+/**
+ * Cut to the latest frame that already matches the start. When nothing
+ * returns, crossfade the seam, and when that still pops and the motion
+ * allows it, ping-pong the clip instead.
  */
 export function makeSeamlessLoop(frames: Frame[], opts: SeamlessLoopOptions): SeamlessLoopResult {
+  const seamBefore = seamToStep(seamRatio(frames));
+  const minKeep = Math.max(8, Math.round(frames.length * 0.45));
+  const closedEnd = bestClosedEnd(frames, minKeep);
+  if (closedEnd !== null) {
+    const cut = withoutFrozenClose(frames.slice(0, closedEnd + 1), opts.duplicateThreshold);
+    const stats = seamRatio(cut);
+    if (closes(stats)) {
+      // A single-frame snap onto the pinned still closes the seam and leaves a
+      // pop. Reverse the motion before that snap; the join is then one normal step.
+      if (opts.allowPingPong && terminalPop(cut)) {
+        const body = cut.slice(0, -1);
+        const pp = pingPong(body);
+        const ppStats = seamRatio(pp);
+        if (closes(ppStats)) {
+          return { frames: pp, method: "pingpong", seamBefore, seamAfter: seamToStep(ppStats) };
+        }
+      }
+      return { frames: cut, method: "trim", seamBefore, seamAfter: seamToStep(stats) };
+    }
+  }
   const base = dropDuplicateClosingFrame(frames, opts.duplicateThreshold);
-  const seamBefore = seamToStep(seamRatio(base));
   const faded = crossfadeLoop(base, opts.k);
-  const seamAfter = seamToStep(seamRatio(faded));
-  if (seamAfter > SEAM_POP_RATIO && opts.allowPingPong) {
+  const fadedStats = seamRatio(faded);
+  const seamAfter = seamToStep(fadedStats);
+  if (!closes(fadedStats) && opts.allowPingPong) {
     const pp = pingPong(base);
     return { frames: pp, method: "pingpong", seamBefore, seamAfter: seamToStep(seamRatio(pp)) };
   }

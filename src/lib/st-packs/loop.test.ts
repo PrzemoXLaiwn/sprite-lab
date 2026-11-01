@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { crossfadeLoop, dropDuplicateClosingFrame, makeSeamlessLoop, meanAbsDiff, pingPong, resampleFps, seamRatio } from "./loop";
-import { drawDisc, makeFrame, pixel } from "./test-fixtures";
+import { bustFrame, drawDisc, makeFrame, pixel } from "./test-fixtures";
 import type { Frame } from "./types";
 
 function discAt(x: number, y: number, size = 64): Frame {
@@ -164,11 +164,61 @@ describe("makeSeamlessLoop", () => {
     expect(res.seamAfter).toBeLessThan(2);
   });
 
-  it("drops a duplicated closing frame first", () => {
+  it("drops a duplicated closing frame when the frame before it still loops", () => {
     const base = driftingOrbit(24, 0);
     const frames = [...base, base[0]];
     const res = makeSeamlessLoop(frames, { ...opts, allowPingPong: true });
-    expect(res.method).toBe("crossfade");
-    expect(res.frames).toHaveLength(24 - 8);
+    expect(res.method).toBe("trim");
+    expect(res.seamAfter).toBeLessThan(2);
+    expect(res.frames.length).toBeGreaterThan(16);
+    expect(res.frames.length).toBeLessThanOrEqual(25);
+  });
+});
+
+/** The old post step: drop a duplicate end, then crossfade a fixed tail. */
+function previousLoop(frames: Frame[], k = 8): Frame[] {
+  return crossfadeLoop(dropDuplicateClosingFrame(frames, 0.02), k);
+}
+
+describe("loop point", () => {
+  const opts = { k: 8, duplicateThreshold: 0.02, allowPingPong: false };
+
+  it("cuts a clip that returns to the start and then wanders off", () => {
+    const n = 48;
+    const back = 30;
+    const frames = Array.from({ length: n }, (_, i) => {
+      const dx = i <= back ? 22 * Math.sin((Math.PI * i) / back) : 30 * ((i - back) / (n - 1 - back));
+      return bustFrame(96, 128, { dx });
+    });
+    const raw = seamRatio(frames);
+    const old = seamRatio(previousLoop(frames));
+    const res = makeSeamlessLoop(frames, opts);
+    expect(res.method).toBe("trim");
+    expect(raw.seam).toBeGreaterThan(old.seam);
+    expect(res.seamBefore).toBeGreaterThan(2);
+    expect(res.seamAfter).toBeLessThan(2);
+    expect(seamRatio(res.frames).seam).toBeLessThan(6);
+    expect(seamRatio(res.frames).seam).toBeLessThan(old.seam);
+  });
+
+  it("keeps a pinned last frame when ping-pong is off, and reverses the snap when it is on", () => {
+    const n = 48;
+    const sway = Array.from({ length: n }, (_, i) => bustFrame(96, 128, { dx: (28 * i) / (n - 1) }));
+    const frames = [...sway, sway[0]];
+    const raw = seamRatio(frames);
+    const old = seamRatio(previousLoop(frames));
+    const held = makeSeamlessLoop(frames, opts);
+    expect(held.method).toBe("trim");
+    expect(raw.seam).toBeLessThan(1);
+    expect(raw.consMax).toBeGreaterThan(100);
+    expect(old.seam).toBeGreaterThan(6);
+    expect(seamRatio(held.frames).seam).toBeLessThan(6);
+    expect(held.frames).toHaveLength(n + 1);
+
+    const reversed = makeSeamlessLoop(frames, { ...opts, allowPingPong: true });
+    const after = seamRatio(reversed.frames);
+    expect(reversed.method).toBe("pingpong");
+    expect(after.seam).toBeLessThan(6);
+    expect(after.consMax).toBeLessThan(raw.consMax / 4);
   });
 });

@@ -1,4 +1,5 @@
 import { canSpend, recordProviderCall } from "@/lib/billing/ledger";
+import { buildStVideoTask } from "@/lib/st-packs/video-task";
 import { PRICE } from "@/lib/billing/features";
 import { canStartOptionalPass, MAX_PASS_MS, passTimeoutMs } from "@/lib/services/animation-budget";
 import { Runware } from "@runware/sdk-js";
@@ -877,24 +878,17 @@ export interface StVideoSubmit {
  * written when the poll returns the result (that is when the cost is known).
  */
 export async function submitStVideo(opts: StVideoSubmit): Promise<void> {
-  const still = `data:image/png;base64,${opts.still.toString("base64")}`;
-  const json = await runwarePost([{
-    taskType: "videoInference",
+  const json = await runwarePost([buildStVideoTask({
     taskUUID: opts.taskUUID,
     model: opts.model,
-    positivePrompt: opts.prompt.slice(0, 2900),
+    prompt: opts.prompt,
+    stillDataUri: `data:image/png;base64,${opts.still.toString("base64")}`,
     width: opts.width,
     height: opts.height,
-    duration: opts.seconds,
-    ...(opts.fps ? { fps: opts.fps } : {}),
-    ...(opts.extra ?? {}),
-    inputs: { frameImages: [{ image: still, frame: "first" }, { image: still, frame: "last" }] },
-    outputFormat: "MP4",
-    outputQuality: 95,
-    deliveryMethod: "async",
-    includeCost: true,
-    numberResults: 1,
-  }], AbortSignal.timeout(60_000));
+    seconds: opts.seconds,
+    fps: opts.fps,
+    extra: opts.extra,
+  })], AbortSignal.timeout(60_000));
   if (json.errors?.length) {
     const e = json.errors[0];
     const msg = `Runware ${e.code ?? "error"}: ${e.message ?? "video submit failed"}`;
