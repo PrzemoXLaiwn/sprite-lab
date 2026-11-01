@@ -45,18 +45,5 @@
       "path": "/api/cron/health",
       "schedule": "*/5 * * * *"
     }
-  ],
-  "redirects": [
-    {
-      "source": "/:path*",
-      "has": [
-        {
-          "type": "host",
-          "value": "sprite-lab.vercel.app"
-        }
-      ],
-      "destination": "https://www.sprite-lab.com/:path*",
-      "permanent": true
-    }
   ]
 }

@@ -13,7 +13,10 @@
 // colour changes that also stay near the plane. That follows a gradient and a
 // soft shadow, and stops at the character's edge — so skin, face and light
 // clothing are not entered just because they resemble the backdrop. Enclosed
-// pixels the flood never reaches stay opaque (the flat-key hole case). Other
+// pixels the flood never reaches stay opaque (the flat-key hole case), except
+// a narrow backdrop pocket between a limb and the torso. That pocket is chosen
+// once on frame 0 — a white shirt is the same colour as a light ground, so a
+// per-frame colour test eats it and flickers. Other
 // connected components are kept only when they are large and unlike the
 // backdrop; the largest one is the character. Partial alpha survives only in
 // a thin band on that outer edge, for anti-aliasing and the defringe.
@@ -139,8 +142,41 @@ export function keyFrame(frame: Frame, bg: Rgb, opts: { hard?: number; soft?: nu
   return out;
 }
 
-/** Square (Chebyshev) binary dilation. Separable, so it is one pass per axis. */
+/** Square (Chebyshev) binary dilation. Separable, one sliding window per axis. */
 function dilate(src: Uint8Array, width: number, height: number, radius: number): Uint8Array {
+  if (radius <= 0) return src;
+  const tmp = new Uint8Array(src.length);
+  const out = new Uint8Array(src.length);
+  for (let y = 0; y < height; y++) {
+    const row = y * width;
+    let sum = 0;
+    const ramp = Math.min(width - 1, radius);
+    for (let x = 0; x <= ramp; x++) sum += src[row + x];
+    for (let x = 0; x < width; x++) {
+      tmp[row + x] = sum > 0 ? 1 : 0;
+      const remove = x - radius;
+      if (remove >= 0) sum -= src[row + remove];
+      const add = x + radius + 1;
+      if (add < width) sum += src[row + add];
+    }
+  }
+  for (let x = 0; x < width; x++) {
+    let sum = 0;
+    const ramp = Math.min(height - 1, radius);
+    for (let y = 0; y <= ramp; y++) sum += tmp[y * width + x];
+    for (let y = 0; y < height; y++) {
+      out[y * width + x] = sum > 0 ? 1 : 0;
+      const remove = y - radius;
+      if (remove >= 0) sum -= tmp[remove * width + x];
+      const add = y + radius + 1;
+      if (add < height) sum += tmp[add * width + x];
+    }
+  }
+  return out;
+}
+
+/** Separable binary erosion (Chebyshev). Inverse of `dilate`. */
+function erodeBin(src: Uint8Array, width: number, height: number, radius: number): Uint8Array {
   if (radius <= 0) return src;
   const tmp = new Uint8Array(src.length);
   const out = new Uint8Array(src.length);
@@ -149,10 +185,10 @@ function dilate(src: Uint8Array, width: number, height: number, radius: number):
     for (let x = 0; x < width; x++) {
       const x0 = Math.max(0, x - radius);
       const x1 = Math.min(width - 1, x + radius);
-      let m = 0;
+      let m = 1;
       for (let xx = x0; xx <= x1; xx++) {
-        if (src[row + xx]) {
-          m = 1;
+        if (!src[row + xx]) {
+          m = 0;
           break;
         }
       }
@@ -164,12 +200,9 @@ function dilate(src: Uint8Array, width: number, height: number, radius: number):
     const y1 = Math.min(height - 1, y + radius);
     const row = y * width;
     for (let x = 0; x < width; x++) {
-      let m = 0;
-      for (let yy = y0; yy <= y1; yy++) {
-        if (tmp[yy * width + x]) {
-          m = 1;
-          break;
-        }
+      let m = 1;
+      for (let yy = y0; yy <= y1 && m; yy++) {
+        if (!tmp[yy * width + x]) m = 0;
       }
       out[row + x] = m;
     }
@@ -273,22 +306,48 @@ function erodeAlpha(data: Buffer, width: number, height: number): Uint8Array {
   const src = new Uint8Array(width * height);
   for (let i = 0; i < src.length; i++) src[i] = data[i * 4 + 3];
   const out = new Uint8Array(src.length);
-  for (let y = 0; y < height; y++) {
+  const min9 = (o: number, up: number, dn: number) => {
+    let m = src[o];
+    const a = src[o - 1]; if (a < m) m = a;
+    const b = src[o + 1]; if (b < m) m = b;
+    const c = src[up]; if (c < m) m = c;
+    const d = src[up - 1]; if (d < m) m = d;
+    const e = src[up + 1]; if (e < m) m = e;
+    const f = src[dn]; if (f < m) m = f;
+    const g = src[dn - 1]; if (g < m) m = g;
+    const h = src[dn + 1]; if (h < m) m = h;
+    return m;
+  };
+  if (width >= 3 && height >= 3) {
+    for (let y = 1; y < height - 1; y++) {
+      const row = y * width;
+      const up = row - width;
+      const dn = row + width;
+      for (let x = 1; x < width - 1; x++) out[row + x] = min9(row + x, up + x, dn + x);
+    }
+  }
+  const edgeMin = (x: number, y: number) => {
     const y0 = Math.max(0, y - 1);
     const y1 = Math.min(height - 1, y + 1);
-    for (let x = 0; x < width; x++) {
-      const x0 = Math.max(0, x - 1);
-      const x1 = Math.min(width - 1, x + 1);
-      let m = 255;
-      for (let yy = y0; yy <= y1; yy++) {
-        const row = yy * width;
-        for (let xx = x0; xx <= x1; xx++) {
-          const v = src[row + xx];
-          if (v < m) m = v;
-        }
+    const x0 = Math.max(0, x - 1);
+    const x1 = Math.min(width - 1, x + 1);
+    let m = 255;
+    for (let yy = y0; yy <= y1; yy++) {
+      const row = yy * width;
+      for (let xx = x0; xx <= x1; xx++) {
+        const v = src[row + xx];
+        if (v < m) m = v;
       }
-      out[y * width + x] = m;
     }
+    return m;
+  };
+  for (let x = 0; x < width; x++) {
+    out[x] = edgeMin(x, 0);
+    if (height > 1) out[(height - 1) * width + x] = edgeMin(x, height - 1);
+  }
+  for (let y = 1; y < height - 1; y++) {
+    out[y * width] = edgeMin(0, y);
+    if (width > 1) out[y * width + width - 1] = edgeMin(width - 1, y);
   }
   return out;
 }
@@ -296,24 +355,44 @@ function erodeAlpha(data: Buffer, width: number, height: number): Uint8Array {
 /** 3×3 gaussian (1 2 1 / 2 4 2 / 1 2 1, σ≈0.6) on alpha; borders renormalise over the in-bounds taps. */
 function blurAlpha(src: Uint8Array, width: number, height: number): Uint8Array {
   const out = new Uint8Array(src.length);
-  const taps = [1, 2, 1];
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      let sum = 0;
-      let wsum = 0;
-      for (let dy = -1; dy <= 1; dy++) {
-        const yy = y + dy;
-        if (yy < 0 || yy >= height) continue;
-        for (let dx = -1; dx <= 1; dx++) {
-          const xx = x + dx;
-          if (xx < 0 || xx >= width) continue;
-          const w = taps[dy + 1] * taps[dx + 1];
-          sum += w * src[yy * width + xx];
-          wsum += w;
-        }
+  if (width >= 3 && height >= 3) {
+    for (let y = 1; y < height - 1; y++) {
+      const row = y * width;
+      const up = row - width;
+      const dn = row + width;
+      for (let x = 1; x < width - 1; x++) {
+        const sum =
+          src[up + x - 1] + 2 * src[up + x] + src[up + x + 1] +
+          2 * src[row + x - 1] + 4 * src[row + x] + 2 * src[row + x + 1] +
+          src[dn + x - 1] + 2 * src[dn + x] + src[dn + x + 1];
+        out[row + x] = (sum + 8) >> 4;
       }
-      out[y * width + x] = Math.round(sum / wsum);
     }
+  }
+  const taps = [1, 2, 1];
+  const edge = (x: number, y: number) => {
+    let sum = 0;
+    let wsum = 0;
+    for (let dy = -1; dy <= 1; dy++) {
+      const yy = y + dy;
+      if (yy < 0 || yy >= height) continue;
+      for (let dx = -1; dx <= 1; dx++) {
+        const xx = x + dx;
+        if (xx < 0 || xx >= width) continue;
+        const w = taps[dy + 1] * taps[dx + 1];
+        sum += w * src[yy * width + xx];
+        wsum += w;
+      }
+    }
+    return Math.round(sum / wsum);
+  };
+  for (let x = 0; x < width; x++) {
+    out[x] = edge(x, 0);
+    if (height > 1) out[(height - 1) * width + x] = edge(x, height - 1);
+  }
+  for (let y = 1; y < height - 1; y++) {
+    out[y * width] = edge(0, y);
+    if (width > 1) out[y * width + width - 1] = edge(width - 1, y);
   }
   return out;
 }
@@ -460,6 +539,163 @@ const ISLAND2 = ISLAND_DIST * ISLAND_DIST;
  */
 const HOLE_DIST = 14;
 const HOLE2 = HOLE_DIST * HOLE_DIST;
+/**
+ * How far a dark limb is allowed to bridge when looking for an armpit gap.
+ * A shirt panel is wider than this and stays opaque.
+ */
+const GAP_BRIDGE = 12;
+/** Enclosed near-backdrop region bigger than this share of the silhouette is clothing. */
+const GAP_MAX_FRAC = 0.08;
+/** Pixels inside this fraction of the silhouette width, around its middle, are the torso. */
+const GAP_CENTRAL_WIDTH = 0.42;
+/** A region with at least this share of its pixels in that column is clothing, not a side gap. */
+const GAP_CENTRAL_SHARE = 0.3;
+/** Share of a region that must sit in the bridged concavity before it can be cleared. */
+const GAP_BRIDGE_SHARE = 0.8;
+/** Tracked gap pixels are cleared only while they still read as backdrop, so a shifted coat is not punched. */
+const GAP_APPLY = 28;
+const GAP_APPLY2 = GAP_APPLY * GAP_APPLY;
+/** Centroid shift beyond this is a bad measurement, not idle motion. */
+const GAP_SHIFT_MAX = 32;
+
+interface GapPlan {
+  /** Pixels cleared on the reference frame. Later frames reuse it, shifted. */
+  mask: Uint8Array;
+  refX: number;
+  refY: number;
+}
+
+function foregroundCentroid(dist2: Float32Array, reached: Uint8Array, width: number, height: number): { x: number; y: number; n: number } {
+  const n = width * height;
+  let solidN = 0;
+  let sx = 0;
+  let sy = 0;
+  let anyN = 0;
+  let ax = 0;
+  let ay = 0;
+  for (let i = 0; i < n; i++) {
+    if (reached[i]) continue;
+    const x = i % width;
+    const y = (i / width) | 0;
+    anyN++;
+    ax += x;
+    ay += y;
+    if (dist2[i] > HOLE2) {
+      solidN++;
+      sx += x;
+      sy += y;
+    }
+  }
+  if (solidN >= 16) return { x: sx / solidN, y: sy / solidN, n: solidN };
+  if (anyN > 0) return { x: ax / anyN, y: ay / anyN, n: anyN };
+  return { x: width / 2, y: height / 2, n: 0 };
+}
+
+/**
+ * Enclosed regions that are the backdrop trapped in a concave limb–torso gap.
+ * Decided on one frame. A white shirt is the same colour as a light backdrop,
+ * so colour alone cannot tell them apart: a region is cleared only when it is
+ * small, off the torso column, thin enough for the limb bridge to close, and
+ * actually sitting in that concavity. Anything central or large stays opaque.
+ */
+function buildGapMask(dist2: Float32Array, reached: Uint8Array, width: number, height: number): Uint8Array {
+  const n = width * height;
+  const mask = new Uint8Array(n);
+  const solid = new Uint8Array(n);
+  let silCount = 0;
+  let minX = width;
+  let maxX = -1;
+  let minY = height;
+  let maxY = -1;
+  for (let i = 0; i < n; i++) {
+    if (reached[i]) continue;
+    silCount++;
+    const x = i % width;
+    const y = (i / width) | 0;
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+    if (dist2[i] > HOLE2) solid[i] = 1;
+  }
+  if (silCount < 32 || maxX < minX) return mask;
+  const silW = maxX - minX + 1;
+  const mid = (minX + maxX) / 2;
+  const halfBand = (silW * GAP_CENTRAL_WIDTH) / 2;
+  const band0 = mid - halfBand;
+  const band1 = mid + halfBand;
+  const maxArea = Math.max(24, Math.floor(silCount * GAP_MAX_FRAC));
+  const thickCap = Math.max(GAP_BRIDGE * 2, Math.round(silW * 0.1));
+  const closed = erodeBin(dilate(solid, width, height, GAP_BRIDGE), width, height, GAP_BRIDGE);
+  const seen = new Uint8Array(n);
+  const queue = new Int32Array(n);
+  for (let s = 0; s < n; s++) {
+    if (reached[s] || seen[s] || dist2[s] > HOLE2) continue;
+    const pixels: number[] = [];
+    let qh = 0;
+    let qt = 0;
+    seen[s] = 1;
+    queue[qt++] = s;
+    let inBand = 0;
+    let bridged = 0;
+    let cminX = width;
+    let cmaxX = -1;
+    let cminY = height;
+    let cmaxY = -1;
+    while (qh < qt) {
+      const i = queue[qh++];
+      pixels.push(i);
+      const x = i % width;
+      const y = (i / width) | 0;
+      if (x < cminX) cminX = x;
+      if (x > cmaxX) cmaxX = x;
+      if (y < cminY) cminY = y;
+      if (y > cmaxY) cmaxY = y;
+      if (x >= band0 && x <= band1) inBand++;
+      if (closed[i] && !solid[i]) bridged++;
+      const take = (j: number) => {
+        if (reached[j] || seen[j] || dist2[j] > HOLE2) return;
+        seen[j] = 1;
+        queue[qt++] = j;
+      };
+      if (x > 0) take(i - 1);
+      if (x + 1 < width) take(i + 1);
+      if (i >= width) take(i - width);
+      if (i + width < n) take(i + width);
+    }
+    const size = pixels.length;
+    if (size > maxArea) continue;
+    if (inBand / size >= GAP_CENTRAL_SHARE) continue;
+    if (bridged / size < GAP_BRIDGE_SHARE) continue;
+    const thick = Math.min(cmaxX - cminX + 1, cmaxY - cminY + 1);
+    if (thick > thickCap) continue;
+    for (let k = 0; k < size; k++) mask[pixels[k]] = 1;
+  }
+  return mask;
+}
+
+function stampGaps(
+  reached: Uint8Array,
+  dist2: Float32Array,
+  mask: Uint8Array,
+  width: number,
+  height: number,
+  dx: number,
+  dy: number,
+): void {
+  for (let y = 0; y < height; y++) {
+    const sy = y - dy;
+    if (sy < 0 || sy >= height) continue;
+    const row = y * width;
+    const srow = sy * width;
+    for (let x = 0; x < width; x++) {
+      const sx = x - dx;
+      if (sx < 0 || sx >= width) continue;
+      const i = row + x;
+      if (mask[srow + sx] && dist2[i] <= GAP_APPLY2) reached[i] = 1;
+    }
+  }
+}
 
 function constantPlane(median: Rgb): [Plane, Plane, Plane] {
   return [
@@ -552,10 +788,13 @@ function planeDist2(frame: Frame, bg: Backdrop): Float32Array {
  * (plus any other component that is too unlike the backdrop to be a shadow).
  * Mutates alpha. Scratch is a few byte-planes for this frame only.
  */
-function paintBackdropAlpha(frame: Frame, opts: { hard?: number; soft?: number }): void {
+function paintBackdropAlpha(
+  frame: Frame,
+  opts: { hard?: number; soft?: number; gaps?: GapPlan | null; captureGaps?: boolean },
+): GapPlan | null {
   const { data, width, height } = frame;
   const n = width * height;
-  if (n === 0) return;
+  if (n === 0) return null;
   const hard = opts.hard ?? DEFAULT_HARD;
   const soft = opts.soft ?? DEFAULT_SOFT;
   const dist2 = planeDist2(frame, fitBackdrop(frame, estimateBackground(frame)));
@@ -620,47 +859,21 @@ function paintBackdropAlpha(frame: Frame, opts: { hard?: number; soft?: number }
     }
   }
 
-  // Enclosed backdrop: the same plane colour trapped between an arm and the
-  // torso. The border flood cannot reach it. A white shirt is a larger region
-  // or sits in the middle, so it stays; small side gaps are cleared.
-  const holeMax = Math.max(48, Math.floor(n * 0.04));
-  const seenHole = new Uint8Array(n);
-  const holes: { size: number; sumX: number; pixels: number[] }[] = [];
-  for (let s = 0; s < n; s++) {
-    if (reached[s] || seenHole[s] || dist2[s] > HOLE2) continue;
-    const pixels: number[] = [];
-    let sumX = 0;
-    qh = 0;
-    qt = 0;
-    seenHole[s] = 1;
-    queue[qt++] = s;
-    while (qh < qt) {
-      const i = queue[qh++];
-      pixels.push(i);
-      sumX += i % width;
-      const x = i % width;
-      const take = (j: number) => {
-        if (reached[j] || seenHole[j] || dist2[j] > HOLE2) return;
-        seenHole[j] = 1;
-        queue[qt++] = j;
-      };
-      if (x > 0) take(i - 1);
-      if (x + 1 < width) take(i + 1);
-      if (i >= width) take(i - width);
-      if (i + width < n) take(i + width);
-    }
-    holes.push({ size: pixels.length, sumX, pixels });
+  // Side gaps are decided once, on the reference frame, then stamped here.
+  // A white shirt matches the plane too, so it is not re-classified per frame.
+  const centroid = foregroundCentroid(dist2, reached, width, height);
+  let plan = opts.gaps ?? null;
+  if (opts.captureGaps) {
+    plan = { mask: buildGapMask(dist2, reached, width, height), refX: centroid.x, refY: centroid.y };
   }
-  let largestHole = 0;
-  for (const h of holes) if (h.size > largestHole) largestHole = h.size;
-  const mid = width / 2;
-  const lateral = width * 0.15;
-  for (const h of holes) {
-    if (h.size > holeMax) continue;
-    const cx = h.sumX / h.size;
-    const side = Math.abs(cx - mid) > lateral;
-    const smallerThanShirt = h.size < largestHole;
-    if (side || smallerThanShirt) for (const i of h.pixels) reached[i] = 1;
+  if (plan && centroid.n > 0) {
+    let dx = Math.round(centroid.x - plan.refX);
+    let dy = Math.round(centroid.y - plan.refY);
+    if (dx > GAP_SHIFT_MAX) dx = GAP_SHIFT_MAX;
+    else if (dx < -GAP_SHIFT_MAX) dx = -GAP_SHIFT_MAX;
+    if (dy > GAP_SHIFT_MAX) dy = GAP_SHIFT_MAX;
+    else if (dy < -GAP_SHIFT_MAX) dy = -GAP_SHIFT_MAX;
+    stampGaps(reached, dist2, plan.mask, width, height, dx, dy);
   }
 
   // Foreground components among pixels the flood did not claim.
@@ -718,6 +931,7 @@ function paintBackdropAlpha(frame: Frame, opts: { hard?: number; soft?: number }
     else if (!foreground[i] && !nearFg[i]) data[o] = 0;
     else data[o] = Math.round(data[o] * keyFactor(Math.sqrt(dist2[i]), hard, soft));
   }
+  return plan;
 }
 
 /**
@@ -726,7 +940,7 @@ function paintBackdropAlpha(frame: Frame, opts: { hard?: number; soft?: number }
  */
 export function matteAlpha(frame: Frame, opts: { hard?: number; soft?: number } = {}): Frame {
   const out = cloneFrame(frame);
-  paintBackdropAlpha(out, opts);
+  paintBackdropAlpha(out, { ...opts, captureGaps: true });
   return out;
 }
 
@@ -741,9 +955,15 @@ export function matteFrames(frames: Frame[], opts: { hard?: number; soft?: numbe
   if (frames.length === 0) return { frames: [], background: [0, 0, 0] };
   const out: Frame[] = new Array(frames.length);
   const backgrounds: Rgb[] = new Array(frames.length);
+  // The edited still is frame 0. Gap pixels are chosen there and reused, so a
+  // fold that crosses the colour threshold on a later frame cannot eat the shirt.
+  let gaps: GapPlan | null = null;
   for (let i = 0; i < frames.length; i++) {
     backgrounds[i] = estimateBackground(frames[i]);
-    out[i] = matteAlpha(frames[i], opts);
+    const frame = cloneFrame(frames[i]);
+    if (i === 0) gaps = paintBackdropAlpha(frame, { ...opts, captureGaps: true });
+    else paintBackdropAlpha(frame, { ...opts, gaps });
+    out[i] = frame;
   }
   applyTemporalMedianInPlace(out);
   for (let i = 0; i < out.length; i++) defringeOwned(out[i], backgrounds[i]);

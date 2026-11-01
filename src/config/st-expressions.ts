@@ -72,11 +72,6 @@ export function motionNoteFor(label: StExpressionLabel): string {
   return MOTION_NOTES[label] ?? DEFAULT_MOTION_NOTE;
 }
 
-/** Labels whose loop may fall back to ping-pong (never the lively ones: a reversed laugh or gasp reads wrong). */
-export const PING_PONG_ALLOWED: ReadonlySet<StExpressionLabel> = new Set<StExpressionLabel>(
-  ST_EXPRESSION_LABELS.filter((l) => !["joy", "surprise", "excitement", "realization", "amusement"].includes(l)),
-);
-
 export function isExpressionLabel(value: unknown): value is StExpressionLabel {
   return typeof value === "string" && (ST_EXPRESSION_LABELS as readonly string[]).includes(value);
 }

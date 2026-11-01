@@ -3,7 +3,7 @@
 // sprite. Pure apart from the optional per-frame Runware matte; the worker in
 // jobs.ts handles storage and the database.
 // =============================================================================
-import { PING_PONG_ALLOWED, type StExpressionLabel } from "@/config/st-expressions";
+import type { StExpressionLabel } from "@/config/st-expressions";
 import { ST_PIPELINE, ST_QA, type StMatteMode } from "@/config/st-packs";
 import { encodeAnimatedWebp, type WebpResult } from "./encode";
 import { decodeVideo, framePng, pngFrame, type CropFraction } from "./frames";
@@ -31,7 +31,7 @@ export interface ProcessResult {
   frames: Frame[];
   webp: WebpResult;
   qa: QaResult;
-  loopMethod: "crossfade" | "pingpong";
+  loopMethod: "trim" | "crossfade" | "pingpong";
   stabilize: { maxShift: number; flagged: boolean; residualRangePx: number };
   sourceFps: number;
   sourceFrames: number;
@@ -79,7 +79,9 @@ export async function processClip(mp4: Buffer, opts: ProcessOptions): Promise<Pr
 
   // Loop at the clip's fps, then down to the pack's fps
   const k = Math.max(2, Math.round(ST_PIPELINE.crossfadeFrames * (fps / 24)));
-  const loop = makeSeamlessLoop(frames, { k, allowPingPong: PING_PONG_ALLOWED.has(opts.label), duplicateThreshold: ST_PIPELINE.duplicateFrameThreshold });
+  // Every label, including joy. A reversed held idle is the last resort when
+  // the clip never returns to its start pose; leaving the seam open is worse.
+  const loop = makeSeamlessLoop(frames, { k, allowPingPong: true, duplicateThreshold: ST_PIPELINE.duplicateFrameThreshold });
   frames = loop.frames;
   loop.frames = [];
   if (fps !== ST_PIPELINE.outputFps) frames = resampleFps(frames, fps, ST_PIPELINE.outputFps);

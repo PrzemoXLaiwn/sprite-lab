@@ -3,8 +3,9 @@
 One character in, a SillyTavern *Character Expressions* sprite pack out: a flat
 ZIP of animated, transparent WebP files named after ST's 28 emotion labels
 (`joy.webp`, `anger.webp`, …). Each file is a subtle, seamlessly looping idle
-(gentle breathing, a slight head drift, a little hair sway, at most one blink)
-on a transparent background, the character identical across all expressions.
+(gentle breathing, a little hair movement, the head held still and centred, at
+most one blink) on a transparent background, the character identical across
+all expressions.
 
 The tool is internal: admin only (`ADMIN` / `OWNER`), behind a server flag,
 charges no credits and touches no pricing, Stripe or auth code.
@@ -59,8 +60,9 @@ base still ──┐
              │                                          ▼
              │   (3) decode (ffmpeg-static) → matte → temporal median → defringe
              │       → stabilise (lower-torso centroid, circular smoothing)
-             │       → seamless loop (premultiplied crossfade, ping-pong fallback
-             │         for calm labels only) → 16 fps → resize → animated WebP
+             │       → seamless loop (cut where the pose matches the start, else
+             │         premultiplied crossfade, then ping-pong if the seam
+             │         is still open) → 16 fps → animated WebP
              │       → QA
              └─ (4) pack.zip (+ static PNG zip, GIF zip, preview grid)
 ```
@@ -75,20 +77,32 @@ Parameters (`src/config/st-packs.ts`, from the validated Python prototype):
   3 px with a pop on the test still vs 0.006 px for Vidu)
 - output is the native cropped frame (Vidu 720×960, LTX 768×1024). The clip
   is decoded at that size; there is no 1.5× working canvas
-- duplicate closing frame dropped when mean |last − first| < 0.02
+- a closing frame that copies the first is dropped only when the frame
+  before it still closes the loop; dropping a pinned frame after a jump
+  reopens the seam
 - key: per frame, a colour plane fitted to the outer 8 px border (subject
   pixels on that border are outliers and dropped); 4-connected flood from
   border pixels on the plane, stepping at most 18 levels and never more than
   48 from the plane, so a gradient or soft shadow is background and the
   character edge stops the flood; the largest foreground component is kept
-  (enclosed skin, face and light clothing stay opaque) and other components
+  (enclosed skin, face and light clothing stay opaque). A narrow backdrop
+  pocket between a limb and the torso is cleared from a mask decided on
+  frame 0 and shifted with the body; a light shirt is not, even when it
+  matches the ground. Other components
   are dropped when they are specks or still the backdrop colour; partial
   alpha only in a 3 px band on that outer edge; temporal median on alpha
   (radius 1, circular); un-mix `C = (I − (1−a)·B)/a` for 0.05 < a < 1;
   erode 1 px; blur σ≈0.6; alpha < 8 → 0
 - stabiliser: band rows 80–97 %, moving average window 5, x always, y when
   |dy| > 0.5; shifts over 24 px are flagged instead of warped
-- loop: the clip is decoded at 16 fps; crossfade K = 8 × 16/24 ≈ 5 frames (≈ 0.33 s), tail dropped
+- loop: the clip is decoded at 16 fps. The longest prefix whose last frame
+  already matches the first (seam ≤ 6 and ≤ 2× a normal step) is the loop, so
+  a pinned last frame is kept when dropping it would open the cut. Otherwise
+  crossfade K = 8 × 16/24 ≈ 5 frames (≈ 0.33 s), tail dropped, then
+  ping-pong when the seam is still open (every label, including joy). A
+  one-frame snap onto a pinned still is reversed the same way, so the join
+  is one ordinary step. The idle prompt forbids head sway; Vidu still gets the same
+  still as first and last frame inside the one $0.0825 clip
 - WebP: one encode, quality 90, alpha quality 100, effort 4, hard cap 6 MB.
   Lossless is optional on the job (default off) and is also a single encode
 
