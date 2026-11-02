@@ -27,7 +27,7 @@ const STYLE_LINES: Record<string, string> = {
   HAND_PAINTED:
     "hand-painted 2D game art like Hollow Knight: painterly brush texture, soft lighting, rich colors",
   ANIME_GAME:
-    "anime-style 2D game art like a gacha game: clean line art, cel shading, vibrant colors",
+    "Japanese anime 2D game sprite, cel-shaded like a JRPG character: crisp dark line art of even weight, flat base colors with one hard-edged shadow shape on each form, stylized hair in clear clumps, large readable eyes, a vibrant limited palette. A full-body game sprite, not a 3D render, not semi-realistic, not chibi, not a portrait splash illustration, not a western cartoon",
   DARK_SOULS:
     "dark fantasy 2D game art: gritty, muted desaturated palette, dramatic shading, detailed",
   REALISTIC_PAINTED:
@@ -50,7 +50,7 @@ const CATEGORY_FRAMING: Record<string, string> = {
   CHARACTERS: "full body character, the whole character visible",
   CREATURES: "full body creature, whole creature visible",
   WEAPONS: "single weapon item shown whole, diagonal orientation, nothing else",
-  ARMOR: "single armor item shown whole, nothing else",
+  ARMOR: "one empty piece of armour shown alone, as if on an invisible mannequin: no person, no body, no head, no face, no hands, no skin, no legs, nobody wearing it",
   CONSUMABLES: "single item icon shown whole, nothing else",
   RESOURCES: "single resource item icon shown whole, nothing else",
   UI_ELEMENTS: "single game UI element, flat, front-facing",
@@ -79,6 +79,16 @@ const DEFAULT_FIGURE_VIEW = "facing the viewer at a slight three-quarter angle";
 
 // "auto" is the game-ready default the UI promises: a calm A-pose, ready to
 // rig and animate (combat poses only when the user picks Dynamic)
+/** Empty equipment, per armour slot. The category line already forbids a wearer. */
+const ARMOR_SLOT: Record<string, string> = {
+  HELMETS: "one empty helmet, the face opening visible and nothing inside it",
+  CHEST_ARMOR: "one empty chest piece, breastplate, mail or robe, with no body inside",
+  SHIELDS: "one shield on its own, no arm and no hand",
+  GLOVES: "one pair of empty gloves, no hands inside",
+  BOOTS: "one pair of empty boots, no feet and no legs",
+  ACCESSORIES: "one accessory on its own, no person wearing it",
+};
+
 const A_POSE = "standing upright in a relaxed A-pose: arms hanging slightly away from the body, open hands, feet shoulder-width apart, calm neutral expression";
 // Something in the hands (the user asked for it): an A-pose with "open hands"
 // drops the weapons, so the calm game-ready stance holds them out instead
@@ -104,6 +114,10 @@ export interface SpritePromptInput {
   pose?: string;
   /** What the user typed: decides whether held items were asked for. */
   original?: string;
+  /** Armour slot (HELMETS, CHEST_ARMOR, …) so the piece is named, not a wearer. */
+  subcategoryId?: string;
+  /** 2–6: one image of that many separate items, not a single object. */
+  setCount?: number;
 }
 
 /** The user described the posture themselves ("sitting", "flying"…): their words decide it. */
@@ -176,6 +190,19 @@ export function buildSpritePrompt(input: SpritePromptInput): string {
       "Even lighting with no vignette. No border, no frame, no outline around the tile, no single object in the middle, no background, no text, no watermark.",
     ].join(" ");
   }
+  const setCount = input.setCount && input.setCount >= 2 ? Math.min(6, Math.round(input.setCount)) : 0;
+  if (setCount >= 2) {
+    const cleanSubject = clip(subject.trim().replace(/\s+/g, " "), 400);
+    return [
+      `A 2D game image of exactly ${setCount} separate items in one horizontal row: ${cleanSubject}.`,
+      `Exactly ${setCount} items, the same scale, evenly spaced, each fully visible, with a clear gap of the background colour between them. No person holding them, no labels, no numbers.`,
+      "Leave a margin on every side: the whole row fits inside the image and no item touches the edges.",
+      `Style: ${style}.`,
+      ...(isPixelStyle(styleId) ? [PIXEL_CONSISTENCY] : []),
+      ...(colorHint ? [`Colors: ${colorHint.slice(0, 200)}.`] : []),
+      `On a ${keyBackgroundFor(cleanSubject, styleId)}. No ground, no scenery, no text, no letters, no numbers, no border, no watermark.`,
+    ].join(" ");
+  }
   const figure = category === "CHARACTERS" || category === "CREATURES";
   // Game-ready by default: nothing in the hands unless the user asked for it
   const holds = asksForHeldItem(input.original ?? subject);
@@ -202,7 +229,8 @@ export function buildSpritePrompt(input: SpritePromptInput): string {
     return POSE_LINES[pose];
   };
   const posed = stance();
-  const framing = (CATEGORY_FRAMING[category] ?? "single subject shown whole") + (posed ? `, ${posed}` : "");
+  const slot = category === "ARMOR" ? ARMOR_SLOT[(input.subcategoryId ?? "").toUpperCase()] : undefined;
+  const framing = (slot ?? CATEGORY_FRAMING[category] ?? "single subject shown whole") + (posed ? `, ${posed}` : "");
   const views = view ? VIEW_LINES[view.toUpperCase()] : undefined;
   const viewLine = views ? (figure ? views.figure : views.object) : figure ? DEFAULT_FIGURE_VIEW : undefined;
   const cleanSubject = clip(subject.trim().replace(/\s+/g, " "), 400);
@@ -224,7 +252,8 @@ export function buildSpritePrompt(input: SpritePromptInput): string {
     ...(colorHint ? [`Colors: ${colorHint.slice(0, 200)}.`] : []),
     ...(emptyHands ? ["Hands empty: no weapon, shield, staff, wand, tool or any other held item."] : []),
     // Realistic renders add a studio floor and a contact shadow unless told twice
-    `Exactly one subject floating on a ${keyBackgroundFor(cleanSubject, styleId)}. No ground, no floor plane, no cast or contact shadow under or behind it, no reflection, no scenery, no text, no border, no watermark.`,
+    `Exactly one subject floating on a ${keyBackgroundFor(cleanSubject, styleId)}. No ground, no floor plane, no cast or contact shadow under or behind it, no reflection, no scenery, no text, no letters, no numbers, no captions, no border, no watermark.`,
+    ...(category === "ARMOR" ? ["No character, no mannequin, no display stand, no body inside the piece."] : []),
   ].join(" ");
 }
 
@@ -247,6 +276,10 @@ export const MAGENTA_KEY_BACKGROUND = "plain flat solid pure magenta (#FF00FF) b
 const SOFT_LIGHT = /\b(glow\w*|aura|halo|radiant|radiance|shin\w*|light|lights|lit|flame\w*|fire|fiery|burning|blaze|ember\w*|smoke|smoky|sparkl\w*|magic\w*|energy|spell|lightning|electric\w*)\b/i;
 
 export function keyBackgroundFor(subject: string, styleId = "PIXEL_ART_16"): string {
-  const magenta = isPixelStyle(styleId) && PALE_SUBJECT.test(subject) && !SOFT_LIGHT.test(subject);
-  return magenta ? MAGENTA_KEY_BACKGROUND : KEY_BACKGROUND;
+  // Pale cloth on a white key is keyed away with the background. Pixel art and
+  // anime both draw that cloth as a flat light shape; painted styles keep the
+  // white key because their soft edges pick up a chroma fringe.
+  const style = normalizeStyleId(styleId);
+  const chroma = (isPixelStyle(style) || style === "ANIME_GAME") && PALE_SUBJECT.test(subject) && !SOFT_LIGHT.test(subject);
+  return chroma ? MAGENTA_KEY_BACKGROUND : KEY_BACKGROUND;
 }

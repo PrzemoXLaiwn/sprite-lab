@@ -38,6 +38,8 @@ import { SpriteStage, STAGE_SCENES, zoomLabel, type StageSceneId } from "@/compo
 import { RecipeBar } from "@/components/generate/RecipeBar";
 import { UploadSpriteButton, UploadSpriteCard } from "@/components/generate/UploadSprite";
 import { track, FUNNEL } from "@/lib/analytics";
+import { logAssetSignal } from "@/lib/asset-signal";
+import { GenerationFeedback } from "@/components/analytics/GenerationFeedback";
 import { readFirstTouch } from "@/components/analytics/FirstTouch";
 import { GENERATE_CATEGORIES, SUBTYPE_PLACEHOLDERS, type GenerateCategory, type GenerateSubcategory } from "@/data/generate-categories";
 import { GENERATE_STYLES, ALL_GENERATE_STYLE_IDS } from "@/data/generate-styles";
@@ -163,6 +165,8 @@ export interface GeneratedResult {
   qualityPreset?: "draft" | "normal" | "hd";
   /** DB id of the saved generation (needed to accept it into a project). */
   generationId?: string;
+  /** Animation / sheet / set the prompt asked for. Drives the Animate link. */
+  delivery?: { motion?: string | null; rotation?: string | null } | null;
   /** Project review state when generating for a project. */
   projectStatus?: "pending" | "accepting" | "accepted" | "declined";
   /** Folder the sprite was filed into after Accept. */
@@ -496,6 +500,10 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
         resolvedView:     typeof data.resolvedView === "string" ? data.resolvedView : undefined,
         qualityPreset:    detail,
         generationId:     typeof data.generationId === "string" ? data.generationId : undefined,
+        delivery:         data.delivery && typeof data.delivery === "object" ? {
+          motion: typeof data.delivery.motion === "string" ? data.delivery.motion : null,
+          rotation: typeof data.delivery.rotation === "string" ? data.delivery.rotation : null,
+        } : null,
         projectStatus:    projectId && typeof data.generationId === "string" ? "pending" : undefined,
       };
 
@@ -629,6 +637,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
   const downloadAtSize = async (size: number) => {
     if (!activeResult) return;
     track(FUNNEL.assetDownload, { kind: "sprite", format: `png_${size}` });
+    logAssetSignal(activeResult.generationId, "download");
     try {
       const response = await fetchImage(activeResult.imageUrl);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -673,6 +682,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
   const downloadNative = async () => {
     if (!activeResult) return;
     track(FUNNEL.assetDownload, { kind: "sprite", format: "png_native" });
+    logAssetSignal(activeResult.generationId, "download");
     try {
       const blob = await (await fetchImage(activeResult.imageUrl)).blob();
       const bitmap = await createImageBitmap(blob);
@@ -1125,12 +1135,18 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
             {activeResult && (() => {
               const gid = activeResult.generationId ? encodeURIComponent(activeResult.generationId) : null;
               const canTurn = supportsRotation(activeResult.categoryId);
+              const animateHref = !gid ? null
+                : activeResult.delivery?.rotation
+                  ? `/animate?id=${gid}&do=${encodeURIComponent(activeResult.delivery.rotation)}`
+                  : activeResult.delivery?.motion
+                    ? `/animate?id=${gid}&motion=${encodeURIComponent(activeResult.delivery.motion)}`
+                    : `/animate?id=${gid}`;
               return (
               // Everything you can do next with this sprite, in three groups: move it, change it, take it
               <div className="grid grid-cols-[repeat(auto-fit,minmax(230px,1fr))] gap-2">
                 <ActionGroup title="Animate it">
-                  {gid && (
-                    <Link href={`/animate?id=${gid}`}
+                  {animateHref && (
+                    <Link href={animateHref}
                       className="btn btn-primary">
                       <Film className="h-4 w-4" aria-hidden /> Animate · sprite sheet
                     </Link>
@@ -1173,6 +1189,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                     className="btn btn-light">
                     <Download className="h-4 w-4" aria-hidden /> PNG
                   </button>
+                  {activeResult.generationId && <GenerationFeedback generationId={activeResult.generationId} />}
                   <div className="relative" ref={sizesRef}>
                     <button type="button" onClick={() => setSizesOpen((v) => !v)} aria-haspopup="menu" aria-expanded={sizesOpen} className={SECONDARY_BTN}>
                       Sizes <ChevronDown className={`h-3.5 w-3.5 transition-transform ${sizesOpen ? "rotate-180" : ""}`} aria-hidden />
@@ -1212,7 +1229,11 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                   // The prompt asked for a sheet: make the next step impossible to miss
                   <div key={i} className="flex flex-col gap-2 rounded-[10px] border border-[#FFA300]/45 bg-[#FFA300]/[0.08] p-3 sm:flex-row sm:items-center">
                     <p className="min-w-0 flex-1 text-[13.5px] leading-snug text-[#FFF1E8]">{w}</p>
-                    <Link href={`/animate?id=${encodeURIComponent(activeResult.generationId)}`}
+                    <Link href={activeResult.delivery?.rotation
+                        ? `/animate?id=${encodeURIComponent(activeResult.generationId)}&do=${encodeURIComponent(activeResult.delivery.rotation)}`
+                        : activeResult.delivery?.motion
+                          ? `/animate?id=${encodeURIComponent(activeResult.generationId)}&motion=${encodeURIComponent(activeResult.delivery.motion)}`
+                          : `/animate?id=${encodeURIComponent(activeResult.generationId)}`}
                       className="btn btn-primary h-11 shrink-0 text-[14px]">
                       <Film className="h-4 w-4" aria-hidden /> Make the sprite sheet
                     </Link>

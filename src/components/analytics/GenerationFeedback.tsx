@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ThumbsUp, ThumbsDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { logAssetSignal } from "@/lib/asset-signal";
 
 interface GenerationFeedbackProps {
   generationId: string;
@@ -44,6 +45,7 @@ export function GenerationFeedback({
       if (!response.ok) {
         throw new Error("Failed to submit feedback");
       }
+      logAssetSignal(generationId, finalRating === 1 ? "up" : finalRating === -1 ? "down" : "clear");
 
       onFeedback?.(finalRating);
     } catch (error) {
@@ -68,6 +70,8 @@ export function GenerationFeedback({
               : "text-[#A7ADD4] hover:text-green-500 hover:bg-green-500/10"
           )}
           title="Good result"
+          aria-label="Thumbs up"
+          aria-pressed={rating === 1}
         >
           <ThumbsUp className="w-3.5 h-3.5" />
         </button>
@@ -81,6 +85,8 @@ export function GenerationFeedback({
               : "text-[#A7ADD4] hover:text-red-500 hover:bg-red-500/10"
           )}
           title="Bad result"
+          aria-label="Thumbs down"
+          aria-pressed={rating === -1}
         >
           <ThumbsDown className="w-3.5 h-3.5" />
         </button>

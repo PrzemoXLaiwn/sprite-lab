@@ -48,6 +48,7 @@ import { COLOR_PALETTES } from "@/config/features/premium-features";
 import { postprocessSprite, postprocessTile } from "@/lib/image/sprite-postprocess";
 import { buildSpritePrompt, isPixelStyle, isTileCategory, normalizeStyleId } from "@/config/prompts/sprite-prompt";
 import { interpretSubject } from "@/lib/prompt-interpret";
+import { planDelivery } from "@/lib/prompt-delivery";
 
 /** Shaded styles where a perfectly flat key-coloured patch can only be background. */
 const PAINTERLY_STYLES = new Set(["REALISTIC_PAINTED", "HAND_PAINTED", "DARK_SOULS"]);
@@ -130,6 +131,12 @@ export interface GenerationRequest {
   plan?: string | null;
   /** For the per-network failure guard. */
   ip?: string | null;
+  /**
+   * Prompt asked for several items. The sprite prompt draws them in a row.
+   * Set by the route from planDelivery; the service also detects it itself
+   * when translation introduces the wording after the route has cleaned.
+   */
+  setCount?: number;
 
   // The style-mix / model-override / pack-batch fields used to live here
   // but were never wired to a real UI surface. Removed to make the
@@ -327,8 +334,14 @@ export async function generateGuestAsset(
   // Same sprite pipeline as signed-in users (standard model) so the demo
   // shows exactly the quality people get after signing up.
   const styleId = request.style === "pixel" ? "PIXEL_ART_16" : "CARTOON_WESTERN";
-  const { subject } = await interpretSubject(request.prompt, "");
-  const finalPrompt = buildSpritePrompt({ subject, styleId });
+  const planned = planDelivery(request.prompt);
+  const { subject } = planned.setCount ? { subject: planned.prompt } : await interpretSubject(planned.prompt, "");
+  const finalPrompt = buildSpritePrompt({
+    subject,
+    styleId,
+    setCount: planned.setCount ?? undefined,
+    view: planned.preferSideView ? "SIDE_VIEW" : undefined,
+  });
 
   let generated: Awaited<ReturnType<typeof generateSpriteImage>>;
   try {
@@ -502,23 +515,31 @@ async function generateSingle2D(request: GenerationRequest): Promise<{ asset: Ge
   const modelKey: SpriteModelKey = request.qualityPreset === "hd" ? "hd" : "standard";
 
   // ── 2. Prompt ──────────────────────────────────────────────────────────────
-  const view = request.view && request.view !== "DEFAULT" ? request.view : undefined;
+  const planned = planDelivery(request.prompt);
+  const setCount = request.setCount ?? planned.setCount ?? undefined;
+  const view = request.view && request.view !== "DEFAULT"
+    ? request.view
+    : planned.preferSideView ? "SIDE_VIEW" : undefined;
   const palette = request.colorPaletteId
     ? COLOR_PALETTES.find((p) => p.id === request.colorPaletteId)
     : undefined;
   // Abstract ideas ("a keyboard as an enemy") → what to actually draw. Not
   // for style match: the reference sets the look and the margin is thinner.
-  const { subject } = request.styleReference
-    ? { subject: request.prompt }
-    : await interpretSubject(request.prompt, request.categoryId);
+  // A set is already a concrete row of items; the interpreter's "one subject"
+  // rule would collapse it.
+  const { subject } = request.styleReference || setCount
+    ? { subject: planned.prompt }
+    : await interpretSubject(planned.prompt, request.categoryId);
   const finalPrompt = buildSpritePrompt({
     subject,
     original: request.prompt,
     styleId,
     categoryId: request.categoryId,
+    subcategoryId: request.subcategoryId,
     view,
     colorHint: palette?.promptModifier,
     pose: request.pose,
+    setCount,
   });
 
   log("generation:model", { userId: request.userId, modelKey, styleId });
@@ -630,6 +651,12 @@ async function generateSingle2D(request: GenerationRequest): Promise<{ asset: Ge
       } else {
         warnings.push("We couldn't separate the background on this one — try generating again.");
       }
+    } else if (processed.matteCutout && process.env.MATTE_QA_REMOVE_BG === "1") {
+      // Local re-key still left scraps. Opt-in only: this is a second paid
+      // remove-bg (~$0.002) on top of the sprite, so the default stays off
+      // and the average cost does not change. The tighter key already ran.
+      const bg = await removeBackgroundFromBuffer(generated.image);
+      if (bg) png = (await postprocessSprite(bg, { pixelGrid, paletteSize, trustInputAlpha: true })).png;
     }
   } catch (err) {
     log("generation:error", {

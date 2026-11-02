@@ -18,6 +18,7 @@ import sharp from "sharp";
 import { keySpriteBackground } from "./sprite-postprocess";
 import { encodeGif, type AnimationResult, type Raw } from "./animation";
 import { findRigPoints, type JointName, type RigPoints } from "@/lib/rig-keypoints";
+import { pixelWalkShift, PIXEL_WALK_FRAMES, walkAmplitudes, walkCanvasExtra } from "./walk-amplitude";
 
 type V = { x: number; y: number };
 /** 2×3 affine matrix [a, b, c, d, e, f]: x' = a x + b y + c, y' = d x + e y + f */
@@ -82,9 +83,13 @@ export async function makeSkeletonAnimation(sprite: Buffer, opts: SkeletonOption
   if (!b) return null;
   const bodyW = b.x1 - b.x0 + 1, bodyH = b.y1 - b.y0 + 1;
   const pad = Math.ceil(Math.max(bodyW, bodyH) * 0.1) + 2;
-  const W = bodyW + pad * 2, H = bodyH + pad + 1;
+  // Idle keeps the old margin. A walk step needs room beside and above the figure.
+  const extra = motion === "walk" ? walkCanvasExtra(bodyH, bodyW) : { x: 0, top: 0 };
+  const padX = pad + extra.x;
+  const padTop = pad + extra.top;
+  const W = bodyW + padX * 2, H = bodyH + padTop + 1;
   const rest: Raw = { data: Buffer.alloc(W * H * 4), width: W, height: H };
-  blit(src, rest, pad - b.x0, pad - b.y0);
+  blit(src, rest, padX - b.x0, padTop - b.y0);
 
   // ── Joints from Claude (on a square, white, ≥512px copy) ─────────────────
   const S = Math.max(W, H);
@@ -108,7 +113,7 @@ export async function makeSkeletonAnimation(sprite: Buffer, opts: SkeletonOption
   const weights = skin(rest, rig.bones, rig.hipY, rig.kneeY);
 
   // ── Pose every frame ─────────────────────────────────────────────────────
-  const frames: Raw[] = opts.pixel ? cutoutFrames(rest, weights, rig.bones, motion, rig.kneeY, rp.items.map((b) => ({ x0: b.x0 / scale, y0: b.y0 / scale, x1: b.x1 / scale, y1: b.y1 / scale }))) : [];
+  const frames: Raw[] = opts.pixel ? cutoutFrames(rest, weights, rig.bones, motion, rig.kneeY, rp.items.map((b) => ({ x0: b.x0 / scale, y0: b.y0 / scale, x1: b.x1 / scale, y1: b.y1 / scale })), bodyH) : [];
   for (let f = 0; f < n && !opts.pixel; f++) {
     const ph = (2 * Math.PI * f) / n;
     const T = motion === "walk" ? rig.walk(ph) : rig.pose(ph);
@@ -180,19 +185,15 @@ const CUTOUT: Record<SkeletonMotion, Partial<Record<Part, [number, number][]>>> 
     arm_b: [[0, 0], [0, 0], [0, 0], [0, 1], [0, 1], [0, 1]],
     tail: [[0, 0], [1, 0], [1, 0], [0, 0], [-1, 0], [-1, 0]],
   },
-  // Step in place: one leg up 2px, body up 1px, arms swing against the legs
+  // Walk offsets are scaled to the sprite in cutoutFrames (see walk-amplitude).
+  // This row only supplies the frame count for idle; walk reads PIXEL_WALK.
   walk: {
-    leg_a: [[0, 0], [0, -2], [0, 0], [0, 0]],
-    leg_b: [[0, 0], [0, 0], [0, 0], [0, -2]],
-    torso: [[0, 0], [0, -1], [0, 0], [0, -1]],
-    head: [[0, 0], [0, -1], [0, 0], [0, -1]],
-    arm_a: [[0, 0], [0, 0], [0, 0], [0, -1]],
-    arm_b: [[0, 0], [0, -1], [0, 0], [0, 0]],
-    tail: [[0, 0], [1, -1], [0, 0], [-1, -1]],
+    leg_a: [[0, 0], [0, 0], [0, 0], [0, 0]],
+    leg_b: [[0, 0], [0, 0], [0, 0], [0, 0]],
   },
 };
 
-function cutoutFrames(rest: Raw, weights: ([number, number][] | null)[], bones: Bone[], motion: SkeletonMotion, kneeY: number, items: { x0: number; y0: number; x1: number; y1: number }[]): Raw[] {
+function cutoutFrames(rest: Raw, weights: ([number, number][] | null)[], bones: Bone[], motion: SkeletonMotion, kneeY: number, items: { x0: number; y0: number; x1: number; y1: number }[], bodyH: number): Raw[] {
   const { width: W, height: H } = rest;
   // Hard assignment: every opaque pixel belongs to its strongest bone's part
   const part = new Array<Part | null>(W * H).fill(null);
@@ -220,7 +221,7 @@ function cutoutFrames(rest: Raw, weights: ([number, number][] | null)[], bones: 
     part[p] = pt;
   }
   const table = CUTOUT[motion];
-  const n = Math.max(...Object.values(table).map((t) => t!.length));
+  const n = motion === "walk" ? PIXEL_WALK_FRAMES : Math.max(...Object.values(table).map((t) => t!.length));
   const frames: Raw[] = [];
   for (let f = 0; f < n; f++) {
     const out: Raw = { data: Buffer.alloc(W * H * 4), width: W, height: H };
@@ -228,7 +229,10 @@ function cutoutFrames(rest: Raw, weights: ([number, number][] | null)[], bones: 
       // Props ride with the torso — and so do the arms holding them, or the
       // hand would slip off the grip
       const holds = items.length > 0 && (pt === "arm_a" || pt === "arm_b");
-      const [dx, dy] = table[pt === "item" || holds ? "torso" : pt]?.[f] ?? [0, 0];
+      const partName = pt === "item" || holds ? "torso" : pt;
+      const [dx, dy] = motion === "walk"
+        ? pixelWalkShift(partName, f, bodyH)
+        : (table[partName]?.[f] ?? [0, 0]);
       for (let y = 0; y < H; y++) {
         for (let x = 0; x < W; x++) {
           const p = y * W + x;
@@ -389,21 +393,22 @@ function buildRig(rp: RigPoints, P: (k: JointName) => V | null, bodyW: number, g
    * planted; the body rises over the planted leg and shifts onto it; arms
    * swing against the legs; head and tail follow.
    */
-  const lift = Math.max(1.5, bodyH * 0.055);
+  const amp = walkAmplitudes(bodyH, bodyW);
+  const lift = amp.lift;
   const walk = (ph: number): Record<string, M> => {
     const s = Math.sin(ph);
     const liftA = Math.max(0, s), liftB = Math.max(0, -s);
     // Body: up over the planted leg (twice per cycle), shifted onto it
-    const root = translate(-shiftX * 0.8 * s, -lift * 0.35 * Math.abs(s));
-    const torso = mul(root, rotAbout(pelvis, 1.6 * s));
+    const root = translate(-amp.hip * s, -lift * 0.28 * Math.abs(s));
+    const torso = mul(root, rotAbout(pelvis, amp.torsoDeg * s));
     const T: Record<string, M> = { torso };
-    T.head = mul(torso, rotAbout(neck, -1.4 * Math.sin(ph - 0.4)));
+    T.head = mul(torso, rotAbout(neck, -amp.torsoDeg * 0.7 * Math.sin(ph - 0.4)));
     for (const arm of arms) {
-      // Each arm swings with the opposite leg
+      // Each arm swings with the opposite leg, far enough to leave the silhouette
       const sign = arm.side === "a" ? 1 : -1;
-      const upper = mul(torso, rotAbout(arm.shoulder, 4 * s * sign));
+      const upper = mul(torso, rotAbout(arm.shoulder, amp.armDeg * s * sign));
       T[`upper_${arm.side}`] = upper;
-      if (arm.elbow) T[`fore_${arm.side}`] = mul(upper, rotAbout(arm.elbow, 2.5 * s * sign));
+      if (arm.elbow) T[`fore_${arm.side}`] = mul(upper, rotAbout(arm.elbow, amp.armDeg * 0.45 * s * sign));
     }
     for (const leg of legs) {
       const l = leg.side === "a" ? liftA : liftB;
@@ -417,8 +422,9 @@ function buildRig(rp: RigPoints, P: (k: JointName) => V | null, bodyW: number, g
       const k = Math.max(0.35, 1 - up / thighLen);
       const squash: M = [1, 0, 0, 0, k, leg.hip.y * (1 - k)];
       T[`leg_${leg.side}`] = mul(root, squash);
-      // Shin and foot: lifted straight up with the knee
-      const shin = mul(root, translate(0, -up));
+      // Shin and foot: up, and out to the side so a front view doesn't hide the step
+      const outX = amp.outward * l * (leg.side === "a" ? 1 : -1);
+      const shin = mul(root, translate(outX, -up));
       T[`shin_${leg.side}`] = shin;
       T[`foot_${leg.side}`] = shin;
 

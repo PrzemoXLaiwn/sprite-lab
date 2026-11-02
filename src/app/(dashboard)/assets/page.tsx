@@ -35,6 +35,7 @@ import {
   type PendingJob,
 } from "@/components/assets/asset-utils";
 import { fetchImage } from "@/lib/cors-image";
+import { logAssetSignal } from "@/lib/asset-signal";
 
 // ===========================================
 // TOAST
@@ -275,6 +276,7 @@ export default function GalleryPage() {
   };
 
   const handleDownload = async (gen: Generation) => {
+    logAssetSignal(gen.id, "download");
     try {
       const response = await fetchImage(gen.imageUrl);
       const blob = await response.blob();
@@ -378,6 +380,7 @@ export default function GalleryPage() {
       const JSZip = (await import("jszip")).default;
       const zip = new JSZip();
       const selectedGens = generations.filter((g) => selectedIds.has(g.id));
+      for (const gen of selectedGens) logAssetSignal(gen.id, "download");
 
       // Download all files in parallel
       const downloadPromises = selectedGens.map(async (gen, index) => {

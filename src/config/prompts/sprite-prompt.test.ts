@@ -25,12 +25,52 @@ describe("game-ready characters", () => {
 });
 
 describe("key colour", () => {
-  it("magenta only for pale pixel-art subjects without soft light", async () => {
+  it("magenta for pale pixel-art and anime subjects, not for painted styles or soft light", async () => {
     const { keyBackgroundFor } = await import("./sprite-prompt");
     expect(keyBackgroundFor("elven longbow carved from silver wood", "PIXEL_ART_16")).toMatch(/magenta/);
+    expect(keyBackgroundFor("white-haired mage", "ANIME_GAME")).toMatch(/magenta/);
     expect(keyBackgroundFor("white cleric with a glowing healing aura", "PIXEL_ART_16")).not.toMatch(/magenta/);
+    expect(keyBackgroundFor("white cleric with a glowing healing aura", "ANIME_GAME")).not.toMatch(/magenta/);
     expect(keyBackgroundFor("silver knight", "REALISTIC_PAINTED")).not.toMatch(/magenta/);
     expect(keyBackgroundFor("red goblin", "PIXEL_ART_16")).not.toMatch(/magenta/);
+  });
+});
+
+describe("armour, anime and sets", () => {
+  it("asks for an empty armour piece, not a person wearing it", () => {
+    const p = buildSpritePrompt({
+      subject: "plate armor",
+      styleId: "PIXEL_ART_16",
+      categoryId: "ARMOR",
+      subcategoryId: "CHEST_ARMOR",
+    });
+    expect(p).toMatch(/no body inside/i);
+    expect(p).toMatch(/No character, no mannequin/);
+    expect(p).not.toMatch(/full body character/);
+  });
+
+  it("describes anime as a cel-shaded game sprite, not a gacha splash", () => {
+    const p = buildSpritePrompt({
+      subject: "a swordswoman",
+      styleId: "ANIME_GAME",
+      categoryId: "CHARACTERS",
+      pose: "auto",
+    });
+    expect(p).toMatch(/cel-shaded/);
+    expect(p).toMatch(/not a 3D render/);
+    expect(p).not.toMatch(/gacha/i);
+  });
+
+  it("lays a set out as a row of separate items", () => {
+    const p = buildSpritePrompt({
+      subject: "health potions",
+      styleId: "PIXEL_ART_16",
+      categoryId: "CONSUMABLES",
+      setCount: 4,
+    });
+    expect(p).toMatch(/exactly 4 separate items/i);
+    expect(p).toMatch(/horizontal row/);
+    expect(p).not.toMatch(/Exactly one subject/);
   });
 });
 

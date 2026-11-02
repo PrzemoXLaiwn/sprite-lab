@@ -110,5 +110,7 @@ function assetTypeLabel(categoryId?: string): string {
   if (c === "CHARACTERS") return "Characters";
   if (c === "CREATURES") return "Creatures";
   if (c === "ENVIRONMENT") return "Environment prop";
+  // Armour was coming back as a person wearing it. Name the piece only.
+  if (c === "ARMOR") return "Empty armor piece (an item). Describe the equipment only: nobody wearing it, no body, no head, no hands, no skin, no mannequin";
   return c ? "Item" : "Not set";
 }
