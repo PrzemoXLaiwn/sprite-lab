@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { AlertCircle, ArrowLeft, Download, ImageIcon, Loader2, MoveHorizontal } from "lucide-react";
 import { triggerUpgradeModal } from "@/components/dashboard/UpgradeModal";
 import { fetchImage } from "@/lib/cors-image";
+import { logAssetSignal } from "@/lib/asset-signal";
 
 // =============================================================================
 // HELPERS
@@ -113,7 +114,8 @@ export function toolErrorMessage(res: Response, data: { error?: unknown; noCredi
  * Saves a remote image under `filename`. Falls back to opening it in a new tab
  * when the browser can't fetch it (CORS / offline).
  */
-export async function downloadImage(url: string, filename: string): Promise<void> {
+export async function downloadImage(url: string, filename: string, generationId?: string | null): Promise<void> {
+  logAssetSignal(generationId, "download");
   try {
     const res = await fetchImage(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);

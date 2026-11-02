@@ -65,6 +65,7 @@ model User {
   postLikes             PostLike[]
   reports               Report[]       @relation("ReportedByUser")
   receivedReports       Report[]       @relation("ReportedUser")
+  assetSignals          AssetSignal[]
 
   // username / stripeCustomerId / stripeSubscriptionId are @unique, which
   // already creates an index — separate @@index entries were redundant.
@@ -97,6 +98,7 @@ model Generation {
   folder              ProjectFolder?       @relation(fields: [folderId], references: [id], onDelete: SetNull)
   analysis            ImageAnalysis?       // Auto-generated quality analysis
   verificationRecords VerificationRecord[] // Verification tests for hallucination fixes
+  assetSignals        AssetSignal[]
 
   // (userId, createdAt) and (isPublic, createdAt) also serve userId-only /
   // isPublic-only lookups (leftmost prefix), so the single-column ones were dropped.
@@ -107,6 +109,23 @@ model Generation {
   @@index([folderId])
   @@index([sourceGenerationId])
   @@map("generations")
+}
+
+// Downloads and thumbs. user_id is the only identity; no prompt, no email.
+// `kind` is "download", "up" or "down". A new vote replaces the previous one.
+model AssetSignal {
+  id           String   @id @default(cuid())
+  generationId String   @map("generation_id")
+  userId       String   @map("user_id")
+  kind         String
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  generation Generation @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([generationId, kind])
+  @@index([userId, createdAt])
+  @@map("asset_signals")
 }
 
 // ===========================================

@@ -123,7 +123,7 @@ function RemoveBgPageContent({ generationId }: { generationId: string | null }) 
         actions={
           processedImage ? (
             <>
-              <DownloadButton onClick={() => downloadImage(processedImage, `spritelab-no-background-${Date.now()}.png`)} />
+              <DownloadButton onClick={() => downloadImage(processedImage, `spritelab-no-background-${Date.now()}.png`, generationId)} />
               {generationId && (
                 <SecondaryButton href={`/upscale?id=${encodeURIComponent(generationId)}`} title="Upscale the original sprite">
                   <Maximize2 className="h-4 w-4" /> Upscale

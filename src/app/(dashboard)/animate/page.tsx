@@ -26,6 +26,7 @@ import { UploadSpriteButton } from "@/components/generate/UploadSprite";
 import type { SuggestedMotion } from "@/lib/animation-suggest";
 import { fetchImage } from "@/lib/cors-image";
 import { track, FUNNEL } from "@/lib/analytics";
+import { logAssetSignal } from "@/lib/asset-signal";
 import { userErrorMessage } from "@/lib/user-error";
 
 const CUSTOM_EXAMPLES = [
@@ -79,10 +80,18 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
   const router = useRouter();
   const { source, loading: loadingSource, error: sourceError } = useSourceGeneration(generationId);
   const [action, setAction] = useState<string>("");
-  // Deep links from the Create page ("Directions" → ?do=rotate4) pick the option up front
+  // Deep links from the Create page ("Directions" → ?do=rotate4, a walk-cycle
+  // prompt → ?motion=walk) pick the option up front and keep it when suggestions arrive.
+  const pinnedMotion = useRef<string | null>(null);
   useEffect(() => {
-    const wanted = new URLSearchParams(window.location.search).get("do");
+    const params = new URLSearchParams(window.location.search);
+    const wanted = params.get("do");
     if (wanted && rotationFor(wanted)) setAction(wanted);
+    const motion = params.get("motion");
+    if (motion && /^(idle|walk|run|attack|jump|cast|hurt|death|fly)$/.test(motion)) {
+      pinnedMotion.current = motion;
+      setAction(motion);
+    }
   }, []);
   const [customMotion, setCustomMotion] = useState("");
   const [loading, setLoading] = useState(false);
@@ -149,7 +158,7 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
       .then((data) => {
         if (!cancelled && data?.ai && Array.isArray(data.motions) && data.motions.length) {
           setSuggested(data.motions);
-          setAction((a) => (a && a !== "custom" && !rotationFor(a) ? "" : a)); // re-pick the first tailored motion
+          setAction((a) => pinnedMotion.current ? pinnedMotion.current : (a && a !== "custom" && !rotationFor(a) ? "" : a));
         }
       })
       .catch(() => {})
@@ -328,6 +337,7 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
   const downloadEngine = async () => {
     if (!result || packing) return;
     track(FUNNEL.assetDownload, { kind: "animation", format: "engine_pack" });
+    logAssetSignal(shownResultId ?? generationId, "download");
     setPacking(true);
     try {
       const name = (resultMotion.id || "animation").replace(/^ai-/, "");
@@ -348,6 +358,7 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
     setZipping(true);
     try {
       track(FUNNEL.assetDownload, { kind: "animation", format: "frames_zip" });
+      logAssetSignal(shownResultId ?? generationId, "download");
       await downloadFramesZip(result, baseName());
     } catch {
       setError("Couldn't build the frames .zip. Download the sprite sheet instead, or try again.");
@@ -562,9 +573,9 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
         actions={
           result ? (
             <>
-              <DownloadButton label="Sprite sheet" onClick={() => { track(FUNNEL.assetDownload, { kind: "animation", format: "sheet" }); downloadImage(result.sheetUrl, `${baseName()}_sheet.png`); }} />
+              <DownloadButton label="Sprite sheet" onClick={() => { track(FUNNEL.assetDownload, { kind: "animation", format: "sheet" }); downloadImage(result.sheetUrl, `${baseName()}_sheet.png`, shownResultId ?? generationId); }} />
               {result.gifUrl && (
-                <SecondaryButton onClick={() => { track(FUNNEL.assetDownload, { kind: "animation", format: "gif" }); downloadImage(result.gifUrl!, `${baseName()}.gif`); }}>GIF</SecondaryButton>
+                <SecondaryButton onClick={() => { track(FUNNEL.assetDownload, { kind: "animation", format: "gif" }); downloadImage(result.gifUrl!, `${baseName()}.gif`, shownResultId ?? generationId); }}>GIF</SecondaryButton>
               )}
               <SecondaryButton onClick={downloadEngine} disabled={packing} title="Godot SpriteFrames, Unity frames, GameMaker strip and hitboxes">
                 {packing && <Loader2 className="h-4 w-4 animate-spin" />} Engine pack

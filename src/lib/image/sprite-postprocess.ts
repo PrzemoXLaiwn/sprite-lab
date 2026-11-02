@@ -21,6 +21,8 @@
 // =============================================================================
 
 import sharp from "sharp";
+import { repairMatte } from "./matte-qa";
+import { healTileSeams } from "./tile-seam";
 
 export interface SpritePostprocessOptions {
   /** Painted styles: treat enclosed, perfectly flat key-colour patches as background. */
@@ -62,6 +64,12 @@ export interface SpritePostprocessResult {
   backgroundRemoved: boolean;
   /** Colours used (pixel styles only). */
   colors?: number;
+  /**
+   * True when keying left scraps (a pale subject eaten by the white key).
+   * The local tighter re-key already ran. A second, paid background removal
+   * is the caller's choice — see MATTE_QA_REMOVE_BG.
+   */
+  matteCutout?: boolean;
 }
 
 interface Raw {
@@ -85,7 +93,8 @@ export async function postprocessSprite(
   const outputSize = options.outputSize ?? 1024;
 
   // Work at ≤1024px — model outputs can be larger and nothing below needs more.
-  const raw = await toRaw(input, 1024);
+  let raw = await toRaw(input, 1024);
+  let matteCutout = false;
 
   // Chroma key (magenta for pale subjects)? Read it from the corners before keying
   const key = cornerColor(raw);
@@ -95,6 +104,7 @@ export async function postprocessSprite(
   let backgroundRemoved: boolean;
   if (options.trustInputAlpha && hasMeaningfulAlpha(raw)) {
     thresholdAlpha(raw, 128);
+    repairMatte(raw);
     backgroundRemoved = true;
   } else {
     // 32: tight enough to keep pale glows/highlights touching the background
@@ -108,6 +118,20 @@ export async function postprocessSprite(
     if (keyed.key && gapMatte && uncertain.length) await arbitrateGaps(raw, uncertain, gapMatte);
     if (keyed.key) finishKeying(raw, keyed.key);
     backgroundRemoved = keyed.removed;
+    const repaired = repairMatte(raw);
+    matteCutout = repaired.cutout;
+    // Pale subject swallowed by a loose white key: key again, tighter, and
+    // keep it only when more of the subject survives.
+    if (repaired.cutout && (options.bgTolerance ?? 32) > 16) {
+      const again = await toRaw(input, 1024);
+      const retry = keyOutBackground(again, 14, 1, 1, options.flatGaps ?? false);
+      if (retry.key) finishKeying(again, retry.key);
+      const retryReport = repairMatte(again);
+      if (retry.removed && retryReport.opaqueRatio > repaired.opaqueRatio * 1.5) {
+        raw = again;
+        matteCutout = retryReport.cutout;
+      }
+    }
   }
 
   // 2. Crop to subject
@@ -116,12 +140,12 @@ export async function postprocessSprite(
     // Nothing left after keying — the subject probably matched the background.
     // Fall back to the untouched image rather than returning an empty sprite.
     const fallback = await toRaw(input, 1024);
-    return finalizeNonPixel(fallback, outputSize, padding, false);
+    return { ...await finalizeNonPixel(fallback, outputSize, padding, false), matteCutout: true };
   }
   const cropped = crop(raw, bbox);
 
   if (!options.pixelGrid) {
-    return finalizeNonPixel(cropped, outputSize, padding, backgroundRemoved);
+    return { ...await finalizeNonPixel(cropped, outputSize, padding, backgroundRemoved), matteCutout };
   }
 
   // 3. Pixel grid + palette
@@ -194,15 +218,15 @@ export async function postprocessSprite(
     height: canvasSize * factor,
     backgroundRemoved,
     colors: countColors(canvas),
+    matteCutout,
   };
 }
 
 /**
  * Square tiles (floors, walls): no background keying — the tile fills its
- * square. Made seamless by blending each edge band with a copy shifted by
- * half the tile: the shifted copy is continuous across the original edges,
- * so the result wraps. Pixel styles then snap to one grid + palette (the 8×
- * reduction is exact, so the wrap survives).
+ * square. A seam over the 1.6 threshold is healed by rolling that edge to the
+ * centre, crossfading only the band, and rolling back (see tile-seam.ts).
+ * Pixel styles heal after the palette snap, so quantising cannot reopen it.
  */
 export async function postprocessTile(
   input: Buffer,
@@ -217,30 +241,10 @@ export async function postprocessTile(
     .raw()
     .toBuffer({ resolveWithObject: true });
   const src: Raw = { data, width: info.width, height: info.height };
-  // Already wraps (the model often draws a seamless tile)? Then leave it —
-  // blending would only add faint ghost copies.
-  if (seamRatio(src) <= 1.6) {
-    const kept = { ...src, data: Buffer.from(src.data) };
-    return finishTile(kept, options, outputSize);
-  }
-  const out = blank(size, size);
-  const band = size * 0.14;
-  const half = size / 2;
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const d = Math.min(x, y, size - 1 - x, size - 1 - y);
-      const t = Math.min(1, d / band);
-      const m = t * t * (3 - 2 * t); // smoothstep: 0 at the edge → original in the middle
-      const i = (y * size + x) * 4;
-      const j = (((y + half) % size) * size + ((x + half) % size)) * 4;
-      out.data[i] = Math.round(src.data[i] * m + src.data[j] * (1 - m));
-      out.data[i + 1] = Math.round(src.data[i + 1] * m + src.data[j + 1] * (1 - m));
-      out.data[i + 2] = Math.round(src.data[i + 2] * m + src.data[j + 2] * (1 - m));
-      out.data[i + 3] = 255;
-    }
-  }
-
-  return finishTile(out, options, outputSize);
+  // Pixel styles snap to the grid first: quantising after a full-res blend
+  // re-opens the seam. Non-pixel tiles are healed here, at full size.
+  if (options.pixelGrid) return finishTile(src, options, outputSize);
+  return finishTile(healTileSeams(src), options, outputSize);
 }
 
 async function finishTile(
@@ -253,37 +257,13 @@ async function finishTile(
   }
   const grid = options.pixelGrid;
   const palette = kmeansPalette(tile, options.paletteSize ?? 32);
-  const small = majorityDownsample(tile, grid, grid, palette);
+  const small = healTileSeams(majorityDownsample(tile, grid, grid, palette));
   const factor = Math.max(1, Math.floor(outputSize / grid));
   const png = await fromRaw(small)
     .resize(grid * factor, grid * factor, { kernel: "nearest" })
     .png({ compressionLevel: 9 })
     .toBuffer();
   return { png };
-}
-
-/**
- * How much bigger the colour jump across the wrap-around edges is than a
- * typical jump between neighbouring lines inside the tile (~1 = seamless).
- */
-function seamRatio(raw: Raw): number {
-  const { width: w, height: h, data } = raw;
-  const diff = (a: number, b: number) =>
-    Math.abs(data[a] - data[b]) + Math.abs(data[a + 1] - data[b + 1]) + Math.abs(data[a + 2] - data[b + 2]);
-  let seam = 0, inner = 0, n = 0;
-  for (let y = 0; y < h; y++) {
-    seam += diff((y * w + w - 1) * 4, (y * w) * 4);
-    const mx = Math.floor(w / 3) + (y % 7) * 37;
-    inner += diff((y * w + mx) * 4, (y * w + mx + 1) * 4);
-    n++;
-  }
-  for (let x = 0; x < w; x++) {
-    seam += diff(((h - 1) * w + x) * 4, x * 4);
-    const my = Math.floor(h / 3) + (x % 7) * 37;
-    inner += diff((my * w + x) * 4, ((my + 1) * w + x) * 4);
-    n++;
-  }
-  return seam / n / Math.max(1, inner / n);
 }
 
 // -----------------------------------------------------------------------------

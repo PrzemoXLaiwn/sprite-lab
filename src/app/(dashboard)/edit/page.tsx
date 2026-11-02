@@ -313,7 +313,7 @@ function EditPageContent({ generationId, resultId }: { generationId: string | nu
         }
         actions={editedImage ? (
           <>
-            <DownloadButton onClick={() => downloadImage(editedImage, `spritelab-edited-${Date.now()}.png`)} />
+            <DownloadButton onClick={() => downloadImage(editedImage, `spritelab-edited-${Date.now()}.png`, shownResultId ?? generationId)} />
             {shownResultId && (
               <SecondaryButton onClick={() => router.push(buildToolHref("edit", { id: shownResultId }))} title="Use the edited sprite as the starting point for the next change">
                 <Pencil className="h-4 w-4" /> Keep editing result

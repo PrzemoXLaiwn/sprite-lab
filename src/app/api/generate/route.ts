@@ -24,6 +24,7 @@ import {
 import { translatePromptIfNeeded } from "@/lib/prompt-enhance";
 import { rateLimitUserGeneration } from "@/lib/rate-limit";
 import { cleanUserPrompt } from "@/lib/prompt-clean";
+import { planDelivery } from "@/lib/prompt-delivery";
 
 // Vercel Pro limit is 300s. Runware calls are capped at 75s each (see
 // src/lib/runware.ts) so a failed generation still has time to refund.
@@ -260,6 +261,14 @@ export async function POST(request: Request) {
 
     // ── 6. Build service request ──────────────────────────────────────────────
     // userId comes from the verified session — never from the request body.
+    // Delivery is planned twice: once on the typed prompt (cleanUserPrompt) and
+    // again after translation, which can introduce "walk cycle" / "set of".
+    const afterTranslation = planDelivery(finalUserPrompt);
+    const motion = cleaned.motion ?? afterTranslation.motion;
+    const rotation = cleaned.rotation ?? afterTranslation.rotation;
+    const setCount = cleaned.setCount ?? afterTranslation.setCount;
+    const wantsSheet = cleaned.wantsSheet || afterTranslation.kind === "animation" || afterTranslation.kind === "sheet";
+    const preferSideView = cleaned.preferSideView || afterTranslation.preferSideView;
     const serviceRequest: GenerationRequest = {
       userId: user.id,
       mode: "single",
@@ -267,7 +276,8 @@ export async function POST(request: Request) {
       categoryId,
       subcategoryId,
       styleId,
-      view,
+      view: preferSideView && (!view || view === "DEFAULT") ? "SIDE_VIEW" : view,
+      setCount: setCount ?? undefined,
       projectId,
       folderId,
       seed: resolvedSeed,
@@ -309,9 +319,15 @@ export async function POST(request: Request) {
       appliedOptimizations: asset.appliedOptimizations,
       warnings: [
         ...(asset.warnings ?? []),
-        ...(cleaned.category ? [`This looked like ${cleaned.category.categoryId === "CHARACTERS" ? "a character" : cleaned.category.categoryId === "ENVIRONMENT" ? "a building" : "a UI icon"}, so it was generated as one — pick the asset type to override.`] : []),
-        ...(cleaned.wantsSheet ? ["You asked for a sprite sheet. Here is the sprite first — use Animate to turn it into frames (idle, walk, attack or your own move)."] : []),
+        ...(cleaned.category ? [`This looked like ${cleaned.category.categoryId === "CHARACTERS" ? "a character" : cleaned.category.categoryId === "CREATURES" ? "a creature" : cleaned.category.categoryId === "ENVIRONMENT" ? "a building" : "a different asset"}, so it was generated as one — pick the asset type to override.`] : []),
+        ...(wantsSheet ? ["You asked for a sprite sheet. Here is the sprite first — use Animate to turn it into frames (idle, walk, attack or your own move)."] : []),
       ],
+      delivery: wantsSheet || setCount ? {
+        kind: rotation ? "sheet" : wantsSheet ? "animation" : "set",
+        motion,
+        rotation,
+        setCount,
+      } : null,
       resolvedView: asset.resolvedView ?? view,
       style: {
         id: styleId,

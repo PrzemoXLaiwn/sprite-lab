@@ -10,6 +10,7 @@
 // =============================================================================
 
 import { detectIntent } from "@/lib/prompt-intent";
+import { planDelivery, type PromptDelivery } from "@/lib/prompt-delivery";
 import { GENERATE_CATEGORIES } from "@/data/generate-categories";
 
 export interface CleanPrompt {
@@ -18,6 +19,14 @@ export interface CleanPrompt {
   category: { categoryId: string; subcategoryId: string } | null;
   /** The user asked for several frames / a sheet — generate one sprite, point to Animate. */
   wantsSheet: boolean;
+  /** Animate preset to open with the sprite. Null when it isn't an animation. */
+  motion: PromptDelivery["motion"];
+  /** Existing direction-sheet pipeline, when the prompt asks for a turnaround. */
+  rotation: PromptDelivery["rotation"];
+  /** Walk/run with no camera named: draw the sprite from the side. */
+  preferSideView: boolean;
+  /** Several items in one image. Null for a single subject. */
+  setCount: number | null;
 }
 
 const ITEM_CATEGORIES = new Set(["WEAPONS", "ARMOR", "CONSUMABLES", "RESOURCES", "QUEST_ITEMS"]);
@@ -36,8 +45,6 @@ export function cleanUserPrompt(raw: string, categoryId: string): CleanPrompt {
   // Leftover example text from the input placeholder
   p = p.replace(/^e\.g\.?\s*/i, "");
 
-  const wantsSheet = /\b(sprite ?sheet|spritesheet|\d+\s+(sequential\s+)?frames|animation frames|multiple frames|various poses|turnaround)\b/i.test(p);
-
   // Chat-model boilerplate that conflicts with our own framing
   p = p
     .replace(/^["'\s]*(please\s+)?(create|make|generate|draw|design)\s+(me\s+)?(a|an|one)?\s*/i, "")
@@ -51,17 +58,11 @@ export function cleanUserPrompt(raw: string, categoryId: string): CleanPrompt {
     .replace(/\s{2,}/g, " ")
     .replace(/^[\s,.:;-]+|[\s,;-]+$/g, "")
     .trim();
-  // Asking for a sheet in the sprite prompt makes the model draw several tiny
-  // copies: generate one clean sprite, the page then offers Animate for frames
-  if (wantsSheet) {
-    p = p
-      .replace(/\b(an?\s+)?(animated\s+)?(polished\s+)?(sprite ?sheets?|spritesheets?)(\s+(of|for|with))?\s*/gi, "")
-      .replace(/\b\d+\s*(sequential\s+)?(animation\s+)?frames?(\s+(of|for|with))?\s*/gi, "")
-      .replace(/\b(animation frames|multiple frames|various poses|frame[- ]by[- ]frame( animation)?|animated gif|turnaround)\b[,.]?\s*/gi, "")
-      .replace(/\s{2,}/g, " ")
-      .replace(/^[\s,.:;-]+|[\s,;-]+$/g, "")
-      .trim();
-  }
+  // A sheet, a cycle or "a set of" in the sprite prompt makes the model draw
+  // several tiny copies or a character holding the items. Keep one subject
+  // (or a counted row) and let the page open the pipeline that already exists.
+  const delivery = planDelivery(p);
+  p = delivery.prompt;
   if (p.length < 3) p = raw.trim();
 
   // Asset type: only move away from an item category, and only when the
@@ -77,7 +78,31 @@ export function cleanUserPrompt(raw: string, categoryId: string): CleanPrompt {
     else category = detectedNonItem(p);
   }
 
-  return { prompt: p, category, wantsSheet };
+  // Armour selected. The head noun wins: "knight in plate armour" is a person,
+  // "dragon scale chestplate" is a chestplate (the word "dragon" must not
+  // pull it back into characters).
+  if (categoryId.toUpperCase() === "ARMOR") {
+    const intent = detectIntent(p);
+    if (intent.categoryId === "ARMOR" && intent.confidence >= 0.85) {
+      category = null;
+    } else if (
+      (intent.categoryId === "CHARACTERS" || intent.categoryId === "CREATURES") &&
+      intent.confidence >= 0.85 &&
+      intent.subcategoryId
+    ) {
+      category = { categoryId: intent.categoryId, subcategoryId: intent.subcategoryId };
+    }
+  }
+
+  return {
+    prompt: p,
+    category,
+    wantsSheet: delivery.kind === "animation" || delivery.kind === "sheet",
+    motion: delivery.motion,
+    rotation: delivery.rotation,
+    preferSideView: delivery.preferSideView,
+    setCount: delivery.setCount,
+  };
 }
 
 /** A confident non-item asset type from the prompt (character, creature, building, UI), else null. */
