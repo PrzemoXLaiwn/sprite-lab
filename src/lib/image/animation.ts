@@ -79,7 +79,7 @@ export async function buildAnimation(
  * Sprites cut out of a model-drawn grid, background removed, cropped to
  * their content, in reading order. Empty cells are dropped.
  */
-export async function extractFrames(gridImage: Buffer, cols: number, rows: number): Promise<Frame[]> {
+export async function extractFrames(gridImage: Buffer, cols: number, rows: number, opts?: { tolerance?: number }): Promise<Frame[]> {
   const { data, info } = await sharp(gridImage).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const full: Raw = { data, width: info.width, height: info.height };
 
@@ -88,7 +88,7 @@ export async function extractFrames(gridImage: Buffer, cols: number, rows: numbe
   removeGridLines(full);
   // Enclosed gaps (between legs and a tail) are judged per sprite, a quarter
   // of a cell: painted styles have no dark outline to recognise them by
-  keySpriteBackground(full, { tolerance: 32, fringePasses: 2, areaScale: 1 / (cols * rows * 4) });
+  keySpriteBackground(full, { tolerance: opts?.tolerance ?? 32, fringePasses: 2, areaScale: 1 / (cols * rows * 4) });
   removeSpecks(full, 24);
 
   // 2. Find the frames. Models don't always keep the requested layout (a 3×2

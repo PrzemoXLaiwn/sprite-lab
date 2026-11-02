@@ -29,6 +29,33 @@ describe("extractFrames", () => {
     expect(frames.some((f) => isSlicedFrame(f))).toBe(false);
   });
 
+  it("a light-grey gutter welds the row at tolerance 32 and separates at 56", async () => {
+    // Distance of rgb(230) from white is ~43: inside 56, outside 32.
+    // The border stays white, so the key colour is white and the grey floor
+    // between figures is what the looser key has to clear.
+    const w = 400, h = 100;
+    const data = Buffer.alloc(w * h * 4, 255);
+    const fill = (x0: number, y0: number, x1: number, y1: number, c: RGB) => {
+      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+        const i = (y * w + x) * 4;
+        data[i] = c[0]; data[i + 1] = c[1]; data[i + 2] = c[2]; data[i + 3] = 255;
+      }
+    };
+    const grey: RGB = [230, 230, 230];
+    fill(0, 20, w, 90, grey);
+    fill(15, 20, 70, 90, INK);
+    fill(115, 20, 170, 90, INK);
+    fill(215, 20, 270, 90, INK);
+    fill(315, 20, 370, 90, INK);
+    const png = await sharp(data, { raw: { width: w, height: h, channels: 4 } }).png().toBuffer();
+    const tight = await extractFrames(png, 4, 1);
+    const loose = await extractFrames(png, 4, 1, { tolerance: 56 });
+    expect(tight.some((f) => isSlicedFrame(f)) || tight.length !== 4).toBe(true);
+    expect(loose).toHaveLength(4);
+    expect(loose.some((f) => isSlicedFrame(f))).toBe(false);
+    expect(loose.every((f) => f.width >= 50 && f.width <= 60)).toBe(true);
+  });
+
   it("still separates two sprites that touch at a thin point when the row is short", async () => {
     const s = sheet(1024, 400);
     s.rect(40, 60, 260, 360, INK); // sprite 1

@@ -238,6 +238,19 @@ describe("per-operation cost cap", () => {
     });
   });
 
+  it("still allows the rotate4 redraw when 1024 bills a fraction of a cent over list", async () => {
+    // Production, Oct–Nov 2026: every rotate4 call reported $0.06923. The cap is
+    // 2 × $0.0692, so the redraw canSpend() was false and all 21 failures were
+    // a single sheet. A third pass must still not fit.
+    const r = await START({ feature: "rotate4", credits: 6 }); if (!r.ok) throw new Error();
+    await r.op.run(async () => {
+      grid(0.06923, 0.0692);
+      expect(canSpend(0.0692)).toBe(true);
+      grid(0.06923, 0.0692);
+      expect(canSpend(0.0692)).toBe(false);
+    });
+  });
+
   it("counts a timeout with no reported cost at the list price", async () => {
     const r = await START(); if (!r.ok) throw new Error();
     await r.op.run(async () => {

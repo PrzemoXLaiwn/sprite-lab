@@ -91,13 +91,22 @@ export function currentOperation(): OperationContext | undefined {
 }
 
 /**
+ * Reported prices can sit a fraction of a cent above the list price a cap was
+ * built from. Nano Banana 1024 bills $0.06923 against a $0.0692 list price, so
+ * a cap of exactly two passes (rotate4: $0.1384) rejected the redraw after one
+ * call: 0.06923 + 0.0692 = 0.13843. A tenth of a cent covers that rounding and
+ * still refuses a further full pass.
+ */
+const CAP_SLACK_USD = 0.001;
+
+/**
  * True when one more call costing `estUsd` stays within the operation's cap.
  * Outside an operation (guest flows, scripts) there is no cap.
  */
 export function canSpend(estUsd: number): boolean {
   const ctx = als.getStore();
   if (!ctx) return true;
-  return ctx.spentUsd + estUsd <= ctx.capUsd + 1e-9;
+  return ctx.spentUsd + estUsd <= ctx.capUsd + CAP_SLACK_USD;
 }
 
 /** Cost that counts for budgets: reported when known, otherwise our estimate. */
