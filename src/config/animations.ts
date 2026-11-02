@@ -169,19 +169,30 @@ export function buildWalkRowPrompt(opts: { pixel: boolean; subject: string; view
   ].join("\n");
 }
 
-export function buildRotationPrompt(opts: { directions: 4 | 8; cols: number; rows: number; pixel: boolean; subject: string }): string {
+export function buildRotationPrompt(opts: { directions: 4 | 8; cols: number; rows: number; pixel: boolean; subject: string; strict?: boolean }): string {
   const style = opts.pixel ? "pixel art" : "2D game art";
   const names = DIRECTION_NAMES[opts.directions];
   const empty = opts.cols * opts.rows - names.length;
   return [
     `Using the reference image, draw a ${opts.directions}-direction rotation sheet of EXACTLY this same ${style} sprite (${opts.subject.slice(0, 200)}) for a top-down / isometric game.`,
     "Identical design, colors, proportions, outline, size and art style in every view. Standing in the same neutral pose — only the viewing direction changes. Held items stay in the same hand.",
+    "Every view is this same individual from that angle: same species, same hair, same skin, same outfit colours and the same accessories. A back view is the back of this character, not a different creature or costume.",
     opts.rows === 1
       ? `Layout: ONE row of exactly ${names.length} views on one blank white page, side by side from left to right. Each figure is small and narrow — no wider than one sixth of the page — with a clear white gap wider than a figure between neighbours, so no two views ever touch or overlap. Every view is the same height and stands on the same invisible ground level.`
       : `Layout: ${opts.rows} rows of ${opts.cols} views on one blank white page, in reading order (left to right, then top to bottom), evenly spaced with wide empty white space so no two views touch. Every view is the same height and stands on the same invisible ground level.`,
     ...names.map((n, i) => `View ${i + 1}: ${n}.`),
     `Exactly ${names.length} figures on the page, each direction drawn once. Never draw a direction twice, never add mirrored copies, and no angles other than the ${names.length} listed.`,
     empty > 0 ? `Leave the last ${empty === 1 ? "place" : empty + " places"} empty.` : "",
+    ...(opts.strict
+      ? [
+          "The previous sheet was rejected. Draw the page again, with smaller figures and wider gaps.",
+          "Each figure is at most one eighth of the page width, and the white gap between two figures is wider than a figure. No figure touches another.",
+          opts.rows === 1
+            ? "One row only. Do not draw a second row, a duplicate, or a mirror."
+            : "Exactly two rows. Do not draw a third row, a duplicate, or a mirror.",
+          `Before finishing, count the figures. There must be exactly ${names.length}.`,
+        ]
+      : []),
     "Plain flat solid pure white background, like a blank sheet of paper. Do not draw any lines on the background: no grid, no guide lines, no boxes, no arrows, no labels or text of any kind, no ground, no shadows.",
   ].filter(Boolean).join("\n");
 }

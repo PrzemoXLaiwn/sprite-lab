@@ -11,7 +11,17 @@ describe("buildRotationPrompt", () => {
     expect(p).toMatch(/ONE row of exactly 4 views/);
     expect(p).toMatch(/Exactly 4 figures on the page, each direction drawn once/);
     expect(p).toMatch(/never add mirrored copies/);
+    expect(p).toMatch(/same individual/);
+    expect(p).not.toMatch(/previous sheet was rejected/);
     expect(p).not.toMatch(/Leave the last/);
+  });
+
+  it("redraw: smaller figures, one row, and an exact count", () => {
+    const p = buildRotationPrompt({ directions: 4, cols: 4, rows: 1, pixel: true, subject: "a knight", strict: true });
+    expect(p).toMatch(/previous sheet was rejected/);
+    expect(p).toMatch(/One row only/);
+    expect(p).toMatch(/There must be exactly 4/);
+    expect(p).toMatch(/at most one eighth of the page width/);
   });
 
   it("8 directions: two rows of four, nothing left empty", () => {

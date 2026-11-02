@@ -230,42 +230,59 @@ export async function makeAnimation(input: MakeAnimationInput): Promise<MakeAnim
 export async function makeRotation(input: { reference: Buffer; prompt: string; pixel: boolean; rotation: RotationOption; onGrid?: MakeAnimationInput["onGrid"]; deadline?: number }): Promise<{ anim: AnimationResult; prompt: string; cost: number }> {
   const r = input.rotation;
   const deadline = input.deadline ?? workDeadline(Date.now());
-  const prompt = r.kind === "walk"
+  const basePrompt = r.kind === "walk"
     ? buildWalkSetPrompt({ pixel: input.pixel, subject: input.prompt })
     : buildRotationPrompt({ directions: r.directions, cols: r.cols, rows: r.rows, pixel: input.pixel, subject: input.prompt });
   // Walk sets: the model draws front, right and back; left is the mirrored right row
   const expected = r.kind === "walk" ? r.cols * r.rows : r.frames;
+  const acceptable = (frames: Frame[]) => r.kind === "views" ? viewsLookRight(frames, expected) : framesLookRight(frames, expected);
   let cost = 0;
   let views: Frame[] = [];
+  let prompt = basePrompt;
+  let lastErr: unknown;
   for (let attempt = 0; attempt < 2; attempt++) {
     if (attempt === 0 && !canStartRequiredPass(deadline)) throw new AnimationTimeBudgetError("direction");
     if (attempt > 0 && !canStartOptionalPass(deadline, r.size)) break;
     if (attempt > 0 && !canSpend(passPrice(r.size))) break;
+    // The identical prompt never salvaged a rotate8 sheet in production (0 of 6).
+    // The redraw asks for fewer, smaller, more separated figures.
+    if (attempt > 0 && r.kind === "views") {
+      prompt = buildRotationPrompt({ directions: r.directions, cols: r.cols, rows: r.rows, pixel: input.pixel, subject: input.prompt, strict: true });
+    }
     let found: Frame[];
     try {
       const grid = await generateAnimationGrid({ prompt, reference: input.reference, size: r.size, deadline });
       cost += grid.cost;
       input.onGrid?.("keys", grid.image);
-      const extracted = await extractFrames(grid.image, r.cols, r.rows);
-      found = fitFrames(extracted, expected);
-      // More figures than directions (a direction drawn twice, mirrored copies,
-      // extra angles) must not be trimmed to the first few: that shipped sheets
-      // with three right sides and no back. Such a page counts as wrong — redraw,
-      // and after the second try fail and refund rather than deliver it.
-      if (figureCount(extracted) > expected) found = extracted;
+      found = r.kind === "views"
+        ? await readDirectionFrames(grid.image, r.cols, r.rows, expected)
+        : settleDirectionFrames(await extractFrames(grid.image, r.cols, r.rows), expected);
     } catch (err) {
+      lastErr = err;
+      // A dropped connection on the first pass used to fail the job with no
+      // second try (the catch rethrew whenever attempt === 0).
+      if (attempt === 0 && isTransientProviderError(err)) {
+        console.warn("[Rotate] Provider error, retrying once:", err instanceof Error ? err.message : err);
+        continue;
+      }
       // Keep a complete first attempt rather than failing the whole request
       if (attempt === 0 || views.length < expected) throw err;
       console.warn("[Rotate] Redraw failed, keeping the first attempt:", err instanceof Error ? err.message : err);
       break;
     }
-    if (frameScore(found, expected) > frameScore(views, expected)) views = found;
-    if (framesLookRight(views, expected)) break;
-    console.warn(`[Rotate] Views look wrong (${found.length}/${expected}) — attempt ${attempt + 1}`);
+    if (attemptScore(found, expected, acceptable) > attemptScore(views, expected, acceptable)) views = found;
+    if (acceptable(views)) break;
+    console.warn(`[Rotate] Views look wrong (${found.length}/${expected}, ${viewRejectReason(found, expected)}) — attempt ${attempt + 1}`);
   }
-  if (views.length < expected) throw new Error(`only ${views.length} of ${expected} views found`);
-  // Never ship a direction sheet with a sliced or missing figure — fail and refund instead
-  if (!framesLookRight(views, expected)) throw new Error("direction views came back broken (sliced or merged figures)");
+  if (!acceptable(views)) {
+    // No sheet at all: surface the provider error (timeout stays a timeout)
+    if (views.length === 0 && lastErr) throw lastErr;
+    if (views.length < expected) throw new Error(`only ${views.length} of ${expected} views found`);
+    if (views.length > expected) throw new Error(`direction views: ${views.length} figures, wanted ${expected}`);
+    // Never ship a direction sheet with a sliced or missing figure — fail and refund instead
+    throw new Error("direction views came back broken (sliced or merged figures)");
+  }
+  if (r.kind === "views") views = await normalizeViewHeights(views, input.pixel);
   if (r.kind === "walk") {
     // Row redraws only while there's time left before the route's 300 s limit
     const fixed = canStartOptionalPass(deadline, 1024)
@@ -387,6 +404,88 @@ async function makeTileAnimation(input: MakeAnimationInput & { deadline: number 
   const anim = await assembleTileAnimation(frames, { pixel: input.pixel, frameSize: 256, fps: option.frames >= 6 ? 10 : 8 });
   const plan: AnimationPlan = { bodyType: "tile", subject: input.prompt, consistency: "", frames: [], planned: false };
   return { anim, plan, prompt, cost: grid.cost, smoothed: false };
+}
+
+/**
+ * Cut a direction sheet. A light-grey floor between figures survives the
+ * default key (distance ~43 from white, tolerance 32) and welds the row into
+ * one blob that the grid fallback then slices. A looser key is kept only when
+ * it scores better, so a pale costume that gets eaten does not replace a
+ * usable tight cut.
+ */
+async function readDirectionFrames(image: Buffer, cols: number, rows: number, expected: number): Promise<Frame[]> {
+  const tight = settleDirectionFrames(await extractFrames(image, cols, rows), expected);
+  if (viewsLookRight(tight, expected)) return tight;
+  try {
+    const loose = settleDirectionFrames(await extractFrames(image, cols, rows, { tolerance: 56 }), expected);
+    if (attemptScore(loose, expected, (frames) => viewsLookRight(frames, expected)) > attemptScore(tight, expected, (frames) => viewsLookRight(frames, expected))) return loose;
+  } catch (err) {
+    console.warn("[Rotate] Looser background key failed:", err instanceof Error ? err.message : err);
+  }
+  return tight;
+}
+
+/**
+ * More figures than directions (a direction drawn twice, mirrored copies,
+ * extra angles) must not be trimmed to the first few: that shipped sheets
+ * with three right sides and no back. Such a page counts as wrong — redraw,
+ * and after the second try fail and refund rather than deliver it.
+ */
+function settleDirectionFrames(extracted: Frame[], expected: number): Frame[] {
+  const fitted = fitFrames(extracted, expected);
+  if (figureCount(extracted) > expected) return extracted;
+  return fitted;
+}
+
+/** Timeouts and gateway errors are worth one more pass. A bad sheet is not an error of this kind. */
+function isTransientProviderError(err: unknown): boolean {
+  const msg = err instanceof Error ? `${err.name} ${err.message}` : String(err);
+  return /AbortError|aborted|timed out|timeout|ECONNRESET|EAI_AGAIN|fetch failed|socket|ETIMEDOUT|\b429\b|\b502\b|\b503\b|\b504\b/i.test(msg);
+}
+
+function attemptScore(frames: Frame[], expected: number, ok: (frames: Frame[]) => boolean): number {
+  if (frames.length === 0) return -Infinity;
+  return (ok(frames) ? 100 : 0) - Math.abs(frames.length - expected);
+}
+
+/** Why a direction sheet was refused, for the log line. */
+function viewRejectReason(frames: Frame[], expected: number): string {
+  if (frames.length !== expected) return `${frames.length} figures, wanted ${expected}`;
+  if (frames.some((f) => isSlicedFrame(f))) return "sliced figure";
+  return "uneven size";
+}
+
+/**
+ * Direction views, as opposed to a walk cycle. A side profile is much
+ * narrower than the front view, so width is judged against the narrower half
+ * of the set and only a real sliver (under a fifth of the wide views) fails.
+ * A half figure is still rejected: too short, or a cut through solid pixels.
+ */
+export function viewsLookRight(frames: Frame[], expected: number): boolean {
+  if (frames.length !== expected) return false;
+  const sorted = (xs: number[]) => [...xs].sort((a, b) => a - b);
+  const heights = sorted(frames.map((f) => f.height));
+  const widths = sorted(frames.map((f) => f.width));
+  const upperH = heights[Math.floor(heights.length / 2)];
+  const upperW = widths[Math.floor(widths.length / 2)];
+  const lowerW = widths[Math.floor((widths.length - 1) / 2)];
+  return frames.every((f) => f.height >= upperH * 0.5 && f.width >= upperW * 0.18 && f.width >= lowerW * 0.4 && !isSlicedFrame(f));
+}
+
+/**
+ * One ground line is not one scale: the model draws some directions smaller.
+ * Match heights that are already close. A much shorter piece is left alone
+ * (scaling it up would hide a bad cut).
+ */
+export async function normalizeViewHeights(frames: Frame[], pixel: boolean): Promise<Frame[]> {
+  if (frames.length < 2) return frames;
+  const med = median(frames.map((f) => f.height));
+  if (med < 1) return frames;
+  return Promise.all(frames.map((f) => {
+    const k = med / Math.max(1, f.height);
+    if (k < 1 / 1.4 || k > 1.4) return f;
+    return scaleFrame(f, k, pixel);
+  }));
 }
 
 /**
