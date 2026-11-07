@@ -67,7 +67,15 @@ describe("parseDraft", () => {
     const d = parseDraft("create", raw, NOW);
     expect(d?.results).toHaveLength(12);
     expect(d?.selectedIndex).toBe(11);
-    expect(d?.results[0]).toMatchObject({ id: "r0", generationId: "g0" });
+    expect(d?.results[0]).toMatchObject({ id: "r0", generationId: "g0", published: null });
+  });
+
+  it("keeps a confirmed public flag and does not invent private for an old draft", () => {
+    const base = { id: "r0", imageUrl: "https://cdn.example/0.png", seed: 1, categoryId: "CHARACTERS", subcategoryId: "HEROES", styleId: "PIXEL_ART_16", view: "none", palette: "auto", prompt: "knight", generationId: "g0" };
+    const missing = parseDraft("create", json({ v: DRAFT_VERSION, updatedAt: NOW, prompt: "knight", results: [base], selectedIndex: 0 }), NOW);
+    expect(missing?.results[0].published).toBeNull();
+    const pub = parseDraft("create", json({ v: DRAFT_VERSION, updatedAt: NOW, prompt: "knight", results: [{ ...base, published: true }], selectedIndex: 0 }), NOW);
+    expect(pub?.results[0].published).toBe(true);
   });
 
   it("knows when a create draft is empty", () => {

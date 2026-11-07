@@ -70,8 +70,12 @@ export function HeroPrompt({ registerUrl, signedIn = false }: { registerUrl: str
 
   const generate = async (override?: string) => {
     const text = (override ?? prompt).trim();
-    if (isGenerating) return;
-    if (!text) { inputRef.current?.focus(); return; }
+    if (isGenerating || limitReached) return;
+    if (!text) {
+      setError("Describe a sprite first — a character, a weapon or a tile.");
+      inputRef.current?.focus();
+      return;
+    }
     if (signedIn) {
       const params = new URLSearchParams({
         prompt: text.slice(0, 500),
@@ -140,7 +144,7 @@ export function HeroPrompt({ registerUrl, signedIn = false }: { registerUrl: str
         <textarea
           ref={inputRef}
           value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
+          onChange={(e) => { setPrompt(e.target.value); if (error) setError(null); }}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void generate(); }
           }}

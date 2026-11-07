@@ -90,6 +90,8 @@ export interface CreateResultSnapshot {
   generationId?: string;
   resolvedView?: string;
   translatedPrompt?: string;
+  /** Last confirmed community visibility. Absent in old drafts means unknown. */
+  published?: boolean | null;
 }
 
 export interface CreateDraft {
@@ -192,6 +194,7 @@ function parseCreateResult(v: unknown): CreateResultSnapshot | null {
     generationId: isSafeId(v.generationId) ? v.generationId : undefined,
     resolvedView: str(v.resolvedView, 32),
     translatedPrompt: str(v.translatedPrompt, 1000),
+    published: bool(v.published) ?? null,
   };
 }
 

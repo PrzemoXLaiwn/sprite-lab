@@ -36,6 +36,7 @@ export interface HistoryItem {
   styleId: string;
   createdAt: string;
   seed?: number | null;
+  isPublic?: boolean;
 }
 
 const PAGE_SIZE = 24;

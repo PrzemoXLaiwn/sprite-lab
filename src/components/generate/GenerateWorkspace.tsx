@@ -51,6 +51,8 @@ import { HistoryButton, HistoryPanel } from "@/components/workspace/HistoryPanel
 import { ContinueBanner, RestoredNote } from "@/components/workspace/ContinueBanner";
 import { fetchImage } from "@/lib/cors-image";
 import { userErrorMessage } from "@/lib/user-error";
+import { SharePrivacyPanel } from "@/components/generate/SharePrivacyPanel";
+import { shareFailed, shareRequested, shareSucceeded } from "@/lib/community-share";
 
 // =============================================================================
 // VIEW + DETAIL
@@ -171,6 +173,14 @@ export interface GeneratedResult {
   projectStatus?: "pending" | "accepting" | "accepted" | "declined";
   /** Folder the sprite was filed into after Accept. */
   acceptedFolderName?: string;
+  /**
+   * Last visibility the server confirmed. false = private (a sprite just
+   * created here). null or absent = not known, and must not be called private.
+   */
+  published?: boolean | null;
+  /** A share/hide request is in flight. Does not change `published`. */
+  sharePending?: boolean;
+  shareError?: string;
 }
 
 interface ProjectContext {
@@ -500,6 +510,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
         resolvedView:     typeof data.resolvedView === "string" ? data.resolvedView : undefined,
         qualityPreset:    detail,
         generationId:     typeof data.generationId === "string" ? data.generationId : undefined,
+        published:        false,
         delivery:         data.delivery && typeof data.delivery === "object" ? {
           motion: typeof data.delivery.motion === "string" ? data.delivery.motion : null,
           rotation: typeof data.delivery.rotation === "string" ? data.delivery.rotation : null,
@@ -533,6 +544,32 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
   // leaves it out (it stays in My Assets). Both are reversible here.
   const updateResult = (id: string, patch: Partial<GeneratedResult>) =>
     setHistory((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+
+  const shareResult = async (result: GeneratedResult, makePublic: boolean) => {
+    if (!result.generationId || result.sharePending || result.published == null) return;
+    const current = { published: result.published, pending: false, error: result.shareError ?? null };
+    const started = shareRequested(current);
+    updateResult(result.id, { published: started.published, sharePending: true, shareError: undefined });
+    try {
+      const res = await fetch(`/api/generations/${encodeURIComponent(result.generationId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isPublic: makePublic }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const failed = shareFailed(started, typeof data.error === "string" ? data.error : "Couldn't update sharing.");
+        updateResult(result.id, { published: failed.published, sharePending: false, shareError: failed.error ?? undefined });
+        return;
+      }
+      const done = shareSucceeded(started, makePublic);
+      updateResult(result.id, { published: done.published, sharePending: false, shareError: undefined });
+      track(FUNNEL.communityShare, { public: makePublic });
+    } catch (e) {
+      const failed = shareFailed(started, userErrorMessage(e, "Couldn't update sharing."));
+      updateResult(result.id, { published: failed.published, sharePending: false, shareError: failed.error ?? undefined });
+    }
+  };
 
   const acceptResult = async (result: GeneratedResult) => {
     if (!projectId || !result.generationId) return;
@@ -1142,7 +1179,8 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                     ? `/animate?id=${gid}&motion=${encodeURIComponent(activeResult.delivery.motion)}`
                     : `/animate?id=${gid}`;
               return (
-              // Everything you can do next with this sprite, in three groups: move it, change it, take it
+              <>
+              {/* Everything you can do next with this sprite, in three groups: move it, change it, take it */}
               <div className="grid grid-cols-[repeat(auto-fit,minmax(230px,1fr))] gap-2">
                 <ActionGroup title="Animate it">
                   {animateHref && (
@@ -1220,6 +1258,15 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                   </IconButton>
                 </ActionGroup>
               </div>
+              {activeResult.generationId && (
+                <SharePrivacyPanel
+                  published={activeResult.published ?? null}
+                  pending={activeResult.sharePending === true}
+                  error={activeResult.shareError}
+                  onShare={(makePublic) => shareResult(activeResult, makePublic)}
+                />
+              )}
+              </>
               );
             })()}
   

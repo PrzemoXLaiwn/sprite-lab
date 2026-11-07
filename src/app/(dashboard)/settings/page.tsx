@@ -28,11 +28,13 @@ import {
   KeyRound,
   Trash2,
   Zap,
-  Sparkles,
   ArrowRight,
   X,
 } from "lucide-react";
-import { fetchUserProfile, updateProfile, fetchCreditHistory, checkUsername, uploadAvatar, fetchEmailPreferences, updateEmailPreferences, EmailPreferences } from "./page.actions";
+import { fetchUserProfile, updateProfile, fetchCreditHistory, checkUsername, uploadAvatar, fetchEmailPreferences, updateEmailPreferences, fetchBillingStatus, EmailPreferences } from "./page.actions";
+import type { PlanAccess } from "@/lib/billing/plan-access";
+import { requestBillingPortal } from "@/lib/billing/open-portal";
+import { BillingSummary } from "@/components/settings/BillingSummary";
 import Link from "next/link";
 import { ReferralCard } from "@/components/dashboard/ReferralCard";
 
@@ -252,16 +254,20 @@ export default function SettingsPage() {
     weeklyDigest: true,
   });
   const [savingEmailPrefs, setSavingEmailPrefs] = useState(false);
+  const [billing, setBilling] = useState<PlanAccess | null>(null);
+  const [billingError, setBillingError] = useState(false);
+  const [portal, setPortal] = useState<"idle" | "opening" | "error">("idle");
 
   // Section nav
   const [activeSection, setActiveSection] = useState<SectionId>("profile");
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [profileResult, transactionsResult, emailPrefsResult] = await Promise.all([
+    const [profileResult, transactionsResult, emailPrefsResult, billingResult] = await Promise.all([
       fetchUserProfile(),
       fetchCreditHistory(),
       fetchEmailPreferences(),
+      fetchBillingStatus(),
     ]);
 
     if (profileResult.success && profileResult.user) {
@@ -284,6 +290,13 @@ export default function SettingsPage() {
       setEmailPrefs(emailPrefsResult.preferences);
     }
 
+    if (billingResult.success) {
+      setBilling(billingResult.billing);
+      setBillingError(false);
+    } else {
+      setBillingError(true);
+    }
+
     setLoading(false);
   }, []);
 
@@ -291,6 +304,16 @@ export default function SettingsPage() {
     const t = setTimeout(loadData, 0);
     return () => clearTimeout(t);
   }, [loadData]);
+
+  const openBillingPortal = async () => {
+    setPortal("opening");
+    const result = await requestBillingPortal();
+    if (!result.ok) {
+      setPortal("error");
+      return;
+    }
+    window.location.assign(result.url);
+  };
 
   // Check username availability with debounce
   useEffect(() => {
@@ -735,16 +758,11 @@ export default function SettingsPage() {
             id="billing"
             title="Plan & billing"
             description="Your current plan, credit balance and usage"
-            action={
-              <Link href="/pricing" className={`${BTN_PRIMARY} hidden shrink-0 py-2 sm:inline-flex`}>
-                <Sparkles className="h-4 w-4" /> Upgrade
-              </Link>
-            }
           >
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="rounded-xl border border-white/[0.08] bg-[#212B4E] p-4">
                 <p className="text-[12px] text-[#9AA1CC]">Current plan</p>
-                <p className="mt-1 font-display text-[24px] font-semibold text-white">{planLabel(user?.plan)}</p>
+                <p className="mt-1 font-display text-[24px] font-semibold text-white">{billing?.planName ?? planLabel(user?.plan)}</p>
               </div>
               <div className="rounded-xl border border-white/[0.08] bg-[#212B4E] p-4">
                 <p className="flex items-center gap-1.5 text-[12px] text-[#9AA1CC]">
@@ -772,15 +790,14 @@ export default function SettingsPage() {
                   <>{generations} sprite{generations === 1 ? "" : "s"} created so far.</>
                 )}
               </p>
-              <div className="flex gap-2">
-                <Link href="/pricing" className={`${BTN_PRIMARY} flex-1 py-2 sm:hidden`}>
-                  <Sparkles className="h-4 w-4" /> Upgrade
-                </Link>
-                <Link href="/pricing" className={`${BTN_SECONDARY} flex-1 py-2 sm:flex-none`}>
-                  <Coins className="h-4 w-4" /> Buy credits
-                </Link>
-              </div>
             </div>
+            <BillingSummary
+              summary={billing?.summary ?? (billingError ? "We couldn't load the renewal date." : "Checking your plan…")}
+              status={billing?.status ?? (billingError ? "unknown" : "loading")}
+              canManage={billing?.canManageBilling === true}
+              portal={portal}
+              onManage={openBillingPortal}
+            />
           </Section>
 
           {/* ── Credit history ──────────────────────────────────────── */}

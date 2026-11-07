@@ -25,6 +25,8 @@ export interface SavedGeneration {
   styleId: string;
   seed?: number | null;
   createdAt?: string;
+  /** Present when the row was loaded with its gallery flag. Absent means unknown. */
+  isPublic?: boolean;
 }
 
 export interface FetchedGeneration {
