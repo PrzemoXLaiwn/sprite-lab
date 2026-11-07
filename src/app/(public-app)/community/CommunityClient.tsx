@@ -41,6 +41,9 @@ import { CHECKERBOARD, CommunityAvatar, isPixelStyleId } from "@/components/comm
 import { PixelThumb } from "@/components/media/PixelThumb";
 import { GENERATE_STYLES } from "@/data/generate-styles";
 import { COMMUNITY_PAGE_SIZE, galleryAllCount, type CommunityItem, type CommunityPage, type CommunityTypeCounts } from "@/lib/community-gallery-types";
+import { COMMUNITY_SEEN_KEY } from "@/lib/community-share";
+import { track, FUNNEL } from "@/lib/analytics";
+import { trapTabKey } from "@/lib/a11y/focus-trap";
 import { fetchImage } from "@/lib/cors-image";
 
 // ===========================================
@@ -150,6 +153,7 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
   const requestId = useRef(0);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState<string>("all");
@@ -177,6 +181,11 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const chatCountRef = useRef(0);
   const chatPollRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    try { localStorage.setItem(COMMUNITY_SEEN_KEY, "1"); } catch { /* storage unavailable */ }
+    track(FUNNEL.communityOpened, { surface: "gallery" });
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(searchQuery.trim()), 300);
@@ -355,8 +364,10 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
   const modalOpen = selectedGen !== null;
   useEffect(() => {
     if (!modalOpen) return;
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSelectedGen(null);
+      if (e.key === "Escape") { setSelectedGen(null); return; }
+      if (dialogRef.current) trapTabKey(dialogRef.current, e);
     };
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -365,6 +376,7 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", onKey);
+      previouslyFocused?.focus();
     };
   }, [modalOpen]);
 
@@ -1167,6 +1179,7 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
           onClick={() => setSelectedGen(null)}
         >
           <div
+            ref={dialogRef}
             role="dialog"
             aria-modal="true"
             aria-label={cleanPrompt(selectedGen.prompt)}

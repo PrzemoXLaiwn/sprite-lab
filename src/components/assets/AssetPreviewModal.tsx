@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { GenerationFeedback } from "@/components/analytics/GenerationFeedback";
+import { shareActionLabel } from "@/lib/community-share";
 import { AssetMedia, Chip, getToolActions } from "./AssetCard";
 import {
   CHECKER_STYLE,
@@ -221,8 +222,8 @@ export function AssetPreviewModal({
             <button
               type="button"
               onClick={() => actions.onToggleShare(gen)}
-              title={gen.isPublic ? "Remove from Community" : "Share to Community"}
-              aria-label={gen.isPublic ? "Remove from Community" : "Share to Community"}
+              title={shareActionLabel(!!gen.isPublic)}
+              aria-label={shareActionLabel(!!gen.isPublic)}
               className={`flex h-10 w-10 items-center justify-center rounded-xl border transition-colors ${
                 gen.isPublic
                   ? "border-[#FFA300]/40 bg-[#FFA300]/10 text-[#FFC857] hover:bg-[#FFA300]/20"

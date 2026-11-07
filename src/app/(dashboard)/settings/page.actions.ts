@@ -5,6 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getUser, updateUserProfile, getCreditTransactions, checkUsernameAvailable, UpdateProfileData } from "@/lib/database";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { getSubscriptionPeriodEnd } from "@/app/api/stripe/_lib/fulfillment";
+import { describePlanAccess, type PlanAccess } from "@/lib/billing/plan-access";
+import { getStripe } from "@/lib/stripe";
 
 export async function fetchUserProfile() {
   const supabase = await createClient();
@@ -271,5 +274,57 @@ export async function updateEmailPreferences(
   } catch (error) {
     console.error("Failed to update email preferences:", error);
     return { success: false, error: "Failed to update preferences" };
+  }
+}
+
+/**
+ * Plan name plus whether a paid period is renewing or already cancelled.
+ * Reads Stripe when a subscription id is stored. Failure leaves the date
+ * unconfirmed instead of claiming the plan renews.
+ */
+export async function fetchBillingStatus(): Promise<{ success: true; billing: PlanAccess } | { success: false }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false };
+
+  try {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: {
+        plan: true,
+        isLifetime: true,
+        stripeCurrentPeriodEnd: true,
+        stripeSubscriptionId: true,
+        stripeCustomerId: true,
+      },
+    });
+    if (!dbUser) return { success: false };
+
+    let cancelAtPeriodEnd: boolean | null = null;
+    let periodEnd = dbUser.stripeCurrentPeriodEnd;
+    if (dbUser.stripeSubscriptionId) {
+      try {
+        const subscription = await getStripe().subscriptions.retrieve(dbUser.stripeSubscriptionId);
+        cancelAtPeriodEnd = subscription.cancel_at_period_end === true || subscription.status === "canceled";
+        periodEnd = getSubscriptionPeriodEnd(subscription) ?? periodEnd;
+      } catch (error) {
+        console.error("[billing] could not read subscription status:", error instanceof Error ? error.message : "unknown");
+        cancelAtPeriodEnd = null;
+      }
+    }
+
+    return {
+      success: true,
+      billing: describePlanAccess({
+        plan: dbUser.plan,
+        isLifetime: dbUser.isLifetime,
+        periodEnd,
+        cancelAtPeriodEnd,
+        canManageBilling: Boolean(dbUser.stripeCustomerId),
+      }),
+    };
+  } catch (error) {
+    console.error("[billing] status failed:", error instanceof Error ? error.message : "unknown");
+    return { success: false };
   }
 }

@@ -25,6 +25,7 @@ import {
 import { SpriteEditor } from "@/components/editor/SpriteEditor";
 import { SpritePlayground } from "@/components/playground/SpritePlayground";
 import { AssetCard, AssetRow, PendingJobCard } from "@/components/assets/AssetCard";
+import { shareToast } from "@/lib/community-share";
 import { AssetPreviewModal } from "@/components/assets/AssetPreviewModal";
 import {
   is3DFormat,
@@ -437,15 +438,8 @@ export default function GalleryPage() {
         setGenerations((prev) =>
           prev.map((g) => (g.id === gen.id ? { ...g, isPublic: newIsPublic } : g))
         );
-        if (newIsPublic) {
-          showToast(
-            "success",
-            "Shared to Explore",
-            "Everyone can now see it on the Explore page."
-          );
-        } else {
-          showToast("info", "No longer shared", "Only you can see it now.");
-        }
+        const note = shareToast(newIsPublic);
+        showToast(newIsPublic ? "success" : "info", note.title, note.body);
       } else {
         const error = await response.json().catch(() => ({}));
         showToast("error", "Couldn't update sharing", error.error || "Please try again.");

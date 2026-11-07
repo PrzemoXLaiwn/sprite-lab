@@ -51,6 +51,7 @@ import { HistoryButton, HistoryPanel } from "@/components/workspace/HistoryPanel
 import { ContinueBanner, RestoredNote } from "@/components/workspace/ContinueBanner";
 import { fetchImage } from "@/lib/cors-image";
 import { userErrorMessage } from "@/lib/user-error";
+import { shareActionLabel, shareCaption } from "@/lib/community-share";
 
 // =============================================================================
 // VIEW + DETAIL
@@ -171,6 +172,9 @@ export interface GeneratedResult {
   projectStatus?: "pending" | "accepting" | "accepted" | "declined";
   /** Folder the sprite was filed into after Accept. */
   acceptedFolderName?: string;
+  /** Community publish state. Absent means still private. */
+  shareState?: "private" | "sharing" | "public" | "error";
+  shareError?: string;
 }
 
 interface ProjectContext {
@@ -533,6 +537,27 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
   // leaves it out (it stays in My Assets). Both are reversible here.
   const updateResult = (id: string, patch: Partial<GeneratedResult>) =>
     setHistory((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+
+  const shareResult = async (result: GeneratedResult, makePublic: boolean) => {
+    if (!result.generationId || result.shareState === "sharing") return;
+    updateResult(result.id, { shareState: "sharing", shareError: undefined });
+    try {
+      const res = await fetch(`/api/generations/${encodeURIComponent(result.generationId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isPublic: makePublic }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        updateResult(result.id, { shareState: "error", shareError: typeof data.error === "string" ? data.error : "Couldn't update sharing." });
+        return;
+      }
+      updateResult(result.id, { shareState: makePublic ? "public" : "private" });
+      track(FUNNEL.communityShare, { public: makePublic });
+    } catch (e) {
+      updateResult(result.id, { shareState: "error", shareError: userErrorMessage(e, "Couldn't update sharing.") });
+    }
+  };
 
   const acceptResult = async (result: GeneratedResult) => {
     if (!projectId || !result.generationId) return;
@@ -1142,7 +1167,8 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                     ? `/animate?id=${gid}&motion=${encodeURIComponent(activeResult.delivery.motion)}`
                     : `/animate?id=${gid}`;
               return (
-              // Everything you can do next with this sprite, in three groups: move it, change it, take it
+              <>
+              {/* Everything you can do next with this sprite, in three groups: move it, change it, take it */}
               <div className="grid grid-cols-[repeat(auto-fit,minmax(230px,1fr))] gap-2">
                 <ActionGroup title="Animate it">
                   {animateHref && (
@@ -1220,6 +1246,28 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                   </IconButton>
                 </ActionGroup>
               </div>
+              {activeResult.generationId && (
+                <div className="mt-3 rounded-[10px] border border-white/[0.08] bg-[#19223F] px-3 py-3">
+                  <p className="text-[13px] font-medium text-white">{shareCaption(activeResult.shareState === "public").title}</p>
+                  <p className="mt-1 text-[12.5px] leading-relaxed text-[#A7ADD4]">{shareCaption(activeResult.shareState === "public").body}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => shareResult(activeResult, activeResult.shareState !== "public")}
+                      disabled={activeResult.shareState === "sharing"}
+                      className={SECONDARY_BTN}
+                    >
+                      {activeResult.shareState === "sharing" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Sparkles className="h-4 w-4" aria-hidden />}
+                      {shareActionLabel(activeResult.shareState === "public")}
+                    </button>
+                    <Link href="/community" className={SECONDARY_BTN}>Community gallery</Link>
+                  </div>
+                  {activeResult.shareState === "error" && activeResult.shareError && (
+                    <p role="alert" className="mt-2 text-[12.5px] text-[#FFC857]">{activeResult.shareError}</p>
+                  )}
+                </div>
+              )}
+              </>
               );
             })()}
   

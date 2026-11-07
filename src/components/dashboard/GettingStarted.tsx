@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Check, ChevronDown, X, Sparkles, Film, FolderOpen, Coins } from "lucide-react";
+import { Check, ChevronDown, X, Sparkles, Film, FolderOpen, Coins, Users } from "lucide-react";
+import { COMMUNITY_SEEN_KEY } from "@/lib/community-share";
 import { QUEST_BY_ID } from "@/lib/quests/definitions";
 
 const HIDE_KEY = "sl:getting-started:hidden";
@@ -32,6 +33,7 @@ export function GettingStarted({ done }: { done: { generate: boolean; animate: b
   const [ready, setReady] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [costsSeen, setCostsSeen] = useState(false);
+  const [communitySeen, setCommunitySeen] = useState(false);
   const [open, setOpen] = useState(false);
   // Server-rendered "done" is from page load; refresh after each generation
   // (credits change) so a finished step ticks off right away
@@ -57,6 +59,7 @@ export function GettingStarted({ done }: { done: { generate: boolean; animate: b
     const id = requestAnimationFrame(() => {
       setHidden(read(HIDE_KEY) === "1");
       setCostsSeen(read(COSTS_KEY) === "1");
+      setCommunitySeen(read(COMMUNITY_SEEN_KEY) === "1");
       // A small collapsed pill unless this viewer opened it before; it never opens by itself
       setOpen(read(OPEN_KEY) === "1");
       setReady(true);
@@ -69,6 +72,7 @@ export function GettingStarted({ done }: { done: { generate: boolean; animate: b
     { id: "animate", label: "Animate a sprite", hint: "Walk, attack, breathe fire…", href: "/animate", icon: Film, ok: isDone.animate, reward: QUEST_BY_ID.first_animation.reward },
     { id: "project", label: "Start a project", hint: "Keep your game's assets together", href: "/projects", icon: FolderOpen, ok: isDone.project, reward: QUEST_BY_ID.first_project.reward },
     { id: "costs", label: "See what things cost", hint: "Credits explained in 1 minute", href: "/how-it-works#credits", icon: Coins, ok: costsSeen, reward: 0 },
+    { id: "community", label: "Browse the community gallery", hint: "Sprites and prompts other people chose to publish", href: "/community", icon: Users, ok: communitySeen, reward: 0 },
   ];
   const count = steps.filter((s) => s.ok).length;
   const hiddenHere = HIDDEN_PATHS.some((p) => pathname === p || pathname?.startsWith(`${p}/`));
@@ -119,7 +123,10 @@ export function GettingStarted({ done }: { done: { generate: boolean; animate: b
             {steps.map((s) => (
               <li key={s.id}>
                 <Link href={s.href}
-                  onClick={() => { if (s.id === "costs") { setCostsSeen(true); write(COSTS_KEY, "1"); } }}
+                  onClick={() => {
+                    if (s.id === "costs") { setCostsSeen(true); write(COSTS_KEY, "1"); }
+                    if (s.id === "community") { setCommunitySeen(true); write(COMMUNITY_SEEN_KEY, "1"); }
+                  }}
                   className="group flex min-h-11 items-center gap-3 rounded-xl px-2.5 py-2 transition hover:bg-white/[0.05]">
                   <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${
                     s.ok ? "border-emerald-400/40 bg-emerald-400/15 text-emerald-300" : "border-white/[0.1] text-[#9AA1CC] group-hover:text-white"

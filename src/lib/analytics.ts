@@ -73,4 +73,7 @@ export const FUNNEL = {
   dungeonUpgradeClicked: "dungeon_upgrade_clicked",
   dungeonReturnClicked: "dungeon_return_clicked",
   dungeonShareCard: "dungeon_share_card",
+  // Community gallery. No prompts, images, or account ids.
+  communityOpened: "community_opened",
+  communityShare: "community_share",
 } as const;

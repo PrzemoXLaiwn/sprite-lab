@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { GenerationFeedback } from "@/components/analytics/GenerationFeedback";
+import { shareActionLabel } from "@/lib/community-share";
 import {
   CHECKER_STYLE,
   cleanPrompt,
@@ -211,7 +212,7 @@ export function AssetCard({
             {/* Quick actions */}
             <div className="absolute right-2.5 top-2.5 z-10 flex gap-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
               <IconAction
-                title={gen.isPublic ? "Remove from Community" : "Share to Community"}
+                title={shareActionLabel(!!gen.isPublic)}
                 onClick={() => actions.onToggleShare(gen)}
                 active={gen.isPublic}
               >
@@ -367,7 +368,7 @@ export function AssetRow({
         <div className="hidden shrink-0 items-center gap-1.5 sm:flex" onClick={(e) => e.stopPropagation()}>
           <GenerationFeedback generationId={gen.id} compact />
           <span className="mx-1 h-5 w-px bg-white/[0.08]" />
-          <RowButton title={gen.isPublic ? "Remove from Community" : "Share to Community"} onClick={() => actions.onToggleShare(gen)} active={gen.isPublic}>
+          <RowButton title={shareActionLabel(!!gen.isPublic)} onClick={() => actions.onToggleShare(gen)} active={gen.isPublic}>
             {gen.isPublic ? <Globe className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
           </RowButton>
           <RowButton title="Download" onClick={() => actions.onDownload(gen)}>

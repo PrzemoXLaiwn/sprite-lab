@@ -27,20 +27,23 @@ import {
 import { fetchUserData } from "@/app/(dashboard)/layout.actions";
 import { isNewFeature } from "@/config/new-features";
 import { NewBadge } from "@/components/dashboard/NewBadge";
+import { APP_NAV } from "@/components/dashboard/app-nav";
 
-// Mirrors the desktop AppRail (src/components/dashboard/AppRail.tsx).
-const NAV = [
-  { href: "/", label: "Home", icon: Home },
-  { href: "/generate", label: "Create", icon: Wand2 },
-  { href: "/assets", label: "Assets", icon: Images },
-  { href: "/projects", label: "Projects", icon: FolderOpen },
-  { href: "/quests", label: "Quests", icon: Trophy },
-  { href: "/play", label: "Dungeon", icon: Gamepad2 },
-  { href: "/community", label: "Explore", icon: Users },
-  { href: "/usage", label: "Usage", icon: BarChart3 },
-  { href: "/how-it-works", label: "Guide", icon: CircleHelp },
-  { href: "/settings", label: "Settings", icon: Settings },
-];
+const ICONS = {
+  "/": Home,
+  "/generate": Wand2,
+  "/assets": Images,
+  "/projects": FolderOpen,
+  "/quests": Trophy,
+  "/play": Gamepad2,
+  "/community": Users,
+  "/usage": BarChart3,
+  "/how-it-works": CircleHelp,
+  "/settings": Settings,
+} as const;
+
+// Same destinations and names as the desktop rail.
+const NAV = APP_NAV.map((item) => ({ ...item, icon: ICONS[item.href as keyof typeof ICONS] }));
 
 interface MobileMenuProps {
   userEmail: string;

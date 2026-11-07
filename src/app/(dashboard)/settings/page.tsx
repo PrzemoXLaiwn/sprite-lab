@@ -32,7 +32,8 @@ import {
   ArrowRight,
   X,
 } from "lucide-react";
-import { fetchUserProfile, updateProfile, fetchCreditHistory, checkUsername, uploadAvatar, fetchEmailPreferences, updateEmailPreferences, EmailPreferences } from "./page.actions";
+import { fetchUserProfile, updateProfile, fetchCreditHistory, checkUsername, uploadAvatar, fetchEmailPreferences, updateEmailPreferences, fetchBillingStatus, EmailPreferences } from "./page.actions";
+import type { PlanAccess } from "@/lib/billing/plan-access";
 import Link from "next/link";
 import { ReferralCard } from "@/components/dashboard/ReferralCard";
 
@@ -252,16 +253,20 @@ export default function SettingsPage() {
     weeklyDigest: true,
   });
   const [savingEmailPrefs, setSavingEmailPrefs] = useState(false);
+  const [billing, setBilling] = useState<PlanAccess | null>(null);
+  const [billingError, setBillingError] = useState(false);
+  const [portal, setPortal] = useState<"idle" | "opening" | "error">("idle");
 
   // Section nav
   const [activeSection, setActiveSection] = useState<SectionId>("profile");
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [profileResult, transactionsResult, emailPrefsResult] = await Promise.all([
+    const [profileResult, transactionsResult, emailPrefsResult, billingResult] = await Promise.all([
       fetchUserProfile(),
       fetchCreditHistory(),
       fetchEmailPreferences(),
+      fetchBillingStatus(),
     ]);
 
     if (profileResult.success && profileResult.user) {
@@ -284,6 +289,13 @@ export default function SettingsPage() {
       setEmailPrefs(emailPrefsResult.preferences);
     }
 
+    if (billingResult.success) {
+      setBilling(billingResult.billing);
+      setBillingError(false);
+    } else {
+      setBillingError(true);
+    }
+
     setLoading(false);
   }, []);
 
@@ -291,6 +303,21 @@ export default function SettingsPage() {
     const t = setTimeout(loadData, 0);
     return () => clearTimeout(t);
   }, [loadData]);
+
+  const openBillingPortal = async () => {
+    setPortal("opening");
+    try {
+      const res = await fetch("/api/stripe/create-portal", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || typeof data.url !== "string") {
+        setPortal("error");
+        return;
+      }
+      window.location.href = data.url;
+    } catch {
+      setPortal("error");
+    }
+  };
 
   // Check username availability with debounce
   useEffect(() => {
@@ -736,15 +763,17 @@ export default function SettingsPage() {
             title="Plan & billing"
             description="Your current plan, credit balance and usage"
             action={
-              <Link href="/pricing" className={`${BTN_PRIMARY} hidden shrink-0 py-2 sm:inline-flex`}>
-                <Sparkles className="h-4 w-4" /> Upgrade
-              </Link>
+              (!billing || billing.status === "free") ? (
+                <Link href="/pricing" className={`${BTN_PRIMARY} hidden shrink-0 py-2 sm:inline-flex`}>
+                  <Sparkles className="h-4 w-4" /> Upgrade
+                </Link>
+              ) : null
             }
           >
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="rounded-xl border border-white/[0.08] bg-[#212B4E] p-4">
                 <p className="text-[12px] text-[#9AA1CC]">Current plan</p>
-                <p className="mt-1 font-display text-[24px] font-semibold text-white">{planLabel(user?.plan)}</p>
+                <p className="mt-1 font-display text-[24px] font-semibold text-white">{billing?.planName ?? planLabel(user?.plan)}</p>
               </div>
               <div className="rounded-xl border border-white/[0.08] bg-[#212B4E] p-4">
                 <p className="flex items-center gap-1.5 text-[12px] text-[#9AA1CC]">
@@ -757,6 +786,10 @@ export default function SettingsPage() {
                 <p className="mt-1 font-sans tracking-tight text-[24px] font-semibold tabular-nums text-white">{generations}</p>
               </div>
             </div>
+
+            <p className="mt-4 text-[14px] leading-relaxed text-[#FFF1E8]" role="status">
+              {billing?.summary ?? (billingError ? "We couldn't load the renewal date." : "Checking your plan…")}
+            </p>
 
             <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-[12px] text-[#9AA1CC]">
@@ -772,15 +805,31 @@ export default function SettingsPage() {
                   <>{generations} sprite{generations === 1 ? "" : "s"} created so far.</>
                 )}
               </p>
-              <div className="flex gap-2">
-                <Link href="/pricing" className={`${BTN_PRIMARY} flex-1 py-2 sm:hidden`}>
-                  <Sparkles className="h-4 w-4" /> Upgrade
-                </Link>
-                <Link href="/pricing" className={`${BTN_SECONDARY} flex-1 py-2 sm:flex-none`}>
-                  <Coins className="h-4 w-4" /> Buy credits
+              <div className="flex flex-col gap-2 sm:flex-row">
+                {(!billing || billing.status === "free") && (
+                  <Link href="/pricing" className={`${BTN_PRIMARY} py-2 sm:hidden`}>
+                    <Sparkles className="h-4 w-4" /> Upgrade
+                  </Link>
+                )}
+                {billing?.canManageBilling && (
+                  <button type="button" onClick={openBillingPortal} disabled={portal === "opening"} className={`${BTN_SECONDARY} py-2`}>
+                    {portal === "opening" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+                    {portal === "opening" ? "Opening billing…" : "Manage billing"}
+                  </button>
+                )}
+                <Link href="/pricing" className={`${BTN_SECONDARY} py-2`}>
+                  <Coins className="h-4 w-4" /> {billing && billing.status !== "free" ? "Plans" : "Buy credits"}
                 </Link>
               </div>
             </div>
+            {billing?.canManageBilling && (
+              <p className="mt-3 text-[12px] leading-relaxed text-[#9AA1CC]">
+                Manage billing opens Stripe, where you can change card, switch plan, or cancel. Cancelling here does not ask why you are leaving. A cancelled plan keeps working until the date already paid for.
+              </p>
+            )}
+            {portal === "error" && (
+              <p role="alert" className="mt-2 text-[13px] text-[#FFC857]">Couldn&apos;t open billing. Try again in a moment.</p>
+            )}
           </Section>
 
           {/* ── Credit history ──────────────────────────────────────── */}
