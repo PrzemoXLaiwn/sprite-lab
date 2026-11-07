@@ -5,6 +5,7 @@ import { describePlanAccess } from "@/lib/billing/plan-access";
 import { requestBillingPortal } from "@/lib/billing/open-portal";
 import { BillingSummary } from "@/components/settings/BillingSummary";
 import { SharePrivacyPanel } from "@/components/generate/SharePrivacyPanel";
+import { idleShare, shareFailed, shareRequested, shareSucceeded, type ShareView } from "@/lib/community-share";
 import { GettingStarted } from "@/components/dashboard/GettingStarted";
 import { useDialogFocus } from "@/lib/a11y/use-dialog-focus";
 
@@ -45,31 +46,32 @@ function PortalDemo({ label }: { label: string }) {
   );
 }
 
-function ShareDemo() {
-  const [isPublic, setIsPublic] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+function ShareFlow({ label, start, path }: { label: string; start: boolean | null; path: string }) {
+  const [view, setView] = useState<ShareView>(idleShare(start));
   const onShare = async (makePublic: boolean) => {
-    setBusy(true);
-    setError(null);
+    const started = shareRequested(view);
+    setView(started);
     try {
-      const res = await fetch("/api/generations/browser-fixture", {
+      const res = await fetch(path, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isPublic: makePublic }),
       });
       if (!res.ok) {
-        setError("Couldn't update sharing.");
+        setView(shareFailed(started, "Couldn't update sharing."));
         return;
       }
-      setIsPublic(makePublic);
+      setView(shareSucceeded(started, makePublic));
     } catch {
-      setError("Couldn't update sharing.");
-    } finally {
-      setBusy(false);
+      setView(shareFailed(started, "Couldn't update sharing."));
     }
   };
-  return <SharePrivacyPanel isPublic={isPublic} busy={busy} error={error} onShare={onShare} />;
+  return (
+    <section className="rounded-2xl border border-white/[0.08] bg-[#19223F] p-4" aria-label={label}>
+      <h2 className="font-display text-[20px] text-white">{label}</h2>
+      <SharePrivacyPanel published={view.published} pending={view.pending} error={view.error} onShare={onShare} />
+    </section>
+  );
 }
 
 function DialogDemo() {
@@ -136,10 +138,10 @@ export function PolishFixtures() {
             onManage={() => {}}
           />
         </section>
-        <section className="rounded-2xl border border-white/[0.08] bg-[#19223F] p-4 lg:col-span-2" aria-label="Share privacy">
-          <h2 className="font-display text-[20px] text-white">Share</h2>
-          <ShareDemo />
-        </section>
+        <ShareFlow label="Share success" start={false} path="/api/generations/browser-fixture" />
+        <ShareFlow label="Hide failure" start={true} path="/api/generations/browser-fixture-hide" />
+        <ShareFlow label="Publish failure" start={false} path="/api/generations/browser-fixture-publish" />
+        <ShareFlow label="History unknown" start={null} path="/api/generations/browser-fixture-unknown" />
         <DialogDemo />
       </div>
       <GettingStarted done={{ generate: false, animate: false, project: false }} />

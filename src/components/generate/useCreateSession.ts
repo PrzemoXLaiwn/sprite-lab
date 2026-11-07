@@ -21,6 +21,7 @@ import {
 import { fetchOwnGeneration, type SavedGeneration } from "@/components/workspace/restore";
 import type { HistoryItem } from "@/components/workspace/HistoryPanel";
 import { isUploadedPrompt } from "@/lib/upload-marker";
+import { visibilityFromHistory } from "@/lib/community-share";
 
 export interface CreateFormState {
   prompt: string;
@@ -47,11 +48,12 @@ function toSnapshot(r: CreateResultSnapshot): CreateResultSnapshot {
     id: r.id, imageUrl: r.imageUrl, seed: r.seed, categoryId: r.categoryId, subcategoryId: r.subcategoryId,
     styleId: r.styleId, view: r.view, palette: r.palette, prompt: r.prompt, qualityPreset: r.qualityPreset,
     generationId: r.generationId, resolvedView: r.resolvedView, translatedPrompt: r.translatedPrompt,
+    published: r.published === true || r.published === false ? r.published : null,
   };
 }
 
 /** A saved generation as a Create result (view / palette weren't stored, so they read as defaults). */
-export function snapshotFromGeneration(g: Pick<SavedGeneration, "id" | "imageUrl" | "prompt" | "categoryId" | "subcategoryId" | "styleId" | "seed">): CreateResultSnapshot {
+export function snapshotFromGeneration(g: Pick<SavedGeneration, "id" | "imageUrl" | "prompt" | "categoryId" | "subcategoryId" | "styleId" | "seed" | "isPublic">): CreateResultSnapshot {
   return {
     id: `gen-${g.id}`,
     imageUrl: g.imageUrl,
@@ -63,6 +65,7 @@ export function snapshotFromGeneration(g: Pick<SavedGeneration, "id" | "imageUrl
     palette: "auto",
     prompt: cleanGenerationPrompt(g.prompt),
     generationId: g.id,
+    published: visibilityFromHistory(g.isPublic),
   };
 }
 

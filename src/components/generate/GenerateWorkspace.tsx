@@ -52,6 +52,7 @@ import { ContinueBanner, RestoredNote } from "@/components/workspace/ContinueBan
 import { fetchImage } from "@/lib/cors-image";
 import { userErrorMessage } from "@/lib/user-error";
 import { SharePrivacyPanel } from "@/components/generate/SharePrivacyPanel";
+import { shareFailed, shareRequested, shareSucceeded } from "@/lib/community-share";
 
 // =============================================================================
 // VIEW + DETAIL
@@ -172,8 +173,13 @@ export interface GeneratedResult {
   projectStatus?: "pending" | "accepting" | "accepted" | "declined";
   /** Folder the sprite was filed into after Accept. */
   acceptedFolderName?: string;
-  /** Community publish state. Absent means still private. */
-  shareState?: "private" | "sharing" | "public" | "error";
+  /**
+   * Last visibility the server confirmed. false = private (a sprite just
+   * created here). null or absent = not known, and must not be called private.
+   */
+  published?: boolean | null;
+  /** A share/hide request is in flight. Does not change `published`. */
+  sharePending?: boolean;
   shareError?: string;
 }
 
@@ -504,6 +510,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
         resolvedView:     typeof data.resolvedView === "string" ? data.resolvedView : undefined,
         qualityPreset:    detail,
         generationId:     typeof data.generationId === "string" ? data.generationId : undefined,
+        published:        false,
         delivery:         data.delivery && typeof data.delivery === "object" ? {
           motion: typeof data.delivery.motion === "string" ? data.delivery.motion : null,
           rotation: typeof data.delivery.rotation === "string" ? data.delivery.rotation : null,
@@ -539,8 +546,10 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
     setHistory((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
 
   const shareResult = async (result: GeneratedResult, makePublic: boolean) => {
-    if (!result.generationId || result.shareState === "sharing") return;
-    updateResult(result.id, { shareState: "sharing", shareError: undefined });
+    if (!result.generationId || result.sharePending || result.published == null) return;
+    const current = { published: result.published, pending: false, error: result.shareError ?? null };
+    const started = shareRequested(current);
+    updateResult(result.id, { published: started.published, sharePending: true, shareError: undefined });
     try {
       const res = await fetch(`/api/generations/${encodeURIComponent(result.generationId)}`, {
         method: "PATCH",
@@ -549,13 +558,16 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        updateResult(result.id, { shareState: "error", shareError: typeof data.error === "string" ? data.error : "Couldn't update sharing." });
+        const failed = shareFailed(started, typeof data.error === "string" ? data.error : "Couldn't update sharing.");
+        updateResult(result.id, { published: failed.published, sharePending: false, shareError: failed.error ?? undefined });
         return;
       }
-      updateResult(result.id, { shareState: makePublic ? "public" : "private" });
+      const done = shareSucceeded(started, makePublic);
+      updateResult(result.id, { published: done.published, sharePending: false, shareError: undefined });
       track(FUNNEL.communityShare, { public: makePublic });
     } catch (e) {
-      updateResult(result.id, { shareState: "error", shareError: userErrorMessage(e, "Couldn't update sharing.") });
+      const failed = shareFailed(started, userErrorMessage(e, "Couldn't update sharing."));
+      updateResult(result.id, { published: failed.published, sharePending: false, shareError: failed.error ?? undefined });
     }
   };
 
@@ -1248,9 +1260,9 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
               </div>
               {activeResult.generationId && (
                 <SharePrivacyPanel
-                  isPublic={activeResult.shareState === "public"}
-                  busy={activeResult.shareState === "sharing"}
-                  error={activeResult.shareState === "error" ? activeResult.shareError : null}
+                  published={activeResult.published ?? null}
+                  pending={activeResult.sharePending === true}
+                  error={activeResult.shareError}
                   onShare={(makePublic) => shareResult(activeResult, makePublic)}
                 />
               )}

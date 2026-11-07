@@ -81,6 +81,7 @@ export async function GET(request: Request) {
         styleId: true,
         seed: true,
         createdAt: true,
+        isPublic: true,
       },
     });
 
