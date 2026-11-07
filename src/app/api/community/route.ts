@@ -16,6 +16,7 @@ export async function GET(request: Request) {
       category: searchParams.get("category"),
       type: searchParams.get("type"),
       sort: searchParams.get("sort") || "newest",
+      q: searchParams.get("q"),
       limit,
       offset,
     });

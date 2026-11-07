@@ -1,18 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Gift } from "lucide-react";
+import { giftPageCopy } from "./copy";
 
 export const metadata: Metadata = { title: "Your gift — SpriteLab", robots: { index: false, follow: false } };
 
 export default async function GiftPage({ searchParams }: { searchParams: Promise<{ status?: string; amount?: string }> }) {
   const { status, amount } = await searchParams;
   const n = Math.max(0, Math.min(10000, Number(amount) || 0));
-  const content =
-    status === "claimed"
-      ? { title: `+${n} credits added`, body: "They're already in your account — thank you for being one of our first Pro users. Have fun building your game!" }
-      : status === "invalid"
-        ? { title: "This link isn't valid", body: "The gift link looks incomplete. Try opening it again from the email, or just reply to it and we'll sort it out." }
-        : { title: "Already claimed", body: "This gift has already been added to your account — enjoy!" };
+  const content = giftPageCopy(status, n);
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#131A31] px-5 text-white">

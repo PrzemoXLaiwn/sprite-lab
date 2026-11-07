@@ -40,7 +40,7 @@ import { checkAdminAccess } from "@/app/(dashboard)/admin/page.actions";
 import { CHECKERBOARD, CommunityAvatar, isPixelStyleId } from "@/components/community/shared";
 import { PixelThumb } from "@/components/media/PixelThumb";
 import { GENERATE_STYLES } from "@/data/generate-styles";
-import { COMMUNITY_PAGE_SIZE, type CommunityItem, type CommunityPage } from "@/lib/community-gallery-types";
+import { COMMUNITY_PAGE_SIZE, galleryAllCount, type CommunityItem, type CommunityPage, type CommunityTypeCounts } from "@/lib/community-gallery-types";
 import { fetchImage } from "@/lib/cors-image";
 
 // ===========================================
@@ -144,15 +144,20 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
   const [generations, setGenerations] = useState<Generation[]>(initial?.generations ?? []);
   const [loading, setLoading] = useState(initial === null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [hasMore, setHasMore] = useState(initial ? initial.generations.length < initial.total : false);
   const skipFirstLoad = useRef(initial !== null);
+  const requestId = useRef(0);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterType, setFilterType] = useState<"all" | "2d" | "3d">("all");
   const [sortBy, setSortBy] = useState<"newest" | "popular">("newest");
   const [total, setTotal] = useState(initial?.total ?? 0);
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>(initial?.categoryCounts ?? {});
+  const [typeCounts, setTypeCounts] = useState<CommunityTypeCounts | null>(initial?.typeCounts ?? null);
 
   // Detail modal state
   const [selectedGen, setSelectedGen] = useState<Generation | null>(null);
@@ -174,6 +179,11 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
   const chatPollRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(searchQuery.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  useEffect(() => {
     // The server already rendered the default view (newest, all types) — don't refetch it.
     if (skipFirstLoad.current) {
       skipFirstLoad.current = false;
@@ -181,7 +191,7 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
     }
     loadCommunityGallery();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterCategory, filterType, sortBy]);
+  }, [filterCategory, filterType, sortBy, debouncedQuery]);
 
   // Infinite scroll: fetch the next page when the sentinel below the grid
   // comes into view.
@@ -340,15 +350,22 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
     }
   }, [selectedGen]);
 
-  // Close the detail modal with Escape.
+  // Close the detail modal with Escape, keep the page from scrolling behind it,
+  // and put focus on Close so keyboard users aren't left in the page underneath.
   const modalOpen = selectedGen !== null;
   useEffect(() => {
     if (!modalOpen) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setSelectedGen(null);
     };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeRef.current?.focus();
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
   }, [modalOpen]);
 
   const loadChatMessages = async () => {
@@ -441,21 +458,32 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
 
   const handleLike = async () => {
     if (!selectedGen || likingInProgress) return;
+    if (signedIn === false) {
+      toast({ title: "Sign in to like a sprite", description: "Likes are saved to your account." });
+      return;
+    }
     setLikingInProgress(true);
     try {
       const response = await fetch(`/api/community/${selectedGen.id}/like`, {
         method: "POST",
       });
+      const data = await response.json().catch(() => null);
       if (response.ok) {
-        const data = await response.json();
         setUserLiked(data.liked);
         setGenerations(prev => prev.map(g =>
           g.id === selectedGen.id ? { ...g, likes: data.likes } : g
         ));
         setSelectedGen(prev => prev ? { ...prev, likes: data.likes } : null);
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Couldn't save the like",
+          description: data?.error || "Please try again.",
+        });
       }
     } catch (error) {
       console.error("Failed to like:", error);
+      toast({ variant: "destructive", title: "Couldn't save the like", description: "Check your connection and try again." });
     } finally {
       setLikingInProgress(false);
     }
@@ -463,6 +491,10 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
 
   const handlePostComment = async () => {
     if (!selectedGen || !newComment.trim() || submittingComment) return;
+    if (signedIn === false) {
+      toast({ title: "Sign in to comment", description: "Comments are posted from your account." });
+      return;
+    }
     setSubmittingComment(true);
     try {
       const response = await fetch(`/api/community/${selectedGen.id}/comments`, {
@@ -489,55 +521,75 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
     }
   };
 
-  const galleryParams = (offset: number) =>
-    new URLSearchParams({
+  const galleryParams = (offset: number) => {
+    const params = new URLSearchParams({
       category: filterCategory,
       type: filterType,
       sort: sortBy,
       limit: String(COMMUNITY_PAGE_SIZE),
       offset: String(offset),
     });
+    if (debouncedQuery) params.set("q", debouncedQuery);
+    return params;
+  };
+
+  const applyPage = (data: CommunityPage & { generations?: Generation[] }, append: Generation[] | null) => {
+    const items: Generation[] = data.generations || [];
+    if (append) {
+      const seen = new Set(append.map((g) => g.id));
+      setGenerations([...append, ...items.filter((g) => !seen.has(g.id))]);
+    } else {
+      setGenerations(items);
+    }
+    const nextTotal = data.total || 0;
+    setTotal(nextTotal);
+    if (data.categoryCounts) setCategoryCounts(data.categoryCounts);
+    if (data.typeCounts) setTypeCounts(data.typeCounts);
+    const loaded = (append?.length ?? 0) + items.length;
+    setHasMore(items.length > 0 && loaded < nextTotal);
+    setLoadError(false);
+  };
 
   const loadCommunityGallery = async () => {
+    const id = ++requestId.current;
     setLoading(true);
+    setLoadError(false);
     try {
       const response = await fetch(`/api/community?${galleryParams(0)}`);
-      if (response.ok) {
-        const data = await response.json();
-        const items: Generation[] = data.generations || [];
-        setGenerations(items);
-        setTotal(data.total || 0);
-        setCategoryCounts(data.categoryCounts || {});
-        setHasMore(items.length < (data.total || 0));
+      if (id !== requestId.current) return;
+      if (!response.ok) {
+        setLoadError(true);
+        return;
       }
+      const data = await response.json();
+      if (id !== requestId.current) return;
+      applyPage(data, null);
     } catch (error) {
       console.error("Failed to load community gallery:", error);
+      if (id === requestId.current) setLoadError(true);
     } finally {
-      setLoading(false);
+      if (id === requestId.current) setLoading(false);
     }
   };
 
   const loadMore = async () => {
     if (loadingMore || !hasMore) return;
+    const id = requestId.current;
     setLoadingMore(true);
     const offset = generations.length;
     try {
       const response = await fetch(`/api/community?${galleryParams(offset)}`);
+      if (id !== requestId.current) return;
       if (!response.ok) {
-        setHasMore(false);
+        setLoadError(true);
         return;
       }
       const data = await response.json();
-      const items: Generation[] = data.generations || [];
-      setGenerations((prev) => {
-        const seen = new Set(prev.map((g) => g.id));
-        return [...prev, ...items.filter((g) => !seen.has(g.id))];
-      });
-      setTotal(data.total || 0);
-      setHasMore(items.length > 0 && offset + items.length < (data.total || 0));
+      if (id !== requestId.current) return;
+      applyPage(data, generations);
     } catch (error) {
       console.error("Failed to load more community works:", error);
-      setHasMore(false);
+      if (id === requestId.current) setLoadError(true);
     } finally {
       setLoadingMore(false);
     }
@@ -563,22 +615,16 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
     }
   };
 
-  const filteredGenerations = generations.filter((gen) => {
-    return gen.prompt.toLowerCase().includes(searchQuery.toLowerCase());
-  });
-
-  const total2D = generations.filter(g => !is3DFormat(g.imageUrl) && !is3DStyle(g.styleId)).length;
-  const total3D = generations.filter(g => is3DFormat(g.imageUrl) || is3DStyle(g.styleId)).length;
-
   // Get featured (top liked) assets
   const featuredAssets = [...generations].sort((a, b) => b.likes - a.likes).slice(0, 3);
 
-  const hasFilters = searchQuery !== "" || filterCategory !== "all" || filterType !== "all";
+  const hasFilters = debouncedQuery !== "" || filterCategory !== "all" || filterType !== "all";
+  const creationCount = typeCounts ? typeCounts["2d"] + typeCounts["3d"] : total;
 
   const TYPE_TABS = [
     { id: "all" as const, label: "All", icon: null },
-    { id: "2d" as const, label: "2D", icon: ImageIcon, count: total2D },
-    { id: "3d" as const, label: "3D", icon: Cuboid, count: total3D },
+    { id: "2d" as const, label: "2D", icon: ImageIcon, count: typeCounts?.["2d"] },
+    { id: "3d" as const, label: "3D", icon: Cuboid, count: typeCounts?.["3d"] },
   ];
 
   const SORT_TABS = [
@@ -600,11 +646,21 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
               </p>
               <p className="mt-1.5 font-mono text-[11.5px] text-[#9AA1CC]">
                 <span className="mr-1.5 text-[#FFA300]">&gt;</span>
-                <span className="font-mono tabular-nums text-[#C8CCE8]">{total}</span> creations
-                <span className="mx-1.5 text-[#8A92BF]">·</span>
-                <span className="font-mono tabular-nums text-[#C8CCE8]">{total2D}</span> 2D
-                <span className="mx-1.5 text-[#8A92BF]">·</span>
-                <span className="font-mono tabular-nums text-[#C8CCE8]">{total3D}</span> 3D
+                {loadError && generations.length === 0 ? (
+                  <span className="text-[#FFC857]">Gallery unavailable</span>
+                ) : (
+                  <>
+                    <span className="font-mono tabular-nums text-[#C8CCE8]">{creationCount}</span> creations
+                    {typeCounts && (
+                      <>
+                        <span className="mx-1.5 text-[#8A92BF]">·</span>
+                        <span className="font-mono tabular-nums text-[#C8CCE8]">{typeCounts["2d"]}</span> 2D
+                        <span className="mx-1.5 text-[#8A92BF]">·</span>
+                        <span className="font-mono tabular-nums text-[#C8CCE8]">{typeCounts["3d"]}</span> 3D
+                      </>
+                    )}
+                  </>
+                )}
                 <span className="caret ml-1.5 align-[-2px]" aria-hidden="true" />
               </p>
             </div>
@@ -709,14 +765,14 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                 aria-label="Search shared sprites by prompt"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-10 w-full rounded-xl border border-white/[0.08] bg-[#212B4E] pl-10 pr-9 text-[13px] text-white outline-none transition-colors placeholder:text-[#8A92BF] focus:border-[#FFA300]/50"
+                className="h-10 w-full rounded-xl border border-white/[0.08] bg-[#212B4E] pl-10 pr-11 text-base text-white outline-none transition-colors placeholder:text-[#8A92BF] focus:border-[#FFA300]/50 md:text-[13px]"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery("")}
                   aria-label="Clear search"
-                  className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-[#9AA1CC] hover:bg-white/[0.06] hover:text-white"
+                  className="absolute right-0.5 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg text-[#9AA1CC] hover:bg-white/[0.06] hover:text-white"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -775,7 +831,7 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
             {CATEGORIES.map((cat) => {
               const Icon = cat.icon;
               const active = filterCategory === cat.id;
-              const count = cat.id === "all" ? total : (categoryCounts[cat.id] || 0);
+              const count = cat.id === "all" ? galleryAllCount(categoryCounts, total) : (categoryCounts[cat.id] || 0);
               return (
                 <button
                   key={cat.id}
@@ -800,10 +856,15 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
 
           {/* ═══ Gallery ══════════════════════════════════════════════ */}
           <div className="mt-5">
-            {!loading && searchQuery && filteredGenerations.length > 0 && (
+            {!loading && debouncedQuery && (
               <p className="mb-3 text-[12px] text-[#9AA1CC]">
-                {filteredGenerations.length} result{filteredGenerations.length === 1 ? "" : "s"} for{" "}
-                <span className="text-[#C8CCE8]">&ldquo;{searchQuery}&rdquo;</span>
+                {total} result{total === 1 ? "" : "s"} for{" "}
+                <span className="text-[#C8CCE8]">&ldquo;{debouncedQuery}&rdquo;</span>
+              </p>
+            )}
+            {loadError && generations.length > 0 && (
+              <p role="alert" className="mb-3 text-[13px] text-[#FFC857]">
+                Couldn&apos;t refresh the gallery. You&apos;re still seeing the last works that loaded.
               </p>
             )}
 
@@ -817,30 +878,43 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                   />
                 ))}
               </div>
-            ) : filteredGenerations.length === 0 ? (
+            ) : generations.length === 0 ? (
               <div className="flex flex-col items-center justify-center pixel-grid rounded-2xl border border-white/[0.06] bg-[#19223F] px-6 py-20 text-center">
                 <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.04]">
-                  {hasFilters ? <Search className="h-5 w-5 text-[#9AA1CC]" /> : <Users className="h-5 w-5 text-[#9AA1CC]" />}
+                  {loadError ? <RefreshCw className="h-5 w-5 text-[#9AA1CC]" /> : hasFilters ? <Search className="h-5 w-5 text-[#9AA1CC]" /> : <Users className="h-5 w-5 text-[#9AA1CC]" />}
                 </div>
                 <h3 className="text-[15px] font-semibold text-white">
-                  {hasFilters ? "No matches" : "Nothing shared yet"}
+                  {loadError ? "Couldn't load the gallery" : hasFilters ? "No matches" : "Nothing shared yet"}
                 </h3>
                 <p className="mt-1 max-w-sm text-[13px] text-[#9AA1CC]">
-                  {hasFilters
+                  {loadError
+                    ? "Check your connection and try again."
+                    : hasFilters
                     ? "Nothing matches these filters. Try another word or a different category."
                     : "Nothing has been shared yet. Share a sprite from your assets and it shows up here."}
                 </p>
-                <Link
-                  href="/generate"
-                  className="mt-5 flex h-10 items-center gap-2 px-corners bg-[#FFA300] px-4 text-[13px] font-semibold text-[#131A31] transition hover:bg-[#FFB733]"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  Create a sprite
-                </Link>
+                {loadError ? (
+                  <button
+                    type="button"
+                    onClick={loadCommunityGallery}
+                    className="mt-5 flex h-10 items-center gap-2 px-corners bg-[#FFA300] px-4 text-[13px] font-semibold text-[#131A31] transition hover:bg-[#FFB733]"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Try again
+                  </button>
+                ) : (
+                  <Link
+                    href="/generate"
+                    className="mt-5 flex h-10 items-center gap-2 px-corners bg-[#FFA300] px-4 text-[13px] font-semibold text-[#131A31] transition hover:bg-[#FFB733]"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Create a sprite
+                  </Link>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-                {filteredGenerations.map((gen) => {
+                {generations.map((gen) => {
                   const is3D = is3DFormat(gen.imageUrl) || is3DStyle(gen.styleId);
                   const format3D = is3D ? get3DFormat(gen.imageUrl) : null;
 
@@ -898,7 +972,7 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                             e.stopPropagation();
                             handleDownload(gen);
                           }}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.1] bg-black/55 text-white backdrop-blur-sm transition hover:bg-black/75"
+                          className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/[0.1] bg-black/55 text-white backdrop-blur-sm transition hover:bg-black/75"
                         >
                           <Download className="h-3.5 w-3.5" />
                         </button>
@@ -910,7 +984,7 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                             e.stopPropagation();
                             window.open(gen.imageUrl, "_blank");
                           }}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.1] bg-black/55 text-white backdrop-blur-sm transition hover:bg-black/75"
+                          className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/[0.1] bg-black/55 text-white backdrop-blur-sm transition hover:bg-black/75"
                         >
                           <ExternalLink className="h-3.5 w-3.5" />
                         </button>
@@ -1068,7 +1142,8 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
               onChange={(e) => setNewChatMessage(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendChatMessage()}
               maxLength={500}
-              className="h-10 min-w-0 flex-1 rounded-xl border border-white/[0.08] bg-[#212B4E] px-3 text-[13px] text-white outline-none transition-colors placeholder:text-[#8A92BF] focus:border-[#FFA300]/50"
+              aria-label="Live chat message"
+              className="h-10 min-w-0 flex-1 rounded-xl border border-white/[0.08] bg-[#212B4E] px-3 text-base text-white outline-none transition-colors placeholder:text-[#8A92BF] focus:border-[#FFA300]/50 md:text-[13px]"
             />
             <button
               type="button"
@@ -1099,10 +1174,11 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
             onClick={(e) => e.stopPropagation()}
           >
             <button
+              ref={closeRef}
               type="button"
               onClick={() => setSelectedGen(null)}
               aria-label="Close"
-              className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-xl border border-white/[0.1] bg-black/50 text-white backdrop-blur-sm transition hover:bg-black/70"
+              className="absolute right-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.1] bg-black/50 text-white backdrop-blur-sm transition hover:bg-black/70"
             >
               <X className="h-4 w-4" />
             </button>
@@ -1173,6 +1249,7 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                     onClick={handleLike}
                     disabled={likingInProgress}
                     aria-pressed={userLiked}
+                    aria-label={userLiked ? `Unlike, ${selectedGen.likes} likes` : `Like, ${selectedGen.likes} likes`}
                     className={`flex h-10 items-center gap-1.5 rounded-xl border px-3.5 text-[13px] font-medium font-mono tabular-nums transition disabled:opacity-60 ${
                       userLiked
                         ? "border-rose-400/20 bg-rose-500/[0.06] text-rose-200 hover:bg-rose-500/[0.1]"
@@ -1273,15 +1350,22 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
 
               {/* Comment input */}
               <div className="border-t border-white/[0.06] p-4">
+                {signedIn === false ? (
+                  <Link href="/login?redirectTo=/community"
+                    className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] text-[13px] font-medium text-white transition-colors hover:bg-white/[0.08]">
+                    Sign in to comment
+                  </Link>
+                ) : (
                 <div className="flex gap-2">
                   <input
                     type="text"
                     placeholder="Write a comment…"
+                    aria-label="Write a comment"
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handlePostComment()}
                     maxLength={500}
-                    className="h-10 min-w-0 flex-1 rounded-xl border border-white/[0.08] bg-[#212B4E] px-3 text-[13px] text-white outline-none transition-colors placeholder:text-[#8A92BF] focus:border-[#FFA300]/50"
+                    className="h-10 min-w-0 flex-1 rounded-xl border border-white/[0.08] bg-[#212B4E] px-3 text-base text-white outline-none transition-colors placeholder:text-[#8A92BF] focus:border-[#FFA300]/50 md:text-[13px]"
                   />
                   <button
                     type="button"
@@ -1293,6 +1377,7 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
                     {submittingComment ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                   </button>
                 </div>
+                )}
               </div>
             </div>
           </div>

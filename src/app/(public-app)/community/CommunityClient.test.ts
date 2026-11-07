@@ -13,7 +13,8 @@ describe("community first page is server-rendered", () => {
       createElement(CommunityClient, {
         initial: {
           total: 60,
-          categoryCounts: { CHARACTERS: 1 },
+          categoryCounts: { CHARACTERS: 40, WEAPONS: 20 },
+          typeCounts: { "2d": 58, "3d": 2 },
           generations: [
             {
               id: "g1",
@@ -36,5 +37,11 @@ describe("community first page is server-rendered", () => {
     expect(html).toMatch(/>7</);
     expect(html).toContain("Load more"); // 1 of 60 loaded: infinite scroll continues on the client
     expect(html).not.toContain("aspect-square animate-pulse"); // no gallery skeleton when the server sent data
+    // Counts are the gallery totals, not "1 2D" from the single card on this page.
+    expect(html).toMatch(/58<\/span> 2D/);
+    expect(html).toMatch(/2<\/span> 3D/);
+    expect(html).not.toMatch(/>1<\/span> 2D/);
+    expect(html).toMatch(/All<\/button>|All/);
+    expect(html).toContain(">60<");
   });
 });
