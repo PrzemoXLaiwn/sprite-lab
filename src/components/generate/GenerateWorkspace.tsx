@@ -51,7 +51,7 @@ import { HistoryButton, HistoryPanel } from "@/components/workspace/HistoryPanel
 import { ContinueBanner, RestoredNote } from "@/components/workspace/ContinueBanner";
 import { fetchImage } from "@/lib/cors-image";
 import { userErrorMessage } from "@/lib/user-error";
-import { shareActionLabel, shareCaption } from "@/lib/community-share";
+import { SharePrivacyPanel } from "@/components/generate/SharePrivacyPanel";
 
 // =============================================================================
 // VIEW + DETAIL
@@ -1247,25 +1247,12 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
                 </ActionGroup>
               </div>
               {activeResult.generationId && (
-                <div className="mt-3 rounded-[10px] border border-white/[0.08] bg-[#19223F] px-3 py-3">
-                  <p className="text-[13px] font-medium text-white">{shareCaption(activeResult.shareState === "public").title}</p>
-                  <p className="mt-1 text-[12.5px] leading-relaxed text-[#A7ADD4]">{shareCaption(activeResult.shareState === "public").body}</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => shareResult(activeResult, activeResult.shareState !== "public")}
-                      disabled={activeResult.shareState === "sharing"}
-                      className={SECONDARY_BTN}
-                    >
-                      {activeResult.shareState === "sharing" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Sparkles className="h-4 w-4" aria-hidden />}
-                      {shareActionLabel(activeResult.shareState === "public")}
-                    </button>
-                    <Link href="/community" className={SECONDARY_BTN}>Community gallery</Link>
-                  </div>
-                  {activeResult.shareState === "error" && activeResult.shareError && (
-                    <p role="alert" className="mt-2 text-[12.5px] text-[#FFC857]">{activeResult.shareError}</p>
-                  )}
-                </div>
+                <SharePrivacyPanel
+                  isPublic={activeResult.shareState === "public"}
+                  busy={activeResult.shareState === "sharing"}
+                  error={activeResult.shareState === "error" ? activeResult.shareError : null}
+                  onShare={(makePublic) => shareResult(activeResult, makePublic)}
+                />
               )}
               </>
               );

@@ -44,6 +44,18 @@ describe("describePlanAccess", () => {
     expect(view.summary).toContain("couldn't confirm whether it renews");
   });
 
+  it("names no date and no cancellation when the provider returned nothing", () => {
+    const view = describePlanAccess({
+      plan: "UNLIMITED",
+      periodEnd: null,
+      cancelAtPeriodEnd: null,
+      now: NOW,
+    });
+    expect(view.status).toBe("unknown");
+    expect(view.summary).toBe("Studio plan. The renewal date isn't available right now.");
+    expect(view.summary.toLowerCase()).not.toContain("cancel");
+  });
+
   it("describes Free and Lifetime without a renewal", () => {
     expect(describePlanAccess({ plan: "FREE", cancelAtPeriodEnd: null }).summary).toContain("no subscription");
     expect(describePlanAccess({ plan: "STARTER", isLifetime: true, cancelAtPeriodEnd: false }).status).toBe("lifetime");

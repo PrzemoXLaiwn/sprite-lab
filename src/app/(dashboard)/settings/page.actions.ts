@@ -309,7 +309,10 @@ export async function fetchBillingStatus(): Promise<{ success: true; billing: Pl
         periodEnd = getSubscriptionPeriodEnd(subscription) ?? periodEnd;
       } catch (error) {
         console.error("[billing] could not read subscription status:", error instanceof Error ? error.message : "unknown");
+        // A stored period end must not be shown as a cancel date, or as a
+        // confirmed renewal, when the provider read failed.
         cancelAtPeriodEnd = null;
+        periodEnd = null;
       }
     }
 

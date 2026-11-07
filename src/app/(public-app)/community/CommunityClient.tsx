@@ -43,7 +43,7 @@ import { GENERATE_STYLES } from "@/data/generate-styles";
 import { COMMUNITY_PAGE_SIZE, galleryAllCount, type CommunityItem, type CommunityPage, type CommunityTypeCounts } from "@/lib/community-gallery-types";
 import { COMMUNITY_SEEN_KEY } from "@/lib/community-share";
 import { track, FUNNEL } from "@/lib/analytics";
-import { trapTabKey } from "@/lib/a11y/focus-trap";
+import { useDialogFocus } from "@/lib/a11y/use-dialog-focus";
 import { fetchImage } from "@/lib/cors-image";
 
 // ===========================================
@@ -359,26 +359,9 @@ export function CommunityClient({ initial }: { initial: CommunityPage | null }) 
     }
   }, [selectedGen]);
 
-  // Close the detail modal with Escape, keep the page from scrolling behind it,
-  // and put focus on Close so keyboard users aren't left in the page underneath.
   const modalOpen = selectedGen !== null;
-  useEffect(() => {
-    if (!modalOpen) return;
-    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { setSelectedGen(null); return; }
-      if (dialogRef.current) trapTabKey(dialogRef.current, e);
-    };
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    closeRef.current?.focus();
-    window.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", onKey);
-      previouslyFocused?.focus();
-    };
-  }, [modalOpen]);
+  const closeDialog = () => setSelectedGen(null);
+  useDialogFocus(modalOpen, dialogRef, closeRef, closeDialog);
 
   const loadChatMessages = async () => {
     try {

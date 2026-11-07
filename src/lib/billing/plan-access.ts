@@ -87,7 +87,7 @@ export function describePlanAccess(input: {
     return {
       planName: name,
       status: "ending",
-      summary: `${name} is cancelled and will not renew. The end date isn't available right now. Access continues through the period already paid for.`,
+      summary: `${name} is cancelled and will not renew. The end date isn't available right now.`,
       canManageBilling,
     };
   }
