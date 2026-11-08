@@ -68,13 +68,50 @@ export function mayLoadAds(input: {
   });
 }
 
+/** Cookie value written by the proxy. Anything that is not a country code is unknown. */
+export function countryCookieValue(header: string | null | undefined): string {
+  if (!header || !/^[A-Za-z]{2}$/.test(header)) return "";
+  return header.toUpperCase();
+}
+
+export type PurchaseConsent = "allowed" | "awaiting" | "denied";
+
+/** Denied and an unanswered required or unknown country wait or stop. A known other country may measure. */
+export function purchaseConsent(input: {
+  choice: MeasurementChoice | null;
+  country: string | null | undefined;
+}): PurchaseConsent {
+  if (input.choice === "denied") return "denied";
+  if (input.choice === "granted") return "allowed";
+  if (regionRequiresChoice(input.country)) return "awaiting";
+  return "allowed";
+}
+
 /**
- * Runs inside the consent stub, before gtag.js. Replays a stored choice.
- * A missing key does not grant anything.
+ * First command is a global deny, including when the country cookie or header
+ * is missing. A grant is a later update in the same script, only for an
+ * explicit accept or a known country outside the consent list. A stored
+ * refusal is never granted first.
  */
-export function storedChoiceBootstrap(): string {
+export function consentBootstrap(measurementId: string): string {
+  const regions = JSON.stringify(CONSENT_REGIONS);
   const key = JSON.stringify(MEASUREMENT_CHOICE_KEY);
-  return `try{var slc=localStorage.getItem(${key});if(slc==="granted"||slc==="denied"){var slv=slc==="granted"?"granted":"denied";gtag("consent","update",{ad_storage:slv,ad_user_data:slv,ad_personalization:slv,analytics_storage:slv});}}catch(e){}`;
+  return `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}
+if(!window.__slGtagBoot){window.__slGtagBoot=true;
+gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied',wait_for_update:500});
+try{
+var slm=document.cookie.match(/(?:^|; )sl-country=([A-Za-z]{2})(?:;|$)/);
+var slCountry=slm?slm[1].toUpperCase():"";
+var slChoice="";
+try{slChoice=localStorage.getItem(${key})||"";}catch(e){}
+var slRegions=${regions};
+var slGrant=false;
+if(slChoice==="granted") slGrant=true;
+else if(slChoice==="denied") slGrant=false;
+else if(slCountry && slRegions.indexOf(slCountry)<0) slGrant=true;
+if(slGrant) gtag('consent','update',{ad_storage:'granted',ad_user_data:'granted',ad_personalization:'granted',analytics_storage:'granted'});
+}catch(e){}
+gtag('js',new Date());gtag('config','${measurementId}',{send_page_view:false});}`;
 }
 
 export function applyMeasurementChoice(

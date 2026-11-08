@@ -1,10 +1,10 @@
 import { GA_MEASUREMENT_ID } from "@/lib/analytics/measurement-id";
 import {
   MEASUREMENT_CHOICE_KEY,
-  measurementAllowed,
   parseMeasurementChoice,
+  purchaseConsent,
   readCountryCookie,
-  regionRequiresChoice,
+  type PurchaseConsent,
 } from "@/lib/analytics/consent";
 
 /**
@@ -27,10 +27,17 @@ export interface VerifiedPurchase {
   itemName: string;
 }
 
+/**
+ * `acked` means this page's gtag called `event_callback`. It does not mean
+ * Google Analytics stored the hit.
+ */
 export type PurchaseReportStatus = "acked" | "dispatching" | "queued" | "withheld" | "duplicate" | "rejected";
 
-/** How long a handoff blocks another tab or remount. A dead page can retry after this. */
+/** How long a handoff blocks another dispatch. After this the same reporter retries. */
 export const PURCHASE_HANDOFF_MS = 2000;
+/** Consented receipts are not kept longer than this, and never across an account change. */
+export const PURCHASE_QUEUE_TTL_MS = 15 * 60 * 1000;
+export const PURCHASE_QUEUE_LIMIT = 3;
 
 const ZERO_DECIMAL = new Set([
   "BIF", "CLP", "DJF", "GNF", "JPY", "KMF", "KRW", "MGA", "PYG", "RWF",
@@ -54,12 +61,16 @@ export interface PurchaseDispatch {
   gtag?: (...args: unknown[]) => void;
   /** True only when gtag.js has taken over, not when the stub merely exists. */
   tagReady: boolean;
-  measurementAllowed: boolean;
+  consent: PurchaseConsent;
+  /** Signed-in account. Null is this anonymous page only and is never persisted. */
+  ownerId?: string | null;
   now?: number;
 }
 
 interface HeldPurchase {
   purchase: VerifiedPurchase;
+  ownerId: string | null;
+  expiresAt: number;
   handedAt: number | null;
 }
 
@@ -273,23 +284,26 @@ function purchasePayload(purchase: VerifiedPurchase, measurementId: string, onAc
   };
 }
 
-function readHeld(store: PurchaseStore): HeldPurchase[] {
-  const held: HeldPurchase[] = [];
-  for (const entry of readList(store, PENDING_KEY)) {
-    if (!entry || typeof entry !== "object") continue;
-    const record = entry as { purchase?: unknown; handedAt?: unknown };
-    const purchase = parseVerifiedPurchase(record.purchase ?? entry);
-    if (!purchase) continue;
-    const handedAt = typeof record.handedAt === "number" && Number.isFinite(record.handedAt)
-      ? record.handedAt
-      : null;
-    held.push({ purchase, handedAt });
-  }
-  return held;
+function persistentFrom(entry: unknown, now: number): HeldPurchase | "legacy" | null {
+  if (!entry || typeof entry !== "object") return null;
+  const record = entry as {
+    purchase?: unknown;
+    ownerId?: unknown;
+    expiresAt?: unknown;
+    handedAt?: unknown;
+  };
+  const purchase = parseVerifiedPurchase(record.purchase);
+  if (!purchase) return null;
+  if (typeof record.ownerId !== "string" || record.ownerId.length < 1 || record.ownerId.length > 80) return "legacy";
+  if (typeof record.expiresAt !== "number" || record.expiresAt <= now) return null;
+  const handedAt = typeof record.handedAt === "number" && Number.isFinite(record.handedAt) ? record.handedAt : null;
+  return { purchase, ownerId: record.ownerId, expiresAt: record.expiresAt, handedAt };
 }
 
 export function createPurchaseReporter(store: PurchaseStore, measurementId = GA_MEASUREMENT_ID) {
-  const memoryInflight = new Set<string>();
+  let memory: HeldPurchase[] = [];
+  let generation = 0;
+  const inflight = new Map<string, { at: number; generation: number }>();
 
   function ackedIds(): string[] {
     return readList(store, ACKED_KEY).filter((id): id is string => typeof id === "string");
@@ -299,61 +313,160 @@ export function createPurchaseReporter(store: PurchaseStore, measurementId = GA_
     return ackedIds().includes(id);
   }
 
-  function ack(id: string) {
-    memoryInflight.delete(id);
+  function clearPending() {
+    store.set(PENDING_KEY, "[]");
+  }
+
+  function discard() {
+    memory = [];
+    inflight.clear();
+    clearPending();
+    store.set(ACKED_KEY, "[]");
+  }
+
+  function writePersistent(entries: HeldPurchase[]) {
+    const minimal = entries.slice(-PURCHASE_QUEUE_LIMIT).map((entry) => ({
+      purchase: entry.purchase,
+      ownerId: entry.ownerId,
+      expiresAt: entry.expiresAt,
+      handedAt: entry.handedAt,
+    }));
+    store.set(PENDING_KEY, JSON.stringify(minimal));
+  }
+
+  function loadPersistent(now: number, ownerId: string): HeldPurchase[] {
+    let legacy = false;
+    const kept: HeldPurchase[] = [];
+    for (const entry of readList(store, PENDING_KEY)) {
+      const parsed = persistentFrom(entry, now);
+      if (parsed === "legacy") {
+        legacy = true;
+        continue;
+      }
+      if (!parsed || parsed.ownerId !== ownerId) continue;
+      kept.push(parsed);
+    }
+    if (legacy) clearPending();
+    else writePersistent(kept);
+    return legacy ? [] : kept;
+  }
+
+  function remember(entry: HeldPurchase, persist: boolean) {
+    memory = [...memory.filter((item) => item.purchase.transactionId !== entry.purchase.transactionId), entry]
+      .slice(-PURCHASE_QUEUE_LIMIT);
+    if (persist && entry.ownerId) writePersistent(memory.filter((item) => item.ownerId === entry.ownerId));
+  }
+
+  function ack(id: string, gen: number) {
+    const current = inflight.get(id);
+    if (!current || current.generation !== gen) return;
+    inflight.delete(id);
     const ids = ackedIds().filter((existing) => existing !== id);
     ids.push(id);
     store.set(ACKED_KEY, JSON.stringify(ids.slice(-50)));
-    const rest = readHeld(store).filter((entry) => entry.purchase.transactionId !== id);
-    store.set(PENDING_KEY, JSON.stringify(rest.slice(-10)));
+    memory = memory.filter((item) => item.purchase.transactionId !== id);
+    const persisted = readList(store, PENDING_KEY)
+      .map((entry) => persistentFrom(entry, 0))
+      .filter((entry): entry is HeldPurchase => entry !== null && entry !== "legacy" && entry.purchase.transactionId !== id && entry.expiresAt > Date.now());
+    writePersistent(persisted);
   }
 
-  function writeHeld(entries: HeldPurchase[]) {
-    store.set(PENDING_KEY, JSON.stringify(entries.slice(-10).map((entry) => ({
-      purchase: entry.purchase,
-      handedAt: entry.handedAt,
-    }))));
+  function lockFresh(id: string, now: number): boolean {
+    const row = inflight.get(id);
+    if (!row) return false;
+    if (now - row.at >= PURCHASE_HANDOFF_MS) {
+      inflight.delete(id);
+      return false;
+    }
+    return true;
+  }
+
+  function dispatchPurchase(entry: HeldPurchase, context: PurchaseDispatch, now: number): PurchaseReportStatus {
+    if (!context.tagReady || typeof context.gtag !== "function") return "queued";
+    if (lockFresh(entry.purchase.transactionId, now)) return "dispatching";
+    if (entry.handedAt !== null && now - entry.handedAt < PURCHASE_HANDOFF_MS) return "dispatching";
+    const gen = ++generation;
+    const id = entry.purchase.transactionId;
+    inflight.set(id, { at: now, generation: gen });
+    entry.handedAt = now;
+    remember(entry, context.consent === "allowed" && Boolean(entry.ownerId));
+    try {
+      context.gtag("event", "purchase", purchasePayload(entry.purchase, measurementId, () => ack(id, gen)));
+    } catch {
+      inflight.delete(id);
+      entry.handedAt = null;
+      remember(entry, context.consent === "allowed" && Boolean(entry.ownerId));
+      return "queued";
+    }
+    return isAcked(id) ? "acked" : "dispatching";
   }
 
   function report(input: unknown, dispatch?: PurchaseDispatch): PurchaseReportStatus {
     const purchase = parseVerifiedPurchase(input);
     if (!purchase) return "rejected";
-    const context: PurchaseDispatch = dispatch ?? { tagReady: false, measurementAllowed: false };
-    if (isAcked(purchase.transactionId)) return "duplicate";
-
+    const context: PurchaseDispatch = dispatch ?? { tagReady: false, consent: "denied" };
     const now = context.now ?? Date.now();
-    const current = readHeld(store);
-    const previous = current.find((entry) => entry.purchase.transactionId === purchase.transactionId);
-    const next: HeldPurchase = {
-      purchase,
-      handedAt: previous?.handedAt ?? null,
-    };
-    writeHeld([...current.filter((entry) => entry.purchase.transactionId !== purchase.transactionId), next]);
+    const ownerId = context.ownerId ?? null;
 
-    if (!context.measurementAllowed) return "withheld";
-    if (!context.tagReady || typeof context.gtag !== "function") return "queued";
-    if (memoryInflight.has(purchase.transactionId)) return "dispatching";
-    if (next.handedAt !== null && now - next.handedAt < PURCHASE_HANDOFF_MS) return "dispatching";
-
-    memoryInflight.add(purchase.transactionId);
-    next.handedAt = now;
-    writeHeld([...current.filter((entry) => entry.purchase.transactionId !== purchase.transactionId), next]);
-    try {
-      context.gtag("event", "purchase", purchasePayload(purchase, measurementId, () => ack(purchase.transactionId)));
-    } catch {
-      memoryInflight.delete(purchase.transactionId);
-      next.handedAt = null;
-      writeHeld([...readHeld(store).filter((entry) => entry.purchase.transactionId !== purchase.transactionId), next]);
-      return "queued";
+    if (context.consent === "denied") {
+      discard();
+      return "withheld";
     }
-    return isAcked(purchase.transactionId) ? "acked" : "dispatching";
+
+    if (isAcked(purchase.transactionId)) return "duplicate";
+    memory = memory.filter((item) => item.expiresAt > now && item.ownerId === ownerId);
+
+    if (context.consent === "awaiting") {
+      clearPending();
+      remember({
+        purchase,
+        ownerId,
+        expiresAt: now + PURCHASE_QUEUE_TTL_MS,
+        handedAt: null,
+      }, false);
+      return "withheld";
+    }
+
+    const previous = memory.find((item) => item.purchase.transactionId === purchase.transactionId);
+    const stored = ownerId ? loadPersistent(now, ownerId).find((item) => item.purchase.transactionId === purchase.transactionId) : undefined;
+    const entry: HeldPurchase = previous ?? stored ?? {
+      purchase,
+      ownerId,
+      expiresAt: now + PURCHASE_QUEUE_TTL_MS,
+      handedAt: null,
+    };
+    entry.purchase = purchase;
+    entry.ownerId = ownerId;
+    if (entry.expiresAt <= now) entry.expiresAt = now + PURCHASE_QUEUE_TTL_MS;
+    remember(entry, Boolean(ownerId));
+    return dispatchPurchase(entry, context, now);
   }
 
   function flush(dispatch?: PurchaseDispatch) {
-    for (const entry of readHeld(store)) report(entry.purchase, dispatch);
+    const context: PurchaseDispatch = dispatch ?? { tagReady: false, consent: "denied" };
+    if (context.consent === "denied") {
+      discard();
+      return;
+    }
+    const now = context.now ?? Date.now();
+    const ownerId = context.ownerId ?? null;
+    memory = memory.filter((item) => item.expiresAt > now && item.ownerId === ownerId);
+    if (context.consent === "allowed" && ownerId) {
+      for (const item of loadPersistent(now, ownerId)) {
+        if (!memory.some((held) => held.purchase.transactionId === item.purchase.transactionId)) memory.push(item);
+      }
+    }
+    if (context.consent === "awaiting") return;
+    for (const entry of [...memory]) dispatchPurchase(entry, context, now);
   }
 
-  return { report, flush, ack };
+  function claimAnonymous(nextOwner: string) {
+    for (const item of memory) {
+      if (item.ownerId === null) item.ownerId = nextOwner;
+    }
+  }
+
+  return { report, flush, discard, claimAnonymous };
 }
 
 export function memoryPurchaseStore(): PurchaseStore {
@@ -376,10 +489,31 @@ function browserPurchaseStore(): PurchaseStore {
 }
 
 let browserReporter: ReturnType<typeof createPurchaseReporter> | null = null;
+let boundOwner: string | null = null;
 
 function reporter(): ReturnType<typeof createPurchaseReporter> {
   browserReporter ??= createPurchaseReporter(browserPurchaseStore());
   return browserReporter;
+}
+
+/** Drop every queued receipt. Reject and sign-out call this. The account id stays. */
+export function discardPurchaseQueue(): void {
+  reporter().discard();
+}
+
+/**
+ * Account id for the queue. The first id claims anonymous receipts from this
+ * page. A different id, or sign-out, deletes them instead of sending them.
+ */
+export function bindPurchaseOwner(next: string | null): void {
+  if (next === boundOwner) return;
+  if (boundOwner === null && next) {
+    boundOwner = next;
+    reporter().claimAnonymous(next);
+    return;
+  }
+  boundOwner = next;
+  reporter().discard();
 }
 
 export function isGoogleTagReady(): boolean {
@@ -396,10 +530,8 @@ export function browserPurchaseDispatch(now = Date.now()): PurchaseDispatch {
   return {
     gtag: typeof window === "undefined" ? undefined : window.gtag,
     tagReady: isGoogleTagReady(),
-    measurementAllowed: measurementAllowed({
-      choice,
-      regionRequiresChoice: regionRequiresChoice(country || null),
-    }),
+    consent: purchaseConsent({ choice, country }),
+    ownerId: boundOwner,
     now,
   };
 }

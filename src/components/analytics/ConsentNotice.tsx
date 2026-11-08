@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type Ref } from "react";
+import { createClient } from "@/lib/supabase/client";
 import {
   MEASUREMENT_CHOICE_CHANGED,
   MEASUREMENT_CHOICE_KEY,
@@ -11,7 +12,7 @@ import {
   regionRequiresChoice,
   type MeasurementChoice,
 } from "@/lib/analytics/consent";
-import { flushHeldPurchases } from "@/lib/analytics/purchase";
+import { bindPurchaseOwner, discardPurchaseQueue, flushHeldPurchases } from "@/lib/analytics/purchase";
 
 const CHOICE_BUTTON =
   "inline-flex min-h-11 flex-1 items-center justify-center rounded-[10px] px-4 text-[14px] font-semibold";
@@ -91,6 +92,7 @@ export function ConsentNotice() {
     setOpen(false);
     window.dispatchEvent(new Event(MEASUREMENT_CHOICE_CHANGED));
     window.clearInterval(retryRef.current);
+    if (next === "denied") discardPurchaseQueue();
     if (next !== "granted") return;
     let attempts = 0;
     retryRef.current = window.setInterval(() => {
@@ -101,6 +103,21 @@ export function ConsentNotice() {
   }
 
   useEffect(() => () => window.clearInterval(retryRef.current), []);
+
+  useEffect(() => {
+    const supabase = createClient();
+    let alive = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (alive) bindPurchaseOwner(data.session?.user.id ?? null);
+    }).catch(() => {});
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      bindPurchaseOwner(session?.user.id ?? null);
+    });
+    return () => {
+      alive = false;
+      data.subscription.unsubscribe();
+    };
+  }, []);
 
   const showBar = ready && regionRequiresChoice(country) && choice === null;
   const status = choice === "granted"

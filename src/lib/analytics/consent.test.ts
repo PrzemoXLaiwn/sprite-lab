@@ -1,15 +1,40 @@
+import { runInNewContext } from "node:vm";
 import { describe, expect, it, vi } from "vitest";
+import { GA_MEASUREMENT_ID } from "./measurement-id";
 import { memoryPurchaseStore } from "./purchase";
 import {
   applyMeasurementChoice,
+  consentBootstrap,
   consentSignals,
+  countryCookieValue,
   mayLoadAds,
   measurementAllowed,
   parseMeasurementChoice,
   readCountryCookie,
   regionRequiresChoice,
-  storedChoiceBootstrap,
 } from "./consent";
+
+function runBootstrap(cookie: string, choice: string | null) {
+  const sandbox = {
+    document: { cookie },
+    localStorage: { getItem: () => choice },
+  } as { document: { cookie: string }; localStorage: { getItem: () => string | null }; window?: object; dataLayer?: unknown[][] };
+  sandbox.window = sandbox;
+  runInNewContext(consentBootstrap(GA_MEASUREMENT_ID), sandbox);
+  return sandbox.dataLayer ?? [];
+}
+
+function asArgs(call: unknown): unknown[] {
+  return Array.from(call as ArrayLike<unknown>);
+}
+
+function granted(calls: unknown[]): boolean {
+  return calls.some((call) => {
+    const args = asArgs(call);
+    const signal = args[2] as { analytics_storage?: string } | undefined;
+    return args[0] === "consent" && args[1] === "update" && signal?.analytics_storage === "granted";
+  });
+}
 
 describe("measurement consent", () => {
   it("keeps a required region denied until an explicit accept", () => {
@@ -43,11 +68,32 @@ describe("measurement consent", () => {
     expect(parseMeasurementChoice("yes")).toBeNull();
   });
 
-  it("does not grant from the bootstrap when nothing is stored", () => {
-    const script = storedChoiceBootstrap();
-    expect(script).toContain('localStorage.getItem("sl:measurement-choice")');
-    expect(script).toContain('slc==="granted"||slc==="denied"');
-    expect(script).not.toContain("client_secret");
+  it("denies the real bootstrap when the country cookie or header is missing", () => {
+    expect(countryCookieValue(null)).toBe("");
+    expect(countryCookieValue("")).toBe("");
+    expect(countryCookieValue("United Kingdom")).toBe("");
+    expect(countryCookieValue("us")).toBe("US");
+    for (const cookie of ["", "sl-country=", "theme=dark"]) {
+      const calls = runBootstrap(cookie, null);
+      expect(asArgs(calls[0]).slice(0, 2)).toEqual(["consent", "default"]);
+      expect((asArgs(calls[0])[2] as { analytics_storage: string }).analytics_storage).toBe("denied");
+      expect(granted(calls)).toBe(false);
+    }
+  });
+
+  it("does not grant before a stored refusal, and does grant a known other country", () => {
+    const refused = runBootstrap("sl-country=US", "denied");
+    expect(asArgs(refused[0]).slice(0, 2)).toEqual(["consent", "default"]);
+    expect(granted(refused)).toBe(false);
+    const unitedStates = runBootstrap("sl-country=US", null);
+    expect(asArgs(unitedStates[0]).slice(0, 2)).toEqual(["consent", "default"]);
+    expect(granted(unitedStates)).toBe(true);
+    expect(unitedStates.findIndex((call) => asArgs(call)[1] === "default")).toBeLessThan(
+      unitedStates.findIndex((call) => asArgs(call)[1] === "update"),
+    );
+    const accepted = runBootstrap("sl-country=GB", "granted");
+    expect(granted(accepted)).toBe(true);
+    expect(granted(runBootstrap("sl-country=GB", null))).toBe(false);
   });
 
   it("reads a country cookie and ignores junk", () => {

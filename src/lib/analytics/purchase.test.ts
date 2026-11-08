@@ -147,8 +147,8 @@ describe("GA4 purchase reporting", () => {
     itemName: "Inferno",
   };
 
-  function allow(gtag: (...args: unknown[]) => void, now = 1_000) {
-    return { gtag, tagReady: true, measurementAllowed: true, now };
+  function allow(gtag: (...args: unknown[]) => void, now = 1_000, ownerId = "user-a") {
+    return { gtag, tagReady: true, consent: "allowed" as const, ownerId, now };
   }
 
   function ackingGtag() {
@@ -179,7 +179,7 @@ describe("GA4 purchase reporting", () => {
     const store = memoryPurchaseStore();
     const stub = vi.fn();
     const reporter = createPurchaseReporter(store);
-    expect(reporter.report(receipt, { gtag: stub, tagReady: false, measurementAllowed: true })).toBe("queued");
+    expect(reporter.report(receipt, { gtag: stub, tagReady: false, consent: "allowed", ownerId: "user-a" })).toBe("queued");
     expect(stub).not.toHaveBeenCalled();
     const gtag = ackingGtag();
     reporter.flush(allow(gtag));
@@ -201,24 +201,66 @@ describe("GA4 purchase reporting", () => {
     expect(createPurchaseReporter(store).report(receipt, allow(retry, 20_000))).toBe("duplicate");
   });
 
-  it("does not send while consent is missing or refused, then sends after accept", () => {
+  it("does not persist a receipt while consent is refused, and Accept does not replay it", () => {
     const store = memoryPurchaseStore();
-    const blocked = vi.fn();
     const reporter = createPurchaseReporter(store);
-    expect(reporter.report(receipt, { gtag: blocked, tagReady: true, measurementAllowed: false })).toBe("withheld");
+    const blocked = vi.fn();
+    expect(reporter.report(receipt, { gtag: blocked, tagReady: true, consent: "denied", ownerId: "user-a", now: 1_000 })).toBe("withheld");
+    expect(store.get("sl:ga4-purchase-pending")).toBe("[]");
     expect(blocked).not.toHaveBeenCalled();
     const gtag = ackingGtag();
-    expect(reporter.report(receipt, allow(gtag))).toBe("acked");
+    reporter.flush(allow(gtag, 2_000));
+    expect(gtag).not.toHaveBeenCalled();
+  });
+
+  it("holds an unanswered choice in memory only, then sends once after accept", () => {
+    const store = memoryPurchaseStore();
+    const reporter = createPurchaseReporter(store);
+    expect(reporter.report(receipt, { tagReady: true, consent: "awaiting", ownerId: "user-a", now: 1_000 })).toBe("withheld");
+    expect(store.get("sl:ga4-purchase-pending")).toBe("[]");
+    const gtag = ackingGtag();
+    reporter.flush(allow(gtag, 2_000));
     expect(gtag).toHaveBeenCalledTimes(1);
   });
 
-  it("stores only the receipt and a handoff time", () => {
+  it("does not send A's persisted purchase after logout or from B", () => {
     const store = memoryPurchaseStore();
-    createPurchaseReporter(store).report(receipt, { tagReady: false, measurementAllowed: false });
+    const parked = vi.fn();
+    const saved = createPurchaseReporter(store);
+    expect(saved.report(receipt, { gtag: parked, tagReady: false, consent: "allowed", ownerId: "user-a", now: 1_000 })).toBe("queued");
+    saved.discard();
+    const next = ackingGtag();
+    createPurchaseReporter(store).flush(allow(next, 5_000, "user-b"));
+    expect(next).not.toHaveBeenCalled();
+    expect(store.get("sl:ga4-purchase-pending")).toBe("[]");
+  });
+
+  it("does not dispatch another account's receipt", () => {
+    const store = memoryPurchaseStore();
+    createPurchaseReporter(store).report(receipt, { gtag: vi.fn(), tagReady: false, consent: "allowed", ownerId: "user-a", now: 1_000 });
+    const gtag = ackingGtag();
+    createPurchaseReporter(store).flush(allow(gtag, 2_000, "user-b"));
+    expect(gtag).not.toHaveBeenCalled();
+    expect(store.get("sl:ga4-purchase-pending")).toBe("[]");
+  });
+
+  it("drops a legacy receipt that has no owner instead of sending it", () => {
+    const store = memoryPurchaseStore();
+    store.set("sl:ga4-purchase-pending", JSON.stringify([{ purchase: receipt, handedAt: null }]));
+    const gtag = ackingGtag();
+    createPurchaseReporter(store).flush(allow(gtag, 5_000, "user-b"));
+    expect(gtag).not.toHaveBeenCalled();
+    expect(store.get("sl:ga4-purchase-pending")).toBe("[]");
+  });
+
+  it("stores only the receipt, owner and expiry while consent allows it", () => {
+    const store = memoryPurchaseStore();
+    createPurchaseReporter(store).report(receipt, { tagReady: false, consent: "allowed", ownerId: "user-a", now: 1_000 });
     const saved = store.get("sl:ga4-purchase-pending") ?? "";
     expect(saved).not.toMatch(/client_secret|card|email|payment_method/i);
     const parsed = JSON.parse(saved) as Array<Record<string, unknown>>;
-    expect(Object.keys(parsed[0]).sort()).toEqual(["handedAt", "purchase"]);
+    expect(Object.keys(parsed[0]).sort()).toEqual(["expiresAt", "handedAt", "ownerId", "purchase"]);
+    expect(parsed[0].ownerId).toBe("user-a");
   });
 
   it("does not send when the receipt is rejected", () => {
@@ -227,6 +269,36 @@ describe("GA4 purchase reporting", () => {
     expect(reporter.report({ ...receipt, transactionId: "session_id" }, allow(gtag))).toBe("rejected");
     expect(reporter.report(null, allow(gtag))).toBe("rejected");
     expect(gtag).not.toHaveBeenCalled();
+  });
+
+  it("retries on the same reporter after the handoff expires without a callback", () => {
+    const store = memoryPurchaseStore();
+    const reporter = createPurchaseReporter(store);
+    const gtag = vi.fn();
+    expect(reporter.report(receipt, allow(gtag, 1_000))).toBe("dispatching");
+    expect(reporter.flush(allow(gtag, 1_500))).toBeUndefined();
+    expect(gtag).toHaveBeenCalledTimes(1);
+    reporter.flush(allow(gtag, 1_000 + 2_000 + 1));
+    expect(gtag).toHaveBeenCalledTimes(2);
+  });
+
+  it("ignores a late callback from an older handoff", () => {
+    const store = memoryPurchaseStore();
+    const reporter = createPurchaseReporter(store);
+    const callbacks: Array<() => void> = [];
+    const gtag = vi.fn((...args: unknown[]) => {
+      const payload = args[2] as { event_callback?: () => void };
+      if (payload.event_callback) callbacks.push(payload.event_callback);
+    });
+    expect(reporter.report(receipt, allow(gtag, 1_000))).toBe("dispatching");
+    reporter.flush(allow(gtag, 4_000));
+    expect(gtag).toHaveBeenCalledTimes(2);
+    callbacks[0]();
+    expect(reporter.flush(allow(gtag, 4_100))).toBeUndefined();
+    expect(gtag).toHaveBeenCalledTimes(2);
+    callbacks[1]();
+    expect(reporter.report(receipt, allow(gtag, 9_000))).toBe("duplicate");
+    expect(gtag).toHaveBeenCalledTimes(2);
   });
 
   it("a throw leaves the purchase queued for another try", () => {

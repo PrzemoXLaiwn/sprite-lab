@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
+import { countryCookieValue } from "@/lib/analytics/consent";
 
 // ===========================================
 // RATE LIMITING CONFIGURATION
@@ -306,8 +307,7 @@ export async function proxy(request: NextRequest) {
 
   // Add security headers
   if (response) {
-    const countryHeader = request.headers.get("x-vercel-ip-country") ?? "";
-    const country = /^[A-Za-z]{2}$/.test(countryHeader) ? countryHeader.toUpperCase() : "";
+    const country = countryCookieValue(request.headers.get("x-vercel-ip-country"));
     response.cookies.set("sl-country", country, {
       path: "/",
       sameSite: "lax",
