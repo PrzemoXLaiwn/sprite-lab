@@ -4,6 +4,7 @@ import { SEO_PAGES } from "@/data/seo-pages";
 import { GUIDES } from "@/data/guides";
 import { TIKTOK_HANDLE, TIKTOK_PROFILE_URL } from "@/data/tiktok";
 import { TikTokIcon } from "@/components/icons/TikTokIcon";
+import { CookieChoicesButton } from "@/components/analytics/ConsentNotice";
 
 const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
   {
@@ -102,6 +103,7 @@ export function Footer() {
             <Link href="/privacy" className="inline-flex min-h-10 items-center hover:text-white sm:min-h-0">Privacy</Link>
             <Link href="/terms" className="inline-flex min-h-10 items-center hover:text-white sm:min-h-0">Terms</Link>
             <Link href="/cookies" className="inline-flex min-h-10 items-center hover:text-white sm:min-h-0">Cookies</Link>
+            <CookieChoicesButton className="inline-flex min-h-10 items-center hover:text-white sm:min-h-0" />
             <Link href="/refunds" className="inline-flex min-h-10 items-center hover:text-white sm:min-h-0">Refunds &amp; cancellation</Link>
           </nav>
         </div>

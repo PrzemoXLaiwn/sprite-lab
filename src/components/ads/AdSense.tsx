@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { AD_IGNORE_SELECTOR, adsAllowed, countWords, isAdPath } from "@/lib/ads-policy";
+import { MEASUREMENT_CHOICE_CHANGED, MEASUREMENT_CHOICE_KEY, mayLoadAds, parseMeasurementChoice, readCountryCookie } from "@/lib/analytics/consent";
 
 export const ADSENSE_CLIENT = "ca-pub-3053243391231414";
 const SRC = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`;
@@ -27,6 +28,13 @@ function mainTextWords(): number {
  */
 export function AdSense() {
   const pathname = usePathname();
+  const [choiceTick, setChoiceTick] = useState(0);
+
+  useEffect(() => {
+    const onChoice = () => setChoiceTick((n) => n + 1);
+    window.addEventListener(MEASUREMENT_CHOICE_CHANGED, onChoice);
+    return () => window.removeEventListener(MEASUREMENT_CHOICE_CHANGED, onChoice);
+  }, []);
 
   useEffect(() => {
     if (!isAdPath(pathname)) return;
@@ -35,7 +43,13 @@ export function AdSense() {
       .auth.getSession()
       .then(({ data }) => {
         if (cancelled) return;
-        if (!adsAllowed({ pathname, signedIn: Boolean(data.session), mainWords: mainTextWords() })) return;
+        const country = readCountryCookie(document.cookie);
+        const choice = parseMeasurementChoice(localStorage.getItem(MEASUREMENT_CHOICE_KEY));
+        if (!mayLoadAds({
+          adsSlotAllowed: adsAllowed({ pathname, signedIn: Boolean(data.session), mainWords: mainTextWords() }),
+          choice,
+          country,
+        })) return;
         if (document.querySelector(`script[src^="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"]`)) return;
         const s = document.createElement("script");
         s.async = true;
@@ -47,7 +61,7 @@ export function AdSense() {
     return () => {
       cancelled = true;
     };
-  }, [pathname]);
+  }, [pathname, choiceTick]);
 
   return null;
 }

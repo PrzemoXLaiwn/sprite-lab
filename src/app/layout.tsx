@@ -3,6 +3,7 @@ import { Atkinson_Hyperlegible_Next, JetBrains_Mono, Tektur } from "next/font/go
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
+import { ConsentNotice } from "@/components/analytics/ConsentNotice";
 import { FirstTouch } from "@/components/analytics/FirstTouch";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
@@ -229,6 +230,7 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         {children}
+        <ConsentNotice />
         <Toaster />
         <Analytics />
         <SpeedInsights />

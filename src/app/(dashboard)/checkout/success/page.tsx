@@ -1,22 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { CheckoutError, CreditChip, PageSpinner, SuccessShell } from "../_components/checkout-ui";
-import { STARTER_FIRST_MONTH_OFFER, starterFirstMonthIntroGbp } from "@/config/starter-first-month";
+import { reportServerPurchase, subscriptionReturnToConfirm } from "@/lib/analytics/purchase";
+import { useFlushHeldPurchases } from "@/lib/analytics/use-flush-purchase";
 
-// Declare gtag for TypeScript
-declare global {
-  interface Window {
-    gtag?: (...args: unknown[]) => void;
-  }
-}
-
-// Single source of truth for plan-name + credits + price metadata. Mirrors
-// `PLANS` in `src/lib/stripe.ts` exactly — kept in sync because this page is
-// the receipt the user reads after paying. Drift here means showing the
-// wrong credit count or price after a successful charge ⇒ refunds.
 const planNames: Record<string, string> = {
   STARTER: "Starter",
   PRO: "Pro",
@@ -29,97 +19,49 @@ const planCredits: Record<string, number> = {
   UNLIMITED: 1200,
 };
 
-// Plan prices in GBP — used for Google Ads conversion value, must match
-// the actual Stripe charge.
-const planPrices: Record<string, number> = {
-  STARTER: 5.0,
-  PRO: 12.0,
-  UNLIMITED: 25.0,
-};
-
 function SuccessContent() {
   const searchParams = useSearchParams();
-  const plan = searchParams.get("plan")?.toUpperCase() || "STARTER";
-  const introOffer = searchParams.get("offer") === STARTER_FIRST_MONTH_OFFER && plan === "STARTER";
-  const sessionId = searchParams.get("session_id") || "";
-  const setupIntentId = searchParams.get("setup_intent");
-  const redirectStatus = searchParams.get("redirect_status");
+  const router = useRouter();
+  const returning = subscriptionReturnToConfirm(searchParams);
+  const plan = returning?.plan || searchParams.get("plan")?.toUpperCase() || "";
   const [countdown, setCountdown] = useState(5);
-  const [conversionTracked, setConversionTracked] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const confirmStarted = useRef(false);
   const confirmErrorRef = useRef<string | null>(null);
+  useFlushHeldPurchases();
   useEffect(() => {
     confirmErrorRef.current = confirmError;
   }, [confirmError]);
 
-  // Returning from a Stripe redirect (e.g. 3DS) during subscription checkout:
-  // the in-page confirm never ran, so create the subscription now. The API is
-  // idempotent per SetupIntent, so a reload can't create a second one.
+  // A Stripe redirect (for example 3DS) lands here with a SetupIntent id.
+  // redirect_status is not proof. The server confirms the SetupIntent, and
+  // the purchase event uses only the receipt on that response.
   useEffect(() => {
-    if (!setupIntentId || redirectStatus !== "succeeded" || confirmStarted.current) return;
+    if (!returning || confirmStarted.current) return;
     confirmStarted.current = true;
 
     fetch("/api/stripe/confirm-subscription", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ setupIntentId, plan }),
+      body: JSON.stringify({ setupIntentId: returning.setupIntentId, plan: returning.plan }),
     })
       .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
           setConfirmError(data.error || "Failed to activate subscription. Please contact support.");
+          return;
         }
+        reportServerPurchase(data);
       })
       .catch(() => setConfirmError("Failed to activate subscription. Please contact support."));
-  }, [setupIntentId, redirectStatus, plan]);
-
-  // Google Ads Conversion Tracking with retry
-  useEffect(() => {
-    if (conversionTracked) return;
-
-    const value = introOffer ? starterFirstMonthIntroGbp() : planPrices[plan] || 5.0;
-
-    const trackConversion = () => {
-      if (typeof window !== "undefined" && window.gtag) {
-        window.gtag("event", "conversion", {
-          send_to: "AW-17802754923/dTASCOXAhtIbEOv2galC",
-          value: value,
-          currency: "GBP",
-          transaction_id: sessionId,
-        });
-        console.log("[SpriteLab] Google Ads conversion tracked:", { value, sessionId, plan });
-        setConversionTracked(true);
-        return true;
-      }
-      return false;
-    };
-
-    // Try immediately
-    if (trackConversion()) return;
-
-    // Retry every 500ms for up to 5 seconds (gtag may not be loaded yet)
-    let attempts = 0;
-    const maxAttempts = 10;
-    const interval = setInterval(() => {
-      attempts++;
-      if (trackConversion() || attempts >= maxAttempts) {
-        clearInterval(interval);
-        if (attempts >= maxAttempts) {
-          console.warn("[SpriteLab] Could not track conversion - gtag not available");
-        }
-      }
-    }, 500);
-
-    return () => clearInterval(interval);
-  }, [plan, sessionId, conversionTracked, introOffer]);
+  }, [returning]);
 
   useEffect(() => {
     const timer = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          if (!confirmErrorRef.current) window.location.href = "/generate";
+          if (!confirmErrorRef.current) router.push("/generate");
           return 0;
         }
         return prev - 1;
@@ -127,7 +69,7 @@ function SuccessContent() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [router]);
 
   if (confirmError) {
     return <CheckoutError message={confirmError} />;
@@ -143,10 +85,12 @@ function SuccessContent() {
       ]}
     >
       <p>Your subscription is now active.</p>
-      <p>
-        <CreditChip>+{planCredits[plan] ?? 250} credits</CreditChip>
-        <span className="ml-2 text-[#9AA1CC]">added to your account</span>
-      </p>
+      {planCredits[plan] != null && (
+        <p>
+          <CreditChip>+{planCredits[plan]} credits</CreditChip>
+          <span className="ml-2 text-[#9AA1CC]">added to your account</span>
+        </p>
+      )}
     </SuccessShell>
   );
 }

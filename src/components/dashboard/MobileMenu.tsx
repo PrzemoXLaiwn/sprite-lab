@@ -28,6 +28,7 @@ import { fetchUserData } from "@/app/(dashboard)/layout.actions";
 import { isNewFeature } from "@/config/new-features";
 import { NewBadge } from "@/components/dashboard/NewBadge";
 import { APP_NAV } from "@/components/dashboard/app-nav";
+import { discardPurchaseQueue } from "@/lib/analytics/purchase";
 
 const ICONS = {
   "/": Home,
@@ -239,6 +240,7 @@ export function MobileMenu({ userEmail, userPlan = "FREE", userRole = "USER", st
           <form action="/auth/signout" method="post">
             <button
               type="submit"
+              onClick={() => discardPurchaseQueue()}
               className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-[#9AA1CC] transition-colors hover:bg-white/[0.04] hover:text-white"
             >
               <LogOut className="h-[18px] w-[18px]" strokeWidth={1.8} />

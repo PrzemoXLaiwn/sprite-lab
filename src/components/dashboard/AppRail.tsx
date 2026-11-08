@@ -28,6 +28,7 @@ import { NewBadge } from "@/components/dashboard/NewBadge";
 import { fetchUserData } from "@/app/(dashboard)/layout.actions";
 import { checkAdminAccess } from "@/app/(dashboard)/admin/page.actions";
 import { APP_NAV } from "@/components/dashboard/app-nav";
+import { discardPurchaseQueue } from "@/lib/analytics/purchase";
 
 const ICONS = {
   "/": Home,
@@ -177,7 +178,7 @@ export function AppRail({ email }: { email: string }) {
                 <Settings className="h-4 w-4" /> Settings
               </Link>
               <form action="/auth/signout" method="post">
-                <button type="submit" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-[#C8CCE8] hover:bg-white/[0.05]">
+                <button type="submit" onClick={() => discardPurchaseQueue()} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-[#C8CCE8] hover:bg-white/[0.05]">
                   <LogOut className="h-4 w-4" /> Sign out
                 </button>
               </form>

@@ -58,7 +58,7 @@ vi.mock("@/lib/prisma", () => {
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ auth: { getUser: async () => ({ data: { user: { id: "buyer", email: "b@x.com" } } }) } }) }));
 
 const paidIntent = (id: string) => intents.set(id, {
-  id, status: "succeeded", amount: 9900, amount_received: 9900, latest_charge: { amount_refunded: 0, disputed: false },
+  id, status: "succeeded", amount: 9900, amount_received: 9900, currency: "gbp", latest_charge: { amount_refunded: 0, disputed: false },
   metadata: { userId: "buyer", type: "lifetime_deal", deal: "PRO_LIFETIME", credits: "500" },
 });
 
@@ -92,6 +92,23 @@ describe("existing lifetime obligations still honoured", () => {
     const r = await fulfillOneTimePayment("pi_old");
     expect(r.status).toBe("credited");
     expect(state.users.get("buyer")).toMatchObject({ isLifetime: true, credits: 510 });
+    if (r.status === "credited") {
+      expect(r.purchase).toEqual({
+        transactionId: "pi_old",
+        value: 99,
+        currency: "GBP",
+        itemId: "PRO_LIFETIME",
+        itemName: "Pro Lifetime",
+      });
+    }
+  });
+
+  it("does not measure a payment that belongs to someone else", async () => {
+    paidIntent("pi_other");
+    const { fulfillOneTimePayment } = await import("./fulfillment");
+    const denied = await fulfillOneTimePayment("pi_other", { expectedUserId: "intruder" });
+    expect(denied).toEqual({ status: "forbidden" });
+    expect(state.users.get("buyer")!.isLifetime).toBe(false);
   });
 
   it("a duplicated webhook / confirm call credits only once", async () => {
@@ -101,13 +118,18 @@ describe("existing lifetime obligations still honoured", () => {
     const second = await fulfillOneTimePayment("pi_dup");
     expect(first.status).toBe("credited");
     expect(second.status).toBe("already_processed");
+    if (first.status === "credited" && second.status === "already_processed") {
+      expect(second.purchase).toEqual(first.purchase);
+    }
     expect(state.users.get("buyer")!.credits).toBe(510);
   });
 
   it("an unpaid (abandoned) intent is never fulfilled", async () => {
     intents.set("pi_abandoned", { id: "pi_abandoned", status: "requires_payment_method", metadata: { userId: "buyer", type: "lifetime_deal", deal: "PRO_LIFETIME", credits: "500" } });
     const { fulfillOneTimePayment } = await import("./fulfillment");
-    expect((await fulfillOneTimePayment("pi_abandoned")).status).toBe("not_paid");
+    const unpaid = await fulfillOneTimePayment("pi_abandoned");
+    expect(unpaid.status).toBe("not_paid");
+    expect(unpaid).not.toHaveProperty("purchase");
     expect(state.users.get("buyer")!.isLifetime).toBe(false);
   });
 });

@@ -9,10 +9,9 @@
 // TODO: Exact Supabase auth-cookie lifetime. Names are described by pattern
 //       because the project ref is not published here.
 // TODO: Consent-cookie name and CMP name ([CONSENT COOKIE NAME], [CMP NAME]).
-// TODO: When the cookie banner ships, restore a "Cookie settings" link and the
-//       wording that visitors can accept all, reject all, or choose by category.
-//       Until then the page describes Google's consent message and withdrawal
-//       by email or by clearing cookies. No "Cookie settings" link is rendered.
+// The on-site control is labelled "Cookie choices" (Accept and Reject together).
+// Per-category switches are not offered: analytics and ads are one choice,
+// and payment cookies stay necessary.
 // TODO: Whether g_state is set on page load before login.
 // TODO: Whether __stripe_mid and __stripe_sid are limited to checkout pages.
 // TODO: Confirm these advertising cookies are actually set: _gcl_au, __gads, __gpi,
@@ -33,9 +32,11 @@ This policy explains how **Przemek Lawin** trading as SpriteLab ("we") uses cook
 
 ## 1. Your choices
 
-When you first visit from the UK, EEA or Switzerland, Google shows a consent message. Non-essential cookies are not set, and Google storage is denied, until you accept in that message. You can withdraw consent by emailing **[support@sprite-lab.com](mailto:support@sprite-lab.com)** or by clearing cookies in your browser. Blocking strictly necessary cookies will stop login from working.
+When you visit from the UK, EEA or Switzerland, or when we cannot tell the country, SpriteLab shows **Accept** and **Reject** for analytics and ads. The buttons are the same size. Paying, signing in and Stripe's fraud checks do not depend on accepting. Until you accept, Google storage for those purposes stays denied. Open **Cookie choices** on any page, including checkout, to change the choice. You can also email **[support@sprite-lab.com](mailto:support@sprite-lab.com)** or clear storage, including by clearing cookies in your browser. Blocking strictly necessary cookies will stop login from working.
 
-We use **Google Consent Mode v2**. Until you consent, Google Analytics, Google Ads and AdSense are told that storage is denied (\`ad_storage\`, \`ad_user_data\`, \`ad_personalization\` and \`analytics_storage\` = denied). In this state, Google may still receive limited cookieless signals (for example, that a page was viewed) without reading or writing cookies on your device.
+Outside those countries, analytics can start without that bar. **Cookie choices** still turns it off.
+
+We use **Google Consent Mode v2**. A choice you have made is sent with \`gtag('consent','update', ...)\`. A missing choice in the UK, EEA or Switzerland is not treated as acceptance. Until you consent, Google Analytics, Google Ads and AdSense are told that storage is denied (\`ad_storage\`, \`ad_user_data\`, \`ad_personalization\` and \`analytics_storage\` = denied). In this state, Google may still receive limited cookieless signals (for example, that a page was viewed) without reading or writing cookies on your device. A purchase is not handed to Google while the choice is missing or refused.
 
 ## 2. Categories
 
