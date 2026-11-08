@@ -306,6 +306,14 @@ export async function proxy(request: NextRequest) {
 
   // Add security headers
   if (response) {
+    const countryHeader = request.headers.get("x-vercel-ip-country") ?? "";
+    const country = /^[A-Za-z]{2}$/.test(countryHeader) ? countryHeader.toUpperCase() : "";
+    response.cookies.set("sl-country", country, {
+      path: "/",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 6,
+      secure: process.env.NODE_ENV === "production",
+    });
     response.headers.set("X-Request-ID", crypto.randomUUID());
     response.headers.set("X-Content-Type-Options", "nosniff");
     response.headers.set("X-Frame-Options", "DENY");

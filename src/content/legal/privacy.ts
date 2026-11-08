@@ -161,7 +161,7 @@ We use encryption in transit (HTTPS), encryption at rest for our database, acces
 
 ## 11. Cookies
 
-We use cookies and similar technologies as described in our [Cookie Policy](/cookies). You can ask us to change a choice you have made by emailing [support@sprite-lab.com](mailto:support@sprite-lab.com).
+We use cookies and similar technologies as described in our [Cookie Policy](/cookies). You can change a choice in Cookie choices on the site, or by emailing [support@sprite-lab.com](mailto:support@sprite-lab.com).
 
 ## 12. Changes
 

@@ -1,12 +1,21 @@
 import { GA_MEASUREMENT_ID } from "@/lib/analytics/measurement-id";
+import {
+  MEASUREMENT_CHOICE_KEY,
+  measurementAllowed,
+  parseMeasurementChoice,
+  readCountryCookie,
+  regionRequiresChoice,
+} from "@/lib/analytics/consent";
 
 /**
  * A purchase GA4 may record. Built only from a Stripe object the server has
  * already checked (paid, owned by the caller). Never from a success-page URL.
  *
- * Reporting calls the existing gtag function, which already applies Consent
- * Mode. This module does not update consent and does not mark a denied
- * region as granted.
+ * A receipt is acked only from gtag's event_callback after a ready tag was
+ * asked to send it, and only when measurement is allowed. Calling the stub,
+ * a throw, or a refused consent does not count as delivered. A later retry
+ * can still duplicate a hit that left the browser without running the
+ * callback. GA4 may collapse those by transaction_id. This is not exactly-once.
  */
 
 export interface VerifiedPurchase {
@@ -18,7 +27,10 @@ export interface VerifiedPurchase {
   itemName: string;
 }
 
-export type PurchaseReportStatus = "sent" | "duplicate" | "rejected" | "unavailable";
+export type PurchaseReportStatus = "acked" | "dispatching" | "queued" | "withheld" | "duplicate" | "rejected";
+
+/** How long a handoff blocks another tab or remount. A dead page can retry after this. */
+export const PURCHASE_HANDOFF_MS = 2000;
 
 const ZERO_DECIMAL = new Set([
   "BIF", "CLP", "DJF", "GNF", "JPY", "KMF", "KRW", "MGA", "PYG", "RWF",
@@ -35,8 +47,21 @@ export interface PurchaseStore {
   set(key: string, value: string): void;
 }
 
-const REPORTED_KEY = "sl:ga4-purchase-reported";
+const ACKED_KEY = "sl:ga4-purchase-acked";
 const PENDING_KEY = "sl:ga4-purchase-pending";
+
+export interface PurchaseDispatch {
+  gtag?: (...args: unknown[]) => void;
+  /** True only when gtag.js has taken over, not when the stub merely exists. */
+  tagReady: boolean;
+  measurementAllowed: boolean;
+  now?: number;
+}
+
+interface HeldPurchase {
+  purchase: VerifiedPurchase;
+  handedAt: number | null;
+}
 
 function currencyExponent(currency: string): number | null {
   if (!/^[A-Z]{3}$/.test(currency)) return null;
@@ -232,7 +257,7 @@ function readList(store: PurchaseStore, key: string): unknown[] {
   }
 }
 
-function purchasePayload(purchase: VerifiedPurchase, measurementId: string) {
+function purchasePayload(purchase: VerifiedPurchase, measurementId: string, onAck: () => void) {
   return {
     send_to: measurementId,
     transaction_id: purchase.transactionId,
@@ -244,70 +269,91 @@ function purchasePayload(purchase: VerifiedPurchase, measurementId: string) {
       price: purchase.value,
       quantity: 1,
     }],
+    event_callback: onAck,
   };
 }
 
+function readHeld(store: PurchaseStore): HeldPurchase[] {
+  const held: HeldPurchase[] = [];
+  for (const entry of readList(store, PENDING_KEY)) {
+    if (!entry || typeof entry !== "object") continue;
+    const record = entry as { purchase?: unknown; handedAt?: unknown };
+    const purchase = parseVerifiedPurchase(record.purchase ?? entry);
+    if (!purchase) continue;
+    const handedAt = typeof record.handedAt === "number" && Number.isFinite(record.handedAt)
+      ? record.handedAt
+      : null;
+    held.push({ purchase, handedAt });
+  }
+  return held;
+}
+
 export function createPurchaseReporter(store: PurchaseStore, measurementId = GA_MEASUREMENT_ID) {
-  const memoryReported = new Set<string>();
-  const inflight = new Set<string>();
+  const memoryInflight = new Set<string>();
 
-  function reportedIds(): string[] {
-    return readList(store, REPORTED_KEY).filter((id): id is string => typeof id === "string");
+  function ackedIds(): string[] {
+    return readList(store, ACKED_KEY).filter((id): id is string => typeof id === "string");
   }
 
-  function isReported(id: string): boolean {
-    return memoryReported.has(id) || reportedIds().includes(id);
+  function isAcked(id: string): boolean {
+    return ackedIds().includes(id);
   }
 
-  function markReported(id: string) {
-    memoryReported.add(id);
-    const ids = reportedIds().filter((existing) => existing !== id);
+  function ack(id: string) {
+    memoryInflight.delete(id);
+    const ids = ackedIds().filter((existing) => existing !== id);
     ids.push(id);
-    store.set(REPORTED_KEY, JSON.stringify(ids.slice(-50)));
+    store.set(ACKED_KEY, JSON.stringify(ids.slice(-50)));
+    const rest = readHeld(store).filter((entry) => entry.purchase.transactionId !== id);
+    store.set(PENDING_KEY, JSON.stringify(rest.slice(-10)));
   }
 
-  function pending(): VerifiedPurchase[] {
-    return readList(store, PENDING_KEY)
-      .map((entry) => parseVerifiedPurchase(entry))
-      .filter((entry): entry is VerifiedPurchase => entry !== null);
+  function writeHeld(entries: HeldPurchase[]) {
+    store.set(PENDING_KEY, JSON.stringify(entries.slice(-10).map((entry) => ({
+      purchase: entry.purchase,
+      handedAt: entry.handedAt,
+    }))));
   }
 
-  function writePending(purchases: VerifiedPurchase[]) {
-    store.set(PENDING_KEY, JSON.stringify(purchases.slice(-10)));
-  }
-
-  function hold(purchase: VerifiedPurchase) {
-    const rest = pending().filter((entry) => entry.transactionId !== purchase.transactionId);
-    rest.push(purchase);
-    writePending(rest);
-  }
-
-  function report(input: unknown, gtag?: (...args: unknown[]) => void): PurchaseReportStatus {
+  function report(input: unknown, dispatch?: PurchaseDispatch): PurchaseReportStatus {
     const purchase = parseVerifiedPurchase(input);
     if (!purchase) return "rejected";
-    if (isReported(purchase.transactionId) || inflight.has(purchase.transactionId)) return "duplicate";
-    if (typeof gtag !== "function") {
-      hold(purchase);
-      return "unavailable";
-    }
-    inflight.add(purchase.transactionId);
-    markReported(purchase.transactionId);
-    writePending(pending().filter((entry) => entry.transactionId !== purchase.transactionId));
+    const context: PurchaseDispatch = dispatch ?? { tagReady: false, measurementAllowed: false };
+    if (isAcked(purchase.transactionId)) return "duplicate";
+
+    const now = context.now ?? Date.now();
+    const current = readHeld(store);
+    const previous = current.find((entry) => entry.purchase.transactionId === purchase.transactionId);
+    const next: HeldPurchase = {
+      purchase,
+      handedAt: previous?.handedAt ?? null,
+    };
+    writeHeld([...current.filter((entry) => entry.purchase.transactionId !== purchase.transactionId), next]);
+
+    if (!context.measurementAllowed) return "withheld";
+    if (!context.tagReady || typeof context.gtag !== "function") return "queued";
+    if (memoryInflight.has(purchase.transactionId)) return "dispatching";
+    if (next.handedAt !== null && now - next.handedAt < PURCHASE_HANDOFF_MS) return "dispatching";
+
+    memoryInflight.add(purchase.transactionId);
+    next.handedAt = now;
+    writeHeld([...current.filter((entry) => entry.purchase.transactionId !== purchase.transactionId), next]);
     try {
-      gtag("event", "purchase", purchasePayload(purchase, measurementId));
+      context.gtag("event", "purchase", purchasePayload(purchase, measurementId, () => ack(purchase.transactionId)));
     } catch {
-      // The id is already recorded, so a later remount cannot send a second hit.
-    } finally {
-      inflight.delete(purchase.transactionId);
+      memoryInflight.delete(purchase.transactionId);
+      next.handedAt = null;
+      writeHeld([...readHeld(store).filter((entry) => entry.purchase.transactionId !== purchase.transactionId), next]);
+      return "queued";
     }
-    return "sent";
+    return isAcked(purchase.transactionId) ? "acked" : "dispatching";
   }
 
-  function flush(gtag?: (...args: unknown[]) => void) {
-    for (const purchase of pending()) report(purchase, gtag);
+  function flush(dispatch?: PurchaseDispatch) {
+    for (const entry of readHeld(store)) report(entry.purchase, dispatch);
   }
 
-  return { report, flush };
+  return { report, flush, ack };
 }
 
 export function memoryPurchaseStore(): PurchaseStore {
@@ -336,15 +382,43 @@ function reporter(): ReturnType<typeof createPurchaseReporter> {
   return browserReporter;
 }
 
+export function isGoogleTagReady(): boolean {
+  return typeof window !== "undefined"
+    && typeof window.google_tag_manager === "object"
+    && window.google_tag_manager !== null;
+}
+
+export function browserPurchaseDispatch(now = Date.now()): PurchaseDispatch {
+  const country = typeof document === "undefined" ? null : readCountryCookie(document.cookie);
+  const choice = parseMeasurementChoice(
+    typeof window === "undefined" ? null : browserPurchaseStore().get(MEASUREMENT_CHOICE_KEY),
+  );
+  return {
+    gtag: typeof window === "undefined" ? undefined : window.gtag,
+    tagReady: isGoogleTagReady(),
+    measurementAllowed: measurementAllowed({
+      choice,
+      regionRequiresChoice: regionRequiresChoice(country || null),
+    }),
+    now,
+  };
+}
+
 export function reportServerPurchase(body: unknown): PurchaseReportStatus {
   const purchase = purchaseFromConfirmBody(body);
   if (!purchase) return "rejected";
-  const gtag = typeof window === "undefined" ? undefined : window.gtag;
-  return reporter().report(purchase, gtag);
+  if (typeof window === "undefined") return "queued";
+  return reporter().report(purchase, browserPurchaseDispatch());
 }
 
-/** Retry a receipt that was saved because gtag was not ready yet. */
+/** Retry receipts that were withheld or waiting for a ready tag. */
 export function flushHeldPurchases(): void {
   if (typeof window === "undefined") return;
-  reporter().flush(window.gtag);
+  reporter().flush(browserPurchaseDispatch());
+}
+
+declare global {
+  interface Window {
+    google_tag_manager?: object;
+  }
 }
