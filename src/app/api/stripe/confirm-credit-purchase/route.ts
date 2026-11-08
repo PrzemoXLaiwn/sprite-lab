@@ -30,6 +30,7 @@ export async function POST(request: Request) {
           success: true,
           credits: result.credits,
           totalCredits: result.totalCredits,
+          ...(result.purchase ? { purchase: result.purchase } : {}),
         });
       case "already_processed":
         if (result.kind !== "credit_pack") break;
@@ -37,6 +38,7 @@ export async function POST(request: Request) {
           success: true,
           credits: result.credits,
           message: "Credits already added",
+          ...(result.purchase ? { purchase: result.purchase } : {}),
         });
       case "forbidden":
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

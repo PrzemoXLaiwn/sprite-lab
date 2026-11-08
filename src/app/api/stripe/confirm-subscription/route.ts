@@ -16,6 +16,7 @@ import {
   readStarterFirstMonthCouponId,
   resolveStarterFirstMonthDiscount,
 } from "@/config/starter-first-month";
+import { firstPaidSubscriptionInvoice, purchaseFromSubscriptionInvoice, type VerifiedPurchase } from "@/lib/analytics/purchase";
 
 // Creates the subscription after the client confirmed a SetupIntent from
 // create-subscription-intent.
@@ -89,12 +90,19 @@ export async function POST(request: Request) {
       select: { id: true },
     });
     if (consumed) {
+      const purchase = await firstSubscriptionPurchase({
+        subscriptionId: dbUser.stripeSubscriptionId,
+        userId: user.id,
+        plan,
+        planName: selectedPlan.name,
+      });
       return NextResponse.json({
         success: true,
         alreadyProcessed: true,
         subscriptionId: dbUser.stripeSubscriptionId,
         plan: selectedPlan.name,
         credits: selectedPlan.credits,
+        ...(purchase ? { purchase } : {}),
       });
     }
 
@@ -202,6 +210,10 @@ export async function POST(request: Request) {
       });
     }
 
+    const purchase = invoice
+      ? purchaseFromSubscriptionInvoice(invoice, { itemId: plan, itemName: selectedPlan.name })
+      : null;
+
     console.log(`✅ Subscription created for user ${user.id}: ${subscription.id}`);
 
     return NextResponse.json({
@@ -209,6 +221,7 @@ export async function POST(request: Request) {
       subscriptionId: subscription.id,
       plan: selectedPlan.name,
       credits: selectedPlan.credits,
+      ...(purchase ? { purchase } : {}),
     });
 
   } catch (error) {
@@ -217,5 +230,40 @@ export async function POST(request: Request) {
       { error: "Failed to confirm subscription" },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * Read-only. The first paid invoice of this subscription, and only when its
+ * metadata still belongs to the caller. A later renewal is not returned.
+ * Lookup failure leaves the replay response without a receipt.
+ */
+async function firstSubscriptionPurchase(params: {
+  subscriptionId: string | null;
+  userId: string;
+  plan: string;
+  planName: string;
+}): Promise<VerifiedPurchase | null> {
+  if (!params.subscriptionId) return null;
+  try {
+    const subscription = await stripe.subscriptions.retrieve(params.subscriptionId);
+    if (subscription.metadata?.userId !== params.userId) return null;
+    if (subscription.metadata?.plan !== params.plan) return null;
+    const listed = await stripe.invoices.list({
+      subscription: params.subscriptionId,
+      limit: 24,
+    });
+    const created = firstPaidSubscriptionInvoice(listed.data, subscription, params.userId, params.plan);
+    if (!created) return null;
+    return purchaseFromSubscriptionInvoice(created, {
+      itemId: params.plan,
+      itemName: params.planName,
+    });
+  } catch (error) {
+    console.error(
+      "Subscription purchase receipt lookup failed:",
+      error instanceof Error ? error.message : "error",
+    );
+    return null;
   }
 }

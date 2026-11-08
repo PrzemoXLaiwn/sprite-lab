@@ -1,92 +1,62 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { Infinity as InfinityIcon } from "lucide-react";
-import { CreditChip, PageSpinner, SuccessShell } from "../../_components/checkout-ui";
-
-// Declare gtag for TypeScript
-declare global {
-  interface Window {
-    gtag?: (...args: unknown[]) => void;
-  }
-}
-
-// Lifetime deal prices in GBP for conversion tracking
-const dealPrices: Record<string, number> = {
-  forge: 49,
-  apex: 99,
-  titan: 249,
-};
+import { CheckoutError, CreditChip, PageSpinner, SuccessShell } from "../../_components/checkout-ui";
+import { paymentReturnToConfirm, reportServerPurchase } from "@/lib/analytics/purchase";
+import { useFlushHeldPurchases } from "@/lib/analytics/use-flush-purchase";
 
 function LifetimeSuccessContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const returning = paymentReturnToConfirm(searchParams);
   const deal = searchParams.get("deal") || "Lifetime";
-  const credits = searchParams.get("credits") || "75";
-  const dealId = searchParams.get("dealId") || "";
-  const sessionId = searchParams.get("session_id") || "";
-  const priceParam = searchParams.get("price");
+  const [credits, setCredits] = useState(searchParams.get("credits") || "");
   const [countdown, setCountdown] = useState(5);
-  const [conversionTracked, setConversionTracked] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const started = useRef(false);
+  useFlushHeldPurchases();
 
-  // Google Ads Conversion Tracking with retry
+  // Lifetime sales stay paused. This only confirms a PaymentIntent that
+  // already exists (a purchase made before the pause, or a redirect).
   useEffect(() => {
-    if (conversionTracked) return;
-
-    // Try to get price from URL param, then from dealPrices, then default
-    const value = priceParam
-      ? parseFloat(priceParam)
-      : dealPrices[dealId.toLowerCase()] || 49;
-
-    const trackConversion = () => {
-      if (typeof window !== "undefined" && window.gtag) {
-        window.gtag("event", "conversion", {
-          send_to: "AW-17802754923/dTASCOXAhtIbEOv2galC",
-          value: value,
-          currency: "GBP",
-          transaction_id: sessionId,
-        });
-        console.log("[SpriteLab] Google Ads conversion tracked:", { value, sessionId, deal });
-        setConversionTracked(true);
-        return true;
-      }
-      return false;
-    };
-
-    // Try immediately
-    if (trackConversion()) return;
-
-    // Retry every 500ms for up to 5 seconds (gtag may not be loaded yet)
-    let attempts = 0;
-    const maxAttempts = 10;
-    const interval = setInterval(() => {
-      attempts++;
-      if (trackConversion() || attempts >= maxAttempts) {
-        clearInterval(interval);
-        if (attempts >= maxAttempts) {
-          console.warn("[SpriteLab] Could not track conversion - gtag not available");
+    if (!returning || started.current) return;
+    started.current = true;
+    fetch("/api/stripe/confirm-lifetime-purchase", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paymentIntentId: returning.paymentIntentId }),
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setError(typeof data.message === "string" ? data.message : data.error || "Payment not completed");
+          return;
         }
-      }
-    }, 500);
-
-    return () => clearInterval(interval);
-  }, [dealId, sessionId, priceParam, conversionTracked, deal]);
+        reportServerPurchase(data);
+        if (data.credits != null) setCredits(String(data.credits));
+      })
+      .catch(() => setError("Payment not completed"));
+  }, [returning]);
 
   useEffect(() => {
+    if (error) return;
     const timer = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          window.location.href = "/generate";
+          router.push("/generate");
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
-
     return () => clearInterval(timer);
-  }, []);
+  }, [router, error]);
+
+  if (error) return <CheckoutError message={error} />;
 
   return (
     <SuccessShell
@@ -100,12 +70,14 @@ function LifetimeSuccessContent() {
     >
       <p>Your lifetime access is now active.</p>
       <p>
-        <CreditChip>+{credits} credits</CreditChip>
+        <CreditChip>{credits ? `+${credits} credits` : "Credits added"}</CreditChip>
         <span className="ml-2 text-[#9AA1CC]">added to your account</span>
       </p>
-      <p className="text-[#9AA1CC]">
-        You&apos;ll receive <span className="font-mono text-[#C8CCE8]">{credits}</span> credits every month, forever.
-      </p>
+      {credits && (
+        <p className="text-[#9AA1CC]">
+          You&apos;ll receive <span className="font-mono text-[#C8CCE8]">{credits}</span> credits every month, forever.
+        </p>
+      )}
     </SuccessShell>
   );
 }

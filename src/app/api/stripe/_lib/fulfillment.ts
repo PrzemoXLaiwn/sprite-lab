@@ -4,10 +4,13 @@ import prisma from "@/lib/prisma";
 import {
   stripe,
   getCreditsForPlan,
+  CREDIT_PACKS,
+  CreditPackName,
   LIFETIME_DEALS,
   LifetimeDealName,
   PlanName,
 } from "@/lib/stripe";
+import { purchaseFromPaymentIntent, type VerifiedPurchase } from "@/lib/analytics/purchase";
 
 // =============================================================================
 // Shared Stripe fulfillment logic
@@ -273,8 +276,8 @@ export async function grantOneTimeCredits(params: {
 }
 
 export type OneTimeFulfillmentResult =
-  | { status: "credited"; kind: "credit_pack" | "lifetime_deal"; credits: number; totalCredits: number; plan?: string }
-  | { status: "already_processed"; kind: "credit_pack" | "lifetime_deal"; credits: number; plan?: string }
+  | { status: "credited"; kind: "credit_pack" | "lifetime_deal"; credits: number; totalCredits: number; plan?: string; purchase: VerifiedPurchase | null }
+  | { status: "already_processed"; kind: "credit_pack" | "lifetime_deal"; credits: number; plan?: string; purchase: VerifiedPurchase | null }
   | { status: "sold_out"; message: string; refundInitiated: boolean }
   | { status: "already_lifetime"; refundInitiated: boolean }
   | { status: "forbidden" }
@@ -345,6 +348,20 @@ async function refundPaymentIntent(paymentIntentId: string): Promise<boolean> {
   }
 }
 
+/** Read-only measurement. Catalog prices are not consulted. */
+function measuredPurchase(paymentIntent: Stripe.PaymentIntent): VerifiedPurchase | null {
+  const metadata = paymentIntent.metadata ?? {};
+  if (metadata.type === "credit_pack" && metadata.pack && metadata.pack in CREDIT_PACKS) {
+    const pack = CREDIT_PACKS[metadata.pack as CreditPackName];
+    return purchaseFromPaymentIntent(paymentIntent, { itemId: metadata.pack, itemName: pack.name });
+  }
+  if (metadata.type === "lifetime_deal" && metadata.deal && metadata.deal in LIFETIME_DEALS) {
+    const deal = LIFETIME_DEALS[metadata.deal as LifetimeDealName];
+    return purchaseFromPaymentIntent(paymentIntent, { itemId: metadata.deal, itemName: deal.name });
+  }
+  return null;
+}
+
 /**
  * Apply a succeeded credit-pack / lifetime-deal PaymentIntent. Safe to call any
  * number of times from confirm-* routes and the payment_intent.succeeded
@@ -399,7 +416,7 @@ export async function fulfillOneTimePayment(
     select: { id: true },
   });
   if (legacy) {
-    return { status: "already_processed", kind: type, credits };
+    return { status: "already_processed", kind: type, credits, purchase: measuredPurchase(paymentIntent) };
   }
 
   if (type === "credit_pack") {
@@ -412,10 +429,16 @@ export async function fulfillOneTimePayment(
       description: `Credit pack: ${packName} (${credits} credits) - ${paymentIntent.id}`,
     });
     if (!result) {
-      return { status: "already_processed", kind: "credit_pack", credits };
+      return { status: "already_processed", kind: "credit_pack", credits, purchase: measuredPurchase(paymentIntent) };
     }
     console.log(`Credits added for user ${userId}: +${credits} credits (${packName})`);
-    return { status: "credited", kind: "credit_pack", credits, totalCredits: result.totalCredits };
+    return {
+      status: "credited",
+      kind: "credit_pack",
+      credits,
+      totalCredits: result.totalCredits,
+      purchase: measuredPurchase(paymentIntent),
+    };
   }
 
   return fulfillLifetimeDeal(paymentIntent, userId, credits, moneyAmount);
@@ -518,10 +541,17 @@ async function fulfillLifetimeDeal(
       credits,
       totalCredits: updatedUser.credits,
       plan: deal.basePlan,
+      purchase: measuredPurchase(paymentIntent),
     };
   } catch (error) {
     if (isUniqueViolation(error)) {
-      return { status: "already_processed", kind: "lifetime_deal", credits, plan: deal.basePlan };
+      return {
+        status: "already_processed",
+        kind: "lifetime_deal",
+        credits,
+        plan: deal.basePlan,
+        purchase: measuredPurchase(paymentIntent),
+      };
     }
     if (error instanceof LifetimeRejected) {
       console.error(`Lifetime purchase rejected (${error.reason}) for ${paymentIntent.id} — refunding`);

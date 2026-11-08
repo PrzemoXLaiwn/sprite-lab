@@ -24,6 +24,7 @@ import {
   InlineSuccess,
   CreditChip,
 } from "../../_components/checkout-ui";
+import { reportServerPurchase } from "@/lib/analytics/purchase";
 
 const BASE_PLAN_LABEL: Record<string, string> = {
   STARTER: "Starter",
@@ -103,6 +104,7 @@ function LifetimeCheckoutForm({ deal, dealDetails }: { deal: string; dealDetails
           throw new Error(data.message || data.error || "Failed to confirm purchase");
         }
 
+        reportServerPurchase(data);
         setSuccess(true);
         setTimeout(() => {
           router.push(`/checkout/lifetime/success?deal=${dealDetails.name}&credits=${dealDetails.credits}`);

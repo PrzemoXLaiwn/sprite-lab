@@ -30,6 +30,7 @@ import {
   starterFirstMonthIntroGbp,
 } from "@/config/starter-first-month";
 import { track, FUNNEL } from "@/lib/analytics";
+import { reportServerPurchase } from "@/lib/analytics/purchase";
 
 // Load Stripe outside of component to avoid recreating on every render
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
@@ -100,8 +101,7 @@ function CheckoutForm({ plan, planDetails }: { plan: string; planDetails: PlanDe
           throw new Error(data.error || "Failed to create subscription");
         }
 
-        // Track successful purchase for TikTok
-        // TikTok tracking removed
+        reportServerPurchase(data);
 
         setSuccess(true);
         setTimeout(() => {

@@ -24,6 +24,7 @@ import {
   InlineSuccess,
   CreditChip,
 } from "../../_components/checkout-ui";
+import { reportServerPurchase } from "@/lib/analytics/purchase";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -96,6 +97,7 @@ function CreditCheckoutForm({ pack, packDetails }: { pack: string; packDetails: 
           throw new Error(data.error || "Failed to confirm purchase");
         }
 
+        reportServerPurchase(data);
         setSuccess(true);
         setTimeout(() => {
           router.push(`/checkout/credits/success?credits=${packDetails.credits}&pack=${packDetails.name}`);

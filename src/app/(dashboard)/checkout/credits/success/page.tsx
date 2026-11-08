@@ -1,94 +1,60 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import { CreditChip, PageSpinner, SuccessShell } from "../../_components/checkout-ui";
-
-// Declare gtag for TypeScript
-declare global {
-  interface Window {
-    gtag?: (...args: unknown[]) => void;
-  }
-}
-
-// Credit pack prices in GBP for conversion tracking
-const packPrices: Record<string, number> = {
-  ember: 1.19,
-  blaze: 2.99,
-  inferno: 7.99,
-  supernova: 19.99,
-  "forge-lifetime": 49,
-  "apex-lifetime": 99,
-  "titan-lifetime": 249,
-};
+import { useEffect, useRef, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { CheckoutError, CreditChip, PageSpinner, SuccessShell } from "../../_components/checkout-ui";
+import { paymentReturnToConfirm, reportServerPurchase } from "@/lib/analytics/purchase";
+import { useFlushHeldPurchases } from "@/lib/analytics/use-flush-purchase";
 
 function SuccessContent() {
   const searchParams = useSearchParams();
-  const credits = searchParams.get("credits") || "25";
+  const router = useRouter();
+  const returning = paymentReturnToConfirm(searchParams);
   const packName = searchParams.get("pack") || "Credit Pack";
-  const packId = searchParams.get("packId") || "";
-  const sessionId = searchParams.get("session_id") || "";
-  const priceParam = searchParams.get("price"); // Price passed from checkout
+  const [credits, setCredits] = useState(searchParams.get("credits") || "");
   const [countdown, setCountdown] = useState(5);
-  const [conversionTracked, setConversionTracked] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const started = useRef(false);
+  useFlushHeldPurchases();
 
-  // Google Ads Conversion Tracking with retry
+  // 3DS and other redirects append payment_intent. The server decides whether
+  // it was paid and how much; a failed or canceled return has no receipt.
   useEffect(() => {
-    if (conversionTracked) return;
-
-    // Try to get price from URL param, then from packPrices, then default
-    const value = priceParam
-      ? parseFloat(priceParam)
-      : packPrices[packId.toLowerCase()] || 1.19;
-
-    const trackConversion = () => {
-      if (typeof window !== "undefined" && window.gtag) {
-        window.gtag("event", "conversion", {
-          send_to: "AW-17802754923/dTASCOXAhtIbEOv2galC",
-          value: value,
-          currency: "GBP",
-          transaction_id: sessionId,
-        });
-        console.log("[SpriteLab] Google Ads conversion tracked:", { value, sessionId });
-        setConversionTracked(true);
-        return true;
-      }
-      return false;
-    };
-
-    // Try immediately
-    if (trackConversion()) return;
-
-    // Retry every 500ms for up to 5 seconds (gtag may not be loaded yet)
-    let attempts = 0;
-    const maxAttempts = 10;
-    const interval = setInterval(() => {
-      attempts++;
-      if (trackConversion() || attempts >= maxAttempts) {
-        clearInterval(interval);
-        if (attempts >= maxAttempts) {
-          console.warn("[SpriteLab] Could not track conversion - gtag not available");
+    if (!returning || started.current) return;
+    started.current = true;
+    fetch("/api/stripe/confirm-credit-purchase", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paymentIntentId: returning.paymentIntentId }),
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setError(typeof data.error === "string" ? data.error : "Payment not completed");
+          return;
         }
-      }
-    }, 500);
-
-    return () => clearInterval(interval);
-  }, [packId, sessionId, priceParam, conversionTracked]);
+        reportServerPurchase(data);
+        if (data.credits != null) setCredits(String(data.credits));
+      })
+      .catch(() => setError("Payment not completed"));
+  }, [returning]);
 
   useEffect(() => {
+    if (error) return;
     const timer = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          window.location.href = "/generate";
+          router.push("/generate");
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
-
     return () => clearInterval(timer);
-  }, []);
+  }, [router, error]);
+
+  if (error) return <CheckoutError message={error} />;
 
   return (
     <SuccessShell
@@ -100,7 +66,7 @@ function SuccessContent() {
       ]}
     >
       <p>
-        <CreditChip>+{credits} credits</CreditChip>
+        <CreditChip>{credits ? `+${credits} credits` : "Credits added"}</CreditChip>
       </p>
       <p className="text-[#9AA1CC]">Your {packName} pack has been added to your account.</p>
     </SuccessShell>

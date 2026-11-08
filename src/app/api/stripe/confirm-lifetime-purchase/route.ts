@@ -32,6 +32,7 @@ export async function POST(request: Request) {
           credits: result.credits,
           plan: result.plan,
           totalCredits: result.totalCredits,
+          ...(result.purchase ? { purchase: result.purchase } : {}),
         });
       case "already_processed":
         if (result.kind !== "lifetime_deal") break;
@@ -40,6 +41,7 @@ export async function POST(request: Request) {
           credits: result.credits,
           plan: result.plan,
           message: "Lifetime deal already activated",
+          ...(result.purchase ? { purchase: result.purchase } : {}),
         });
       case "sold_out":
         return NextResponse.json(

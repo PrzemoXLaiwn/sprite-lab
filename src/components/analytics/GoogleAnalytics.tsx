@@ -1,11 +1,13 @@
 import Script from "next/script";
 import { Suspense } from "react";
 import { GoogleAnalyticsPageViews } from "./google-analytics-client";
+import { GA_MEASUREMENT_ID } from "@/lib/analytics/measurement-id";
 
 // Google Analytics 4. Consent Mode v2: in the UK, EEA and Switzerland nothing
 // is stored until the visitor accepts in Google's consent message (the same
 // CMP AdSense uses); elsewhere measurement starts right away.
-const GA_ID = process.env.NEXT_PUBLIC_GA_ID || "G-DSMJ4N3BSQ";
+// There is no consent update on checkout. Denied regions stay denied.
+const GA_ID = GA_MEASUREMENT_ID;
 const CONSENT_REGIONS = [
   "GB", "CH", "NO", "IS", "LI", "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE",
   "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE",
