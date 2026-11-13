@@ -35,7 +35,7 @@ export function CommunityWall({ items }: { items: FeaturedGeneration[]; register
   if (items.length === 0) return null;
 
   return (
-    <section id="explore" className="sl-defer relative mx-auto w-full max-w-6xl scroll-mt-16 px-4 pb-16 pt-16 sm:px-5 sm:pb-20">
+    <section id="explore" className="relative mx-auto w-full max-w-6xl scroll-mt-16 px-4 pb-16 pt-16 sm:px-5 sm:pb-20">
       <div className="mb-8 flex flex-wrap items-end justify-between gap-x-8 gap-y-5">
         <SectionHeader
           title="Sprites people made here"
