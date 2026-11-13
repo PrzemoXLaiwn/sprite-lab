@@ -16,7 +16,9 @@ import { PLAN_MONTHLY_CREDITS } from "@/config/plan-features";
 // numbers stay readable without a monospace face.
 const body = Atkinson_Hyperlegible_Next({
   subsets: ["latin"],
-  display: "swap",
+  // Optional: a slow body font must not swap under the headline. The adjusted
+  // fallback paints immediately; the file is used only if it is already cached.
+  display: "optional",
   preload: false,
   variable: "--font-body",
 });
