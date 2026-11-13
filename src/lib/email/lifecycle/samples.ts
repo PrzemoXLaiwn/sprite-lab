@@ -61,6 +61,9 @@ const user = (credits: number, latestSprite: WorkItem | null) => ({ name: "Alex 
 /** One sample per sequence, as the cron would build it. */
 export function sampleLifecycleMessages(): Record<SequenceId, LifecycleMessage> {
   const input: Record<SequenceId, Parameters<typeof buildLifecycleMessage>[0]> = {
+    day1_animate: { sequence: "day1_animate", user: user(9, knight), item: knight, inspiration: null, unsubscribeUrl: SAMPLE_UNSUBSCRIBE_URL },
+    day3_sheet: { sequence: "day3_sheet", user: user(8, knight), item: null, inspiration: null, unsubscribeUrl: SAMPLE_UNSUBSCRIBE_URL },
+    day7_offer: { sequence: "day7_offer", user: user(6, knight), item: null, inspiration: null, unsubscribeUrl: SAMPLE_UNSUBSCRIBE_URL },
     bring_to_life: { sequence: "bring_to_life", user: user(9, knight), item: knight, inspiration: null, unsubscribeUrl: SAMPLE_UNSUBSCRIBE_URL },
     unfinished: { sequence: "unfinished", user: user(3, knight), item: walk, inspiration: null, unsubscribeUrl: SAMPLE_UNSUBSCRIBE_URL },
     unused_credits: { sequence: "unused_credits", user: user(8, potion), item: potion, inspiration: null, unsubscribeUrl: SAMPLE_UNSUBSCRIBE_URL },

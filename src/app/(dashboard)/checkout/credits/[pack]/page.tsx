@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { loadStripe } from "@stripe/stripe-js";
+import { getCheckoutStripe } from "@/lib/stripe-browser";
 import {
   Elements,
   PaymentElement,
@@ -26,7 +26,7 @@ import {
 } from "../../_components/checkout-ui";
 import { reportServerPurchase } from "@/lib/analytics/purchase";
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+const stripePromise = getCheckoutStripe();
 
 // Map URL-friendly names to internal pack codes
 const PACK_URL_MAP: Record<string, string> = {

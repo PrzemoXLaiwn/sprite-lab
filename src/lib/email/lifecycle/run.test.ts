@@ -11,7 +11,7 @@ function user(id: string, over: Partial<UserSnapshot> = {}): UserSnapshot {
   const sprite = { id: `s-${id}`, kind: "sprite" as const, imageUrl: "https://cdn.x/s.png", prompt: "knight", categoryId: "CHARACTERS", styleId: "PIXEL", createdAt: ago(30 * HOUR) };
   return {
     id, email: `${id}@x.co`, name: null, credits: 10, createdAt: ago(2 * DAY), lastActiveAt: ago(30 * HOUR),
-    prefs: { sentAt: {} }, marketingSends: [], suppressed: false,
+    prefs: { sentAt: {} }, marketingSends: [], suppressed: false, plan: "FREE",
     latestItem: sprite, latestSprite: sprite, hasAnimation: false, lastCreatedAt: ago(30 * HOUR), ...over,
   };
 }

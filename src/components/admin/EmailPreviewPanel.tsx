@@ -13,11 +13,14 @@ export interface EmailPreview {
 }
 
 export const SEQUENCE_INFO: Record<SequenceId, { name: string; rule: string }> = {
-  bring_to_life: { name: "Bring your sprite to life", rule: "Account 1–7 days old, made a sprite, never animated. Once." },
+  day1_animate: { name: "Day 1 — animate it", rule: "Free account, 24–48 hours old, made a sprite, never animated, idle for 12 hours. Once." },
+  day3_sheet: { name: "Day 3 — a finished sheet", rule: "Free account, day 3, idle for 12 hours. Once. Shows a real walk-cycle sheet." },
+  day7_offer: { name: "Day 7 — Starter", rule: "Free account, day 7, idle for 12 hours. Once. Uses the Starter intro price when that coupon is configured." },
+  bring_to_life: { name: "Bring your sprite to life", rule: "After day 1's window, up to day 7, made a sprite, never animated. Once. Skipped if the day-1 mail already went." },
   unfinished: { name: "Unfinished work", rule: "Made something in the last 7 days, nothing for 2+ days. Max once a week, never the same item twice." },
   unused_credits: { name: "Unused credits", rule: "Away 5–20 days with credits left. Once per absence." },
   winback: { name: "Win-back", rule: "Away 21+ days. Once per absence." },
-  inspiration: { name: "Weekly inspiration", rule: "Active in the last 60 days and no other marketing email in 7 days. 3+ community picks, otherwise curated examples from /showcase labelled as examples." },
+  inspiration: { name: "Weekly inspiration", rule: "Account at least 8 days old, active in the last 60 days, no other marketing email in 7 days. 3+ community picks, otherwise curated examples from /showcase labelled as examples." },
 };
 
 const SKIP_LABELS: Record<SkipReason, string> = {

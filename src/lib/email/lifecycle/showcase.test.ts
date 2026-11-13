@@ -47,7 +47,7 @@ describe("inspiration fallback (curated /showcase examples)", () => {
   it("lets the inspiration sequence run when there are no public works", () => {
     const user: UserSnapshot = {
       id: "u", email: "u@x.co", name: null, credits: 0, createdAt: new Date(NOW.getTime() - 90 * DAY), lastActiveAt: new Date(NOW.getTime() - 3 * HOUR),
-      prefs: { sentAt: {} }, marketingSends: [], suppressed: false, latestItem: null, latestSprite: null, hasAnimation: false, lastCreatedAt: null,
+      prefs: { sentAt: {} }, marketingSends: [], suppressed: false, plan: "FREE", latestItem: null, latestSprite: null, hasAnimation: false, lastCreatedAt: null,
     };
     expect(selectLifecycleEmail(user, { now: NOW, inspirationItems: 0 })).toEqual({ send: false, reason: "no_match" });
     const items = showcaseInspiration(NOW).items.length;
