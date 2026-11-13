@@ -2,8 +2,9 @@
 // The full margin report (with today's KNOWN_FAILURE rows) is `npm run economics`;
 // this test only fails on NEW violations so a price/cost change can't silently
 // make another feature lose money.
+import { PLANS } from "@/lib/stripe";
 import { describe, expect, it } from "vitest";
-import { RIG_CREDITS, ROTATIONS } from "./animations";
+import { RIG_CREDITS, ROTATIONS, animationCredits } from "./animations";
 import { MOVESETS, moveCredits, movesetCredits } from "./movesets";
 import { costGbp, featureCredits, netPerCreditGbp, violations, violationKey } from "./economics";
 import { FEATURE_COSTS } from "./provider-costs";
@@ -15,9 +16,21 @@ describe("unit economics", () => {
   });
 
   it("uses the documented formula (Pro: $12 → £8.41 net, matching the real charge)", () => {
-    expect(netPerCreditGbp({ priceUsd: 12, credits: 500 }, false) * 500).toBeCloseTo(8.41, 2);
-    expect(netPerCreditGbp({ priceUsd: 12, credits: 500 }, true)).toBeLessThan(netPerCreditGbp({ priceUsd: 12, credits: 500 }, false));
+    expect(netPerCreditGbp({ priceUsd: PLANS.PRO.price, credits: PLANS.PRO.credits }, false) * PLANS.PRO.credits).toBeCloseTo(8.41, 2);
+    expect(netPerCreditGbp({ priceUsd: PLANS.PRO.price, credits: PLANS.PRO.credits }, true)).toBeLessThan(netPerCreditGbp({ priceUsd: PLANS.PRO.price, credits: PLANS.PRO.credits }, false));
     expect(costGbp("anim_6", "worst")).toBeGreaterThan(costGbp("anim_6", "central"));
+  });
+
+  it("covers the central cost of every feature at the pound price actually charged", () => {
+    // economics.ts treats the GBP sticker as USD. This is the charge the customer pays.
+    for (const plan of [PLANS.STARTER, PLANS.PRO, PLANS.UNLIMITED]) {
+      const netPerCredit = (plan.price * (1 - 0.029) - 0.2) / plan.credits;
+      for (const [feature, credits] of Object.entries(featureCredits())) {
+        const revenue = credits * netPerCredit;
+        expect(revenue, `${feature}@${plan.name}`).toBeGreaterThan(costGbp(feature, "central"));
+      }
+    }
+    expect(animationCredits(4, true)).toBe(12);
   });
 
   it("introduces no NEW margin violations beyond the known list (see npm run economics)", () => {

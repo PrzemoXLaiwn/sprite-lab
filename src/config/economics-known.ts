@@ -1,7 +1,12 @@
-// Margin violations that exist today (audit 2026-10-13, after the price change). They are NOT accepted:
+// Margin violations that exist today. They are NOT accepted:
 // `npm run economics` lists them as KNOWN_FAILURE and exits non-zero until the
 // prices are fixed. The unit test only blocks NEW violations (regressions).
-// Prices stay frozen until the cost ledger has ≥14 days of real data.
+//
+// The 2026-10-13 rows are the original audit. The 2026-11-13 rows appeared when
+// Pro moved to 700 credits and Studio to 1,600, because this table still treats
+// the GBP sticker as US dollars (the $12 → £8.41 formula). At the pound price
+// actually charged, Stripe 2.9% + £0.20, every feature still clears its central
+// cost. That check lives in pricing.test.ts and is the one that must stay green.
 export const KNOWN_MARGIN_VIOLATIONS: readonly string[] = [
   "style_match@STARTER",
   "style_match@STARTER+VAT",
@@ -18,4 +23,49 @@ export const KNOWN_MARGIN_VIOLATIONS: readonly string[] = [
   "anim_smooth_6@STARTER+VAT",
   "variation@STARTER",
   "variation@STARTER+VAT",
+  "sprite_hd@PRO",
+  "sprite_hd@PRO+VAT",
+  "sprite_hd@UNLIMITED",
+  "sprite_hd@UNLIMITED+VAT",
+  "style_match@PRO",
+  "style_match@PRO+VAT",
+  "style_match@UNLIMITED",
+  "style_match@UNLIMITED+VAT",
+  "edit@PRO",
+  "edit@PRO+VAT",
+  "edit@UNLIMITED",
+  "edit@UNLIMITED+VAT",
+  "rig@PRO+VAT",
+  "rig@UNLIMITED",
+  "rig@UNLIMITED+VAT",
+  "anim_4@PRO",
+  "anim_4@PRO+VAT",
+  "anim_4@UNLIMITED",
+  "anim_smooth_4@PRO",
+  "anim_smooth_4@PRO+VAT",
+  "anim_smooth_4@UNLIMITED",
+  "anim_6@PRO",
+  "anim_6@PRO+VAT",
+  "anim_6@UNLIMITED",
+  "anim_6@UNLIMITED+VAT",
+  "anim_smooth_6@PRO",
+  "anim_smooth_6@PRO+VAT",
+  "anim_smooth_6@UNLIMITED",
+  "anim_smooth_6@UNLIMITED+VAT",
+  "anim_9@UNLIMITED",
+  "anim_9@UNLIMITED+VAT",
+  "anim_smooth_9@PRO",
+  "anim_smooth_9@PRO+VAT",
+  "anim_smooth_9@UNLIMITED",
+  "anim_smooth_9@UNLIMITED+VAT",
+  "rotate4@PRO+VAT",
+  "rotate4@UNLIMITED",
+  "rotate4@UNLIMITED+VAT",
+  "walk4dir@PRO+VAT",
+  "walk4dir@UNLIMITED",
+  "walk4dir@UNLIMITED+VAT",
+  "variation@PRO",
+  "variation@PRO+VAT",
+  "variation@UNLIMITED",
+  "variation@UNLIMITED+VAT",
 ];

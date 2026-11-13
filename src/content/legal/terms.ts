@@ -28,6 +28,7 @@
 
 import { LICENCE_CHANGE_DATE } from "@/config/licence";
 import { SIGNUP_CREDITS } from "@/config/signup";
+import { PLAN_MONTHLY_CREDITS, PLAN_MONTHLY_PRICE_GBP } from "@/config/plan-features";
 
 export const TERMS_MARKDOWN = `
 # Terms of Service
@@ -70,15 +71,15 @@ SpriteLab is an online tool that uses artificial intelligence to generate and ed
 
 | Plan | Price | Credits each month |
 |---|---|---|
-| Starter | £5 / month | 250 |
-| Pro | £12 / month | 500 |
-| Studio | £25 / month | 1,200 |
+| Starter | £${PLAN_MONTHLY_PRICE_GBP.STARTER} / month | ${PLAN_MONTHLY_CREDITS.STARTER} |
+| Pro | £${PLAN_MONTHLY_PRICE_GBP.PRO} / month | ${PLAN_MONTHLY_CREDITS.PRO} |
+| Studio | £${PLAN_MONTHLY_PRICE_GBP.UNLIMITED} / month | ${PLAN_MONTHLY_CREDITS.UNLIMITED.toLocaleString("en-GB")} |
 
 Subscription credits are added at the start of each billing period and **expire at the end of that period**; they do not roll over.
 
 5.4 **Credit packs.** One-time packs (Ember, Blaze, Inferno and Supernova) are paid once, are not a subscription, and their credits **do not expire** while your account is open. A credit pack does not by itself change your plan or your licence (see section 9).
 
-5.5 **Lifetime plans.** If you bought a lifetime deal, it gives you the monthly credit allowance and the other features of the matching paid plan — Starter (250 credits), Pro (500 credits) or Studio (1,200 credits) — including the commercial licence in section 9, for as long as we operate the Service. Lifetime deals are not always on sale.
+5.5 **Lifetime plans.** If you bought a lifetime deal, you keep the monthly credit allowance that deal was sold with — Starter Lifetime 250, Pro Lifetime 500, Studio Lifetime 1,200 — plus the other features of that plan, including the commercial licence in section 9, for as long as we operate the Service. That allowance stays as sold if a monthly plan's credit count later changes. Lifetime deals are not always on sale.
 
 5.6 **Price changes.** We will give you at least **30 days'** notice by email before any price increase for your subscription takes effect. You may cancel before the new price applies. Your price stays the same while your subscription is active and the plan is still offered.
 

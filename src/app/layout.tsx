@@ -9,6 +9,7 @@ import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 import { BRAND_DEFINITION, BRAND_SUMMARY, FEATURE_LIST } from "@/data/brand";
 import { SIGNUP_OFFER } from "@/config/signup";
+import { PLAN_MONTHLY_CREDITS } from "@/config/plan-features";
 
 // Optimized font loading with next/font (no render-blocking!)
 // Body + UI: built for legibility (distinct I/l/1, 0/O) — small labels and
@@ -164,7 +165,7 @@ const jsonLd = {
           price: "5.00",
           priceCurrency: "GBP",
           name: "Starter",
-          description: "250 credits per month",
+          description: `${PLAN_MONTHLY_CREDITS.STARTER} credits per month`,
           priceValidUntil: "2027-12-31",
         },
         {
@@ -172,7 +173,7 @@ const jsonLd = {
           price: "12.00",
           priceCurrency: "GBP",
           name: "Pro",
-          description: "500 credits per month",
+          description: `${PLAN_MONTHLY_CREDITS.PRO.toLocaleString("en-GB")} credits per month`,
           priceValidUntil: "2027-12-31",
         },
         {
@@ -180,7 +181,7 @@ const jsonLd = {
           price: "25.00",
           priceCurrency: "GBP",
           name: "Studio",
-          description: "1,200 credits per month",
+          description: `${PLAN_MONTHLY_CREDITS.UNLIMITED.toLocaleString("en-GB")} credits per month`,
           priceValidUntil: "2027-12-31",
         },
       ],

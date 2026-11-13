@@ -13,6 +13,7 @@ import {
   type UpsellReason,
 } from "@/config/starter-first-month";
 import { track, FUNNEL } from "@/lib/analytics";
+import { recordFunnel } from "@/lib/funnel-client";
 
 // =============================================================================
 // UpgradeModal
@@ -48,7 +49,7 @@ const PLANS = [
     // Credits, what carries over from Free, and the commercial licence.
     // AI upscale is Pro and up, and AI editing is already on Free.
     features: PLAN_FEATURES.STARTER.slice(0, 3),
-    popular: false,
+    popular: true,
   },
   {
     name: "Pro",
@@ -56,7 +57,7 @@ const PLANS = [
     price: PLAN_MONTHLY_PRICE_GBP.PRO,
     credits: PLAN_MONTHLY_CREDITS.PRO,
     features: PLAN_FEATURES.PRO.slice(1, 4),
-    popular: true,
+    popular: false,
   },
   {
     name: "Studio",
@@ -140,6 +141,7 @@ export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
         reason: nextReason,
         offer: nextOfferEnabled ? STARTER_FIRST_MONTH_OFFER : "standard",
       });
+      recordFunnel("paywall_shown", { surface: "upgrade", reason: nextReason });
     };
 
     // Debounced so a burst of generations is judged on the balance after the
@@ -193,6 +195,7 @@ export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
         }
         setMode("plans");
         setIsVisible(true);
+        recordFunnel("paywall_shown", { surface: "upgrade", reason: "no_credits" });
       })();
     };
 

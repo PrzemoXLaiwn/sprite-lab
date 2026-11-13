@@ -106,6 +106,19 @@ describe("handleResendEvent", () => {
     expect(s.prefs.u2).toEqual({});
   });
 
+  it("records an open, then a click, and does not let a later open downgrade the click", async () => {
+    const s = store();
+    const opened = await handleResendEvent(event("email.opened"), s.deps, NOW);
+    expect(opened).toMatchObject({ handled: true, status: "opened", rowsUpdated: 1, usersSuppressed: 0 });
+    expect(s.deps.updateStatus).toHaveBeenCalledWith("msg_1", "opened", ["sent", "delivery_delayed"], { openedAt: "2026-10-13T10:59:00.000Z" });
+    expect(s.deps.findUsers).not.toHaveBeenCalled();
+    await handleResendEvent(event("email.clicked"), s.deps, NOW);
+    expect(s.logs[0].status).toBe("clicked");
+    const late = await handleResendEvent(event("email.opened"), s.deps, NOW);
+    expect(late.rowsUpdated).toBe(0);
+    expect(s.logs[0].status).toBe("clicked");
+  });
+
   it("ignores other event types", async () => {
     const s = store();
     expect(await handleResendEvent(event("email.delivered"), s.deps, NOW)).toMatchObject({ handled: false });

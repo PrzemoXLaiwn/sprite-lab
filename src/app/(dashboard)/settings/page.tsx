@@ -35,6 +35,7 @@ import { fetchUserProfile, updateProfile, fetchCreditHistory, checkUsername, upl
 import type { PlanAccess } from "@/lib/billing/plan-access";
 import { requestBillingPortal } from "@/lib/billing/open-portal";
 import { BillingSummary } from "@/components/settings/BillingSummary";
+import { CancelPlanDialog } from "@/components/settings/CancelPlanDialog";
 import Link from "next/link";
 import { ReferralCard } from "@/components/dashboard/ReferralCard";
 
@@ -257,6 +258,7 @@ export default function SettingsPage() {
   const [billing, setBilling] = useState<PlanAccess | null>(null);
   const [billingError, setBillingError] = useState(false);
   const [portal, setPortal] = useState<"idle" | "opening" | "error">("idle");
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   // Section nav
   const [activeSection, setActiveSection] = useState<SectionId>("profile");
@@ -797,6 +799,16 @@ export default function SettingsPage() {
               canManage={billing?.canManageBilling === true}
               portal={portal}
               onManage={openBillingPortal}
+              onCancel={billing?.status === "renewing" ? () => setCancelOpen(true) : undefined}
+            />
+            <CancelPlanDialog
+              open={cancelOpen}
+              planName={billing?.planName ?? "your plan"}
+              onClose={() => setCancelOpen(false)}
+              onContinueToPortal={() => {
+                setCancelOpen(false);
+                void openBillingPortal();
+              }}
             />
           </Section>
 
