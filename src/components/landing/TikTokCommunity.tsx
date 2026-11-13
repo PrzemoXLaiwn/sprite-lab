@@ -18,7 +18,7 @@ export async function TikTokCommunity() {
   const videos = await getTopTikToks(3);
 
   return (
-    <section id="community" className="relative border-y border-white/[0.05] bg-[#19223F]">
+    <section id="community" className="sl-defer relative border-y border-white/[0.05] bg-[#19223F]">
       <div className="mx-auto grid w-full max-w-6xl items-center gap-12 px-4 py-16 sm:px-5 sm:py-20 lg:grid-cols-[minmax(0,420px)_1fr]">
         <div>
           <h2 className="font-display text-[32px] font-semibold leading-[1.08] tracking-[-0.01em] text-white sm:text-[44px]">

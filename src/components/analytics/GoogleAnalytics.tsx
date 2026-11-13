@@ -1,6 +1,6 @@
-import Script from "next/script";
 import { Suspense } from "react";
 import { GoogleAnalyticsPageViews } from "./google-analytics-client";
+import { GtagLoader } from "./GtagLoader";
 import { GA_MEASUREMENT_ID } from "@/lib/analytics/measurement-id";
 import { consentBootstrap } from "@/lib/analytics/consent";
 
@@ -14,11 +14,7 @@ export function GoogleAnalytics() {
   return (
     <>
       <script id="ga-consent" dangerouslySetInnerHTML={{ __html: consentBootstrap(GA_ID) }} />
-      <Script
-        id="ga-loader"
-        src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
-        strategy="lazyOnload"
-      />
+      <GtagLoader measurementId={GA_ID} />
       <Suspense fallback={null}>
         <GoogleAnalyticsPageViews />
       </Suspense>

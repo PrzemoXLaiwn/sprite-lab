@@ -42,17 +42,17 @@ export function SiteNav({ registerUrl = "/register", anchorsOnHome = false, sign
             <>
               {/* Signed-in only (search engines never see it). Below sm the row
                   has no room for Dungeon / My assets: they move into the menu. */}
-              <Link href="/play" className={`${QUIET.replace("inline-flex", "hidden sm:inline-flex")} gap-1.5 whitespace-nowrap`}>
+              <Link href="/play" prefetch={false} className={`${QUIET.replace("inline-flex", "hidden sm:inline-flex")} gap-1.5 whitespace-nowrap`}>
                 Dungeon
                 {isNewFeature("/play") && <NewBadge />}
               </Link>
-              <Link href="/assets" className={`${QUIET.replace("inline-flex", "hidden sm:inline-flex")} whitespace-nowrap`}>My assets</Link>
-              <Link href="/generate" className={`${PRIMARY} whitespace-nowrap`}>Open app</Link>
+              <Link href="/assets" prefetch={false} className={`${QUIET.replace("inline-flex", "hidden sm:inline-flex")} whitespace-nowrap`}>My assets</Link>
+              <Link href="/generate" prefetch={false} className={`${PRIMARY} whitespace-nowrap`}>Open app</Link>
             </>
           ) : (
             <>
-              <Link href="/login" className={QUIET}>Log in</Link>
-              <Link href={registerUrl} className={PRIMARY}>Start free</Link>
+              <Link href="/login" prefetch={false} className={QUIET}>Log in</Link>
+              <Link href={registerUrl} prefetch={false} className={PRIMARY}>Start free</Link>
             </>
           )}
           <MobileMenu links={signedIn ? [{ href: "/play", label: "Dungeon" }, { href: "/assets", label: "My assets" }, ...links] : links} />

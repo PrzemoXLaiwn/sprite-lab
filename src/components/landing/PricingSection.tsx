@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Check, Coins, Infinity as InfinityIcon } from "lucide-react";
 import {
@@ -58,22 +58,37 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean } = {}
   const [promoActive, setPromoActive] = useState(false);
   const [lifetimeSlots, setLifetimeSlots] = useState<Record<string, LifetimeSlotInfo>>({});
   const [lifetimeOn, setLifetimeOn] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    fetchLaunchPromoStatus()
-      .then((r) => setPromoActive(r.active))
-      .catch(() => {});
-
-    // Fetch available lifetime slots
-    fetch("/api/lifetime-slots")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.slots) {
-          setLifetimeSlots(data.slots);
-        }
-        setLifetimeOn(data.salesEnabled === true);
-      })
-      .catch(console.error);
+    const el = sectionRef.current;
+    if (!el) return;
+    let started = false;
+    const load = () => {
+      if (started) return;
+      started = true;
+      fetchLaunchPromoStatus()
+        .then((r) => setPromoActive(r.active))
+        .catch(() => {});
+      fetch("/api/lifetime-slots")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.slots) setLifetimeSlots(data.slots);
+          setLifetimeOn(data.salesEnabled === true);
+        })
+        .catch(() => {});
+    };
+    if (typeof IntersectionObserver === "undefined") {
+      load();
+      return;
+    }
+    const io = new IntersectionObserver(([entry]) => {
+      if (!entry?.isIntersecting) return;
+      load();
+      io.disconnect();
+    }, { rootMargin: "400px" });
+    io.observe(el);
+    return () => io.disconnect();
   }, []);
 
   // Lowest list price per credit among paid monthly plans. Starter is labelled
@@ -86,7 +101,7 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean } = {}
   }, null);
 
   return (
-    <section id="pricing" className="relative scroll-mt-16 py-16 sm:py-20">
+    <section ref={sectionRef} id="pricing" className="sl-defer relative scroll-mt-16 py-16 sm:py-20">
       <div className="mx-auto max-w-[1200px] px-5 lg:px-8">
         {/* Header */}
         <div className="flex flex-col items-center text-center">

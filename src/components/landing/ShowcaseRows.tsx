@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Download, Folder, FolderOpen } from "lucide-react";
 import { CREDIT_COSTS } from "@/lib/services/generation";
 import { SectionHeader } from "./SectionHeader";
+import { LazyBackground } from "./LazyBackground";
 
 const CHECKER = {
   backgroundColor: "#1B2446",
@@ -118,8 +119,11 @@ function DirectionsVisual() {
       <div className="grid grid-cols-4 gap-2.5">
         {dirs.map((d, i) => (
           <figure key={d} className="overflow-hidden rounded-[8px] border border-white/[0.06] bg-[#131A31]">
-            <div aria-hidden="true" className="aspect-square"
-              style={{ backgroundImage: "url(/showcase/rotate-lizard.webp)", backgroundSize: "800% 100%", backgroundPosition: `${(i / 7) * 100}% 0`, backgroundRepeat: "no-repeat" }} />
+            <LazyBackground
+              url="/showcase/rotate-lizard.webp"
+              className="aspect-square"
+              style={{ backgroundSize: "800% 100%", backgroundPosition: `${(i / 7) * 100}% 0`, backgroundRepeat: "no-repeat" }}
+            />
             <figcaption className="border-t border-white/[0.05] py-1 text-center font-mono text-[10.5px] text-[#FFC857]">{d}</figcaption>
           </figure>
         ))}
@@ -140,9 +144,11 @@ function TilesVisual() {
       <div className="grid grid-cols-3 gap-3">
         {tiles.map((t) => (
           <figure key={t.src}>
-            <div aria-hidden="true"
+            <LazyBackground
+              url={t.src}
               className="aspect-square rounded-[8px] border border-white/[0.06]"
-              style={{ backgroundImage: `url(${t.src})`, backgroundSize: "50% 50%", backgroundRepeat: "repeat", imageRendering: "pixelated" }} />
+              style={{ backgroundSize: "50% 50%", backgroundRepeat: "repeat", imageRendering: "pixelated" }}
+            />
             <figcaption className="mt-2 text-center font-mono text-[11px] text-[#9AA1CC]">{t.label}</figcaption>
           </figure>
         ))}
@@ -198,7 +204,7 @@ function ProjectsVisual() {
 /** "What you get" — real output instead of icon cards. */
 export function ShowcaseRows() {
   return (
-    <section id="features" className="relative mx-auto w-full max-w-[1200px] scroll-mt-16 space-y-20 px-5 py-16 sm:space-y-28 sm:py-20 lg:px-8">
+    <section id="features" className="sl-defer relative mx-auto w-full max-w-[1200px] scroll-mt-16 space-y-20 px-5 py-16 sm:space-y-28 sm:py-20 lg:px-8">
       <SectionHeader
         title="Assets you can drop straight into your game"
         intro="Not pretty pictures — cleaned-up, game-ready files. Everything below was made with SpriteLab."

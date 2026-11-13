@@ -1,10 +1,11 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { Plus } from "lucide-react";
 import { SectionHeader } from "@/components/landing/SectionHeader";
 import { PricingSection } from "@/components/landing/PricingSection";
 import { HeroPrompt } from "@/components/landing/HeroPrompt";
 import { HeroWalk } from "@/components/landing/HeroWalk";
-import { GoogleOneTap } from "@/components/landing/GoogleOneTap";
+import { DeferredGoogleOneTap } from "@/components/landing/DeferredGoogleOneTap";
 import { SiteNav } from "@/components/layout/SiteNav";
 import { CommunityWall } from "@/components/landing/CommunityWall";
 import { TikTokCommunity } from "@/components/landing/TikTokCommunity";
@@ -22,16 +23,11 @@ import { RefCapture } from "@/components/landing/RefCapture";
  * rewrite in the session proxy), so search engines always get static HTML that
  * never depends on the database or the auth service being up.
  */
-export async function HomePage({ signedIn }: { signedIn: boolean }) {
+export function HomePage({ signedIn }: { signedIn: boolean }) {
   // Referral links (?ref=CODE) are picked up in the browser by RefCapture, so
-  // the page itself stays static
+  // the page itself stays static. The community wall loads in its own
+  // boundary so a slow database does not hold back the headline.
   const registerUrl = "/register";
-
-  // Explore wall: curated pipeline showcase first, then the most-liked public
-  // community sprites (cached 5 min; never fails the render — falls back to
-  // the showcase alone if the DB is unavailable).
-  const community = await getFeaturedGenerationsSafe(36);
-  const wall = curateWall([...SHOWCASE, ...community]);
   const offer = signupOffer();
 
   return (
@@ -39,7 +35,7 @@ export async function HomePage({ signedIn }: { signedIn: boolean }) {
 
       {/* ═══ NAV ═════════════════════════════════════════════ */}
       <SiteNav registerUrl={registerUrl} anchorsOnHome signedIn={signedIn} />
-      {!signedIn && <GoogleOneTap />}
+      {!signedIn && <DeferredGoogleOneTap />}
       <RefCapture />
 
       {/* ═══ HERO — prompt on the left, a real sprite on the workbench ═══ */}
@@ -62,7 +58,7 @@ export async function HomePage({ signedIn }: { signedIn: boolean }) {
 
             <p className="mt-5 text-[13.5px] leading-relaxed text-[#A7ADD4]">
               {signedIn ? (
-                <>You&apos;re signed in: what you describe opens in the creator and goes straight into your assets. <Link href="/generate" className="font-semibold text-[#FFC857] underline-offset-2 hover:underline">Open the creator</Link></>
+                <>You&apos;re signed in: what you describe opens in the creator and goes straight into your assets. <Link href="/generate" prefetch={false} className="font-semibold text-[#FFC857] underline-offset-2 hover:underline">Open the creator</Link></>
               ) : (
                 <>
                   Sign up for {offer.credits} free credits. No card.
@@ -77,7 +73,9 @@ export async function HomePage({ signedIn }: { signedIn: boolean }) {
       </section>
 
       {/* ═══ EXPLORE — community wall ═════════════════════════ */}
-      <CommunityWall items={wall} registerUrl={registerUrl} />
+      <Suspense fallback={<CommunityWall items={curateWall(SHOWCASE)} registerUrl={registerUrl} />}>
+        <HomeExplore registerUrl={registerUrl} />
+      </Suspense>
 
       {/* ═══ WHAT YOU GET — real output ═════════════════════ */}
       <ShowcaseRows />
@@ -92,7 +90,7 @@ export async function HomePage({ signedIn }: { signedIn: boolean }) {
       <PricingSection signedIn={signedIn} />
 
       {/* ═══ FAQ ══════════════════════════════════════════════ */}
-      <section id="faq" className="relative scroll-mt-16 py-16 sm:py-20">
+      <section id="faq" className="sl-defer relative scroll-mt-16 py-16 sm:py-20">
         <div className="mx-auto max-w-3xl px-4 sm:px-5">
           <SectionHeader eyebrow="faq" title="Questions people ask before signing up" className="mb-10" />
 
@@ -122,7 +120,7 @@ export async function HomePage({ signedIn }: { signedIn: boolean }) {
       </section>
 
       {/* ═══ FINAL CTA — a row of real sprites on the checkerboard ═══ */}
-      <section className="border-t border-white/[0.06] py-16 sm:py-24">
+      <section className="sl-defer border-t border-white/[0.06] py-16 sm:py-24">
         <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 sm:px-5 lg:grid-cols-[1fr_auto]">
           <div className="max-w-xl">
             <h2 className="font-display text-[32px] font-semibold leading-[1.06] tracking-[-0.015em] text-[#FFF1E8] sm:text-[46px]">
@@ -132,11 +130,11 @@ export async function HomePage({ signedIn }: { signedIn: boolean }) {
               {signedIn ? "Describe a character, a weapon or a tile, then animate it into a sprite sheet." : <>Sign up and get {offer.credits} free credits. No card needed.</>}
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link href={signedIn ? "/generate" : registerUrl}
+              <Link href={signedIn ? "/generate" : registerUrl} prefetch={false}
                 className="px-corners inline-flex h-12 w-full items-center justify-center bg-[#FFA300] px-7 text-[15px] font-semibold text-[#131A31] transition hover:bg-[#FFB733] sm:w-auto">
                 {signedIn ? "Open the creator" : "Create a free account"}
               </Link>
-              <Link href="/how-it-works"
+              <Link href="/how-it-works" prefetch={false}
                 className="inline-flex h-12 w-full items-center justify-center rounded-[8px] border border-white/[0.14] px-6 text-[15px] font-medium text-[#FFF1E8] transition hover:bg-white/[0.06] sm:w-auto">
                 Read how it works
               </Link>
@@ -156,6 +154,16 @@ export async function HomePage({ signedIn }: { signedIn: boolean }) {
       <Footer />
     </main>
   );
+}
+
+/**
+ * Explore wall: curated showcase first, then community sprites. Its own
+ * async boundary so the headline can flush before the database answers.
+ */
+async function HomeExplore({ registerUrl }: { registerUrl: string }) {
+  const community = await getFeaturedGenerationsSafe(36);
+  const wall = curateWall([...SHOWCASE, ...community]);
+  return <CommunityWall items={wall} registerUrl={registerUrl} />;
 }
 
 /**

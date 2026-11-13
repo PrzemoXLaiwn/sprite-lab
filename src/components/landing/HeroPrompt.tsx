@@ -170,7 +170,7 @@ export function HeroPrompt({ registerUrl, signedIn = false }: { registerUrl: str
           </button>
           <div className="flex-1" />
           {limitReached ? (
-            <Link href={registerUrl}
+            <Link href={registerUrl} prefetch={false}
               onClick={() => track(FUNNEL.guestSignupClick, { source: "limit", keepable: hasKeepable })}
               className="px-corners flex h-11 w-full items-center justify-center gap-2 bg-[#FFA300] px-5 text-[14px] font-semibold text-[#131A31] transition hover:bg-[#FFB733] sm:w-auto">
               {hasKeepable ? "Sign up to keep this sprite" : "Sign up free"} <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -234,7 +234,7 @@ export function HeroPrompt({ registerUrl, signedIn = false }: { registerUrl: str
                   className="flex h-10 items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 text-[13px] text-[#FFF1E8] transition hover:bg-white/[0.08]">
                   <Download className="h-4 w-4" aria-hidden="true" /> Download
                 </button>
-                <Link href={registerUrl}
+                <Link href={registerUrl} prefetch={false}
                   onClick={() => track(FUNNEL.guestSignupClick, { source: "result", keepable: hasKeepable })}
                   className="px-corners flex h-10 items-center gap-2 bg-[#FFA300] px-4 text-[13px] font-semibold text-[#131A31] transition hover:bg-[#FFB733]">
                   {hasKeepable ? "Sign up to keep this sprite" : SIGNUP_CTA} <ArrowRight className="h-4 w-4" aria-hidden="true" />
