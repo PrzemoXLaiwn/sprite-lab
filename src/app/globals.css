@@ -165,6 +165,9 @@
 
 /* ── Fonts ─────────────────────────────────────────────── */
 .font-display { font-family: var(--font-display), sans-serif; }
+/* Homepage only: the headline paints with the system face, then Tektur. */
+.sl-plain-display .font-display { font-family: ui-sans-serif, system-ui, sans-serif; }
+.sl-plain-display.sl-display-font .font-display { font-family: var(--font-display), sans-serif; }
 .font-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 pre, code, kbd, samp, .font-code { font-family: var(--font-code); }
 

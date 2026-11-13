@@ -6,6 +6,7 @@ import { PricingSection } from "@/components/landing/PricingSection";
 import { HeroPrompt } from "@/components/landing/HeroPrompt";
 import { HeroWalk } from "@/components/landing/HeroWalk";
 import { DeferredGoogleOneTap } from "@/components/landing/DeferredGoogleOneTap";
+import { RevealDisplayFont } from "@/components/landing/RevealDisplayFont";
 import { SiteNav } from "@/components/layout/SiteNav";
 import { CommunityWall } from "@/components/landing/CommunityWall";
 import { TikTokCommunity } from "@/components/landing/TikTokCommunity";
@@ -31,7 +32,8 @@ export function HomePage({ signedIn }: { signedIn: boolean }) {
   const offer = signupOffer();
 
   return (
-    <main className="min-h-screen bg-[#131A31] text-white">
+    <main className="sl-plain-display min-h-screen bg-[#131A31] text-white">
+      <RevealDisplayFont />
 
       {/* ═══ NAV ═════════════════════════════════════════════ */}
       <SiteNav registerUrl={registerUrl} anchorsOnHome signedIn={signedIn} />
