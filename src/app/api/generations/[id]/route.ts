@@ -124,6 +124,17 @@ export async function PATCH(
       );
     }
 
+    if (isPublic === false && generation.isPublic) {
+      const owner = await prisma.user.findUnique({ where: { id: user.id }, select: { plan: true, role: true } });
+      const { hasPaidPerks } = await import("@/lib/billing/entitlements");
+      if (!hasPaidPerks(owner?.plan, owner?.role)) {
+        return NextResponse.json(
+          { error: "Keeping a sprite out of the public gallery is on Starter and up.", code: "UPGRADE" },
+          { status: 402 },
+        );
+      }
+    }
+
     // Nothing the content filter catches goes public, and banned accounts can't share
     if (isPublic === true) {
       if (isBlockedText(generation.prompt)) {

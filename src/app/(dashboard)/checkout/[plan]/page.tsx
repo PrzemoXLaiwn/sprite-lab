@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { loadStripe } from "@stripe/stripe-js";
+import { getCheckoutStripe } from "@/lib/stripe-browser";
 import {
   Elements,
   PaymentElement,
@@ -37,7 +37,7 @@ import { reportServerPurchase } from "@/lib/analytics/purchase";
 import { PaymentRecovery } from "@/components/billing/PaymentRecovery";
 
 // Load Stripe outside of component to avoid recreating on every render
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+const stripePromise = getCheckoutStripe();
 
 interface PlanDetails {
   name: string;

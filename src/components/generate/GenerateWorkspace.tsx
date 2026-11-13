@@ -216,6 +216,8 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
   const urlView      = searchParams.get("view") ?? "";
   const urlProjectId = searchParams.get("projectId") ?? "";
   const urlFolderId  = searchParams.get("folderId") ?? "";
+  const urlRefId     = searchParams.get("refId") ?? "";
+  const urlRefImage  = searchParams.get("refUrl") ?? "";
   // Resolve initial category from URL
   const initCat = GENERATE_CATEGORIES.find(c => c.id === urlCatId) ?? GENERATE_CATEGORIES[0];
   const initSubId = (urlSubId && initCat.subcategories.some(s => s.subcategoryId === urlSubId))
@@ -260,7 +262,9 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
   const [detail, setDetail]               = useState<DetailId>("normal");
   const [prompt, setPrompt]               = useState(urlPrompt);
   // Style reference: new sprites are drawn in this sprite's exact art style
-  const [styleRef, setStyleRef]           = useState<{ id: string; imageUrl: string } | null>(null);
+  const [styleRef, setStyleRef] = useState<{ id: string; imageUrl: string } | null>(
+    urlRefId && urlRefImage ? { id: urlRefId, imageUrl: urlRefImage } : null,
+  );
   const [seed, setSeed]                   = useState("");
   const [palette, setPalette]              = useState<PaletteId>("auto");
   const [pose, setPose]                    = useState<PoseId>("auto");
@@ -838,6 +842,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
     if (touch) {
       void fetch("/api/user/source", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(touch) }).catch(() => {});
     }
+    window.location.assign("/start");
     // Counted: drop ?welcome=1 so a duplicated, restored or shared tab doesn't count it again
     const url = new URL(window.location.href);
     if (url.searchParams.has("welcome")) {

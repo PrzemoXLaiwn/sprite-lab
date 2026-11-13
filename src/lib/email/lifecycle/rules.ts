@@ -21,10 +21,21 @@
 export const HOUR = 60 * 60 * 1000;
 export const DAY = 24 * HOUR;
 
-export type SequenceId = "bring_to_life" | "unfinished" | "unused_credits" | "winback" | "inspiration";
+export type SequenceId =
+  | "day1_animate"
+  | "day3_sheet"
+  | "day7_offer"
+  | "bring_to_life"
+  | "unfinished"
+  | "unused_credits"
+  | "winback"
+  | "inspiration";
 
 /** Strongest first: the first one a user qualifies for is the one they get. */
 export const SEQUENCE_PRIORITY: readonly SequenceId[] = [
+  "day1_animate",
+  "day3_sheet",
+  "day7_offer",
   "bring_to_life",
   "unfinished",
   "unused_credits",
@@ -34,6 +45,9 @@ export const SEQUENCE_PRIORITY: readonly SequenceId[] = [
 
 /** email_logs.type per sequence. */
 export const LIFECYCLE_LOG_TYPES: Record<SequenceId, string> = {
+  day1_animate: "LIFECYCLE_DAY1_ANIMATE",
+  day3_sheet: "LIFECYCLE_DAY3_SHEET",
+  day7_offer: "LIFECYCLE_DAY7_OFFER",
   bring_to_life: "LIFECYCLE_BRING_TO_LIFE",
   unfinished: "LIFECYCLE_UNFINISHED",
   unused_credits: "LIFECYCLE_UNUSED_CREDITS",
@@ -43,6 +57,9 @@ export const LIFECYCLE_LOG_TYPES: Record<SequenceId, string> = {
 
 /** email_preferences key holding when a sequence was last sent (flat keys: written with a jsonb merge). */
 export const SENT_AT_KEYS: Record<SequenceId, string> = {
+  day1_animate: "lifecycleDay1AnimateAt",
+  day3_sheet: "lifecycleDay3SheetAt",
+  day7_offer: "lifecycleDay7OfferAt",
   bring_to_life: "lifecycleBringToLifeAt",
   unfinished: "lifecycleUnfinishedAt",
   unused_credits: "lifecycleUnusedCreditsAt",
@@ -71,6 +88,12 @@ export const RULES = {
   /** Also never two marketing emails closer than this (a send at 23:50 and 00:10 is "two days"). */
   minGapMs: 20 * HOUR,
   bringToLife: { maxAccountAgeMs: 7 * DAY },
+  /** First-week sequence. Each window is one day so a retry the next day cannot send it again. */
+  day1: { minAgeMs: 24 * HOUR, maxAgeMs: 48 * HOUR },
+  day3: { minAgeMs: 3 * DAY, maxAgeMs: 4 * DAY },
+  day7: { minAgeMs: 7 * DAY, maxAgeMs: 8 * DAY },
+  /** Someone who opened the app in this window is not nudged. */
+  activeWithinMs: 12 * HOUR,
   unfinished: { idleMs: 2 * DAY, windowMs: 7 * DAY, cooldownMs: 7 * DAY },
   unusedCredits: { idleMs: 5 * DAY, minCredits: 1 },
   winback: { idleMs: 21 * DAY },
@@ -129,6 +152,8 @@ export interface UserSnapshot {
   latestSprite: WorkItem | null;
   hasAnimation: boolean;
   lastCreatedAt: Date | null;
+  /** FREE, STARTER, PRO, UNLIMITED. Missing means treat as free. */
+  plan: string;
 }
 
 export interface SelectionContext {
@@ -200,6 +225,17 @@ export function lastActivity(u: Pick<UserSnapshot, "createdAt" | "lastActiveAt" 
 
 const sentAt = (u: UserSnapshot, seq: SequenceId) => date(u.prefs.sentAt[seq]);
 
+function inWindow(u: UserSnapshot, now: Date, window: { minAgeMs: number; maxAgeMs: number }): boolean {
+  const age = now.getTime() - u.createdAt.getTime();
+  return age >= window.minAgeMs && age < window.maxAgeMs;
+}
+
+/** Free, and not in the app during the last 12 hours. */
+function freeAndIdle(u: UserSnapshot, now: Date): boolean {
+  if ((u.plan || "FREE") !== "FREE") return false;
+  return now.getTime() - lastActivity(u).getTime() >= RULES.activeWithinMs;
+}
+
 // -----------------------------------------------------------------------------
 // Gates (no generation data needed — the loader uses this to skip work)
 // -----------------------------------------------------------------------------
@@ -230,11 +266,32 @@ type Rule = (u: UserSnapshot, ctx: SelectionContext) => WorkItem | null | false;
 // A rule returns false (not eligible) or the item to feature (null = none needed).
 
 const RULE_FNS: Record<SequenceId, Rule> = {
-  /** Day 1–7, made a sprite, never animated: show THEIR sprite, one click to Animate. */
+  /** About 24h after signup: their sprite, one click to animate. Once. */
+  day1_animate(u, { now }) {
+    if (!inWindow(u, now, RULES.day1) || !freeAndIdle(u, now)) return false;
+    if (u.hasAnimation || sentAt(u, "day1_animate") || !u.latestSprite?.imageUrl) return false;
+    return u.latestSprite;
+  },
+
+  /** Day 3: a finished sheet, whether or not they animated. Once. */
+  day3_sheet(u, { now }) {
+    if (!inWindow(u, now, RULES.day3) || !freeAndIdle(u, now) || sentAt(u, "day3_sheet")) return false;
+    return null;
+  },
+
+  /** Day 7: the existing Starter intro, only for a free account. Once. */
+  day7_offer(u, { now }) {
+    if (!inWindow(u, now, RULES.day7) || !freeAndIdle(u, now) || sentAt(u, "day7_offer")) return false;
+    return null;
+  },
+
+  /** After day 1's window, made a sprite, never animated: show THEIR sprite. */
   bring_to_life(u, { now }) {
     const age = now.getTime() - u.createdAt.getTime();
     if (age > RULES.bringToLife.maxAccountAgeMs) return false;
-    if (u.hasAnimation || sentAt(u, "bring_to_life")) return false;
+    // Free accounts in the first two days get day1_animate instead of this.
+    if (age < RULES.day1.maxAgeMs && (u.plan || "FREE") === "FREE") return false;
+    if (u.hasAnimation || sentAt(u, "bring_to_life") || sentAt(u, "day1_animate")) return false;
     if (!u.latestSprite?.imageUrl) return false;
     return u.latestSprite;
   },
@@ -274,6 +331,7 @@ const RULE_FNS: Record<SequenceId, Rule> = {
 
   /** Recently active, no other marketing email this week: 6 community picks. */
   inspiration(u, { now, inspirationItems }) {
+    if (now.getTime() - u.createdAt.getTime() < 8 * DAY) return false;
     if (inspirationItems < RULES.inspiration.minItems) return false;
     if (now.getTime() - lastActivity(u).getTime() > RULES.inspiration.activeWithinMs) return false;
     if (u.marketingSends.some((d) => now.getTime() - d.getTime() < 7 * DAY)) return false;

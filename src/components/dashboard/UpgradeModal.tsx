@@ -48,7 +48,7 @@ const PLANS = [
     credits: PLAN_MONTHLY_CREDITS.STARTER,
     // Credits, what carries over from Free, and the commercial licence.
     // AI upscale is Pro and up, and AI editing is already on Free.
-    features: PLAN_FEATURES.STARTER.slice(0, 3),
+    features: PLAN_FEATURES.STARTER.slice(2, 7),
     popular: true,
   },
   {

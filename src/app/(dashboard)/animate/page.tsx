@@ -432,6 +432,27 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
   const [packing, setPacking] = useState(false);
   const downloadEngine = async () => {
     if (!result || packing) return;
+    const gate = await fetch("/api/export/preset", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        generationId: shownResultId ?? generationId,
+        format: "godot",
+        frameCount: result.frameCount,
+        frameWidth: result.frameWidth,
+        frameHeight: result.frameHeight,
+        fps,
+        loop: /idle|walk|run|fly|float|loop/i.test(resultMotion.id || ""),
+      }),
+    });
+    if (gate.status === 402) {
+      triggerUpgradeModal();
+      return;
+    }
+    if (!gate.ok) {
+      setError("Couldn't prepare the engine export. Try again.");
+      return;
+    }
     track(FUNNEL.assetDownload, { kind: "animation", format: "engine_pack" });
     logAssetSignal(shownResultId ?? generationId, "download");
     setPacking(true);

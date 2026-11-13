@@ -23,6 +23,7 @@ const body = Atkinson_Hyperlegible_Next({
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   display: "swap",
+  preload: false,
   variable: "--font-jetbrains",
   weight: ["400", "500", "600"],
 });
@@ -31,7 +32,8 @@ const jetbrainsMono = JetBrains_Mono({
 // fonts were tried and rejected — unreadable, esp. digits).
 const display = Tektur({
   subsets: ["latin"],
-  display: "swap",
+  // Optional so a slow font download does not hold the headline (the LCP element).
+  display: "optional",
   variable: "--font-tektur",
 });
 
@@ -203,14 +205,6 @@ export default function RootLayout({
   return (
     <html lang="en" className={`dark ${body.variable} ${jetbrainsMono.variable} ${display.variable}`}>
       <head>
-        {/* Resource Hints - Performance Optimization */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link rel="dns-prefetch" href="https://js.stripe.com" />
-        <link rel="dns-prefetch" href="https://replicate.delivery" />
-        <link rel="preconnect" href="https://va.vercel-scripts.com" />
-        
-        {/* Favicon - wszystkie rozmiary dla różnych przeglądarek i Google */}
         <link rel="icon" type="image/x-icon" href="/favicon.ico" />
         <link rel="icon" type="image/png" sizes="16x16" href="/icon-16.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png" />

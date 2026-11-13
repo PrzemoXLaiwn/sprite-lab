@@ -38,6 +38,7 @@ function user(over: Partial<UserSnapshot> = {}): UserSnapshot {
     latestSprite: sprite(),
     hasAnimation: false,
     lastCreatedAt: ago(30 * HOUR),
+    plan: "FREE",
     ...over,
   };
 }
@@ -59,7 +60,7 @@ describe("hard rules", () => {
 
   it("keeps the first 24 h after signup quiet", () => {
     expect(pick(user({ createdAt: ago(23 * HOUR) }))).toBe("skip:quiet_period");
-    expect(pick(user({ createdAt: ago(25 * HOUR) }))).toBe("bring_to_life");
+    expect(pick(user({ createdAt: ago(25 * HOUR) }))).toBe("day1_animate");
   });
 
   it("sends at most one marketing email per day, whatever type it was", () => {
@@ -91,6 +92,16 @@ describe("hard rules", () => {
 });
 
 describe("priority", () => {
+  it("day 1 / 3 / 7 fire once, skip paid accounts and anyone active in the last 12 hours", () => {
+    const idle = { lastActiveAt: ago(20 * HOUR), lastCreatedAt: ago(20 * HOUR) };
+    expect(pick(user({ createdAt: ago(30 * HOUR), ...idle }))).toBe("day1_animate");
+    expect(pick(user({ createdAt: ago(30 * HOUR), ...idle, plan: "STARTER" }))).toBe("bring_to_life");
+    expect(pick(user({ createdAt: ago(30 * HOUR), lastActiveAt: ago(2 * HOUR), lastCreatedAt: ago(2 * HOUR) }))).toBe("skip:no_match");
+    expect(pick(user({ createdAt: ago(3 * DAY + 2 * HOUR), ...idle, hasAnimation: true }))).toBe("day3_sheet");
+    expect(pick(user({ createdAt: ago(7 * DAY + HOUR), ...idle, hasAnimation: true }))).toBe("day7_offer");
+    expect(pick(user({ createdAt: ago(7 * DAY + HOUR), ...idle, prefs: { sentAt: { day7_offer: ago(HOUR).toISOString() } } }))).not.toBe("day7_offer");
+  });
+
   it("bring_to_life beats unfinished when both fit", () => {
     const old = sprite({ createdAt: ago(3 * DAY) });
     const u = user({ createdAt: ago(4 * DAY), latestItem: old, latestSprite: old, lastActiveAt: ago(3 * DAY), lastCreatedAt: ago(3 * DAY) });

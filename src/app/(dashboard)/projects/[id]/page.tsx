@@ -268,6 +268,13 @@ export default function ProjectDetailPage() {
                     <span className="text-[#C8CCE8]">{folders.length}</span> folder{folders.length === 1 ? "" : "s"}
                   </span>
                 </div>
+                {assets[0] && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Link href={`/animate?id=${encodeURIComponent(assets[0].id)}&motion=walk`} className={secondaryBtn}>Animate</Link>
+                    <Link href={`/animate?id=${encodeURIComponent(assets[0].id)}&do=rotate4`} className={secondaryBtn}>Directions</Link>
+                    <Link href={`/generate?projectId=${encodeURIComponent(project.id)}&styleId=${encodeURIComponent(assets[0].styleId)}&categoryId=CHARACTERS&subcategoryId=HEROES&prompt=${encodeURIComponent(assets[0].prompt)}&refId=${encodeURIComponent(assets[0].id)}&refUrl=${encodeURIComponent(assets[0].imageUrl)}`} className={secondaryBtn}>Same character, new pose</Link>
+                  </div>
+                )}
               </div>
 
               <div className="flex shrink-0 flex-wrap items-center gap-2">

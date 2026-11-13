@@ -37,7 +37,7 @@ export async function loadLifecycleAudience(now: Date): Promise<LifecycleAudienc
   const [users, sends, bounced] = await Promise.all([
     prisma.user.findMany({
       where: { isActive: true },
-      select: { id: true, email: true, name: true, credits: true, createdAt: true, lastActiveAt: true, emailPreferences: true },
+      select: { id: true, email: true, name: true, credits: true, createdAt: true, lastActiveAt: true, emailPreferences: true, plan: true },
     }),
     prisma.emailLog.findMany({
       // Anything that left us counts (the webhook later turns "sent" into delivery_delayed / bounced / complained)
@@ -81,6 +81,7 @@ export async function loadLifecycleAudience(now: Date): Promise<LifecycleAudienc
       latestSprite: null,
       hasAnimation: false,
       lastCreatedAt: null,
+      plan: u.plan || "FREE",
     };
     const reason = gate(snap, now);
     if (reason) gated[reason] = (gated[reason] ?? 0) + 1;

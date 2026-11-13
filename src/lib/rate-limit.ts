@@ -326,10 +326,19 @@ export async function rateLimitGuestGeneration(
 export async function rateLimitUserGeneration(
   userId: string
 ): Promise<RateLimitResult> {
-  // Generous: this is an abuse brake. Expensive work has its own per-user
-  // guards in src/lib/billing/operations.ts; 1-credit sprites in bulk are fine.
-  const requests = 120;
-  const limiter = getLimiter("user:gen", requests, 3600);
+  // Paid plans get a higher hourly cap. Free stays high enough for a normal
+  // session (the first character plus an animation is two calls) and low
+  // enough that a script cannot drain the image budget.
+  let requests = 20;
+  try {
+    const { prisma } = await import("@/lib/prisma");
+    const { generationHourlyLimit } = await import("@/lib/billing/entitlements");
+    const account = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true, role: true } });
+    requests = generationHourlyLimit(account?.plan, account?.role);
+  } catch {
+    requests = 20;
+  }
+  const limiter = getLimiter(`user:gen:${requests}`, requests, 3600);
   if (limiter) {
     try {
       const result = await limiter.limit(userId);

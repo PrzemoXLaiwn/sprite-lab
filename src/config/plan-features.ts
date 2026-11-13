@@ -35,13 +35,17 @@ export const PLAN_FEATURES = {
     "All 12 art styles, Standard & HD",
     "Transparent PNG on every sprite",
     "Animations, 4 & 8 directions, AI editing",
-    "Projects + pack export (.zip)",
+    "Projects for each character",
     "Personal, non-commercial use",
   ],
   STARTER: [
     `${PLAN_MONTHLY_CREDITS.STARTER} credits / month`,
     "Everything in Free",
     "Commercial licence",
+    "Unity, Godot and GameMaker export",
+    "2× export, nearest-neighbour",
+    "Hide sprites from the public gallery",
+    "Higher hourly generation limit",
   ],
   PRO: [
     `${PLAN_MONTHLY_CREDITS.PRO} credits / month`,

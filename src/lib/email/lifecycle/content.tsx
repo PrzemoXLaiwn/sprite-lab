@@ -12,11 +12,13 @@ import { render } from "@react-email/render";
 import { ANIMATION_FRAME_OPTIONS, ROTATIONS, animationPresetsFor, supportsRotation } from "@/config/animations";
 import { buildToolHref } from "@/lib/workspace/session";
 import { BringToLifeEmail } from "../templates/lifecycle/BringToLifeEmail";
+import { SheetExampleEmail, StarterOfferEmail } from "../templates/lifecycle/FirstWeekEmails";
 import { UnfinishedEmail } from "../templates/lifecycle/UnfinishedEmail";
 import { UnusedCreditsEmail, type CreditIdea } from "../templates/lifecycle/UnusedCreditsEmail";
 import { WinbackEmail } from "../templates/lifecycle/WinbackEmail";
 import { InspirationEmail, type InspirationItem } from "../templates/lifecycle/InspirationEmail";
 import { SITE, type HeroImage } from "../templates/lifecycle/LifecycleLayout";
+import { isStarterFirstMonthOfferEnabled, starterCheckoutHref, starterFirstMonthPitch, starterRegularPitch } from "@/config/starter-first-month";
 import { postalAddress } from "../flags";
 import type { SequenceId, UserSnapshot, WorkItem } from "./rules";
 
@@ -180,21 +182,23 @@ export function buildLifecycleMessage(input: BuildInput): LifecycleMessage {
   const hi = name ? `Hi ${name},` : "Hi,";
 
   switch (sequence) {
+    case "day1_animate":
     case "bring_to_life": {
-      if (!item?.imageUrl) throw new Error("bring_to_life needs a sprite with an image");
+      if (!item?.imageUrl) throw new Error(`${sequence} needs a sprite with an image`);
       const spriteName = shortName(item.prompt);
       const ctaUrl = withUtm(buildToolHref("animate", { id: item.id }), sequence);
       const motions = animationPresetsFor(item.categoryId).slice(0, 4).map((p) => p.label);
-      const subject = `Your ${spriteName} is ready to move`;
-      const preview = "Pick a motion and get a sprite sheet, a GIF and an engine pack for your game.";
-      const reason = "You're getting this because you made a sprite on SpriteLab this week.";
+      const subject = sequence === "day1_animate"
+        ? `Your ${spriteName} is waiting`
+        : `Your ${spriteName} is ready to move`;
+      const preview = "Animate it into a walk cycle. A 4-frame loop fits the free credits.";
+      const reason = "You're getting this because you made a sprite on SpriteLab and haven't animated it.";
       const text = [
         hi,
         "",
-        `Your ${spriteName} can move. Open it in Animate, pick a motion (${motions.join(", ")}) and you get a sprite sheet, a GIF and an engine pack for Godot, Unity or GameMaker.`,
-        `A 4-frame animation costs ${ANIMATION_CREDITS} credits. You have ${user.credits}.`,
+        `Your ${spriteName} is waiting. Open it in Animate and pick a walk. A 4-frame animation costs ${ANIMATION_CREDITS} credits. You have ${user.credits}.`,
         "",
-        `Animate my sprite: ${ctaUrl}`,
+        `Animate it: ${ctaUrl}`,
         "",
         footerText(reason, unsubscribeUrl),
       ].join("\n");
@@ -207,6 +211,33 @@ export function buildLifecycleMessage(input: BuildInput): LifecycleMessage {
             motions={motions} credits={user.credits} animationCredits={ANIMATION_CREDITS} animateUrl={ctaUrl}
           />
         ),
+      };
+    }
+
+    case "day3_sheet": {
+      const ctaUrl = withUtm("/generate", sequence);
+      const subject = "A finished walk cycle, as a sprite sheet";
+      const preview = "One sheet of frames, a GIF, and files an engine can import.";
+      const reason = "You're getting this because you started a SpriteLab account this week.";
+      const sheet: HeroImage = { imageUrl: `${SITE}/showcase/sheet-witch-walk.png`, alt: "Witch walk cycle sprite sheet", wide: true, pixel: true };
+      const text = [hi, "", "A walk cycle comes back as a sprite sheet and a GIF. This is one we made.", "", `Open SpriteLab: ${ctaUrl}`, "", footerText(reason, unsubscribeUrl)].join("\n");
+      return {
+        sequence, subject, preview, ctaUrl, text,
+        element: <SheetExampleEmail preview={preview} reason={reason} unsubscribeUrl={unsubscribeUrl} userName={name} sheet={sheet} ctaUrl={ctaUrl} />,
+      };
+    }
+
+    case "day7_offer": {
+      const offerOn = isStarterFirstMonthOfferEnabled();
+      const priceLine = offerOn ? starterFirstMonthPitch() : starterRegularPitch();
+      const ctaUrl = withUtm(starterCheckoutHref(offerOn), sequence);
+      const subject = offerOn ? "Starter is £3 for the first month" : "Starter is £5 a month";
+      const preview = priceLine;
+      const reason = "You're getting this because your SpriteLab account is a week old and still on the free plan.";
+      const text = [hi, "", priceLine, "Starter adds a commercial licence, Unity and Godot export, a 2× download, and sprites that stay off the public gallery.", "", `See Starter: ${ctaUrl}`, "", footerText(reason, unsubscribeUrl)].join("\n");
+      return {
+        sequence, subject, preview, ctaUrl, text,
+        element: <StarterOfferEmail preview={preview} reason={reason} unsubscribeUrl={unsubscribeUrl} userName={name} priceLine={priceLine} ctaUrl={ctaUrl} />,
       };
     }
 

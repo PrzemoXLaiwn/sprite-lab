@@ -45,7 +45,7 @@
   --color-chart-4: #eab308;
   --color-chart-5: #8b5cf6;
   --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-tektur), var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-tektur), ui-sans-serif, system-ui, sans-serif;
   /* UI labels/numbers that used to be monospace now use the body face (tabular
      figures keep numbers aligned); real code keeps JetBrains Mono below. */
   --font-mono: var(--font-body), ui-sans-serif, system-ui, sans-serif;
