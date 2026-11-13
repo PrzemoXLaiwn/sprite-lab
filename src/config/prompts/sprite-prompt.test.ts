@@ -61,6 +61,15 @@ describe("armour, anime and sets", () => {
     expect(p).not.toMatch(/gacha/i);
   });
 
+  it("frames an effect and a projectile as one centred subject, not a character", () => {
+    const effect = buildSpritePrompt({ subject: "a fireball", styleId: "PIXEL_ART_16", categoryId: "EFFECTS" });
+    const shot = buildSpritePrompt({ subject: "a fire arrow", styleId: "PIXEL_ART_16", categoryId: "PROJECTILES" });
+    expect(effect).toMatch(/one visual effect centred/);
+    expect(effect).toMatch(/no character/);
+    expect(shot).toMatch(/pointing to the right/);
+    expect(shot).not.toMatch(/full body character/);
+  });
+
   it("lays a set out as a row of separate items", () => {
     const p = buildSpritePrompt({
       subject: "health potions",

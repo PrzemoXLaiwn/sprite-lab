@@ -182,9 +182,67 @@ export function defringeLightEdges(raw: RgbaImage, passes = 2): number {
   return cleared;
 }
 
+const FRINGE_LUMA = 190;
+const FRINGE_CHROMA = 55;
+
+function isLightFringe(r: number, g: number, b: number, lumaCut = FRINGE_LUMA, chromaCut = FRINGE_CHROMA): boolean {
+  return luma(r, g, b) >= lumaCut && Math.max(r, g, b) - Math.min(r, g, b) <= chromaCut;
+}
+
+/**
+ * A pale anti-aliased rim (the white key bleeding into the outline) is
+ * recoloured to the subject colour just inside it. Deleting it would shrink
+ * the silhouette; leaving it is the halo. White cloth, whose inside is also
+ * light, is left alone.
+ */
+export function recolorLightFringe(raw: RgbaImage, passes = 2): number {
+  const { width: w, height: h, data } = raw;
+  let changed = 0;
+  for (let pass = 0; pass < passes; pass++) {
+    const edits: { i: number; r: number; g: number; b: number }[] = [];
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const p = y * w + x;
+        const i = p * 4;
+        if (!opaque(data, p) || !isLightFringe(data[i], data[i + 1], data[i + 2])) continue;
+        const neigh: Array<[number, number]> = [];
+        if (x > 0 && !opaque(data, p - 1)) neigh.push([1, 0]);
+        if (x < w - 1 && !opaque(data, p + 1)) neigh.push([-1, 0]);
+        if (y > 0 && !opaque(data, p - w)) neigh.push([0, 1]);
+        if (y < h - 1 && !opaque(data, p + w)) neigh.push([0, -1]);
+        if (!neigh.length) continue;
+        let found: [number, number, number] | null = null;
+        for (const [sx, sy] of neigh) {
+          for (let s = 1; s <= 4; s++) {
+            const ix = x + sx * s, iy = y + sy * s;
+            if (ix < 0 || iy < 0 || ix >= w || iy >= h) break;
+            const q = iy * w + ix;
+            if (!opaque(data, q)) continue;
+            const j = q * 4;
+            if (!isLightFringe(data[j], data[j + 1], data[j + 2])) {
+              found = [data[j], data[j + 1], data[j + 2]];
+              break;
+            }
+          }
+          if (found) break;
+        }
+        if (!found) continue;
+        edits.push({ i, r: found[0], g: found[1], b: found[2] });
+      }
+    }
+    if (!edits.length) break;
+    for (const e of edits) {
+      data[e.i] = e.r; data[e.i + 1] = e.g; data[e.i + 2] = e.b; data[e.i + 3] = 255;
+    }
+    changed += edits.length;
+  }
+  return changed;
+}
+
 /** Specks, then the light fringe. Returns the matte after the repair. */
 export function repairMatte(raw: RgbaImage): MatteReport {
   dropSpecks(raw);
+  recolorLightFringe(raw, 2);
   defringeLightEdges(raw, 2);
   return assessMatte(raw);
 }

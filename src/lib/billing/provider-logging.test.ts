@@ -52,6 +52,23 @@ describe("Runware tool calls", () => {
     expect(rows[0]).toMatchObject({ task: "remove_bg", outcome: "error", estCostUsd: 0, error: "Runware invalidInputImage: bad image" });
   });
 
+  it("retries a background-removal timeout once, and keeps the image when the retry works", async () => {
+    M.removeBackground
+      .mockRejectedValueOnce(new Error("Runware background removal timed out after 20000ms"))
+      .mockResolvedValueOnce([{ imageURL: "https://im.runware.ai/b.png", cost: 0.0006 }]);
+    const r = await removeBackground("https://cdn/x.png");
+    expect(r.success).toBe(true);
+    expect(r.imageUrl).toBe("https://im.runware.ai/b.png");
+    expect(M.removeBackground).toHaveBeenCalledTimes(2);
+    expect(rows.map((row) => row.outcome)).toEqual(["timeout", "ok"]);
+  });
+
+  it("does not spend a second call on an invalid image", async () => {
+    M.removeBackground.mockRejectedValue({ error: true, errors: [{ code: "invalidInputImage", message: "bad image" }] });
+    expect((await removeBackground("https://cdn/x.png")).success).toBe(false);
+    expect(M.removeBackground).toHaveBeenCalledTimes(1);
+  });
+
   it("background removal inside an operation is correlated with it", async () => {
     M.removeBackground.mockResolvedValue([{ imageURL: "https://im.runware.ai/b.png", cost: 0.0006 }]);
     await runInOperation(ctx(1), () => removeBackground("https://cdn/x.png"));

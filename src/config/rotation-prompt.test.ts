@@ -12,6 +12,8 @@ describe("buildRotationPrompt", () => {
     expect(p).toMatch(/Exactly 4 figures on the page, each direction drawn once/);
     expect(p).toMatch(/never add mirrored copies/);
     expect(p).toMatch(/same individual/);
+    expect(p).toMatch(/Scale lock/);
+    expect(p).toMatch(/Do not zoom/);
     expect(p).not.toMatch(/previous sheet was rejected/);
     expect(p).not.toMatch(/Leave the last/);
   });
