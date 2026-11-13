@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { stripe, getPlanByPriceId, LIFETIME_DEALS } from "@/lib/stripe";
+import { billingPatchForSubscription, planAfterSubscriptionEnded } from "@/lib/billing/subscription-sync";
 import prisma from "@/lib/prisma";
 import Stripe from "stripe";
 import { z } from "zod";
@@ -323,9 +324,6 @@ async function handleSubscriptionPurchase(session: Stripe.Checkout.Session, user
 
   const periodEnd = getSubscriptionPeriodEnd(subscription);
 
-  // Link the subscription only. Credits are granted per paid invoice by
-  // handleInvoicePaymentSucceeded (see _lib/fulfillment.ts) — granting here
-  // too would double-credit the first month.
   await prisma.user.update({
     where: { id: userId },
     data: {
@@ -333,6 +331,7 @@ async function handleSubscriptionPurchase(session: Stripe.Checkout.Session, user
       stripeCustomerId: stripeId(subscription.customer),
       stripeSubscriptionId: subscriptionId,
       stripePriceId: priceId,
+      cancelAtPeriodEnd: subscription.cancel_at_period_end === true,
       ...(periodEnd ? { stripeCurrentPeriodEnd: periodEnd } : {}),
     },
   });
@@ -348,37 +347,73 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
     return;
   }
 
-  // incomplete / incomplete_expired / unpaid / canceled must not grant a paid
-  // plan. Cancellation is handled by customer.subscription.deleted.
-  if (!isActiveSubscriptionStatus(subscription.status)) {
-    console.log(`Subscription ${subscription.id} is ${subscription.status} — plan not updated`);
-    return;
-  }
-
-  const priceId = subscription.items.data[0]?.price.id;
+  const priceId = subscription.items.data[0]?.price.id ?? null;
   const planName = priceId ? getPlanByPriceId(priceId) : null;
+  const patch = billingPatchForSubscription({
+    id: subscription.id,
+    status: subscription.status,
+    cancelAtPeriodEnd: subscription.cancel_at_period_end === true,
+    priceId,
+    planName,
+    periodEnd: getSubscriptionPeriodEnd(subscription),
+  });
 
-  if (!planName) {
-    console.error("Unknown price ID:", priceId);
+  if (patch.ended) {
+    await applyEndedSubscription(userId, subscription.id);
     return;
   }
 
-  console.log("Subscription updated for user:", userId, "to plan:", planName);
+  if (!patch.plan && !isActiveSubscriptionStatus(subscription.status)) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        cancelAtPeriodEnd: patch.cancelAtPeriodEnd,
+        stripeCurrentPeriodEnd: patch.stripeCurrentPeriodEnd,
+      },
+    });
+    return;
+  }
 
-  const periodEnd = getSubscriptionPeriodEnd(subscription);
-
-  // Update user subscription details
   await prisma.user.update({
     where: { id: userId },
     data: {
-      plan: planName,
-      stripeSubscriptionId: subscription.id,
-      stripePriceId: priceId,
-      ...(periodEnd ? { stripeCurrentPeriodEnd: periodEnd } : {}),
+      ...(patch.plan ? { plan: patch.plan } : {}),
+      cancelAtPeriodEnd: patch.cancelAtPeriodEnd,
+      stripeCurrentPeriodEnd: patch.stripeCurrentPeriodEnd,
+      ...(patch.stripeSubscriptionId ? { stripeSubscriptionId: patch.stripeSubscriptionId } : {}),
+      ...(patch.stripePriceId ? { stripePriceId: patch.stripePriceId } : {}),
     },
   });
 
-  console.log(`User ${userId} subscription updated to ${planName}`);
+  console.log(`User ${userId} subscription updated to ${patch.plan ?? "unchanged"} cancel=${patch.cancelAtPeriodEnd}`);
+}
+
+async function applyEndedSubscription(userId: string, subscriptionId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { stripeSubscriptionId: true, isLifetime: true, lifetimeDeal: true, plan: true },
+  });
+  if (user?.stripeSubscriptionId && user.stripeSubscriptionId !== subscriptionId) {
+    console.log(`Subscription ${subscriptionId} is not the current one for ${userId} — ignoring`);
+    return;
+  }
+  const lifetimePlan = user?.isLifetime
+    ? LIFETIME_DEALS[(user.lifetimeDeal ?? "") as keyof typeof LIFETIME_DEALS]?.basePlan ?? null
+    : null;
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      plan: planAfterSubscriptionEnded({
+        isLifetime: user?.isLifetime === true,
+        lifetimePlan,
+        plan: user?.plan ?? "FREE",
+      }),
+      cancelAtPeriodEnd: false,
+      stripeSubscriptionId: null,
+      stripePriceId: null,
+      stripeCurrentPeriodEnd: null,
+    },
+  });
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
@@ -391,38 +426,15 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { stripeSubscriptionId: true, isLifetime: true, lifetimeDeal: true, plan: true },
+    select: { stripeSubscriptionId: true },
   });
-
-  // Ignore deletion of an old subscription when the user has since moved to
-  // a different one.
   if (user?.stripeSubscriptionId && user.stripeSubscriptionId !== subscription.id) {
     console.log(`Deleted subscription ${subscription.id} is not the current one for ${userId} — ignoring`);
     return;
   }
 
   console.log("Subscription deleted for user:", userId);
-
-  // Downgrade to free plan WITHOUT touching the credit balance. The credits
-  // they have were already paid for; resetting to 10 wipes purchased credits
-  // and is legally sketchy. Future monthly grants stop because they're tied
-  // to invoice.payment_succeeded which won't fire after cancellation.
-  // Lifetime users fall back to their LIFETIME deal's plan — not whatever
-  // subscription plan they had (otherwise: buy Starter Lifetime, subscribe to
-  // Studio for one month, cancel → Studio forever).
-  const lifetimePlan = user?.isLifetime
-    ? LIFETIME_DEALS[(user.lifetimeDeal ?? "") as keyof typeof LIFETIME_DEALS]?.basePlan
-      ?? (user.plan === "FREE" ? "FREE" : "STARTER")
-    : null;
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      plan: lifetimePlan ?? "FREE",
-      stripeSubscriptionId: null,
-      stripePriceId: null,
-      stripeCurrentPeriodEnd: null,
-    },
-  });
+  await applyEndedSubscription(userId, subscription.id);
 
   // Audit-only transaction. Use 0 amount so this is purely a status marker
   // and doesn't show up as a debit in user-facing credit history.
@@ -471,12 +483,13 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   console.log("Invoice payment succeeded for user:", userId);
 
   const periodEnd = getSubscriptionPeriodEnd(subscription);
-  if (periodEnd) {
-    await prisma.user.update({
-      where: { id: userId },
-      data: { stripeCurrentPeriodEnd: periodEnd },
-    });
-  }
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      ...(periodEnd ? { stripeCurrentPeriodEnd: periodEnd } : {}),
+      cancelAtPeriodEnd: subscription.cancel_at_period_end === true,
+    },
+  });
 
   // Source of truth for subscription credits — exactly once per invoice id.
   await grantSubscriptionInvoiceCredits({

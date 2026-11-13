@@ -22,6 +22,7 @@ model User {
   stripeSubscriptionId  String?       @unique @map("stripe_subscription_id")
   stripePriceId         String?       @map("stripe_price_id")
   stripeCurrentPeriodEnd DateTime?    @map("stripe_current_period_end")
+  cancelAtPeriodEnd     Boolean      @default(false) @map("cancel_at_period_end")
   isActive              Boolean       @default(true) @map("is_active")
   totalSpent            Float         @default(0) @map("total_spent") // Total money spent in GBP
   createdAt             DateTime      @default(now()) @map("created_at")
