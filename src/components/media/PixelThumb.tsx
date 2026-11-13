@@ -15,12 +15,15 @@ type PixelThumbProps = {
   /** Layout width/height in CSS pixels. Reserves the box (no CLS). */
   width?: number;
   height?: number;
+  /** Largest derivative to offer. Gallery grids cap this so a phone does not pull a 512px file. */
+  maxWidth?: ThumbWidth;
   /** Hide a decorative tile that repeats an adjacent label. */
   "aria-hidden"?: boolean;
 };
 
-function srcSetFor(src: string, pixel: boolean): string | undefined {
-  const entries = SRCSET_WIDTHS.map((w) => {
+function srcSetFor(src: string, pixel: boolean, maxWidth?: ThumbWidth): string | undefined {
+  const widths = maxWidth ? SRCSET_WIDTHS.filter((w) => w <= maxWidth) : SRCSET_WIDTHS;
+  const entries = widths.map((w) => {
     const url = gallerySrc(src, w, pixel);
     // Native files are not width-addressable; a fake srcset would lie.
     if (url === src) return null;
@@ -35,13 +38,14 @@ function srcSetFor(src: string, pixel: boolean): string | undefined {
  * The derivative is always nearest-neighbor. Pixel styles also get
  * `pixel-perfect` (crisp-edges). Not priority — the LCP image opts in elsewhere.
  */
-export function PixelThumb({ src, alt, sizes, pixel = false, className = "", width, height, "aria-hidden": ariaHidden }: PixelThumbProps) {
+export function PixelThumb({ src, alt, sizes, pixel = false, className = "", width, height, maxWidth, "aria-hidden": ariaHidden }: PixelThumbProps) {
   // 20px chips have a committed 40×40 file. Don't request the full PNG.
   const iconCandidate = width !== undefined && width <= 40 ? showcaseIconSrc(src) : undefined;
   const icon = iconCandidate && iconCandidate !== src ? iconCandidate : undefined;
-  const fallbackWidth = snapThumbWidth(width ? width * 2 : 256);
+  const wanted = snapThumbWidth(width ? width * 2 : 256);
+  const fallbackWidth = maxWidth && wanted > maxWidth ? maxWidth : wanted;
   const url = icon ?? gallerySrc(src, fallbackWidth, pixel);
-  const srcSet = icon ? undefined : srcSetFor(src, pixel);
+  const srcSet = icon ? undefined : srcSetFor(src, pixel, maxWidth);
   const cls = `${className}${pixel ? " pixel-perfect" : ""}`.trim();
 
   return (
@@ -56,6 +60,7 @@ export function PixelThumb({ src, alt, sizes, pixel = false, className = "", wid
       height={height}
       loading="lazy"
       decoding="async"
+      fetchPriority="low"
       className={cls}
     />
   );

@@ -116,7 +116,7 @@ async function createNonce(): Promise<{ raw: string; hashed: string }> {
  * success the visitor goes where a normal Google sign-in goes: /auth/confirm
  * for a brand-new account, /generate otherwise.
  */
-export function GoogleOneTap() {
+export function GoogleOneTap({ loadNow = false }: { loadNow?: boolean }) {
   const started = useRef(false);
 
   const init = useCallback(async () => {
@@ -224,7 +224,9 @@ export function GoogleOneTap() {
     }
 
     const smallScreen = window.matchMedia(SMALL_SCREEN_QUERY).matches;
-    if (smallScreen) {
+    if (loadNow) {
+      void begin();
+    } else if (smallScreen) {
       // No download and no prompt until a gesture, so the first screen stays clear.
       window.addEventListener("pointerdown", onInteract, { passive: true });
       window.addEventListener("keydown", onInteract);
@@ -250,7 +252,7 @@ export function GoogleOneTap() {
       }
       started.current = false;
     };
-  }, [init, pathname]);
+  }, [init, pathname, loadNow]);
 
   return null;
 }

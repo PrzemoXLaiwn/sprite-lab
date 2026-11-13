@@ -18,7 +18,7 @@ export function GuideTabs({ sections, prices }: { sections: GuideSection[]; pric
   const s = sections.find((x) => x.id === active) ?? sections[0];
 
   return (
-    <section id="how-it-works" className="relative mx-auto w-full max-w-6xl scroll-mt-16 px-4 py-16 sm:px-5 sm:py-20">
+    <section id="how-it-works" className="sl-defer relative mx-auto w-full max-w-6xl scroll-mt-16 px-4 py-16 sm:px-5 sm:py-20">
       <SectionHeader
         title="How SpriteLab works"
         intro="What each part of the app does, what is worth trying, and what it costs in credits."

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type Ref } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { scheduleAfterPaint } from "@/lib/schedule-after-paint";
 import {
   MEASUREMENT_CHOICE_CHANGED,
   MEASUREMENT_CHOICE_KEY,
@@ -105,17 +105,29 @@ export function ConsentNotice() {
   useEffect(() => () => window.clearInterval(retryRef.current), []);
 
   useEffect(() => {
-    const supabase = createClient();
     let alive = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (alive) bindPurchaseOwner(data.session?.user.id ?? null);
-    }).catch(() => {});
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      bindPurchaseOwner(session?.user.id ?? null);
+    let unsubscribe = () => {};
+    // Supabase is a large client. Purchase binding can wait until a gesture
+    // or a few seconds after load; the homepage must not parse it first.
+    const cancel = scheduleAfterPaint(() => {
+      void import("@/lib/supabase/client").then(async ({ createClient }) => {
+        if (!alive) return;
+        const supabase = createClient();
+        try {
+          const { data } = await supabase.auth.getSession();
+          if (alive) bindPurchaseOwner(data.session?.user.id ?? null);
+        } catch { /* session lookup can fail closed */ }
+        if (!alive) return;
+        const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+          bindPurchaseOwner(session?.user.id ?? null);
+        });
+        unsubscribe = () => data.subscription.unsubscribe();
+      }).catch(() => {});
     });
     return () => {
       alive = false;
-      data.subscription.unsubscribe();
+      cancel();
+      unsubscribe();
     };
   }, []);
 
