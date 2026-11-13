@@ -19,11 +19,11 @@ import { GEAR_SLOTS, LEADERBOARD_SIZE, PARTY_SIZE, RUN_IDLE_MS, RUNS_PER_DAY, SK
 import { autoEquip, parseSlots, referencedIds, validateSlots, type SlotIds } from "./party";
 import { runSeed } from "./rng";
 import {
-  displayName, isoWeek, nextRunIndex, nextUtcMidnight, previousWeek, runsLeft, utcDay, weekStart,
+  displayName, isoWeek, nextRunIndex, nextUtcMidnight, previousWeek, runWeekIsOpen, runsLeft, utcDay, weekStart,
 } from "./rules";
 import { chooseBlessing, initialState, runSegment, type FloorLog, type RunState } from "./simulate";
 import {
-  ACTIVE_RUN_SQL, ADVANCE_RUN_SQL, HERO_ANIMS_SQL, INSERT_RUN_SQL, LEADERBOARD_SQL, PARTY_GET_SQL, PARTY_SAVE_SQL, PAY_PRIZES_SQL, RECORDS_SQL,
+  ACTIVE_RUN_SQL, ADVANCE_RUN_SQL, CLOSE_EXPIRED_RUN_SQL, HERO_ANIMS_SQL, INSERT_RUN_SQL, LEADERBOARD_SQL, PAID_GENERATIONS_SQL, PARTY_GET_SQL, PARTY_SAVE_SQL, PAY_PRIZES_SQL, RECORDS_SQL,
   RUN_BY_ID_SQL, RUNS_TODAY_SQL, SPRITES_SQL, TROPHIES_SQL, prizeParams,
 } from "./sql";
 import {
@@ -349,15 +349,20 @@ async function viewOf(userId: string, id: string, week: string, state: StoredSta
   return base;
 }
 
-async function advance(userId: string, row: RunRow, state: StoredState): Promise<boolean> {
+async function advance(userId: string, row: RunRow, state: StoredState, now: Date): Promise<boolean> {
   const updated = await prisma.$queryRawUnsafe<{ step: number }[]>(
-    ADVANCE_RUN_SQL, row.id, userId, row.step, JSON.stringify(state), state.done ? "done" : "choosing", state.floor,
+    ADVANCE_RUN_SQL, row.id, userId, row.step, JSON.stringify(state), state.done ? "done" : "choosing", state.floor, isoWeek(now),
   );
   return updated.length === 1;
 }
 
+/** Marks a previous week's run finished. Does not raise its floor. */
+async function closeExpiredRun(userId: string, row: RunRow, now: Date): Promise<void> {
+  await prisma.$queryRawUnsafe(CLOSE_EXPIRED_RUN_SQL, row.id, userId, isoWeek(now));
+}
+
 /** Finishes a run nobody came back to: the first offered blessing at every choice. */
-async function autoFinish(userId: string, row: RunRow): Promise<void> {
+async function autoFinish(userId: string, row: RunRow, now: Date): Promise<void> {
   if (!row.state) return;
   const units = membersOf(row.party).map((m) => m.stats);
   let state = row.state;
@@ -370,15 +375,19 @@ async function autoFinish(userId: string, row: RunRow): Promise<void> {
     state = { ...runSegment(units, state).state, before: row.state.before };
   }
   if (!state.done) state = { ...state, done: true, offer: null };
-  await advance(userId, row, state);
+  await advance(userId, row, state, now);
 }
 
 /** The unfinished run to resume, or null. Runs idle for 10+ minutes are finished automatically. */
 export async function loadActiveRun(userId: string, now = new Date()): Promise<RunView | null> {
   const [row] = await prisma.$queryRawUnsafe<RunRow[]>(ACTIVE_RUN_SQL, userId);
   if (!row || !row.state) return null;
+  if (!runWeekIsOpen(row.week, now)) {
+    await closeExpiredRun(userId, row, now);
+    return null;
+  }
   if (now.getTime() - new Date(row.updated_at).getTime() > RUN_IDLE_MS) {
-    await autoFinish(userId, row);
+    await autoFinish(userId, row, now);
     return null;
   }
   return viewOf(userId, row.id, row.week, row.state, membersOf(row.party), [], now);
@@ -427,13 +436,17 @@ export type ChooseResult =
 export async function chooseInRun(userId: string, runId: string, blessingId: string, now = new Date()): Promise<ChooseResult> {
   const [row] = await prisma.$queryRawUnsafe<RunRow[]>(RUN_BY_ID_SQL, runId, userId);
   if (!row || !row.state) return { ok: false, reason: "not-found" };
+  if (!runWeekIsOpen(row.week, now)) {
+    await closeExpiredRun(userId, row, now);
+    return { ok: false, reason: "finished" };
+  }
   if (row.status === "done" || row.state.done) return { ok: false, reason: "finished" };
   const c = chooseBlessing(row.state, blessingId);
   if (!c.ok) return { ok: false, reason: c.reason === "not-offered" ? "not-offered" : "finished" };
   const members = membersOf(row.party);
   const seg = runSegment(members.map((m) => m.stats), c.state);
   const state: StoredState = { ...seg.state, before: row.state.before };
-  if (!(await advance(userId, row, state))) return { ok: false, reason: "conflict" };
+  if (!(await advance(userId, row, state, now))) return { ok: false, reason: "conflict" };
   return { ok: true, view: await viewOf(userId, row.id, row.week, state, members, seg.floors, now) };
 }
 
@@ -452,22 +465,33 @@ export interface Leaderboard {
   players: number;
   top: LeaderRow[];
   me: LeaderRow | null;
+  /** Credit-using successes this week. Null when the count could not be read. */
+  paidGenerations: number | null;
 }
 
 export async function loadLeaderboard(userId: string, now = new Date(), size = LEADERBOARD_SIZE): Promise<Leaderboard> {
   const week = isoWeek(now);
-  const rows = await prisma.$queryRawUnsafe<{ rank: number; user_id: string; floor: number; players: number; username: string | null }[]>(
-    LEADERBOARD_SQL, week, size, userId,
-  );
+  const start = weekStart(now);
+  const end = new Date(start.getTime() + 7 * 86_400_000);
+  const [rows, paid] = await Promise.all([
+    prisma.$queryRawUnsafe<{ rank: number; user_id: string; floor: number; players: number; username: string | null }[]>(
+      LEADERBOARD_SQL, week, size, userId,
+    ),
+    prisma.$queryRawUnsafe<{ n: number }[]>(PAID_GENERATIONS_SQL, userId, start, end).catch((err) => {
+      console.error("[Dungeon] paid generation count failed:", err instanceof Error ? err.message : err);
+      return null;
+    }),
+  ]);
   const mapped = rows.map((r) => ({
     rank: Number(r.rank), name: displayName(r.username, r.user_id), floor: Number(r.floor), you: r.user_id === userId,
   }));
   return {
     week,
-    resetsAt: new Date(weekStart(now).getTime() + 7 * 86_400_000).toISOString(),
+    resetsAt: end.toISOString(),
     players: rows[0] ? Number(rows[0].players) : 0,
     top: mapped.filter((r) => r.rank <= size),
     me: mapped.find((r) => r.you) ?? null,
+    paidGenerations: paid ? Number(paid[0]?.n ?? 0) : null,
   };
 }
 

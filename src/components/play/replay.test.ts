@@ -88,7 +88,7 @@ describe("party editing on the page", () => {
 });
 
 describe("leaderboard after a run", () => {
-  const empty: Leaderboard = { week: "2026-W42", resetsAt: "", players: 0, top: [], me: null };
+  const empty: Leaderboard = { week: "2026-W42", resetsAt: "", players: 0, top: [], me: null, paidGenerations: 0 };
   const fresh: Leaderboard = { ...empty, players: 1, top: [{ rank: 1, name: "ana", floor: 7, you: true }], me: { rank: 1, name: "ana", floor: 7, you: true } };
 
   it("takes the board the server read after storing the run (no stale 'No runs yet')", () => {

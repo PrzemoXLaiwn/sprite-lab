@@ -78,6 +78,17 @@ export const INSERT_RUN_SQL = `
   ON CONFLICT (user_id, run_day, run_index) DO NOTHING
   RETURNING id`;
 
+/**
+ * Closes a run whose ISO week has ended, without climbing. Floor and floor_at
+ * stay as they were at Monday 00:00 UTC, which is what the prize cron ranks.
+ * $1 run id, $2 user id, $3 current ISO week.
+ */
+export const CLOSE_EXPIRED_RUN_SQL = `
+  UPDATE dungeon_runs
+  SET status = 'done', updated_at = now()
+  WHERE id = $1 AND user_id = $2 AND status <> 'done' AND week <> $3
+  RETURNING id, floor`;
+
 /** The user's unfinished run, if any. $1 = user id. */
 export const ACTIVE_RUN_SQL = `
   SELECT id, week, seed, floor, party, state, step, status, updated_at
@@ -93,7 +104,8 @@ export const RUN_BY_ID_SQL = `
  * Moves a run forward only if nobody else did since it was read: the step
  * counter must still match, so of two parallel choices exactly one lands.
  * The floor only grows; floor_at records when the new best floor was reached.
- * $1 run id, $2 user id, $3 expected step, $4 state json, $5 status, $6 floor.
+ * $1 run id, $2 user id, $3 expected step, $4 state json, $5 status, $6 floor, $7 current ISO week.
+ * A run from a week that has already ended does not move.
  */
 export const ADVANCE_RUN_SQL = `
   UPDATE dungeon_runs
@@ -103,7 +115,7 @@ export const ADVANCE_RUN_SQL = `
       floor_at = CASE WHEN $6::int > floor THEN now() ELSE floor_at END,
       floor = GREATEST(floor, $6::int),
       updated_at = now()
-  WHERE id = $1 AND user_id = $2 AND step = $3 AND status <> 'done'
+  WHERE id = $1 AND user_id = $2 AND step = $3 AND status <> 'done' AND week = $7
   RETURNING step`;
 
 /** Best floor per user in a week; ties → whoever got there first. */
@@ -136,7 +148,7 @@ export const LEADERBOARD_SQL = `
  * unique (week, rank) + unique (week, user_id) + ON CONFLICT DO NOTHING mean
  * a second run inserts nothing and therefore pays nothing.
  * Credits only go to players with ≥ $6 paid generations (SUCCEEDED / PARTIAL
- * operations) inside the week; others still get their badge.
+ * operations that charged credits) inside the week; others still get their badge.
  * $1 week, $2 week start, $3 week end (exclusive), $4 badge ranks (N),
  * $5 credits by rank (int[]), $6 min paid generations, $7 badges by rank (text[]).
  */
@@ -147,7 +159,8 @@ export const PAY_PRIZES_SQL = `
   ),
   paid AS (
     SELECT o.user_id, count(*)::int AS n FROM operations o
-    WHERE o.status IN ('SUCCEEDED', 'PARTIAL') AND o.created_at >= $2 AND o.created_at < $3
+    WHERE o.status IN ('SUCCEEDED', 'PARTIAL') AND coalesce(o.credits_charged, 0) > 0
+      AND o.created_at >= $2 AND o.created_at < $3
       AND o.user_id IN (SELECT user_id FROM top)
     GROUP BY o.user_id
   ),
@@ -189,6 +202,12 @@ export function prizeParams(week: string, start: Date, end: Date): unknown[] {
   const badges = Array.from({ length: BADGE_RANKS }, (_, i) => badgeFor(i + 1));
   return [week, start, end, BADGE_RANKS, [...PRIZE_CREDITS], PRIZE_MIN_PAID_GENERATIONS, badges];
 }
+
+/** Credit-using successes for one player in [start, end). $1 user, $2 start, $3 end. */
+export const PAID_GENERATIONS_SQL = `
+  SELECT count(*)::int AS n FROM operations
+  WHERE user_id = $1 AND status IN ('SUCCEEDED', 'PARTIAL') AND coalesce(credits_charged, 0) > 0
+    AND created_at >= $2 AND created_at < $3`;
 
 /** Personal records. $1 = user id, $2 = this week. */
 export const RECORDS_SQL = `

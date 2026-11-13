@@ -5,6 +5,7 @@ import {
   BADGE_RANKS, BLESSING_EVERY, CRIT_MULTIPLIER, ELEMENTS, ELEMENT_COLOURS, ELEMENT_CREATURES, ELEMENT_DEFS, PRIZE_CREDITS, PRIZE_MIN_PAID_GENERATIONS, RESIST_MULTIPLIER,
   WEAK_MULTIPLIER,
 } from "@/lib/dungeon/config";
+import { generationsStillNeeded } from "@/lib/dungeon/rules";
 import type { Leaderboard, Trophy as TrophyRow } from "@/lib/dungeon/store";
 import type { ZoneWeek } from "@/lib/dungeon/tower";
 import { ElementTag, Sheet } from "./Sheet";
@@ -43,6 +44,9 @@ export function LeaderboardPanel({ board, error, onRetry }: { board: Leaderboard
       ? <p className="mt-2 text-[14px] text-[#C8CCE8]">Couldn&apos;t load the leaderboard. <button type="button" onClick={onRetry} className="inline-flex h-10 items-center underline underline-offset-2">Try again</button></p>
       : <p className="mt-2 text-[13px] text-[#A7ADD4]">Loading the board…</p>;
   }
+  const still = board.me && board.paidGenerations != null
+    ? generationsStillNeeded(board.me.rank, board.paidGenerations)
+    : null;
   return (
     <>
       {board.top.length === 0 ? (
@@ -59,10 +63,15 @@ export function LeaderboardPanel({ board, error, onRetry }: { board: Leaderboard
           ))}
         </ol>
       )}
-      <p className="mt-2 text-[12.5px] text-[#A7ADD4]">
+      <p className="mt-2 text-[12.5px] leading-relaxed text-[#A7ADD4]">
         {board.me && board.me.rank > 10 ? <>You&apos;re #{board.me.rank} of {board.players}. </> : null}
-        Resets Monday 00:00 UTC. Top {BADGE_RANKS} get a badge; the top 3 get {PRIZE_CREDITS.join(" / ")} credits with at least {PRIZE_MIN_PAID_GENERATIONS} paid generations that week.
+        Resets Monday 00:00 UTC. Top {BADGE_RANKS} get a badge. The top 3 get {PRIZE_CREDITS[0]}, {PRIZE_CREDITS[1]} and {PRIZE_CREDITS[2]} credits, and only with at least {PRIZE_MIN_PAID_GENERATIONS} generations that used credits this week.
       </p>
+      {still != null && board.me && (
+        <p className="mt-1 text-[13px] text-[#FFC857]">
+          You&apos;re #{board.me.rank}. Make {still} more {still === 1 ? "generation" : "generations"} that use credits this week to qualify for the {PRIZE_CREDITS[board.me.rank - 1]} credits.
+        </p>
+      )}
       {error && <p className="mt-1 text-[12.5px] text-[#A7ADD4]">Couldn&apos;t refresh the board. <button type="button" onClick={onRetry} className="inline-flex min-h-10 items-center underline underline-offset-2">Try again</button></p>}
     </>
   );
