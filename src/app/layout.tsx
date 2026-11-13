@@ -17,6 +17,7 @@ import { PLAN_MONTHLY_CREDITS } from "@/config/plan-features";
 const body = Atkinson_Hyperlegible_Next({
   subsets: ["latin"],
   display: "swap",
+  preload: false,
   variable: "--font-body",
 });
 
@@ -32,8 +33,10 @@ const jetbrainsMono = JetBrains_Mono({
 // fonts were tried and rejected — unreadable, esp. digits).
 const display = Tektur({
   subsets: ["latin"],
-  // Optional so a slow font download does not hold the headline (the LCP element).
+  // Optional and not preloaded: a slow font file must not hold the headline,
+  // which is the LCP element on a phone.
   display: "optional",
+  preload: false,
   variable: "--font-tektur",
 });
 
