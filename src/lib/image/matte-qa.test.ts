@@ -36,6 +36,17 @@ describe("repairMatte", () => {
     expect(ALPHA(img, 40, 40)).toBe(255);
   });
 
+  it("recolours a pale rim to the subject instead of leaving a light edge", () => {
+    const img = image(40, 40, [0, 0, 0, 0]);
+    img.rect(10, 10, 30, 30, [228, 228, 228, 255]);
+    img.rect(11, 11, 29, 29, [32, 48, 120, 255]);
+    repairMatte(img);
+    const i = (20 * 40 + 10) * 4;
+    expect([img.data[i], img.data[i + 1], img.data[i + 2]]).toEqual([32, 48, 120]);
+    expect(img.data[i + 3]).toBe(255);
+    expect(assessMatte(img).halo).toBe(false);
+  });
+
   it("does not eat a white shirt whose inside is also white", () => {
     const img = image(80, 100, [0, 0, 0, 0]);
     img.rect(20, 20, 60, 80, [250, 250, 250, 255]);

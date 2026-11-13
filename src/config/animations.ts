@@ -176,6 +176,7 @@ export function buildRotationPrompt(opts: { directions: 4 | 8; cols: number; row
   return [
     `Using the reference image, draw a ${opts.directions}-direction rotation sheet of EXACTLY this same ${style} sprite (${opts.subject.slice(0, 200)}) for a top-down / isometric game.`,
     "Identical design, colors, proportions, outline, size and art style in every view. Standing in the same neutral pose — only the viewing direction changes. Held items stay in the same hand.",
+    "Scale lock: every view is the same height. Do not zoom in on any view, and do not slide a view off the shared ground line.",
     "Every view is this same individual from that angle: same species, same hair, same skin, same outfit colours and the same accessories. A back view is the back of this character, not a different creature or costume.",
     opts.rows === 1
       ? `Layout: ONE row of exactly ${names.length} views on one blank white page, side by side from left to right. Each figure is small and narrow — no wider than one sixth of the page — with a clear white gap wider than a figure between neighbours, so no two views ever touch or overlap. Every view is the same height and stands on the same invisible ground level.`
@@ -333,6 +334,7 @@ export function buildAnimationPrompt(opts: {
   const head = [
     `Using the reference image, draw a ${n}-frame animation sprite sheet of EXACTLY this same ${style} sprite (${opts.subject.slice(0, 200)}).`,
     "Identical character design, colors, proportions, outline, size, facing direction and art style in every frame — only the pose changes, and it changes clearly between frames.",
+    "Scale lock: the character's height from the top of the head to the feet is the same in every frame, and the torso stays on one vertical line. Do not zoom, crop, or slide the body sideways.",
     `Animation: ${opts.motion.slice(0, 300)}.`,
     opts.consistency ? `Keep in every frame: ${opts.consistency.slice(0, 400)}` : "",
     // No "grid"/"cells" wording: it makes the model draw graph paper and divider lines
@@ -392,7 +394,7 @@ export function buildInbetweenPrompt(opts: {
       ? `Pose ${opts.count} is halfway between key pose ${opts.count} and key pose 1, closing the loop.`
       : `Pose ${opts.count} is halfway between key pose ${opts.count} and key pose 1, easing back to the start.`,
     "Every in-between is a genuinely new pose between its two neighbours — limbs, weapon, cloth and effects halfway along their path — never a copy of either key pose.",
-    "The body keeps the same size, height and place on the page as the key poses. A foot or paw that is planted in both neighbouring key poses stays planted in the same spot.",
+    "The body keeps the same size, height and place on the page as the key poses. Do not zoom or crop. A foot or paw that is planted in both neighbouring key poses stays planted in the same spot.",
     "Identical character design, colors, proportions, size, position, facing direction and art style as the key poses. Weapons and props stay rigid, straight and full length.",
     empty > 0 ? `Leave the last ${empty} place${empty === 1 ? "" : "s"} empty.` : "",
     "Plain flat solid pure white background, like a blank sheet of paper. Do not draw any lines on the background: no graph paper, no grid, no guide or divider lines, no boxes or borders, no numbers, no labels or captions, no text of any kind, no shadows, no motion blur.",

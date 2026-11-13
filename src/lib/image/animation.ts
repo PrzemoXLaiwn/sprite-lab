@@ -15,6 +15,7 @@
 // =============================================================================
 
 import sharp from "sharp";
+import { repairMatte } from "./matte-qa";
 import { keySpriteBackground } from "./sprite-postprocess";
 
 export interface AnimationResult {
@@ -89,6 +90,10 @@ export async function extractFrames(gridImage: Buffer, cols: number, rows: numbe
   // Enclosed gaps (between legs and a tail) are judged per sprite, a quarter
   // of a cell: painted styles have no dark outline to recognise them by
   keySpriteBackground(full, { tolerance: opts?.tolerance ?? 32, fringePasses: 2, areaScale: 1 / (cols * rows * 4) });
+  // Single sprites already run this. Sheets did not, so a 3px pale rim (outside
+  // the flood-fill tolerance, only partly eaten by two fringe passes) stayed
+  // as a light outline on every frame.
+  repairMatte(full);
   removeSpecks(full, 24);
 
   // 2. Find the frames. Models don't always keep the requested layout (a 3×2
@@ -227,6 +232,9 @@ export async function assembleAnimation(sprites: Frame[], opts: AssembleOptions)
     const lowest = Math.min(...placed.map((p) => p.ay - p.raw.height));
     for (const p of placed) p.ay -= lowest;
   }
+  // A fractional foot centre rounds the other way on the next frame and the
+  // body slides by a pixel. Snap to whole pixels, shared with frame 0.
+  snapFrameAnchors(placed);
   // Extents around the anchor across all frames. The canvas is at least square
   // and grows sideways when an effect (fire breath, sword arc) reaches out, so
   // the body keeps its size instead of shrinking into a square frame.
@@ -264,14 +272,9 @@ export async function assembleAnimation(sprites: Frame[], opts: AssembleOptions)
     const factor = Math.max(1, Math.round(frameSize / gridH));
     frameW = gridW * factor;
     frameH = gridH * factor;
-    const small: Raw[] = [];
-    for (const f of aligned) {
-      const { data: d, info: inf } = await fromRaw(f)
-        .resize(gridW, gridH, { kernel: "mitchell", fit: "fill" })
-        .raw()
-        .toBuffer({ resolveWithObject: true });
-      small.push({ data: d, width: inf.width, height: inf.height });
-    }
+    // Integer boxes, not a shifting filter kernel: every art pixel covers the
+    // same source rect, so a loop does not crawl sideways as it quantises.
+    const small = aligned.map((f) => boxDownsample(f, gridW, gridH));
     const palette = sharedPalette(small, 32);
     for (const f of small) {
       quantize(f, palette);
@@ -588,7 +591,25 @@ function alignBodies(placed: { raw: Raw; ax: number; ay: number }[]): void {
       // Prefer the smaller shift on ties so symmetric poses don't drift
       if (score > bestScore || (score === bestScore && Math.abs(dx) < Math.abs(best))) { bestScore = score; best = dx; }
     }
-    placed[i].ax -= best / s;
+    // Whole source pixels. best/s is fractional when the mask is scaled down,
+    // and that fraction is what rounds into a 1px slide on the next frame.
+    placed[i].ax -= Math.round(best / s);
+  }
+}
+
+/**
+ * Whole-pixel anchors, measured from frame 0. A 0.4px difference in the foot
+ * centre is noise; a real step (a pixel or more) is kept.
+ */
+export function snapFrameAnchors(placed: { ax: number; ay: number }[]): void {
+  if (placed.length === 0) return;
+  const refX = placed[0].ax;
+  const refY = placed[0].ay;
+  const baseX = Math.round(refX);
+  const baseY = Math.round(refY);
+  for (const p of placed) {
+    p.ax = baseX + Math.round(p.ax - refX);
+    p.ay = baseY + Math.round(p.ay - refY);
   }
 }
 
@@ -881,6 +902,39 @@ function blit(src: Raw, dst: Raw, ox: number, oy: number) {
 
 function hardenAlpha(raw: Raw) {
   for (let i = 3; i < raw.data.length; i += 4) raw.data[i] = raw.data[i] >= 128 ? 255 : 0;
+}
+
+/**
+ * Area average onto an integer grid. A cell that is mostly empty stays
+ * transparent, so a pale rim one source pixel wide does not become a halo
+ * pixel, and the phase of the grid is the same for every frame.
+ */
+function boxDownsample(src: Raw, dstW: number, dstH: number): Raw {
+  const out = blank(dstW, dstH);
+  for (let y = 0; y < dstH; y++) {
+    const y0 = Math.floor((y * src.height) / dstH);
+    const y1 = Math.max(y0 + 1, Math.floor(((y + 1) * src.height) / dstH));
+    for (let x = 0; x < dstW; x++) {
+      const x0 = Math.floor((x * src.width) / dstW);
+      const x1 = Math.max(x0 + 1, Math.floor(((x + 1) * src.width) / dstW));
+      let r = 0, g = 0, b = 0, n = 0, area = 0;
+      for (let yy = y0; yy < y1; yy++) {
+        for (let xx = x0; xx < x1; xx++) {
+          area++;
+          const i = (yy * src.width + xx) * 4;
+          if (src.data[i + 3] < 128) continue;
+          r += src.data[i]; g += src.data[i + 1]; b += src.data[i + 2]; n++;
+        }
+      }
+      if (area === 0 || n * 2 < area) continue;
+      const o = (y * dstW + x) * 4;
+      out.data[o] = Math.round(r / n);
+      out.data[o + 1] = Math.round(g / n);
+      out.data[o + 2] = Math.round(b / n);
+      out.data[o + 3] = 255;
+    }
+  }
+  return out;
 }
 
 function bounds(raw: Raw) {

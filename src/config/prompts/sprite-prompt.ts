@@ -55,6 +55,8 @@ const CATEGORY_FRAMING: Record<string, string> = {
   RESOURCES: "single resource item icon shown whole, nothing else",
   UI_ELEMENTS: "single game UI element, flat, front-facing",
   ENVIRONMENT: "single environment prop or object shown whole, isolated",
+  EFFECTS: "one visual effect centred in the frame, the whole effect visible, nothing else, no character",
+  PROJECTILES: "one projectile shown whole, pointing to the right, nothing else, no character",
 };
 
 // Keys match AssetView in prompt-configs.ts ("DEFAULT" → no constraint)

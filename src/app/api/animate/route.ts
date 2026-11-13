@@ -38,6 +38,11 @@ function anchorFromText(text: string): MotionAnchor | null {
   return null;
 }
 
+/** Google / provider content block. The grid call already retried once before this. */
+function isProviderModeration(msg: string): boolean {
+  return /invalidProviderContent|\bmoderat|flagged by provider|Blocked by provider moderation/i.test(msg);
+}
+
 /** Motions that cycle; the rest (attack, hurt, jump…) are one-shots. */
 const LOOPING = new Set(["idle", "walk", "run", "fly", "float", "spin", "glow", "shake"]);
 
@@ -144,12 +149,16 @@ export async function POST(request: Request) {
       console.error("[Rotate] Failed:", msg);
       const balance = isProviderBalanceMessage(msg);
       const slow = !balance && isOutOfTime(err);
-      await op.fail(balance ? "PROVIDER_BALANCE" : slow ? "ROTATION_TIMEOUT" : "ROTATION_FAILED");
+      const blocked = !balance && !slow && isProviderModeration(msg);
+      await op.fail(balance ? "PROVIDER_BALANCE" : slow ? "ROTATION_TIMEOUT" : blocked ? "PROVIDER_MODERATION" : "ROTATION_FAILED");
       if (balance) {
         return NextResponse.json({ error: "Directions are paused for a short while — your credits were refunded." }, { status: 503 });
       }
       if (slow) {
         return NextResponse.json({ error: "This took too long, so we stopped — your credits were refunded. Please try again in a minute." }, { status: 503 });
+      }
+      if (blocked) {
+        return NextResponse.json({ error: "The image provider blocked this one — your credits were refunded." }, { status: 502 });
       }
       return NextResponse.json({ error: "Couldn't draw the directions — your credits were refunded. Please try again." }, { status: 502 });
     }
@@ -336,13 +345,17 @@ export async function POST(request: Request) {
     console.error("[Animate] Failed:", msg);
     const balance = isProviderBalanceMessage(msg);
     const slow = !balance && isOutOfTime(err);
-    await op.fail(balance ? "PROVIDER_BALANCE" : slow ? "ANIMATION_TIMEOUT" : "ANIMATION_FAILED");
+    const blocked = !balance && !slow && isProviderModeration(msg);
+    await op.fail(balance ? "PROVIDER_BALANCE" : slow ? "ANIMATION_TIMEOUT" : blocked ? "PROVIDER_MODERATION" : "ANIMATION_FAILED");
     // Provider balance ran out: say so plainly instead of "try again"
     if (balance) {
       return NextResponse.json({ error: "Animations are paused for a short while — your credits were refunded. Sprites still work." }, { status: 503 });
     }
     if (slow) {
       return NextResponse.json({ error: "This took too long, so we stopped — your credits were refunded. Please try again in a minute." }, { status: 503 });
+    }
+    if (blocked) {
+      return NextResponse.json({ error: "The image provider blocked this animation — your credits were refunded." }, { status: 502 });
     }
     return NextResponse.json({ error: "Animation failed — your credits were refunded. Please try again." }, { status: 502 });
   }
