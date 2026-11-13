@@ -61,8 +61,10 @@ export const stripe = new Proxy({} as Stripe, {
 // Cheapest credit we sell nets ~£0.019 (~$0.024) after Stripe (Starter /
 // Studio). Credit prices of every action are set so each keeps ≥35% margin
 // at that rate — see ANIMATION_FRAME_OPTIONS in src/config/animations.ts.
-// FREE.credits is SIGNUP_CREDITS (src/config/signup.ts). Paid plan counts,
-// prices and price IDs below are unchanged.
+// FREE.credits is SIGNUP_CREDITS (src/config/signup.ts). Monthly credit counts
+// live in PLAN_MONTHLY_CREDITS. Prices and Stripe price IDs are unchanged:
+// a higher allowance is granted by us on the next paid invoice, not by a new
+// Stripe price, so existing subscriptions keep the price they already have.
 export const PLANS = {
   FREE: {
     name: "Free",
@@ -185,7 +187,7 @@ export const LIFETIME_DEALS = {
   PRO_LIFETIME: {
     name: "Pro Lifetime",
     basePlan: "PRO",
-    credits: 500, // Matches monthly PRO plan
+    credits: 500, // Allowance sold with the deal. Not the current monthly Pro grant.
     price: 9900, // £99 (≈ 8 months of £12)
     originalPrice: 14400, // £144 — 12 months of £12
     priceId: process.env.STRIPE_APEX_LIFETIME_PRICE_ID,
@@ -194,7 +196,7 @@ export const LIFETIME_DEALS = {
   UNLIMITED_LIFETIME: {
     name: "Studio Lifetime",
     basePlan: "UNLIMITED",
-    credits: 1200, // Matches monthly STUDIO plan
+    credits: 1200, // Allowance sold with the deal. Not the current monthly Studio grant.
     price: 24900, // £249 (≈ 10 months of £25)
     originalPrice: 30000, // £300 — 12 months of £25
     priceId: process.env.STRIPE_TITAN_LIFETIME_PRICE_ID,

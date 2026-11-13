@@ -11,10 +11,14 @@
 //
 // Events:
 //   email.delivery_delayed → email_logs.status "delivery_delayed"
+//   email.opened           → "opened"     + openedAt
+//   email.clicked          → "clicked"    + clickedAt
 //   email.bounced          → "bounced"    + bouncedAt, marketing: false
 //   email.complained       → "complained" + complainedAt, marketing: false
-// Statuses only move forward (sent < delivery_delayed < bounced < complained),
-// so a late or repeated event never downgrades a row.
+// Statuses only move forward
+// (sent < delivery_delayed < opened < clicked, and bounced < complained),
+// so a late or repeated event never downgrades a row. An open never
+// overwrites a click, a bounce, or a complaint.
 // =============================================================================
 
 import { createHmac, timingSafeEqual } from "node:crypto";
@@ -67,10 +71,12 @@ export function verifyWebhookSignature(secret: string | undefined, req: SignedRe
 // Event handling
 // -----------------------------------------------------------------------------
 
-export type DeliveryStatus = "delivery_delayed" | "bounced" | "complained";
+export type DeliveryStatus = "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained";
 
 export const EVENT_STATUS: Record<string, DeliveryStatus> = {
   "email.delivery_delayed": "delivery_delayed",
+  "email.opened": "opened",
+  "email.clicked": "clicked",
   "email.bounced": "bounced",
   "email.complained": "complained",
 };
@@ -78,13 +84,15 @@ export const EVENT_STATUS: Record<string, DeliveryStatus> = {
 /** Lower-ranked statuses a new status may replace (never the other way round). */
 export const REPLACEABLE: Record<DeliveryStatus, readonly string[]> = {
   delivery_delayed: ["sent"],
+  opened: ["sent", "delivery_delayed"],
+  clicked: ["sent", "delivery_delayed", "opened"],
   bounced: ["sent", "delivery_delayed", "opened", "clicked"],
   complained: ["sent", "delivery_delayed", "opened", "clicked", "bounced"],
 };
 
 export interface WebhookDeps {
   /** Moves email_logs rows with this message id from one of `from` to `to`; returns rows changed. */
-  updateStatus(messageId: string, to: DeliveryStatus, from: readonly string[]): Promise<number>;
+  updateStatus(messageId: string, to: DeliveryStatus, from: readonly string[], stamp?: { openedAt?: string; clickedAt?: string }): Promise<number>;
   /** Accounts behind the message (by email_logs.user_id) or the recipient addresses. */
   findUsers(messageId: string, addresses: string[]): Promise<{ id: string; emailPreferences: unknown }[]>;
   /** jsonb merge into users.email_preferences (mergeEmailPreferences). */
@@ -120,12 +128,13 @@ export async function handleResendEvent(payload: unknown, deps: WebhookDeps, now
   out.handled = true;
   out.status = status;
 
-  if (messageId) out.rowsUpdated = await deps.updateStatus(messageId, status, REPLACEABLE[status]);
-  if (status === "delivery_delayed") return out;
+  const at = typeof ev.created_at === "string" && !Number.isNaN(Date.parse(ev.created_at)) ? new Date(ev.created_at).toISOString() : now.toISOString();
+  const stamp = status === "opened" ? { openedAt: at } : status === "clicked" ? { clickedAt: at } : undefined;
+  if (messageId) out.rowsUpdated = await deps.updateStatus(messageId, status, REPLACEABLE[status], stamp);
+  if (status === "delivery_delayed" || status === "opened" || status === "clicked") return out;
 
   // Bounce or complaint: stop all marketing to the account, once
   const key = status === "bounced" ? "bouncedAt" : "complainedAt";
-  const at = typeof ev.created_at === "string" && !Number.isNaN(Date.parse(ev.created_at)) ? new Date(ev.created_at).toISOString() : now.toISOString();
   const users = messageId || addresses.length ? await deps.findUsers(messageId, addresses) : [];
   for (const u of users) {
     const prefs = u.emailPreferences && typeof u.emailPreferences === "object" ? (u.emailPreferences as Record<string, unknown>) : {};

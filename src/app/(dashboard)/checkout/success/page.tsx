@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { CheckoutError, CreditChip, PageSpinner, SuccessShell } from "../_components/checkout-ui";
+import { CreditChip, PageSpinner, SuccessShell } from "../_components/checkout-ui";
+import { PaymentRecovery } from "@/components/billing/PaymentRecovery";
+import { PLAN_MONTHLY_CREDITS } from "@/config/plan-features";
 import { reportServerPurchase, subscriptionReturnToConfirm } from "@/lib/analytics/purchase";
 import { useFlushHeldPurchases } from "@/lib/analytics/use-flush-purchase";
 
@@ -14,9 +16,9 @@ const planNames: Record<string, string> = {
 };
 
 const planCredits: Record<string, number> = {
-  STARTER: 250,
-  PRO: 500,
-  UNLIMITED: 1200,
+  STARTER: PLAN_MONTHLY_CREDITS.STARTER,
+  PRO: PLAN_MONTHLY_CREDITS.PRO,
+  UNLIMITED: PLAN_MONTHLY_CREDITS.UNLIMITED,
 };
 
 function SuccessContent() {
@@ -72,7 +74,13 @@ function SuccessContent() {
   }, [router]);
 
   if (confirmError) {
-    return <CheckoutError message={confirmError} />;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#131A31] p-5">
+        <div className="w-full max-w-md">
+          <PaymentRecovery message={confirmError} />
+        </div>
+      </div>
+    );
   }
 
   return (

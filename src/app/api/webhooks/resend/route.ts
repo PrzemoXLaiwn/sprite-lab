@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { handleResendEvent, verifyWebhookSignature, type WebhookDeps } from "@/lib/email/resend-webhook";
 
 // Resend → Webhooks → https://www.sprite-lab.com/api/webhooks/resend
-// Events: email.bounced, email.complained, email.delivery_delayed.
+// Events: email.opened, email.clicked, email.bounced, email.complained,
+// email.delivery_delayed.
 // Verified with RESEND_WEBHOOK_SECRET (Svix signature, node:crypto). Without
 // the secret every request is rejected (503) — fail closed. Writes only
 // email_logs.status and, on bounce/complaint, a jsonb merge into
@@ -15,8 +16,15 @@ export const dynamic = "force-dynamic";
 const MAX_BODY = 256 * 1024;
 
 const deps: WebhookDeps = {
-  async updateStatus(messageId, to, from) {
-    const res = await prisma.emailLog.updateMany({ where: { messageId, status: { in: [...from] } }, data: { status: to } });
+  async updateStatus(messageId, to, from, stamp) {
+    const res = await prisma.emailLog.updateMany({
+      where: { messageId, status: { in: [...from] } },
+      data: {
+        status: to,
+        ...(stamp?.openedAt ? { openedAt: new Date(stamp.openedAt) } : {}),
+        ...(stamp?.clickedAt ? { clickedAt: new Date(stamp.clickedAt) } : {}),
+      },
+    });
     return res.count;
   },
   async findUsers(messageId, addresses) {

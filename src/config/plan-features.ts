@@ -7,8 +7,9 @@
 // quality, and a transparent PNG on every sprite. Plans differ by monthly
 // credits, by a few extra tools, and by licence. Commercial use is included
 // on Starter, Pro and Studio only. Free is personal, non-commercial use.
-// Starter is the lowest price per credit (£5 / 250); Studio is the largest
-// monthly allowance.
+// Starter is the plan most people buy. Pro and Studio are a better price per
+// credit than the plan below them (list price, GBP). Lifetime deals keep the
+// allowance they were sold with — see LIFETIME_DEALS, not these counts.
 // =============================================================================
 
 import { SIGNUP_CREDITS } from "@/config/signup";
@@ -16,8 +17,8 @@ import { SIGNUP_CREDITS } from "@/config/signup";
 /** Monthly credit allowance for paid plans. Free signup credits live in signup.ts. */
 export const PLAN_MONTHLY_CREDITS = {
   STARTER: 250,
-  PRO: 500,
-  UNLIMITED: 1200,
+  PRO: 700,
+  UNLIMITED: 1600,
 } as const;
 
 /** Recurring monthly price in GBP. The Starter intro price is not this number. */

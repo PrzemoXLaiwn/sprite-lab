@@ -17,6 +17,7 @@ import {
   resolveStarterFirstMonthDiscount,
 } from "@/config/starter-first-month";
 import { firstPaidSubscriptionInvoice, purchaseFromSubscriptionInvoice, type VerifiedPurchase } from "@/lib/analytics/purchase";
+import { recordFunnelEvent } from "@/lib/funnel";
 
 // Creates the subscription after the client confirmed a SetupIntent from
 // create-subscription-intent.
@@ -157,8 +158,13 @@ export async function POST(request: Request) {
     } catch (error) {
       if (error instanceof Stripe.errors.StripeCardError) {
         console.warn(`Subscription payment declined for user ${user.id}:`, error.code);
+        await recordFunnelEvent({
+          name: "payment_failed",
+          userId: user.id,
+          props: { stage: "subscription", plan, code: error.code ?? "card_error" },
+        });
         return NextResponse.json(
-          { error: "Your payment was declined. Please try a different card." },
+          { error: "Your payment was declined. Please try a different card.", code: "payment_failed" },
           { status: 402 }
         );
       }
@@ -167,8 +173,13 @@ export async function POST(request: Request) {
 
     if (subscription.status !== "active" && subscription.status !== "trialing") {
       console.error(`Subscription ${subscription.id} created with status ${subscription.status}`);
+      await recordFunnelEvent({
+        name: "payment_failed",
+        userId: user.id,
+        props: { stage: "subscription", plan, status: subscription.status },
+      });
       return NextResponse.json(
-        { error: "Payment could not be completed. Please try again." },
+        { error: "Payment could not be completed. Please try again.", code: "payment_failed" },
         { status: 402 }
       );
     }
@@ -215,6 +226,11 @@ export async function POST(request: Request) {
       : null;
 
     console.log(`✅ Subscription created for user ${user.id}: ${subscription.id}`);
+    await recordFunnelEvent({
+      name: "payment_succeeded",
+      userId: user.id,
+      props: { stage: "subscription", plan },
+    });
 
     return NextResponse.json({
       success: true,

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { recordFunnelEvent } from "@/lib/funnel";
 import { fulfillOneTimePayment } from "../_lib/fulfillment";
 
 export async function POST(request: Request) {
@@ -26,6 +27,11 @@ export async function POST(request: Request) {
     switch (result.status) {
       case "credited":
         if (result.kind !== "credit_pack") break;
+        await recordFunnelEvent({
+          name: "payment_succeeded",
+          userId: user.id,
+          props: { stage: "credit_pack" },
+        });
         return NextResponse.json({
           success: true,
           credits: result.credits,

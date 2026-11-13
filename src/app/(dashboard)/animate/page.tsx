@@ -15,6 +15,9 @@ import { MovesetBuilder } from "@/components/animate/MovesetBuilder";
 import { buildEnginePack, saveBlob } from "@/lib/export/engine-pack";
 import { Film, Info, Check, Wand2, Loader2, Compass } from "lucide-react";
 import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
+import { triggerUpgradeModal } from "@/components/dashboard/UpgradeModal";
+import { CreditCostModal, type CheaperAnimationChoice } from "@/components/animate/CreditCostModal";
+import { pickAffordableAnimation } from "@/config/animation-affordability";
 import {
   ToolShell, ToolPanel, ToolTabs, Field, FooterHint, CanvasColumn, CanvasFrame, CanvasImage,
   BackdropToggle, Chip, TopBarHint, PrimaryButton, DownloadButton, SecondaryButton, ErrorNote, InfoNote, OptionCard, SuggestionChip,
@@ -105,6 +108,10 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
   const [resultMotion, setResultMotion] = useState({ id: "", text: "" });
   const [frames, setFrames] = useState<number>(DEFAULT_ANIMATION_FRAMES);
   const [smooth, setSmooth] = useState(true);
+  const [smoothTouched, setSmoothTouched] = useState(false);
+  const [balance, setBalance] = useState<number | null>(null);
+  const [starterOffer, setStarterOffer] = useState(false);
+  const [costModal, setCostModal] = useState<{ cost: number; balance: number; cheaper: CheaperAnimationChoice | null } | null>(null);
   const [fps, setFps] = useState(8);
   const [bgMode, setBgMode] = useState<ToolBgModeId>("checker");
   const [framesTouched, setFramesTouched] = useState(false);
@@ -133,7 +140,10 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
       if (d.customMotion) setCustomMotion(d.customMotion);
       if (d.frames) setFrames(d.frames);
       if (d.framesTouched) setFramesTouched(true);
-      if (typeof d.smooth === "boolean") setSmooth(d.smooth);
+      if (typeof d.smooth === "boolean") {
+        setSmooth(d.smooth);
+        setSmoothTouched(true);
+      }
       if (d.fps) setFps(d.fps);
       if (d.suggested?.length) {
         setSuggested(d.suggested);
@@ -176,8 +186,27 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
   // more than a pulse) — applied until the user picks a count themselves.
   const recommendedFrames = selectedPreset?.frames;
   useEffect(() => {
-    if (!framesTouched && recommendedFrames) setFrames(recommendedFrames);
-  }, [recommendedFrames, framesTouched]);
+    let cancelled = false;
+    fetch("/api/user/stats")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        const credits = typeof data.credits === "number" ? data.credits : Number(data.credits);
+        if (Number.isFinite(credits)) setBalance(credits);
+        setStarterOffer(data.starterUpsell?.offerEnabled === true);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+  // Until the person picks a frame count or the smooth switch, keep the
+  // animation inside their balance. A free account has 10 credits and smooth
+  // on 4 frames costs 12, so smooth starts off for them.
+  useEffect(() => {
+    if (balance == null || framesTouched || smoothTouched) return;
+    const choice = pickAffordableAnimation(balance, recommendedFrames ?? DEFAULT_ANIMATION_FRAMES);
+    setFrames(choice.frames);
+    setSmooth(choice.smooth);
+  }, [balance, recommendedFrames, framesTouched, smoothTouched]);
 
   const pixel = isPixelStyleId(source?.styleId ?? resultStyleId);
   const option = animationFrameOption(frames);
@@ -289,10 +318,68 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
     router.push("/animate");
   };
 
+  const cheaperChoice = (): CheaperAnimationChoice | null => {
+    if (rotation) {
+      const next = ROTATIONS.filter((r) => r.credits < cost).sort((a, b) => b.credits - a.credits)[0];
+      return next ? { label: `Use ${next.label.toLowerCase()} instead`, credits: next.credits } : null;
+    }
+    if (rigKind) return null;
+    if (smoothOn) {
+      const without = animationCredits(frames, false);
+      if (without < cost) return { label: "Turn smooth motion off", credits: without };
+    }
+    const smaller = ANIMATION_FRAME_OPTIONS.filter((o) => o.credits < cost).sort((a, b) => b.credits - a.credits)[0];
+    return smaller ? { label: `Use ${smaller.label.toLowerCase()} instead`, credits: smaller.credits } : null;
+  };
+
+  const applyCheaper = () => {
+    const choice = cheaperChoice();
+    if (!choice) {
+      setCostModal(null);
+      return;
+    }
+    if (rotation) {
+      const next = ROTATIONS.find((r) => r.credits === choice.credits);
+      if (next) setAction(next.id);
+    } else if (smoothOn) {
+      setSmoothTouched(true);
+      setSmooth(false);
+    } else {
+      const smaller = ANIMATION_FRAME_OPTIONS.find((o) => o.credits === choice.credits);
+      if (smaller) {
+        setFramesTouched(true);
+        setFrames(smaller.frames);
+      }
+    }
+    setCostModal(null);
+  };
+
   const animate = async () => {
     if (!generationId || loading) return;
     if (customTooShort) {
       setError("Describe how it should move — a few words are enough.");
+      return;
+    }
+    let credits = balance;
+    if (credits == null) {
+      try {
+        const stats = await fetch("/api/user/stats").then((res) => (res.ok ? res.json() : null));
+        const next = typeof stats?.credits === "number" ? stats.credits : Number(stats?.credits);
+        if (Number.isFinite(next)) {
+          credits = next;
+          setBalance(next);
+          setStarterOffer(stats?.starterUpsell?.offerEnabled === true);
+        }
+      } catch {
+        credits = null;
+      }
+    }
+    if (credits != null && cost > credits) {
+      if (credits <= 0) {
+        triggerUpgradeModal();
+        return;
+      }
+      setCostModal({ cost, balance: credits, cheaper: cheaperChoice() });
       return;
     }
     setLoading(true);
@@ -311,6 +398,14 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
         }),
       });
       const data = await res.json().catch(() => null);
+      if (res.status === 402) {
+        const stats = await fetch("/api/user/stats").then((r) => (r.ok ? r.json() : null)).catch(() => null);
+        const left = typeof stats?.credits === "number" ? stats.credits : credits ?? 0;
+        if (Number.isFinite(left)) setBalance(left);
+        if (left > 0) setCostModal({ cost, balance: left, cheaper: cheaperChoice() });
+        else triggerUpgradeModal();
+        return;
+      }
       if (!res.ok) throw new Error(toolErrorMessage(res, data, "Animation failed."));
       if (!data?.sheetUrl) throw new Error("The animation finished but returned no sprite sheet. Please try again.");
       setResult(data);
@@ -324,6 +419,7 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
       setFps(typeof data.fps === "number" ? data.fps : data.smoothed ? (data.frameCount >= 12 ? 12 : 10) : data.frameCount >= 9 ? 10 : 8);
       setView("play");
       triggerCreditsRefresh();
+      setBalance((current) => (current == null ? current : Math.max(0, current - cost)));
     } catch (e) {
       setError(userErrorMessage(e, "Animation failed. Please try again."));
     } finally {
@@ -503,7 +599,7 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
               })}
             </div>
             {!isTile && (
-              <button type="button" role="switch" aria-checked={smooth} onClick={() => setSmooth((v) => !v)} disabled={loading}
+              <button type="button" role="switch" aria-checked={smooth} onClick={() => { setSmoothTouched(true); setSmooth((v) => !v); }} disabled={loading}
                 className={`mt-2 flex w-full items-start gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors disabled:cursor-not-allowed ${
                   smooth ? "border-[#FFA300]/60 bg-[#FFA300]/[0.06]" : "border-white/[0.08] bg-[#212B4E] hover:border-white/20"
                 }`}>
@@ -617,6 +713,17 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
 
       <HistoryPanel tool="animate" open={historyOpen} onOpenChange={setHistoryOpen} onSelect={openFromHistory}
         activeIds={[generationId, shownResultId]} refreshKey={shownResultId} />
+      {costModal && (
+        <CreditCostModal
+          open
+          cost={costModal.cost}
+          balance={costModal.balance}
+          cheaper={costModal.cheaper}
+          offerEnabled={starterOffer}
+          onUseCheaper={applyCheaper}
+          onClose={() => setCostModal(null)}
+        />
+      )}
     </ToolShell>
   );
 }

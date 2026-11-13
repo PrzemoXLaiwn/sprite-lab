@@ -76,8 +76,8 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean } = {}
       .catch(console.error);
   }, []);
 
-  // Lowest price per credit among paid monthly plans. Starter (£5 / 250)
-  // is cheaper per credit than Pro or Studio — do not highlight Studio here.
+  // Lowest list price per credit among paid monthly plans. Starter is labelled
+  // most popular; Pro and Studio are the better rate per credit.
   const lowestPerCredit = PLAN_CARDS.reduce<{ rate: number; name: string } | null>((best, plan) => {
     if (plan.price <= 0 || plan.credits <= 0) return best;
     const rate = plan.price / plan.credits;

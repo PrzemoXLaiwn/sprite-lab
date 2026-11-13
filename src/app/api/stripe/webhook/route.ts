@@ -15,6 +15,7 @@ import {
   reversePaymentCredits,
   stripeId,
 } from "../_lib/fulfillment";
+import { recordFunnelEvent } from "@/lib/funnel";
 
 // ─── Metadata validators ──────────────────────────────────────────────────────
 // IMPORTANT: Zod runs AFTER stripe.webhooks.constructEvent() succeeds.
@@ -508,6 +509,11 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
   }
 
   console.log("Invoice payment failed for user:", userId);
+  await recordFunnelEvent({
+    name: "payment_failed",
+    userId,
+    props: { stage: "renewal" },
+  });
 
   // Audit marker only (not a PURCHASE — admin revenue stats count PURCHASE rows).
   await prisma.creditTransaction.create({

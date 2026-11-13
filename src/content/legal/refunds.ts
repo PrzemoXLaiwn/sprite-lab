@@ -42,7 +42,7 @@ If you are a consumer, you can cancel a **new subscription** or a **credit pack*
 **What you get back.** Where you have expressly asked us to start immediately, and you have acknowledged how that affects this right:
 
 - If you have **not used any credits** from that purchase, we refund **the full amount**.
-- If you have **used some credits**, we refund the purchase price **minus the value of the credits used** (calculated pro rata: price ÷ credits included × credits used). Example: Pro is £12 for 500 credits; if you used 100 credits, we refund £12 − (£12 × 100/500) = £9.60.
+- If you have **used some credits**, we refund the purchase price **minus the value of the credits used** (calculated pro rata: price ÷ credits included × credits used). Example: Pro is £12 for 700 credits; if you used 70 credits, we refund £12 − (£12 × 70/700) = £10.80.
 - If you have **used all credits** from that purchase and you acknowledged that you would lose this right, your right to cancel has ended, because the service has been fully performed at your express request.
 
 If that express request and acknowledgement were not collected, we will deal with the cancellation in line with consumer law, which can mean a fuller refund.

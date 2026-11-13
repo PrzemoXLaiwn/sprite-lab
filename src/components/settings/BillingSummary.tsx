@@ -16,12 +16,14 @@ export function BillingSummary({
   canManage,
   portal,
   onManage,
+  onCancel,
 }: {
   summary: string;
   status: PlanAccess["status"] | "loading";
   canManage: boolean;
   portal: "idle" | "opening" | "error";
   onManage: () => void;
+  onCancel?: () => void;
 }) {
   const showUpgrade = status === "free" || status === "loading";
   return (
@@ -39,13 +41,18 @@ export function BillingSummary({
             {portal === "opening" ? "Opening billing…" : "Manage billing"}
           </button>
         )}
+        {onCancel && (
+          <button type="button" onClick={onCancel} className={BTN_SECONDARY}>
+            Cancel plan
+          </button>
+        )}
         <Link href="/pricing" className={BTN_SECONDARY}>
           <Coins className="h-4 w-4" aria-hidden /> {status === "free" || status === "loading" ? "Buy credits" : "Plans"}
         </Link>
       </div>
       {canManage && (
         <p className="mt-3 text-[12px] leading-relaxed text-[#9AA1CC]">
-          Manage billing opens Stripe, where you can change card, switch plan, or cancel. Cancelling here does not ask why you are leaving. A cancelled plan keeps working until the date already paid for.
+          Manage billing opens Stripe, where you can change card or switch plan. Cancel plan asks why you are leaving and offers a pause before that. A cancelled plan keeps working until the date already paid for.
         </p>
       )}
       {portal === "error" && (

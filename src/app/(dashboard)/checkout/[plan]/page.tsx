@@ -19,7 +19,6 @@ import {
   SummaryCard,
   SummaryRow,
   FeatureList,
-  FormError,
   SecureNote,
   InlineSuccess,
   CreditChip,
@@ -29,8 +28,13 @@ import {
   starterCheckoutOfferLine,
   starterFirstMonthIntroGbp,
 } from "@/config/starter-first-month";
-import { track, FUNNEL } from "@/lib/analytics";
+import { ANIMATION_FRAME_OPTIONS } from "@/config/animations";
+import { fourFrameAnimationsPerMonth } from "@/config/animation-affordability";
+import { FUNNEL } from "@/lib/analytics";
+import { recordFunnel } from "@/lib/funnel-client";
+import { track } from "@/lib/analytics";
 import { reportServerPurchase } from "@/lib/analytics/purchase";
+import { PaymentRecovery } from "@/components/billing/PaymentRecovery";
 
 // Load Stripe outside of component to avoid recreating on every render
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
@@ -39,70 +43,85 @@ interface PlanDetails {
   name: string;
   price: number;
   credits: number;
-  priceId: string;
   firstMonthApplied: boolean;
 }
 
-function CheckoutForm({ plan, planDetails }: { plan: string; planDetails: PlanDetails }) {
+function CheckoutForm({
+  plan,
+  planDetails,
+  createIntent,
+}: {
+  plan: string;
+  planDetails: PlanDetails;
+  createIntent: () => Promise<string>;
+}) {
   const stripe = useStripe();
   const elements = useElements();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cardFailed, setCardFailed] = useState(false);
   const [success, setSuccess] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!stripe || !elements) {
-      return;
-    }
+    if (!stripe || !elements) return;
 
     setIsLoading(true);
     setError(null);
+    setCardFailed(false);
 
     try {
+      // Validates the Payment Element. The SetupIntent is created after this,
+      // so opening the page does not create one.
+      const { error: submitError } = await elements.submit();
+      if (submitError) {
+        setError(submitError.message || "Payment failed");
+        setCardFailed(true);
+        recordFunnel("payment_failed", { stage: "setup", plan });
+        return;
+      }
+
+      const clientSecret = await createIntent();
       const successPath = planDetails.firstMonthApplied
         ? `/checkout/success?plan=${encodeURIComponent(plan)}&offer=${STARTER_FIRST_MONTH_OFFER}`
         : `/checkout/success?plan=${encodeURIComponent(plan)}`;
 
-      // Confirm the SetupIntent
-      const { error: submitError, setupIntent } = await stripe.confirmSetup({
+      const { error: confirmError, setupIntent } = await stripe.confirmSetup({
         elements,
+        clientSecret,
         confirmParams: {
-          // If a redirect (e.g. 3DS) is needed, the success page finishes the
-          // subscription using the setup_intent query param Stripe appends.
-          // The intro coupon itself is on the SetupIntent metadata, not this URL.
           return_url: `${window.location.origin}${successPath}`,
         },
         redirect: "if_required",
       });
 
-      if (submitError) {
-        setError(submitError.message || "Payment failed");
-        setIsLoading(false);
+      if (confirmError) {
+        setError(confirmError.message || "Payment failed");
+        setCardFailed(true);
+        recordFunnel("payment_failed", { stage: "setup", plan });
         return;
       }
 
       if (setupIntent && setupIntent.status === "succeeded") {
-        // Create the subscription on the server
         const response = await fetch("/api/stripe/confirm-subscription", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             setupIntentId: setupIntent.id,
-            plan: plan,
+            plan,
           }),
         });
 
         const data = await response.json();
 
         if (!response.ok) {
+          if (response.status === 402) setCardFailed(true);
           throw new Error(data.error || "Failed to create subscription");
         }
 
         reportServerPurchase(data);
-
         setSuccess(true);
         setTimeout(() => {
           router.push(successPath);
@@ -120,14 +139,14 @@ function CheckoutForm({ plan, planDetails }: { plan: string; planDetails: PlanDe
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      <PaymentElement
-        options={{
-          layout: "tabs",
-        }}
-      />
+    <form onSubmit={handleSubmit} className="space-y-5" data-setup-intent="on-submit">
+      <PaymentElement options={{ layout: "tabs" }} />
 
-      {error && <FormError message={error} />}
+      {error && cardFailed ? (
+        <PaymentRecovery message={error} onTryAnother={() => { setError(null); setCardFailed(false); }} />
+      ) : error ? (
+        <p role="alert" className="rounded-xl border border-red-400/20 bg-red-500/[0.06] px-3.5 py-2.5 text-[13px] text-red-200">{error}</p>
+      ) : null}
 
       <button
         type="submit"
@@ -154,7 +173,6 @@ function CheckoutForm({ plan, planDetails }: { plan: string; planDetails: PlanDe
   );
 }
 
-// Map URL-friendly names to internal plan codes
 const PLAN_URL_MAP: Record<string, string> = {
   forge: "STARTER",
   starter: "STARTER",
@@ -173,19 +191,17 @@ function CheckoutPageInner() {
   const plan = PLAN_URL_MAP[urlPlan] || urlPlan?.toUpperCase();
   const offer = searchParams.get("offer") === STARTER_FIRST_MONTH_OFFER ? STARTER_FIRST_MONTH_OFFER : null;
 
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [planDetails, setPlanDetails] = useState<PlanDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const offerTracked = useRef(false);
+  const checkoutTracked = useRef<string | null>(null);
   const requestKey = `${plan ?? ""}:${offer ?? ""}`;
   const [activeKey, setActiveKey] = useState(requestKey);
-  // A new plan or offer must not keep the previous Payment Element on screen.
   if (activeKey !== requestKey) {
     setActiveKey(requestKey);
     setLoading(true);
     setError(null);
-    setClientSecret(null);
     setPlanDetails(null);
   }
 
@@ -196,23 +212,24 @@ function CheckoutPageInner() {
     }
 
     let cancelled = false;
+    const query = new URLSearchParams({ plan });
+    if (offer) query.set("offer", offer);
 
-    // Create SetupIntent. `offer` is only the literal code — the server
-    // decides eligibility and reads the coupon id from the environment.
-    fetch("/api/stripe/create-subscription-intent", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ plan, ...(offer ? { offer } : {}) }),
-    })
+    // Summary only. The SetupIntent is created in CheckoutForm on submit.
+    fetch(`/api/stripe/plan-preview?${query.toString()}`)
       .then((res) => res.json())
       .then((data) => {
         if (cancelled) return;
         if (data.error) {
           setError(data.error);
         } else {
-          const firstMonthApplied = data.firstMonthOffer?.applied === true;
-          setClientSecret(data.clientSecret);
+          const firstMonthApplied = data.firstMonthApplied === true;
           setPlanDetails({ ...data.plan, firstMonthApplied });
+          const trackKey = `${plan}:${offer ?? ""}`;
+          if (checkoutTracked.current !== trackKey) {
+            checkoutTracked.current = trackKey;
+            recordFunnel("checkout_opened", { plan, kind: "subscription" });
+          }
           if (firstMonthApplied && !offerTracked.current) {
             offerTracked.current = true;
             track(FUNNEL.offerApplied, { offer: STARTER_FIRST_MONTH_OFFER, plan: "STARTER" });
@@ -231,20 +248,25 @@ function CheckoutPageInner() {
     };
   }, [plan, router, offer]);
 
+  const createIntent = async () => {
+    const response = await fetch("/api/stripe/create-subscription-intent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plan, ...(offer ? { offer } : {}) }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || typeof data.clientSecret !== "string") {
+      throw new Error(data.error || "Couldn't start the payment");
+    }
+    return data.clientSecret as string;
+  };
 
-  if (loading) {
-    return <PageSpinner />;
-  }
-
-  if (error) {
-    return <CheckoutError message={error} />;
-  }
-
-  if (!clientSecret || !planDetails) {
-    return null;
-  }
+  if (loading) return <PageSpinner />;
+  if (error) return <CheckoutError message={error} />;
+  if (!planDetails) return null;
 
   const offerApplied = planDetails.firstMonthApplied;
+  const animations = fourFrameAnimationsPerMonth(planDetails.credits);
 
   return (
     <CheckoutShell
@@ -272,6 +294,8 @@ function CheckoutPageInner() {
             )}
             <div className="mt-5 border-t border-white/[0.06] pt-2">
               <SummaryRow label="Credits" value={`${planDetails.credits} / month`} />
+              <SummaryRow label="Commercial licence" value="Included" />
+              <SummaryRow label="Animations" value={`About ${animations} / month`} />
               {offerApplied ? (
                 <>
                   <SummaryRow label="Today" value={`£${starterFirstMonthIntroGbp()}`} strong />
@@ -281,6 +305,9 @@ function CheckoutPageInner() {
                 <SummaryRow label="Price" value={`£${planDetails.price} / month`} strong />
               )}
             </div>
+            <p className="mt-3 text-[12px] leading-relaxed text-[#9AA1CC]">
+              About {animations} four-frame animations a month, at {ANIMATION_FRAME_OPTIONS[0].credits} credits each. Smooth motion costs more.
+            </p>
           </SummaryCard>
 
           <SummaryCard>
@@ -288,8 +315,8 @@ function CheckoutPageInner() {
             <FeatureList
               items={[
                 `${planDetails.credits} credits per month`,
-                "All asset categories & art styles",
-                "Background removal & editing tools",
+                "Commercial licence",
+                `About ${animations} four-frame animations a month`,
                 "Cancel anytime",
               ]}
             />
@@ -300,11 +327,12 @@ function CheckoutPageInner() {
       <Elements
         stripe={stripePromise}
         options={{
-          clientSecret,
+          mode: "setup",
+          currency: "gbp",
           appearance: stripeAppearance,
         }}
       >
-        <CheckoutForm plan={plan} planDetails={planDetails} />
+        <CheckoutForm plan={plan} planDetails={planDetails} createIntent={createIntent} />
       </Elements>
     </CheckoutShell>
   );

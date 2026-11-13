@@ -66,6 +66,7 @@ model User {
   reports               Report[]       @relation("ReportedByUser")
   receivedReports       Report[]       @relation("ReportedUser")
   assetSignals          AssetSignal[]
+  subscriptionCancellations SubscriptionCancellation[]
 
   // username / stripeCustomerId / stripeSubscriptionId are @unique, which
   // already creates an index — separate @@index entries were redundant.
@@ -698,6 +699,40 @@ model EmailLog {
   @@index([status])
   @@index([createdAt])
   @@map("email_logs")
+}
+
+// Rows the cancel screen writes before the Stripe billing portal opens.
+// The table already exists in production; this model only maps it.
+model SubscriptionCancellation {
+  id             String   @id
+  userId         String   @map("user_id")
+  reason         String?
+  note           String?
+  offerShown     String?  @map("offer_shown")
+  offerAccepted  Boolean  @default(false) @map("offer_accepted")
+  outcome        String   @default("in_progress")
+  plan           String
+  stripeCouponId String?  @map("stripe_coupon_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("subscription_cancellations")
+}
+
+// Conversion funnel. Additive. No foreign key, so a deleted account does not block the write.
+model FunnelEvent {
+  id        String   @id
+  userId    String?  @map("user_id")
+  name      String
+  props     Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([name, createdAt])
+  @@index([userId, createdAt])
+  @@map("funnel_events")
 }
 
 // Store prompt templates that work well (learned from data)
