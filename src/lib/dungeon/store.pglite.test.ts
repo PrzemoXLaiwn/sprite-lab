@@ -9,7 +9,7 @@ import { PRIZE_BUDGET_PER_WEEK, RUNS_PER_DAY } from "./config";
 import { isoWeek, nextRunIndex, utcDay } from "./rules";
 import { parseSlots } from "./party";
 import {
-  ACTIVE_RUN_SQL, ADVANCE_RUN_SQL, INSERT_RUN_SQL, LEADERBOARD_SQL, PARTY_GET_SQL, PARTY_SAVE_SQL, PAY_PRIZES_SQL, RECORDS_SQL, RUN_BY_ID_SQL,
+  ACTIVE_RUN_SQL, ADVANCE_RUN_SQL, CLOSE_EXPIRED_RUN_SQL, INSERT_RUN_SQL, LEADERBOARD_SQL, PARTY_GET_SQL, PARTY_SAVE_SQL, PAY_PRIZES_SQL, RECORDS_SQL, RUN_BY_ID_SQL,
   HERO_ANIMS_SQL, RUNS_TODAY_SQL, SKILL_SCORES_SQL, SKILL_SCORE_SAVE_SQL, SPRITES_SQL, prizeParams,
 } from "./sql";
 
@@ -159,16 +159,16 @@ describe("stepwise runs", () => {
   it("of two parallel choices exactly one lands (step counter)", async () => {
     await insertChoosing("run1", "a", 3);
     const results = await Promise.all([1, 2, 3].map((k) =>
-      db.query(ADVANCE_RUN_SQL, ["run1", "a", 0, JSON.stringify({ floor: 6, pick: k }), "choosing", 6])));
+      db.query(ADVANCE_RUN_SQL, ["run1", "a", 0, JSON.stringify({ floor: 6, pick: k }), "choosing", 6, WEEK])));
     expect(results.filter((r) => r.rows.length === 1)).toHaveLength(1);
     const row = (await db.query<{ step: number; floor: number; status: string }>(RUN_BY_ID_SQL, ["run1", "a"])).rows[0];
     expect(row).toMatchObject({ step: 1, floor: 6, status: "choosing" });
     // A stale step or another user's run never moves
-    expect((await db.query(ADVANCE_RUN_SQL, ["run1", "a", 0, "{}", "done", 9])).rows).toHaveLength(0);
-    expect((await db.query(ADVANCE_RUN_SQL, ["run1", "b", 1, "{}", "done", 9])).rows).toHaveLength(0);
+    expect((await db.query(ADVANCE_RUN_SQL, ["run1", "a", 0, "{}", "done", 9, WEEK])).rows).toHaveLength(0);
+    expect((await db.query(ADVANCE_RUN_SQL, ["run1", "b", 1, "{}", "done", 9, WEEK])).rows).toHaveLength(0);
     // Finishing: floor only grows, a done run is frozen
-    expect((await db.query(ADVANCE_RUN_SQL, ["run1", "a", 1, "{}", "done", 8])).rows).toHaveLength(1);
-    expect((await db.query(ADVANCE_RUN_SQL, ["run1", "a", 2, "{}", "choosing", 20])).rows).toHaveLength(0);
+    expect((await db.query(ADVANCE_RUN_SQL, ["run1", "a", 1, "{}", "done", 8, WEEK])).rows).toHaveLength(1);
+    expect((await db.query(ADVANCE_RUN_SQL, ["run1", "a", 2, "{}", "choosing", 20, WEEK])).rows).toHaveLength(0);
     expect((await db.query<{ floor: number; status: string }>(RUN_BY_ID_SQL, ["run1", "a"])).rows[0]).toMatchObject({ floor: 8, status: "done" });
   });
 
@@ -185,9 +185,20 @@ describe("stepwise runs", () => {
     await db.query(`UPDATE dungeon_runs SET floor_at = '2026-10-14 10:00' WHERE id = 'run3'`);
     await insertChoosing("run4", "b", 3);
     await db.query(`UPDATE dungeon_runs SET floor_at = '2026-10-14 09:00' WHERE id = 'run4'`);
-    await db.query(ADVANCE_RUN_SQL, ["run4", "b", 0, "{}", "choosing", 6]); // b reaches 6 now, after a
+    await db.query(ADVANCE_RUN_SQL, ["run4", "b", 0, "{}", "choosing", 6, WEEK]); // b reaches 6 now, after a
     const rows = (await db.query<{ rank: number; user_id: string; floor: number }>(LEADERBOARD_SQL, [WEEK, 25, "a"])).rows;
     expect(rows.map((r) => [r.rank, r.user_id, r.floor])).toEqual([[1, "a", 6], [2, "b", 6]]);
+  });
+
+  it("a previous ISO week cannot be climbed after Monday 00:00 UTC, and closing it keeps the floor", async () => {
+    await insertChoosing("oldrun", "a", 7);
+    await db.query(`UPDATE dungeon_runs SET week = '2026-W41' WHERE id = 'oldrun'`);
+    expect((await db.query(ADVANCE_RUN_SQL, ["oldrun", "a", 0, "{}", "choosing", 40, "2026-W42"])).rows).toHaveLength(0);
+    const closed = (await db.query<{ id: string; floor: number }>(CLOSE_EXPIRED_RUN_SQL, ["oldrun", "a", "2026-W42"])).rows;
+    expect(closed).toEqual([{ id: "oldrun", floor: 7 }]);
+    expect((await db.query<{ floor: number; status: string }>(`SELECT floor, status FROM dungeon_runs WHERE id = 'oldrun'`)).rows[0]).toEqual({ floor: 7, status: "done" });
+    expect((await db.query<{ floor: number }>(LEADERBOARD_SQL, ["2026-W41", 25, "a"])).rows.map((r) => r.floor)).toEqual([7]);
+    expect((await db.query(LEADERBOARD_SQL, ["2026-W42", 25, "a"])).rows).toHaveLength(0);
   });
 });
 
@@ -281,5 +292,13 @@ describe("weekly prizes", () => {
     const rows = (await db.query<{ rank: number; user_id: string; credits: number }>(PAY_PRIZES_SQL, prizeParams(WEEK, START, END))).rows;
     expect(rows.map((r) => r.user_id)).toEqual(["a"]);
     expect(rows[0].rank).toBe(2); // the deleted user's rank isn't handed down
+  });
+
+  it("does not count a success that charged no credits", async () => {
+    await addRun("a", 12, "2026-10-13 10:00:00");
+    await paidOps("a", 5);
+    await db.query(`UPDATE operations SET credits_charged = 0 WHERE user_id = 'a'`);
+    const rows = (await db.query<{ credits: number }>(PAY_PRIZES_SQL, prizeParams(WEEK, START, END))).rows;
+    expect(rows.map((r) => r.credits)).toEqual([0]);
   });
 });

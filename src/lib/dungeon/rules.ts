@@ -19,6 +19,25 @@ export function nextUtcMidnight(now: Date): Date {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
 }
 
+/**
+ * A run may continue, and may still move its week's board, only while that
+ * ISO week is the current one. Monday 00:00 UTC closes it, so the 00:10 prize
+ * cron pays a board that can no longer change.
+ */
+export function runWeekIsOpen(runWeek: string, now: Date): boolean {
+  return runWeek === isoWeek(now);
+}
+
+/**
+ * How many more credit-using generations a top-3 player still needs this week
+ * to be paid. Null when they are outside the top 3 or already qualify.
+ */
+export function generationsStillNeeded(rank: number | null, paidGenerations: number): number | null {
+  if (rank == null || rank < 1 || rank > PRIZE_CREDITS.length) return null;
+  const short = PRIZE_MIN_PAID_GENERATIONS - paidGenerations;
+  return short > 0 ? short : null;
+}
+
 /** The ISO week before the one containing `now`: id + [start, end). */
 export function previousWeek(now: Date): { week: string; start: Date; end: Date } {
   const end = weekStart(now);

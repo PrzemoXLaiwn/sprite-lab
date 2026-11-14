@@ -8,7 +8,7 @@ import { computeDamage, elementMultiplier, matchup } from "./damage";
 import { classFor, classMatch, elementFor, elementMatch, heroWork, starsFor, trinketKind, weaponKind, type SpriteFacts } from "./detect";
 import { createRng, hash32, makeRng, publicTag, runSeed } from "./rng";
 import {
-  displayName, isEligibleForCredits, maxWeeklyPayout, nextRunIndex, previousWeek, prizeFor, runsLeft, utcDay,
+  displayName, generationsStillNeeded, isEligibleForCredits, maxWeeklyPayout, nextRunIndex, previousWeek, prizeFor, runWeekIsOpen, runsLeft, utcDay,
 } from "./rules";
 import { chooseBlessing, initialState, runSegment, simulateFull } from "./simulate";
 import { deriveMember, deriveParty, deriveUnit, itemBonus, type MemberFacts } from "./stats";
@@ -403,6 +403,9 @@ describe("daily limit", () => {
     expect(utcDay(new Date("2026-10-14T23:59:59Z"))).toBe("2026-10-14");
     const prev = previousWeek(new Date("2026-10-19T00:10:00Z"));
     expect(prev.week).toBe("2026-W42");
+    expect(runWeekIsOpen("2026-W42", new Date("2026-10-18T23:59:59Z"))).toBe(true);
+    expect(runWeekIsOpen("2026-W42", new Date("2026-10-19T00:00:00Z"))).toBe(false);
+    expect(runWeekIsOpen("2026-W42", new Date("2026-10-19T00:09:00Z"))).toBe(false);
     const s = runSeed("u", "2026-10-14", 1);
     expect(runSeed("u", "2026-10-14", 2)).not.toBe(s);
     expect(runSeed("v", "2026-10-14", 1)).not.toBe(s);
@@ -424,6 +427,11 @@ describe("prizes (unchanged)", () => {
     expect(prizeFor(BADGE_RANKS + 1, true)).toBeNull();
     expect(isEligibleForCredits(PRIZE_MIN_PAID_GENERATIONS)).toBe(true);
     expect(isEligibleForCredits(PRIZE_MIN_PAID_GENERATIONS - 1)).toBe(false);
+    expect(generationsStillNeeded(1, 3)).toBe(2);
+    expect(generationsStillNeeded(3, 4)).toBe(1);
+    expect(generationsStillNeeded(2, PRIZE_MIN_PAID_GENERATIONS)).toBeNull();
+    expect(generationsStillNeeded(4, 0)).toBeNull();
+    expect(generationsStillNeeded(null, 0)).toBeNull();
   });
 
   it("leaderboard names never show an email", () => {
