@@ -1,0 +1,49 @@
+{
+  "live": false,
+  "reason": "offline only",
+  "offline": [
+    {
+      "id": "white-halo",
+      "before": {
+        "lightFringe": 120,
+        "centerOffset": 1
+      },
+      "after": {
+        "lightFringe": 0,
+        "centerOffset": 0
+      }
+    },
+    {
+      "id": "frame-align",
+      "before": {
+        "footDelta": 6,
+        "heightDelta": 4,
+        "sameCanvas": 0
+      },
+      "after": {
+        "footDelta": 0,
+        "heightDelta": 0,
+        "sameCanvas": 1
+      }
+    },
+    {
+      "id": "palette-lock",
+      "before": {
+        "uniqueColors": 2
+      },
+      "after": {
+        "uniqueColors": 1
+      }
+    },
+    {
+      "id": "crouch-kept",
+      "before": {
+        "crouchOverStand": 0.389
+      },
+      "after": {
+        "crouchOverStand": 0.389
+      }
+    }
+  ],
+  "capUsd": 3
+}
