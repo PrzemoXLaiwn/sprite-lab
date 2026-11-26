@@ -10,6 +10,8 @@ import { rateLimit3DGeneration } from "@/lib/rate-limit";
 import { validateBody } from "@/lib/validation/common";
 import { generate3DStreamSchema } from "@/lib/validations";
 import { assertSafeImageUrl } from "@/lib/safe-fetch";
+import { MODEL_3D_CREDITS } from "@/config/tool-prices";
+import { hasPaidGenerationAccess, PAID_PLAN_MESSAGE } from "@/lib/billing/paid-generation";
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
@@ -19,7 +21,7 @@ const replicate = new Replicate({
 // aborted if the client disconnects) so the refund path always runs.
 export const maxDuration = 300;
 const PIPELINE_BUDGET_MS = 240_000;
-const CREDITS_REQUIRED = 4;
+const CREDITS_REQUIRED = MODEL_3D_CREDITS;
 const SDXL = "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b";
 const HUNYUAN = "tencent/hunyuan3d-2:b1b9449a1277e10402781c5d41eb30c0a0683504fb23fab591ca9dfc2aabe1cb";
 
@@ -293,7 +295,12 @@ export async function POST(request: Request) {
       // Credits: atomic deduct up-front. Parallel or aborted requests can no
       // longer get free generations; every failure path below refunds.
       await getOrCreateUser(user.id, user.email!);
-      const account = await prisma.user.findUnique({ where: { id: user.id }, select: { plan: true, totalSpent: true, stripeCustomerId: true } });
+      const account = await prisma.user.findUnique({ where: { id: user.id }, select: { plan: true, role: true, totalSpent: true, stripeCustomerId: true } });
+      if (!hasPaidGenerationAccess(account)) {
+        send("error", { message: PAID_PLAN_MESSAGE, code: "PAID_PLAN_REQUIRED" });
+        close();
+        return;
+      }
       const started = await startOperation({
         userId: user.id, feature: "model_3d", credits: CREDITS_REQUIRED, plan: budgetPlan(account), ip: requestIp(request),
         input: { prompt, customImageUrl, categoryId, subcategoryId, styleId, qualityPreset },

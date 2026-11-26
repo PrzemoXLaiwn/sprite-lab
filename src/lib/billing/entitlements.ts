@@ -2,7 +2,6 @@
 // ADMIN and OWNER are treated as paid so staff can check the exports.
 
 import { SIGNUP_CREDITS } from "@/config/signup";
-import { animationCredits } from "@/config/animations";
 
 const PAID_PLANS = new Set(["STARTER", "PRO", "UNLIMITED", "LIFETIME"]);
 
@@ -16,12 +15,12 @@ export function generationHourlyLimit(plan: string | null | undefined, role?: st
   return hasPaidPerks(plan, role) ? 120 : 20;
 }
 
-/** Standard sprite + one 4-frame animation with smooth off. Must fit the free grant. */
+/** The free first run is one static sprite. Animations are on a paid plan or a credit pack. */
 export const FIRST_RUN_SPRITE_CREDITS = 1;
 export const FIRST_RUN_FRAMES = 4;
 
 export function firstRunCreditCost(): number {
-  return FIRST_RUN_SPRITE_CREDITS + animationCredits(FIRST_RUN_FRAMES, false);
+  return FIRST_RUN_SPRITE_CREDITS;
 }
 
 export function firstRunFitsFreeGrant(grant = SIGNUP_CREDITS): boolean {

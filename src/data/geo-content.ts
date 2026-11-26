@@ -30,7 +30,7 @@ export const RETURNING_BONUS_FAQ: Faq = {
   a: `That email was the welcome-back offer for accounts created before 7 October 2026. Those accounts now get ${RELAUNCH.RETURNING_BONUS} credits the first time they open the app before 31 December 2026. New accounts get ${SIGNUP_CREDITS} free credits on signup.`,
 };
 
-const COST_ANSWER = `Sign up and you get ${SIGNUP_CREDITS} free credits, no credit card needed. A Standard sprite costs ${STANDARD_CREDITS} credit and HD costs ${HD_CREDITS}. A rigged idle loop costs ${RIG_CREDITS} credits. AI animations cost ${animationPrices} credits, and smooth mode (on by default) brings those to ${smoothPrices}. Direction sheets cost ${directionPrices} credits. Monthly plans start at £5 for 250 credits, and one-off credit packs never expire.`;
+const COST_ANSWER = `Sign up and you get ${SIGNUP_CREDITS} free credits, no credit card needed. Those cover static sprites: a Standard sprite costs ${STANDARD_CREDITS} credit and HD costs ${HD_CREDITS}. Animations, direction sheets and AI edits need a paid plan or a credit pack. A rigged idle loop costs ${RIG_CREDITS} credits. AI animations cost ${animationPrices} credits, and smooth mode brings those to ${smoothPrices}. Direction sheets cost ${directionPrices} credits. Monthly plans start at £5 for 250 credits, and one-off credit packs never expire.`;
 
 export const HOME_FAQ: Faq[] = [
   {

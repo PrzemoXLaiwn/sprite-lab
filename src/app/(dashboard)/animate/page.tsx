@@ -16,6 +16,7 @@ import { buildEnginePack, saveBlob } from "@/lib/export/engine-pack";
 import { Film, Info, Check, Wand2, Loader2, Compass } from "lucide-react";
 import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
 import { triggerUpgradeModal } from "@/components/dashboard/UpgradeModal";
+import { PaidFeatureLock, useAccountAccess } from "@/components/billing/PaidFeatureLock";
 import { CreditCostModal, type CheaperAnimationChoice } from "@/components/animate/CreditCostModal";
 import { pickAffordableAnimation } from "@/config/animation-affordability";
 import {
@@ -82,6 +83,7 @@ let reopenedFromDraft = false;
 function AnimatePageContent({ generationId, resultId }: { generationId: string | null; resultId: string | null }) {
   const router = useRouter();
   const { source, loading: loadingSource, error: sourceError } = useSourceGeneration(generationId);
+  const access = useAccountAccess();
   const [action, setAction] = useState<string>("");
   // Deep links from the Create page ("Directions" → ?do=rotate4, a walk-cycle
   // prompt → ?motion=walk) pick the option up front and keep it when suggestions arrive.
@@ -398,6 +400,10 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
         }),
       });
       const data = await res.json().catch(() => null);
+      if (data?.code === "PAID_PLAN_REQUIRED" || res.status === 403) {
+        triggerUpgradeModal("paid_feature");
+        return;
+      }
       if (res.status === 402) {
         const stats = await fetch("/api/user/stats").then((r) => (r.ok ? r.json() : null)).catch(() => null);
         const left = typeof stats?.credits === "number" ? stats.credits : credits ?? 0;
@@ -495,9 +501,13 @@ function AnimatePageContent({ generationId, resultId }: { generationId: string |
         headerAction={<HistoryButton onClick={() => setHistoryOpen(true)} />}
         footer={
           <>
+            {access.ready && !access.paidGeneration ? (
+              <PaidFeatureLock feature="Animations and directions" offer={access.starterOffer} />
+            ) : (
             <PrimaryButton onClick={animate} disabled={loading || !source} loading={loading}
               loadingLabel={<>Animating… <Elapsed /></>}
               icon={<Film className="h-4 w-4" />} label="Animate" cost={cost} />
+            )}
             <FooterHint>
               {!rotation && !rigKind && <>{smoothOn ? "~45–90s" : option.frames > 4 ? "~30–60s" : "~25–45s"} · </>}
               {outFrames} frames · sprite sheet + GIF

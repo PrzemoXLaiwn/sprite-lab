@@ -3,6 +3,7 @@ import { SIGNUP_CREDITS } from "@/config/signup";
 import { PLAN_MONTHLY_CREDITS, PLAN_MONTHLY_PRICE_GBP } from "@/config/plan-features";
 import { RELAUNCH } from "@/config/relaunch";
 import { CREDIT_COSTS } from "@/lib/services/generation";
+import { EDIT_CREDITS, STYLE_MATCH_CREDITS } from "@/config/tool-prices";
 import { ANIMATION_FRAME_OPTIONS, RIG_CREDITS, ROTATIONS, animationCredits } from "@/config/animations";
 import { GUIDES } from "@/data/guides";
 import { COMPARISONS, COMPARE_CHECKED_ON } from "@/data/compare";
@@ -41,22 +42,22 @@ Pixel 16-bit, Pixel HD, Isometric Pixel, Isometric, Isometric Cartoon, Hand Pain
 Any sprite can be animated: idle, walk, run, attack, jump, cast, hurt, defeat, flying, a turnaround (front / side / back views) or a custom motion described in words. SpriteLab suggests motions that fit the specific sprite (a dog gets "wag tail" and "bark", a car gets "drive" and "drift"). Output: a horizontal sprite sheet PNG, individual frames and an animated GIF, with 4, 6 or 9 key poses and an optional smooth mode that adds AI-drawn in-between frames (8–18 frames). Directions: the same sprite from 4 or 8 directions (static views), and a 4-direction walk sheet (4 rows × 4 steps, down / right / up / left). A walk whose legs barely move after one automatic redraw is refunded.
 
 ## Editing
-- Edit with AI: change colours, clothes or details of a sprite by describing the change, optionally painting a mask over the area (5 credits, every plan).
-- Upload your own sprite (PNG, JPG or WebP up to 8 MB): a plain background is removed, then it can be animated, edited or turned like a generated sprite. Free; uploads stay private.
-- Match style: new sprites drawn in the style of an existing one (5 credits).
+- Edit with AI: change colours, clothes or details of a sprite by describing the change, optionally painting a mask over the area (${EDIT_CREDITS} credits, paid plan or credit pack).
+- Upload your own sprite (PNG, JPG or WebP up to 8 MB): a plain background is removed, then it can be animated, edited or turned like a generated sprite. Free; uploads stay private. Animating or editing the upload needs a paid plan or a credit pack.
+- Match style: new sprites drawn in the style of an existing one (${STYLE_MATCH_CREDITS} credits, paid plan or credit pack).
 - Background removal (1 credit, Starter plan and up) and upscaling: pixel-perfect upscaling is free; AI upscaling (1–2 credits) is on Pro and Studio.
 
 ## Workflow features
 - Projects: generate assets for a game, accept or decline each result; accepted sprites are sorted into folders by type automatically; download the whole project as a ZIP pack.
 - Free pixel-perfect upscaling (nearest-neighbour, up to 4096 px).
-- AI upscaling (2× / 4×) is on Pro, Studio and Lifetime. Every plan, including Free, gets image editing and a transparent PNG on each generated sprite.
+- AI upscaling (2× / 4×) is on Pro, Studio and Lifetime. Free accounts get static sprites and a transparent PNG. Animations, direction sheets and image editing are on a paid plan or a credit pack.
 - Community gallery of shared assets.
 
 ## Game engines
 Output is standard PNG / sprite-sheet PNG / GIF, which works in Unity, Godot, GameMaker, Phaser, Construct, RPG Maker and any engine that loads images. Sprite sheets are horizontal strips of equal-size frames, so they can be sliced by cell size in Unity's Sprite Editor or used as SpriteFrames in Godot. Animations can also be downloaded as an engine pack: a Godot SpriteFrames resource (.tres) with every animation, Unity folders of numbered frames, GameMaker strips named with their frame count, and hitboxes.json with a body box and a strike box per frame.
 
 ## Pricing
-Free: ${SIGNUP_CREDITS} credits on signup (no credit card). Accounts created before 7 October 2026 get a one-time welcome-back of ${RELAUNCH.RETURNING_BONUS} credits the first time they open the app before 31 December 2026. Paid plans from £${PLAN_MONTHLY_PRICE_GBP.STARTER}/month (Starter, ${PLAN_MONTHLY_CREDITS.STARTER} credits), Pro £${PLAN_MONTHLY_PRICE_GBP.PRO}/month (${PLAN_MONTHLY_CREDITS.PRO} credits), Studio £${PLAN_MONTHLY_PRICE_GBP.UNLIMITED}/month (${PLAN_MONTHLY_CREDITS.UNLIMITED.toLocaleString("en-GB")} credits); one-off credit packs are also available. A standard sprite costs ${CREDIT_COSTS.normal} credit, HD quality ${CREDIT_COSTS.hd} credits, a rigged idle loop ${RIG_CREDITS} credits. AI animations cost ${ANIMATION_FRAME_OPTIONS.map((o) => `${o.credits}`).join("/")} credits for 4/6/9 key poses; smooth mode (on when the account can afford it) makes those ${ANIMATION_FRAME_OPTIONS.map((o) => animationCredits(o.frames, true)).join("/")}. Direction sheets: ${ROTATIONS.map((r) => `${r.label} ${r.credits}`).join(", ")}. Commercial use is included on Starter, Pro and Studio. The Free plan is personal, non-commercial use. Assets generated on the Free plan before 17 October 2026 keep the licence that applied when they were created.
+Free: ${SIGNUP_CREDITS} credits on signup (no credit card), for static sprites. Animations, directions and edits require a paid plan or a credit pack. Accounts created before 7 October 2026 get a one-time welcome-back of ${RELAUNCH.RETURNING_BONUS} credits the first time they open the app before 31 December 2026. Paid plans from £${PLAN_MONTHLY_PRICE_GBP.STARTER}/month (Starter, ${PLAN_MONTHLY_CREDITS.STARTER} credits), Pro £${PLAN_MONTHLY_PRICE_GBP.PRO}/month (${PLAN_MONTHLY_CREDITS.PRO} credits), Studio £${PLAN_MONTHLY_PRICE_GBP.UNLIMITED}/month (${PLAN_MONTHLY_CREDITS.UNLIMITED.toLocaleString("en-GB")} credits); one-off credit packs are also available. A standard sprite costs ${CREDIT_COSTS.normal} credit, HD quality ${CREDIT_COSTS.hd} credits, a rigged idle loop ${RIG_CREDITS} credits. AI animations cost ${ANIMATION_FRAME_OPTIONS.map((o) => `${o.credits}`).join("/")} credits for 4/6/9 key poses; smooth mode (on when the account can afford it) makes those ${ANIMATION_FRAME_OPTIONS.map((o) => animationCredits(o.frames, true)).join("/")}. Direction sheets: ${ROTATIONS.map((r) => `${r.label} ${r.credits}`).join(", ")}. Commercial use is included on Starter, Pro and Studio. The Free plan is personal, non-commercial use. Assets generated on the Free plan before 17 October 2026 keep the licence that applied when they were created.
 
 ## Not offered
 SpriteLab does not currently offer a public REST API, an MCP server, 3D model generation, 8-direction animations (it makes static 4- and 8-direction views and a 4-direction walk), autotile (47-tile) tilesets, whole engine project files or several different assets from one prompt. It is a web app (sprite-lab.com).

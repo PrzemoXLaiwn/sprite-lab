@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
 import { triggerUpgradeModal } from "@/components/dashboard/UpgradeModal";
+import { useAccountAccess } from "@/components/billing/PaidFeatureLock";
 import {
   Field, Chip, ToolTabs, ErrorNote, IconButton, Elapsed, SECONDARY_BTN, saveBlobAs, creditLabel,
 } from "@/components/tools/ToolWorkspace";
@@ -262,6 +263,7 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
   const [detail, setDetail]               = useState<DetailId>("normal");
   const [prompt, setPrompt]               = useState(urlPrompt);
   // Style reference: new sprites are drawn in this sprite's exact art style
+  const access = useAccountAccess();
   const [styleRef, setStyleRef] = useState<{ id: string; imageUrl: string } | null>(
     urlRefId && urlRefImage ? { id: urlRefId, imageUrl: urlRefImage } : null,
   );
@@ -466,6 +468,12 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
+        if (data?.code === "PAID_PLAN_REQUIRED" || response.status === 403) {
+          setStatus("error");
+          setErrorMessage(typeof data?.error === "string" ? data.error : "Style match is on a paid plan or a credit pack.");
+          triggerUpgradeModal("paid_feature");
+          return;
+        }
         if (response.status === 402 || data.noCredits) {
           setStatus("error");
           const needed = styleRef ? STYLE_MATCH_CREDITS : DETAIL_CREDITS[detail];
@@ -1188,30 +1196,46 @@ function GeneratePageInner({ initialHistory }: { initialHistory: GeneratedResult
               {/* Everything you can do next with this sprite, in three groups: move it, change it, take it */}
               <div className="grid grid-cols-[repeat(auto-fit,minmax(230px,1fr))] gap-2">
                 <ActionGroup title="Animate it">
-                  {animateHref && (
+                  {animateHref && (access.ready && !access.paidGeneration ? (
+                    <button type="button" className="btn btn-primary" onClick={() => triggerUpgradeModal("paid_feature")}>
+                      <Film className="h-4 w-4" aria-hidden /> Animate · paid plan
+                    </button>
+                  ) : (
                     <Link href={animateHref}
                       className="btn btn-primary">
                       <Film className="h-4 w-4" aria-hidden /> Animate · sprite sheet
                     </Link>
-                  )}
-                  {gid && canTurn && (
+                  ))}
+                  {gid && canTurn && (access.ready && !access.paidGeneration ? (
+                    <button type="button" className={SECONDARY_BTN} onClick={() => triggerUpgradeModal("paid_feature")}>
+                      <Compass className="h-4 w-4" aria-hidden /> Directions
+                    </button>
+                  ) : (
                     <Link href={`/animate?id=${gid}&do=rotate4`} title="The same sprite from the front, sides and back" className={SECONDARY_BTN}>
                       <Compass className="h-4 w-4" aria-hidden /> Directions
                     </Link>
-                  )}
+                  ))}
                 </ActionGroup>
                 <ActionGroup title="Change it">
-                  {gid && (
+                  {gid && (access.ready && !access.paidGeneration ? (
+                    <button type="button" className={SECONDARY_BTN} onClick={() => triggerUpgradeModal("paid_feature")}>
+                      <Pencil className="h-4 w-4" aria-hidden /> Edit
+                    </button>
+                  ) : (
                     <Link href={`/edit?id=${gid}`} title="Change colours, clothes or details by describing them" className={SECONDARY_BTN}>
                       <Pencil className="h-4 w-4" aria-hidden /> Edit
                     </Link>
-                  )}
-                  {activeResult.generationId && styleRef?.id !== activeResult.generationId && (
+                  ))}
+                  {activeResult.generationId && styleRef?.id !== activeResult.generationId && (access.ready && !access.paidGeneration ? (
+                    <button type="button" className={SECONDARY_BTN} onClick={() => triggerUpgradeModal("paid_feature")}>
+                      <Paintbrush className="h-4 w-4" aria-hidden /> Match style
+                    </button>
+                  ) : (
                     <button type="button" title={`Make new sprites in this exact style (${STYLE_MATCH_CREDITS} credits each)`}
                       onClick={() => setStyleRef({ id: activeResult.generationId!, imageUrl: activeResult.imageUrl })} className={SECONDARY_BTN}>
                       <Paintbrush className="h-4 w-4" aria-hidden /> Match style
                     </button>
-                  )}
+                  ))}
                   {gid && (
                     <Link href={`/remove-bg?id=${gid}`} title="Clean up the background" className={SECONDARY_BTN}>
                       <Eraser className="h-4 w-4" aria-hidden /> Remove BG

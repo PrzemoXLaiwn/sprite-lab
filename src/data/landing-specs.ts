@@ -6,6 +6,7 @@
 // =============================================================================
 
 import type { SeoSection } from "@/components/landing/SeoLanding";
+import { ANIMATION_FRAME_OPTIONS, animationCredits } from "@/config/animations";
 
 type Specs = Extract<SeoSection, { kind: "specs" }>;
 
@@ -70,7 +71,7 @@ export const LANDING_SPECS: Record<string, Specs> = {
       { label: "Idle", value: "2–6 frames at 4–8 fps. SpriteLab's idle breathing is a 24-frame deformation of the original sprite (3 credits)." },
       { label: "Walk / run", value: "4–8 frames at 8–12 fps (walk) or 10–14 fps (run)." },
       { label: "Attack", value: "3–8 frames, timed unevenly: long wind-up, very short strike, held follow-through." },
-      { label: "AI key poses", value: "4, 6 or 9 poses (7, 11 or 12 credits); smooth mode adds in-betweens for 8, 12 or 18 frames." },
+      { label: "AI key poses", value: `4, 6 or 9 poses (${ANIMATION_FRAME_OPTIONS.map((o) => o.credits).join(", ")} credits, paid plan or credit pack); smooth mode adds in-betweens (${ANIMATION_FRAME_OPTIONS.map((o) => animationCredits(o.frames, true)).join(", ")} credits).` },
       { label: "Downloads", value: "Horizontal sprite sheet PNG, every frame as its own PNG in a ZIP, and a GIF preview." },
       { label: "Engine pack", value: "Godot SpriteFrames .tres, Unity frame folders, GameMaker _stripN strips and per-frame hitboxes.json." },
     ],

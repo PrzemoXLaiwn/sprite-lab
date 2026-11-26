@@ -26,7 +26,7 @@ export const SUBSCRIPTION_INVOICE_PREFIX = "in_";
 export const SUBSCRIPTION_CANCELLED_MARKER = "Subscription cancelled";
 export const SUBSCRIPTION_GRANT_MARKER = "plan subscription";
 
-export type UpsellReason = "low_balance" | "no_credits";
+export type UpsellReason = "low_balance" | "no_credits" | "paid_feature";
 
 export interface StarterOfferUser {
   plan: string;
@@ -135,8 +135,8 @@ export function starterCheckoutHref(offerEnabled: boolean): string {
 
 export function starterUpsellContent(offerEnabled: boolean, reason: UpsellReason) {
   return {
-    title: reason === "low_balance" ? "Running low on credits" : "Out of credits",
-    creditsLine: PLAN_FEATURES.STARTER[0],
+    title: reason === "paid_feature" ? "Animations are on Starter" : reason === "low_balance" ? "Running low on credits" : "Out of credits",
+    creditsLine: reason === "paid_feature" ? "Animations, directions and AI editing" : PLAN_FEATURES.STARTER[0],
     monthlyCredits: PLAN_MONTHLY_CREDITS.STARTER,
     priceLine: offerEnabled ? starterFirstMonthPitch() : starterRegularPitch(),
     cta: "Get Starter",

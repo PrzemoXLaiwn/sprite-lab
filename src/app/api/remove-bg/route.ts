@@ -10,6 +10,10 @@ import { parseJsonBody, validateBody } from "@/lib/validation/common";
 import { removeBackgroundSchema } from "@/lib/validations";
 import { REMOVE_BG_CREDITS } from "@/config/tool-prices";
 import { budgetPlan, requestIp, startOperation, type OpHandle } from "@/lib/billing/operations";
+import { FEATURES } from "@/lib/billing/features";
+import { isProviderBalanceMessage, providerUnavailableMessage } from "@/lib/provider-balance";
+import { providerBalanceBlock } from "@/lib/runware-availability";
+import { reportProviderBalanceLow } from "@/lib/ops/balance-alert";
 
 // Runware bg removal is capped at 20s (BG_REMOVAL_TIMEOUT in runware.ts);
 // re-hosting adds up to ~30s.
@@ -75,6 +79,8 @@ export async function POST(request: Request) {
     }
 
     // Charge + guards in one operation; every failure below refunds it once
+    const dry = await providerBalanceBlock("Background removal", FEATURES.remove_bg.estCostUsd);
+    if (dry) return dry;
     const account = await prisma.user.findUnique({ where: { id: user.id }, select: { plan: true, totalSpent: true, stripeCustomerId: true } });
     const started = await startOperation({
       userId: user.id, feature: "remove_bg", credits: REMOVE_BG_COST, plan: budgetPlan(account), ip: requestIp(request),
@@ -93,10 +99,12 @@ export async function POST(request: Request) {
     if (!result.success || !result.imageUrl) {
       console.error("Background removal failed:", result.error);
       pendingOp = null;
-      await op.fail("PROVIDER_ERROR");
+      const balance = isProviderBalanceMessage(result.error ?? "");
+      await op.fail(balance ? "PROVIDER_BALANCE" : "PROVIDER_ERROR");
+      if (balance) void reportProviderBalanceLow("Background removal");
       return NextResponse.json(
-        { error: "Background removal failed. Credit refunded." },
-        { status: 500 }
+        { error: balance ? providerUnavailableMessage("Background removal", true) : "Background removal failed. Credit refunded.", code: balance ? "PROVIDER_BALANCE" : undefined },
+        { status: balance ? 503 : 500 }
       );
     }
 

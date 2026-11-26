@@ -98,7 +98,7 @@ const FAQS = [
   },
   {
     q: "Do paid plans get better quality?",
-    a: "No — every plan, including Free, gets the same models, all 12 art styles, both Standard and HD quality, and a transparent PNG on every sprite. Plans differ in monthly credits and a few extra tools (AI upscale, variations).",
+    a: "The sprite models are the same on every plan: all 12 styles, Standard and HD, and a transparent PNG. Free covers static sprites. Animations, direction sheets and AI editing are on a paid plan or a credit pack. AI upscale and variations are on Pro and Studio.",
   },
   {
     q: "What happens if a generation fails?",
@@ -137,7 +137,7 @@ export default function PricingPage() {
                   Plans &amp; credits
                 </h1>
                 <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-[#9AA1CC]">
-                  Every plan gets all 12 styles in Standard and HD; plans differ in monthly credits and a few extra tools. Cancel anytime. New
+                  Free credits make static sprites, in all 12 styles, Standard and HD. Animations, direction sheets and AI edits are on a monthly plan or a one-time credit pack. Cancel anytime. New
                   accounts start with {SIGNUP_CREDITS} free credits, no card required.
                 </p>
               </div>
@@ -212,8 +212,8 @@ export default function PricingPage() {
             <h2 id="packs-heading" className="text-[17px] font-semibold tracking-tight text-white">
               One-time credit packs
             </h2>
-            <p className="mt-1 text-[13px] text-[#9AA1CC]">
-              Pay once, no subscription. Credits never expire.
+            <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-[#9AA1CC]">
+              Pay once, no subscription. Credits never expire, and they unlock the same animations, directions and edits as a monthly plan. A commercial licence stays on Starter, Pro and Studio.
               {promoActive && " Launch bonus credits are included while the promo runs."}
             </p>
             <div className="mt-2 grid grid-cols-1 gap-4 pt-3 sm:grid-cols-2 lg:grid-cols-4">

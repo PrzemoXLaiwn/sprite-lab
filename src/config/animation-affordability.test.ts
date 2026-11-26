@@ -5,23 +5,23 @@ import { fourFrameAnimationsPerMonth, pickAffordableAnimation } from "./animatio
 import { SIGNUP_CREDITS } from "./signup";
 
 describe("pickAffordableAnimation", () => {
-  it("turns smooth off for a new free account on the default 4-frame animation", () => {
+  it("names the cheapest animation when a free grant cannot pay for one", () => {
     const choice = pickAffordableAnimation(SIGNUP_CREDITS, 4);
     expect(choice).toEqual({ frames: 4, smooth: false });
-    expect(animationCredits(choice.frames, choice.smooth)).toBeLessThanOrEqual(SIGNUP_CREDITS);
+    expect(animationCredits(choice.frames, choice.smooth)).toBeGreaterThan(SIGNUP_CREDITS);
     expect(animationCredits(4, true)).toBeGreaterThan(SIGNUP_CREDITS);
   });
 
   it("steps a 6-frame request down when even the unsmoothed price is over the balance", () => {
-    expect(pickAffordableAnimation(10, 6)).toEqual({ frames: 4, smooth: false });
+    expect(pickAffordableAnimation(12, 6)).toEqual({ frames: 4, smooth: false });
   });
 
   it("keeps smooth on when the balance covers it", () => {
-    expect(pickAffordableAnimation(20, 6)).toEqual({ frames: 6, smooth: true });
+    expect(pickAffordableAnimation(animationCredits(6, true), 6)).toEqual({ frames: 6, smooth: true });
   });
 
   it("drops only smooth when the key frames fit and the in-betweens do not", () => {
-    expect(pickAffordableAnimation(15, 6)).toEqual({ frames: 6, smooth: false });
+    expect(pickAffordableAnimation(animationCredits(6, false), 6)).toEqual({ frames: 6, smooth: false });
   });
 
   it("still names the cheapest animation when nothing fits", () => {
@@ -32,9 +32,9 @@ describe("pickAffordableAnimation", () => {
 
 describe("fourFrameAnimationsPerMonth", () => {
   it("counts whole 4-frame animations in each paid allowance", () => {
-    expect(fourFrameAnimationsPerMonth(PLAN_MONTHLY_CREDITS.STARTER)).toBe(35);
-    expect(fourFrameAnimationsPerMonth(PLAN_MONTHLY_CREDITS.PRO)).toBe(100);
-    expect(fourFrameAnimationsPerMonth(PLAN_MONTHLY_CREDITS.UNLIMITED)).toBe(228);
+    expect(fourFrameAnimationsPerMonth(PLAN_MONTHLY_CREDITS.STARTER)).toBe(22);
+    expect(fourFrameAnimationsPerMonth(PLAN_MONTHLY_CREDITS.PRO)).toBe(63);
+    expect(fourFrameAnimationsPerMonth(PLAN_MONTHLY_CREDITS.UNLIMITED)).toBe(145);
     expect(PLAN_MONTHLY_PRICE_GBP.PRO).toBe(12);
   });
 });

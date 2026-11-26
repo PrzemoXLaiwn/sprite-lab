@@ -15,7 +15,11 @@ import { safeFetchImage, safeFetchErrorResponse } from "@/lib/safe-fetch";
 import { rateLimitUserGeneration } from "@/lib/rate-limit";
 import { prisma } from "@/lib/prisma";
 import { startOperation, requestIp, budgetPlan, type OpHandle } from "@/lib/billing/operations";
-import { isProviderBalanceMessage } from "@/lib/provider-balance";
+import { isProviderBalanceMessage, providerUnavailableMessage } from "@/lib/provider-balance";
+import { hasPaidGenerationAccess, PAID_PLAN_CODE, PAID_PLAN_MESSAGE } from "@/lib/billing/paid-generation";
+import { FEATURES } from "@/lib/billing/features";
+import { providerBalanceBlock } from "@/lib/runware-availability";
+import { reportProviderBalanceLow } from "@/lib/ops/balance-alert";
 import { parseJsonBody, validateBody } from "@/lib/validation/common";
 import { editImageSchema } from "@/lib/validations";
 import { editSprite, EDIT_CREDITS } from "@/lib/image/sprite-edit";
@@ -687,7 +691,12 @@ export async function POST(request: Request) {
     }
     const pixel = (originalGeneration?.styleId ?? "").toUpperCase().includes("PIXEL");
 
-    const account = await prisma.user.findUnique({ where: { id: user.id }, select: { plan: true, totalSpent: true, stripeCustomerId: true } });
+    const account = await prisma.user.findUnique({ where: { id: user.id }, select: { plan: true, role: true, totalSpent: true, stripeCustomerId: true } });
+    if (!hasPaidGenerationAccess(account)) {
+      return NextResponse.json({ error: PAID_PLAN_MESSAGE, code: PAID_PLAN_CODE }, { status: 403 });
+    }
+    const dry = await providerBalanceBlock("Editing", FEATURES.edit.estCostUsd);
+    if (dry) return dry;
     const started = await startOperation({
       userId: user.id, feature: "edit", credits: EDIT_CREDITS, plan: budgetPlan(account), ip: requestIp(request),
       input: { imageUrl, instruction, masked: Boolean(mask) },
@@ -736,7 +745,8 @@ export async function POST(request: Request) {
       await op.fail(isProviderBalanceMessage(msg) ? "PROVIDER_BALANCE" : "EDIT_FAILED");
     }
     if (isProviderBalanceMessage(msg)) {
-      return NextResponse.json({ error: "Editing is paused for a short while — your credits were refunded." }, { status: 503 });
+      void reportProviderBalanceLow("Editing");
+      return NextResponse.json({ error: providerUnavailableMessage("Editing", true), code: "PROVIDER_BALANCE" }, { status: 503 });
     }
     return NextResponse.json({ error: "Edit failed — your credits were refunded. Try describing the change differently." }, { status: 500 });
   }

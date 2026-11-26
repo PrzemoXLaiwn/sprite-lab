@@ -237,7 +237,7 @@ export default function CreditPackCheckoutPage() {
           </SummaryCard>
 
           <SummaryCard>
-            <FeatureList items={["Credits never expire", "Use them anytime", "One-time payment — no renewals"]} />
+            <FeatureList items={["Credits never expire", "Unlocks animations, directions and edits", "One-time payment — no renewals"]} />
           </SummaryCard>
         </>
       }

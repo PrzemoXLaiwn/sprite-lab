@@ -181,7 +181,7 @@ export function JobPanel({ job, loading, error, previewMode, onPreviewMode, canc
           </InfoNote>
         )}
         {(job.error && isProviderBalanceMessage(job.error)) || job.expressions.some((e) => e.error && isProviderBalanceMessage(e.error))
-          ? <ErrorNote>{PROVIDER_BALANCE_MESSAGE}. Top up the Runware balance, then retry the failed expressions. Nothing was charged for those clips.</ErrorNote>
+          ? <ErrorNote>{PROVIDER_BALANCE_MESSAGE} Nothing was charged for those clips. An alert goes to the owner at most once a day.</ErrorNote>
           : job.error ? <ErrorNote>{job.error}</ErrorNote> : null}
         {error && <ErrorNote>{error}</ErrorNote>}
       </div>

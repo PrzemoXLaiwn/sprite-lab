@@ -28,7 +28,7 @@ function write(key: string, value: string) {
  * activity (passed from the server); "what things cost" ticks when opened.
  * Dismissable; disappears once everything is done.
  */
-export function GettingStarted({ done }: { done: { generate: boolean; animate: boolean; project: boolean } }) {
+export function GettingStarted({ done, paidGeneration = true }: { done: { generate: boolean; animate: boolean; project: boolean }; paidGeneration?: boolean }) {
   const pathname = usePathname();
   const [ready, setReady] = useState(false);
   const [hidden, setHidden] = useState(false);
@@ -69,7 +69,7 @@ export function GettingStarted({ done }: { done: { generate: boolean; animate: b
 
   const steps = [
     { id: "generate", label: "Create your first sprite", hint: "Describe it in one sentence", href: "/generate", icon: Sparkles, ok: isDone.generate, reward: QUEST_BY_ID.first_sprite.reward },
-    { id: "animate", label: "Animate a sprite", hint: "Walk, attack, breathe fire…", href: "/animate", icon: Film, ok: isDone.animate, reward: QUEST_BY_ID.first_animation.reward },
+    { id: "animate", label: "Animate a sprite", hint: paidGeneration ? "Walk, attack, breathe fire…" : "On a paid plan or a credit pack", href: paidGeneration ? "/animate" : "/pricing", icon: Film, ok: isDone.animate, reward: QUEST_BY_ID.first_animation.reward },
     { id: "project", label: "Start a project", hint: "Keep your game's assets together", href: "/projects", icon: FolderOpen, ok: isDone.project, reward: QUEST_BY_ID.first_project.reward },
     { id: "costs", label: "See what things cost", hint: "Credits explained in 1 minute", href: "/how-it-works#credits", icon: Coins, ok: costsSeen, reward: 0 },
     { id: "community", label: "Browse the community gallery", hint: "Sprites and prompts other people chose to publish", href: "/community", icon: Users, ok: communitySeen, reward: 0 },

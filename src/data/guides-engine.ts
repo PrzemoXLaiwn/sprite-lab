@@ -6,6 +6,7 @@
 // =============================================================================
 
 import type { Guide } from "@/data/guides";
+import { ANIMATION_FRAME_OPTIONS, RIG_CREDITS, ROTATIONS, animationCredits } from "@/config/animations";
 
 const UPDATED = "2026-10-13";
 
@@ -392,7 +393,7 @@ func _physics_process(_delta: float) -> void:
       {
         heading: "How SpriteLab's frame options map to this",
         body: [
-          "In SpriteLab's Animate tool you choose 4, 6 or 9 key poses for an AI animation (7, 11 or 12 credits). Smooth mode adds AI in-between frames, giving 8, 12 or 18 frames for 5 or 7 extra credits. The preview sets a starting speed — 8 fps for 4 poses, 10 fps for 6 and 12 fps for 9; smooth mode doubles it so the loop keeps the same length — which you can change before downloading. Idle breathing and hovering are done differently: the original sprite is gently deformed over 24 frames instead of redrawn, which avoids flicker and costs 3 credits.",
+          `In SpriteLab's Animate tool you choose 4, 6 or 9 key poses for an AI animation (${ANIMATION_FRAME_OPTIONS.map((o) => o.credits).join(", ")} credits). Smooth mode adds AI in-between frames, giving 8, 12 or 18 frames (${ANIMATION_FRAME_OPTIONS.map((o) => animationCredits(o.frames, true)).join(", ")} credits). The preview sets a starting speed — 8 fps for 4 poses, 10 fps for 6 and 12 fps for 9; smooth mode doubles it so the loop keeps the same length — which you can change before downloading. Idle breathing and hovering are done differently: the original sprite is gently deformed over 24 frames instead of redrawn, which avoids flicker and costs ${RIG_CREDITS} credits. Animations are on a paid plan or a credit pack.`,
           "What SpriteLab does not do is time the frames for you: every frame in the exported strip is shown for the same time. Holding wind-up frames, adding hit-stop and matching walk speed to movement all happen in your engine, as described above.",
         ],
         image: { src: "/showcase/anim-witch-walk.webp", alt: "Pixel art witch walk cycle with evenly spaced frames", pixel: true },
@@ -534,8 +535,8 @@ func _physics_process(_delta: float) -> void:
       {
         heading: "Making the sheet with SpriteLab",
         body: [
-          "SpriteLab's Animate tool has a '4-direction walk' option for characters and creatures (12 credits). It draws the walk facing the viewer, facing right and facing away — 4 steps each — from the sprite you already made, and builds the left row by mirroring the right row, so the asymmetry caveats above apply. The result is a 4×4 sheet in the order down, right, up, left at 6 fps, with every frame the same size on one ground line. The engine pack splits it into walk_down, walk_right, walk_up and walk_left for Godot, Unity and GameMaker.",
-          "For standing poses, the separate '4 directions' option (6 credits) draws the same sprite from the front, right, back and left in a neutral stance — useful as idle frames. SpriteLab does not make a different idle animation per direction, and it cannot guarantee that a held item stays in the correct hand after mirroring; check those frames and fix them in a pixel editor if your character carries something distinctive.",
+          `SpriteLab's Animate tool has a '4-direction walk' option for characters and creatures (${ROTATIONS.find((r) => r.id === "walk4dir")?.credits} credits, paid plan or credit pack). It draws the walk facing the viewer, facing right and facing away — 4 steps each — from the sprite you already made, and builds the left row by mirroring the right row, so the asymmetry caveats above apply. The result is a 4×4 sheet in the order down, right, up, left at 6 fps, with every frame the same size on one ground line. The engine pack splits it into walk_down, walk_right, walk_up and walk_left for Godot, Unity and GameMaker.`,
+          `For standing poses, the separate '4 directions' option (${ROTATIONS.find((r) => r.id === "rotate4")?.credits} credits) draws the same sprite from the front, right, back and left in a neutral stance — useful as idle frames. SpriteLab does not make a different idle animation per direction, and it cannot guarantee that a held item stays in the correct hand after mirroring; check those frames and fix them in a pixel editor if your character carries something distinctive.`,
         ],
         image: { src: "/showcase/rotate-lizard.webp", alt: "Pixel art lizard creature drawn from four directions at the same size", pixel: true },
       },

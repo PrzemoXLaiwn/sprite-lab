@@ -15,6 +15,8 @@ import {
 } from "@/lib/workspace/session";
 import { MaskPainter, maskDataUrl, clearMask } from "@/components/tools/MaskPainter";
 import { triggerCreditsRefresh } from "@/components/dashboard/CreditsDisplay";
+import { triggerUpgradeModal } from "@/components/dashboard/UpgradeModal";
+import { PaidFeatureLock, useAccountAccess } from "@/components/billing/PaidFeatureLock";
 import {
   ToolShell, ToolPanel, Field, FooterHint, CanvasColumn, CanvasFrame, CanvasImage, BeforeAfter,
   BackdropToggle, Chip, TopBarHint, PrimaryButton, DownloadButton, SecondaryButton, ErrorNote, InfoNote, SuggestionChip,
@@ -46,6 +48,7 @@ let reopenedFromDraft = false;
 function EditPageContent({ generationId, resultId }: { generationId: string | null; resultId: string | null }) {
   const router = useRouter();
   const { source, loading: loadingSource, error: sourceError } = useSourceGeneration(generationId);
+  const access = useAccountAccess();
   const [loading, setLoading] = useState(false);
   const [editedImage, setEditedImage] = useState<string | null>(null);
   const [editPrompt, setEditPrompt] = useState("");
@@ -170,6 +173,10 @@ function EditPageContent({ generationId, resultId }: { generationId: string | nu
         }),
       });
       const data = await response.json().catch(() => null);
+      if (data?.code === "PAID_PLAN_REQUIRED" || response.status === 403) {
+        triggerUpgradeModal("paid_feature");
+        return;
+      }
       if (!response.ok) throw new Error(toolErrorMessage(response, data, "The edit failed."));
       if (!data?.imageUrl) throw new Error("The edit finished but returned no image. Please try again.");
 
@@ -207,9 +214,13 @@ function EditPageContent({ generationId, resultId }: { generationId: string | nu
         headerAction={<HistoryButton onClick={() => setHistoryOpen(true)} />}
         footer={
           <>
+            {access.ready && !access.paidGeneration ? (
+              <PaidFeatureLock feature="AI editing" offer={access.starterOffer} />
+            ) : (
             <PrimaryButton onClick={handleEdit} disabled={!canSubmit} loading={loading}
               loadingLabel={<>Editing… <Elapsed /></>}
               icon={<Wand2 className="h-4 w-4" />} label="Apply edit" cost={COST} />
+            )}
             <FooterHint>~30–60s<span className="max-lg:hidden"> · Ctrl + Enter</span></FooterHint>
             {shownError && <ErrorNote>{shownError}</ErrorNote>}
           </>
