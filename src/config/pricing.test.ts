@@ -2,11 +2,12 @@
 // The full margin report (with today's KNOWN_FAILURE rows) is `npm run economics`;
 // this test only fails on NEW violations so a price/cost change can't silently
 // make another feature lose money.
+import { FEATURES } from "@/lib/billing/features";
 import { PLANS } from "@/lib/stripe";
 import { describe, expect, it } from "vitest";
 import { RIG_CREDITS, ROTATIONS, animationCredits } from "./animations";
+import { FX_GBP_PER_USD, costGbp, featureCredits, netPerCreditGbp, violations, violationKey } from "./economics";
 import { MOVESETS, moveCredits, movesetCredits } from "./movesets";
-import { costGbp, featureCredits, netPerCreditGbp, violations, violationKey } from "./economics";
 import { FEATURE_COSTS } from "./provider-costs";
 import { KNOWN_MARGIN_VIOLATIONS } from "./economics-known";
 
@@ -30,7 +31,33 @@ describe("unit economics", () => {
         expect(revenue, `${feature}@${plan.name}`).toBeGreaterThan(costGbp(feature, "central"));
       }
     }
-    expect(animationCredits(4, true)).toBe(12);
+    expect(animationCredits(4, true)).toBe(16);
+  });
+
+  it("returns at least 1.5× the reserved provider cost on Starter, in gross credit value", () => {
+    // Starter is the cheapest paid plan: £5 / 250 credits = 2p gross per credit.
+    // Provider cost is the operation's reserved estimate (the $0.188 anim_4 figure),
+    // converted to GBP at the same FX the economics report uses.
+    const perCredit = PLANS.STARTER.price / PLANS.STARTER.credits;
+    const reserved: Record<string, number> = {
+      style_match: FEATURES.style_match.estCostUsd,
+      edit: FEATURES.edit.estCostUsd,
+      rig: FEATURES.rig.estCostUsd,
+      anim_4: FEATURES.anim_4.estCostUsd,
+      anim_6: FEATURES.anim_6.estCostUsd,
+      anim_9: FEATURES.anim_9.estCostUsd,
+      anim_smooth_4: FEATURES.anim_smooth_4.estCostUsd,
+      anim_smooth_6: FEATURES.anim_smooth_6.estCostUsd,
+      anim_smooth_9: FEATURES.anim_smooth_9.estCostUsd,
+      rotate4: FEATURES.rotate4.estCostUsd,
+      rotate8: FEATURES.rotate8.estCostUsd,
+      walk4dir: FEATURES.walk4dir.estCostUsd,
+    };
+    const credits = featureCredits();
+    for (const [feature, usd] of Object.entries(reserved)) {
+      const revenue = credits[feature] * perCredit;
+      expect(revenue, feature).toBeGreaterThanOrEqual(1.5 * usd * FX_GBP_PER_USD - 1e-9);
+    }
   });
 
   it("introduces no NEW margin violations beyond the known list (see npm run economics)", () => {

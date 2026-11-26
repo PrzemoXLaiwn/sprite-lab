@@ -4,16 +4,15 @@
 // =============================================================================
 
 /**
- * Frame-count options. Priced from the real cost (Oct 2026): the animation
- * model is billed per image — ~$0.07 for a 1024 grid, ~$0.10 for 2048 — plus
- * ~$0.02 for the Claude pose planner. At the cheapest credit we sell (~$0.024
- * net, Starter/Studio) every option keeps a ≥35% margin. `smoothExtra` pays
- * for the second image pass that draws the in-betweens.
+ * Frame-count options. Priced so Starter (£5 / 250 credits, 2p gross per
+ * credit) returns at least 1.5× the reserved provider cost, and a full smooth
+ * job still covers its spend cap on Studio. `smoothExtra` pays for the
+ * in-between pass. Nov 2026: 4/6/9 frames were 7/11/12, smooth extra 5/7/7.
  */
 export const ANIMATION_FRAME_OPTIONS = [
-  { frames: 4, cols: 2, rows: 2, size: 1024, credits: 7, smoothExtra: 5, label: "4 frames", hint: "Classic retro loop" },
-  { frames: 6, cols: 3, rows: 2, size: 2048, credits: 11, smoothExtra: 7, label: "6 frames", hint: "Smoother" },
-  { frames: 9, cols: 3, rows: 3, size: 2048, credits: 12, smoothExtra: 7, label: "9 frames", hint: "Most detail" },
+  { frames: 4, cols: 2, rows: 2, size: 1024, credits: 11, smoothExtra: 5, label: "4 frames", hint: "Classic retro loop" },
+  { frames: 6, cols: 3, rows: 2, size: 2048, credits: 15, smoothExtra: 8, label: "6 frames", hint: "Smoother" },
+  { frames: 9, cols: 3, rows: 3, size: 2048, credits: 15, smoothExtra: 8, label: "9 frames", hint: "Most detail" },
 ] as const;
 export type AnimationFrameOption = (typeof ANIMATION_FRAME_OPTIONS)[number];
 
@@ -27,7 +26,8 @@ export function animationFrameOption(frames: number | null | undefined): Animati
  * Rigged idles: the original sprite is deformed (breathing / hovering)
  * instead of redrawn per frame, so nothing flickers. Flat price, no AI cost.
  */
-export const RIG_CREDITS = 3;
+/** Was 3. Raised so a Claude joint pass clears 1.5× on Starter. */
+export const RIG_CREDITS = 4;
 export const RIG_FRAMES = 24;
 
 /** Rigid-item motions (src/lib/image/item-motion.ts): the drawing is moved, never redrawn. */
@@ -97,9 +97,9 @@ export const ROTATIONS = [
   // One row of views: asked for a 2×2 page, the model drew turnaround sheets of
   // 8 figures (two per direction, mirrored copies) and the first four were
   // shipped as "front, right, back, left" (measured Oct 2026: 3 of 5 pages)
-  { id: "rotate4", kind: "views" as const, label: "4 directions", directions: 4 as const, frames: 4, cols: 4, rows: 1, size: 1024 as const, credits: 6, hint: "front · right · back · left" },
-  { id: "rotate8", kind: "views" as const, label: "8 directions", directions: 8 as const, frames: 8, cols: 4, rows: 2, size: 2048 as const, credits: 10, hint: "every 45° — isometric & top-down" },
-  { id: "walk4dir", kind: "walk" as const, label: "4-direction walk", directions: 4 as const, frames: 16, cols: 4, rows: 3, size: 2048 as const, credits: 12, hint: "RPG sheet: 4 rows × 4 steps" },
+  { id: "rotate4", kind: "views" as const, label: "4 directions", directions: 4 as const, frames: 4, cols: 4, rows: 1, size: 1024 as const, credits: 8, hint: "front · right · back · left" },
+  { id: "rotate8", kind: "views" as const, label: "8 directions", directions: 8 as const, frames: 8, cols: 4, rows: 2, size: 2048 as const, credits: 12, hint: "every 45° — isometric & top-down" },
+  { id: "walk4dir", kind: "walk" as const, label: "4-direction walk", directions: 4 as const, frames: 16, cols: 4, rows: 3, size: 2048 as const, credits: 20, hint: "RPG sheet: 4 rows × 4 steps" },
 ];
 export type RotationOption = (typeof ROTATIONS)[number];
 

@@ -40,7 +40,7 @@ import {
   generateAnimationGrid,
 } from "@/lib/runware";
 import { isDailyAllowanceError, dailyAllowanceMessage } from "@/lib/cloudflare-ai";
-import { isProviderBalanceMessage } from "@/lib/provider-balance";
+import { isProviderBalanceMessage, providerUnavailableMessage } from "@/lib/provider-balance";
 import { uploadGenerationBufferToR2 } from "@/lib/r2";
 import { startOperation, type OpHandle } from "@/lib/billing/operations";
 import { saveGeneration, type SaveGenerationParams } from "@/lib/db/generations";
@@ -554,7 +554,7 @@ async function generateSingle2D(request: GenerationRequest): Promise<{ asset: Ge
   // would be killed before the caller refunds the credits.
   const startedAt = Date.now();
   const RETRY_BUDGET_MS = 100_000;
-  const providerError = (cause: unknown) => {
+  const providerError = (cause: unknown, feature = "Image generation") => {
     const exhausted = isDailyAllowanceError(cause);
     const balance = isProviderBalanceMessage(cause instanceof Error ? cause.message : String(cause));
     return new GenerationError({
@@ -562,7 +562,7 @@ async function generateSingle2D(request: GenerationRequest): Promise<{ asset: Ge
       userMessage: exhausted
         ? dailyAllowanceMessage()
         : balance
-          ? "The image service is out of capacity right now. Your credits were refunded."
+          ? providerUnavailableMessage(feature, true)
           : "Generation failed. Please try again.",
       isExpected: exhausted || balance,
       cause,
@@ -585,7 +585,8 @@ async function generateSingle2D(request: GenerationRequest): Promise<{ asset: Ge
       styleMatched = true;
     } catch (err) {
       log("generation:error", { stage: "style-match", userId: request.userId, error: err instanceof Error ? err.message : String(err) });
-      if (Date.now() - startedAt > RETRY_BUDGET_MS) throw providerError(err);
+      if (isProviderBalanceMessage(err instanceof Error ? err.message : String(err))) throw providerError(err, "Style match");
+      if (Date.now() - startedAt > RETRY_BUDGET_MS) throw providerError(err, "Style match");
       warnings.push("Couldn't match the reference style this time — this sprite uses your selected style and the extra credits were refunded.");
     }
   }

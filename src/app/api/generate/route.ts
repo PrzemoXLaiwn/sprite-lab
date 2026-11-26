@@ -13,6 +13,10 @@ import {
 import { RUNWARE_MODELS, MODEL_COSTS, type RunwareModelId } from "@/lib/runware";
 import { getOrCreateUser } from "@/lib/database";
 import { requestIp, budgetPlan } from "@/lib/billing/operations";
+import { FEATURES } from "@/lib/billing/features";
+import { hasPaidGenerationAccess, PAID_PLAN_CODE, PAID_PLAN_MESSAGE } from "@/lib/billing/paid-generation";
+import { providerBalanceBlock } from "@/lib/runware-availability";
+import { reportProviderBalanceLow } from "@/lib/ops/balance-alert";
 import { z } from "zod";
 import { parseJsonBody, validateBody } from "@/lib/validation/common";
 import {
@@ -191,6 +195,9 @@ export async function POST(request: Request) {
     // Style reference: must be the user's own sprite (or a public one)
     let styleReference: Buffer | undefined;
     let styleReferenceGrid: number | undefined;
+    if (styleReferenceId && !hasPaidGenerationAccess(dbUser.user)) {
+      return NextResponse.json({ error: PAID_PLAN_MESSAGE, code: PAID_PLAN_CODE }, { status: 403 });
+    }
     if (styleReferenceId) {
       const ref = await prisma.generation.findFirst({
         where: { id: styleReferenceId, OR: [{ userId: user.id }, { isPublic: true }] },
@@ -206,6 +213,10 @@ export async function POST(request: Request) {
       } catch {
         return NextResponse.json({ error: "Couldn't load the style reference.", code: "VALIDATION_ERROR" }, { status: 400 });
       }
+    }
+    if (styleReference) {
+      const dry = await providerBalanceBlock("Style match", FEATURES.style_match.estCostUsd);
+      if (dry) return dry;
     }
     const creditsRequired = styleReference ? STYLE_MATCH_CREDITS : CREDIT_COSTS[qualityPreset];
     if (dbUser.user.credits < creditsRequired) {
@@ -351,6 +362,7 @@ export async function POST(request: Request) {
       const status = statusForCode(error.code);
 
       // Insufficient credits: keep legacy noCredits flag for frontend compat
+      if (error.code === "PROVIDER_BALANCE") void reportProviderBalanceLow("generate");
       if (error.code === "INSUFFICIENT_CREDITS") {
         return NextResponse.json(
           { error: error.userMessage, noCredits: true },

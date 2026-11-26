@@ -10,6 +10,8 @@ import { replicateCall } from "@/lib/billing/replicate";
 import { rateLimit3DGeneration } from "@/lib/rate-limit";
 import { parseJsonBody, validateBody } from "@/lib/validation/common";
 import { generate3DSchema } from "@/lib/validations";
+import { MODEL_3D_CREDITS } from "@/config/tool-prices";
+import { hasPaidGenerationAccess, PAID_PLAN_CODE, PAID_PLAN_MESSAGE } from "@/lib/billing/paid-generation";
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
@@ -467,7 +469,7 @@ const MODEL_3D_CONFIGS: Record<string, Model3DConfig> = {
     id: "rodin",
     name: "Rodin Gen-2",
     replicateModel: "hyper3d/rodin",
-    credits: 4,
+    credits: MODEL_3D_CREDITS,
     quality: "high",
     speed: "medium",
     estimatedTime: "30-60s",
@@ -519,7 +521,7 @@ const MODEL_3D_CONFIGS: Record<string, Model3DConfig> = {
     id: "trellis",
     name: "TRELLIS",
     replicateModel: trellisModelIdentifier,
-    credits: 5,
+    credits: MODEL_3D_CREDITS,
     quality: "best",
     speed: "medium",
     estimatedTime: "30-60s",
@@ -557,7 +559,7 @@ const MODEL_3D_CONFIGS: Record<string, Model3DConfig> = {
     id: "hunyuan3d",
     name: "Hunyuan3D-2",
     replicateModel: "tencent/hunyuan3d-2:b1b9449a1277e10402781c5d41eb30c0a0683504fb23fab591ca9dfc2aabe1cb",
-    credits: 4,
+    credits: MODEL_3D_CREDITS,
     quality: "high",
     speed: "fast",
     estimatedTime: "20-40s",
@@ -591,7 +593,7 @@ const MODEL_3D_CONFIGS: Record<string, Model3DConfig> = {
     id: "wonder3d",
     name: "Wonder3D",
     replicateModel: "adirik/wonder3d",
-    credits: 4,
+    credits: MODEL_3D_CREDITS,
     quality: "high",
     speed: "slow",
     estimatedTime: "40-80s",
@@ -954,7 +956,10 @@ export async function POST(request: Request) {
     const CREDITS_REQUIRED = modelConfig.credits;
     await getOrCreateUser(user.id, user.email!);
 
-    const account = await prisma.user.findUnique({ where: { id: user.id }, select: { plan: true, totalSpent: true, stripeCustomerId: true } });
+    const account = await prisma.user.findUnique({ where: { id: user.id }, select: { plan: true, role: true, totalSpent: true, stripeCustomerId: true } });
+    if (!hasPaidGenerationAccess(account)) {
+      return NextResponse.json({ error: PAID_PLAN_MESSAGE, code: PAID_PLAN_CODE }, { status: 403 });
+    }
     const started = await startOperation({
       userId: user.id, feature: "model_3d", credits: CREDITS_REQUIRED, plan: budgetPlan(account), ip: requestIp(request),
       input: { prompt, categoryId, subcategoryId, modelId, qualityPreset },

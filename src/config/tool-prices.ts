@@ -15,8 +15,14 @@ export function upscaleCredits(scale: number): number {
 /** Per delivered variation. */
 export const VARIATION_CREDITS = 3;
 
-/** A sprite drawn in the style of a reference sprite (image-edit model). */
-export const STYLE_MATCH_CREDITS = 5;
+/** A sprite drawn in the style of a reference sprite (image-edit model). Was 5. */
+export const STYLE_MATCH_CREDITS = 8;
 
-/** Brush / describe edit of a sprite (image-edit model). */
-export const EDIT_CREDITS = 5;
+/** Brush / describe edit of a sprite (image-edit model). Was 5. */
+export const EDIT_CREDITS = 8;
+
+/**
+ * One image-to-3D run (reference image plus the mesh). Was 4–5.
+ * There is no 3D control in the app; the routes stay priced so a run cannot lose money.
+ */
+export const MODEL_3D_CREDITS = 25;

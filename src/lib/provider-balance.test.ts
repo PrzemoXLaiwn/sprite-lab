@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isProviderBalanceMessage, PROVIDER_BALANCE_MESSAGE } from "./provider-balance";
+import { isProviderBalanceMessage, PROVIDER_BALANCE_MESSAGE, providerUnavailableMessage } from "./provider-balance";
 
 describe("provider balance errors", () => {
   it("recognises the prepaid-balance wording Runware actually returns", () => {
@@ -8,6 +8,8 @@ describe("provider balance errors", () => {
     expect(isProviderBalanceMessage("insufficientCredits")).toBe(true);
     expect(isProviderBalanceMessage("Please top-up your account")).toBe(true);
     expect(isProviderBalanceMessage("Runware invalidInputImage: bad image")).toBe(false);
-    expect(PROVIDER_BALANCE_MESSAGE).toBe("Provider balance too low");
+    expect(PROVIDER_BALANCE_MESSAGE).toBe("This is temporarily unavailable.");
+    expect(providerUnavailableMessage("Animations", false)).toBe("Animations — temporarily unavailable. Nothing was charged.");
+    expect(providerUnavailableMessage("Editing", true)).toContain("refunded");
   });
 });

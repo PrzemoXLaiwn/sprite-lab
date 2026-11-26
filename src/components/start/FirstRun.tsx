@@ -3,9 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Film, FolderOpen, Loader2, Sparkles } from "lucide-react";
-import { FIRST_RUN_FRAMES, FIRST_RUN_SPRITE_CREDITS, firstRunCreditCost } from "@/lib/billing/entitlements";
-import { animationCredits } from "@/config/animations";
+import { FolderOpen, Loader2, Sparkles } from "lucide-react";
+import { FIRST_RUN_SPRITE_CREDITS, firstRunCreditCost } from "@/lib/billing/entitlements";
 import { starterCheckoutHref } from "@/config/starter-first-month";
 
 const STYLES = [
@@ -22,7 +21,7 @@ const CLASSES = [
   { id: "ranger", label: "Ranger", prompt: "a ranger with a bow and a leather coat, standing, full body" },
 ] as const;
 
-type Step = "choose" | "sprite" | "animating" | "done";
+type Step = "choose" | "sprite" | "done";
 
 export function FirstRun() {
   const router = useRouter();
@@ -31,11 +30,9 @@ export function FirstRun() {
   const [step, setStep] = useState<Step>("choose");
   const [error, setError] = useState("");
   const [sprite, setSprite] = useState<{ id: string; imageUrl: string; prompt: string } | null>(null);
-  const [animation, setAnimation] = useState<{ id: string; sheetUrl: string; gifUrl: string | null } | null>(null);
   const [saving, setSaving] = useState(false);
   const [projectId, setProjectId] = useState<string | null>(null);
   const chosen = CLASSES.find((c) => c.id === classId) ?? CLASSES[0];
-  const animCost = animationCredits(FIRST_RUN_FRAMES, false);
 
   const generate = async () => {
     setError("");
@@ -65,37 +62,6 @@ export function FirstRun() {
     }
   };
 
-  const animate = async () => {
-    if (!sprite) return;
-    setError("");
-    setStep("animating");
-    try {
-      const res = await fetch("/api/animate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          generationId: sprite.id,
-          action: "walk",
-          frames: FIRST_RUN_FRAMES,
-          smooth: false,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || typeof data.sheetUrl !== "string") {
-        throw new Error(typeof data.error === "string" ? data.error : "The walk didn't finish. Your character is saved.");
-      }
-      setAnimation({
-        id: typeof data.generationId === "string" ? data.generationId : sprite.id,
-        sheetUrl: data.sheetUrl,
-        gifUrl: typeof data.gifUrl === "string" ? data.gifUrl : null,
-      });
-      setStep("done");
-    } catch (err) {
-      setStep("sprite");
-      setError(err instanceof Error ? err.message : "The walk didn't finish. Your character is saved.");
-    }
-  };
-
   const saveProject = async () => {
     if (!sprite || saving) return;
     setSaving(true);
@@ -119,9 +85,9 @@ export function FirstRun() {
   return (
     <div className="mx-auto w-full max-w-xl px-4 py-8">
       <p className="font-mono text-[12px] text-[#A7ADD4]">First character · {firstRunCreditCost()} of your free credits</p>
-      <h1 className="mt-2 font-display text-[32px] font-semibold leading-tight text-[#FFF1E8]">Make a character, then make it walk.</h1>
+      <h1 className="mt-2 font-display text-[32px] font-semibold leading-tight text-[#FFF1E8]">Make your first character.</h1>
       <p className="mt-2 text-[15px] leading-relaxed text-[#C8CCE8]">
-        A standard sprite is {FIRST_RUN_SPRITE_CREDITS} credit. A 4-frame walk is {animCost}. Smooth motion stays off so this fits the free balance.
+        A standard sprite is {FIRST_RUN_SPRITE_CREDITS} credit and stays on the free balance. Animations and direction sheets are on Starter or a credit pack.
       </p>
 
       {step === "choose" && (
@@ -157,28 +123,15 @@ export function FirstRun() {
         </>
       )}
 
-      {(step === "sprite" || step === "animating") && !sprite && (
+      {step === "sprite" && !sprite && (
         <p className="mt-8 flex items-center gap-2 text-[15px] text-[#FFF1E8]"><Loader2 className="h-4 w-4 animate-spin text-[#FFA300]" /> Drawing your {chosen.label.toLowerCase()}…</p>
       )}
 
-      {sprite && step !== "done" && (
+      {sprite && (
         <div className="mt-6">
           <div className="checker flex aspect-square items-center justify-center rounded-[10px] border border-white/10">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={sprite.imageUrl} alt={chosen.label} className="pixel-perfect max-h-[80%] max-w-[80%] object-contain" />
-          </div>
-          <button type="button" onClick={animate} disabled={step === "animating"} className="px-corners mt-4 flex h-12 w-full items-center justify-center gap-2 bg-[#FFA300] text-[15px] font-semibold text-[#131A31] disabled:opacity-60">
-            {step === "animating" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Film className="h-4 w-4" />}
-            {step === "animating" ? "Animating the walk…" : `Animate a walk · ${animCost} credits`}
-          </button>
-        </div>
-      )}
-
-      {step === "done" && sprite && animation && (
-        <div className="mt-6">
-          <div className="checker flex aspect-square items-center justify-center rounded-[10px] border border-white/10">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={animation.gifUrl || animation.sheetUrl} alt={`${chosen.label} walking`} className="pixel-perfect max-h-[80%] max-w-[80%] object-contain" />
           </div>
           <div className="mt-4 flex flex-col gap-2">
             {projectId ? (
@@ -191,14 +144,11 @@ export function FirstRun() {
                 Save {chosen.label.toLowerCase()} to a project
               </button>
             )}
-            <a href={animation.gifUrl || animation.sheetUrl} download className="flex h-11 items-center justify-center rounded-xl border border-white/10 text-[14px] text-[#FFF1E8]">
-              Download
-            </a>
-            <Link href={starterCheckoutHref(false)} className="flex h-11 items-center justify-center text-[14px] text-[#FFC857]">
-              Starter adds a commercial licence, engine export and private sprites
+            <Link href={starterCheckoutHref(true)} className="flex h-11 items-center justify-center rounded-xl border border-white/10 text-[14px] text-[#FFC857]">
+              Animate this character on Starter
             </Link>
-            <Link href={`/animate?id=${encodeURIComponent(sprite.id)}`} className="flex h-11 items-center justify-center text-[14px] text-[#C8CCE8]">
-              Make another motion
+            <Link href="/pricing#credit-packs" className="flex h-11 items-center justify-center text-[14px] text-[#C8CCE8]">
+              Or buy a credit pack
             </Link>
           </div>
         </div>

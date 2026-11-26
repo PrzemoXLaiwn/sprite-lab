@@ -5,6 +5,7 @@
 // =============================================================================
 
 import { CREDIT_COSTS, STYLE_MATCH_CREDITS } from "@/lib/services/generation";
+import { EDIT_CREDITS } from "@/config/tool-prices";
 import { ANIMATION_FRAME_OPTIONS, RIG_CREDITS, ROTATIONS, animationCredits } from "@/config/animations";
 import { RELAUNCH } from "@/config/relaunch";
 
@@ -66,7 +67,7 @@ export const GUIDE: GuideSection[] = [
     steps: [
       { title: "Choose a sprite", body: "Any sprite from your Assets — or upload your own." },
       { title: "Pick a motion", body: "Idle, walk, attack, jump… plus moves suggested for that exact sprite. Or describe your own." },
-      { title: "Pick the frame count", body: `${frames.join(", ")} key poses from ${ANIMATION_FRAME_OPTIONS[0].credits} credits. “Smooth motion” doubles the frames with AI in-betweens. Idle loops are rigged from your sprite for just ${RIG_CREDITS} credits.` },
+      { title: "Pick the frame count", body: `${frames.join(", ")} key poses from ${ANIMATION_FRAME_OPTIONS[0].credits} credits. “Smooth motion” adds AI in-betweens. Idle loops are rigged from your sprite for ${RIG_CREDITS} credits. This is on a paid plan or a credit pack.` },
       { title: "Download", body: "A sprite sheet PNG, every frame separately and a GIF preview — ready to slice in Unity or Godot." },
     ],
     tips: [
@@ -122,7 +123,7 @@ export const PRICE_LIST: { item: string; cost: string; note?: string }[] = [
   ...ROTATIONS.map((r) => ({ item: `${r.label} (${r.kind === "walk" ? "RPG walk sheet" : "rotation sheet"})`, cost: `${r.credits} credits` })),
   ...ANIMATION_FRAME_OPTIONS.map((o) => ({ item: `AI animation — ${o.frames} frames`, cost: `${o.credits} credits`, note: `smooth (${o.frames * 2} frames): ${animationCredits(o.frames, true)} credits` })),
   { item: "Variation of a sprite", cost: "3 credits" },
-  { item: "Edit a sprite (describe + paint the area)", cost: "5 credits" },
+  { item: "Edit a sprite (describe + paint the area)", cost: `${EDIT_CREDITS} credits`, note: "paid plan or credit pack" },
   { item: "Remove background", cost: "1 credit", note: "Starter plan and up" },
   { item: "Upscale — pixel-perfect", cost: "free" },
   { item: "Upscale — AI 2× / 4×", cost: "1–2 credits", note: "paid plans" },

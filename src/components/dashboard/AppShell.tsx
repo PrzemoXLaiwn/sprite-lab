@@ -14,6 +14,9 @@ import { prisma } from "@/lib/prisma";
 import { NOT_UPLOADED } from "@/lib/upload-marker";
 import { relaunchActive, relaunchBonusFor } from "@/config/relaunch";
 import { isStPacksEnabled } from "@/config/st-packs";
+import { hasPaidGenerationAccess } from "@/lib/billing/paid-generation";
+import { isStarterFirstMonthOfferEnabled } from "@/config/starter-first-month";
+import { FreePlanBanner } from "@/components/dashboard/FreePlanBanner";
 
 /**
  * The signed-in app chrome: icon rail, mobile header + bottom nav, global
@@ -23,7 +26,7 @@ import { isStPacksEnabled } from "@/config/st-packs";
 export async function AppShell({ user, children }: { user: User; children: React.ReactNode }) {
   const dbUser = await prisma.user.findUnique({
     where: { id: user.id },
-    select: { plan: true, role: true, emailPreferences: true, createdAt: true },
+    select: { plan: true, role: true, totalSpent: true, emailPreferences: true, createdAt: true },
   }).catch(() => null); // database down: the frame still renders
   const prefs = dbUser?.emailPreferences as { relaunchBonusAt?: string } | null;
   // Only accounts that still have a bonus to claim (none for signups after NEW_USER_BONUS_UNTIL)
@@ -72,6 +75,9 @@ export async function AppShell({ user, children }: { user: User; children: React
       {/* ═══ MAIN CONTENT ═══════════════════════════════════ */}
       <main id="main-content" className="md:pl-[76px] min-h-screen">
         <div className="app-main pt-12 md:pt-0 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 bg-[#131A31]">
+          {dbUser && !hasPaidGenerationAccess(dbUser) && (
+            <FreePlanBanner offerEnabled={isStarterFirstMonthOfferEnabled()} />
+          )}
           {children}
         </div>
       </main>
@@ -81,7 +87,10 @@ export async function AppShell({ user, children }: { user: User; children: React
       <DungeonReturn />
       <UpgradeModal />
       {showRelaunchBonus && <RelaunchBonus />}
-      <GettingStarted done={{ generate: Boolean(firstSprite), animate: Boolean(firstAnimation), project: Boolean(firstProject) }} />
+      <GettingStarted
+        paidGeneration={hasPaidGenerationAccess(dbUser)}
+        done={{ generate: Boolean(firstSprite), animate: Boolean(firstAnimation), project: Boolean(firstProject) }}
+      />
     </div>
   );
 }

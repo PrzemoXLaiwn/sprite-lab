@@ -4,9 +4,9 @@
 // Used by src/lib/stripe.ts (PLANS), the /pricing page, the landing pricing
 // section and the upgrade modal. Only list things the product actually does:
 // every plan gets all 12 styles, both Standard (1 credit) and HD (3 credits)
-// quality, and a transparent PNG on every sprite. Plans differ by monthly
-// credits, by a few extra tools, and by licence. Commercial use is included
-// on Starter, Pro and Studio only. Free is personal, non-commercial use.
+// quality, and a transparent PNG on every sprite. Animations, direction
+// sheets and AI editing are on a paid plan or a credit pack. Commercial use
+// is included on Starter, Pro and Studio only. Free is personal, non-commercial use.
 // Starter is the plan most people buy. Pro and Studio are a better price per
 // credit than the plan below them (list price, GBP). Lifetime deals keep the
 // allowance they were sold with — see LIFETIME_DEALS, not these counts.
@@ -34,13 +34,13 @@ export const PLAN_FEATURES = {
     "Earn extra credits with quests",
     "All 12 art styles, Standard & HD",
     "Transparent PNG on every sprite",
-    "Animations, 4 & 8 directions, AI editing",
     "Projects for each character",
     "Personal, non-commercial use",
   ],
   STARTER: [
     `${PLAN_MONTHLY_CREDITS.STARTER} credits / month`,
     "Everything in Free",
+    "Animations, 4 and 8 directions, AI editing",
     "Commercial licence",
     "Unity, Godot and GameMaker export",
     "2× export, nearest-neighbour",

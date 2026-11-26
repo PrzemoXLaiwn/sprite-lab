@@ -3,7 +3,7 @@
 // storage, auth and Prisma are mocked; the billing store is the in-memory
 // model of the real SQL (src/lib/billing/test-utils/memory-store.ts).
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { VARIATION_CREDITS } from "@/config/tool-prices";
+import { MODEL_3D_CREDITS, VARIATION_CREDITS } from "@/config/tool-prices";
 import { MemoryStore } from "@/lib/billing/test-utils/memory-store";
 import { setLedgerSink } from "@/lib/billing/ledger";
 
@@ -223,59 +223,59 @@ describe(`POST /api/variations (${VARIATION_CREDITS} credits each, Replicate)`, 
   });
 });
 
-describe("POST /api/generate-3d (4 credits, Replicate) — no UI caller", () => {
+describe(`POST /api/generate-3d (${MODEL_3D_CREDITS} credits, Replicate) — no UI caller`, () => {
   const req = () => post("generate-3d", { prompt: "iron sword", categoryId: "WEAPONS", subcategoryId: "SWORDS", modelId: "rodin" });
 
   it("success: charged once, no refund, reference + 3D calls in the ledger", async () => {
     M.replicateRun.mockResolvedValueOnce("https://replicate.delivery/ref.png").mockResolvedValueOnce("https://replicate.delivery/model.glb");
     const res = await gen3d.POST(req());
     expect(res.status).toBe(200);
-    expectChargedNoRefund(4);
+    expectChargedNoRefund(MODEL_3D_CREDITS);
     expect(store.calls.map((c) => [c.provider, c.task, c.outcome])).toEqual([["replicate", "3d_reference", "ok"], ["replicate", "3d_model", "ok"]]);
   });
 
   it("every reference model fails: full refund once", async () => {
     M.replicateRun.mockRejectedValue(new Error("prediction failed: CUDA out of memory"));
     expect((await gen3d.POST(req())).status).toBe(500);
-    expectFullRefundOnce(4);
+    expectFullRefundOnce(MODEL_3D_CREDITS);
     expect(store.calls.map((c) => c.outcome)).toEqual(["error", "error"]);
   });
 
   it("3D step fails: full refund once", async () => {
     M.replicateRun.mockResolvedValueOnce("https://replicate.delivery/ref.png").mockRejectedValue(new Error("prediction failed"));
     expect((await gen3d.POST(req())).status).toBe(500);
-    expectFullRefundOnce(4);
+    expectFullRefundOnce(MODEL_3D_CREDITS);
   });
 
   it("gallery row can't be saved: full refund once", async () => {
     M.replicateRun.mockResolvedValueOnce("https://replicate.delivery/ref.png").mockResolvedValueOnce("https://replicate.delivery/model.glb");
     M.saveGeneration.mockResolvedValue({ success: false, error: "db" });
     expect((await gen3d.POST(req())).status).toBe(500);
-    expectFullRefundOnce(4);
+    expectFullRefundOnce(MODEL_3D_CREDITS);
   });
 });
 
-describe("POST /api/generate-3d-stream (4 credits, Replicate, SSE) — no UI caller", () => {
+describe(`POST /api/generate-3d-stream (${MODEL_3D_CREDITS} credits, Replicate, SSE) — no UI caller`, () => {
   const req = () => post("generate-3d-stream", { prompt: "iron sword", categoryId: "WEAPONS", subcategoryId: "SWORDS" });
 
   it("success: charged once, no refund", async () => {
     M.replicateRun.mockResolvedValueOnce("https://replicate.delivery/ref.png").mockResolvedValueOnce("https://replicate.delivery/model.glb");
     const text = await (await gen3dStream.POST(req())).text();
     expect(text).toContain("event: complete");
-    expectChargedNoRefund(4);
+    expectChargedNoRefund(MODEL_3D_CREDITS);
   });
 
   it("every provider call fails: full refund once", async () => {
     M.replicateRun.mockRejectedValue(new Error("prediction failed"));
     const text = await (await gen3dStream.POST(req())).text();
     expect(text).toContain("event: error");
-    expectFullRefundOnce(4);
+    expectFullRefundOnce(MODEL_3D_CREDITS);
   });
 
   it("both 3D engines fail after a reference image: full refund once", async () => {
     M.replicateRun.mockResolvedValueOnce("https://replicate.delivery/ref.png").mockRejectedValue(new Error("prediction failed"));
     const text = await (await gen3dStream.POST(req())).text();
     expect(text).toContain("All 3D generators failed");
-    expectFullRefundOnce(4);
+    expectFullRefundOnce(MODEL_3D_CREDITS);
   });
 });

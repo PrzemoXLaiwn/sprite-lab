@@ -57,7 +57,7 @@ export default function AiGameAssetEditorPage() {
           title: <>The editing tools and what they cost</>,
           intro: "Each tool works on a sprite in your assets, whether you generated it or uploaded it.",
           rows: [
-            { label: "Edit with AI", value: `Describe the change; optionally paint the area that may change. ${EDIT_CREDITS} credits, every plan.` },
+            { label: "Edit with AI", value: `Describe the change; optionally paint the area that may change. ${EDIT_CREDITS} credits, on a paid plan or a credit pack.` },
             { label: "Upload your sprite", value: "PNG, JPG or WebP up to 8 MB. A plain background is removed for you. Free, and only you can see it." },
             { label: "Match style", value: `New sprites drawn in the style of one you pick. ${STYLE_MATCH_CREDITS} credits each.` },
             { label: "Remove background", value: `Clean cut-out of a sprite with a busy background. ${REMOVE_BG_CREDITS} credit, Starter plan and up.` },
@@ -90,7 +90,7 @@ export default function AiGameAssetEditorPage() {
         { q: "Can I edit a sprite I made somewhere else?", a: "Yes. Upload a PNG, JPG or WebP up to 8 MB. A plain background is removed, and then you can edit, animate or turn the sprite like one made in SpriteLab. Uploading is free and private." },
         { q: "Will pixel art stay crisp after an edit?", a: "Yes. The edited sprite is put back onto its own pixel grid with a limited palette, so it keeps whole pixels and matches the rest of your set." },
         { q: "Can I change only one part of a sprite?", a: "Yes. Paint over the area that may change. Everything outside the painted area is copied back from the original pixel for pixel." },
-        { q: "How much does editing cost?", a: `An edit costs ${EDIT_CREDITS} credits on every plan. Uploading is free, pixel-perfect upscaling is free, background removal is ${REMOVE_BG_CREDITS} credit on Starter and up, and AI upscaling is ${upscaleCredits(2)}–${upscaleCredits(4)} credits on Pro and Studio. You get 10 free credits when you sign up.` },
+        { q: "How much does editing cost?", a: `An edit costs ${EDIT_CREDITS} credits on a paid plan or a credit pack. Uploading is free, pixel-perfect upscaling is free, background removal is ${REMOVE_BG_CREDITS} credit on Starter and up, and AI upscaling is ${upscaleCredits(2)}–${upscaleCredits(4)} credits on Pro and Studio. You get 10 free credits when you sign up, for static sprites.` },
         { q: "How is this different from editing in Photoshop or Aseprite?", a: "You describe the change instead of drawing it, which is quick for recolours, outfits and details. For exact pixel-by-pixel control, download the PNG and finish it in your editor." },
       ]}
       cta={{

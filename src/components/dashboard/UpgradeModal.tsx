@@ -46,8 +46,8 @@ const PLANS = [
     slug: "starter",
     price: PLAN_MONTHLY_PRICE_GBP.STARTER,
     credits: PLAN_MONTHLY_CREDITS.STARTER,
-    // Credits, what carries over from Free, and the commercial licence.
-    // AI upscale is Pro and up, and AI editing is already on Free.
+    // Credits and "everything in Free" stay off the card; the next lines are
+    // what Starter adds, including animations.
     features: PLAN_FEATURES.STARTER.slice(2, 7),
     popular: true,
   },
@@ -111,6 +111,7 @@ export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
   const [mode, setMode] = useState<"plans" | "starter">("plans");
   const [reason, setReason] = useState<UpsellReason>("no_credits");
   const [offerEnabled, setOfferEnabled] = useState(false);
+  const [featureLock, setFeatureLock] = useState(false);
 
   // Open when `forceShow` flips to true (state adjusted during render instead
   // of in an effect — avoids a cascading re-render).
@@ -185,17 +186,20 @@ export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
     // 402 / noCredits. Qualifying accounts see the Starter upsell every time.
     // Everyone else keeps the plan list — the old on-load zero-balance popup
     // is gone so the two never stack.
-    const onNoCredits = () => {
+    const onNoCredits = (event: Event) => {
+      const asked = (event as CustomEvent<{ reason?: string }>).detail?.reason;
+      const paidFeature = asked === "paid_feature";
       void (async () => {
         const audience = await loadUpsellAudience();
         if (cancelled) return;
+        setFeatureLock(paidFeature);
         if (audience?.eligible) {
-          openStarter("no_credits", audience.offerEnabled);
+          openStarter(paidFeature ? "paid_feature" : "no_credits", audience.offerEnabled);
           return;
         }
         setMode("plans");
         setIsVisible(true);
-        recordFunnel("paywall_shown", { surface: "upgrade", reason: "no_credits" });
+        recordFunnel("paywall_shown", { surface: "upgrade", reason: paidFeature ? "paid_feature" : "no_credits" });
       })();
     };
 
@@ -288,18 +292,20 @@ export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
           ) : (
             <div className="p-5 sm:p-7">
               <div className="pr-10">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-red-400/20 bg-red-500/[0.06] px-2.5 py-1 font-mono text-[11px] text-red-200">
+                <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[11px] ${featureLock ? "border-[#FFA300]/30 bg-[#FFA300]/10 text-[#FFC857]" : "border-red-400/20 bg-red-500/[0.06] text-red-200"}`}>
                   <Zap className="h-3 w-3" />
-                  Not enough credits
+                  {featureLock ? "Paid feature" : "Not enough credits"}
                 </span>
                 <Dialog.Title asChild>
                   <h2 className="mt-3 font-display text-[24px] font-semibold tracking-tight text-white">
-                    Upgrade to keep creating
+                    {featureLock ? "Animations are on a paid plan" : "Upgrade to keep creating"}
                   </h2>
                 </Dialog.Title>
                 <Dialog.Description asChild>
                   <p id="upgrade-modal-description" className="mt-1 max-w-md text-[13px] text-[#9AA1CC]">
-                    Monthly plans refill your credits every month. Just need a few? Grab a one-time pack below.
+                    {featureLock
+                      ? "Static sprites stay free. A monthly plan or a one-time credit pack unlocks animations, directions and edits."
+                      : "Monthly plans refill your credits every month. Just need a few? Grab a one-time pack below."}
                   </p>
                 </Dialog.Description>
               </div>
@@ -373,8 +379,8 @@ export function UpgradeModal({ forceShow, onClose }: UpgradeModalProps) {
 
 // Trigger the modal from anywhere (the matching listener is in the
 // useEffect above). Used when a generation is refused for lack of credits.
-export function triggerUpgradeModal() {
+export function triggerUpgradeModal(reason: "no_credits" | "paid_feature" = "no_credits") {
   if (typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent("show-upgrade-modal"));
+    window.dispatchEvent(new CustomEvent("show-upgrade-modal", { detail: { reason } }));
   }
 }

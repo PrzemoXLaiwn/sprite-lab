@@ -21,10 +21,10 @@ describe("paid perks", () => {
 });
 
 describe("first-run budget", () => {
-  it("fits a standard sprite and a 4-frame walk inside the free grant", () => {
-    expect(firstRunCreditCost()).toBe(1 + animationCredits(4, false));
+  it("fits one static sprite in the free grant, and not a 4-frame animation", () => {
+    expect(firstRunCreditCost()).toBe(1);
     expect(firstRunFitsFreeGrant()).toBe(true);
-    expect(firstRunCreditCost()).toBeLessThanOrEqual(SIGNUP_CREDITS);
+    expect(animationCredits(4, false)).toBeGreaterThan(SIGNUP_CREDITS);
     expect(animationCredits(4, true)).toBeGreaterThan(SIGNUP_CREDITS - 1);
   });
 });

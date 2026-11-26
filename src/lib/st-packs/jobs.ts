@@ -29,6 +29,7 @@ import {
   type StExpressionStatus, type StFraming, type StJobStatus, type StMatteMode,
 } from "@/config/st-packs";
 import { PROVIDER_BALANCE_MESSAGE, isProviderBalanceMessage } from "@/lib/provider-balance";
+import { reportProviderBalanceLow } from "@/lib/ops/balance-alert";
 import { chromaHex, parseChromaHex, type Rgb } from "./chroma";
 import { isUsableReference, neutralReference, prepareStill, type PreparedStill } from "./still";
 import { findReusableNeutral, planNeutral, skippedEstimateLabels, type ReusableNeutral } from "./neutral-reuse";
@@ -357,6 +358,7 @@ async function stepFailed(e: ExprRow, step: "edit" | "video" | "post", err: unkn
   });
   if (balance) {
     await prisma.stPackJob.update({ where: { id: e.jobId }, data: { error: PROVIDER_BALANCE_MESSAGE } });
+    void reportProviderBalanceLow("expression pack");
   }
 }
 

@@ -3,14 +3,17 @@ import sharp from "sharp";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { startOperation, requestIp, budgetPlan } from "@/lib/billing/operations";
-import { animationFeature } from "@/lib/billing/features";
+import { FEATURES, animationFeature } from "@/lib/billing/features";
 import { saveGeneration } from "@/lib/db/generations";
 import { rateLimitUserGeneration } from "@/lib/rate-limit";
 import { safeFetchImage } from "@/lib/safe-fetch";
 import { uploadGenerationBufferToR2 } from "@/lib/r2";
 import { makeAnimation, makeRotation } from "@/lib/services/animation-service";
 import { isOutOfTime, workDeadline } from "@/lib/services/animation-budget";
-import { isProviderBalanceMessage } from "@/lib/provider-balance";
+import { isProviderBalanceMessage, providerUnavailableMessage } from "@/lib/provider-balance";
+import { hasPaidGenerationAccess, PAID_PLAN_CODE, PAID_PLAN_MESSAGE } from "@/lib/billing/paid-generation";
+import { providerBalanceBlock } from "@/lib/runware-availability";
+import { reportProviderBalanceLow } from "@/lib/ops/balance-alert";
 import { makeRigAnimation } from "@/lib/image/rig-animation";
 import { makeItemMotion } from "@/lib/image/item-motion";
 import { makeSkeletonAnimation, makeSkeletonIdle } from "@/lib/image/skeleton-rig";
@@ -80,7 +83,10 @@ export async function POST(request: Request) {
     select: { id: true, imageUrl: true, prompt: true, styleId: true, categoryId: true, subcategoryId: true, projectId: true, folderId: true },
   });
   if (!source) return NextResponse.json({ error: "Sprite not found." }, { status: 404 });
-  const account = await prisma.user.findUnique({ where: { id: user.id }, select: { plan: true, totalSpent: true, stripeCustomerId: true } });
+  const account = await prisma.user.findUnique({ where: { id: user.id }, select: { plan: true, role: true, totalSpent: true, stripeCustomerId: true } });
+  if (!hasPaidGenerationAccess(account)) {
+    return NextResponse.json({ error: PAID_PLAN_MESSAGE, code: PAID_PLAN_CODE }, { status: 403 });
+  }
   const plan = budgetPlan(account);
   const ip = requestIp(request);
   const opInput = { generationId, action, customMotion, frames: option.frames, smooth };
@@ -102,6 +108,8 @@ export async function POST(request: Request) {
     } catch {
       return NextResponse.json({ error: "Couldn't load this sprite." }, { status: 400 });
     }
+    const dry = await providerBalanceBlock("Directions", FEATURES[rotation.id as "rotate4" | "rotate8" | "walk4dir"].estCostUsd);
+    if (dry) return dry;
     const started = await startOperation({ userId: user.id, feature: rotation.id as "rotate4" | "rotate8" | "walk4dir", credits: rotation.credits, plan, input: opInput, ip });
     if (!started.ok) return NextResponse.json(started.body, { status: started.status });
     const op = started.op;
@@ -152,7 +160,8 @@ export async function POST(request: Request) {
       const blocked = !balance && !slow && isProviderModeration(msg);
       await op.fail(balance ? "PROVIDER_BALANCE" : slow ? "ROTATION_TIMEOUT" : blocked ? "PROVIDER_MODERATION" : "ROTATION_FAILED");
       if (balance) {
-        return NextResponse.json({ error: "Directions are paused for a short while — your credits were refunded." }, { status: 503 });
+        void reportProviderBalanceLow("Directions");
+        return NextResponse.json({ error: providerUnavailableMessage("Directions", true), code: "PROVIDER_BALANCE" }, { status: 503 });
       }
       if (slow) {
         return NextResponse.json({ error: "This took too long, so we stopped — your credits were refunded. Please try again in a minute." }, { status: 503 });
@@ -277,7 +286,10 @@ export async function POST(request: Request) {
 
   // Smooth motion = a second image pass drawing in-betweens → twice the frames, twice the credits
   const credits = animationCredits(option.frames, smooth);
-  const started = await startOperation({ userId: user.id, feature: isTile ? "tile_anim" : animationFeature(option.frames, smooth), credits, plan, input: opInput, ip });
+  const animFeature = isTile ? "tile_anim" : animationFeature(option.frames, smooth);
+  const dry = await providerBalanceBlock(isTile ? "Tile animation" : "Animations", FEATURES[animFeature].estCostUsd);
+  if (dry) return dry;
+  const started = await startOperation({ userId: user.id, feature: animFeature, credits, plan, input: opInput, ip });
   if (!started.ok) return NextResponse.json(started.body, { status: started.status });
   const op = started.op;
 
@@ -349,7 +361,8 @@ export async function POST(request: Request) {
     await op.fail(balance ? "PROVIDER_BALANCE" : slow ? "ANIMATION_TIMEOUT" : blocked ? "PROVIDER_MODERATION" : "ANIMATION_FAILED");
     // Provider balance ran out: say so plainly instead of "try again"
     if (balance) {
-      return NextResponse.json({ error: "Animations are paused for a short while — your credits were refunded. Sprites still work." }, { status: 503 });
+      void reportProviderBalanceLow("Animations");
+      return NextResponse.json({ error: providerUnavailableMessage("Animations", true), code: "PROVIDER_BALANCE" }, { status: 503 });
     }
     if (slow) {
       return NextResponse.json({ error: "This took too long, so we stopped — your credits were refunded. Please try again in a minute." }, { status: 503 });

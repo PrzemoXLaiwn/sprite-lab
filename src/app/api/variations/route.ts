@@ -13,6 +13,7 @@ import { budgetPlan, requestIp, startOperation, type OpHandle } from "@/lib/bill
 import { canSpend } from "@/lib/billing/ledger";
 import { PRICE } from "@/lib/billing/features";
 import { logReplicate } from "@/lib/billing/replicate";
+import { hasPaidGenerationAccess, PAID_PLAN_CODE, PAID_PLAN_MESSAGE } from "@/lib/billing/paid-generation";
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
@@ -255,7 +256,10 @@ export async function POST(request: Request) {
 
     // 1 credit per variation; charge + guards in one operation
     const creditsNeeded = numVariations * VARIATION_CREDITS;
-    const account = await prisma.user.findUnique({ where: { id: user.id }, select: { plan: true, totalSpent: true, stripeCustomerId: true } });
+    const account = await prisma.user.findUnique({ where: { id: user.id }, select: { plan: true, role: true, totalSpent: true, stripeCustomerId: true } });
+    if (!hasPaidGenerationAccess(account)) {
+      return NextResponse.json({ error: PAID_PLAN_MESSAGE, code: PAID_PLAN_CODE }, { status: 403 });
+    }
     const started = await startOperation({
       userId: user.id, feature: "variations", credits: creditsNeeded, plan: budgetPlan(account), ip: requestIp(request),
       input: { imageUrl, prompt: prompt ?? null, numVariations, similarity },

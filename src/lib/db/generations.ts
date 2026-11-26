@@ -6,6 +6,7 @@
 // so existing callers are not broken during the migration.
 // =============================================================================
 
+import { hasPaidGenerationAccess } from "@/lib/billing/paid-generation";
 import { prisma } from "@/lib/prisma";
 import { NOT_UPLOADED } from "@/lib/upload-marker";
 
@@ -61,7 +62,7 @@ export async function getUserStats(userId: string) {
       }),
       prisma.user.findUnique({
         where: { id: userId },
-        select: { credits: true, plan: true, createdAt: true },
+        select: { credits: true, plan: true, role: true, totalSpent: true, createdAt: true },
       }),
     ]);
 
@@ -72,6 +73,7 @@ export async function getUserStats(userId: string) {
         recentGenerations,
         credits: user?.credits ?? 0,
         plan: user?.plan ?? "FREE",
+        paidGeneration: hasPaidGenerationAccess(user),
         memberSince: user?.createdAt ?? new Date(),
       },
     };

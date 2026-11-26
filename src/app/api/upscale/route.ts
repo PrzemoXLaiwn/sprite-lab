@@ -12,6 +12,10 @@ import { upscaleSchema } from "@/lib/validations";
 import { uploadGenerationBufferToR2 } from "@/lib/r2";
 import sharp from "sharp";
 import { upscaleCredits } from "@/config/tool-prices";
+import { FEATURES } from "@/lib/billing/features";
+import { isProviderBalanceMessage, providerUnavailableMessage } from "@/lib/provider-balance";
+import { providerBalanceBlock } from "@/lib/runware-availability";
+import { reportProviderBalanceLow } from "@/lib/ops/balance-alert";
 
 // Runware upscale is capped at 90s (RUNWARE_UPSCALE_TIMEOUT_MS) so the
 // refund path always has time to run.
@@ -194,6 +198,8 @@ export async function POST(request: Request) {
     creditCost = Math.max(modelConfig.credits, creditsForScale(scale));
 
     // Charge + guards in one operation; every failure below refunds it once
+    const dry = await providerBalanceBlock("AI upscale", FEATURES.upscale.estCostUsd);
+    if (dry) return dry;
     const account = await prisma.user.findUnique({ where: { id: user.id }, select: { plan: true, totalSpent: true, stripeCustomerId: true } });
     const started = await startOperation({
       userId: user.id, feature: "upscale", credits: creditCost, plan: budgetPlan(account), ip: requestIp(request),
@@ -221,10 +227,12 @@ export async function POST(request: Request) {
     if (!result.success || !result.imageUrl) {
       console.error("[Upscale] Failed:", result.error);
       pendingOp = null;
-      await op.fail("PROVIDER_ERROR");
+      const balance = isProviderBalanceMessage(result.error ?? "");
+      await op.fail(balance ? "PROVIDER_BALANCE" : "PROVIDER_ERROR");
+      if (balance) void reportProviderBalanceLow("AI upscale");
       return NextResponse.json(
-        { error: "Upscaling failed. Credit refunded." },
-        { status: 500 }
+        { error: balance ? providerUnavailableMessage("AI upscale", true) : "Upscaling failed. Credit refunded.", code: balance ? "PROVIDER_BALANCE" : undefined },
+        { status: balance ? 503 : 500 }
       );
     }
 
